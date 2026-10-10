@@ -70,7 +70,8 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 5. A new submission — individual, barrio, or bulk upload — is accepted only inside
    `[SubmissionOpenAt, SubmissionCloseAt]` — `Controllers/EventsController.cs:145`,
    `Controllers/EventsController.cs:546`, `Controllers/EventsController.cs:720`. Editing or
-   withdrawing an existing submission is not window-gated.
+   withdrawing an existing submission is not window-gated, by design: late corrections still reach a
+   moderator.
 6. Bulk CSV import is all-or-nothing, and its template round-trips: exporting a camp's events and
    re-uploading them unchanged is a no-op — `Services/Service.cs:291`, `Services/Service.cs:338`.
 7. Moderation history is append-only: the repository only ever adds to it —
