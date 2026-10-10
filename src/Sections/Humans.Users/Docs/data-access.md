@@ -263,6 +263,8 @@ Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 
+Unverified import replacements run deletion and provisioning in one serializable ambient transaction, through existing owned services/repositories. `IUserInfoInvalidator` refreshes all affected users after commit or rollback.
+
 ### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over

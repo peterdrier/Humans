@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
@@ -11,14 +12,51 @@ internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
     IUserServiceInternal userService,
+    IUserInfoInvalidator userInfoInvalidator,
     UserManager<User> userManager,
     IAuditLogService auditLogService,
     IClock clock,
     ILogger<AccountProvisioningService> logger) : IAccountProvisioningService
 {
-    public async Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
-        string email, string? displayName, ContactSource source,
+    public Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
+        string email, string? displayName, ContactSource source, CancellationToken ct = default)
+        => FindOrCreateCoreAsync(email, displayName, source, ct);
+
+    public async Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+        Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default)
+    {
+        var affectedUsers = new HashSet<Guid> { userId };
+        try
+        {
+            using var transaction = new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.Serializable },
+                TransactionScopeAsyncFlowOption.Enabled);
+            var rows = await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct);
+            var row = rows.SingleOrDefault(r => r.Id == emailId && r.UserId == userId);
+            if (rows.Count != 1 || row is null || row.IsVerified || !string.IsNullOrEmpty(row.Provider))
+                throw new InvalidOperationException("The unverified email replacement plan is stale.");
+            if (!await userEmailService.DeleteEmailAsync(userId, emailId, ct))
+                throw new InvalidOperationException("The planned unverified email could not be removed.");
+            var result = await FindOrCreateCoreAsync(email, displayName, source, ct, affectedUsers);
+            await auditLogService.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), emailId,
+                $"Replaced unverified email {email} with verified import account {result.User.Id} from {source}",
+                nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: nameof(User));
+            transaction.Complete();
+            return result;
+        }
+        finally
+        {
+            // SaveChanges/decorators refresh during writes. Rebuild after transaction disposal,
+            // including on rollback, so no cached entry retains uncommitted row state.
+            foreach (var affectedUser in affectedUsers)
+                await userInfoInvalidator.InvalidateAsync(affectedUser, CancellationToken.None);
+        }
+    }
+
+    private async Task<AccountProvisioningResult> FindOrCreateCoreAsync(
+        string email, string? displayName, ContactSource source, CancellationToken ct,
+        HashSet<Guid>? affectedUsers = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
@@ -41,6 +79,8 @@ internal sealed class AccountProvisioningService(
                     "Found existing account {UserId} via UserEmail match for {Email} (source: {Source})",
                     existingUser.Id, email, source);
 
+                affectedUsers?.Add(existingUser.Id);
+
                 // Layer ContactSource onto self-registered users.
                 if (existingUser.ContactSource is null)
                 {
@@ -59,6 +99,7 @@ internal sealed class AccountProvisioningService(
         var now = clock.GetCurrentInstant();
 
         var newUserId = Guid.NewGuid();
+        affectedUsers?.Add(newUserId);
         var newUser = new User
         {
             Id = newUserId,
