@@ -135,6 +135,34 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database unavailable");
     }
 
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task ContainerPlacementMutations_AuthorizeRouteYearAndDoNotWriteWhenDenied(int operation)
+    {
+        var id = Guid.NewGuid();
+        const int year = 2025;
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call => call.ArgAt<object>(1) is ContainerAuthorizationTarget { Year: year }
+                ? AuthorizationResult.Failed() : AuthorizationResult.Success());
+        var controller = CreateController();
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = operation switch
+        {
+            0 => await controller.SaveContainerPlacement(id, year, new SaveContainerPlacementRequest("{}"), ct),
+            1 => await controller.UpdateContainerPlacementNotes(id, year, new UpdateContainerPlacementNotesRequest(), ct),
+            _ => await controller.ClearContainerPlacement(id, year, ct),
+        };
+
+        result.Should().BeOfType<ForbidResult>();
+        _containers.ReceivedCalls().Should().ContainSingle();
+    }
+
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";
 
     [HumansFact]

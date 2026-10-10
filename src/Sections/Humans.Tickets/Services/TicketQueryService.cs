@@ -64,6 +64,22 @@ internal sealed class TicketQueryService(
         return orders.Select(o => Project(o, currentEventId, transfersByAttendee)).ToList();
     }
 
+    public async Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
+        string? barcode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode)) return null;
+        return FindCurrentEventAttendeeByBarcode(await GetTicketOrdersAsync(ct), barcode);
+    }
+
+    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
+        IReadOnlyList<TicketOrderInfo> orders, string barcode)
+    {
+        var code = barcode.Trim();
+        return orders.Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
+    }
+
     public async Task<List<string>> GetAvailableTicketTypesAsync()
     {
         var types = await ticketRepository.GetDistinctTicketTypesAsync();
@@ -750,15 +766,19 @@ internal sealed class TicketQueryService(
         return filtered.ToList();
     }
 
-    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync()
+    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId)
     {
         var rows = await ticketRepository.GetAttendeeExportDataAsync();
+        await auditLog.LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
+            $"Attendee list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 
-    public async Task<List<OrderExportRow>> GetOrderExportDataAsync()
+    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId)
     {
         var rows = await ticketRepository.GetOrderExportDataAsync();
+        await auditLog.LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
+            $"Order list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 

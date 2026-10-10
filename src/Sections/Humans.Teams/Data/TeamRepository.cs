@@ -235,7 +235,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return true;
     }
 
-    public async Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var team = await db.Teams.FindAsync([teamId], ct)
@@ -252,7 +252,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         team.UpdatedAt = now;
 
         await db.SaveChangesAsync(ct);
-        return activeMembers.Count;
+        return activeMembers.Select(m => m.UserId).Distinct().ToList();
     }
 
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(

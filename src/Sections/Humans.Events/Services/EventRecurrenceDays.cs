@@ -15,9 +15,9 @@ internal static class EventRecurrenceDays
 
     internal static IReadOnlyList<Instant> GetOccurrenceInstants(
         Instant startAt, bool isRecurring, string? recurrenceDays,
-        LocalDate gateOpeningDate, DateTimeZone timeZone, int? dayOffset = null)
+        LocalDate? gateOpeningDate, DateTimeZone? timeZone, int? dayOffset = null)
     {
-        if (!isRecurring || string.IsNullOrWhiteSpace(recurrenceDays))
+        if (gateOpeningDate is null || timeZone is null || !isRecurring || string.IsNullOrWhiteSpace(recurrenceDays))
             return [startAt];
 
         var startLocal = startAt.InZone(timeZone);
@@ -25,7 +25,7 @@ internal static class EventRecurrenceDays
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
             .Where(d => d.HasValue && (dayOffset == null || d == dayOffset))
-            .Select(d => gateOpeningDate.PlusDays(d!.Value)
+            .Select(d => gateOpeningDate.Value.PlusDays(d!.Value)
                 .At(startLocal.TimeOfDay)
                 .InZoneLeniently(timeZone)
                 .ToInstant())

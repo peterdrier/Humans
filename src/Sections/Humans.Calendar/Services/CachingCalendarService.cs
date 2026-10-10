@@ -24,16 +24,16 @@ internal sealed class CachingCalendarService(
     public const string InnerServiceKey = "calendar-inner";
 
     public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
-        Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
+        Instant from, Instant to, DateTimeZone viewerZone, Guid? teamId = null, CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct);
 
         var matched = CalendarOccurrenceExpander.FilterForWindow(
             Snapshot().Select(kvp => kvp.Value),
-            from, to, teamId);
+            from, to, teamId, viewerZone);
 
         var teamNames = await ResolveTeamNamesAsync(matched, ct);
-        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger).ToList();
+        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
 
         // Community items have no team of their own (Workgroups' 2026-09-10 section design §8,
         // which specified this fan-out — not design-rules.md §8) — only merge them into the
@@ -41,7 +41,7 @@ internal sealed class CachingCalendarService(
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
 
-        return CalendarOccurrenceExpander.OrderForDisplay(occurrences);
+        return CalendarOccurrenceExpander.OrderForDisplay(occurrences, viewerZone);
     }
 
     /// <summary>

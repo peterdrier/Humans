@@ -1,6 +1,7 @@
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
@@ -54,6 +55,8 @@ namespace Humans.Governance.Tests.Services;
 /// </summary>
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
+    private const string ValidMotivation = "I want to contribute to the collective and support its members.";
+
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
 
@@ -130,14 +133,14 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var userId = Guid.NewGuid();
 
         var result = await _service.SubmitAsync(
-            userId, MembershipTier.Colaborador, "I want to contribute",
+            userId, MembershipTier.Colaborador, ValidMotivation,
             "Extra info", null, null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.ApplicationId.Should().NotBeNull();
         var app = await GovernanceDb.Applications.FirstAsync(Xunit.TestContext.Current.CancellationToken);
         app.MembershipTier.Should().Be(MembershipTier.Colaborador);
-        app.Motivation.Should().Be("I want to contribute");
+        app.Motivation.Should().Be(ValidMotivation);
         app.Status.Should().Be(ApplicationStatus.Submitted);
     }
 
@@ -147,7 +150,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _service.SubmitAsync(
-            userId, MembershipTier.Asociado, "Motivation",
+            userId, MembershipTier.Asociado, ValidMotivation,
             null, "My contribution", "I understand the role", "es", Xunit.TestContext.Current.CancellationToken);
 
         var app = await GovernanceDb.Applications.FirstAsync(Xunit.TestContext.Current.CancellationToken);
@@ -161,7 +164,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _service.SubmitAsync(
-            userId, MembershipTier.Colaborador, "Motivation",
+            userId, MembershipTier.Colaborador, ValidMotivation,
             null, "Should be ignored", "Also ignored", "en", Xunit.TestContext.Current.CancellationToken);
 
         var app = await GovernanceDb.Applications.FirstAsync(Xunit.TestContext.Current.CancellationToken);
@@ -176,7 +179,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SeedSubmittedApplicationAsync(userId);
 
         var result = await _service.SubmitAsync(
-            userId, MembershipTier.Colaborador, "Motivation",
+            userId, MembershipTier.Colaborador, ValidMotivation,
             null, null, null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -187,7 +190,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task SubmitAsync_VolunteerTier_ReturnsInvalidTier()
     {
         var result = await _service.SubmitAsync(
-            Guid.NewGuid(), MembershipTier.Volunteer, "Motivation",
+            Guid.NewGuid(), MembershipTier.Volunteer, ValidMotivation,
             null, null, null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -199,7 +202,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task SubmitAsync_AsociadoMissingRequiredFields_ReturnsFieldError()
     {
         var result = await _service.SubmitAsync(
-            Guid.NewGuid(), MembershipTier.Asociado, "Motivation",
+            Guid.NewGuid(), MembershipTier.Asociado, ValidMotivation,
             null, "   ", null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -216,13 +219,96 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
 
         var result = await _service.SubmitAsync(
-            userId, MembershipTier.Colaborador, "Motivation",
+            userId, MembershipTier.Colaborador, ValidMotivation,
             null, null, null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         _navBadge.Received().Invalidate();
         _notificationMeter.Received().Invalidate();
         _votingBadge.Received().Invalidate(boardMemberId);
+    }
+
+    [HumansTheory]
+    [InlineData(49, 1000, 2000, 2000, "MotivationLength")]
+    [InlineData(50, 1000, 2000, 2000, null)]
+    [InlineData(2000, 1000, 2000, 2000, null)]
+    [InlineData(2001, 1000, 2000, 2000, "MotivationLength")]
+    [InlineData(50, 1001, 2000, 2000, "AdditionalInfoTooLong")]
+    [InlineData(50, 1000, 2001, 2000, "SignificantContributionTooLong")]
+    [InlineData(50, 1000, 2000, 2001, "RoleUnderstandingTooLong")]
+    public async Task Submission_and_preflight_enforce_the_same_field_limits(
+        int motivationLength, int additionalLength, int contributionLength, int roleLength, string? errorKey)
+    {
+        var motivation = new string('m', motivationLength);
+        var additional = new string('a', additionalLength);
+        var contribution = new string('c', contributionLength);
+        var role = new string('r', roleLength);
+        var expectedSuccess = errorKey is null;
+
+        var preflight = _service.ValidateSubmission(MembershipTier.Asociado, motivation, contribution, role, additional);
+        var submitted = await _service.SubmitAsync(Guid.NewGuid(), MembershipTier.Asociado, motivation,
+            additional, contribution, role, "en", TestContext.Current.CancellationToken);
+
+        preflight.Success.Should().Be(expectedSuccess);
+        preflight.ErrorKey.Should().Be(errorKey);
+        submitted.Success.Should().Be(expectedSuccess);
+        submitted.ErrorKey.Should().Be(errorKey);
+        (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(expectedSuccess ? 1 : 0);
+        if (!expectedSuccess)
+        {
+            _navBadge.ReceivedCalls().Should().BeEmpty();
+            _notificationMeter.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en", null, "Profile_MotivationRequired")]
+    [InlineData("en", "short", "Application_MotivationLength")]
+    [InlineData("es", null, "Profile_MotivationRequired")]
+    [InlineData("es", "short", "Application_MotivationLength")]
+    [InlineData("de", null, "Profile_MotivationRequired")]
+    [InlineData("de", "short", "Application_MotivationLength")]
+    [InlineData("it", null, "Profile_MotivationRequired")]
+    [InlineData("it", "short", "Application_MotivationLength")]
+    [InlineData("fr", null, "Profile_MotivationRequired")]
+    [InlineData("fr", "short", "Application_MotivationLength")]
+    [InlineData("ca", null, "Profile_MotivationRequired")]
+    [InlineData("ca", "short", "Application_MotivationLength")]
+    public async Task Create_invalid_motivation_reaches_localized_service_validation(string culture, string? motivation, string resourceKey)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var viewerId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo()));
+        var controller = new GovernanceApplicationsController(_service, _userService, localizer,
+            NullLogger<GovernanceApplicationsController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestServices = services,
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test"))
+                }
+            }
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var model = new ApplicationCreateViewModel { Motivation = motivation, ConfirmAccuracy = true };
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, string.Empty, model);
+        controller.ModelState.IsValid.Should().BeTrue("MVC must not short-circuit with an English implicit-required message");
+
+        (await controller.Create(model)).Should().BeOfType<ViewResult>();
+
+        localizer[resourceKey].ResourceNotFound.Should().BeFalse();
+        controller.ModelState[nameof(model.Motivation)]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be(localizer[resourceKey].Value);
+        (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     // --- Withdraw flow ---

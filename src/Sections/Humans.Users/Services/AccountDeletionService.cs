@@ -17,7 +17,7 @@ using NodaTime;
 namespace Humans.Application.Services.Users.AccountLifecycle;
 
 // Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
-[CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
+[CrossSectionWrite("GDPR erasure revokes the user's roles, team memberships and early-entry grants.")]
 internal sealed class AccountDeletionService(
     IUserServiceInternal userService,
     IUserEmailService userEmailService,

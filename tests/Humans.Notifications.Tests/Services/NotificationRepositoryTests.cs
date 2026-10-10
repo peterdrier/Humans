@@ -285,6 +285,29 @@ public class NotificationRepositoryTests : IDisposable
         rows.Should().NotContain(r => r.UserId == source);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("vote-1", 1)]
+    [Xunit.InlineData(null, 2)]
+    public async Task ResolveBySourceAsync_OptionalKeyPreservesOtherRecipientsAndSources(string? key, int expectedResolved)
+    {
+        var voter = Guid.NewGuid();
+        var otherVoter = Guid.NewGuid();
+        var first = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-1");
+        var second = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-2");
+        var otherRecipient = CreateNotification(otherVoter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-1");
+        var otherSource = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "vote-1");
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.AddRangeAsync([first, second, otherRecipient, otherSource], ct);
+
+        (await _repo.ResolveBySourceAsync(voter, NotificationSource.AssemblyVoteOpened, _now, ct, key)).Should().BeTrue();
+
+        var stored = await _dbContext.Notifications.AsNoTracking().ToListAsync(ct);
+        stored.Count(n => n.ResolvedAt == _now).Should().Be(expectedResolved);
+        stored.Single(n => n.Id == first.Id).ResolvedByUserId.Should().Be(voter);
+        stored.Single(n => n.Id == otherRecipient.Id).ResolvedAt.Should().BeNull();
+        stored.Single(n => n.Id == otherSource.Id).ResolvedAt.Should().BeNull();
+    }
+
     // ── ResolveBySourceKeyAsync (entity-scoped auto-resolve) ──────────────────
 
     [HumansFact]

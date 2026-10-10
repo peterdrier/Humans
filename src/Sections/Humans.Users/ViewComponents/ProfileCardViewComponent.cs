@@ -19,7 +19,7 @@ public sealed class ProfileCardViewComponent(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IMembershipCalculatorRead membershipCalculator,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {

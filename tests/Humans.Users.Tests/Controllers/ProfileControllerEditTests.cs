@@ -128,7 +128,7 @@ public class ProfileControllerEditTests
         _applicationDecisionService
             .ValidateSubmission(
                 Arg.Any<MembershipTier>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<string?>())
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
             .Returns(new ApplicationDecisionResult(true));
 
         // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
@@ -455,6 +455,10 @@ public class ProfileControllerEditTests
     // form-field-targeted ModelState error, the same way GovernanceApplicationsController does.
     [HumansTheory]
     [InlineData("MotivationRequired", nameof(ProfileViewModel.ApplicationMotivation))]
+    [InlineData("MotivationLength", nameof(ProfileViewModel.ApplicationMotivation))]
+    [InlineData("AdditionalInfoTooLong", nameof(ProfileViewModel.ApplicationAdditionalInfo))]
+    [InlineData("SignificantContributionTooLong", nameof(ProfileViewModel.ApplicationSignificantContribution))]
+    [InlineData("RoleUnderstandingTooLong", nameof(ProfileViewModel.ApplicationRoleUnderstanding))]
     [InlineData("SignificantContributionRequired", nameof(ProfileViewModel.ApplicationSignificantContribution))]
     [InlineData("RoleUnderstandingRequired", nameof(ProfileViewModel.ApplicationRoleUnderstanding))]
     public async Task Edit_InitialSetup_TierValidationFailure_RerendersWithFieldError_AndDoesNotSave(
@@ -463,7 +467,7 @@ public class ProfileControllerEditTests
         _applicationDecisionService
             .ValidateSubmission(
                 Arg.Any<MembershipTier>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<string?>())
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
             .Returns(new ApplicationDecisionResult(false, errorKey));
 
         var model = MakeValidModel(MembershipTier.Asociado, motivation: "to help");

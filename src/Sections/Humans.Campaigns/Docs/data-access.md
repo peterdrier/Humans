@@ -18,7 +18,7 @@ Repository: `ICampaignRepository`.
 | CampaignGrants | R/W |
 
 Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
-`IUserServiceRead`, `INotificationEmitter`,
+`IUserServiceRead`, `INotificationEmitter`, `IAuditLogService`,
 `IEmailService`, the section's own `CampaignsEmails` builder,
 `ITicketDiscountCodes` (Tickets Contracts leaf — vendor discount code
 generation), plus `IClock`. Implements `ICampaignService` (which extends

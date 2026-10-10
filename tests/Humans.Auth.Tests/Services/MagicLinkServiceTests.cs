@@ -5,6 +5,7 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -55,6 +56,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         _rateLimiter = Substitute.For<IMagicLinkRateLimiter>();
         _rateLimiter.TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
+        _rateLimiter.TryReserveUserSendAsync(Arg.Any<Guid>(), Arg.Any<TimeSpan>()).Returns(true);
 
         _service = new MagicLinkService(
             _userManager,
@@ -228,6 +230,44 @@ public sealed class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SendMagicLinkAsync_OverlappingAliasesForTheSameUser_EnqueueOnlyOnce()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var service = new MagicLinkService(_userManager, _userEmailService, _userService, _emailService,
+            _emailMessages, _urlBuilder, new MagicLinkRateLimiter(cache), Clock, NullLogger<MagicLinkService>.Instance);
+        _userEmailService.FindByAddressAsync("first@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "first@example.com")]);
+        _userEmailService.FindByAddressAsync("second@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "second@example.com")]);
+        // Separate requests load separate identity entities; mutating one is not a reservation.
+        _userManager.FindByIdAsync(userId.ToString()).Returns(_ => new User
+        {
+            Id = userId,
+            UserName = "first@example.com",
+            Email = "first@example.com",
+            CreatedAt = Clock.GetCurrentInstant(),
+        });
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            entered.TrySetResult();
+            return new ValueTask<UserInfo?>(resume.Task);
+        });
+
+        var first = service.SendMagicLinkAsync("first@example.com", null, ct);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var second = service.SendMagicLinkAsync("second@example.com", null, ct);
+        resume.TrySetResult(null);
+        await Task.WhenAll(first, second);
+
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SendLoginLink_SendThrows_DoesNotStampMagicLinkSentAt()
     {
         // MagicLinkSentAt is the login cooldown. Stamping it before the send would
@@ -256,10 +296,13 @@ public sealed class MagicLinkServiceTests : IDisposable
         await send.Should().ThrowAsync<InvalidOperationException>();
         user.MagicLinkSentAt.Should().BeNull();
         await _userManager.DidNotReceive().UpdateAsync(user);
+        _rateLimiter.Received(1).ReleaseUserSendReservation(userId);
     }
 
-    [HumansFact]
-    public async Task SendLoginLink_Sends_ThenStampsMagicLinkSentAt()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendLoginLink_Sends_ThenStampsAndKeepsReservationIfStampFails(bool stampFails)
     {
         var userId = Guid.NewGuid();
         var user = new User
@@ -276,8 +319,16 @@ public sealed class MagicLinkServiceTests : IDisposable
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
-        await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+        if (stampFails)
+            _userManager.UpdateAsync(user).ThrowsAsync(new InvalidOperationException("identity write failed"));
+        var send = () => _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+        if (stampFails)
+            await send.Should().ThrowAsync<InvalidOperationException>();
+        else
+            await send();
 
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _rateLimiter.DidNotReceiveWithAnyArgs().ReleaseUserSendReservation(Guid.Empty);
         user.MagicLinkSentAt.Should().Be(Clock.GetCurrentInstant());
         await _userManager.Received(1).UpdateAsync(user);
     }

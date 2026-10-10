@@ -29,11 +29,13 @@ internal static class AnalyzerTestHarness
     /// would also be a symbol declared in, and analyzed as part of, the compilation
     /// under test.
     /// </param>
+    /// <param name="sourcePath">Optional declaring path for folder-scoped rules.</param>
     public static async Task<ImmutableArray<Diagnostic>> RunAsync(
         DiagnosticAnalyzer analyzer,
         string assemblyName,
         string source,
-        string? referencedSource = null)
+        string? referencedSource = null,
+        string sourcePath = "")
     {
         var references = BaseReferences;
         if (referencedSource is not null)
@@ -49,7 +51,7 @@ internal static class AnalyzerTestHarness
             references = references.Add(referencedCompilation.ToMetadataReference());
         }
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, path: sourcePath, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         var compilation = CSharpCompilation.Create(
             assemblyName: assemblyName,
             syntaxTrees: [syntaxTree],

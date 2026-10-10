@@ -14,6 +14,7 @@ using Humans.Users.Data.Repositories;
 using Humans.Users.Jobs;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,9 @@ namespace Humans.Users;
 /// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
+    internal static IdentityBuilder AddIdentityStores(IdentityBuilder builder) =>
+        builder.AddEntityFrameworkStores<UsersDbContext>();
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         // Users carries the seven ASP.NET Identity tables; its sentinel is the chain-created

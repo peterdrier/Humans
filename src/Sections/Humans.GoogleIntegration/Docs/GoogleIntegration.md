@@ -53,7 +53,7 @@ The rows written before the split are still on `audit_log`. **`/Google/Admin/Syn
 
 ### Google resource entities
 
-`GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.
+`GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table. Cross-section readers use `ITeamResourceServiceRead`; both interfaces resolve to the same scoped service, and mutations remain on the full interface.
 
 ### External-API surfaces
 
@@ -209,7 +209,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 - **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + two top-N reads (by resource, by user ids), capped at 200 rows each. Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
 - **`IGoogleResourceRepository`** — narrow writes to the sibling-owned `google_resources` table (Teams section §8 owner). Used by `GoogleWorkspaceSyncService` for reconciliation-loop atomic writes. All broader reads/writes route through `ITeamResourceService`.
 
-> `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).
+> `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceServiceRead`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).
 
 ### Connector clients
 

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
 namespace Humans.Base.Controllers;
@@ -60,9 +59,6 @@ public abstract class HumansControllerBase(IUserServiceRead userService) : Contr
 
     protected void SetError(string message)
     {
-        var loggerFactory = HttpContext?.RequestServices?.GetService<ILoggerFactory>();
-        loggerFactory?.CreateLogger(GetType()).LogDebug(
-            "Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor?.ActionName);
         TempData[TempDataKeys.ErrorMessage] = message;
     }
 

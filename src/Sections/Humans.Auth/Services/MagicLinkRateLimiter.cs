@@ -28,6 +28,13 @@ internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateL
     private static string TokenKey(string token) =>
         CacheKeys.MagicLinkUsed(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token))));
 
+    public Task<bool> TryReserveUserSendAsync(Guid userId, TimeSpan cooldown) =>
+        cache.TryReserveAsync(UserSendKey(userId), cooldown);
+
+    public void ReleaseUserSendReservation(Guid userId) => cache.Remove(UserSendKey(userId));
+
+    private static string UserSendKey(Guid userId) => $"magic_link_login:{userId:N}";
+
     public Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown)
     {
         var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());

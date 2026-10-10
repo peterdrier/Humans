@@ -57,7 +57,7 @@ Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
 `Lazy<ICampRoleService>` and `Lazy<ICityPlanningService>` (camp deletion removes
 the camp's polygon/history rows) to break DI cycles. Implements `ICampRoleCampAccess` (narrow intra-section surface
 consumed by `CampRoleService`), `ICampLeadDirectory`, `ICampSeeding`,
-`IUserDataContributor`, `IUserMerge`. All caching lives in the decorator
+`IUserDataContributor` (all-year/all-status memberships and role assignments, with deletion for both slices), `IUserMerge`. All caching lives in the decorator
 — the inner service never touches `IMemoryCache`.
 
 ### CachingCampService (Singleton, `Humans.Camps.Services`)

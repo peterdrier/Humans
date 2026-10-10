@@ -53,7 +53,7 @@ internal sealed class ShiftManagementService(
 
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
-    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private IRoleAssignmentServiceRead RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
     private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
     private ICampServiceRead CampService => serviceProvider.GetRequiredService<ICampServiceRead>();

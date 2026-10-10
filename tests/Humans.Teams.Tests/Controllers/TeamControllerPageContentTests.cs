@@ -31,14 +31,15 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamControllerPageContentTests
 {
     [HumansTheory]
-    [Xunit.InlineData("create", false)]
-    [Xunit.InlineData("edit", false)]
-    [Xunit.InlineData("delete", false)]
-    [Xunit.InlineData("create", true)]
-    [Xunit.InlineData("edit", true)]
-    [Xunit.InlineData("delete", true)]
+    [Xunit.InlineData("create", false, false)]
+    [Xunit.InlineData("edit", false, false)]
+    [Xunit.InlineData("delete", false, false)]
+    [Xunit.InlineData("create", true, false)]
+    [Xunit.InlineData("edit", true, false)]
+    [Xunit.InlineData("delete", true, false)]
+    [Xunit.InlineData("delete", false, true)]
     public async Task TeamMutation_RejectionsKeepReasonWithoutStack_AndUnexpectedHandling(
-        string action, bool unexpected)
+        string action, bool unexpected, bool actorMissing)
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var teams = Substitute.For<ITeamManagementService>();
@@ -53,12 +54,21 @@ public class TeamControllerPageContentTests
             .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
             .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
-        teams.DeleteTeamAsync(teamId).ReturnsForAnyArgs(Task.FromException(failure));
+        teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-        var http = new DefaultHttpContext { RequestServices = services };
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        if (!actorMissing)
+            users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+                .Returns(UserInfo.Create(new User { Id = actor, DisplayName = "Admin" }, [], [], [], null, []));
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
         var controller = new TeamController(
-            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            teams, Substitute.For<ITeamPageService>(), users,
+            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
         {
@@ -75,6 +85,13 @@ public class TeamControllerPageContentTests
             "edit" => controller.EditTeam(teamId, (EditTeamViewModel)model),
             _ => controller.DeleteTeam(teamId)
         };
+
+        if (actorMissing)
+        {
+            (await controller.DeleteTeam(teamId)).Should().BeOfType<UnauthorizedResult>();
+            await teams.DidNotReceiveWithAnyArgs().DeleteTeamAsync(default, default, default);
+            return;
+        }
 
         if (unexpected)
         {
@@ -166,7 +183,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -211,7 +228,7 @@ public class TeamControllerPageContentTests
             teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
             var key = unknown ? "untranslated provider failure" : action switch
             {
-                "Join" => "Team_AlreadyPendingRequest",
+                "Join" => "Teams_Team_AlreadyPendingRequest",
                 "Leave" => "Teams_NotMember",
                 _ => "Teams_RequestUnavailable"
             };
@@ -229,7 +246,7 @@ public class TeamControllerPageContentTests
             };
             var controller = new TeamController(
                 teams, Substitute.For<ITeamPageService>(), users,
-                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
                 services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
                 new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
                 NullLogger<TeamController>.Instance)
@@ -291,7 +308,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -336,7 +353,7 @@ public class TeamControllerPageContentTests
         team.SystemTeamType = SystemTeamType.Volunteers;
         (await controller.Join(team.Slug, model)).Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
-            services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Team_CannotJoinSystem"].Value);
+            services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Team_CannotJoinSystem"].Value);
         team.SystemTeamType = SystemTeamType.None;
         team.IsHidden = true;
         (await controller.Join(team.Slug, model)).Should().BeOfType<NotFoundResult>();
@@ -374,7 +391,7 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserServiceRead>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceServiceRead>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)

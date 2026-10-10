@@ -41,7 +41,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .With<IUserService>()
             .Build();
 

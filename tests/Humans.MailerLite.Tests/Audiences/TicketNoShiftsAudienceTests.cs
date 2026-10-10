@@ -48,7 +48,6 @@ public class TicketNoShiftsAudienceTests
         var audience = NewAudience([], []);
         audience.Key.Should().Be("ticket-no-shifts");
         audience.MailerLiteGroupName.Should().Be("Humans - Ticket no Shifts");
-        audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
     // A ticket holder whose only signups were Refused/Bailed/Cancelled/NoShow has not

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using System.Reflection;
+using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Tickets.Controllers;
@@ -46,6 +47,53 @@ public class TicketControllerTests
         var act = () => controller.ParticipationBackfill();
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task PersonalDataExport_RequiresAnActorAndPassesItToTheAuditedService(bool attendees, bool hasActor)
+    {
+        var actor = Guid.NewGuid();
+        var queries = Substitute.For<ITicketService>();
+        queries.GetAttendeeExportDataAsync(actor).Returns([]);
+        queries.GetOrderExportDataAsync(actor).Returns([]);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserServiceRead>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(hasActor
+                        ? [new Claim(ClaimTypes.NameIdentifier, actor.ToString())] : [], "Test")),
+                },
+            },
+        };
+        queries.ClearReceivedCalls();
+
+        var result = attendees ? await controller.ExportAttendees() : await controller.ExportOrders();
+
+        if (!hasActor)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            queries.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<FileContentResult>().Which.FileDownloadName
+                .Should().Be(attendees ? "attendees-export.csv" : "orders-export.csv");
+            queries.ReceivedCalls().Should().ContainSingle();
+            if (attendees)
+                await queries.Received(1).GetAttendeeExportDataAsync(actor);
+            else
+                await queries.Received(1).GetOrderExportDataAsync(actor);
+        }
     }
 
     [HumansFact]

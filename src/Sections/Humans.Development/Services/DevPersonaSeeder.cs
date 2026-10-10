@@ -30,7 +30,7 @@ namespace Humans.Development.Services;
 /// team, role assignments, sample contact fields) also go through section
 /// ownership services.
 /// </summary>
-[CrossSectionWrite("Dev seeding creates teams, memberships and profiles.")]
+[CrossSectionWrite("Dev seeding creates roles, teams, memberships and profiles.")]
 internal sealed class DevPersonaSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,

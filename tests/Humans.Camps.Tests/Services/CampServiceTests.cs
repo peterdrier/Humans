@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Interfaces;
 using Xunit;
 using System.Text;
+using System.Text.Json;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
@@ -2203,6 +2204,84 @@ public sealed class CampServiceTests : CampsTestHarness
         var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Pending, []) };
 
         CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
+    }
+
+    [HumansFact]
+    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var now = Clock.GetCurrentInstant();
+        var statuses = new[] { CampMemberStatus.Pending, CampMemberStatus.Active, CampMemberStatus.Removed };
+        var members = statuses.Select((status, index) =>
+        {
+            var season = new CampSeason
+            {
+                Id = Guid.NewGuid(),
+                CampId = camp.Id,
+                Year = 2023 + index,
+                Status = CampSeasonStatus.Withdrawn,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            return new CampMember
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampSeason = season,
+                UserId = userId,
+                Status = status,
+                RequestedAt = now,
+                ConfirmedAt = status == CampMemberStatus.Pending ? null : now,
+                ConfirmedByUserId = status == CampMemberStatus.Pending ? null : actorId,
+                RemovedAt = status == CampMemberStatus.Removed ? now : null,
+                RemovedByUserId = status == CampMemberStatus.Removed ? actorId : null,
+                HasEarlyEntry = status == CampMemberStatus.Active,
+            };
+        }).ToArray();
+        await CampsDb.CampMembers.AddRangeAsync(members, ct);
+        var otherMember = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = members[0].CampSeasonId,
+            UserId = otherUserId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = now,
+        };
+        CampsDb.CampMembers.Add(otherMember);
+        await SaveAllAsync(ct);
+
+        var slices = await _service.ContributeForUserAsync(userId, ct);
+        JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampRoleAssignments, StringComparison.Ordinal)).Data)
+            .GetArrayLength().Should().Be(0, "ordinary memberships need no role assignment");
+        var exported = JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampMemberships, StringComparison.Ordinal)).Data);
+        exported.GetArrayLength().Should().Be(3);
+        foreach (var member in members)
+        {
+            var row = exported.EnumerateArray().Single(x => x.GetProperty("Id").GetGuid() == member.Id);
+            row.GetProperty("CampSlug").GetString().Should().Be(camp.Slug);
+            row.GetProperty("SeasonYear").GetInt32().Should().Be(member.CampSeason.Year);
+            row.GetProperty("Status").GetString().Should().Be(member.Status.ToString());
+            row.GetProperty("RequestedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
+            row.GetProperty("HasEarlyEntry").GetBoolean().Should().Be(member.HasEarlyEntry);
+        }
+        var removed = exported.EnumerateArray().Single(x => string.Equals(x.GetProperty("Status").GetString(), "Removed", StringComparison.Ordinal));
+        removed.GetProperty("ConfirmedByUserId").GetGuid().Should().Be(actorId);
+        removed.GetProperty("RemovedByUserId").GetGuid().Should().Be(actorId);
+        removed.GetProperty("ConfirmedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
+        removed.GetProperty("RemovedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
+        _service.ErasureDeclaration.Should().ContainKey(CampService.CampMemberships).WhoseValue.Should().BeNull();
+
+        await _service.EraseForUserAsync(userId, ct);
+
+        (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId, ct)).Should().BeFalse();
+        (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.Id == otherMember.Id, ct)).Should().BeTrue();
+        foreach (var slice in await _service.ContributeForUserAsync(userId, ct))
+            JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(0);
     }
 
     // ==========================================================================

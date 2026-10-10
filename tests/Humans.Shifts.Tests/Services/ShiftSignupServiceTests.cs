@@ -54,7 +54,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With<ITeamServiceRead>(_teamService)
-            .With(_roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
             .With<ITicketServiceRead>()
             .With(_users)
             .With<ICampServiceRead>()
@@ -1308,7 +1308,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         earlyEntry.When(x => x.InvalidateUser(userId)).Do(_ => cachedConfirmed = null);
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService).With<ITeamServiceRead>(_teamService)
-            .With(_roleAssignmentService).With(_users).Build();
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,

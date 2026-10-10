@@ -60,16 +60,17 @@ What the shapes imply, written fresh:
   method validates, calls exactly one repository write, and writes an audit entry per auditable
   action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
-- **The outbox drain is its own concern** inside the service — queue semantics in one place,
-  the Holded conversation in another, a scheduler shim that holds neither — and **one cap
+- **The outbox drain owns queue semantics** in `ExpenseReportService`; `ExpenseHoldedPublisher`
+  owns the Holded conversation, and the scheduler shim holds neither — with **one cap
   allocation** (`PayableAllocation`) that the push, the detail page and the audit text all read.
 - **The public surface is what another section consumes.** Nothing outside the section reads
   a claim today, so the cross-section read interface has no reader; the section needs only
   `Section` and the background-processor seam the job calls.
 
-Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
-throws and a `public XxxWithResultAsync` that catches), and the controller repeats a
-load-and-authorize preamble in nearly every action that takes a report id — see the run files.
+Each transition has one result-returning entry point. Member refusals carry resource keys and
+format arguments to the controller; operator actions retain their gated feedback. The shared
+line/file composition helpers return refusals, preserve rollback, and never localize exceptions.
+The controller's report preamble loads and authorizes once before action-specific work.
 
 ## 4. Invariants
 
@@ -92,11 +93,11 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:117`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
-  no upload (`Services/ExpenseReportService.cs:1460`).
+  no upload (`ExpenseHoldedPublisher.PushPerLineDocsAsync`).
 - **A retried push resumes from what it recorded.** A line's doc id is written the moment Holded
-  issues it (`Services/ExpenseReportService.cs:1505`), an upload is stamped
-  (`Services/ExpenseReportService.cs:1562`), and a legacy single-doc claim resumes onto its one
-  doc (`Services/ExpenseReportService.cs:1385`). A failure between Holded issuing a doc and that
+  issues it (`ExpenseHoldedPublisher.PushPerLineDocsAsync`), an upload is stamped
+  (`UploadLineAttachmentAsync`), and a legacy single-doc claim resumes onto its one
+  doc (`ResumeLegacySingleDocPushAsync`). A failure between Holded issuing a doc and that
   write can still mint a second one; nothing guards that window, by the small-scale rule.
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:314`).

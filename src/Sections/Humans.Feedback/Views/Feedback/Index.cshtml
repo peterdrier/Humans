@@ -37,19 +37,8 @@
         </select>
         @if (Model.Reporters.Count > 0)
         {
-            <select name="reporterUserId" class="form-select form-select-sm" style="width: auto;">
+            <select name="reporterUserId" asp-items="Model.Reporters" class="form-select form-select-sm" style="width: auto;">
                 <option value="">@Localizer["Feedback_AllReporters"]</option>
-                @foreach (var r in Model.Reporters)
-                {
-                    if (Model.ReporterFilter == r.UserId)
-                    {
-                        <option value="@r.UserId" selected>@r.DisplayName (@r.Count)</option>
-                    }
-                    else
-                    {
-                        <option value="@r.UserId">@r.DisplayName (@r.Count)</option>
-                    }
-                }
             </select>
         }
         <select name="assignedTo" class="form-select form-select-sm" style="width: auto;">

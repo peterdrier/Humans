@@ -193,8 +193,10 @@ internal sealed class CityPlanningApiController(
     {
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync();
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
+        // Settings only for a year the caller leads a camp in: reading them creates the year's row.
+        var placementOpen = userCampId.HasValue &&
+            (await cityPlanningService.GetSettingsAsync(cancellationToken, year)).IsContainerPlacementOpen;
 
         var containers = await containerService.GetAllAsync(cancellationToken);
         var placements = await containerService.GetPlacementsByYearAsync(year, cancellationToken);
@@ -215,10 +217,7 @@ internal sealed class CityPlanningApiController(
                 placement?.PlacementNotes,
                 placement?.PlacementImageUrl,
                 placement?.PlacementImageFileName,
-                isMapAdmin ||
-                    (settings.IsContainerPlacementOpen &&
-                     userCampId.HasValue &&
-                     c.CampId == userCampId));
+                isMapAdmin || (placementOpen && c.CampId == userCampId));
         });
 
         return Ok(result);
@@ -284,7 +283,7 @@ internal sealed class CityPlanningApiController(
         if (container is null) return NotFound();
 
         var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
+            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
         try
@@ -313,7 +312,7 @@ internal sealed class CityPlanningApiController(
         if (container is null) return NotFound();
 
         var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
+            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
         ContainerImageUpload? imageUpload = null;
@@ -351,7 +350,7 @@ internal sealed class CityPlanningApiController(
         if (container is null) return NotFound();
 
         var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
+            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
         await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);

@@ -212,7 +212,7 @@ nobodies-collective/Humans#933.)
   the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
-- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
+- **Auth** — `IRoleAssignmentServiceRead.HasActiveRoleAsync` (is this user a supervisor?) and
   `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors — both now serve only the
   unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 

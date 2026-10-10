@@ -25,11 +25,11 @@ internal sealed partial class TeamResourceService(
     IClock clock,
     ILogger<TeamResourceService> logger) : ITeamResourceService
 {
-    // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
-    // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
+    // Lazy resolution: eagerly injecting IRoleAssignmentServiceRead creates a
+    // ctor cycle TeamResourceService → IRoleAssignmentServiceRead → ISystemTeamSync
     // → IGoogleGroupSync → ITeamResourceService. Only one method uses it.
-    private IRoleAssignmentService RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private IRoleAssignmentServiceRead RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
 
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {

@@ -1,13 +1,13 @@
 @model Humans.Teams.Models.EditTeamViewModel
 @{
-    ViewData["Title"] = Localizer["AdminEditTeam_Title"].Value;
+    ViewData["Title"] = Localizer["Teams_AdminEditTeam_Title"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@SharedLocalizer["Nav_Admin"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["AdminTeams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminEditTeam_Title"]</li>
+        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["Teams_AdminTeams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_AdminEditTeam_Title"]</li>
     </ol>
 </nav>
 
@@ -15,7 +15,7 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">@Localizer["AdminEditTeam_Title"]</h4>
+                <h4 class="mb-0">@Localizer["Teams_AdminEditTeam_Title"]</h4>
             </div>
             <div class="card-body">
                 @if (Model.IsSystemTeam)
@@ -34,7 +34,7 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
                     <div class="mb-3">
-                        <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
+                        <label asp-for="Name" class="form-label">@Localizer["Teams_AdminTeams_TeamName"]</label>
                         <input asp-for="Name" class="form-control" readonly="@(Model.IsSystemTeam ? "readonly" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
                         <div class="form-text">@Localizer["Teams_EditTeam_AutoSlug"] <code>@Model.Slug</code> — @Localizer["Teams_EditTeam_AutoSlugHelp"]</div>
@@ -60,7 +60,7 @@
                     {
                         <div class="mb-3 form-check">
                             <input asp-for="IsActive" type="checkbox" class="form-check-input" />
-                            <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
+                            <label asp-for="IsActive" class="form-check-label">@Localizer["Teams_AdminEditTeam_TeamIsActive"]</label>
                         </div>
                         <div class="mb-3 form-check">
                             <input asp-for="HasBudget" type="checkbox" class="form-check-input" />

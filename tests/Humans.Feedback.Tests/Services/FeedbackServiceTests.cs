@@ -597,12 +597,18 @@ public sealed class FeedbackServiceTests
         var reporters = await _service.GetDistinctReportersAsync(Xunit.TestContext.Current.CancellationToken);
 
         reporters.Should().HaveCount(2);
-        reporters.Should().ContainSingle(r => r.UserId == aliceId && r.DisplayName == "Alice" && r.Count == 1);
-        reporters.Should().ContainSingle(r => r.UserId == bobId && r.DisplayName == "Bob" && r.Count == 2);
+        reporters.Should().ContainSingle(r => r.UserId == aliceId && r.Count == 1);
+        reporters.Should().ContainSingle(r => r.UserId == bobId && r.Count == 2);
 
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>()).Returns(_people[bobId]);
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [aliceId] = _people[aliceId] with { BurnerName = "Alice current" },
+                [bobId] = _people[bobId] with { BurnerName = "Bob current" }
+            });
         var teams = Substitute.For<ITeamServiceRead>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
@@ -616,10 +622,12 @@ public sealed class FeedbackServiceTests
                 }
             }
         };
-        var result = await controller.Index(null, null, null, null, null, false, null,
+        var result = await controller.Index(null, null, bobId, null, null, false, null,
             Xunit.TestContext.Current.CancellationToken);
         var model = Assert.IsType<FeedbackPageViewModel>(Assert.IsType<ViewResult>(result).Model);
-        model.Reporters.Select(r => r.DisplayName).Should().Equal("Alice", "Bob");
+        model.Reporters.Select(r => r.Text).Should().Equal("Alice current (1)", "Bob current (2)");
+        model.Reporters.Select(r => r.Value).Should().Equal(aliceId.ToString(), bobId.ToString());
+        model.Reporters.Should().ContainSingle(r => r.Selected).Which.Value.Should().Be(bobId.ToString());
     }
 
     [HumansFact]
@@ -673,6 +681,8 @@ public sealed class FeedbackServiceTests
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(_people[id]));
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_people);
         var teams = Substitute.For<ITeamServiceRead>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)

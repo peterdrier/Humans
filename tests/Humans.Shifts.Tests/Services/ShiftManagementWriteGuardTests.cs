@@ -56,7 +56,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .With(_teamService)
             .With(userService)
             .With<IUserServiceRead>(userService)
-            .With(_roleAssignments)
+            .With<IRoleAssignmentServiceRead>(_roleAssignments)
             .Build();
 
         _service = new ShiftManagementService(

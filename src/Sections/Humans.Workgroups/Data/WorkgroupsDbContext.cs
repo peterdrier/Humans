@@ -7,7 +7,8 @@ namespace Humans.Workgroups.Data;
 /// <summary>
 /// Per-section database context for Workgroups: maps only <c>workgroups</c>,
 /// <c>workgroup_members</c>, <c>workgroup_meetings</c>, <c>workgroup_log_entries</c>,
-/// <c>workgroup_documents</c> and <c>workgroup_document_comments</c>, with its own
+/// <c>workgroup_documents</c>, <c>workgroup_document_comments</c> and
+/// <c>workgroups_settings</c>, with its own
 /// <c>__EFMigrationsHistory_Workgroups</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split is a code-side
 /// partition of the EF model.
@@ -21,6 +22,7 @@ namespace Humans.Workgroups.Data;
 internal sealed class WorkgroupsDbContext(DbContextOptions<WorkgroupsDbContext> options)
     : DbContext(options)
 {
+    public DbSet<WorkgroupsSettings> Settings => Set<WorkgroupsSettings>();
     public DbSet<Workgroup> Workgroups => Set<Workgroup>();
     public DbSet<WorkgroupMember> Members => Set<WorkgroupMember>();
     public DbSet<WorkgroupMeeting> Meetings => Set<WorkgroupMeeting>();
@@ -32,6 +34,7 @@ internal sealed class WorkgroupsDbContext(DbContextOptions<WorkgroupsDbContext> 
     {
         base.OnModelCreating(builder);
 
+        builder.ApplyConfiguration(new WorkgroupsSettingsConfiguration());
         builder.ApplyConfiguration(new WorkgroupConfiguration());
         builder.ApplyConfiguration(new WorkgroupMemberConfiguration());
         builder.ApplyConfiguration(new WorkgroupMeetingConfiguration());
