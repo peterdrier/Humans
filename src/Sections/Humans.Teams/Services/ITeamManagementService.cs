@@ -129,7 +129,8 @@ internal sealed record TeamJoinRequestSnapshot(
     string? Message,
     Instant RequestedAt,
     Instant? ResolvedAt,
-    string? ReviewNotes);
+    string? ReviewNotes,
+    string? TeamSlug = null);
 
 /// <summary>
 /// Persistence-free read model for a team early-entry grant, returned by the
@@ -318,6 +319,10 @@ internal interface ITeamManagementService : ITeamService
     Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Gets only the member's own pending join requests.</summary>
+    Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a user's pending request for a team, if any.

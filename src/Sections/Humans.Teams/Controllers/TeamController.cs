@@ -366,7 +366,15 @@ internal sealed class TeamController(
         var viewModel = new MyTeamsViewModel
         {
             Memberships = membershipVMs,
-            PendingRequests = []
+            PendingRequests = (await teamService.GetPendingRequestsForUserAsync(user.Id, ct))
+                .Select(request => new TeamJoinRequestSummaryViewModel
+                {
+                    Id = request.Id, TeamId = request.TeamId,
+                    TeamName = request.TeamName ?? string.Empty,
+                    TeamSlug = request.TeamSlug ?? string.Empty,
+                    Status = request.Status, StatusBadgeClass = "bg-warning text-dark",
+                    RequestedAt = request.RequestedAt.ToDateTimeUtc()
+                }).ToList()
         };
 
         return View(viewModel);

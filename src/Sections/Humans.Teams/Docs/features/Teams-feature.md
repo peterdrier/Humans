@@ -63,6 +63,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Can submit request with optional message (up to 2,000 characters); invalid input redisplays the form with a localized error and creates no request.
 - Request enters Pending status; inactive teams reject new requests.
 - Cannot submit if already have pending request
+- My Teams lists the current member’s pending requests with team links and withdrawal forms; resolved requests and other members’ requests are excluded.
 - Can withdraw pending request
 - Join, leave, and request-withdrawal failures use the selected UI language, with a translated fallback for unknown errors.
 

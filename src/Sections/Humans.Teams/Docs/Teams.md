@@ -213,6 +213,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Team member paging clamps pages below one to one and calculates large offsets without integer overflow; pages beyond the membership list stay empty.
 
+- My Teams reads the current member’s pending join requests live through the inner service, with team links and withdrawal forms; resolved requests and other members’ requests are excluded.
 - Birthday, My Teams and join-form GETs carry request cancellation through current-user resolution and their read-only Users/Teams calls. Join POST and membership mutations keep their existing cancellation policy.
 
 - A department can have **at most one** role flagged as management (coordinator). Enforced in both the toggle and edit paths.

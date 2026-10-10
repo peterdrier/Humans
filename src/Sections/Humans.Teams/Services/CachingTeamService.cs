@@ -497,6 +497,10 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetPendingRequestsForTeamAsync(teamId, cancellationToken));
 
+    public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetPendingRequestsForUserAsync(userId, cancellationToken));
+
     public Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,

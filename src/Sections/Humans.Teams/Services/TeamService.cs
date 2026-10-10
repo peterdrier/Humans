@@ -1234,6 +1234,14 @@ internal sealed class TeamService(
             .ToList();
     }
 
+    public async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var requests = await repo.GetAllJoinRequestsForUserAsync(userId, cancellationToken);
+        return requests.Where(request => request.Status == TeamJoinRequestStatus.Pending)
+            .Select(ToJoinRequestSnapshot).ToList();
+    }
+
     public async Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
@@ -2539,7 +2547,8 @@ internal sealed class TeamService(
         request.Message,
         request.RequestedAt,
         request.ResolvedAt,
-        request.ReviewNotes);
+        request.ReviewNotes,
+        request.Team?.Slug);
 
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
         TeamJoinRequest request,

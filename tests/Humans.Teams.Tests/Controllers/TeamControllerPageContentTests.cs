@@ -133,6 +133,7 @@ public class TeamControllerPageContentTests
     [HumansTheory]
     [Xunit.InlineData("birthdays", "viewer")]
     [Xunit.InlineData("my", "viewer")]
+    [Xunit.InlineData("my", "requests")]
     [Xunit.InlineData("join", "viewer")]
     [Xunit.InlineData("join", "entity")]
     [Xunit.InlineData("join", "info")]
@@ -173,6 +174,14 @@ public class TeamControllerPageContentTests
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         teams.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
+        var pendingRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), team.Id, team.Name,
+            userId, null, null, null, TeamJoinRequestStatus.Pending, null,
+            Instant.FromUtc(2026, 10, 1, 0, 0), null, null, team.Slug);
+        teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("requests", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([pendingRequest]);
+        });
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -199,7 +208,17 @@ public class TeamControllerPageContentTests
             _ => controller.Join(team.Slug)
         };
 
-        (await ReadAsync()).Should().BeOfType<ViewResult>();
+        var view = (await ReadAsync()).Should().BeOfType<ViewResult>().Subject;
+        if (string.Equals(action, "my", StringComparison.Ordinal))
+        {
+            var pending = view.Model.Should().BeOfType<MyTeamsViewModel>().Subject.PendingRequests
+                .Should().ContainSingle().Subject;
+            pending.Id.Should().Be(pendingRequest.Id);
+            pending.TeamName.Should().Be(team.Name);
+            pending.TeamSlug.Should().Be(team.Slug);
+            pending.RequestedAt.Should().Be(pendingRequest.RequestedAt.ToDateTimeUtc());
+            await teams.Received(1).GetPendingRequestsForUserAsync(userId, request.Token);
+        }
         await request.CancelAsync();
         Func<Task> abandonedRead = async () => await ReadAsync();
         await abandonedRead.Should().ThrowAsync<OperationCanceledException>();

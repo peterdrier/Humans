@@ -4,10 +4,6 @@ version: 1
 next_id: 11
 inbox:
   - added: 2026-10-04
-    id: TEAMS-7
-    what: "Controllers/TeamController.cs MyTeams always supplies PendingRequests = [], hiding the existing member request table and Withdraw forms. The join/withdraw workflow remains live. Repository GetAllJoinRequestsForUserAsync already owns the data but no service method returns the member's list. Found during the daily debt sweep. Plan: add GetPendingRequestsForUserAsync(Guid userId, CancellationToken ct) to the internal ITeamManagementService over that repository read and fill PendingRequests from it; internal interface, not public surface per debt-sweep-standing-policy D2, list in PR."
-    review: light
-  - added: 2026-10-04
     id: TEAMS-8
     what: "TeamController.EditTeam catches every DbUpdateException and classifies it by whether InnerException.Message contains CustomSlug; all other database failures become a duplicate Google Group prefix form error. Structured constraint/rule translation belongs at the data/service boundary, not provider-schema knowledge in the controller. Found during the daily debt sweep. Plan: the repository maps the unique-constraint violation to a typed outcome and the service's UpdateTeamAsync returns a result record (Success / SlugTaken / GroupPrefixTaken) the controller localizes; other database failures propagate. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

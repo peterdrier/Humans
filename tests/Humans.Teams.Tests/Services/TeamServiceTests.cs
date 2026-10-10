@@ -2375,6 +2375,31 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
 
     [HumansFact]
+    public async Task GetPendingRequestsForUserAsync_ExcludesOtherMembersAndResolvedRequests()
+    {
+        var team = SeedTeam("Alpha");
+        var user = SeedUser();
+        var other = SeedUser();
+        var pending = SeedJoinRequest(team.Id, user.Id);
+        SeedJoinRequest(team.Id, other.Id);
+        SeedJoinRequest(team.Id, user.Id, TeamJoinRequestStatus.Approved);
+        SeedJoinRequest(team.Id, user.Id, TeamJoinRequestStatus.Rejected);
+        SeedJoinRequest(team.Id, user.Id, TeamJoinRequestStatus.Withdrawn);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetPendingRequestsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var request = result.Should().ContainSingle().Subject;
+        request.Id.Should().Be(pending.Id);
+        request.UserId.Should().Be(user.Id);
+        request.TeamName.Should().Be(team.Name);
+        request.TeamSlug.Should().Be(team.Slug);
+        await _service.WithdrawJoinRequestAsync(pending.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
+        (await _service.GetPendingRequestsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetUserPendingRequestAsync_HasPending_ReturnsRequest()
     {
         var team = SeedTeam("Alpha");
