@@ -2,6 +2,7 @@ using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Events.Controllers;
+using Humans.Events.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -108,11 +109,11 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SaveGuideSettingsAsync_Throws_WhenEventSettingsMissing()
+    public async Task SaveGuideSettingsAsync_Refuses_WhenEventSettingsMissing()
     {
         var eventSettingsId = Guid.NewGuid();
 
-        var act = () => _service.SaveGuideSettingsAsync(
+        var saved = await _service.SaveGuideSettingsAsync(
             null,
             eventSettingsId,
             new LocalDateTime(2026, 5, 5, 12, 0),
@@ -120,8 +121,54 @@ public sealed class EventServiceTests
             new LocalDateTime(2026, 5, 7, 12, 0),
             10, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"EventSettings {eventSettingsId} not found.");
+        saved.Should().BeFalse();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GuideSettingsForm_DistinguishesMissingEditionFromDependencyFailure(bool dependencyFailure)
+    {
+        var guide = Substitute.For<IEventService>();
+        var edition = Guid.NewGuid();
+        guide.GetEventSettingsByIdAsync(edition).Returns(BurnFixtures.Burn(year: 2026));
+        guide.GetEventSettingsOptionsAsync().Returns(Array.Empty<EventSettingsInfo>());
+        var failure = new InvalidOperationException("Private settings persistence diagnostic");
+        guide.SaveGuideSettingsAsync(null, edition, default, default, default, 0)
+            .ReturnsForAnyArgs(dependencyFailure ? Task.FromException<bool>(failure) : Task.FromResult(false));
+        var controller = new EventsAdminController(guide, NullLogger<EventsAdminController>.Instance,
+            Substitute.For<IUserServiceRead>());
+        var model = new GuideSettingsViewModel { EventSettingsId = edition };
+
+        if (dependencyFailure)
+        {
+            var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => controller.SaveSettings(model));
+            thrown.Should().BeSameAs(failure);
+            controller.ModelState.IsValid.Should().BeTrue();
+        }
+        else
+        {
+            var result = await controller.SaveSettings(model);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[nameof(model.EventSettingsId)]!.Errors.Single().ErrorMessage
+                .Should().Be("Selected event edition not found.");
+        }
+    }
+
+    [HumansFact]
+    public async Task SaveGuideSettingsAsync_PropagatesSettingsLookupFailure()
+    {
+        var edition = Guid.NewGuid();
+        var failure = new InvalidOperationException("Private edition lookup diagnostic");
+        _burnSettings.GetEventSettingsByIdAsync(edition, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventSettingsInfo?>(failure));
+
+        var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveGuideSettingsAsync(
+            null, edition, default, default, default, 10, TestContext.Current.CancellationToken));
+
+        thrown.Should().BeSameAs(failure);
+        _repo.SaveChangesCount.Should().Be(0);
     }
 
     [HumansFact]

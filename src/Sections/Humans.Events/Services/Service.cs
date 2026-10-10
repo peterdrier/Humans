@@ -61,13 +61,17 @@ internal sealed class EventService(
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
         => settingsService.GetEventSettingsByIdAsync(id, ct);
 
-    public async Task SaveGuideSettingsAsync(
+    public async Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default)
     {
-        var burn = await settingsService.GetEventSettingsByIdAsync(eventSettingsId, ct)
-            ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
+        var burn = await settingsService.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        if (burn is null)
+        {
+            logger.LogWarning("Guide settings save rejected: event settings {EventSettingsId} no longer exist", eventSettingsId);
+            return false;
+        }
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var now = clock.GetCurrentInstant();
@@ -85,6 +89,7 @@ internal sealed class EventService(
         };
 
         await repo.UpsertGuideSettingsAsync(settings, ct);
+        return true;
     }
 
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)

@@ -39,27 +39,23 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
             return View("Settings", model);
         }
 
-        try
+        var saved = await guide.SaveGuideSettingsAsync(
+            model.Id == Guid.Empty ? null : model.Id,
+            model.EventSettingsId,
+            LocalDateTime.FromDateTime(model.SubmissionOpenAt),
+            LocalDateTime.FromDateTime(model.SubmissionCloseAt),
+            LocalDateTime.FromDateTime(model.GuidePublishAt),
+            model.MaxPrintSlots);
+        if (!saved)
         {
-            await guide.SaveGuideSettingsAsync(
-                model.Id == Guid.Empty ? null : model.Id,
-                model.EventSettingsId,
-                LocalDateTime.FromDateTime(model.SubmissionOpenAt),
-                LocalDateTime.FromDateTime(model.SubmissionCloseAt),
-                LocalDateTime.FromDateTime(model.GuidePublishAt),
-                model.MaxPrintSlots);
-
-            logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
-            SetSuccess("Guide settings saved.");
-            return Redirect("/Settings#event-guide");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to save guide settings for EventSettingsId {EventSettingsId}", model.EventSettingsId);
-            ModelState.AddModelError("", ex.Message);
+            ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
             return View("Settings", model);
         }
+
+        logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
+        SetSuccess("Guide settings saved.");
+        return Redirect("/Settings#event-guide");
     }
 
     // ─── Event Categories ─────────────────────────────────────────
