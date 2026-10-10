@@ -284,7 +284,7 @@ inbox:
     review: panel
   - added: 2026-09-20
     id: CENTRAL-59
-    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit. Plan: put `[Grandfathered(\"HUM0028\")]` on the implementing class (HUM0028 keys on implementing classes); this makes existing debt visible to the analyzer, so it is the D12 exception to the no-new-Grandfathered rule; say so in the commit."
+    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit. A tag-only fix is circular (reverted in peterdrier/Humans#1932); making HUM0028 see unmarked invalidators widens the analyzer. Plan: Peter 2026-10-10 — waits for the invalidator rework the HUM0028 theme is parked on; do not work it separately."
     review: light
   - added: 2026-10-04
     id: CENTRAL-75

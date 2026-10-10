@@ -3,7 +3,3 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-10-04
-    id: BUDGET-10
-    what: "TicketingBudgetService groups only currently paid orders; when the last paid order in a completed week becomes refunded, that week disappears from the next SyncTicketingActualsAsync input. BudgetRepository upserts supplied weeks only, retaining prior revenue/fee rows for omitted weeks, so a fully refunded week keeps its old revenue. GetTicketOrdersAsync returns all cached orders. Found while fixing zero weekly fees in the daily debt sweep. Plan: scope the input to the budget year's event orders, and have the sync zero (not delete) any stored generated weekly row for that budget year whose week is absent from the input; section-internal, no public surface."
-    review: panel
