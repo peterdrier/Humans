@@ -304,3 +304,5 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 ### Cross-section read interface
 
 `ISurveyAnalysisRead` (public, in `Contracts/`): survey list, one survey's resolved question graph (`GetDefinitionAsync` → `SurveyDefinitionSnapshot`), the raw per-response export, and the per-question aggregates. Read-only — a survey is authored only in the admin UI, never over the API. Its sole consumer is `Humans.Backdoor`'s `BackdoorSurveysController` behind `/api/backdoor/surveys`. The section's only other public behaviour surface is `ISurveyReminderSender`, consumed by `Jobs/SendSurveyReminderJob`. There is deliberately **no `ISurveyServiceRead`**: it shipped empty, no other section consumed it, and it was deleted — the machine API's needs are a different shape and are served by `ISurveyAnalysisRead`.
+
+Response exports (admin CSV/JSON and Backdoor analysis) record `SurveyResponsesExported` with the requesting human, survey id and row count in the owner service. Missing surveys and embargoed open Asociado votes return no export and no disclosure audit. Privacy shaping and results authorization remain unchanged.

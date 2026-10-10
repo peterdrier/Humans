@@ -1675,7 +1675,7 @@ internal sealed class SurveyService(
         _ => true,
     };
 
-    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default)
+    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey is null) return null;
@@ -1758,6 +1758,8 @@ internal sealed class SurveyService(
             })
             .ToList();
 
+        await auditLog.LogAsync(AuditAction.SurveyResponsesExported, "Survey", surveyId,
+            $"Survey responses exported: {rows.Count} rows", actorUserId);
         return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
     }
 

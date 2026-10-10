@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-10-05
-    id: SURVEYS-4
-    what: "SurveyAdminController.ExportCsv/ExportJson disclose ordinary identified response exports without an audit entry (data-exports-are-audited). SurveyService.GetResponseExportAsync also serves the Backdoor analysis API (BackdoorSurveysController) and takes no actor. Found during the nightly debt sweep. Plan: add a required actorUserId parameter to ISurveyAnalysisRead.GetResponseExportAsync and audit the export there; SurveyAdminController passes the signed-in admin and BackdoorSurveysController the API key's owner. Tightened signature on an existing method, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

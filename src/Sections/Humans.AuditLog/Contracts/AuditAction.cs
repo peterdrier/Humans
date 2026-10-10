@@ -362,4 +362,5 @@ public enum AuditAction
 
     TicketAttendeesExported,
     TicketOrdersExported,
+    SurveyResponsesExported,
 }

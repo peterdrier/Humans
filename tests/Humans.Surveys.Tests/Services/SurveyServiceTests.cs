@@ -3503,7 +3503,7 @@ public class SurveyServiceTests
         var results = await CreateService().GetResultsAsync(
             surveyId, TestContext.Current.CancellationToken);
         var export = await CreateService().GetResponseExportAsync(
-            surveyId, TestContext.Current.CancellationToken);
+            surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         results!.Questions.Should().ContainSingle().Which.QuestionId.Should().Be(answerId);
         export!.Questions.Should().ContainSingle().Which.QuestionId.Should().Be(answerId);
@@ -3843,9 +3843,10 @@ public class SurveyServiceTests
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
-        var export = await CreateService().GetResponseExportAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         export.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -3878,8 +3879,11 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [identifiedUser] = UserInfoWithName(identifiedUser, "Sparkle") }));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var actor = Guid.NewGuid();
+        var export = await CreateService().GetResponseExportAsync(surveyId, actor, TestContext.Current.CancellationToken);
 
+        await _audit.Received(1).LogAsync(AuditAction.SurveyResponsesExported, "Survey", surveyId,
+            "Survey responses exported: 3 rows", actor);
         export.Should().NotBeNull();
         export.Rows.Should().HaveCount(3);   // every tier appears so totals reconcile
 
@@ -3916,7 +3920,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         export.Should().NotBeNull();
         export.Questions.Select(q => q.QuestionId).Should().ContainInOrder(multiId, textId);
@@ -3950,7 +3954,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var schema = export!.Questions.Should().ContainSingle().Subject;
         schema.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
@@ -3990,7 +3994,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var schema = export!.Questions.Should().ContainSingle().Subject;
         schema.RankedSettings.Should().Be(new SurveyRankedSettings(true, true, "RankedPairs"));
@@ -4026,7 +4030,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var answer = export!.Rows.Single().Answers.Single();
         answer.GridSelections!["removed-row"].Should().ContainSingle().Which.Should().Be("removed-column");
@@ -4053,7 +4057,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(surveyId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         export!.Rows.Select(r => r.ResponseId).Should().ContainInOrder(early.Id, late.Id);
     }
@@ -4387,7 +4391,7 @@ public class SurveyServiceTests
         var scoped = await service.GetScopedResultsAsync(
             survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
         var publicResults = await service.GetResultsAsync(survey.Id, TestContext.Current.CancellationToken);
-        var export = await service.GetResponseExportAsync(survey.Id, TestContext.Current.CancellationToken);
+        var export = await service.GetResponseExportAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         scoped!.IsEmbargoed.Should().BeTrue();
         scoped.Results.ResponseCount.Should().Be(1);
@@ -4398,6 +4402,7 @@ public class SurveyServiceTests
         scoped.RankedQuestions.Should().BeEmpty();
         publicResults.Should().BeNull();
         export.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -4435,7 +4440,7 @@ public class SurveyServiceTests
 
         var scoped = await CreateService().GetScopedResultsAsync(
             survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
-        var export = await CreateService().GetResponseExportAsync(survey.Id, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         scoped!.IsAsociadoVote.Should().BeTrue();
         scoped.Results.IdentifiedRespondents.Should().BeEmpty();
