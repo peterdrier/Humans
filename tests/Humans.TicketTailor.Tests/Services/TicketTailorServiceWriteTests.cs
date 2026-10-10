@@ -381,16 +381,19 @@ public class TicketTailorServiceWriteTests
         body.Should().Contain("issued_ticket_id=tt_1").And.Contain("quantity=1").And.Contain("check_in_at=1751983320");
     }
 
-    [HumansFact]
-    public async Task CreateCheckInAsync_ThrowsRawHttpRequestExceptionOnFailure()
+    [HumansTheory]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task CreateCheckInAsync_ThrowsRawHttpRequestExceptionOnFailure(HttpStatusCode status)
     {
         var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.Forbidden, new { error = "Order-manager key" });
+        handler.EnqueueResponse(status, new { error = "check-in failed" });
 
         var service = TicketTailorTestHost.CreateService(handler);
         var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
+        handler.RequestCount.Should().Be(1);
     }
 
     [HumansTheory]
