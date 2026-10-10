@@ -136,14 +136,29 @@ internal sealed class MagicLinkService(
             return; // Silently skip — same "check your email" message shown to user
         }
 
-        var magicLinkUrl = urlBuilder.BuildLoginUrl(user.Id, returnUrl);
+        if (!await rateLimiter.TryReserveUserSendAsync(user.Id, RateLimitCooldown.ToTimeSpan()))
+        {
+            logger.LogDebug("Magic link rate-limited for user {UserId}", user.Id);
+            return;
+        }
 
-        var userInfo = await userService.GetUserInfoAsync(user.Id, ct);
-        var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
+        try
+        {
+            var magicLinkUrl = urlBuilder.BuildLoginUrl(user.Id, returnUrl);
+            var userInfo = await userService.GetUserInfoAsync(user.Id, ct);
+            var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
-        await emailService.SendAsync(
-            emailMessages.MagicLinkLogin(sendToEmail, displayName, magicLinkUrl), ct);
+            await emailService.SendAsync(
+                emailMessages.MagicLinkLogin(sendToEmail, displayName, magicLinkUrl), ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send magic link login for user {UserId}", user.Id);
+            rateLimiter.ReleaseUserSendReservation(user.Id);
+            throw;
+        }
 
+        // The send succeeded: retain its cooldown even if the persistent stamp fails.
         user.MagicLinkSentAt = now;
         await userManager.UpdateAsync(user);
 

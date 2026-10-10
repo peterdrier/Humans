@@ -265,7 +265,7 @@ internal interface ITeamManagementService : ITeamService
     /// <summary>
     /// Deletes (deactivates) a team.
     /// </summary>
-    Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+    Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Joins a team, dispatching on the team's join policy: approval-required

@@ -49,7 +49,7 @@ public class CalendarControllerICalTests
     {
         _calendarRead
             .GetOccurrencesInWindowAsync(
-                Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());

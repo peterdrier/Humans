@@ -49,7 +49,7 @@ Repository: `IShiftManagementRepository`.
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking, which
 lazy-resolves the read surfaces `ITeamServiceRead`, `IUserServiceRead`,
-`ICampServiceRead`, `IRoleAssignmentService`, and
+`ICampServiceRead`, `IRoleAssignmentServiceRead`, and
 `ITicketServiceRead`. Injects `IMemoryCache` directly for the
 `shift-auth:{userId}` slot. Implements `IShiftAuthorizationInvalidator`,
 `IUserMerge`. Also exposes the Cantina-gating predicates

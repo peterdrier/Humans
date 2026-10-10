@@ -94,7 +94,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == report.Id, ct);
         // Which statuses a header may still be edited in is the service's call
-        // (RequireEditableReportAsync) and differs by actor — a finance admin correcting a report
+        // (GetEditableReportAsync) and differs by actor — a finance admin correcting a report
         // on a member's behalf reaches past Draft. Re-deciding it here would silently no-op that.
         if (tracked is null) return;
         tracked.BudgetCategoryId = report.BudgetCategoryId;
@@ -201,6 +201,20 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (line is null) return;
         line.AttachmentId = attachmentId;
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var line = await ctx.ExpenseLines.Include(l => l.Attachment)
+            .SingleOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
+        if (line?.Attachment is not { } attachment) return null;
+
+        line.AttachmentId = null;
+        line.Attachment = null;
+        ctx.ExpenseAttachments.Remove(attachment);
+        await ctx.SaveChangesAsync(ct);
+        return attachment;
     }
 
     public async Task<bool> UpdatePayeeIbanAsync(

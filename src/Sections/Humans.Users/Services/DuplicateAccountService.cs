@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 internal sealed class DuplicateAccountService(
     IUserService userService,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IAuditLogService auditLogService) : IDuplicateAccountService
 {
     /// <summary>

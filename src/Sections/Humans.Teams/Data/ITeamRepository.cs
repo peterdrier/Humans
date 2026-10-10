@@ -141,9 +141,9 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// In a single transaction: close every active <see cref="TeamMember"/>
     /// for the team, mark the team <c>IsActive=false</c> with the given
-    /// timestamp, and commit. Returns the count of memberships closed.
+    /// timestamp, and commit. Returns the user ids whose memberships were closed.
     /// </summary>
-    Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
     /// <summary>
     /// Permanently deletes a team and its Teams-owned child rows. Returns

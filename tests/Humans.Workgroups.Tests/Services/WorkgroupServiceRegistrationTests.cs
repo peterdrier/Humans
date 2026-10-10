@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Constants;
@@ -29,12 +30,14 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
+                call.ArgAt<string>(0).Should().Be("section-owned-root");
                 call.Arg<CancellationToken>().CanBeCanceled.Should().BeFalse();
                 request.Cancel();
                 return "created-folder";
             });
 
         var service = NewService();
+        await service.SetRootDriveFolderIdAsync("section-owned-root", actor, Ct);
         var id = group.Id;
         if (existing)
             id = await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
@@ -100,12 +103,23 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetRootDriveFolderId_Valid_PersistsThroughSettings()
+    public async Task RootDriveFolder_PreservesLegacyValueUntilAdminSavesSectionOwnedSetting()
     {
-        await NewService().SetRootDriveFolderIdAsync("new-root", SeedUser(), Ct);
+        var actor = SeedUser();
+        var service = NewService();
+        (await service.GetRootDriveFolderIdAsync(Ct)).Should().Be(RootFolderId);
+        (await Db.Settings.CountAsync(Ct)).Should().Be(0, "reads must not backfill state");
+        Settings.ClearReceivedCalls();
 
-        await Settings.Received(1).SetValueAsync(
-            SettingKeys.WorkgroupsRootDriveFolderId, "new-root", Arg.Any<CancellationToken>());
+        await service.SetRootDriveFolderIdAsync(" new-root ", actor, Ct);
+        RootFolderId = "stale-legacy-root";
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("new-root");
+        await service.SetRootDriveFolderIdAsync("another-root", actor, Ct);
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("another-root");
+        (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("another-root");
+        Settings.ReceivedCalls().Should().BeEmpty("saved section state must not read or write the legacy key");
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
+            AuditEntityTypes.WorkgroupsSettings, Guid.Empty, "Root Drive folder set to new-root", actor);
     }
 
     [HumansTheory]
@@ -117,15 +131,13 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     {
         await NewService().SetRootDriveFolderIdAsync(input, SeedUser(), Ct);
 
-        await Settings.Received(1).SetValueAsync(
-            SettingKeys.WorkgroupsRootDriveFolderId, "0AFLHTK5u0wymUk9PVA", Arg.Any<CancellationToken>());
+        (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("0AFLHTK5u0wymUk9PVA");
     }
 
     [HumansFact]
     public async Task GetRootDriveFolderId_StoredUrl_ReturnsBareId()
     {
-        Settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, Arg.Any<CancellationToken>())
-            .Returns("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA");
+        RootFolderId = "https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA";
 
         (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("0AFLHTK5u0wymUk9PVA");
     }

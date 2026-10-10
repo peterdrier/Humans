@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Auth.Contracts;
 using NodaTime;
 
 namespace Humans.Backdoor.Services;
@@ -38,8 +39,12 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// revoked, or its owner is no longer a full Admin or Board member with an active account;
     /// the last-used stamp is written only when it resolves.
     /// </summary>
-    Task<Guid?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default);
+    Task<BackdoorKeyOwner?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default);
 }
+
+/// <summary>The eligible key owner and the active roles used to authorize that owner.</summary>
+[method: System.Text.Json.Serialization.JsonConstructor]
+internal sealed record BackdoorKeyOwner(Guid UserId, IReadOnlyList<RoleAssignmentSnapshot> Roles);
 
 /// <summary>
 /// Outcome of an issue or rotate. <see cref="PlaintextKey"/> is non-null only on success and

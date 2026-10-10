@@ -23,6 +23,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
+    internal const string CampMemberships = "CampMemberships";
 
     private static readonly ResourceManager NoticeResources = new(typeof(CampsResource));
 
@@ -1549,9 +1550,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Camp Lead is a CampRoleAssignment (issue nobodies-collective/Humans#753);
-        // the legacy camp_leads table was dropped in #774, so the role-assignment
-        // slice is the whole of this section's Article 15 export (design-rules §8a).
         var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new
@@ -1563,13 +1561,30 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             a.AssignedByUserId
         }).ToList();
 
-        return [new UserDataSlice(CampRoleAssignments, shapedRoles)];
+        var memberships = await _repo.GetAllMembershipsForUserAsync(userId, ct);
+        var shapedMemberships = memberships.Select(m => new
+        {
+            m.Id,
+            m.CampSeasonId,
+            CampSlug = m.CampSeason.Camp.Slug,
+            SeasonYear = m.CampSeason.Year,
+            Status = m.Status.ToString(),
+            RequestedAt = m.RequestedAt.ToIso8601(),
+            ConfirmedAt = m.ConfirmedAt?.ToIso8601(),
+            m.ConfirmedByUserId,
+            RemovedAt = m.RemovedAt?.ToIso8601(),
+            m.RemovedByUserId,
+            m.HasEarlyEntry
+        }).ToList();
+
+        return [new UserDataSlice(CampRoleAssignments, shapedRoles), new UserDataSlice(CampMemberships, shapedMemberships)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [CampRoleAssignments] = null
+            [CampRoleAssignments] = null,
+            [CampMemberships] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

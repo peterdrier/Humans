@@ -89,13 +89,13 @@ public sealed class IssuesControllerTests
         issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
             new IssueDetail(issueId, IssueStatus.Resolved, default, "Camps", "Existing", "Details",
                 null, null, null, null, viewerId, Guid.NewGuid(), viewerId, 42, null, default, default, null, 0));
-        issues.UpdateStatusWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), viewerId)
+        issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), viewerId)
             .Returns(IssueMutationResult.Success());
-        issues.UpdateAssigneeWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), viewerId)
+        issues.UpdateAssigneeAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), viewerId)
             .Returns(IssueMutationResult.Success());
-        issues.UpdateSectionWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<string?>(), viewerId)
+        issues.UpdateSectionAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<string?>(), viewerId)
             .Returns(IssueMutationResult.Success());
-        issues.SetGitHubIssueNumberWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<int?>(), viewerId)
+        issues.SetGitHubIssueNumberAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<int?>(), viewerId)
             .Returns(IssueMutationResult.Success());
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
@@ -127,7 +127,7 @@ public sealed class IssuesControllerTests
 
         if (allowed) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<ForbidResult>();
-        issues.ReceivedCalls().Where(call => call.GetMethodInfo().Name.EndsWith("WithResultAsync", StringComparison.Ordinal))
+        issues.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "UpdateStatusAsync" or "UpdateAssigneeAsync" or "UpdateSectionAsync" or "SetGitHubIssueNumberAsync")
             .Should().BeEmpty();
     }
 

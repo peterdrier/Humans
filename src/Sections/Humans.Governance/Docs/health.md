@@ -231,7 +231,7 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 Settled decisions. Do not re-litigate.
 
 - `IMembershipQuery` looks like a pointless pass-through over `ITeamServiceRead` and
-  `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
+  `IRoleAssignmentServiceRead`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentServiceRead`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
 - `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for

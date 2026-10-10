@@ -50,18 +50,18 @@
                 }
                 else
                 {
-                    <p class="text-muted">@Localizer["TeamDetail_NoDescription"]</p>
+                    <p class="text-muted">@Localizer["Teams_TeamDetail_NoDescription"]</p>
                 }
 
                 @if (Model.IsAuthenticated && Model.IsSystemTeam)
                 {
                     <div class="alert alert-info mb-0">
-                        @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, systemTeamLabel)
+                        @string.Format(Localizer["Teams_TeamDetail_SystemTeamInfo"].Value, systemTeamLabel)
                     </div>
                 }
             </div>
             <div class="card-footer">
-                <small class="text-muted">@Localizer["TeamDetail_Created"] @Model.CreatedAt.ToDate()</small>
+                <small class="text-muted">@Localizer["Teams_TeamDetail_Created"] @Model.CreatedAt.ToDate()</small>
             </div>
         </div>
 
@@ -69,11 +69,11 @@
         {
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["TeamDetail_AboutTeam"]</span>
+                    <span>@Localizer["Teams_TeamDetail_AboutTeam"]</span>
                     @if (Model.CanEditPageContent)
                     {
                         <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-secondary">
-                            <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["TeamDetail_EditPage"]
+                            <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["Teams_TeamDetail_EditPage"]
                         </a>
                     }
                 </div>
@@ -85,7 +85,7 @@
                     {
                         <hr />
                         <small class="text-muted">
-                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
+                            @Localizer["Teams_TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
                             @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
                             {
                                 @: &mdash; @Model.PageContentUpdatedByDisplayName
@@ -99,9 +99,9 @@
         {
             <div class="card mb-4">
                 <div class="card-body text-center py-4">
-                    <p class="text-muted mb-3">@Localizer["TeamDetail_NoPageContent"]</p>
+                    <p class="text-muted mb-3">@Localizer["Teams_TeamDetail_NoPageContent"]</p>
                     <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
-                        <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["TeamDetail_AddPageContent"]
+                        <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["Teams_TeamDetail_AddPageContent"]
                     </a>
                 </div>
             </div>
@@ -135,17 +135,17 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 @if (Model.IsAuthenticated)
                 {
-                    <span>@string.Format(Localizer["TeamDetail_Members"].Value, Model.Members.Count)</span>
+                    <span>@string.Format(Localizer["Teams_TeamDetail_Members"].Value, Model.Members.Count)</span>
                     @if (Model.CanCurrentUserManage)
                     {
                         <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">
-                            @Localizer["TeamDetail_ManageMembers"]
+                            @Localizer["Teams_TeamDetail_ManageMembers"]
                         </a>
                     }
                 }
                 else
                 {
-                    <span>@Localizer["TeamDetail_TeamCoordinators"]</span>
+                    <span>@Localizer["Teams_TeamDetail_TeamCoordinators"]</span>
                 }
             </div>
             <div class="card-body">
@@ -158,7 +158,7 @@
                     {
                         @if (Model.IsAuthenticated)
                         {
-                            <h6 class="text-muted mb-3">@Localizer["TeamDetail_TeamCoordinators"]</h6>
+                            <h6 class="text-muted mb-3">@Localizer["Teams_TeamDetail_TeamCoordinators"]</h6>
                         }
                         <div class="row g-3 mb-4">
                             @foreach (var member in coordinators)
@@ -203,7 +203,7 @@
                 }
                 else
                 {
-                    <p class="text-center text-muted mb-0">@Localizer["TeamDetail_NoMembers"]</p>
+                    <p class="text-center text-muted mb-0">@Localizer["Teams_TeamDetail_NoMembers"]</p>
                 }
             </div>
         </div>
@@ -239,7 +239,7 @@
         {
         <div class="card mb-4">
             <div class="card-header">
-                <span>@Localizer["TeamDetail_ChildTeamMembers", Model.ChildTeamMembers.Count]</span>
+                <span>@Localizer["Teams_TeamDetail_ChildTeamMembers", Model.ChildTeamMembers.Count]</span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -269,23 +269,23 @@
                         <a asp-action="Join" asp-route-slug="@Model.Slug" class="btn btn-primary w-100 mb-2">
                             @if (Model.RequiresApproval)
                             {
-                                <span>@Localizer["TeamDetail_RequestToJoin"]</span>
+                                <span>@Localizer["Teams_TeamDetail_RequestToJoin"]</span>
                             }
                             else
                             {
-                                <span>@Localizer["TeamDetail_JoinTeam"]</span>
+                                <span>@Localizer["Teams_TeamDetail_JoinTeam"]</span>
                             }
                         </a>
                     }
                     else if (Model.CurrentUserPendingRequestId.HasValue)
                     {
                         <div class="alert alert-info mb-2">
-                            @Localizer["TeamDetail_PendingApproval"]
+                            @Localizer["Teams_TeamDetail_PendingApproval"]
                         </div>
                         <form asp-action="WithdrawRequest" asp-route-id="@Model.CurrentUserPendingRequestId" method="post">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_WithdrawConfirm"].Value">
-                                @Localizer["TeamDetail_WithdrawRequest"]
+                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["Teams_TeamDetail_WithdrawConfirm"].Value">
+                                @Localizer["Teams_TeamDetail_WithdrawRequest"]
                             </button>
                         </form>
                     }
@@ -293,15 +293,15 @@
                     {
                         <form asp-action="Leave" asp-route-slug="@Model.Slug" method="post">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_LeaveConfirm"].Value">
-                                @Localizer["TeamDetail_LeaveTeam"]
+                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["Teams_TeamDetail_LeaveConfirm"].Value">
+                                @Localizer["Teams_TeamDetail_LeaveTeam"]
                             </button>
                         </form>
                     }
                     else if (Model.IsCurrentUserMember && Model.IsSystemTeam)
                     {
                         <div class="alert alert-secondary mb-0">
-                            @Localizer["TeamDetail_SystemMembership"]
+                            @Localizer["Teams_TeamDetail_SystemMembership"]
                         </div>
                     }
 
@@ -329,7 +329,7 @@
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <span>@Localizer["TeamDetail_Resources"]</span>
+                    <span>@Localizer["Teams_TeamDetail_Resources"]</span>
                 </div>
                 <div class="list-group list-group-flush">
                     @foreach (var resource in Model.Resources)
@@ -359,28 +359,28 @@
         @if (Model.CanCurrentUserManage || Model.CanManageEarlyEntry)
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["TeamDetail_TeamManagement"]</div>
+                <div class="card-header">@Localizer["Teams_TeamDetail_TeamManagement"]</div>
                 <div class="list-group list-group-flush">
                     @if (Model.CanCurrentUserManage)
                     {
                         @if (Model.CanCurrentUserEditTeam)
                         {
                             <a asp-controller="Team" asp-action="EditTeam" asp-route-id="@Model.Id" class="list-group-item list-group-item-action">
-                                @Localizer["TeamDetail_EditTeam"]
+                                @Localizer["Teams_TeamDetail_EditTeam"]
                             </a>
                         }
                         <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                            @Localizer["TeamDetail_EditPage"]
+                            @Localizer["Teams_TeamDetail_EditPage"]
                         </a>
                         <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            @Localizer["TeamDetail_ManageMembers"]
+                            @Localizer["Teams_TeamDetail_ManageMembers"]
                             @if (Model.PendingRequestCount > 0)
                             {
                                 <span class="badge bg-warning">@Model.PendingRequestCount</span>
                             }
                         </a>
                         <a asp-controller="TeamAdmin" asp-action="Roles" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                            @Localizer["TeamDetail_ManageRoles"]
+                            @Localizer["Teams_TeamDetail_ManageRoles"]
                         </a>
                         <a asp-controller="TeamAdmin" asp-action="Roster" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action"
                            authorize-policy="@PolicyNames.BoardOrAdmin">
@@ -389,10 +389,10 @@
                         @if (Model.CanCurrentUserEditTeam)
                         {
                             <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                                @Localizer["TeamDetail_ManageResources"]
+                                @Localizer["Teams_TeamDetail_ManageResources"]
                             </a>
                             <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
-                                @Localizer["TeamDetail_ManageConsents"]
+                                @Localizer["Teams_TeamDetail_ManageConsents"]
                             </a>
                         }
                     }
@@ -409,7 +409,7 @@
         @if (Model.ChildTeams.Any())
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["TeamDetail_SubTeams"]</div>
+                <div class="card-header">@Localizer["Teams_TeamDetail_SubTeams"]</div>
                 <div class="list-group list-group-flush">
                     @foreach (var child in Model.ChildTeams)
                     {

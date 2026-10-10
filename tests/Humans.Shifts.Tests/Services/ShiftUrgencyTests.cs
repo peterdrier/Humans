@@ -27,7 +27,7 @@ public class ShiftUrgencyTests
     {
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .Build();
 
         _service = new ShiftManagementService(

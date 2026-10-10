@@ -96,5 +96,21 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
         (await _limiter.TryConsumeTokenAsync(Second, TokenLifetime)).Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task UserSendReservations_AreExclusivePerUserAndReleaseOnlyTheFailedUser()
+    {
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var cooldown = TimeSpan.FromSeconds(60);
+        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeTrue();
+        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeFalse();
+        (await _limiter.TryReserveUserSendAsync(second, cooldown)).Should().BeTrue();
+
+        _limiter.ReleaseUserSendReservation(first);
+
+        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeTrue();
+        (await _limiter.TryReserveUserSendAsync(second, cooldown)).Should().BeFalse();
+    }
+
     public void Dispose() => _cache.Dispose();
 }

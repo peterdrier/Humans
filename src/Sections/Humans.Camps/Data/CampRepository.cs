@@ -587,6 +587,15 @@ internal sealed partial class CampRepository : ICampRepository
         return member;
     }
 
+    public async Task<IReadOnlyList<CampMember>> GetAllMembershipsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampMembers.AsNoTracking()
+            .Include(m => m.CampSeason).ThenInclude(s => s.Camp)
+            .Where(m => m.UserId == userId)
+            .ToListAsync(ct);
+    }
+
     public async Task SaveMemberAsync(CampMember member, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

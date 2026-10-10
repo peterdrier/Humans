@@ -420,9 +420,9 @@ public sealed class TeamRepositoryTests : IDisposable
         var member = await SeedActiveMemberAsync(team, user);
 
         var now = _clock.GetCurrentInstant();
-        var count = await _repo.DeactivateTeamAsync(team.Id, now, Xunit.TestContext.Current.CancellationToken);
+        var closedUsers = await _repo.DeactivateTeamAsync(team.Id, now, Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        closedUsers.Should().BeEquivalentTo([user.Id]);
         _dbContext.ChangeTracker.Clear();
         var t = await _dbContext.Teams.AsNoTracking().FirstAsync(x => x.Id == team.Id, Xunit.TestContext.Current.CancellationToken);
         t.IsActive.Should().BeFalse();

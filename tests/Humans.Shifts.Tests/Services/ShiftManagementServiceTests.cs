@@ -58,7 +58,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .With(_teamService)
             .With(_userService)
             .With<IUserServiceRead>(_userService)
-            .With(_roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

@@ -12,7 +12,7 @@
     var unallocated = totalAllocated - totalLineItems;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Budget_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["Budget_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Year.Name</li>

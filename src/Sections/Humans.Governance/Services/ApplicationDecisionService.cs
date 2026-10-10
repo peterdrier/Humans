@@ -29,7 +29,7 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
@@ -249,9 +249,9 @@ internal sealed class ApplicationDecisionService(
 
     public ApplicationDecisionResult ValidateSubmission(
         MembershipTier tier, string? motivation,
-        string? significantContribution, string? roleUnderstanding)
+        string? significantContribution, string? roleUnderstanding, string? additionalInfo = null)
     {
-        if (tier == MembershipTier.Volunteer)
+        if (tier is not MembershipTier.Colaborador and not MembershipTier.Asociado)
             return new ApplicationDecisionResult(false, "InvalidTier");
 
         if (string.IsNullOrWhiteSpace(motivation))
@@ -263,6 +263,18 @@ internal sealed class ApplicationDecisionService(
         if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(roleUnderstanding))
             return new ApplicationDecisionResult(false, "RoleUnderstandingRequired");
 
+        if (motivation.Length is < 50 or > 2000)
+            return new ApplicationDecisionResult(false, "MotivationLength");
+
+        if (additionalInfo?.Length > 1000)
+            return new ApplicationDecisionResult(false, "AdditionalInfoTooLong");
+
+        if (significantContribution?.Length > 2000)
+            return new ApplicationDecisionResult(false, "SignificantContributionTooLong");
+
+        if (roleUnderstanding?.Length > 2000)
+            return new ApplicationDecisionResult(false, "RoleUnderstandingTooLong");
+
         return new ApplicationDecisionResult(true);
     }
 
@@ -271,9 +283,12 @@ internal sealed class ApplicationDecisionService(
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
         string language, CancellationToken ct = default)
     {
-        var fieldRules = ValidateSubmission(tier, motivation, significantContribution, roleUnderstanding);
+        var fieldRules = ValidateSubmission(tier, motivation, significantContribution, roleUnderstanding, additionalInfo);
         if (!fieldRules.Success)
+        {
+            logger.LogWarning("Tier application submission refused for user {UserId}: {ErrorKey}", userId, fieldRules.ErrorKey);
             return fieldRules;
+        }
 
         var hasPending = await repository.AnySubmittedForUserAsync(userId, ct);
         if (hasPending)

@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services;

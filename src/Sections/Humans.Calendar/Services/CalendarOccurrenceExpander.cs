@@ -12,19 +12,19 @@ namespace Humans.Calendar.Services;
 internal static class CalendarOccurrenceExpander
 {
     /// <summary>
-    /// The organisation's zone. All-day window dates and display order are derived in it,
-    /// not in the viewer's zone the routes resolve; views clip to their own days.
+    /// Fallback zone for pure expansion callers; window reads always supply the viewer's zone.
     /// </summary>
     private static readonly DateTimeZone OrganisationZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     public static IReadOnlyList<CalendarOccurrence> Expand(
         IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to,
-        IReadOnlyDictionary<Guid, string> teamNamesById, ILogger logger)
+        IReadOnlyDictionary<Guid, string> teamNamesById, ILogger logger, DateTimeZone? viewerZone = null)
     {
+        var displayZone = viewerZone ?? OrganisationZone;
         var results = new List<CalendarOccurrence>();
         // Dates themselves never convert; only the window's bounds do.
-        var fromDate = from.InZone(OrganisationZone).Date;
-        var toLocal = to.InZone(OrganisationZone).LocalDateTime;
+        var fromDate = from.InZone(displayZone).Date;
+        var toLocal = to.InZone(displayZone).LocalDateTime;
         var toDate = toLocal.TimeOfDay == LocalTime.Midnight ? toLocal.Date : toLocal.Date.PlusDays(1);
         foreach (var ev in events)
         {
@@ -36,7 +36,7 @@ internal static class CalendarOccurrenceExpander
             results.AddRange(ApplyExceptions(ev, name, recurring, occurrences)
                 .Where(result => OverlapsWindow(result, from, to, fromDate, toDate)));
         }
-        return OrderForDisplay(results);
+        return OrderForDisplay(results, displayZone);
     }
 
     private static IEnumerable<CalendarOccurrence> ApplyExceptions(
@@ -74,12 +74,12 @@ internal static class CalendarOccurrenceExpander
     }
 
     /// <summary>
-    /// Orders calendar-owned and contributed occurrences by the same organization-local date.
+    /// Orders calendar-owned and contributed occurrences by the same viewer-local date.
     /// Contributed items are timed, while all-day Calendar items deliberately have no instant.
     /// </summary>
     internal static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
-        IEnumerable<CalendarOccurrence> occurrences) => occurrences
-        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(OrganisationZone).Date)
+        IEnumerable<CalendarOccurrence> occurrences, DateTimeZone viewerZone) => occurrences
+        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(viewerZone).Date)
         .ThenBy(o => o.OccurrenceStartUtc)
         .ToList();
 
@@ -201,15 +201,16 @@ internal static class CalendarOccurrenceExpander
 
     /// <summary>Conservative prefilter; exceptions may move occurrences beyond either series boundary.</summary>
     public static List<CalendarEventInfo> FilterForWindow(IEnumerable<CalendarEventInfo> snapshot,
-        Instant from, Instant to, Guid? teamId)
+        Instant from, Instant to, Guid? teamId, DateTimeZone? viewerZone = null)
     {
+        var displayZone = viewerZone ?? OrganisationZone;
         return snapshot.Where(e =>
         {
             if (teamId is not null && e.OwningTeamId != teamId) return false;
             if (e.Exceptions.Count > 0) return true;
             if (e.IsAllDay)
-                return e.StartDate <= to.InZone(OrganisationZone).Date &&
-                    (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(OrganisationZone).Date);
+                return e.StartDate <= to.InZone(displayZone).Date &&
+                    (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(displayZone).Date);
 
             // UNTIL bounds occurrence starts, while COUNT stores the final end.
             // Allow duration conservatively; expansion applies the exact overlap check.

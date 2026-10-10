@@ -33,9 +33,7 @@ internal static class EventOccurrenceExpander
         var items = new List<EventOccurrence>();
         foreach (var e in events)
         {
-            IReadOnlyList<Instant> occurrences = gateOpeningDate.HasValue && timeZone != null
-                ? e.GetOccurrenceInstants(gateOpeningDate.Value, timeZone)
-                : [e.StartAt];
+            IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, timeZone);
 
             foreach (var startInstant in occurrences)
             {

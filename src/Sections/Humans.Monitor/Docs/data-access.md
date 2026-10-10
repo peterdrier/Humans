@@ -21,7 +21,7 @@ No repository.
 | Table | R/W |
 |-------|-----|
 | SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISettingsService`** — owned by the Settings section) |
-| GoogleResources | R (via `ITeamResourceService` — the GoogleIntegration section) |
+| GoogleResources | R (via `ITeamResourceServiceRead` — the GoogleIntegration section) |
 | Users / IdentityUserLogins | R (via `IUserServiceRead.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
 
 Monitors the Drive Activity API for non-service-account permission changes
@@ -35,7 +35,7 @@ repository, not its own. Audit-log writes go through `IAuditLogService`.
 
 Cross-section calls via `IGoogleDriveActivityClient` (GoogleIntegration —
 `Services/Workspace/`),
-`ITeamResourceService`, `ISettingsService`, `IUserServiceRead`,
+`ITeamResourceServiceRead`, `ISettingsService`, `IUserServiceRead`,
 `IAuditLogService`. No cache.
 
 **Cross-section table read/write (design-rule note):** `SystemSettings`

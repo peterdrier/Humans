@@ -6,6 +6,25 @@ namespace Humans.Workgroups.Data;
 
 internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext> factory) : IWorkgroupRepository
 {
+    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Settings.AsNoTracking()
+            .Where(s => s.Id == WorkgroupsSettings.SingletonId)
+            .Select(s => s.RootDriveFolderId).SingleOrDefaultAsync(ct);
+    }
+
+    public async Task SetRootDriveFolderIdAsync(string folderId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var setting = await ctx.Settings.SingleOrDefaultAsync(s => s.Id == WorkgroupsSettings.SingletonId, ct);
+        if (setting is null)
+            ctx.Settings.Add(new WorkgroupsSettings { RootDriveFolderId = folderId });
+        else
+            setting.RootDriveFolderId = folderId;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     // ── Register graph ────────────────────────────────────────────────────
 
     public async Task<WorkgroupsGraph> GetGraphAsync(CancellationToken ct = default)

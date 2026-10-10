@@ -29,7 +29,7 @@
 - **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp, the user id (the
   surviving account when asked under a merged-away id, else the id asked with),
   the merged-away ids folded into it, and the merged section bag. Each download
-  route serializes it to the file.
+  route uses `GdprExportSerializer` in Contracts to serialize it to the file.
 - **Erasure shares the contract *and* the orchestrator.** `IUserDataContributor`
   also carries `ErasureDeclaration` (a static section-name →
   retention-reason table; `null` = erased in full) and `EraseForUserAsync`, so a
@@ -54,8 +54,10 @@ returns `File()` or a redirect.
 | `GET /Profile/Me/DownloadData` | `ProfileController` (Humans.Users) | For a human who has completed onboarding |
 | `GET /Guest/DownloadData` | `GuestDataController` (Humans.Gdpr) | For an authenticated account with no profile yet |
 
-Both resolve `IGdprService` from the `Contracts/` folder and serialize the export
-result to a file download. `/Profile/Me/DownloadData` stays on Users: moving it
+Both resolve `IGdprService` from the `Contracts/` folder and use its shared
+`GdprExportSerializer` for the file download. The serializer writes the envelope
+fields first, then section slices in contributor order, as indented UTF-8 JSON
+with string enums and null object properties omitted. `/Profile/Me/DownloadData` stays on Users: moving it
 would change a URL. Erasure has no route of its own — `AccountDeletionService`
 calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 

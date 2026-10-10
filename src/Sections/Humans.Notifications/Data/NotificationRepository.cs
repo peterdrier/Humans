@@ -219,11 +219,12 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task<bool> ResolveBySourceAsync(
-        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default)
+        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
             .Where(n => n.Source == source
+                        && (sourceKey == null || n.SourceKey == sourceKey)
                         && n.ResolvedAt == null
                         && n.Recipients.Any(r => r.UserId == userId))
             .ToListAsync(ct);

@@ -37,8 +37,8 @@
   <!-- ======================== -->
   <data name="Governance_Title" xml:space="preserve"><value>Governance</value></data>
   <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
-  <data name="GovernanceApplication_Title" xml:space="preserve"><value>Governance Application</value></data>
-  <data name="ApplicationDetail_Title" xml:space="preserve"><value>Application Details</value></data>
+  <data name="Governance_Application_Title" xml:space="preserve"><value>Governance Application</value></data>
+  <data name="Governance_ApplicationDetail_Title" xml:space="preserve"><value>Application Details</value></data>
   <data name="Governance_NotYetApplied" xml:space="preserve"><value>Not Yet Applied</value></data>
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Asociados are the formal voting members of Nobodies Collective. As an asociado, you can attend general assemblies, vote on collective decisions, and participate in elections.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>This is optional. Most humans don't need to become asociados. You already have access to resources once you've completed your profile and consents.</value></data>
@@ -71,179 +71,179 @@
   <data name="Governance_MemberCounts" xml:space="preserve"><value>Community</value></data>
   <data name="Governance_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
-  <data name="MyApplications_Title" xml:space="preserve"><value>My Applications</value></data>
-  <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>New Application</value></data>
-  <data name="GovernanceCreate_Lead" xml:space="preserve"><value>Colaboradores and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
-  <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve"><value>Please share your motivation for joining...</value></data>
-  <data name="GovernanceCreate_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. Tell us about yourself and why you want to be part of the collective.</value></data>
-  <data name="GovernanceCreate_AdditionalInfoPlaceholder" xml:space="preserve"><value>Any additional information you'd like to share...</value></data>
-  <data name="GovernanceCreate_AdditionalInfoHelp" xml:space="preserve"><value>Optional. Include any relevant skills, experience, or how you heard about us.</value></data>
-  <data name="GovernanceCreate_ConfirmAccuracy" xml:space="preserve"><value>I confirm that all information provided in this application is accurate and truthful.</value></data>
-  <data name="GovernanceCreate_SubmitApplication" xml:space="preserve"><value>Submit Application</value></data>
-  <data name="GovernanceCreate_IsThisRightForMe" xml:space="preserve"><value>Is This Right for Me?</value></data>
-  <data name="GovernanceCreate_IdealFor" xml:space="preserve"><value>Governance is ideal for:</value></data>
-  <data name="GovernanceCreate_WhatHappensNext" xml:space="preserve"><value>What Happens Next?</value></data>
-  <data name="GovernanceCreate_Step1" xml:space="preserve"><value>Your application will be reviewed by the board</value></data>
-  <data name="GovernanceCreate_Step2" xml:space="preserve"><value>The board considers community involvement and fit</value></data>
-  <data name="GovernanceCreate_Step3" xml:space="preserve"><value>We may contact you for more information</value></data>
-  <data name="GovernanceCreate_Step4" xml:space="preserve"><value>You'll receive an email once a decision is made</value></data>
-  <data name="ApplicationDetail_Details" xml:space="preserve"><value>Details</value></data>
-  <data name="ApplicationDetail_ApplicationInfo" xml:space="preserve"><value>Application Information</value></data>
-  <data name="ApplicationDetail_ReviewStarted" xml:space="preserve"><value>Review Started</value></data>
-  <data name="ApplicationDetail_ReviewedBy" xml:space="preserve"><value>Reviewed By</value></data>
-  <data name="ApplicationDetail_YourMotivation" xml:space="preserve"><value>Your Motivation</value></data>
-  <data name="ApplicationDetail_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
-  <data name="ApplicationDetail_ReviewerNotes" xml:space="preserve"><value>Reviewer Notes</value></data>
-  <data name="ApplicationDetail_WithdrawTitle" xml:space="preserve"><value>Withdraw Application</value></data>
-  <data name="ApplicationDetail_WithdrawDescription" xml:space="preserve"><value>If you no longer wish to proceed with this application, you can withdraw it.</value></data>
-  <data name="ApplicationDetail_WithdrawConfirm" xml:space="preserve"><value>Are you sure you want to withdraw this application?</value></data>
-  <data name="ApplicationDetail_WithdrawButton" xml:space="preserve"><value>Withdraw Application</value></data>
-  <data name="ApplicationDetail_History" xml:space="preserve"><value>Application History</value></data>
-  <data name="ApplicationDetail_NoHistory" xml:space="preserve"><value>No history available.</value></data>
-  <data name="ApplicationDetail_By" xml:space="preserve"><value>by</value></data>
-  <data name="ApplicationDetail_BackToApplications" xml:space="preserve"><value>Back to Applications</value></data>
-  <data name="AdminApplications_Title" xml:space="preserve"><value>Asociado Applications</value></data>
-  <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Review Application</value></data>
-  <data name="AdminAppDetail_ApplicationReview" xml:space="preserve"><value>Application Review</value></data>
-  <data name="AdminAppDetail_Motivation" xml:space="preserve"><value>Motivation</value></data>
-  <data name="AdminAppDetail_Reviewer" xml:space="preserve"><value>Reviewer</value></data>
-  <data name="AdminAppDetail_Language" xml:space="preserve"><value>Language</value></data>
-  <data name="BoardVoting_Title" xml:space="preserve"><value>Board Voting Dashboard</value></data>
-  <data name="BoardVoting_NoApplications" xml:space="preserve"><value>No applications are pending board vote.</value></data>
-  <data name="BoardVoting_Applicant" xml:space="preserve"><value>Applicant</value></data>
-  <data name="BoardVoting_Tier" xml:space="preserve"><value>Tier</value></data>
-  <data name="BoardVoting_Details" xml:space="preserve"><value>Details</value></data>
-  <data name="BoardVoting_Vote" xml:space="preserve"><value>Vote</value></data>
-  <data name="BoardVoting_Note" xml:space="preserve"><value>Note</value></data>
-  <data name="BoardVoting_Date" xml:space="preserve"><value>Date</value></data>
-  <data name="BoardVoting_CastVote" xml:space="preserve"><value>Cast Your Vote</value></data>
-  <data name="BoardVoting_YourVote" xml:space="preserve"><value>Your Vote</value></data>
-  <data name="BoardVoting_VotesSoFar" xml:space="preserve"><value>Votes So Far</value></data>
-  <data name="BoardVoting_BoardMember" xml:space="preserve"><value>Board Member</value></data>
-  <data name="BoardVoting_VoteSaved" xml:space="preserve"><value>Your vote has been recorded.</value></data>
-  <data name="BoardVoting_FinalizeDecision" xml:space="preserve"><value>Finalize Decision</value></data>
-  <data name="BoardVoting_MeetingDate" xml:space="preserve"><value>Board Meeting Date</value></data>
-  <data name="BoardVoting_DecisionNote" xml:space="preserve"><value>Decision Note</value></data>
-  <data name="BoardVoting_DecisionNotePlaceholder" xml:space="preserve"><value>Summary of the board's decision...</value></data>
-  <data name="BoardVoting_Approve" xml:space="preserve"><value>Approve</value></data>
-  <data name="BoardVoting_Reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="BoardVoting_ApproveConfirm" xml:space="preserve"><value>This will approve the application and grant the membership tier. Continue?</value></data>
-  <data name="BoardVoting_RejectConfirm" xml:space="preserve"><value>This will reject the application. Continue?</value></data>
-  <data name="BoardVoting_Finalized" xml:space="preserve"><value>Application decision has been finalized.</value></data>
-  <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>This application is no longer open for voting.</value></data>
-  <data name="BoardVoting_ApplicationNotFound" xml:space="preserve"><value>Application not found.</value></data>
-  <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
-  <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
-  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
-  <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
-  <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
-  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
-  <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve"><value>See the association’s open votes and cast your ballot.</value></data>
-  <data name="Votes_Title" xml:space="preserve"><value>Votes</value></data>
-  <data name="Votes_NoVotes" xml:space="preserve"><value>There are no votes yet.</value></data>
-  <data name="Votes_Status_Draft" xml:space="preserve"><value>Draft</value></data>
-  <data name="Votes_Status_Open" xml:space="preserve"><value>Open</value></data>
-  <data name="Votes_Status_Closed" xml:space="preserve"><value>Closed</value></data>
-  <data name="Votes_Status_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
-  <data name="Votes_Kind_YesNo" xml:space="preserve"><value>Yes/No</value></data>
-  <data name="Votes_Kind_RankedChoice" xml:space="preserve"><value>Ranked choice</value></data>
-  <data name="Votes_ClosesAt" xml:space="preserve"><value>Closes {0}</value><comment>{0} = closing date/time</comment></data>
-  <data name="Votes_ClosedAt" xml:space="preserve"><value>Closed {0}</value><comment>{0} = closing date/time</comment></data>
-  <data name="Votes_OnRosterOfficial" xml:space="preserve"><value>You are on the official roster.</value></data>
-  <data name="Votes_OnRosterIndicative" xml:space="preserve"><value>You are on the indicative roster.</value></data>
-  <data name="Votes_NotOnRosterShort" xml:space="preserve"><value>Not on the roster</value></data>
-  <data name="Votes_BallotIn" xml:space="preserve"><value>Your ballot is in</value></data>
-  <data name="Votes_BallotNotIn" xml:space="preserve"><value>You haven't voted yet</value></data>
-  <data name="Votes_Turnout" xml:space="preserve"><value>{0} of {1} have voted</value><comment>{0} = ballots cast, {1} = roster size</comment></data>
-  <data name="Votes_ViewVote" xml:space="preserve"><value>View</value></data>
-  <data name="Votes_ViewResults" xml:space="preserve"><value>View results</value></data>
-  <data name="Votes_MoreInfo" xml:space="preserve"><value>More information</value></data>
-  <data name="Votes_OfficialTextHeading" xml:space="preserve"><value>Official text</value></data>
-  <data name="Votes_TranslationNotice" xml:space="preserve"><value>This is shown as a translation. The text in {0} is the binding version.</value><comment>{0} = culture code of the binding text</comment></data>
-  <data name="Votes_YourBallotHeading" xml:space="preserve"><value>Cast your ballot</value></data>
-  <data name="Votes_Choice_Yes" xml:space="preserve"><value>Yes</value></data>
-  <data name="Votes_Choice_No" xml:space="preserve"><value>No</value></data>
-  <data name="Votes_Choice_Abstain" xml:space="preserve"><value>Abstain</value></data>
-  <data name="Votes_Choice_Ranked" xml:space="preserve"><value>Ranked</value></data>
-  <data name="Votes_RankOptions" xml:space="preserve"><value>Rank the options</value></data>
-  <data name="Votes_AbstainOption" xml:space="preserve"><value>Abstain</value></data>
-  <data name="Votes_RankedOptionHeader" xml:space="preserve"><value>Option</value></data>
-  <data name="Votes_RankedRankHeader" xml:space="preserve"><value>Rank</value></data>
-  <data name="Votes_RankedUnranked" xml:space="preserve"><value>Unranked</value></data>
-  <data name="Votes_Submit" xml:space="preserve"><value>Submit ballot</value></data>
-  <data name="Votes_IndicativeBallotNotice" xml:space="preserve"><value>Indicative — not counted in the official result.</value></data>
-  <data name="Votes_CannotVoteClosed" xml:space="preserve"><value>This vote no longer accepts ballots.</value></data>
-  <data name="Votes_NotOnRosterNotice" xml:space="preserve"><value>You are not on the roster for this vote.</value></data>
-  <data name="Votes_YourRecordedBallotHeading" xml:space="preserve"><value>Your recorded ballot</value></data>
-  <data name="Votes_RevisionLabel" xml:space="preserve"><value>Revision {0}</value><comment>{0} = revision number</comment></data>
-  <data name="Votes_UpdatedAtLabel" xml:space="preserve"><value>Last changed {0}</value><comment>{0} = date/time</comment></data>
-  <data name="Votes_NoRanking" xml:space="preserve"><value>No options ranked</value></data>
-  <data name="Votes_HistoryHeading" xml:space="preserve"><value>Revision history</value></data>
-  <data name="Votes_HistoryRevisionHeader" xml:space="preserve"><value>Revision</value></data>
-  <data name="Votes_HistoryChoiceHeader" xml:space="preserve"><value>Choice</value></data>
-  <data name="Votes_HistoryWhenHeader" xml:space="preserve"><value>Recorded</value></data>
-  <data name="Votes_ParticipationHeading" xml:space="preserve"><value>Participation</value></data>
-  <data name="Votes_OfficialRosterLabel" xml:space="preserve"><value>Official roster</value></data>
-  <data name="Votes_IndicativeRosterLabel" xml:space="preserve"><value>Indicative roster</value></data>
-  <data name="Votes_ChangedBallotsLabel" xml:space="preserve"><value>Ballots changed at least once</value></data>
-  <data name="Votes_TotalRevisionsLabel" xml:space="preserve"><value>Total revisions</value></data>
-  <data name="Votes_LastBallotAtLabel" xml:space="preserve"><value>Last ballot</value></data>
-  <data name="Votes_NoBallotsYetValue" xml:space="preserve"><value>No ballots yet</value></data>
-  <data name="Votes_ClosingTimeLabel" xml:space="preserve"><value>Closing time</value></data>
-  <data name="Votes_CancelledNotice" xml:space="preserve"><value>This vote was cancelled.</value></data>
-  <data name="Votes_CancelReasonLabel" xml:space="preserve"><value>Reason</value></data>
-  <data name="Votes_BallotRecorded" xml:space="preserve"><value>Your ballot has been recorded.</value></data>
-  <data name="Votes_BallotVoteNotOpen" xml:space="preserve"><value>This vote is not open for ballots.</value></data>
-  <data name="Votes_BallotInvalid" xml:space="preserve"><value>That ballot could not be recorded. Check your rankings and try again.</value></data>
-  <data name="Votes_ResultsHeading" xml:space="preserve"><value>Results</value></data>
-  <data name="Votes_OfficialTextAdoptedHeading" xml:space="preserve"><value>Official text as adopted</value></data>
-  <data name="Votes_OfficialTextVotedHeading" xml:space="preserve"><value>Official text voted on</value></data>
-  <data name="Votes_OfficialResultHeading" xml:space="preserve"><value>Official result</value></data>
-  <data name="Votes_IndicativeResultHeading" xml:space="preserve"><value>Indicative result (not counted in the official outcome)</value></data>
-  <data name="Votes_RequiredMajorityLabel" xml:space="preserve"><value>Required majority</value></data>
-  <data name="Votes_Majority_Simple" xml:space="preserve"><value>Simple majority</value></data>
-  <data name="Votes_Majority_TwoThirds" xml:space="preserve"><value>Two-thirds majority</value></data>
-  <data name="Votes_VerdictLabel" xml:space="preserve"><value>Verdict</value></data>
-  <data name="Votes_Verdict_Passed" xml:space="preserve"><value>Passed</value></data>
-  <data name="Votes_Verdict_Failed" xml:space="preserve"><value>Failed</value></data>
-  <data name="Votes_Verdict_Tie" xml:space="preserve"><value>Tie</value></data>
-  <data name="Votes_TieNotice" xml:space="preserve"><value>Under statutes Art. 10.2, the President of the Board casts the deciding vote on a tie, and the Secretary records it in the acta.</value></data>
-  <data name="Votes_Method_YesNo" xml:space="preserve"><value>Yes/No majority</value></data>
-  <data name="Votes_Method_InstantRunoff" xml:space="preserve"><value>Instant-runoff</value></data>
-  <data name="Votes_RoundsHeading" xml:space="preserve"><value>Rounds</value></data>
-  <data name="Votes_RoundColumnHeader" xml:space="preserve"><value>Round</value></data>
-  <data name="Votes_ExhaustedLabel" xml:space="preserve"><value>Exhausted ballots</value></data>
-  <data name="Votes_EliminatedLabel" xml:space="preserve"><value>Eliminated: {0}</value><comment>{0} = option label</comment></data>
-  <data name="Votes_WinnerLabel" xml:space="preserve"><value>Winner: {0}</value><comment>{0} = option label</comment></data>
-  <data name="Votes_TieBreakExplanation" xml:space="preserve"><value>Ties for elimination are broken by fewest votes in the previous round, then by the order the options were authored.</value></data>
-  <data name="Votes_Note_NoMajority" xml:space="preserve"><value>No option held a majority of continuing ballots.</value></data>
-  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve"><value>The deciding round was level; under statutes Art. 10.2 the tie is resolved by the President's casting vote, recorded in the acta.</value></data>
-  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by fewest votes in the previous round.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
-  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by authored option order.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
-  <data name="Votes_TieBreakNotesHeading" xml:space="preserve"><value>Tie-break notes</value></data>
-  <data name="Votes_ActaHeading" xml:space="preserve"><value>Minutes text (acta)</value></data>
-  <data name="Votes_ActaHint" xml:space="preserve"><value>Select and copy this text for the minutes.</value></data>
-  <data name="Votes_PeeksHeading" xml:space="preserve"><value>Early views</value></data>
-  <data name="Votes_PeeksEmpty" xml:space="preserve"><value>Nobody looked at the tally before close.</value></data>
-  <data name="Votes_PeekedByHeader" xml:space="preserve"><value>Viewed by</value></data>
-  <data name="Votes_PeekedWhenHeader" xml:space="preserve"><value>When</value></data>
-  <data name="Votes_YourBallotResultHeading" xml:space="preserve"><value>Your ballot</value></data>
-  <data name="Votes_DisclosedBallotsHeading" xml:space="preserve"><value>Individual ballots</value></data>
-  <data name="Votes_DisclosedMemberHeader" xml:space="preserve"><value>Human</value></data>
-  <data name="Votes_DisclosedAudienceHeader" xml:space="preserve"><value>Audience</value></data>
-  <data name="Votes_DisclosedChoiceHeader" xml:space="preserve"><value>Choice</value></data>
-  <data name="Votes_DisclosedRevisionHeader" xml:space="preserve"><value>Revision</value></data>
-  <data name="Votes_AudienceOfficial" xml:space="preserve"><value>Official</value></data>
-  <data name="Votes_AudienceIndicative" xml:space="preserve"><value>Indicative</value></data>
-  <data name="Votes_CsvVoteLabel" xml:space="preserve"><value>Vote</value></data>
-  <data name="Votes_MethodLabel" xml:space="preserve"><value>Method</value></data>
-  <data name="Votes_BallotsCastLabel" xml:space="preserve"><value>Ballots cast</value></data>
-  <data name="Votes_EliminatedHeader" xml:space="preserve"><value>Eliminated</value></data>
-  <data name="Votes_WinnerHeader" xml:space="preserve"><value>Winner</value></data>
-  <data name="Votes_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
-  <data name="Votes_BallotDuplicateRanks" xml:space="preserve"><value>Each option needs a different rank. Two options were given the same one, so the ballot was not recorded.</value></data>
-  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve"><value>Why do you want to join?</value></data>
-  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve"><value>Additional information (optional)</value></data>
+  <data name="Governance_MyApplications_Title" xml:space="preserve"><value>My Applications</value></data>
+  <data name="Governance_Create_NewApplication" xml:space="preserve"><value>New Application</value></data>
+  <data name="Governance_Create_Lead" xml:space="preserve"><value>Colaboradores and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
+  <data name="Governance_Create_MotivationPlaceholder" xml:space="preserve"><value>Please share your motivation for joining...</value></data>
+  <data name="Governance_Create_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. Tell us about yourself and why you want to be part of the collective.</value></data>
+  <data name="Governance_Create_AdditionalInfoPlaceholder" xml:space="preserve"><value>Any additional information you'd like to share...</value></data>
+  <data name="Governance_Create_AdditionalInfoHelp" xml:space="preserve"><value>Optional. Include any relevant skills, experience, or how you heard about us.</value></data>
+  <data name="Governance_Create_ConfirmAccuracy" xml:space="preserve"><value>I confirm that all information provided in this application is accurate and truthful.</value></data>
+  <data name="Governance_Create_SubmitApplication" xml:space="preserve"><value>Submit Application</value></data>
+  <data name="Governance_Create_IsThisRightForMe" xml:space="preserve"><value>Is This Right for Me?</value></data>
+  <data name="Governance_Create_IdealFor" xml:space="preserve"><value>Governance is ideal for:</value></data>
+  <data name="Governance_Create_WhatHappensNext" xml:space="preserve"><value>What Happens Next?</value></data>
+  <data name="Governance_Create_Step1" xml:space="preserve"><value>Your application will be reviewed by the board</value></data>
+  <data name="Governance_Create_Step2" xml:space="preserve"><value>The board considers community involvement and fit</value></data>
+  <data name="Governance_Create_Step3" xml:space="preserve"><value>We may contact you for more information</value></data>
+  <data name="Governance_Create_Step4" xml:space="preserve"><value>You'll receive an email once a decision is made</value></data>
+  <data name="Governance_ApplicationDetail_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve"><value>Application Information</value></data>
+  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve"><value>Review Started</value></data>
+  <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve"><value>Reviewed By</value></data>
+  <data name="Governance_ApplicationDetail_YourMotivation" xml:space="preserve"><value>Your Motivation</value></data>
+  <data name="Governance_ApplicationDetail_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
+  <data name="Governance_ApplicationDetail_ReviewerNotes" xml:space="preserve"><value>Reviewer Notes</value></data>
+  <data name="Governance_ApplicationDetail_WithdrawTitle" xml:space="preserve"><value>Withdraw Application</value></data>
+  <data name="Governance_ApplicationDetail_WithdrawDescription" xml:space="preserve"><value>If you no longer wish to proceed with this application, you can withdraw it.</value></data>
+  <data name="Governance_ApplicationDetail_WithdrawConfirm" xml:space="preserve"><value>Are you sure you want to withdraw this application?</value></data>
+  <data name="Governance_ApplicationDetail_WithdrawButton" xml:space="preserve"><value>Withdraw Application</value></data>
+  <data name="Governance_ApplicationDetail_History" xml:space="preserve"><value>Application History</value></data>
+  <data name="Governance_ApplicationDetail_NoHistory" xml:space="preserve"><value>No history available.</value></data>
+  <data name="Governance_ApplicationDetail_By" xml:space="preserve"><value>by</value></data>
+  <data name="Governance_ApplicationDetail_BackToApplications" xml:space="preserve"><value>Back to Applications</value></data>
+  <data name="Governance_AdminApplications_Title" xml:space="preserve"><value>Asociado Applications</value></data>
+  <data name="Governance_AdminApplicationDetail_Title" xml:space="preserve"><value>Review Application</value></data>
+  <data name="Governance_AdminAppDetail_ApplicationReview" xml:space="preserve"><value>Application Review</value></data>
+  <data name="Governance_AdminAppDetail_Motivation" xml:space="preserve"><value>Motivation</value></data>
+  <data name="Governance_AdminAppDetail_Reviewer" xml:space="preserve"><value>Reviewer</value></data>
+  <data name="Governance_AdminAppDetail_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Governance_BoardVoting_Title" xml:space="preserve"><value>Board Voting Dashboard</value></data>
+  <data name="Governance_BoardVoting_NoApplications" xml:space="preserve"><value>No applications are pending board vote.</value></data>
+  <data name="Governance_BoardVoting_Applicant" xml:space="preserve"><value>Applicant</value></data>
+  <data name="Governance_BoardVoting_Tier" xml:space="preserve"><value>Tier</value></data>
+  <data name="Governance_BoardVoting_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Governance_BoardVoting_Vote" xml:space="preserve"><value>Vote</value></data>
+  <data name="Governance_BoardVoting_Note" xml:space="preserve"><value>Note</value></data>
+  <data name="Governance_BoardVoting_Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Governance_BoardVoting_CastVote" xml:space="preserve"><value>Cast Your Vote</value></data>
+  <data name="Governance_BoardVoting_YourVote" xml:space="preserve"><value>Your Vote</value></data>
+  <data name="Governance_BoardVoting_VotesSoFar" xml:space="preserve"><value>Votes So Far</value></data>
+  <data name="Governance_BoardVoting_BoardMember" xml:space="preserve"><value>Board Member</value></data>
+  <data name="Governance_BoardVoting_VoteSaved" xml:space="preserve"><value>Your vote has been recorded.</value></data>
+  <data name="Governance_BoardVoting_FinalizeDecision" xml:space="preserve"><value>Finalize Decision</value></data>
+  <data name="Governance_BoardVoting_MeetingDate" xml:space="preserve"><value>Board Meeting Date</value></data>
+  <data name="Governance_BoardVoting_DecisionNote" xml:space="preserve"><value>Decision Note</value></data>
+  <data name="Governance_BoardVoting_DecisionNotePlaceholder" xml:space="preserve"><value>Summary of the board's decision...</value></data>
+  <data name="Governance_BoardVoting_Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="Governance_BoardVoting_Reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="Governance_BoardVoting_ApproveConfirm" xml:space="preserve"><value>This will approve the application and grant the membership tier. Continue?</value></data>
+  <data name="Governance_BoardVoting_RejectConfirm" xml:space="preserve"><value>This will reject the application. Continue?</value></data>
+  <data name="Governance_BoardVoting_Finalized" xml:space="preserve"><value>Application decision has been finalized.</value></data>
+  <data name="Governance_BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>This application is no longer open for voting.</value></data>
+  <data name="Governance_BoardVoting_ApplicationNotFound" xml:space="preserve"><value>Application not found.</value></data>
+  <data name="Governance_BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
+  <data name="Governance_BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
+  <data name="Governance_BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
+  <data name="Governance_Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
+  <data name="Governance_Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
+  <data name="Governance_Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
+  <data name="Governance_Dashboard_AssemblyVotesCardDescription" xml:space="preserve"><value>See the association’s open votes and cast your ballot.</value></data>
+  <data name="Governance_Votes_Title" xml:space="preserve"><value>Votes</value></data>
+  <data name="Governance_Votes_NoVotes" xml:space="preserve"><value>There are no votes yet.</value></data>
+  <data name="Governance_Votes_Status_Draft" xml:space="preserve"><value>Draft</value></data>
+  <data name="Governance_Votes_Status_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Governance_Votes_Status_Closed" xml:space="preserve"><value>Closed</value></data>
+  <data name="Governance_Votes_Status_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Governance_Votes_Kind_YesNo" xml:space="preserve"><value>Yes/No</value></data>
+  <data name="Governance_Votes_Kind_RankedChoice" xml:space="preserve"><value>Ranked choice</value></data>
+  <data name="Governance_Votes_ClosesAt" xml:space="preserve"><value>Closes {0}</value><comment>{0} = closing date/time</comment></data>
+  <data name="Governance_Votes_ClosedAt" xml:space="preserve"><value>Closed {0}</value><comment>{0} = closing date/time</comment></data>
+  <data name="Governance_Votes_OnRosterOfficial" xml:space="preserve"><value>You are on the official roster.</value></data>
+  <data name="Governance_Votes_OnRosterIndicative" xml:space="preserve"><value>You are on the indicative roster.</value></data>
+  <data name="Governance_Votes_NotOnRosterShort" xml:space="preserve"><value>Not on the roster</value></data>
+  <data name="Governance_Votes_BallotIn" xml:space="preserve"><value>Your ballot is in</value></data>
+  <data name="Governance_Votes_BallotNotIn" xml:space="preserve"><value>You haven't voted yet</value></data>
+  <data name="Governance_Votes_Turnout" xml:space="preserve"><value>{0} of {1} have voted</value><comment>{0} = ballots cast, {1} = roster size</comment></data>
+  <data name="Governance_Votes_ViewVote" xml:space="preserve"><value>View</value></data>
+  <data name="Governance_Votes_ViewResults" xml:space="preserve"><value>View results</value></data>
+  <data name="Governance_Votes_MoreInfo" xml:space="preserve"><value>More information</value></data>
+  <data name="Governance_Votes_OfficialTextHeading" xml:space="preserve"><value>Official text</value></data>
+  <data name="Governance_Votes_TranslationNotice" xml:space="preserve"><value>This is shown as a translation. The text in {0} is the binding version.</value><comment>{0} = culture code of the binding text</comment></data>
+  <data name="Governance_Votes_YourBallotHeading" xml:space="preserve"><value>Cast your ballot</value></data>
+  <data name="Governance_Votes_Choice_Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="Governance_Votes_Choice_No" xml:space="preserve"><value>No</value></data>
+  <data name="Governance_Votes_Choice_Abstain" xml:space="preserve"><value>Abstain</value></data>
+  <data name="Governance_Votes_Choice_Ranked" xml:space="preserve"><value>Ranked</value></data>
+  <data name="Governance_Votes_RankOptions" xml:space="preserve"><value>Rank the options</value></data>
+  <data name="Governance_Votes_AbstainOption" xml:space="preserve"><value>Abstain</value></data>
+  <data name="Governance_Votes_RankedOptionHeader" xml:space="preserve"><value>Option</value></data>
+  <data name="Governance_Votes_RankedRankHeader" xml:space="preserve"><value>Rank</value></data>
+  <data name="Governance_Votes_RankedUnranked" xml:space="preserve"><value>Unranked</value></data>
+  <data name="Governance_Votes_Submit" xml:space="preserve"><value>Submit ballot</value></data>
+  <data name="Governance_Votes_IndicativeBallotNotice" xml:space="preserve"><value>Indicative — not counted in the official result.</value></data>
+  <data name="Governance_Votes_CannotVoteClosed" xml:space="preserve"><value>This vote no longer accepts ballots.</value></data>
+  <data name="Governance_Votes_NotOnRosterNotice" xml:space="preserve"><value>You are not on the roster for this vote.</value></data>
+  <data name="Governance_Votes_YourRecordedBallotHeading" xml:space="preserve"><value>Your recorded ballot</value></data>
+  <data name="Governance_Votes_RevisionLabel" xml:space="preserve"><value>Revision {0}</value><comment>{0} = revision number</comment></data>
+  <data name="Governance_Votes_UpdatedAtLabel" xml:space="preserve"><value>Last changed {0}</value><comment>{0} = date/time</comment></data>
+  <data name="Governance_Votes_NoRanking" xml:space="preserve"><value>No options ranked</value></data>
+  <data name="Governance_Votes_HistoryHeading" xml:space="preserve"><value>Revision history</value></data>
+  <data name="Governance_Votes_HistoryRevisionHeader" xml:space="preserve"><value>Revision</value></data>
+  <data name="Governance_Votes_HistoryChoiceHeader" xml:space="preserve"><value>Choice</value></data>
+  <data name="Governance_Votes_HistoryWhenHeader" xml:space="preserve"><value>Recorded</value></data>
+  <data name="Governance_Votes_ParticipationHeading" xml:space="preserve"><value>Participation</value></data>
+  <data name="Governance_Votes_OfficialRosterLabel" xml:space="preserve"><value>Official roster</value></data>
+  <data name="Governance_Votes_IndicativeRosterLabel" xml:space="preserve"><value>Indicative roster</value></data>
+  <data name="Governance_Votes_ChangedBallotsLabel" xml:space="preserve"><value>Ballots changed at least once</value></data>
+  <data name="Governance_Votes_TotalRevisionsLabel" xml:space="preserve"><value>Total revisions</value></data>
+  <data name="Governance_Votes_LastBallotAtLabel" xml:space="preserve"><value>Last ballot</value></data>
+  <data name="Governance_Votes_NoBallotsYetValue" xml:space="preserve"><value>No ballots yet</value></data>
+  <data name="Governance_Votes_ClosingTimeLabel" xml:space="preserve"><value>Closing time</value></data>
+  <data name="Governance_Votes_CancelledNotice" xml:space="preserve"><value>This vote was cancelled.</value></data>
+  <data name="Governance_Votes_CancelReasonLabel" xml:space="preserve"><value>Reason</value></data>
+  <data name="Governance_Votes_BallotRecorded" xml:space="preserve"><value>Your ballot has been recorded.</value></data>
+  <data name="Governance_Votes_BallotVoteNotOpen" xml:space="preserve"><value>This vote is not open for ballots.</value></data>
+  <data name="Governance_Votes_BallotInvalid" xml:space="preserve"><value>That ballot could not be recorded. Check your rankings and try again.</value></data>
+  <data name="Governance_Votes_ResultsHeading" xml:space="preserve"><value>Results</value></data>
+  <data name="Governance_Votes_OfficialTextAdoptedHeading" xml:space="preserve"><value>Official text as adopted</value></data>
+  <data name="Governance_Votes_OfficialTextVotedHeading" xml:space="preserve"><value>Official text voted on</value></data>
+  <data name="Governance_Votes_OfficialResultHeading" xml:space="preserve"><value>Official result</value></data>
+  <data name="Governance_Votes_IndicativeResultHeading" xml:space="preserve"><value>Indicative result (not counted in the official outcome)</value></data>
+  <data name="Governance_Votes_RequiredMajorityLabel" xml:space="preserve"><value>Required majority</value></data>
+  <data name="Governance_Votes_Majority_Simple" xml:space="preserve"><value>Simple majority</value></data>
+  <data name="Governance_Votes_Majority_TwoThirds" xml:space="preserve"><value>Two-thirds majority</value></data>
+  <data name="Governance_Votes_VerdictLabel" xml:space="preserve"><value>Verdict</value></data>
+  <data name="Governance_Votes_Verdict_Passed" xml:space="preserve"><value>Passed</value></data>
+  <data name="Governance_Votes_Verdict_Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Governance_Votes_Verdict_Tie" xml:space="preserve"><value>Tie</value></data>
+  <data name="Governance_Votes_TieNotice" xml:space="preserve"><value>Under statutes Art. 10.2, the President of the Board casts the deciding vote on a tie, and the Secretary records it in the acta.</value></data>
+  <data name="Governance_Votes_Method_YesNo" xml:space="preserve"><value>Yes/No majority</value></data>
+  <data name="Governance_Votes_Method_InstantRunoff" xml:space="preserve"><value>Instant-runoff</value></data>
+  <data name="Governance_Votes_RoundsHeading" xml:space="preserve"><value>Rounds</value></data>
+  <data name="Governance_Votes_RoundColumnHeader" xml:space="preserve"><value>Round</value></data>
+  <data name="Governance_Votes_ExhaustedLabel" xml:space="preserve"><value>Exhausted ballots</value></data>
+  <data name="Governance_Votes_EliminatedLabel" xml:space="preserve"><value>Eliminated: {0}</value><comment>{0} = option label</comment></data>
+  <data name="Governance_Votes_WinnerLabel" xml:space="preserve"><value>Winner: {0}</value><comment>{0} = option label</comment></data>
+  <data name="Governance_Votes_TieBreakExplanation" xml:space="preserve"><value>Ties for elimination are broken by fewest votes in the previous round, then by the order the options were authored.</value></data>
+  <data name="Governance_Votes_Note_NoMajority" xml:space="preserve"><value>No option held a majority of continuing ballots.</value></data>
+  <data name="Governance_Votes_Note_DecidingRoundLevel" xml:space="preserve"><value>The deciding round was level; under statutes Art. 10.2 the tie is resolved by the President's casting vote, recorded in the acta.</value></data>
+  <data name="Governance_Votes_Note_TieBrokenByPreviousRound" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by fewest votes in the previous round.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
+  <data name="Governance_Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by authored option order.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
+  <data name="Governance_Votes_TieBreakNotesHeading" xml:space="preserve"><value>Tie-break notes</value></data>
+  <data name="Governance_Votes_ActaHeading" xml:space="preserve"><value>Minutes text (acta)</value></data>
+  <data name="Governance_Votes_ActaHint" xml:space="preserve"><value>Select and copy this text for the minutes.</value></data>
+  <data name="Governance_Votes_PeeksHeading" xml:space="preserve"><value>Early views</value></data>
+  <data name="Governance_Votes_PeeksEmpty" xml:space="preserve"><value>Nobody looked at the tally before close.</value></data>
+  <data name="Governance_Votes_PeekedByHeader" xml:space="preserve"><value>Viewed by</value></data>
+  <data name="Governance_Votes_PeekedWhenHeader" xml:space="preserve"><value>When</value></data>
+  <data name="Governance_Votes_YourBallotResultHeading" xml:space="preserve"><value>Your ballot</value></data>
+  <data name="Governance_Votes_DisclosedBallotsHeading" xml:space="preserve"><value>Individual ballots</value></data>
+  <data name="Governance_Votes_DisclosedMemberHeader" xml:space="preserve"><value>Human</value></data>
+  <data name="Governance_Votes_DisclosedAudienceHeader" xml:space="preserve"><value>Audience</value></data>
+  <data name="Governance_Votes_DisclosedChoiceHeader" xml:space="preserve"><value>Choice</value></data>
+  <data name="Governance_Votes_DisclosedRevisionHeader" xml:space="preserve"><value>Revision</value></data>
+  <data name="Governance_Votes_AudienceOfficial" xml:space="preserve"><value>Official</value></data>
+  <data name="Governance_Votes_AudienceIndicative" xml:space="preserve"><value>Indicative</value></data>
+  <data name="Governance_Votes_CsvVoteLabel" xml:space="preserve"><value>Vote</value></data>
+  <data name="Governance_Votes_MethodLabel" xml:space="preserve"><value>Method</value></data>
+  <data name="Governance_Votes_BallotsCastLabel" xml:space="preserve"><value>Ballots cast</value></data>
+  <data name="Governance_Votes_EliminatedHeader" xml:space="preserve"><value>Eliminated</value></data>
+  <data name="Governance_Votes_WinnerHeader" xml:space="preserve"><value>Winner</value></data>
+  <data name="Governance_Votes_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
+  <data name="Governance_Votes_BallotDuplicateRanks" xml:space="preserve"><value>Each option needs a different rank. Two options were given the same one, so the ballot was not recorded.</value></data>
+  <data name="Governance_Create_MotivationLabel" xml:space="preserve"><value>Why do you want to join?</value></data>
+  <data name="Governance_Create_AdditionalInfoLabel" xml:space="preserve"><value>Additional information (optional)</value></data>
   <data name="Governance_Email_ApplicationApproved_Subject" xml:space="preserve"><value>Welcome to the association!</value></data>
   <data name="Governance_Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;

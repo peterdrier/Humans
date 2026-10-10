@@ -38,7 +38,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With<ITeamServiceRead>(teamService)
-            .With(roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

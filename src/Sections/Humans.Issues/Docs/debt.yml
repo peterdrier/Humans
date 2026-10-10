@@ -1,13 +1,9 @@
 # Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 10
+next_id: 11
 inbox:
-  - added: 2026-08-25
-    id: ISSUES-2
-    what: "IssuesService holds four near-identical field-mutation pipelines (status, assignee, section, GitHub issue number) plus their four …WithResultAsync twins — eight method signatures for one operation shape — and is the largest file in the section and still growing. Found by /section-doctor on Issues 2026-08-25, re-measured 2026-09-14. Plan: keep only the result-returning form of each mutation and delete the four throwing twins; IIssuesService is internal and the twins are not on the IIssueTriage contract, so no public surface (D2); throw-to-result is pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-08-25
-    id: ISSUES-3
-    what: "IssuesServiceTests's …WithResultAsync success twins re-assert stored state their direct-call counterparts already own, and four tests assert only which arguments the service handed a substitute repository while the file's own real-repository equivalents cover the same behaviour. Found by /section-doctor on Issues 2026-08-25, narrowed 2026-09-14 — the four unasserted behaviours it also named are now covered. Plan: delete the redundant twins and the four argument-only tests; deleting over-pinning tests is in line with debt-sweep-standing-policy D6."
-    review: panel
+  - added: 2026-10-07
+    id: ISSUES-10
+    what: "UpdateSectionAsync returns IssueMutationResult.Refused with English text (terminal-issue / length) that IssuesController.UpdateSection shows verbatim; return a resource key + args the controller localizes. Tracking moved here from health.md §5 when ISSUES-2 collapsed the result twins (debt-review of PR peterdrier/Humans#1932)."
+    review: light

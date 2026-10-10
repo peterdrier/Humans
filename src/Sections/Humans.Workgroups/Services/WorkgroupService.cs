@@ -31,13 +31,13 @@ namespace Humans.Workgroups.Services;
 /// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
 /// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
 /// </remarks>
-[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService, and stores the root folder id through ISettingsService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
+[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,
     ISurveyAnalysisRead surveys,
     IUserEmailService userEmails,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IHoldedFinanceService finance,
@@ -585,8 +585,11 @@ internal sealed partial class WorkgroupService(
 
     public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
     {
+        var stored = await repository.GetRootDriveFolderIdAsync(ct)
+            // Existing installations keep their configured root until an admin saves it
+            // locally. New state is section-owned; there is no automatic data backfill.
+            ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
         // Values saved before the setter normalized may still hold the pasted URL.
-        var stored = await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
         return stored is null ? null : NormalizeFolderId(stored);
     }
 
@@ -596,7 +599,7 @@ internal sealed partial class WorkgroupService(
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 
         var id = NormalizeFolderId(folderId);
-        await settings.SetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, id, ct);
+        await repository.SetRootDriveFolderIdAsync(id, ct);
         await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
             $"Root Drive folder set to {id}", actorUserId);

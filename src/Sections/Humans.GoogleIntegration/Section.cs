@@ -81,6 +81,7 @@ public sealed class Section : ISection
         });
 
         services.AddScoped<ITeamResourceService, TeamResourceService>();
+        services.AddScoped<ITeamResourceServiceRead>(sp => sp.GetRequiredService<ITeamResourceService>());
 
         // Real Google clients when a service-account key is configured, stubs otherwise.
         // The health check reports the missing configuration as Degraded in every environment.

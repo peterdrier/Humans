@@ -25,7 +25,7 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserServiceRead userService,
-    ITeamResourceService teamResourceService,
+    ITeamResourceServiceRead teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IConfiguration configuration,
@@ -390,7 +390,7 @@ internal sealed class TeamController(
 
         if (team.IsSystemTeam)
         {
-            SetError(localizer["Team_CannotJoinSystem"].Value);
+            SetError(localizer["Teams_Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -403,14 +403,14 @@ internal sealed class TeamController(
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
-            SetError(localizer["Team_AlreadyMember"].Value);
+            SetError(localizer["Teams_Team_AlreadyMember"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
         var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id, ct);
         if (pendingRequest is not null)
         {
-            SetError(localizer["Team_AlreadyPendingRequest"].Value);
+            SetError(localizer["Teams_Team_AlreadyPendingRequest"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -453,7 +453,7 @@ internal sealed class TeamController(
 
         if (team.IsSystemTeam)
         {
-            SetError(localizer["Team_CannotJoinSystem"].Value);
+            SetError(localizer["Teams_Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -469,8 +469,8 @@ internal sealed class TeamController(
         {
             var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
             SetSuccess(outcome == TeamJoinOutcome.RequestSubmitted
-                ? localizer["Team_JoinRequestSubmitted"].Value
-                : localizer["Team_Joined"].Value);
+                ? localizer["Teams_Team_JoinRequestSubmitted"].Value
+                : localizer["Teams_Team_Joined"].Value);
 
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -501,7 +501,7 @@ internal sealed class TeamController(
         try
         {
             await teamService.LeaveTeamAsync(team.Id, user.Id);
-            SetSuccess(localizer["Team_Left"].Value);
+            SetSuccess(localizer["Teams_Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -525,7 +525,7 @@ internal sealed class TeamController(
         try
         {
             await teamService.WithdrawJoinRequestAsync(id, user.Id);
-            SetSuccess(localizer["Team_RequestWithdrawn"].Value);
+            SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -741,11 +741,16 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
+
         try
         {
-            await teamService.DeleteTeamAsync(id);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
+            await teamService.DeleteTeamAsync(id, currentUser!.Id);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
 
             SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
         }

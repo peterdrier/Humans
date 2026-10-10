@@ -7,7 +7,7 @@ internal static class TeamDirectoryBuilder
 {
     public static async Task<TeamDirectoryResult> BuildAsync(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,
-        IRoleAssignmentService roleAssignmentService,
+        IRoleAssignmentServiceRead roleAssignmentService,
         Guid? userId,
         CancellationToken cancellationToken = default)
     {

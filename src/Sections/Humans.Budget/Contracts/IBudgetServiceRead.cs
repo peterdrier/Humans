@@ -4,13 +4,12 @@ using NodaTime;
 namespace Humans.Budget.Contracts;
 
 /// <summary>
-/// Cross-section read surface for the Budget section. External sections and the two
-/// Base consumers inject this interface; it exposes the active year's projection, one
+/// Cross-section read surface for the Budget section. Other sections inject this interface; it exposes the active year's projection, one
 /// category lookup, the coordinator's team set and the summary computation — no EF
 /// entities, no writes. See <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
 /// <remarks>
-/// The section's own controllers take the internal <c>BudgetService</c> directly, so the
+/// The section's own controllers take the internal <c>IBudgetService</c>, so the
 /// other members of the internal <c>IBudgetService</c> — year/group/category/line-item
 /// CRUD, the audit log, the cash-flow and VAT projections, the ticketing projection
 /// parameters — are not public at all (design §15 step 5).

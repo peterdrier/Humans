@@ -202,8 +202,11 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-No section table. `SettingKeys.WorkgroupsRootDriveFolderId` (`Humans.Settings.Contracts`)
-via `ISettingsService`, set at `/Workgroups/Admin/Settings`. Registration is refused with
+`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
+through the Workgroups repository and audits the actor. Until that first save,
+reads fall back to the legacy Settings key; reads never backfill or mutate it.
+New section state is never written to the shared store. Registration is refused with
 a clear error while unset.
 
 ## Routing
@@ -376,7 +379,7 @@ should end is the Board's decision, taken on the register in front of them.
   readers. Withdrawn folders remain claimed with an empty roster so existing direct
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
-- **Settings**: `ISettingsService` — the root Drive folder id.
+- **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
@@ -412,7 +415,7 @@ should end is the Board's decision, taken on the register in front of them.
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
@@ -441,7 +444,7 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
-  `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
+  `IRoleAssignmentServiceRead`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

@@ -42,7 +42,7 @@ Repository: `IApplicationRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `IRoleAssignmentService`,
+Cross-section calls via `IUserService`, `IRoleAssignmentServiceRead`,
 `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 and the section's own `GovernanceEmails` builder. Implements `IApplicationDecisionService` (which
@@ -72,7 +72,7 @@ Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationReposit
 No cache, no caching decorator — one vote at a time and ~120 voters.
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`IRoleAssignmentService`, `ITeamServiceRead`, `IEmailService`,
+`IRoleAssignmentServiceRead`, `ITeamServiceRead`, `IEmailService`,
 the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
 `IClock`. Implements
@@ -127,7 +127,7 @@ No repository. Pure read computation over `IMembershipQuery`,
 ### MembershipQuery (Scoped)
 
 No repository. Read-only fan-out over `ITeamServiceRead`,
-`IRoleAssignmentService`. Exists to break the DI cycle through
+`IRoleAssignmentServiceRead`. Exists to break the DI cycle through
 `ISystemTeamSync`. No DB access, no cache.
 
 ### GovernanceIndexService (Scoped)

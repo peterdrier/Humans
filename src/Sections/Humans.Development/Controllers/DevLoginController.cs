@@ -18,7 +18,7 @@ internal sealed class DevLoginController(
     SignInManager<User> signInManager,
     IUserEmailService userEmailService,
     DevPersonaSeeder personaSeeder,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IWebHostEnvironment env,
     IConfiguration config,
     ConfigurationRegistry configRegistry,
