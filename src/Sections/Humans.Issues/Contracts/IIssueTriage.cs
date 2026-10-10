@@ -147,11 +147,13 @@ public sealed record IssueListSnapshot(
     int? GitHubIssueNumber);
 
 /// <summary>A triage mutation outcome; dependency failures carry a safe message, not diagnostics.</summary>
-public sealed record IssueMutationResult(bool Succeeded, bool NotFound, string? ErrorMessage, bool Rejected = false)
+public sealed record IssueMutationResult(bool Succeeded, bool NotFound, string? ErrorMessage, bool Rejected = false,
+    string? ErrorKey = null, int? ErrorLimit = null)
 {
     public static IssueMutationResult Success() => new(true, false, null);
     public static IssueMutationResult Missing(string message) => new(false, true, message);
-    public static IssueMutationResult Refused(string message) => new(false, false, message, true);
+    public static IssueMutationResult Refused(string message, string? errorKey = null, int? errorLimit = null) =>
+        new(false, false, message, true, errorKey, errorLimit);
     public static IssueMutationResult Failed(string message) => new(false, false, message);
 }
 

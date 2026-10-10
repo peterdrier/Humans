@@ -31,6 +31,61 @@ public sealed class IssuesControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    public async Task SectionRefusals_LocalizeKeysAndLimit_AndGenericFailures(string culture)
+    {
+        using var scope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<IssuesResource>>();
+        var actor = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueDetail(issueId, IssueStatus.Resolved, default, "Camps", "Existing", "Details",
+                null, null, null, null, actor, Guid.NewGuid(), actor, 42, null, default, default, null, 0));
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        foreach (var mutation in new[]
+        {
+            IssueMutationResult.Refused("English API reason", "Issue_Section_TooLong", 64),
+            IssueMutationResult.Refused("English API reason", "Issue_Section_Terminal"),
+            IssueMutationResult.Failed("English API failure")
+        })
+        {
+            issues.UpdateSectionAsync(issueId, Arg.Any<IssueViewer>(), "Teams", actor).Returns(mutation);
+
+            (await controller.UpdateSection(issueId, new UpdateIssueSectionModel { Section = "Teams" }))
+                .Should().BeOfType<RedirectToActionResult>();
+
+            var expected = mutation.ErrorKey is { } key
+                ? mutation.ErrorLimit is { } limit ? localizer[key, limit].Value : localizer[key].Value
+                : localizer["Issue_Error"].Value;
+            controller.TempData["ErrorMessage"].Should().Be(expected);
+            expected.Should().NotContain("English API");
+            if (mutation.ErrorLimit is not null) expected.Should().Contain("64");
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public void SubmissionForm_LocalizesRequiredAndLengthErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);
