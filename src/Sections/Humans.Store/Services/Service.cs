@@ -525,27 +525,26 @@ internal sealed class Service(
     public async Task<MutationResult> AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new StoreValidationException("Qty must be positive", nameof(qty));
+            return RefuseMutation("Store_QuantityPositive", orderId, actorUserId);
 
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
         if (order.State != OrderState.Open)
-            throw new StoreRuleException("Cannot add lines to an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId);
 
         await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
         if (order.Year == 0)
-            return new MutationResult(false, null, "Store_OrderYearUnresolved");
+            return RefuseMutation("Store_OrderYearUnresolved", orderId, actorUserId);
 
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new StoreRuleException($"Product {productId} not found");
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null) return RefuseMutation("Store_ProductMissing", orderId, actorUserId);
 
         if (!product.IsActive)
-            throw new StoreRuleException(
-                $"Product '{product.Name}' has been deactivated and is no longer orderable");
+            return RefuseMutation("Store_ProductInactive", orderId, actorUserId);
 
         if (product.Year != order.Year)
-            return new MutationResult(false, null, "Store_ProductYearMismatch");
+            return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -575,47 +574,16 @@ internal sealed class Service(
         return MutationResult.Success;
     }
 
-    public async Task<MutationResult> AddLineWithResultAsync(
-        Guid orderId,
-        Guid productId,
-        int qty,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            var result = await AddLineAsync(orderId, productId, qty, actorUserId, ct);
-            if (!result.Succeeded)
-                logger.LogWarning("AddLine rejected for order {OrderId}: {ErrorKey}", orderId, result.ErrorKey);
-            return result;
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to add line to Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
-    }
-
-    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new StoreRuleException($"Line {lineId} not found");
+        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct);
+        if (ctx is null) return RefuseMutation("Store_LineMissing", orderId, actorUserId, lineId);
 
         if (ctx.OrderId != orderId)
-            throw new StoreRuleException($"Line {lineId} does not belong to order {orderId}");
+            return RefuseMutation("Store_LineWrongOrder", orderId, actorUserId, lineId);
 
         if (ctx.OrderState != OrderState.Open)
-            throw new StoreRuleException("Cannot remove lines from an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -628,37 +596,16 @@ internal sealed class Service(
             $"Removed line {lineId} from order {ctx.OrderId}"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> RemoveLineWithResultAsync(
-        Guid orderId,
-        Guid lineId,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            await RemoveLineAsync(orderId, lineId, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to remove Store line {LineId}", lineId);
-            return new MutationResult(false, null);
-        }
-    }
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
-    public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
-
-        EnsureBillable(order);
+        if (order.TeamId is not null)
+            return RefuseMutation("Store_NonBillableText", orderId, actorUserId);
 
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
@@ -672,29 +619,14 @@ internal sealed class Service(
             AuditAction.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
             $"Updated counterparty on order {orderId}",
             actorUserId);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> UpdateCounterpartyWithResultAsync(
-        Guid orderId,
-        OrderCounterpartyInput input,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    private MutationResult RefuseMutation(string errorKey, Guid orderId, Guid actorUserId, Guid? lineId = null)
     {
-        try
-        {
-            await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to update counterparty on Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
+        logger.LogWarning("Store mutation rejected for order {OrderId}, line {LineId}, actor {ActorUserId}: {ErrorKey}",
+            orderId, lineId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
     }
 
     private async Task<LocalDate> TodayInEventZoneAsync()

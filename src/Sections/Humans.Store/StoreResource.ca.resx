@@ -102,4 +102,11 @@
   <data name="Store_ColAction" xml:space="preserve"><value>Acció</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No s’ha pogut determinar l’any de la comanda. Contacta amb l’equip de la botiga abans d’afegir productes.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Aquest producte pertany a un any diferent del de la comanda.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>La quantitat ha de ser superior a zero.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>Aquesta comanda ja no existeix.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>No es poden modificar les línies d’una comanda facturada.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>Aquest producte ja no existeix.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>Aquest producte ja no està disponible per demanar.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>Aquesta línia ja no existeix.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>Aquesta línia no pertany a aquesta comanda.</value></data>
 </root>

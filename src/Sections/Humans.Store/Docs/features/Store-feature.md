@@ -188,3 +188,5 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
 - [`Camps.md`](../../../Humans.Camps/Docs/Camps.md) — `CampSeason` is the order's owning aggregate
 - [`ticket-vendor-integration.md`](../../../Humans.Tickets/Docs/features/ticket-vendor-integration.md) — sibling Stripe integration; same RAK + dashboard-only-refunds discipline
+
+- Line and billing-details refusals are returned as resource keys and localized by the member controller. Dependency failures are not interpreted as refusals or exposed as exception-message feedback.

@@ -147,4 +147,11 @@
   <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>The order year could not be resolved. Contact the store team before adding products.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>This product belongs to a different year from the order.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>Quantity must be greater than zero.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>This order no longer exists.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>Lines cannot be changed on an invoiced order.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>This product no longer exists.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>This product is no longer available to order.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>This line no longer exists.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>This line does not belong to this order.</value></data>
 </root>

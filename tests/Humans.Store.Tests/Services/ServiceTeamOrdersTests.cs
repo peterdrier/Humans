@@ -117,18 +117,19 @@ public class ServiceTeamOrdersTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_throws_on_team_order()
+    public async Task UpdateCounterpartyAsync_refuses_team_order()
     {
         var orderId = Guid.NewGuid();
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(teamOrder);
 
-        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(() =>
-            _service.UpdateCounterpartyAsync(
+        var rejection = await _service.UpdateCounterpartyAsync(
                 orderId,
                 new OrderCounterpartyInput("N", null, null, null, null),
-                Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.Message.Should().Be("Team orders are non-billable.");
+                Guid.NewGuid(), TestContext.Current.CancellationToken);
+        rejection.Succeeded.Should().BeFalse();
+        rejection.ErrorKey.Should().Be("Store_NonBillableText");
+        await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

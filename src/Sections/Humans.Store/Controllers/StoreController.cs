@@ -352,11 +352,11 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
+        var result = await storeService.AddLineAsync(id, productId, qty, user.Id, ct);
         if (!result.Succeeded)
             SetError(result.ErrorKey is { } key
                 ? localizer[key].Value
-                : result.ErrorMessage ?? localizer["Store_AddLineFailed"].Value);
+                : localizer["Store_AddLineFailed"].Value);
         else
             SetSuccess(localizer["Store_LineAdded"].Value);
 
@@ -381,9 +381,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);
+        var result = await storeService.RemoveLineAsync(id, lineId, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_RemoveLineFailed"].Value);
+            SetError(localizer[result.ErrorKey ?? "Store_RemoveLineFailed"].Value);
         else
             SetSuccess(localizer["Store_LineRemoved"].Value);
 
@@ -406,9 +406,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.EditCounterparty);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.UpdateCounterpartyWithResultAsync(id, input, user.Id, ct);
+        var result = await storeService.UpdateCounterpartyAsync(id, input, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_UpdateCounterpartyFailed"].Value);
+            SetError(localizer[result.ErrorKey ?? "Store_UpdateCounterpartyFailed"].Value);
         else
             SetSuccess(localizer["Store_CounterpartyUpdated"].Value);
 

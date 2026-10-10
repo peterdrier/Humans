@@ -513,14 +513,14 @@ public class ServiceTests
     [HumansFact]
     public async Task AddLineAsync_rejects_non_positive_qty()
     {
-        var rejection0 = await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection0.ParamName.Should().Be("qty");
-        rejection0.Message.Should().Match("Qty must be positive*");
-        var rejection1 = await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), -3, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection1.ParamName.Should().Be("qty");
-        rejection1.Message.Should().Match("Qty must be positive*");
+        foreach (var qty in new[] { 0, -3 })
+        {
+            var result = await _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), qty,
+                Guid.NewGuid(), TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeFalse();
+            result.ErrorKey.Should().Be("Store_QuantityPositive");
+        }
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -531,9 +531,35 @@ public class ServiceTests
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, State = OrderState.InvoiceIssued });
 
-        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => _service.AddLineAsync(orderId, productId, 1, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.Message.Should().Match("Cannot add lines to an issued order*");
+        var rejection = await _service.AddLineAsync(orderId, productId, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        rejection.Succeeded.Should().BeFalse();
+        rejection.ErrorKey.Should().Be("Store_OrderLinesFrozen");
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("order", "Store_OrderMissing")]
+    [InlineData("product", "Store_ProductMissing")]
+    [InlineData("inactive", "Store_ProductInactive")]
+    public async Task AddLine_refusals_log_without_exception_and_do_not_write(string missing, string expectedKey)
+    {
+        var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open };
+        var product = MakeProduct();
+        product.IsActive = !string.Equals(missing, "inactive", StringComparison.Ordinal);
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "order", StringComparison.Ordinal) ? null : order);
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "product", StringComparison.Ordinal) ? null : product);
+        var logger = Substitute.For<ILogger<Service>>();
+        var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
+            _holded, Options.Create(_storeOptions), logger);
+
+        var result = await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be(expectedKey);
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == "Log"
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning && call.GetArguments()[3] == null);
     }
 
     [HumansFact]
@@ -644,15 +670,20 @@ public class ServiceTests
         }
         else
         {
-            var result = operation switch
+            Func<Task> action = async () =>
             {
-                "AddLine" => await service.AddLineWithResultAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct),
-                "RemoveLine" => await service.RemoveLineWithResultAsync(order.Id, lineId, Guid.NewGuid(), ct),
-                _ => await service.UpdateCounterpartyWithResultAsync(order.Id,
-                    new OrderCounterpartyInput("Acme", null, null, null, null), Guid.NewGuid(), ct)
+                _ = operation switch
+                {
+                    "AddLine" => await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct),
+                    "RemoveLine" => await service.RemoveLineAsync(order.Id, lineId, Guid.NewGuid(), ct),
+                    _ => await service.UpdateCounterpartyAsync(order.Id,
+                        new OrderCounterpartyInput("Acme", null, null, null, null), Guid.NewGuid(), ct)
+                };
             };
-            succeeded = result.Succeeded;
-            error = result.ErrorMessage;
+            (await Assert.ThrowsAsync(failure.GetType(), action)).Should().BeSameAs(failure);
+            logger.ReceivedCalls().Should().NotContain(call => call.GetMethodInfo().Name == "Log"
+                && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning);
+            return;
         }
 
         succeeded.Should().BeFalse();
@@ -671,11 +702,10 @@ public class ServiceTests
         _repo.GetOrderByIdAsync(order.Id, ct).Returns(order);
         _repo.GetProductByIdAsync(product.Id, ct).Returns(product);
 
-        var result = await _service.AddLineWithResultAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct);
+        var result = await _service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be("Store_ProductYearMismatch");
-        result.ErrorMessage.Should().BeNull();
         await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
@@ -695,7 +725,7 @@ public class ServiceTests
         };
         _repo.GetOrderByIdAsync(order.Id, ct).Returns(order);
 
-        var result = await _service.AddLineWithResultAsync(order.Id, Guid.NewGuid(), 1, Guid.NewGuid(), ct);
+        var result = await _service.AddLineAsync(order.Id, Guid.NewGuid(), 1, Guid.NewGuid(), ct);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be("Store_OrderYearUnresolved");
@@ -704,17 +734,17 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
+    public async Task AddLineAsync_returns_failure_for_expected_validation()
     {
-        var result = await _service.AddLineWithResultAsync(
+        var result = await _service.AddLineAsync(
             Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Qty must be positive");
+        result.ErrorKey.Should().Be("Store_QuantityPositive");
     }
 
     [HumansFact]
-    public async Task AddLineWithResultAsync_returns_success_when_line_is_added()
+    public async Task AddLineAsync_returns_success_when_line_is_added()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -723,10 +753,10 @@ public class ServiceTests
             .Returns(new Order { Id = orderId, Year = 2026, State = OrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
 
-        var result = await _service.AddLineWithResultAsync(orderId, product.Id, 2, actor, TestContext.Current.CancellationToken);
+        var result = await _service.AddLineAsync(orderId, product.Id, 2, actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
+        result.ErrorKey.Should().BeNull();
         await _repo.Received(1).AddLineAsync(
             Arg.Is<OrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id && l.Qty == 2),
             Arg.Any<CancellationToken>());
@@ -743,9 +773,9 @@ public class ServiceTests
                 lineId, actualOrderId, Guid.NewGuid(),
                 OrderState.Open, new LocalDate(2026, 12, 31)));
 
-        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.Message.Should().Match("Line * does not belong to order **");
+        var rejection = await _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        rejection.Succeeded.Should().BeFalse();
+        rejection.ErrorKey.Should().Be("Store_LineWrongOrder");
         await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -759,9 +789,10 @@ public class ServiceTests
                 lineId, orderId, Guid.NewGuid(),
                 OrderState.InvoiceIssued, new LocalDate(2026, 12, 31)));
 
-        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.Message.Should().Match("Cannot remove lines from an issued order*");
+        var rejection = await _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        rejection.Succeeded.Should().BeFalse();
+        rejection.ErrorKey.Should().Be("Store_OrderLinesFrozen");
+        await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -807,21 +838,21 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineWithResultAsync_returns_failure_for_expected_rejection()
+    public async Task RemoveLineAsync_returns_failure_for_expected_rejection()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns((LineContext?)null);
 
-        var result = await _service.RemoveLineWithResultAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not found");
+        result.ErrorKey.Should().Be("Store_LineMissing");
     }
 
     [HumansFact]
-    public async Task RemoveLineWithResultAsync_returns_success_when_line_is_removed()
+    public async Task RemoveLineAsync_returns_success_when_line_is_removed()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -831,10 +862,10 @@ public class ServiceTests
                 lineId, orderId, Guid.NewGuid(),
                 OrderState.Open, new LocalDate(2026, 12, 31)));
 
-        var result = await _service.RemoveLineWithResultAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
+        var result = await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
+        result.ErrorKey.Should().BeNull();
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
     }
 
@@ -886,36 +917,36 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyWithResultAsync_returns_failure_for_expected_rejection()
+    public async Task UpdateCounterpartyAsync_returns_failure_for_expected_rejection()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
             .Returns((Order?)null);
 
-        var result = await _service.UpdateCounterpartyWithResultAsync(
+        var result = await _service.UpdateCounterpartyAsync(
             orderId,
             new OrderCounterpartyInput("Acme", null, null, null, null),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not found");
+        result.ErrorKey.Should().Be("Store_OrderMissing");
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyWithResultAsync_returns_success_when_updated()
+    public async Task UpdateCounterpartyAsync_returns_success_when_updated()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var order = new Order { Id = orderId, State = OrderState.Open };
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        var result = await _service.UpdateCounterpartyWithResultAsync(
+        var result = await _service.UpdateCounterpartyAsync(
             orderId,
             new OrderCounterpartyInput("Acme", null, null, null, null),
             actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
+        result.ErrorKey.Should().BeNull();
         order.CounterpartyName.Should().Be("Acme");
         await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
     }

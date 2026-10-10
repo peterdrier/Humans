@@ -110,4 +110,11 @@
   <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No se ha podido determinar el año del pedido. Contacta con el equipo de la tienda antes de añadir productos.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Este producto pertenece a un año distinto al del pedido.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>La cantidad debe ser mayor que cero.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>Este pedido ya no existe.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>No se pueden modificar las líneas de un pedido facturado.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>Este producto ya no existe.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>Este producto ya no está disponible para pedir.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>Esta línea ya no existe.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>Esta línea no pertenece a este pedido.</value></data>
 </root>
