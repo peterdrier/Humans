@@ -1,3 +1,4 @@
+using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
@@ -169,6 +170,34 @@ public class MailerLiteImportServiceClassifierTests
         var d = plan.Decisions.Single();
         d.Outcome.Should().Be(SubscriberOutcome.ReplaceUnverifiedEmail);
         d.UnverifiedEmailIdToDelete.Should().Be(unverifiedEmailId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ApplyReplacement_UsesOwnerOperationAndCountsOnlySuccessfulProvisioning(bool fails)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var harness = new ClassifierHarness();
+        var oldUserId = Guid.NewGuid();
+        var oldEmailId = Guid.NewGuid();
+        harness.MlReturns(Active("pending@x.com"));
+        harness.AnyEmailRows["pending@x.com"] =
+            [UserEmailFixtures.Row(oldUserId, "pending@x.com", verified: false, id: oldEmailId)];
+        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+            oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
+        if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
+        else replacement.Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, Created: true));
+        var plan = await harness.Service.BuildPlanAsync(ct);
+
+        var result = await harness.Service.ApplyAsync(plan, ct: ct);
+
+        result.HumansCreated.Should().Be(fails ? 0 : 1);
+        result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
+        result.Errors.Should().Be(fails ? 1 : 0);
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+            oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
     }
 
     [HumansTheory]

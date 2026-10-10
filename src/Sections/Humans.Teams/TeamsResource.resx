@@ -243,4 +243,8 @@
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Your request to join {0} was not approved</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>You were removed from {0}</value></data>
   <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Team calendar</value></data>
+  <data name="Teams_RemoveMember_TeamMissing" xml:space="preserve"><value>Team not found.</value></data>
+  <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Members of a system-managed team cannot be removed manually.</value></data>
+  <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>You do not have permission to remove members from this team.</value></data>
+  <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>This person is not a member of this team.</value></data>
 </root>

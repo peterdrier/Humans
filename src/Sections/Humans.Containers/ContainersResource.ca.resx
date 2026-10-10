@@ -149,4 +149,5 @@
   <data name="Containers_Error_ImageExtension" xml:space="preserve">
     <value>El nom del fitxer d'imatge ha d'acabar en .jpg, .jpeg, .png o .webp.</value>
   </data>
+  <data name="Containers_Error_PlacementNotFound" xml:space="preserve"><value>No s’ha trobat la ubicació. Col·loca primer el contenidor al mapa.</value></data>
 </root>

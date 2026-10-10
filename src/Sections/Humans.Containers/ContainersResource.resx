@@ -75,4 +75,5 @@
   <data name="Containers_Error_ImageTooLarge" xml:space="preserve"><value>Image must be under 10 MB.</value></data>
   <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>Image filename must be {0} characters or fewer.</value></data>
   <data name="Containers_Error_ImageExtension" xml:space="preserve"><value>Image filename must end in .jpg, .jpeg, .png, or .webp.</value></data>
+  <data name="Containers_Error_PlacementNotFound" xml:space="preserve"><value>Placement not found. Place the container on the map first.</value></data>
 </root>

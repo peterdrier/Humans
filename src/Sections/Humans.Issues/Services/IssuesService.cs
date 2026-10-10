@@ -625,7 +625,8 @@ internal sealed class IssuesService(
             if (newSection?.Trim().Length > MaxSectionLength)
             {
                 logger.LogWarning("Issue {IssueId} section update rejected: section exceeds {MaxLength} characters", issueId, MaxSectionLength);
-                return IssueMutationResult.Refused($"Section must be {MaxSectionLength} characters or fewer.");
+                return IssueMutationResult.Refused($"Section must be {MaxSectionLength} characters or fewer.",
+                    "Issue_Section_TooLong", MaxSectionLength);
             }
             newSection = NormalizeSection(newSection);
 
@@ -635,7 +636,7 @@ internal sealed class IssuesService(
             {
                 var reason = $"Cannot change section on a terminal issue (status: {issue.Status}).";
                 logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", issueId, reason);
-                return IssueMutationResult.Refused(reason);
+                return IssueMutationResult.Refused(reason, "Issue_Section_Terminal");
             }
 
             var previousSection = issue.Section;

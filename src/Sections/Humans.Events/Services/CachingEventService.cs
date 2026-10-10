@@ -87,16 +87,17 @@ internal sealed class CachingEventService(
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsByIdAsync(id, ct));
 
-    public Task SaveGuideSettingsAsync(
+    public Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.SaveGuideSettingsAsync(
+            var saved = await WithInner(inner => inner.SaveGuideSettingsAsync(
                 existingId, eventSettingsId, submissionOpenAt, submissionCloseAt, guidePublishAt,
                 maxPrintSlots, ct));
-            await RefreshSettingsAsync(ct);
+            if (saved) await RefreshSettingsAsync(ct);
+            return saved;
         });
 
     // ── Categories — flat list projection ──

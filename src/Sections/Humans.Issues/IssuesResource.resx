@@ -148,4 +148,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>New issue filed: {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>You were assigned an issue: {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>View issue</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>Section must be {0} characters or fewer.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>Cannot change the section of a closed issue.</value>
+  </data>
 </root>

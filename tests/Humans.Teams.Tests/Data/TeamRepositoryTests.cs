@@ -76,6 +76,32 @@ public sealed class TeamRepositoryTests : IDisposable
             (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
     }
 
+    [HumansTheory]
+    [InlineData("23505", "IX_teams_Slug", (int)TeamUpdateConflict.SlugTaken)]
+    [InlineData("23505", "IX_teams_CustomSlug", (int)TeamUpdateConflict.CustomSlugTaken)]
+    [InlineData("23505", "IX_teams_GoogleGroupPrefix", (int)TeamUpdateConflict.GroupPrefixTaken)]
+    [InlineData("23505", "PK_teams", (int)TeamUpdateConflict.None)]
+    [InlineData("23503", "IX_teams_CustomSlug", (int)TeamUpdateConflict.None)]
+    [InlineData("08006", "IX_teams_GoogleGroupPrefix", (int)TeamUpdateConflict.None)]
+    public async Task UpdateTeam_OnlyTranslatesKnownUniqueConstraints(
+        string sqlState, string constraint, int expectedValue)
+    {
+        var expected = (TeamUpdateConflict)expectedValue;
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team { Id = Guid.NewGuid(), Name = "Design", Slug = "design" };
+        Func<Task<TeamUpdateConflict>> update = () => repo.UpdateTeamAsync(team, Xunit.TestContext.Current.CancellationToken);
+
+        if (expected != TeamUpdateConflict.None)
+            (await update()).Should().Be(expected);
+        else
+            (await update.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
     private sealed class FailedInsert(DbUpdateException failure) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(

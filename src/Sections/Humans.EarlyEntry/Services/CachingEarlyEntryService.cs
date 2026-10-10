@@ -13,7 +13,7 @@ namespace Humans.EarlyEntry.Services;
 internal sealed class CachingEarlyEntryService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEarlyEntryService> logger)
-    : TrackedCache<Guid, UserEarlyEntry?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
+    : TrackedCache<Guid, EarlyEntryRosterRow?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
         IEarlyEntryService, IEarlyEntryInvalidator, IEventSettingsChangeListener
 {
     private readonly Lock _cacheGate = new();
@@ -22,7 +22,7 @@ internal sealed class CachingEarlyEntryService(
     /// <summary>Key for the undecorated inner service. Unkeyed, this Singleton would resolve itself.</summary>
     public const string InnerServiceKey = "early-entry-inner";
 
-    public async Task<UserEarlyEntry?> GetForUserAsync(Guid userId, CancellationToken ct)
+    public async Task<EarlyEntryRosterRow?> GetForUserAsync(Guid userId, CancellationToken ct)
     {
         long generation;
         lock (_cacheGate)

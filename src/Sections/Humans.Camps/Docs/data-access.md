@@ -15,9 +15,9 @@ seeds role definitions for fresh environments.
 `ICampRoleRepository` is consolidated into `ICampRepository` via a
 `.Roles.cs` partial; `CampRoleService` injects `ICampRepository` directly.
 The Camps section is a single repository owning all of its tables.
-`IEarlyEntryProvider` is implemented by the `CachingCampService` decorator
-(no standalone early-entry projection helper); grants are projected from
-the cached snapshot. `CampRoleService` does not inject the full
+`IEarlyEntryProvider` is implemented by `CampService`; the registered
+`CachingCampService` delegates to that inner projection. Active-event settings
+and grant assembly belong to the inner service, not the cache shell. `CampRoleService` does not inject the full
 `ICampService`; it takes the narrow intra-section `ICampRoleCampAccess`
 (implemented by `CampService`) for camp-member status lookups, plus
 `ICampInfoInvalidator` to evict the cached `CampInfo` on role-assignment

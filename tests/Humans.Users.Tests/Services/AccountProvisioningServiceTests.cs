@@ -1,3 +1,5 @@
+using System.Transactions;
+using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -61,7 +63,11 @@ public class AccountProvisioningServiceTests
     {
         private readonly Dictionary<Guid, User> _users = new();
 
-        public void Seed(User user) => _users[user.Id] = user;
+        public void Seed(User user)
+        {
+            _users[user.Id] = user;
+            EnlistRollback(() => _users.Remove(user.Id));
+        }
         public void Remove(Guid userId) => _users.Remove(userId);
         public int Count => _users.Count;
         public IReadOnlyCollection<User> All => _users.Values;
@@ -279,6 +285,7 @@ public class AccountProvisioningServiceTests
         private readonly Dictionary<Guid, UserEmail> _emails = new();
 
         public bool ThrowOnAddVerified { get; set; }
+        public bool ThrowOnAddProvisioned { get; set; }
 
         public void Seed(UserEmail email) => _emails[email.Id] = email;
         public IReadOnlyCollection<UserEmail> All => _emails.Values;
@@ -295,13 +302,21 @@ public class AccountProvisioningServiceTests
                     return string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)
                         || (alternateEmail is not null && string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase));
                 })
-                .Select(ue => UserEmailFixtures.Row(ue.UserId, ue.Email, ue.IsVerified, ue.Id))
+                .Select(ue => UserEmailFixtures.Row(ue.UserId, ue.Email, ue.IsVerified, ue.Id) with { Provider = ue.Provider, ProviderKey = ue.ProviderKey })
                 .ToList();
             return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>(rows);
         }
 
+        public Task<bool> Delete(Guid userId, Guid emailId)
+        {
+            if (!_emails.TryGetValue(emailId, out var row) || row.UserId != userId) return Task.FromResult(false);
+            EnlistRollback(() => _emails[row.Id] = row);
+            return Task.FromResult(_emails.Remove(emailId));
+        }
+
         public Task AddProvisioned(Guid userId, string email, Instant now)
         {
+            if (ThrowOnAddProvisioned) throw new InvalidOperationException("Email creation failed");
             var normalized = EmailNormalization.NormalizeForComparison(email);
             // Idempotent — duplicate provisioning attempts must not re-add the row.
             foreach (var ue in _emails.Values)
@@ -328,6 +343,7 @@ public class AccountProvisioningServiceTests
                 UpdatedAt = now,
             };
             _emails[row.Id] = row;
+            EnlistRollback(() => _emails.Remove(row.Id));
             return Task.CompletedTask;
         }
 
@@ -377,6 +393,8 @@ public class AccountProvisioningServiceTests
     private readonly IUserEmailService _userEmailService;
     private readonly IUserServiceInternal _userService;
     private readonly AccountProvisioningService _service;
+    private readonly IUserInfoInvalidator _invalidator = Substitute.For<IUserInfoInvalidator>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     public AccountProvisioningServiceTests()
     {
@@ -396,6 +414,8 @@ public class AccountProvisioningServiceTests
         _userEmailService.FindByAddressAsync(
                 Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.FindByAddress(call.ArgAt<string>(0), call.ArgAt<bool>(2)));
+        _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => _userEmailFake.Delete(call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
         _userEmailService.AddProvisionedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.AddProvisioned(
@@ -430,10 +450,118 @@ public class AccountProvisioningServiceTests
             _userRepo,
             _userEmailService,
             _userService,
+            _invalidator,
             _userManager,
-            new StubAuditLog(),
+            _audit,
             _clock,
             NullLogger<AccountProvisioningService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Identity")]
+    [Xunit.InlineData("Email")]
+    [Xunit.InlineData("Profile")]
+    [Xunit.InlineData("Audit")]
+    [Xunit.InlineData("DeletionAudit")]
+    public async Task ReplaceUnverified_ProvisioningFailureRollsBackEmailAndAccount(string stage)
+    {
+        var row = SeedPendingReplacement();
+        switch (stage)
+        {
+            case "Identity":
+                _userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Failed(new IdentityError { Description = "Rejected" }));
+                break;
+            case "Email": _userEmailFake.ThrowOnAddProvisioned = true; break;
+            case "Profile":
+                _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                    .ThrowsAsync(new InvalidOperationException("Profile creation failed"));
+                break;
+            case "Audit":
+                _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(), nameof(AccountProvisioningService),
+                    Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(new InvalidOperationException("Audit failed"));
+                break;
+            case "DeletionAudit":
+                _audit.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), row.Id, Arg.Any<string>(), nameof(AccountProvisioningService),
+                    row.UserId, nameof(User)).ThrowsAsync(new InvalidOperationException("Deletion audit failed"));
+                break;
+        }
+        _invalidator.InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+            row.UserId, row.Id, row.Email, "Victim", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        _userEmailFake.All.Should().ContainSingle().Which.Should().BeSameAs(row);
+        _userRepo.All.Should().ContainSingle().Which.Id.Should().Be(row.UserId);
+        await _invalidator.Received(1).InvalidateAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ReplaceUnverified_SuccessCommitsFreshVerifiedOwnerAndRefreshesBothUsers()
+    {
+        var row = SeedPendingReplacement();
+        var result = await _service.ReplaceUnverifiedEmailAndProvisionAsync(
+            row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
+
+        result.Created.Should().BeTrue();
+        result.User.Id.Should().NotBe(row.UserId);
+        await _audit.Received(1).LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), row.Id,
+            Arg.Is<string>(description => description.Contains(result.User.Id.ToString(), StringComparison.Ordinal)),
+            nameof(AccountProvisioningService), row.UserId, nameof(User));
+        _userEmailFake.All.Should().ContainSingle().Which.UserId.Should().Be(result.User.Id);
+        _userEmailFake.All.Single().IsVerified.Should().BeTrue();
+        await _invalidator.Received(1).InvalidateAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _invalidator.Received(1).InvalidateAsync(result.User.Id, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Verified")]
+    [Xunit.InlineData("Provider")]
+    [Xunit.InlineData("Missing")]
+    [Xunit.InlineData("Ambiguous")]
+    public async Task ReplaceUnverified_StalePlanCannotDeleteOrProvision(string change)
+    {
+        var row = SeedPendingReplacement();
+        if (string.Equals(change, "Verified", StringComparison.Ordinal)) row.IsVerified = true;
+        if (string.Equals(change, "Provider", StringComparison.Ordinal)) row.Provider = "Google";
+        if (string.Equals(change, "Ambiguous", StringComparison.Ordinal)) _userEmailFake.Seed(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            Email = row.Email,
+            IsVerified = false
+        });
+        var plannedEmailId = string.Equals(change, "Missing", StringComparison.Ordinal) ? Guid.NewGuid() : row.Id;
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+            row.UserId, plannedEmailId, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _userEmailFake.All.Should().Contain(row);
+        _userEmailFake.All.Should().HaveCount(string.Equals(change, "Ambiguous", StringComparison.Ordinal) ? 2 : 1);
+        await _userEmailService.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
+    }
+
+    private UserEmail SeedPendingReplacement()
+    {
+        var userId = Guid.NewGuid();
+        _userRepo.Seed(new User { Id = userId, DisplayName = "Existing owner" });
+        var row = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "victim@example.com", IsVerified = false };
+        _userEmailFake.Seed(row);
+        return row;
+    }
+
+    // Transaction-aware test stores participate in the real ambient transaction,
+    // so failures at later provisioning stages exercise rollback rather than call ordering.
+    private static void EnlistRollback(Action rollback)
+        => Transaction.Current?.EnlistVolatile(new RollbackWork(rollback), EnlistmentOptions.None);
+
+    private sealed class RollbackWork(Action rollback) : IEnlistmentNotification
+    {
+        public void Prepare(PreparingEnlistment enlistment) => enlistment.Prepared();
+        public void Commit(Enlistment enlistment) => enlistment.Done();
+        public void Rollback(Enlistment enlistment) { rollback(); enlistment.Done(); }
+        public void InDoubt(Enlistment enlistment) { rollback(); enlistment.Done(); }
     }
 
     [HumansFact]

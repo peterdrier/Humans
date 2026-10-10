@@ -82,7 +82,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         _logger = logger;
     }
 
-    public async Task<Camp> CreateCampAsync(
+    public async Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CampSeasonData seasonData, List<string>? historicalNames, int year,
@@ -93,7 +93,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             slug = "camp";
         if (SlugHelper.IsReservedCampSlug(slug))
         {
-            throw new InvalidOperationException("Camps_Flash_ReservedName");
+            return new(null, "Camps_Flash_ReservedName");
         }
 
         var baseSlug = slug;
@@ -179,7 +179,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         await _systemTeamSync.SyncMembershipForUserAsync(
             createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
 
-        return camp;
+        return new(camp);
     }
 
     public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
@@ -288,8 +288,30 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
     }
 
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(ct);
+        if (activeEvent?.EarlyEntryStartOffset is not { } offset)
+        {
+            return [];
+        }
+
+        var eeStartDate = activeEvent.GateOpeningDate.PlusDays(offset);
+        var year = activeEvent.Year;
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .SelectMany(season => season.ActiveMembers
+                .Where(member => member.HasEarlyEntry)
+                .Select(member => new EarlyEntryGrant(
+                    member.UserId,
+                    eeStartDate,
+                    $"Camp: {season.Name}")))
+            .ToList();
+    }
+
     /// <summary>The active event's year, falling back to the clock's current year before an event exists.</summary>
-    private async Task<int> GetActiveYearAsync(CancellationToken cancellationToken)
+    public async Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default)
     {
         var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
         return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
@@ -491,22 +513,22 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 .ToList());
     }
 
-    public async Task<CampSeason> OptInToSeasonAsync(
+    public async Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(
         Guid campId, int year, CancellationToken cancellationToken = default)
     {
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.OpenSeasons.Contains(year))
         {
-            throw new InvalidOperationException("Camps_Flash_SeasonNotOpen");
+            return new(null, "Camps_Flash_SeasonNotOpen");
         }
 
         if (await _repo.SeasonExistsAsync(campId, year, cancellationToken))
         {
-            throw new InvalidOperationException("Camps_Flash_SeasonAlreadyExists");
+            return new(null, "Camps_Flash_SeasonAlreadyExists");
         }
 
-        var previousSeason = await _repo.GetLatestSeasonAsync(campId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_NoPreviousSeason");
+        var previousSeason = await _repo.GetLatestSeasonAsync(campId, cancellationToken);
+        if (previousSeason is null) return new(null, "Camps_Flash_NoPreviousSeason");
 
         var hasApprovedSeason = await _repo.HasApprovedSeasonAsync(campId, cancellationToken);
 
@@ -523,12 +545,13 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        return newSeason;
+        return new(newSeason);
     }
 
-    public async Task UpdateSeasonAsync(
+    public async Task<CampUpdateResult> UpdateSeasonAsync(
         Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
     {
+        string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
@@ -537,7 +560,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                refusalKey = "Camps_Flash_SeasonWrongCamp";
+                return;
             }
 
             season.BlurbLong = data.BlurbLong;
@@ -561,9 +585,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             campId = season.CampId;
         }, cancellationToken);
 
+        if (refusalKey is not null) return CampUpdateResult.Failure(refusalKey);
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
@@ -571,6 +596,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             $"Updated season {year} details",
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+
+        return CampUpdateResult.Success();
 
     }
 
@@ -630,9 +657,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
     }
 
-    public async Task WithdrawSeasonAsync(
+    public async Task<CampUpdateResult> WithdrawSeasonAsync(
         Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default)
     {
+        string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
@@ -641,17 +669,24 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                refusalKey = "Camps_Flash_SeasonWrongCamp";
+                return;
             }
 
+            if (season.Status is not (CampSeasonStatus.Pending or CampSeasonStatus.Active))
+            {
+                refusalKey = "Camps_Flash_SeasonWithdrawRequiresOpen";
+                return;
+            }
             season.Withdraw(now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
+        if (refusalKey is not null) return CampUpdateResult.Failure(refusalKey);
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
@@ -661,6 +696,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+
+        return CampUpdateResult.Success();
 
     }
 
@@ -720,9 +757,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
     }
 
-    public async Task SetSeasonStatusAsync(
+    public async Task<CampUpdateResult> SetSeasonStatusAsync(
         Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default)
     {
+        string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
 
@@ -730,16 +768,18 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                refusalKey = "Camps_Flash_SeasonWrongCamp";
+                return;
             }
 
             season.SetStatus(status, now);
             year = season.Year;
         }, cancellationToken);
 
+        if (refusalKey is not null) return CampUpdateResult.Failure(refusalKey);
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
@@ -747,6 +787,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             $"Season {year} status set to {status}",
             "CampService",
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+
+        return CampUpdateResult.Success();
 
     }
 
@@ -783,65 +825,60 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CampUpdateInput input,
         CancellationToken cancellationToken = default)
     {
-        try
+        // Prove the season belongs to the camp before the first write: the scoped check
+        // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
+        // which would leave a partial update behind an uninvalidated cache on failure.
+        var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
+        if (scopedSeason is null)
         {
-            // Prove the season belongs to the camp before the first write: the scoped check
-            // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
-            // which would leave a partial update behind an uninvalidated cache on failure.
-            var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
-            if (scopedSeason is null)
-            {
-                return CampUpdateResult.Failure("Season not found.");
-            }
-
-            if (scopedSeason.CampId != input.CampId)
-            {
-                return CampUpdateResult.Failure("Season does not belong to the specified camp.");
-            }
-
-            var updated = await _repo.UpdateCampFieldsAsync(
-                input.CampId,
-                input.ContactEmail,
-                input.ContactPhone,
-                input.WebOrSocialUrl,
-                input.Links,
-                input.IsSwissCamp,
-                input.TimesAtNowhere,
-                input.HideHistoricalNames,
-                _clock.GetCurrentInstant(),
-                cancellationToken);
-
-            if (!updated)
-            {
-                return CampUpdateResult.Failure("Camp not found.");
-            }
-
-            await _auditLog.LogAsync(
-                AuditAction.CampUpdated, nameof(Camp), input.CampId,
-                $"Updated camp {input.CampId}",
-                "CampService");
-
-            await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, cancellationToken);
-
-            var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken)
-                ?? throw new InvalidOperationException("Season not found.");
-
-            if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
-            {
-                var today = _clock.GetCurrentInstant().InUtc().Date;
-                var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-                if (!nameLocked)
-                {
-                    await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, cancellationToken);
-                }
-            }
-
-            return CampUpdateResult.Success();
+            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
         }
-        catch (InvalidOperationException ex)
+
+        if (scopedSeason.CampId != input.CampId)
         {
-            return CampUpdateResult.Failure(ex.Message);
+            return CampUpdateResult.Failure("Camps_Flash_SeasonWrongCamp");
         }
+
+        var updated = await _repo.UpdateCampFieldsAsync(
+            input.CampId,
+            input.ContactEmail,
+            input.ContactPhone,
+            input.WebOrSocialUrl,
+            input.Links,
+            input.IsSwissCamp,
+            input.TimesAtNowhere,
+            input.HideHistoricalNames,
+            _clock.GetCurrentInstant(),
+            cancellationToken);
+
+        if (!updated)
+        {
+            return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
+        }
+
+        await _auditLog.LogAsync(
+            AuditAction.CampUpdated, nameof(Camp), input.CampId,
+            $"Updated camp {input.CampId}",
+            "CampService");
+
+        var seasonUpdate = await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, cancellationToken);
+        if (!seasonUpdate.Succeeded) return seasonUpdate;
+
+        var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
+        if (currentSeason is null) return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
+
+        if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
+        {
+            var today = _clock.GetCurrentInstant().InUtc().Date;
+            var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
+            if (!nameLocked)
+            {
+                var nameUpdate = await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, cancellationToken);
+                if (!nameUpdate.Succeeded) return nameUpdate;
+            }
+        }
+
+        return CampUpdateResult.Success();
     }
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
@@ -862,30 +899,38 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
 
-        using (var scope = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled))
+        try
         {
-            if (seasonIds.Count > 0)
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
             {
-                var removed = await _cityPlanningService.Value
-                    .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                if (removed > 0)
+                if (seasonIds.Count > 0)
                 {
-                    _logger.LogInformation(
-                        "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                        removed, seasonIds.Count, campId);
+                    var removed = await _cityPlanningService.Value
+                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                    if (removed > 0)
+                    {
+                        _logger.LogInformation(
+                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                            removed, seasonIds.Count, campId);
+                    }
                 }
-            }
 
-            deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-            if (deletedImagePaths is null)
-            {
-                throw new InvalidOperationException("Camp not found.");
-            }
+                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
+                if (deletedImagePaths is null)
+                {
+                    throw new InvalidOperationException("Camp not found.");
+                }
 
-            scope.Complete();
+                scope.Complete();
+            }
+        }
+        finally
+        {
+            // Dispose the ambient transaction before evicting, including uncertain commit failures.
+            _earlyEntryInvalidator.InvalidateAll();
         }
 
         await _auditLog.LogAsync(
@@ -925,21 +970,23 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         await _repo.AddHistoricalNameAsync(entry, cancellationToken);
     }
 
-    public async Task RemoveHistoricalNameAsync(
+    public async Task<CampUpdateResult> RemoveHistoricalNameAsync(
         Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
     {
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_CampNotFound");
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        if (camp is null) return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
         if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
         {
-            throw new InvalidOperationException("Camps_Flash_HistoricalNameWrongCamp");
+            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameWrongCamp");
         }
 
         var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
         if (!removed)
         {
-            throw new InvalidOperationException("Camps_Flash_HistoricalNameNotFound");
+            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameNotFound");
         }
+        return CampUpdateResult.Success();
+
     }
 
     public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
@@ -1033,36 +1080,38 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
     private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
 
-    public async Task DeleteImageAsync(
+    public async Task<CampUpdateResult> DeleteImageAsync(
         Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
     {
-        var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
+        var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken);
+        if (image is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
         if (image.CampId != scopedCampId)
         {
-            throw new InvalidOperationException("Camps_Flash_ImageWrongCamp");
+            return CampUpdateResult.Failure("Camps_Flash_ImageWrongCamp");
         }
 
-        var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
+        var result = await _repo.DeleteImageAsync(imageId, cancellationToken);
+        if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
 
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
             "CampService",
-            relatedEntityId: result.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
 
         // Metadata and audit have committed; file cleanup must finish independently of the request.
         try
         {
-            await _fileStorage.DeleteAsync(result.StoragePath, CancellationToken.None);
+            await _fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
                 "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                result.StoragePath, imageId);
+                result.Value.StoragePath, imageId);
         }
+
+        return CampUpdateResult.Success();
 
     }
 
@@ -1088,9 +1137,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
     }
 
-    public async Task ChangeSeasonNameAsync(
+    public async Task<CampUpdateResult> ChangeSeasonNameAsync(
         Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default)
     {
+        string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
@@ -1101,12 +1151,14 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                refusalKey = "Camps_Flash_SeasonWrongCamp";
+                return null;
             }
 
             if (season.NameLockDate.HasValue && today >= season.NameLockDate.Value)
             {
-                throw new InvalidOperationException("Season name is locked and cannot be changed.");
+                refusalKey = "Camp_Edit_NameLocked";
+                return null;
             }
 
             if (string.Equals(season.Name, newName, StringComparison.Ordinal))
@@ -1133,14 +1185,15 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             return historyEntry;
         }, cancellationToken);
 
+        if (refusalKey is not null) return CampUpdateResult.Failure(refusalKey);
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
         }
 
         if (oldName is null)
         {
-            return;
+            return CampUpdateResult.Success();
         }
 
         await _auditLog.LogAsync(
@@ -1148,6 +1201,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             $"Name changed from '{oldName}' to '{newName}'",
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+
+        return CampUpdateResult.Success();
 
     }
 
@@ -1323,16 +1378,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
     }
 
-    public async Task ApproveCampMemberAsync(
+    public async Task<CampMembershipMutationResult> ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
+        if (member is null) return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
         {
-            throw new InvalidOperationException("Camps_Flash_ApproveRequiresPending");
+            return CampMembershipMutationResult.Failure("Camps_Flash_ApproveRequiresPending");
         }
 
         var now = _clock.GetCurrentInstant();
@@ -1370,17 +1425,19 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             _logger.LogError(ex, "Failed to notify requester {UserId} about approved camp membership {MemberId}", member.UserId, member.Id);
         }
+        return CampMembershipMutationResult.Success();
+
     }
 
-    public async Task RejectCampMemberAsync(
+    public async Task<CampMembershipMutationResult> RejectCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
+        if (member is null) return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException("Camps_Flash_RejectRequiresPending");
+            return CampMembershipMutationResult.Failure("Camps_Flash_RejectRequiresPending");
 
         var requesterUserId = member.UserId;
         var seasonId = member.CampSeasonId;
@@ -1412,17 +1469,19 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             _logger.LogError(ex, "Failed to notify requester {UserId} about rejected camp membership {MemberId}", requesterUserId, member.Id);
         }
+        return CampMembershipMutationResult.Success();
+
     }
 
-    public async Task RemoveCampMemberAsync(
+    public async Task<CampMembershipMutationResult> RemoveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
+        if (member is null) return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Active)
-            throw new InvalidOperationException("Camps_Flash_RemoveRequiresActive");
+            return CampMembershipMutationResult.Failure("Camps_Flash_RemoveRequiresActive");
 
         await TransitionMemberToRemovedAsync(
             member, removedByUserId,
@@ -1430,6 +1489,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             $"Removed camp member from season {member.CampSeason.Year}",
             cascadeRoleAssignments: true,
             cancellationToken);
+        return CampMembershipMutationResult.Success();
+
     }
 
     private async Task<Guid> EnsureActiveCampMemberAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -1484,14 +1545,14 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             openSeason.Id, roleDefinitionId, memberId, actorUserId, cancellationToken);
     }
 
-    public async Task WithdrawCampMembershipRequestAsync(
+    public async Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
+        var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken);
+        if (member is null) return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException("Camps_Flash_WithdrawRequiresPending");
+            return CampMembershipMutationResult.Failure("Camps_Flash_WithdrawRequiresPending");
 
         await TransitionMemberToRemovedAsync(
             member, userId,
@@ -1501,6 +1562,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             cancellationToken);
 
         await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
+        return CampMembershipMutationResult.Success();
+
     }
 
     public async Task<CampMembershipMutationResult> LeaveCampAsync(
@@ -1708,12 +1771,15 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             createdByUserId, name, contactEmail, contactPhone,
             webOrSocialUrl: null, links: [], isSwissCamp, timesAtNowhere,
             seasonData, historicalNames: [], year, cancellationToken);
-        return camp.Id;
+        return camp.Value?.Id ?? throw new InvalidOperationException("Camp seed registration was refused.");
     }
 
     /// <inheritdoc />
-    async Task ICampSeeding.OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken) =>
-        await OptInToSeasonAsync(campId, year, cancellationToken);
+    async Task ICampSeeding.OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken)
+    {
+        var result = await OptInToSeasonAsync(campId, year, cancellationToken);
+        if (result.ErrorKey is not null) throw new InvalidOperationException("Camp seed season opt-in was refused.");
+    }
 
     /// <inheritdoc />
     Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken) =>

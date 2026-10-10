@@ -17,7 +17,8 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
-    Task SaveGuideSettingsAsync(
+    /// <summary>Returns false if the selected event edition no longer exists; dependency failures propagate.</summary>
+    Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default);

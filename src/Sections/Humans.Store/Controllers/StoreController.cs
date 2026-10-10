@@ -155,14 +155,15 @@ internal sealed class StoreController(
             // session id we redirect to) has to exist whole or not at all
             // (nobodies-collective/Humans#950). The order read above keeps the
             // token — abandoning a read is free.
-            var sessionUrl = await storeService.CreateStripeCheckoutSessionAsync(
+            var result = await storeService.CreateStripeCheckoutSessionAsync(
                 order, amountEur, orderUrl, CancellationToken.None);
-            return Redirect(sessionUrl);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Order), new { id });
+            if (result.ErrorKey is { } key)
+            {
+                SetError(result.MaximumAmount is { } maximumAmount
+                    ? localizer[key, maximumAmount].Value : localizer[key].Value);
+                return RedirectToAction(nameof(Order), new { id });
+            }
+            return Redirect(result.SessionUrl!);
         }
         catch (Exception ex)
         {
@@ -190,15 +191,9 @@ internal sealed class StoreController(
             // No request-scoped token anywhere on this path: issuance creates and approves a
             // document in Holded, and a torn write leaves a doc we have no local record of
             // (memory/architecture/cancellation-token-propagation.md).
-            await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
-            SetSuccess(localizer["Store_InvoiceIssued"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // Expected refusals (already invoiced, missing account, receipt over threshold) —
-            // the message is written for the admin, so surface it and log at warning.
-            logger.LogWarning("Invoice issuance rejected for order {OrderId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            var result = await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
+            if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
+            else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
         }
         catch (Exception ex)
         {
@@ -225,15 +220,9 @@ internal sealed class StoreController(
             && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded)
             return Forbid();
 
-        try
-        {
-            await storeService.RecordAdminPaymentAsync(id, method, amountEur, externalRef, notes, user.Id, CancellationToken.None);
-            SetSuccess(localizer["Store_PaymentRecorded"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-        }
+        var result = await storeService.RecordAdminPaymentAsync(id, method, amountEur, externalRef, notes, user.Id, CancellationToken.None);
+        if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
+        else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
     }
 
@@ -250,15 +239,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment);
         if (!auth.Succeeded) return Forbid();
 
-        try
-        {
-            await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
-            SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-        }
+        var result = await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
+        if (result.Succeeded) SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
+        else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
     }
 
@@ -278,9 +261,14 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        var newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        var result = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        if (!result.Succeeded)
+        {
+            SetError(localizer[result.ErrorKey ?? "Store_CreateOrderFailed"].Value);
+            return RedirectToAction(nameof(Index));
+        }
         SetSuccess(localizer["Store_OrderCreated"].Value);
-        return RedirectToAction(nameof(Order), new { id = newId });
+        return RedirectToAction(nameof(Order), new { id = result.CreatedId });
     }
 
     [HttpPost("Team/{teamId:guid}/Create")]
@@ -296,17 +284,14 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
+        if (!result.Succeeded)
         {
-            var newId = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
-            SetSuccess(localizer["Store_TeamOrderCreated"].Value);
-            return RedirectToAction(nameof(Order), new { id = newId });
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
+            SetError(localizer[result.ErrorKey ?? "Store_CreateOrderFailed"].Value);
             return RedirectToAction(nameof(Index));
         }
+        SetSuccess(localizer["Store_TeamOrderCreated"].Value);
+        return RedirectToAction(nameof(Order), new { id = result.CreatedId });
     }
 
     [HttpPost("Order/{id:guid}/Delete")]
@@ -322,16 +307,13 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await storeService.DeleteOrderAsync(id, user.Id, ct);
+        if (!result.Succeeded)
         {
-            await storeService.DeleteOrderAsync(id, user.Id, ct);
-            SetSuccess(localizer["Store_OrderDeleted"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
+            SetError(result.Refusal!);
             return RedirectToAction(nameof(Order), new { id });
         }
+        SetSuccess(localizer["Store_OrderDeleted"].Value);
         return RedirectToAction(nameof(Index));
     }
 
@@ -352,9 +334,11 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
+        var result = await storeService.AddLineAsync(id, productId, qty, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_AddLineFailed"].Value);
+            SetError(result.ErrorKey is { } key
+                ? localizer[key].Value
+                : localizer["Store_AddLineFailed"].Value);
         else
             SetSuccess(localizer["Store_LineAdded"].Value);
 
@@ -379,9 +363,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);
+        var result = await storeService.RemoveLineAsync(id, lineId, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_RemoveLineFailed"].Value);
+            SetError(localizer[result.ErrorKey ?? "Store_RemoveLineFailed"].Value);
         else
             SetSuccess(localizer["Store_LineRemoved"].Value);
 
@@ -404,9 +388,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.EditCounterparty);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.UpdateCounterpartyWithResultAsync(id, input, user.Id, ct);
+        var result = await storeService.UpdateCounterpartyAsync(id, input, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_UpdateCounterpartyFailed"].Value);
+            SetError(localizer[result.ErrorKey ?? "Store_UpdateCounterpartyFailed"].Value);
         else
             SetSuccess(localizer["Store_CounterpartyUpdated"].Value);
 

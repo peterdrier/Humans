@@ -74,9 +74,8 @@ A read-side aggregator with no storage of its own. Written fresh:
 - **A controller and an admin view**: sort the roster, stitch the legal name from Users,
   render a table. No business rule.
 
-The layout matches this. What differs from the fresh form: one person's entry is its own
-record (`UserEarlyEntry`) rather than the roster row's shape, and `HasMultiple` travels as a
-field when it is `Sources.Count > 1`.
+The layout matches this. Both reads use `EarlyEntryRosterRow`; `HasMultiple` records
+whether `Sources.Count > 1`.
 
 ## 4. Invariants
 
@@ -120,7 +119,6 @@ field when it is `Sources.Count > 1`.
   (nobodies-collective/Humans#805): contributors flush this section's cache, so a contributor
   write path that forgets to call it leaves a stale answer. Peter's ruling (`debt-ledger.yml`)
   is to leave it until the invalidator family is replaced.
-- **`UserEarlyEntry` folds into the roster-row shape** — ruled, not yet built (`Docs/debt.yml`).
 
 ## 6. Deliberately not done
 

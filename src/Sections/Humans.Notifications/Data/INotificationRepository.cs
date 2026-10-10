@@ -123,9 +123,10 @@ internal interface INotificationRepository : IRepository
     /// Deletes all unresolved notifications whose <c>Source</c> is in
     /// <paramref name="sources"/>. Used by <c>CleanupNotificationsJob</c> to purge
     /// retired-source rows (currently ApplicationSubmitted / ConsentReviewNeeded)
-    /// that are no longer emitted and have no resolution path. Returns rows deleted.
+    /// that are no longer emitted and have no resolution path. Returns rows deleted
+    /// and affected recipient user IDs for post-write badge invalidation.
     /// </summary>
-    Task<int> DeleteUnresolvedBySourcesAsync(
+    Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedBySourcesAsync(
         IReadOnlyList<NotificationSource> sources, CancellationToken ct = default);
 
     /// <summary>
@@ -138,9 +139,10 @@ internal interface INotificationRepository : IRepository
     /// <summary>
     /// Deletes unresolved informational notifications whose <c>CreatedAt</c>
     /// is earlier than <paramref name="createdCutoff"/>. Returns the number
-    /// of rows deleted. Used by <c>CleanupNotificationsJob</c>.
+    /// of rows deleted and affected recipient user IDs for post-write badge invalidation.
+    /// Used by <c>CleanupNotificationsJob</c>.
     /// </summary>
-    Task<int> DeleteUnresolvedInformationalOlderThanAsync(
+    Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedInformationalOlderThanAsync(
         Instant createdCutoff, CancellationToken ct = default);
 
     // ==========================================================================

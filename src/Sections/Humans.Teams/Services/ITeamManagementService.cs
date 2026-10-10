@@ -129,7 +129,8 @@ internal sealed record TeamJoinRequestSnapshot(
     string? Message,
     Instant RequestedAt,
     Instant? ResolvedAt,
-    string? ReviewNotes);
+    string? ReviewNotes,
+    string? TeamSlug = null);
 
 /// <summary>
 /// Persistence-free read model for a team early-entry grant, returned by the
@@ -205,9 +206,9 @@ internal interface ITeamManagementService : ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a team's details.
+    /// Updates a team's details, returning expected validation or unique-constraint refusals.
     /// </summary>
-    Task<Team> UpdateTeamAsync(
+    Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -240,13 +241,13 @@ internal interface ITeamManagementService : ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a team's details, then reconciles its Google Group link.
+    /// Updates a team's details, then reconciles its Google Group link only on success.
     /// <c>GroupWarning</c> carries the operator-facing message when the group
     /// sync failed or needs reactivation confirmation; the team update itself
     /// has already succeeded in that case.
     /// </summary>
     [ExternalWrite]
-    Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+    Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
         string? description,
@@ -319,6 +320,10 @@ internal interface ITeamManagementService : ITeamService
         Guid teamId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Gets only the member's own pending join requests.</summary>
+    Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets a user's pending request for a team, if any.
     /// </summary>
@@ -330,9 +335,9 @@ internal interface ITeamManagementService : ITeamService
     /// <summary>
     /// Removes a member from a team (admin action). When the removed member was a
     /// coordinator, reconciles their Coordinators system-team membership as part of
-    /// the mutation.
+    /// the mutation. Known refusals return resource keys; dependency failures propagate.
     /// </summary>
-    Task RemoveMemberAsync(
+    Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
@@ -555,3 +560,20 @@ internal enum TeamJoinOutcome
     /// <summary>Approval-required team — a pending join request was created.</summary>
     RequestSubmitted,
 }
+
+internal sealed record TeamUpdateResult(
+    Team? Team = null,
+    Humans.Teams.Data.TeamUpdateConflict Conflict = Humans.Teams.Data.TeamUpdateConflict.None,
+    string? ErrorMessage = null,
+    string? GroupWarning = null)
+{
+    public bool Succeeded => Team is not null && Conflict == Humans.Teams.Data.TeamUpdateConflict.None && ErrorMessage is null;
+
+    // Non-interactive seed/compensation callers must not silently discard a refusal.
+    public void RequireSuccess()
+    {
+        if (!Succeeded) throw new InvalidOperationException(ErrorMessage ?? $"Team update rejected: {Conflict}");
+    }
+}
+
+internal sealed record TeamMemberRemovalResult(string? ErrorKey = null, string? ErrorMessage = null);

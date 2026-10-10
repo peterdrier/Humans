@@ -4,12 +4,20 @@ using NodaTime;
 
 namespace Humans.Store.Services;
 
-internal sealed record MutationResult(bool Succeeded, string? ErrorMessage)
+internal sealed record MutationResult(bool Succeeded, string? ErrorKey, Guid? CreatedId = null)
 {
     public static MutationResult Success { get; } = new(true, null);
 
-    public static MutationResult Failure(string message) => new(false, message);
+    public static MutationResult Failure(string errorKey) => new(false, errorKey);
 }
+
+internal sealed record AdminMutationResult(bool Succeeded, string? Refusal)
+{
+    public static AdminMutationResult Success { get; } = new(true, null);
+    public static AdminMutationResult Refused(string reason) => new(false, reason);
+}
+
+internal sealed record CheckoutSessionResult(string? SessionUrl, string? ErrorKey, decimal? MaximumAmount = null);
 
 internal sealed record ProductSaveRequest(
     Guid? Id,

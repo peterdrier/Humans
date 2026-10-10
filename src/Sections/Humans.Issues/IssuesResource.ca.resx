@@ -297,4 +297,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>S'ha presentat un assumpte nou: {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Se t'ha assignat un assumpte: {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>Mostra l'assumpte</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>La secció ha de tenir {0} caràcters o menys.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>No es pot canviar la secció d’una incidència tancada.</value>
+  </data>
 </root>

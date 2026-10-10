@@ -62,7 +62,7 @@ Controllers/        RideshareController      — S1 (HTML), S2, S3, S4; two erro
 Services/           IRideshareService + RideshareService — every rule in the section, and the notification text
                     CachingRideshareService  — Singleton decorator over the snapshot; carries F1
                     RideshareReadModels      — the snapshot and its per-row views; derived facts live here
-                    RideshareRuleException   — a resource key plus args, the only way a rule reaches a user
+                    RideshareMutationResult / RideshareRefusal — untranslated refusal keys and arguments, localized by controllers
                     AuditEntityTypes         — the one audit discriminator
                     Routing/                 — IRouteProvider, the OpenRouteService client, its options, the geometry check — R1
 Data/               one repository over every table, one context, one factory, a configuration per entity, the migrations

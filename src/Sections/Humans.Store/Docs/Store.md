@@ -66,7 +66,7 @@ A camp's order against a season.
 
 **Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampServiceRead.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
 
-**Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `AddLineAsync` also performs the same idempotent correction, with an audit entry and structured application log line. `GetOrderAsync` remains read-only because callers load the order before authorizing access.
+**Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `AddLineAsync` performs the same idempotent correction before validating a product, with an audit entry and structured application log line. An unresolved year or a product from another year is refused with localized feedback and no line write. Editable order pages offer the catalog for the stored `Order.Year`, including historical orders. `GetOrderAsync` remains read-only because callers load the order before authorizing access.
 
 **Aggregate-local navs:** `Order.Lines`, `Order.Payments`.
 
@@ -222,7 +222,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
-- **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
+- **Team orders are non-billable.** `UpdateCounterpartyAsync` and `CreateStripeCheckoutSessionAsync` return localized refusals for any order whose `TeamId is not null`; `IssueInvoiceAsync` returns an operator refusal and `RecordStripePaymentAsync` rejects it with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
 - At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
 - Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
@@ -333,3 +333,15 @@ Acountax's call and change without a deploy:
 | `Store:SimplifiedInvoiceThresholdEur` | `400` | Order total at or below which a counterparty-less order may issue as a *factura simplificada*. Spanish law allows €400 generally / €3,000 for retail-type B2C; the conservative figure is the default until Acountax rules. |
 
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
+
+- Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all six cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
+
+- Checkout returns resource-key refusals for unavailable configuration, non-positive or excessive amounts, and a pending settlement. The controller localizes the outstanding balance and logs actual Stripe failures at Error with generic localized feedback; a dependency InvalidOperationException cannot become a business refusal. Stripe writes remain detached from request cancellation.
+
+- Camp and department order creation returns the created id on success or a localized refusal for a missing counterparty, subteam, or existing order. Camp-season uniqueness includes legacy zero-year orders; department uniqueness uses the active event year. Refusals warn without an exception and write no order or audit. Dependency failures propagate unchanged.
+
+- Invoice issuance returns typed operator refusals for missing/non-billable orders, state, payment balance, invoice details, account configuration, and recovered-document mismatch. Refusals warn without an exception; actual Holded or persistence faults propagate and are logged at Error with generic invoice-failure feedback. Operator-only refusal reasons are localization-exempt. Existing recovery, approval, snapshot freeze, atomic save, audit, and detached-write boundaries remain.
+
+- Manual payment entries, payment deletion and order deletion return typed operator refusals for validation/state/scope/balance gates. They preserve amount signs, deposit caps, money-record retention and deletion audits. Repository failures propagate instead of being rendered as expected refusal text; payment writes retain detached cancellation and order deletion retains its existing token boundary.
+
+- Catalog create/update/deactivation use typed operator refusals for invalid drafts and missing products, warning without an exception before any write. The catalog form preserves generic feedback and Error logging for actual save failures; deactivation dependency faults propagate and cannot be displayed as refusal text. Operator messages remain localization-exempt, and product/price-change audits remain.

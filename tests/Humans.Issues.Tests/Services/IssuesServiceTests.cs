@@ -1238,6 +1238,8 @@ public sealed class IssuesServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("64 characters");
+        result.ErrorKey.Should().Be("Issue_Section_TooLong");
+        result.ErrorLimit.Should().Be(64);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Tickets");
@@ -1254,6 +1256,8 @@ public sealed class IssuesServiceTests
         result.NotFound.Should().BeFalse();
         result.Rejected.Should().BeTrue();
         result.ErrorMessage.Should().Contain("Cannot change section");
+        result.ErrorKey.Should().Be("Issue_Section_Terminal");
+        result.ErrorLimit.Should().BeNull();
         _logger.ReceivedCalls().Should().ContainSingle(call =>
             call.GetMethodInfo().Name == "Log" &&
             (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&

@@ -184,13 +184,32 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         return attachment.Id;
     }
 
-    public async Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default)
+    public async Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
+        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var att = await ctx.ExpenseAttachments.FirstOrDefaultAsync(a => a.Id == id, ct);
-        if (att is null) return;
-        ctx.ExpenseAttachments.Remove(att);
+        var line = await ctx.ExpenseLines.Include(l => l.Attachment)
+            .SingleOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
+        if (line is null) return (false, null);
+        if (line.AttachmentId == attachment?.Id) return (true, null);
+
+        var replaced = line.Attachment;
+        ExpenseAttachment? replacement = null;
+        if (attachment is not null)
+        {
+            replacement = await ctx.ExpenseAttachments.FindAsync([attachment.Id], ct);
+            if (replacement is null)
+            {
+                replacement = attachment;
+                ctx.ExpenseAttachments.Add(replacement);
+            }
+        }
+        line.Attachment = replacement;
+        line.AttachmentId = replacement?.Id;
+        if (replaced is not null)
+            ctx.ExpenseAttachments.Remove(replaced);
         await ctx.SaveChangesAsync(ct);
+        return (true, replaced);
     }
 
     public async Task SetLineAttachmentAsync(

@@ -142,14 +142,14 @@ internal sealed class UserEmailService(
         // (below) reads user.SecurityStamp directly without a DB round-trip, so
         // we must load via UserManager.FindByIdAsync here to get a fully
         // populated entity.
-        var user = await userManager.FindByIdAsync(userId.ToString())
-            ?? throw new InvalidOperationException("User not found.");
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return Refuse("User not found");
 
         // see nobodies-collective/Humans#611 — token is bound to this row's Id via the purpose suffix.
         var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
-            throw new ValidationException("No email pending verification.");
+            return Refuse("No email pending verification");
         }
 
         var isValid = await userManager.VerifyUserTokenAsync(
@@ -159,7 +159,7 @@ internal sealed class UserEmailService(
             token);
 
         if (!isValid)
-            throw new ValidationException("The verification link has expired or is invalid.");
+            return Refuse("Invalid verification token");
 
         if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
@@ -172,6 +172,13 @@ internal sealed class UserEmailService(
             cancellationToken);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
+
+        VerifyEmailResult Refuse(string reason)
+        {
+            logger.LogWarning("Email verification rejected for user {UserId}, email row {EmailId}: {Reason}",
+                userId, emailId, reason);
+            return new VerifyEmailResult(string.Empty, false, "Profile_InvalidVerificationLink");
+        }
     }
 
     public async Task<VerifyEmailResult> AdminMarkVerifiedAsync(

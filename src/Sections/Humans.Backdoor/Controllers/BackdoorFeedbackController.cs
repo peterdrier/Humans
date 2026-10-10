@@ -94,18 +94,24 @@ internal sealed class BackdoorFeedbackController(
 
         try
         {
-            var message = await feedback.PostMessageAsync(id, ActorUserId, model.Content);
+            var result = await feedback.PostMessageAsync(id, ActorUserId, model.Content);
+            if (!result.Found)
+            {
+                logger.LogWarning("Feedback {FeedbackId} not found during API PostMessage", id);
+                return NotFound();
+            }
+            if (!result.Succeeded)
+            {
+                logger.LogWarning("Feedback {FeedbackId} API PostMessage rejected: {Reason}", id, result.Rejection);
+                return UnprocessableEntity(new { error = result.Rejection });
+            }
+            var message = result.Message!;
             return Ok(new
             {
                 message.Id,
                 message.Content,
                 CreatedAt = message.CreatedAt.ToDateTimeUtc()
             });
-        }
-        catch (InvalidOperationException)
-        {
-            logger.LogWarning("Feedback {FeedbackId} not found during API PostMessage", id);
-            return NotFound();
         }
         catch (Exception ex)
         {
@@ -133,23 +139,23 @@ internal sealed class BackdoorFeedbackController(
     /// reason, anything else to 500.
     /// </summary>
     /// <remarks>Twin of <c>BackdoorIssuesController.PatchAsync</c>.</remarks>
-    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
+    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task<FeedbackMutationResult>> apply)
     {
         try
         {
-            await apply();
+            var result = await apply();
+            if (!result.Found)
+            {
+                logger.LogWarning("Feedback {FeedbackId} not found during API {Field} patch", id, field);
+                return NotFound();
+            }
+            if (!result.Succeeded)
+            {
+                logger.LogWarning("Feedback {FeedbackId} API {Field} patch rejected: {Reason}", id, field, result.Rejection);
+                return UnprocessableEntity(new { error = result.Rejection });
+            }
             logger.LogInformation("Feedback {FeedbackId} {Field} updated via API", id, field);
             return Ok(new { success = true });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning("Feedback {FeedbackId} not found during API {Field} patch: {Reason}", id, field, ex.Message);
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Feedback {FeedbackId} API {Field} patch rejected: {Reason}", id, field, ex.Message);
-            return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
         {

@@ -83,17 +83,20 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         var actor = group.Members.Single().UserId;
         var original = new string('x', 16000);
         var save = new WorkgroupLogEntrySave(WorkgroupLogKind.Update, Clock.GetCurrentInstant().InUtc().Date, null, original);
-        var entryId = await service.AddLogEntryAsync(group.Id, actor, save, Ct);
+        var entryId = (await service.AddLogEntryAsync(group.Id, actor, save, Ct)).Value;
 
-        var act = async () =>
+        Func<Task<WorkgroupMutationResult>> act = async () =>
         {
             if (editing)
-                await service.UpdateLogEntryAsync(entryId, actor, save with { Body = original + "x" }, Ct);
+                return await service.UpdateLogEntryAsync(entryId, actor, save with { Body = original + "x" }, Ct);
             else
-                await service.AddLogEntryAsync(group.Id, actor, save with { Body = original + "x" }, Ct);
+                return await service.AddLogEntryAsync(group.Id, actor, save with { Body = original + "x" }, Ct);
         };
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        var refusal = (await act()).Refusal;
+        refusal.Should().NotBeNull();
+        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Args.Should().Equal(16000);
         await using var ctx = OpenContext();
         var entries = await ctx.LogEntries.Where(e => e.WorkgroupId == group.Id).ToListAsync(Ct);
         entries.Should().ContainSingle().Which.Body.Should().Be(original);
@@ -118,7 +121,10 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
             _ => service.CloseAsync(group.Id, actor, reason, Ct)
         };
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        var refusal = (await act()).Refusal;
+        refusal.Should().NotBeNull();
+        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Args.Should().Equal(4000);
         await using var ctx = OpenContext();
         var stored = await ctx.Workgroups.SingleAsync(w => w.Id == group.Id, Ct);
         stored.Status.Should().Be(initialStatus);
@@ -149,16 +155,19 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         var actor = group.Members.Single().UserId;
         var url = "https://example.org/".PadRight(2000, 'x');
         var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false, null);
-        var meetingId = await service.CreateMeetingAsync(group.Id, actor, save, Ct);
-        var act = async () =>
+        var meetingId = (await service.CreateMeetingAsync(group.Id, actor, save, Ct)).Value;
+        Func<Task<WorkgroupMutationResult>> act = async () =>
         {
             if (editing)
-                await service.UpdateMeetingAsync(meetingId, actor, save with { LocationUrl = url + "x" }, Ct);
+                return await service.UpdateMeetingAsync(meetingId, actor, save with { LocationUrl = url + "x" }, Ct);
             else
-                await service.CreateMeetingAsync(group.Id, actor, save with { LocationUrl = url + "x" }, Ct);
+                return await service.CreateMeetingAsync(group.Id, actor, save with { LocationUrl = url + "x" }, Ct);
         };
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        var refusal = (await act()).Refusal;
+        refusal.Should().NotBeNull();
+        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Args.Should().Equal(2000);
         await using var ctx = OpenContext();
         var meetings = await ctx.Meetings.Where(m => m.WorkgroupId == group.Id).ToListAsync(Ct);
         meetings.Should().ContainSingle().Which.LocationUrl.Should().Be(url);

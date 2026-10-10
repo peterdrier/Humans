@@ -143,8 +143,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var year = await GetCurrentEventYearAsync();
-            catalog = (await GetActiveCatalogAsync(year, ct))
+            catalog = (await GetActiveCatalogAsync(order.Year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
         }
@@ -177,9 +176,14 @@ internal sealed class Service(
         return p is null ? null : MapProduct(p);
     }
 
-    public async Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+        {
+            logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
+            return CatalogSaveResult.Failure(null, refusal);
+        }
 
         var now = clock.GetCurrentInstant();
         var product = new Product
@@ -202,15 +206,18 @@ internal sealed class Service(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
-        return product.Id;
+        return CatalogSaveResult.Success(created: true);
     }
 
-    public async Task UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
 
-        var product = await repo.GetProductByIdAsync(draft.Id, ct)
-            ?? throw new StoreRuleException($"Product {draft.Id} not found");
+        var product = await repo.GetProductByIdAsync(draft.Id, ct);
+        if (product is null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, $"Product {draft.Id} not found");
 
         var oldPrice = product.UnitPriceEur;
 
@@ -237,6 +244,7 @@ internal sealed class Service(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
                 $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
                 actorUserId);
+        return AdminMutationResult.Success;
     }
 
     public async Task<CatalogSaveResult> SaveProductWithResultAsync(
@@ -263,23 +271,12 @@ internal sealed class Service(
         try
         {
             if (request.Id is null)
-            {
-                await CreateProductAsync(dto, actorUserId, ct);
-                return CatalogSaveResult.Success(created: true);
-            }
+                return await CreateProductAsync(dto, actorUserId, ct);
 
-            await UpdateProductAsync(dto, actorUserId, ct);
-            return CatalogSaveResult.Success(created: false);
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
+            var result = await UpdateProductAsync(dto, actorUserId, ct);
+            return result.Succeeded
+                ? CatalogSaveResult.Success(created: false)
+                : CatalogSaveResult.Failure(null, result.Refusal!);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -288,10 +285,11 @@ internal sealed class Service(
         }
     }
 
-    public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
     {
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null)
+            return RefuseCatalogMutation(productId, actorUserId, $"Product {productId} not found");
 
         product.IsActive = false;
         product.UpdatedAt = clock.GetCurrentInstant();
@@ -301,20 +299,29 @@ internal sealed class Service(
             AuditAction.StoreProductDeactivated, AuditEntityTypes.Product, productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
-    private static void ValidateProductDraft(ProductDto draft)
+    private AdminMutationResult RefuseCatalogMutation(Guid productId, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store catalog mutation rejected for product {ProductId}, actor {ActorId}: {Reason}",
+            productId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
+    }
+
+    private static string? GetProductDraftRefusal(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
-            throw new StoreValidationException("Product name is required", nameof(draft));
+            return "Product name is required";
         if (draft.UnitPriceEur < 0m)
-            throw new StoreValidationException("Unit price cannot be negative", nameof(draft));
+            return "Unit price cannot be negative";
         if (draft.VatRatePercent < 0m)
-            throw new StoreValidationException("VAT rate cannot be negative", nameof(draft));
+            return "VAT rate cannot be negative";
         if (draft.DepositAmountEur is < 0m)
-            throw new StoreValidationException("Deposit cannot be negative", nameof(draft));
+            return "Deposit cannot be negative";
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
-            throw new StoreValidationException("Holded revenue account must be an 8-digit chart number", nameof(draft));
+            return "Holded revenue account must be an 8-digit chart number";
+        return null;
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
@@ -430,17 +437,18 @@ internal sealed class Service(
         return true;
     }
 
-    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
-            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
+        if (season is null)
+            return RefuseCreation("Store_CampSeasonMissing", "camp season", campSeasonId, actorUserId);
 
         // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
         // already belongs to season.Year — except a legacy row still at Year = 0, which an
         // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
+            return RefuseCreation("Store_CampOrderExists", "camp season", campSeasonId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -458,30 +466,30 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for camp season {campSeasonId}",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
     }
 
-    public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
         // An issued order is referenced by its store_invoices row under a restrictive foreign key,
         // and a paid one reads zero-balance — without this the delete would reach EF and blow up.
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
         // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
         // any payment row, whatever its status, is a money record that must outlive the order.
         if (order.Payments.Count > 0)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
 
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
 
         await repo.DeleteOrderAsync(orderId, ct);
@@ -489,20 +497,22 @@ internal sealed class Service(
             AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             $"Deleted store order {orderId}",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
-    public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
-        var team = await teamService.GetTeamAsync(teamId, ct)
-            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        var team = await teamService.GetTeamAsync(teamId, ct);
+        if (team is null)
+            return RefuseCreation("Store_TeamMissing", "team", teamId, actorUserId);
         if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
+            return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
         var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
-            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
+            return RefuseCreation("Store_TeamOrderExists", "team", teamId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -520,26 +530,39 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
     }
 
-    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
+    private MutationResult RefuseCreation(string errorKey, string counterpartyType, Guid counterpartyId, Guid actorUserId)
+    {
+        logger.LogWarning("Store order creation rejected for {CounterpartyType} {CounterpartyId}, actor {ActorUserId}: {ErrorKey}",
+            counterpartyType, counterpartyId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
+    }
+
+    public async Task<MutationResult> AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new StoreValidationException("Qty must be positive", nameof(qty));
+            return RefuseMutation("Store_QuantityPositive", orderId, actorUserId);
 
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
         if (order.State != OrderState.Open)
-            throw new StoreRuleException("Cannot add lines to an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId);
 
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new StoreRuleException($"Product {productId} not found");
+        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
+        if (order.Year == 0)
+            return RefuseMutation("Store_OrderYearUnresolved", orderId, actorUserId);
+
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null) return RefuseMutation("Store_ProductMissing", orderId, actorUserId);
 
         if (!product.IsActive)
-            throw new StoreRuleException(
-                $"Product '{product.Name}' has been deactivated and is no longer orderable");
+            return RefuseMutation("Store_ProductInactive", orderId, actorUserId);
+
+        if (product.Year != order.Year)
+            return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -560,54 +583,25 @@ internal sealed class Service(
         };
         await repo.AddLineAsync(line, ct);
 
-        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
-
         await audit.LogAsync(
             AuditAction.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}"
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
+
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> AddLineWithResultAsync(
-        Guid orderId,
-        Guid productId,
-        int qty,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            await AddLineAsync(orderId, productId, qty, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to add line to Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
-    }
-
-    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new StoreRuleException($"Line {lineId} not found");
+        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct);
+        if (ctx is null) return RefuseMutation("Store_LineMissing", orderId, actorUserId, lineId);
 
         if (ctx.OrderId != orderId)
-            throw new StoreRuleException($"Line {lineId} does not belong to order {orderId}");
+            return RefuseMutation("Store_LineWrongOrder", orderId, actorUserId, lineId);
 
         if (ctx.OrderState != OrderState.Open)
-            throw new StoreRuleException("Cannot remove lines from an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -620,37 +614,16 @@ internal sealed class Service(
             $"Removed line {lineId} from order {ctx.OrderId}"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> RemoveLineWithResultAsync(
-        Guid orderId,
-        Guid lineId,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            await RemoveLineAsync(orderId, lineId, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to remove Store line {LineId}", lineId);
-            return new MutationResult(false, null);
-        }
-    }
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
-    public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
-
-        EnsureBillable(order);
+        if (order.TeamId is not null)
+            return RefuseMutation("Store_NonBillableText", orderId, actorUserId);
 
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
@@ -664,29 +637,14 @@ internal sealed class Service(
             AuditAction.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
             $"Updated counterparty on order {orderId}",
             actorUserId);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> UpdateCounterpartyWithResultAsync(
-        Guid orderId,
-        OrderCounterpartyInput input,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    private MutationResult RefuseMutation(string errorKey, Guid orderId, Guid actorUserId, Guid? lineId = null)
     {
-        try
-        {
-            await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to update counterparty on Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
+        logger.LogWarning("Store mutation rejected for order {OrderId}, line {LineId}, actor {ActorUserId}: {ErrorKey}",
+            orderId, lineId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
     }
 
     private async Task<LocalDate> TodayInEventZoneAsync()
@@ -702,30 +660,36 @@ internal sealed class Service(
     public Task<int> GetCurrentEventYearAsync() => orderReader.GetCurrentEventYearAsync();
 
     [ExternalWrite]
-    public Task<string> CreateStripeCheckoutSessionAsync(
+    public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,
         string returnUrl,
         CancellationToken ct = default)
     {
+        string? errorKey = null;
+        decimal? maximumAmount = null;
         if (order.CounterpartyType == OrderCounterpartyType.Team)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            errorKey = "Store_NonBillableText";
+        else if (!stripeService.IsStoreCheckoutConfigured)
+            errorKey = "Store_CheckoutUnconfigured";
+        else if (amountEur <= 0)
+            errorKey = "Store_PaymentPositive";
+        else if (amountEur > order.BalanceEur)
+        {
+            errorKey = "Store_PaymentAboveBalance";
+            maximumAmount = order.BalanceEur;
+        }
+        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
+            errorKey = "Store_PaymentPending";
 
-        if (!stripeService.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
-
-        if (amountEur <= 0)
-            throw new InvalidOperationException("Payment amount must be greater than zero.");
-
-        if (amountEur > order.BalanceEur)
-            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
-
-        if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
+        if (errorKey is not null)
+        {
+            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
+            return new CheckoutSessionResult(null, errorKey, maximumAmount);
+        }
 
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
-
-        return stripeService.CreateCheckoutSessionAsync(
+        var sessionUrl = await stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
             amountEur: amountEur,
             successUrl: returnUrl,
@@ -733,6 +697,7 @@ internal sealed class Service(
             customerEmail: order.CounterpartyEmail,
             lineItemDescription: description,
             ct: ct);
+        return new CheckoutSessionResult(sessionUrl, null);
     }
 
     public async Task RecordStripePaymentAsync(
@@ -788,7 +753,7 @@ internal sealed class Service(
     /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
     /// overpaid — but deposit returns can never add up to more than the order's deposits.
     /// </summary>
-    public async Task RecordAdminPaymentAsync(
+    public async Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
         PaymentMethod method,
         decimal amountEur,
@@ -798,16 +763,16 @@ internal sealed class Service(
         CancellationToken ct = default)
     {
         if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
-            throw new InvalidOperationException($"Only deposit returns and refunds can be recorded by hand, not {method}.");
+            return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
-            throw new InvalidOperationException("Amount must be greater than zero.");
+            return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
         if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
-            throw new InvalidOperationException("A refund needs a reference (e.g. the Stripe refund id).");
+            return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
 
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
 
         if (method == PaymentMethod.DepositReturn)
         {
@@ -817,7 +782,7 @@ internal sealed class Service(
                 .Sum(p => p.AmountEur);
             var remaining = depositTotal - alreadyReturned;
             if (amountEur > remaining)
-                throw new InvalidOperationException(
+                return RefuseAdminMutation(orderId, actorUserId,
                     $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
                     + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
         }
@@ -842,6 +807,7 @@ internal sealed class Service(
             $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
                 + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     /// <summary>
@@ -850,13 +816,13 @@ internal sealed class Service(
     /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
     /// it follows by itself.
     /// </summary>
-    public async Task DeletePaymentAsync(
+    public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
-        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId)
-            ?? throw new InvalidOperationException("Payment not found on this order.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
+        if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
 
         await repo.DeletePaymentAsync(paymentId, ct);
         await audit.LogAsync(
@@ -865,6 +831,7 @@ internal sealed class Service(
                 + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
                 + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -1155,13 +1122,22 @@ internal sealed class Service(
 
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
-    public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-        EnsureBillable(order);
-        await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null)
+            return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        if (order.TeamId is not null)
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
+        return await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
             .IssueAsync(order, actorUserId, ct);
+    }
+
+    private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store admin mutation rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
+            orderId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
     }
 
     /// <summary>
@@ -1490,26 +1466,4 @@ internal sealed class Service(
     private Task<string> ResolveCounterpartyDisplayNameAsync(Order order, CancellationToken ct) =>
         orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
 
-    private static void EnsureBillable(Order order)
-    {
-        if (order.TeamId is not null)
-            throw new StoreRuleException("Team orders are non-billable.");
-    }
-
-    private sealed class StoreRuleException : InvalidOperationException
-    {
-        public StoreRuleException() { }
-        public StoreRuleException(string message) : base(message) { }
-        public StoreRuleException(string message, Exception innerException) : base(message, innerException) { }
-    }
-
-    private sealed class StoreValidationException : ArgumentException
-    {
-        public StoreValidationException() { }
-        public StoreValidationException(string message) : base(message) { }
-        public StoreValidationException(string message, Exception innerException) : base(message, innerException) { }
-        public StoreValidationException(string message, string paramName) : base(message, paramName) { }
-        public StoreValidationException(string message, string paramName, Exception innerException)
-            : base(message, paramName, innerException) { }
-    }
 }

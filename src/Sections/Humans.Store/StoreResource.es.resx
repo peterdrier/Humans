@@ -108,4 +108,23 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No se ha podido determinar el año del pedido. Contacta con el equipo de la tienda antes de añadir productos.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Este producto pertenece a un año distinto al del pedido.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>La cantidad debe ser mayor que cero.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>Este pedido ya no existe.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>No se pueden modificar las líneas de un pedido facturado.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>Este producto ya no existe.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>Este producto ya no está disponible para pedir.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>Esta línea ya no existe.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>Esta línea no pertenece a este pedido.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>El pago con Stripe no está configurado. Contacta con un administrador.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>El importe del pago debe ser mayor que cero.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>El importe del pago no puede superar el saldo pendiente (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Un pago de este pedido está pendiente de liquidación. Espera a que se complete o falle antes de volver a pagar.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>Esta temporada del campamento ya no existe.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>Esta temporada del campamento ya tiene un pedido de la tienda.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>Este equipo ya no existe.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Solo los departamentos pueden tener pedidos de equipo.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>Este departamento ya tiene un pedido de la tienda para el año del evento activo.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>No se pudo crear el pedido.</value></data>
 </root>

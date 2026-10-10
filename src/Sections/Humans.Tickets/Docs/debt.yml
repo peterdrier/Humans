@@ -3,7 +3,3 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-10-04
-    id: TICKETS-10
-    what: "TicketTransferController.Submit/Cancel localize InvalidOperationException.Message as a resource key thrown by TicketTransferService. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: TicketTransferService's submit and cancel return a result record carrying the refusal key that the controller localizes; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel

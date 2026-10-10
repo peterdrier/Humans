@@ -37,6 +37,7 @@ public sealed class WorkgroupsEmailsTests
                     Detail: "Some detail",
                     Culture: culture));
 
+                msg.Culture.Should().Be(culture);
                 msg.Subject.Should().NotBeNullOrWhiteSpace(because: $"{kind}/{culture} subject");
                 msg.HtmlBody.Should().NotBeNullOrWhiteSpace(because: $"{kind}/{culture} body");
                 msg.Subject.Should().NotContain("Workgroups_Email_", because: $"{kind}/{culture} subject leaked a raw key");

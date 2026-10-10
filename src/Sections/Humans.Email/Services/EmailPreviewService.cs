@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -21,7 +22,7 @@ internal sealed class EmailPreviewService(IEmailBodyComposer bodyComposer) : IEm
                 "Only always-send system emails can be previewed without recipient-specific send policy.");
         }
 
-        var body = bodyComposer.Compose(message.HtmlBody);
+        var body = bodyComposer.Compose(message.HtmlBody, culture: message.Culture);
         return new RenderedEmailPreview(message.RecipientEmail, message.Subject, body.HtmlBody);
     }
 
@@ -32,7 +33,7 @@ internal sealed class EmailPreviewService(IEmailBodyComposer bodyComposer) : IEm
             ? PlaceholderUnsubscribeUrl
             : null;
 
-        var body = bodyComposer.Compose(bodyHtml, unsubscribeUrl);
+        var body = bodyComposer.Compose(bodyHtml, unsubscribeUrl, CultureInfo.CurrentUICulture.Name);
         return new RenderedEmailPreview(string.Empty, subject, body.HtmlBody);
     }
 }

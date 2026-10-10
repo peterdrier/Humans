@@ -64,7 +64,7 @@ internal sealed class CachingTeamService(
         MutateAsync(inner => inner.CreateTeamWithGoogleGroupAsync(
             name, description, requiresApproval, parentTeamId, googleGroupPrefix, isHidden, cancellationToken));
 
-    public Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+    public Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
         string? description,
@@ -420,7 +420,7 @@ internal sealed class CachingTeamService(
         return result;
     }
 
-    public Task<Team> UpdateTeamAsync(
+    public Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -497,6 +497,10 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetPendingRequestsForTeamAsync(teamId, cancellationToken));
 
+    public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetPendingRequestsForUserAsync(userId, cancellationToken));
+
     public Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
@@ -512,7 +516,7 @@ internal sealed class CachingTeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public Task RemoveMemberAsync(
+    public Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
@@ -740,7 +744,7 @@ internal sealed class CachingTeamService(
             ?? throw new InvalidOperationException($"Team {team.Id} missing from the cache after creation");
     }
 
-    Task ITeamSeeding.UpdateTeamAsync(
+    async Task ITeamSeeding.UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -754,11 +758,14 @@ internal sealed class CachingTeamService(
         bool? isSensitive,
         bool? isPromotedToDirectory,
         bool? earlyEntryEnabled,
-        CancellationToken cancellationToken) =>
-        UpdateTeamAsync(
+        CancellationToken cancellationToken)
+    {
+        var result = await UpdateTeamAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId, googleGroupPrefix,
             customSlug, hasBudget, isHidden, isSensitive, isPromotedToDirectory, earlyEntryEnabled,
             cancellationToken);
+        result.RequireSuccess();
+    }
 
     Task ITeamSeeding.AddSeededMemberAsync(
         Guid teamId,

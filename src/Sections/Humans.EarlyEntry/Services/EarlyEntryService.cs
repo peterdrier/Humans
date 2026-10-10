@@ -14,24 +14,23 @@ internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> provide
         var all = await GatherAsync(ct);
         return all
             .GroupBy(g => g.UserId)
-            .Select(grp =>
-            {
-                var entry = Collapse(grp);
-                return new EarlyEntryRosterRow(grp.Key, entry.EarliestEntryDate, entry.Sources, entry.Sources.Count > 1);
-            })
+            .Select(grp => Collapse(grp.Key, grp))
             .ToList();
     }
 
-    public async Task<UserEarlyEntry?> GetForUserAsync(Guid userId, CancellationToken ct)
+    public async Task<EarlyEntryRosterRow?> GetForUserAsync(Guid userId, CancellationToken ct)
     {
         var all = await GatherAsync(ct);
         var mine = all.Where(g => g.UserId == userId).ToList();
-        return mine.Count == 0 ? null : Collapse(mine);
+        return mine.Count == 0 ? null : Collapse(userId, mine);
     }
 
-    private static UserEarlyEntry Collapse(IEnumerable<EarlyEntryGrant> grants) => new(
-        grants.Min(g => g.EntryDate),
-        grants.Select(g => g.Source).Distinct(StringComparer.Ordinal).ToList());
+    private static EarlyEntryRosterRow Collapse(Guid userId, IEnumerable<EarlyEntryGrant> grants)
+    {
+        var rows = grants.ToList();
+        var sources = rows.Select(g => g.Source).Distinct(StringComparer.Ordinal).ToList();
+        return new(userId, rows.Min(g => g.EntryDate), sources, sources.Count > 1);
+    }
 
     private async Task<List<EarlyEntryGrant>> GatherAsync(CancellationToken ct)
     {

@@ -398,12 +398,9 @@ internal sealed class IssuesController(
         }
         else
         {
-            // The only handler that still surfaces the service's own string: the section
-            // rejection ("cannot change section on a terminal issue") is the one failure
-            // reason a user can act on. It is English-only — localizing it needs the
-            // service to return a resource key, tracked as ISSUES-10 in Docs/debt.yml. The
-            // other three reasons are generic, so they use the localized message.
-            SetError(result.ErrorMessage ?? localizer["Issue_Error"].Value);
+            SetError(result.ErrorKey is { } key
+                ? result.ErrorLimit is { } limit ? localizer[key, limit].Value : localizer[key].Value
+                : localizer["Issue_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });

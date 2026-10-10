@@ -35,7 +35,7 @@ internal sealed class EmailMessageFactory(
                 Lf("Email_FacilitatedMessage_Subject", senderName),
                 Lf("Email_FacilitatedMessage_Body", Encode(recipientName), Encode(senderName), sanitizedMessage, contactInfoHtml),
                 "facilitated_message", MessageCategory.FacilitatedMessages,
-                ReplyTo: includeContactInfo ? senderEmail : null);
+                ReplyTo: includeContactInfo ? senderEmail : null, Culture: CultureInfo.CurrentUICulture.Name);
         }
     }
 

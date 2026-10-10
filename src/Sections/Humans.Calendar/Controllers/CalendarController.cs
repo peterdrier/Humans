@@ -432,7 +432,8 @@ internal sealed class CalendarController : HumansControllerBase
         var originalDate = ev.IsAllDay ? OccurrenceOverrideFormViewModel.TryParseOriginalDate(originalStartUtc) : null;
         if (original is null && originalDate is null) return NotFound();
 
-        await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct, originalDate);
+        if (!await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct, originalDate))
+            SetError(_localizer["Calendar_InvalidOccurrenceOverride"]);
         return RedirectToAction(nameof(Event), new { id });
     }
 
@@ -474,12 +475,8 @@ internal sealed class CalendarController : HumansControllerBase
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
             return View("OccurrenceEdit", form);
         }
-        try
-        {
-            await _calendar.OverrideOccurrenceAsync(id, original,
-                dto, RequireCurrentUserId(), ct, originalDate);
-        }
-        catch (InvalidOperationException)
+        if (!await _calendar.OverrideOccurrenceAsync(id, original,
+                dto, RequireCurrentUserId(), ct, originalDate))
         {
             _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);

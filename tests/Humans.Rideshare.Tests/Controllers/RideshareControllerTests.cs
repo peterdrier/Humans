@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -53,6 +54,8 @@ public sealed class RideshareControllerTests
     [HumansFact]
     public async Task Accept_OnSuccess_ToastsAndRedirectsToMine()
     {
+        _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult());
         var controller = BuildController();
 
         var result = await controller.Accept(Guid.NewGuid(), Ct);
@@ -81,7 +84,7 @@ public sealed class RideshareControllerTests
     public async Task Accept_MapsARule_ToAnErrorToastOnMine()
     {
         _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new RideshareRuleException("Rideshare_Error_NotEnoughSeats"));
+            .Returns(new RideshareMutationResult(Refusal: new("Rideshare_Error_NotEnoughSeats")));
         var controller = BuildController();
 
         var result = await controller.Accept(Guid.NewGuid(), Ct);
@@ -118,11 +121,25 @@ public sealed class RideshareControllerTests
         await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!, default);
     }
 
-    [HumansFact]
-    public async Task OfferPost_ARule_RerendersTheFormWithAModelError()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task OfferPost_ARule_RerendersTheFormWithAModelError(string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        const string key = "Rideshare_Error_PlaceNotFound";
+        var resources = new System.Resources.ResourceManager(typeof(RideshareResource));
+        var translated = string.Format(System.Globalization.CultureInfo.CurrentUICulture,
+            resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!, "Atlantis");
+        _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
+            string.Format(System.Globalization.CultureInfo.CurrentUICulture,
+                resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!, call.Arg<object[]>())));
         _rideshare.CreateOfferAsync(_me, 2026, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new RideshareRuleException("Rideshare_Error_PlaceNotFound", "Atlantis"));
+            .Returns(new RideshareMutationResult(Refusal: new("Rideshare_Error_PlaceNotFound", "Atlantis")));
         var model = new OfferFormViewModel { MemberPlaceLabel = "Atlantis", DepartureDate = "2026-07-03" };
         var controller = BuildController();
 
@@ -130,7 +147,8 @@ public sealed class RideshareControllerTests
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("L:Rideshare_Error_PlaceNotFound");
+            .Which.ErrorMessage.Should().Be(translated);
+        translated.Should().Contain("Atlantis");
         controller.TempData.Should().BeEmpty();
         AssertExpectedWarnings(1);
     }
@@ -161,7 +179,7 @@ public sealed class RideshareControllerTests
     {
         const string key = "Rideshare_Error_WindowOrder";
         _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new RideshareRuleException(key));
+            .Returns(new RideshareMutationResult(Refusal: new(key)));
         _rideshare.GetSnapshotAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new RideshareSnapshot(2026, null, [], [], []));
         var logger = Substitute.For<ILogger<RideshareAdminController>>();
@@ -205,6 +223,8 @@ public sealed class RideshareControllerTests
     [HumansFact]
     public async Task OfferPost_WithAnId_Updates_AndRedirectsToMine()
     {
+        _rideshare.UpdateOfferAsync(Arg.Any<Guid>(), _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult());
         var id = Guid.NewGuid();
         var model = new OfferFormViewModel { Id = id, MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" };
         var controller = BuildController();
@@ -215,6 +235,46 @@ public sealed class RideshareControllerTests
         await _rideshare.Received(1).UpdateOfferAsync(id, _me, Arg.Is<TripSave>(s => s.MemberPlaceLabel == "Paris"), Arg.Any<CancellationToken>());
         await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!, default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().Be("L:Rideshare_OfferSaved");
+    }
+
+    [HumansTheory]
+    [InlineData("toast")]
+    [InlineData("form")]
+    [InlineData("admin")]
+    public async Task DependencyFaultsPropagateWithoutRefusalFeedback(string path)
+    {
+        var fault = new InvalidOperationException("database diagnostic");
+        _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
+        _rideshare.CreateOfferAsync(_me, 2026, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(fault);
+        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
+        var member = BuildController();
+        var admin = new RideshareAdminController(_rideshare, _users, _localizer, Substitute.For<IClock>(),
+            Substitute.For<ILogger<RideshareAdminController>>())
+        {
+            ControllerContext = member.ControllerContext,
+            TempData = member.TempData
+        };
+        Func<Task<IActionResult>> action = path switch
+        {
+            "toast" => () => member.Accept(Guid.NewGuid(), Ct),
+            "form" => () => member.Offer(new OfferFormViewModel
+            { MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" }, Ct),
+            "admin" => () => admin.Index(new RideshareSettingsViewModel
+            {
+                DestinationLabel = "Burn",
+                InboundWindowStart = "2026-07-01",
+                InboundWindowEnd = "2026-07-03",
+                OutboundWindowStart = "2026-07-10",
+                OutboundWindowEnd = "2026-07-12"
+            }, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(path))
+        };
+
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(fault);
+        member.TempData.Should().BeEmpty();
+        member.ModelState.IsValid.Should().BeTrue();
+        admin.ModelState.IsValid.Should().BeTrue();
+        _logger.ReceivedCalls().Should().BeEmpty();
     }
 
     private RideshareController BuildController(bool signedIn = true)

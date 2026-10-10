@@ -146,4 +146,9 @@
   <data name="Budget_VatCredit" xml:space="preserve"><value>IVA a compensar</value></data>
   <data name="Budget_BackToBudget" xml:space="preserve"><value>Volver al presupuesto</value></data>
   <data name="Budget_BreadcrumbNavigation" xml:space="preserve"><value>Migas de pan</value></data>
+  <data name="Budget_YearStatus_Draft" xml:space="preserve"><value>Borrador</value></data>
+  <data name="Budget_YearStatus_Active" xml:space="preserve"><value>Activo</value></data>
+  <data name="Budget_YearStatus_Closed" xml:space="preserve"><value>Cerrado</value></data>
+  <data name="Budget_ExpenditureType_CapEx" xml:space="preserve"><value>Gastos de capital</value></data>
+  <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Gastos operativos</value></data>
 </root>

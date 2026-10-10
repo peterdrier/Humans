@@ -67,15 +67,22 @@ internal sealed class FeedbackService(
         return reports.Select(r => CreateFeedbackReportInfo(r, lookups)).ToList();
     }
 
-    public async Task UpdateStatusAsync(
+    public async Task<FeedbackMutationResult> UpdateStatusAsync(
         Guid id, FeedbackStatus status, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var report = await repository.FindForMutationAsync(id, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {id} not found");
+        var report = await repository.FindForMutationAsync(id, cancellationToken);
+        if (report is null)
+        {
+            logger.LogWarning("Feedback report {ReportId} not found during triage", id);
+            return FeedbackMutationResult.Missing;
+        }
 
         if (!Enum.IsDefined(status))
-            throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown feedback status.");
+        {
+            logger.LogWarning("Feedback report {ReportId} rejected undefined status {Status}", id, status);
+            return new(true, Rejection: "Unknown feedback status.");
+        }
 
         var now = clock.GetCurrentInstant();
         report.Status = status;
@@ -111,14 +118,19 @@ internal sealed class FeedbackService(
         }
 
         navBadge.Invalidate();
+        return FeedbackMutationResult.Success;
     }
 
-    public async Task SetGitHubIssueNumberAsync(
+    public async Task<FeedbackMutationResult> SetGitHubIssueNumberAsync(
         Guid id, int? issueNumber, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var report = await repository.FindForMutationAsync(id, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {id} not found");
+        var report = await repository.FindForMutationAsync(id, cancellationToken);
+        if (report is null)
+        {
+            logger.LogWarning("Feedback report {ReportId} not found during triage", id);
+            return FeedbackMutationResult.Missing;
+        }
 
         report.GitHubIssueNumber = issueNumber;
         report.UpdatedAt = clock.GetCurrentInstant();
@@ -139,14 +151,19 @@ internal sealed class FeedbackService(
                 AuditAction.FeedbackGitHubLinked, AuditEntityTypes.FeedbackReport, id,
                 description, "API");
         }
+        return FeedbackMutationResult.Success;
     }
 
-    public async Task<FeedbackMessageInfo> PostMessageAsync(
+    public async Task<FeedbackMutationResult> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default)
     {
-        var report = await repository.FindForMutationAsync(reportId, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
+        var report = await repository.FindForMutationAsync(reportId, cancellationToken);
+        if (report is null)
+        {
+            logger.LogWarning("Feedback report {ReportId} not found during reply", reportId);
+            return FeedbackMutationResult.Missing;
+        }
 
         var now = clock.GetCurrentInstant();
         var message = new FeedbackMessage
@@ -171,9 +188,9 @@ internal sealed class FeedbackService(
         navBadge.Invalidate();
         logger.LogInformation(
             "Feedback admin reply posted on {ReportId} by {UserId}", reportId, senderUserId);
-        return new FeedbackMessageInfo(
+        return new(true, Message: new FeedbackMessageInfo(
             message.Id, message.FeedbackReportId, message.SenderUserId,
-            SenderName: null, message.Content, message.CreatedAt);
+            SenderName: null, message.Content, message.CreatedAt));
     }
 
     private async Task SendAdminResponseEmailAsync(
@@ -227,12 +244,16 @@ internal sealed class FeedbackService(
         }
     }
 
-    public async Task UpdateAssignmentAsync(
+    public async Task<FeedbackMutationResult> UpdateAssignmentAsync(
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var report = await repository.FindForMutationAsync(id, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {id} not found");
+        var report = await repository.FindForMutationAsync(id, cancellationToken);
+        if (report is null)
+        {
+            logger.LogWarning("Feedback report {ReportId} not found during assignment", id);
+            return FeedbackMutationResult.Missing;
+        }
 
         var changes = new List<string>();
 
@@ -278,7 +299,7 @@ internal sealed class FeedbackService(
         }
 
         if (changes.Count == 0)
-            return;
+            return FeedbackMutationResult.Success;
 
         report.UpdatedAt = clock.GetCurrentInstant();
 
@@ -301,6 +322,7 @@ internal sealed class FeedbackService(
         logger.LogInformation(
             "Feedback {ReportId} assignment updated by {ActorId}: {Changes}",
             id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
+        return FeedbackMutationResult.Success;
     }
 
     public async Task<int> GetActionableCountAsync(

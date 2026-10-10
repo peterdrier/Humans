@@ -297,4 +297,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Nuova segnalazione inviata: {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Ti è stata assegnata una segnalazione: {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>Apri segnalazione</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>La sezione deve contenere al massimo {0} caratteri.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>Non puoi cambiare la sezione di una segnalazione chiusa.</value>
+  </data>
 </root>

@@ -75,7 +75,7 @@ else
         Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestTeamCell =
             @<text><a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a></text>;
         Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestStatusCell =
-            @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+            @<text><span class="badge @item.StatusBadgeClass">@SharedLocalizer["AdminApp_Pending"]</span></text>;
         Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestWithdrawCell = @<text>
             <form asp-action="WithdrawRequest" asp-route-id="@item.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()

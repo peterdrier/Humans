@@ -155,19 +155,29 @@ internal sealed class CachingCalendarService(
         await ReplaceAsync(id, CancellationToken.None);
     }
 
-    public async Task CancelOccurrenceAsync(
-        Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
-    {
-        await WithInner(inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
-        await ReplaceAsync(eventId, CancellationToken.None);
-    }
+    public Task<bool> CancelOccurrenceAsync(
+        Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
+        MutateOccurrenceAsync(eventId, inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
 
-    public async Task OverrideOccurrenceAsync(
+    public Task<bool> OverrideOccurrenceAsync(
         Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto,
-        Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
+        Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
+        MutateOccurrenceAsync(eventId, inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
+
+    private async Task<bool> MutateOccurrenceAsync(Guid eventId, Func<ICalendarService, Task<bool>> action)
     {
-        await WithInner(inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
-        await ReplaceAsync(eventId, CancellationToken.None);
+        var completed = false;
+        try
+        {
+            var saved = await WithInner(action);
+            if (saved) await ReplaceAsync(eventId, CancellationToken.None);
+            completed = saved;
+            return saved;
+        }
+        finally
+        {
+            if (!completed) Clear();
+        }
     }
 
     protected override async Task WarmAllAsync(CancellationToken ct)
@@ -223,7 +233,7 @@ internal sealed class CachingCalendarService(
         return await action(inner);
     }
 
-    // This overload is used only by delete/cancel/override mutation paths.
+    // This overload is used by the delete mutation path.
     private async Task WithInner(Func<ICalendarService, Task> action)
     {
         var clear = true;

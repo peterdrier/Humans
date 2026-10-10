@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 9
-inbox:
-  - added: 2026-10-04
-    id: EVENTS-8
-    what: "BulkEventCsvParser.Parse embeds translated header/row errors in FormatException.Message; EventsController bulk upload logs and displays that message. This violates no-localized-exception-messages. Preserve all-row translated feedback. Found during the daily production sweep. Plan: Parse returns a result record (rows plus a list of error keys with row/column args) that the controller localizes; developer diagnostics stay in logs. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

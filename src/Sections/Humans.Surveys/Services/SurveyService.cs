@@ -733,8 +733,8 @@ internal sealed class SurveyService(
         var emailsQueued = 0;
         var failed = 0;
 
-        // Once invitations are stamped, later sends skip them. Finish their emails and audit
-        // as one batch even if the admin abandons the request after the first save.
+        // Once invitation writes begin, finish the batch independently of request cancellation.
+        // Stamp SentAt only after enqueue acceptance so failures stay eligible for retry.
         ct.ThrowIfCancellationRequested();
         var sendCt = CancellationToken.None;
 
@@ -752,8 +752,6 @@ internal sealed class SurveyService(
             if (existingParticipation.TryGetValue(userId, out var existing))
             {
                 inv = existing;
-                await repo.UpdateInvitationStatusAsync(
-                    inv.Id, EmailOutboxStatus.Queued, now, sendCt);
             }
             else
             {
@@ -762,8 +760,6 @@ internal sealed class SurveyService(
                     Id = Guid.NewGuid(),
                     SurveyId = surveyId,
                     UserId = userId,
-                    SentAt = now,
-                    LatestEmailStatus = EmailOutboxStatus.Queued,
                     CreatedAt = now,
                 };
                 await repo.AddInvitationAndSaveAsync(inv, sendCt);
@@ -785,12 +781,14 @@ internal sealed class SurveyService(
                     email, name, title, token, culture, customSubject, customMessage);
 
                 await emailService.SendAsync(msg, sendCt);
+                await repo.UpdateInvitationStatusAsync(
+                    inv.Id, EmailOutboxStatus.Queued, clock.GetCurrentInstant(), sendCt);
                 emailsQueued++;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex,
-                    "Failed to enqueue survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
+                    "Failed to prepare, enqueue or record survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
                     userId, inv.Id, surveyId);
                 await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, sendCt);
                 failed++;
@@ -1677,7 +1675,7 @@ internal sealed class SurveyService(
         _ => true,
     };
 
-    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default)
+    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey is null) return null;
@@ -1760,6 +1758,8 @@ internal sealed class SurveyService(
             })
             .ToList();
 
+        await auditLog.LogAsync(AuditAction.SurveyResponsesExported, "Survey", surveyId,
+            $"Survey responses exported: {rows.Count} rows", actorUserId);
         return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
     }
 

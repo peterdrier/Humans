@@ -979,26 +979,26 @@ internal sealed class ShiftSignupService(
         return SignupResult.Ok(signups[0].Id);
     }
 
-    public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
+    public async Task<BailRangeResult> BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
     {
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,
             ShiftSignupBlockMutationScope.PendingAndConfirmed);
 
-        if (signups.Count == 0) return;
+        if (signups.Count == 0) return new();
 
         var firstSignup = signups[0];
-        var calendar = await calendarResolver.GetAsync(firstSignup.Shift.Rota.EventSettingsId)
-            ?? throw new InvalidOperationException(localizer["Shifts_EventCalendarNotConfigured"]);
+        var calendar = await calendarResolver.GetAsync(firstSignup.Shift.Rota.EventSettingsId);
+        if (calendar is null) return new("Shifts_EventCalendarNotConfigured");
         var now = clock.GetCurrentInstant();
         var isOwner = firstSignup.UserId == actorUserId;
         var isPrivileged = await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
-            throw new InvalidOperationException(localizer["Shifts_BailRange_NotAuthorized"]);
+            return new("Shifts_BailRange_NotAuthorized");
 
         if (signups.Any(s => s.Shift.IsEarlyEntry) && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
-            throw new InvalidOperationException(localizer["Shifts_Bail_EarlyEntryClosed"]);
+            return new("Shifts_Bail_EarlyEntryClosed");
 
         foreach (var signup in signups)
         {
@@ -1035,6 +1035,7 @@ internal sealed class ShiftSignupService(
         {
             await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
         }
+        return new();
     }
 
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>

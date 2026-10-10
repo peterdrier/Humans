@@ -68,7 +68,7 @@ All routes are `AdminOnly`.
 - Neither service reads `audit_log`. Sync state is read from the section's own table; audit descriptions are prose, never serialized JSON.
 - No `IMailerLiteAudience` may claim the reserved `import-reconciliation` key (pinned by `MailerLiteArchitectureTests.AllAudiences_HaveUniqueGroupNamesAndKeys`).
 - `mailerlite_sync_states` holds exactly one row per key. The repository's check-and-insert runs under a striped `TrackedLock` keyed on the sync key (the daily job and an admin's "Sync Audience" click can land together); there is no DB unique index. `ComputeAllStatsAsync` groups by key and takes the most recent rather than assuming uniqueness, so a duplicate shows the newest row instead of 500ing the dashboard (pinned by `ComputeAllStatsAsync_DuplicateKeyRows_ShowsTheNewest`).
-- Import matching prefers a single verified owner. Multiple verified owners or multiple unverified matching email rows (including aliases on one owner) are skipped without deleting emails, provisioning a contact, or changing marketing preferences. Only a single unverified match is eligible for replacement.
+- Import matching prefers a single verified owner. Multiple verified owners or multiple unverified matching email rows (including aliases on one owner) are skipped without deleting emails, provisioning a contact, or changing marketing preferences. Only a single unverified match is eligible for replacement. Apply delegates deletion and provisioning to Users' atomic replacement operation; failed provisioning leaves the original address intact and counts an error.
 - The import (`MailerLiteImportService`) ingests **only** the MailerLite group named `Website` (resolved by name; throws if the group is absent) — never the whole account. The reset pass excludes anyone in that group of any status, since the import already owns their pref (active → opt-in, unsubscribed/bounced → opt-out). Pinned by `MailerLiteImportServiceWebsiteScopeTests`.
 - Every write to `CommunicationPreference[Marketing]` goes through `CommunicationPreferenceService` — `UpdatePreferenceAsync` for opt state, `ResetPreferenceAsync` to delete the row (→ null) — and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
@@ -111,12 +111,12 @@ and communication-preference interfaces all live in `Humans.Users.Contracts`.
 - **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
   user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
   (GDPR erasure), `FindByAddressAsync` (import matching: the verified-only pass counts
-  distinct owners, the unverified pass picks the row to replace), `DeleteEmailAsync` (import remediation).
+  distinct owners, the unverified pass picks the row to replace).
 - **Users — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
   `GetPreferenceOrNullAsync`, `GetCountByCategoryAndStateAsync` (reads) and
   `UpdatePreferenceAsync`, `ResetPreferenceAsync` (writes, from the import apply).
-- **Users — provisioning**: `IAccountProvisioningService.FindOrCreateUserByEmailAsync`, the
-  import's create path.
+- **Users — provisioning**: `IAccountProvisioningService.FindOrCreateUserByEmailAsync` for creation and
+  `ReplaceUnverifiedEmailAndProvisionAsync` for atomic replacement.
 - **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync`, called once from
   `CurrentEventTicketHolders.ForCurrentEventAsync` — the single definition of the
   current-event ticket-holder set that `HasTicketAudience`, `MarketingNoTicketAudience` and

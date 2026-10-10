@@ -44,9 +44,11 @@ internal interface ICalendarService : IApplicationService
 
     Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default);
 
-    Task CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null);
+    /// <summary>Returns false for a missing series or invalid occurrence identity; dependency faults propagate.</summary>
+    Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null);
 
-    Task OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null);
+    /// <summary>Returns false for a missing series or invalid occurrence override; dependency faults propagate.</summary>
+    Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null);
 }
 
 internal sealed record CalendarEventMutationResult(

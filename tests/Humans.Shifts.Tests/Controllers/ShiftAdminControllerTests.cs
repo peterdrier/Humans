@@ -1,4 +1,6 @@
 using Xunit;
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
@@ -18,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -45,6 +48,7 @@ public class ShiftAdminControllerTests
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
 
@@ -68,6 +72,9 @@ public class ShiftAdminControllerTests
 
     public ShiftAdminControllerTests()
     {
+        _shiftMgmt.DeleteRotaAsync(Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
+        _shiftMgmt.DeleteShiftAsync(Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(UserId));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
             new Dictionary<Guid, TeamInfo> { [TeamId] = MakeTeam(TeamId, Slug) });
@@ -92,11 +99,13 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
         _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
             .Returns(Task.FromException<ShiftGenerationResult>(new InvalidOperationException(reason)));
-        _shiftMgmt.DeleteRotaAsync(rota.Id)
-            .Returns(Task.FromException(new InvalidOperationException(reason)));
+        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 2));
+        _localizer["Shifts_Delete_ConfirmedSignups", Arg.Any<object[]>()]
+            .Returns(new LocalizedString("Shifts_Delete_ConfirmedSignups", reason));
         var signupBlockId = Guid.NewGuid();
         _signupService.BailRangeAsync(signupBlockId, UserId, null)
-            .Returns(Task.FromException(new InvalidOperationException(reason)));
+            .Returns(new BailRangeResult("Shifts_BailRange_NotAuthorized"));
+        _localizer["Shifts_BailRange_NotAuthorized"].Returns(new LocalizedString("Shifts_BailRange_NotAuthorized", reason));
         var ctrl = BuildSut();
 
         var result = action switch
@@ -113,7 +122,12 @@ public class ShiftAdminControllerTests
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(reason);
+        arguments[2]!.ToString().Should().Contain(action switch
+        {
+            "BailRange" => "Shifts_BailRange_NotAuthorized",
+            "DeleteRota" => "Shifts_Delete_ConfirmedSignups",
+            _ => reason
+        });
     }
 
     [HumansFact]
@@ -330,7 +344,80 @@ public class ShiftAdminControllerTests
             Arg.Any<CancellationToken>());
     }
 
-    private ShiftAdminController BuildSut()
+    [HumansFact]
+    public async Task BailRange_DependencyFaultPropagatesWithoutFeedback()
+    {
+        var blockId = Guid.NewGuid();
+        var fault = new InvalidOperationException("database diagnostic");
+        _signupService.BailRangeAsync(blockId, UserId, null)
+            .Returns(Task.FromException<BailRangeResult>(fault));
+        var controller = BuildSut();
+
+        var action = () => controller.BailRange(Slug, blockId, null);
+
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(fault);
+        controller.TempData.Should().BeEmpty();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Delete_DependencyFaultPropagatesWithoutRefusalFeedback(bool deleteShift)
+    {
+        var rota = MakeRota(TeamId);
+        var shift = MakeShift(rota);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        var failure = new InvalidOperationException("Private cascade delete diagnostic");
+        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(Task.FromException<ShiftDeletionResult>(failure));
+        _shiftMgmt.DeleteShiftAsync(shift.Id).Returns(Task.FromException<ShiftDeletionResult>(failure));
+        var controller = BuildSut();
+        Func<Task<IActionResult>> act = deleteShift
+            ? () => controller.DeleteShift(Slug, shift.Id)
+            : () => controller.DeleteRota(Slug, rota.Id);
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(act);
+
+        thrown.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("en", false)]
+    [InlineData("es", false)]
+    [InlineData("de", false)]
+    [InlineData("it", false)]
+    [InlineData("fr", false)]
+    [InlineData("ca", false)]
+    [InlineData("en", true)]
+    [InlineData("es", true)]
+    [InlineData("de", true)]
+    [InlineData("it", true)]
+    [InlineData("fr", true)]
+    [InlineData("ca", true)]
+    public async Task Delete_ConfirmedSignupRefusalIsLocalizedForCoordinators(string culture, bool deleteShift)
+    {
+        using var scope = new CultureScope(culture);
+        var localizer = new StringLocalizer<ShiftsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+        var rota = MakeRota(TeamId);
+        var shift = MakeShift(rota);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
+        _shiftMgmt.DeleteShiftAsync(shift.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
+        var controller = BuildSut(localizer);
+
+        var result = deleteShift ? await controller.DeleteShift(Slug, shift.Id) : await controller.DeleteRota(Slug, rota.Id);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["ErrorMessage"].Should().Be(localizer["Shifts_Delete_ConfirmedSignups", 3].Value);
+        controller.TempData["ErrorMessage"].Should().BeOfType<string>().Which.Should().Contain("3").And.NotContain("{0}");
+    }
+
+    private ShiftAdminController BuildSut(IStringLocalizer<ShiftsResource>? localizer = null)
     {
         var ctrl = new ShiftAdminController(
             _teamService,
@@ -344,7 +431,8 @@ public class ShiftAdminControllerTests
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
-            _logger);
+            _logger,
+            localizer ?? _localizer);
 
         var http = new DefaultHttpContext
         {

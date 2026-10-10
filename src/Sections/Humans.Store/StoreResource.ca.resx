@@ -100,4 +100,23 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Import a reemborsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La factura només es pot emetre quan el saldo de la comanda és zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acció</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No s’ha pogut determinar l’any de la comanda. Contacta amb l’equip de la botiga abans d’afegir productes.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Aquest producte pertany a un any diferent del de la comanda.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>La quantitat ha de ser superior a zero.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>Aquesta comanda ja no existeix.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>No es poden modificar les línies d’una comanda facturada.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>Aquest producte ja no existeix.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>Aquest producte ja no està disponible per demanar.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>Aquesta línia ja no existeix.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>Aquesta línia no pertany a aquesta comanda.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>El pagament amb Stripe no està configurat. Contacta amb un administrador.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>L’import del pagament ha de ser superior a zero.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>L’import del pagament no pot superar el saldo pendent (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Un pagament d’aquesta comanda està pendent de liquidació. Espera que es completi o falli abans de tornar a pagar.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>Aquesta temporada del campament ja no existeix.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>Aquesta temporada del campament ja té una comanda de la botiga.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>Aquest equip ja no existeix.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Només els departaments poden tenir comandes d’equip.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>Aquest departament ja té una comanda de la botiga per a l’any de l’esdeveniment actiu.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>No s’ha pogut crear la comanda.</value></data>
 </root>

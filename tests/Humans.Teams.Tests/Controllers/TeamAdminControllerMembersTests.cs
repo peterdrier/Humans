@@ -176,7 +176,9 @@ public class TeamAdminControllerMembersTests
         const string reason = "The requested membership change is not permitted";
         Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
         teams.RejectJoinRequestAsync(targetId, actorId, "Reason").Returns(Task.FromException(failure));
-        teams.RemoveMemberAsync(team.Id, targetId, actorId).Returns(Task.FromException(failure));
+        teams.RemoveMemberAsync(team.Id, targetId, actorId).Returns(unexpected
+            ? Task.FromException<TeamMemberRemovalResult>(new InvalidOperationException("Private dependency failure"))
+            : Task.FromResult(new TeamMemberRemovalResult("Teams_RemoveMember_Permission")));
         teams.AddMemberToTeamAsync(team.Id, targetId, actorId).Returns(Task.FromException<TeamMember>(failure));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -186,9 +188,11 @@ public class TeamAdminControllerMembersTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test"))
         };
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             Substitute.For<IGoogleSyncService>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
-            logger, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
+            logger, localizer, Substitute.For<ITicketServiceRead>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -203,7 +207,8 @@ public class TeamAdminControllerMembersTests
         if (unexpected)
         {
             Func<Task> act = async () => await ActAsync();
-            await act.Should().ThrowAsync<IOException>();
+            if (string.Equals(action, "remove", StringComparison.Ordinal)) await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private dependency failure");
+            else await act.Should().ThrowAsync<IOException>();
             logger.ReceivedCalls().Should().BeEmpty();
             return;
         }
@@ -215,7 +220,7 @@ public class TeamAdminControllerMembersTests
         var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(LogLevel.Warning);
         args[3].Should().BeNull();
-        args[2]!.ToString().Should().Contain(reason).And.Contain(actorId.ToString())
+        args[2]!.ToString().Should().Contain(string.Equals(action, "remove", StringComparison.Ordinal) ? "Teams_RemoveMember_Permission" : reason).And.Contain(actorId.ToString())
             .And.Contain(team.Id.ToString()).And.Contain(targetId.ToString());
     }
 

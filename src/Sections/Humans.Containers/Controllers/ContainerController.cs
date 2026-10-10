@@ -150,16 +150,13 @@ internal sealed class ContainerController(
     }
 
     private async Task<IActionResult> TryRunContainerWriteAsync(
-        Func<Task> write, string slug, string successMessage)
+        Func<Task<ContainerMutationResult<ContainerDto>>> write, string slug, string successMessage)
     {
-        try
+        var result = await write();
+        if (result.ErrorKey is { } key)
         {
-            await write();
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Container write failed for camp {Slug}: {Message}", slug, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Container write refused for camp {Slug}: {ErrorKey}", slug, key);
+            SetError(localizer[key, result.ErrorArgs ?? []].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 

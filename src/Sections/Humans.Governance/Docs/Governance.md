@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
+
 - Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
@@ -371,3 +373,5 @@ discovers the declaration through DI and holds no list of sections; dropping the
 sends this section's stored issues to the Admin-only queue.
 
 Governance resource keys use `Governance_` in all six cultures; reflective `Enum_` keys retain their shared naming shape. Assembly vote status, kind, choice, majority and tally-method lookups build the same section-prefixed keys.
+
+The status-update audience defaults to unsigned required consents whose grace period is due now, restricted to active assignments. Its optional `expiringWithin` horizon serves advance reminders; it does not change the suspension or metrics audiences. Signed documents and later deadlines remain excluded.

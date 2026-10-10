@@ -22,7 +22,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
         <h1 class="mb-0">@Model.Year.Name</h1>
-        <span class="badge bg-success fs-6">@Model.Year.Status</span>
+        <span class="badge bg-success fs-6">@Localizer[$"Budget_YearStatus_{Model.Year.Status}"]</span>
     </div>
     <div class="d-flex gap-2">
         <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
@@ -116,7 +116,7 @@
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> expenditureTypeCell = @<text>
                         <span class="badge bg-@(item.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">
-                            @item.ExpenditureType
+                            @Localizer[$"Budget_ExpenditureType_{item.ExpenditureType}"]
                         </span>
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> actionsCell = @<text>

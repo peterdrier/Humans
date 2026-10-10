@@ -38,7 +38,7 @@ internal sealed class StoreInvoiceIssuer(
     ///
     /// Only issuable at a zero balance: a camp that still owes, or is owed, settles first.
     ///
-    /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> throws
+    /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> is refused
     /// without calling Holded, and — because a document approved by an attempt that then failed
     /// locally leaves no trace here — Holded is searched for a document already tagged with this
     /// order before anything is created. A match is adopted, never re-issued: a second approved
@@ -47,18 +47,18 @@ internal sealed class StoreInvoiceIssuer(
     /// and approved if the earlier attempt died between create and approve.
     /// </summary>
     [ExternalWrite]
-    public async Task IssueAsync(Order order, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> IssueAsync(Order order, Guid actorUserId, CancellationToken ct = default)
     {
         // Idempotency guard — deliberately before any Holded call, so a double-submit cannot
         // create a second document.
         if (order.IssuedInvoiceId is not null || order.State != OrderState.Open)
-            throw new InvalidOperationException("This order has already been invoiced.");
+            return Refuse(order, actorUserId, "This order has already been invoiced.");
 
         if (order.Lines.Count == 0)
-            throw new InvalidOperationException("Cannot invoice an order with no lines.");
+            return Refuse(order, actorUserId, "Cannot invoice an order with no lines.");
 
         if (!holdedClient.IsConfigured)
-            throw new InvalidOperationException(
+            return Refuse(order, actorUserId,
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
         // Freeze seam (#816): rewrite each snapshot from the live catalog before issuing, so the
@@ -66,7 +66,7 @@ internal sealed class StoreInvoiceIssuer(
         // effective prices for an Open order — reuse them rather than re-deriving.
         var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(ct));
         if (totals.BalanceEur != 0m)
-            throw new InvalidOperationException(
+            return Refuse(order, actorUserId,
                 $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).");
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
         foreach (var line in order.Lines)
@@ -88,7 +88,8 @@ internal sealed class StoreInvoiceIssuer(
             // Before anything is written, and before the order is frozen against it: the order
             // stayed Open, so it could have been edited or repriced since that document was
             // created. Divergence is a human's problem, not something to reconcile silently.
-            EnsureRecoveredDocumentMatches(order, adoptedDoc, totals);
+            if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
+                return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
                 // Creation succeeded and approval did not. A draft books no revenue and carries no
@@ -106,18 +107,19 @@ internal sealed class StoreInvoiceIssuer(
                 + $"(EUR {adoptedDoc.Total:0.00}), already issued for order {order.Id} by an earlier "
                 + "attempt that failed before saving — no second document was created",
                 ct);
-            return;
+            return AdminMutationResult.Success;
         }
 
         var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
         if (totalDue <= 0m)
-            throw new InvalidOperationException("Cannot invoice an order with a zero total.");
+            return Refuse(order, actorUserId, "Cannot invoice an order with a zero total.");
 
         var products = (await repo.GetProductsByIdsAsync(
                 order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
             .ToDictionary(p => p.Id);
 
-        var documentLines = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
+        var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
+        if (lineRefusal is not null) return Refuse(order, actorUserId, lineRefusal);
 
         // A receipt carries no counterparty, so it is only lawful below the simplified-invoice
         // threshold. Above it the details are mandatory — refuse rather than silently issue the
@@ -127,7 +129,7 @@ internal sealed class StoreInvoiceIssuer(
             ? HoldedSalesDocumentKind.SalesReceipt
             : HoldedSalesDocumentKind.Invoice;
         if (counterparty is null && totalDue > options.Value.SimplifiedInvoiceThresholdEur)
-            throw new InvalidOperationException(
+            return Refuse(order, actorUserId,
                 $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
                 + "name, address and tax id (or passport number) first.");
 
@@ -173,6 +175,14 @@ internal sealed class StoreInvoiceIssuer(
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
             + $"for EUR {totalDue:0.00} on order {order.Id}",
             ct);
+        return AdminMutationResult.Success;
+    }
+
+    private AdminMutationResult Refuse(Order order, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store invoice rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
+            order.Id, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
     }
 
     /// <summary>
@@ -182,7 +192,7 @@ internal sealed class StoreInvoiceIssuer(
     /// that says something else, permanently. Correcting an issued document is a factura
     /// rectificativa, which is a human decision, so this fails loudly rather than choosing a side.
     /// </summary>
-    private static void EnsureRecoveredDocumentMatches(
+    private static string? GetRecoveryRefusal(
         Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
     {
         // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
@@ -192,16 +202,15 @@ internal sealed class StoreInvoiceIssuer(
         if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
             && decimal.Round(document.Tax, 2) == expectedTax
             && decimal.Round(document.Total, 2) == expectedTotal)
-            return;
+            return null;
 
         var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
-        throw new InvalidOperationException(
-            $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
+        return $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
             + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
             + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. The order was changed after that "
             + "document was created. Resolve it by hand — correcting an issued document is a factura "
-            + "rectificativa, and no second document will be issued in the meantime.");
+            + "rectificativa, and no second document will be issued in the meantime.";
     }
 
     /// <summary>The tag every store sales document carries. Holded's list endpoints return
@@ -280,7 +289,7 @@ internal sealed class StoreInvoiceIssuer(
     /// a deposit. Refundable deposits are a liability, not income, so they post tax-0 to the
     /// configured fianzas account instead of the item's revenue account.
     /// </summary>
-    private async Task<IReadOnlyList<HoldedSalesDocumentLineInput>> BuildInvoiceLinesAsync(
+    private async Task<(IReadOnlyList<HoldedSalesDocumentLineInput> Lines, string? Refusal)> BuildInvoiceLinesAsync(
         Order order,
         IReadOnlyDictionary<Guid, BalanceCalculator.LineTotals> totalsByLine,
         IReadOnlyDictionary<Guid, Product> products,
@@ -293,7 +302,7 @@ internal sealed class StoreInvoiceIssuer(
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (missingAccount.Count > 0)
-            throw new InvalidOperationException(
+            return ([],
                 "These catalog items have no Holded revenue account yet: "
                 + string.Join(", ", missingAccount)
                 + ". Set it on /Store/Admin/Catalog before issuing.");
@@ -301,7 +310,7 @@ internal sealed class StoreInvoiceIssuer(
         var needsDepositAccount = order.Lines.Any(l => totalsByLine[l.Id].DepositEur > 0m);
         var depositAccountNum = options.Value.DepositLiabilityAccountNum;
         if (needsDepositAccount && depositAccountNum is null)
-            throw new InvalidOperationException(
+            return ([],
                 "This order carries refundable deposits but no deposit liability account is "
                 + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
                 + "must not be booked to a revenue account.");
@@ -319,7 +328,7 @@ internal sealed class StoreInvoiceIssuer(
 
         var unknown = wanted.Where(n => !accountIdsByNum.ContainsKey(n)).ToList();
         if (unknown.Count > 0)
-            throw new InvalidOperationException(
+            return ([],
                 "These accounts do not exist in Holded's chart of accounts: "
                 + string.Join(", ", unknown.OrderBy(n => n))
                 + ". Ask Acountax to create them, then re-issue.");
@@ -348,7 +357,7 @@ internal sealed class StoreInvoiceIssuer(
                 AccountId = accountIdsByNum[depositAccountNum!.Value],
             });
         }
-        return lines;
+        return (lines, null);
     }
 
     /// <summary>

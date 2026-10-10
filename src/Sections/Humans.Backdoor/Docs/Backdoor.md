@@ -82,6 +82,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
+- Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.
 - Surveys response exports preserve the owning section's privacy rules: closed Asociado ballots have no identity or submission timestamps and order by response id. A `since` filter cannot match their suppressed timestamps.
 - Issues list/detail/comments GETs and legacy Feedback list/detail/messages GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 
@@ -96,6 +97,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
 - Every `PATCH /api/backdoor/{issues,feedback}/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
+- Feedback mutations map explicit missing results to 404 and refusals to 422. Dependency failures become logged 500 responses; exception wording never selects 404/422 or enters the response body.
 - Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
 
 ## Negative Access Rules

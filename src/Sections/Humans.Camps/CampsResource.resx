@@ -285,4 +285,6 @@
   <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Image not found.</value></data>
   <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>This image does not belong to this camp.</value></data>
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>New message for {0} - check your email</value></data>
+  <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>This season does not belong to this camp.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Only a pending or active season can be withdrawn.</value></data>
 </root>

@@ -43,14 +43,14 @@ internal sealed class StubGoogleSyncService(
         return Task.CompletedTask;
     }
 
-    public Task AddUserToTeamResourcesAsync(
+    public Task<GoogleResourceGrantOutcome> AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
-        return Task.CompletedTask;
+        return Task.FromResult(GoogleResourceGrantOutcome.Deferred);
     }
 
     public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)

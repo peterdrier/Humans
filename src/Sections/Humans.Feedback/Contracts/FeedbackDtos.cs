@@ -43,3 +43,12 @@ public sealed record FeedbackMessageInfo(
     string? SenderName,
     string Content,
     Instant CreatedAt);
+
+/// <summary>Expected triage outcomes; dependency failures remain exceptions.</summary>
+public sealed record FeedbackMutationResult(
+    bool Found, string? Rejection = null, FeedbackMessageInfo? Message = null)
+{
+    public bool Succeeded => Found && Rejection is null;
+    public static FeedbackMutationResult Missing { get; } = new(false);
+    public static FeedbackMutationResult Success { get; } = new(true);
+}

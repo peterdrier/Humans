@@ -282,15 +282,15 @@ internal sealed class ShiftsController(
             return currentUserNotFound;
         }
 
-        try
+        var result = await signupService.BailRangeAsync(signupBlockId, user.Id);
+        if (result.ErrorKey is { } errorKey)
         {
-            await signupService.BailRangeAsync(signupBlockId, user.Id);
-            SetSuccess(localizer["Shifts_BailRangeSuccess"].Value);
+            logger.LogWarning("Rejected shift range bail {SignupBlockId} for user {UserId}: {Reason}", signupBlockId, user.Id, errorKey);
+            SetError(localizer[errorKey].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to bail shift range {SignupBlockId} for user {UserId}: {Reason}", signupBlockId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetSuccess(localizer["Shifts_BailRangeSuccess"].Value);
         }
 
         return RedirectToAction(nameof(Mine));

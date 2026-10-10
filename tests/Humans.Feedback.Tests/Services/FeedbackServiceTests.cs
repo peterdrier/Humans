@@ -126,15 +126,75 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
+    [InlineData("message", false)]
+    [InlineData("message", true)]
+    [InlineData("status", false)]
+    [InlineData("status", true)]
+    [InlineData("assignment", false)]
+    [InlineData("assignment", true)]
+    [InlineData("github", false)]
+    [InlineData("github", true)]
+    public async Task TriageController_OnlyOwnerMissingResultBecomesNotFound(string action, bool dependencyFails)
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Admin", "admin@example.org");
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(_people[userId]);
+        var teams = Substitute.For<ITeamServiceRead>();
+        var service = _service;
+        if (dependencyFails)
+        {
+            var brokenRepo = Substitute.For<IFeedbackRepository>();
+            brokenRepo.FindForMutationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .ThrowsAsync(new InvalidOperationException("Provider not found; database unavailable"));
+            service = new FeedbackServiceImpl(brokenRepo, users, Substitute.For<IUserEmailService>(), teams,
+                _emailService, _emailMessages, _notificationService, _auditLog,
+                new NavBadgeCacheInvalidator(_cache), _fileStorage, _cache, Clock,
+                NullLogger<FeedbackServiceImpl>.Instance);
+        }
+        var controller = new FeedbackController(service, teams, users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test"))
+                }
+            },
+        };
+        controller.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            controller.HttpContext, Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
+        var id = Guid.NewGuid();
+        var result = action switch
+        {
+            "message" => await controller.PostMessage(id, new PostFeedbackMessageModel { Content = "hello" }),
+            "status" => await controller.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved }),
+            "assignment" => await controller.UpdateAssignment(id, new UpdateFeedbackAssignmentModel()),
+            _ => await controller.SetGitHubIssue(id, new SetGitHubIssueModel { IssueNumber = 12 })
+        };
+
+        if (dependencyFails)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.TempData.Values.Should().Contain(value => value is string && ((string)value).StartsWith("Failed", StringComparison.Ordinal));
+        }
+        else result.Should().BeOfType<NotFoundResult>();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(-1)]
     [InlineData(999)]
     public async Task UpdateStatusAsync_UndefinedStatus_PreservesStoredState(int status)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var report = await CreateTestReport();
-        var act = () => _service.UpdateStatusAsync(report.Id, (FeedbackStatus)status, Guid.NewGuid(), ct);
+        var result = await _service.UpdateStatusAsync(report.Id, (FeedbackStatus)status, Guid.NewGuid(), ct);
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown feedback status.*");
+        result.Succeeded.Should().BeFalse();
+        result.Rejection.Should().Be("Unknown feedback status.");
         (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).Status.Should().Be(FeedbackStatus.Open);
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -257,7 +317,9 @@ public sealed class FeedbackServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var adminId = Guid.NewGuid();
-        var message = await _service.PostMessageAsync(report.Id, adminId, "Looking into it", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.PostMessageAsync(report.Id, adminId, "Looking into it", Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
+        var message = result.Message!;
 
         message.Content.Should().Be("Looking into it");
         message.SenderUserId.Should().Be(adminId);
@@ -330,7 +392,9 @@ public sealed class FeedbackServiceTests
                 sourceKey: Arg.Any<string?>(), cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("notifier down"));
 
-        var message = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        result.Succeeded.Should().BeTrue();
+        var message = result.Message!;
 
         message.Content.Should().Be("reply");
         (await FeedbackDb.FeedbackMessages.AsNoTracking().CountAsync(ct)).Should().Be(1);

@@ -15,8 +15,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketTransferAdminController(
     ITicketTransferService service,
     ITicketService ticketQueryService,
-    IUserServiceRead userService,
-    ILogger<TicketTransferAdminController> logger) : HumansControllerBase(userService)
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(string? tab, CancellationToken ct)
@@ -67,47 +66,39 @@ internal sealed class TicketTransferAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        try
+        TicketTransferMutationResult result;
+        string success;
+        switch (action)
         {
-            switch (action)
-            {
-                // "process" and "retry" write to TicketTailor (void, then
-                // reissue). Deliberately not passing the request-scoped token:
-                // an admin navigating away between the void and the reissue
-                // would leave the receiver with no ticket at all
-                // (nobodies-collective/Humans#950). The two local-only branches
-                // below keep it — a torn DB write rolls back.
-                case "process":
-                    await service.ProcessTransferAsync(id, user.Id, adminNotes, CancellationToken.None);
-                    SetSuccess("Transfer processed: ticket voided and reissued. The next sync confirms the local records.");
-                    return RedirectToAction(nameof(Index));
-
-                case "retry":
-                    await service.RetryReissueAsync(id, user.Id, adminNotes, CancellationToken.None);
-                    SetSuccess("Reissue retried: the replacement ticket was issued to the receiver.");
-                    return RedirectToAction(nameof(Index));
-
-                case "marksuccessful":
-                    await service.ApproveAsync(id, user.Id, adminNotes, ct);
-                    SetSuccess("Transfer marked successful.");
-                    return RedirectToAction(nameof(Index));
-
-                case "cancel":
-                    await service.RejectAsync(id, user.Id, adminNotes ?? string.Empty, ct);
-                    SetSuccess("Transfer cancelled.");
-                    return RedirectToAction(nameof(Index));
-
-                default:
-                    SetError("Unknown transfer action.");
-                    return RedirectToAction(nameof(Detail), new { id });
-            }
+            // Vendor writes stay detached: leaving between void and reissue must not
+            // strand the receiver. The two local-only decisions keep the request token.
+            case "process":
+                result = await service.ProcessTransferAsync(id, user.Id, adminNotes, CancellationToken.None);
+                success = "Transfer processed: ticket voided and reissued. The next sync confirms the local records.";
+                break;
+            case "retry":
+                result = await service.RetryReissueAsync(id, user.Id, adminNotes, CancellationToken.None);
+                success = "Reissue retried: the replacement ticket was issued to the receiver.";
+                break;
+            case "marksuccessful":
+                result = await service.ApproveAsync(id, user.Id, adminNotes, ct);
+                success = "Transfer marked successful.";
+                break;
+            case "cancel":
+                result = await service.RejectAsync(id, user.Id, adminNotes ?? string.Empty, ct);
+                success = "Transfer cancelled.";
+                break;
+            default:
+                SetError("Unknown transfer action.");
+                return RedirectToAction(nameof(Detail), new { id });
         }
-        catch (InvalidOperationException ex)
+
+        if (!result.Succeeded)
         {
-            logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (action={Action}): {Message}",
-                id, action, ex.Message);
-            SetError(ex.Message);
+            SetError(result.OperatorRefusal!);
             return RedirectToAction(nameof(Detail), new { id });
         }
+        SetSuccess(success);
+        return RedirectToAction(nameof(Index));
     }
 }

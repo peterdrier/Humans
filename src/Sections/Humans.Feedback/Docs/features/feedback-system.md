@@ -160,3 +160,5 @@ Since #977:
 - Audit log (`AuditLogEntry`) — tracks status changes
 - `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin sidebar item, rendered by `AdminSidebarViewComponent`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`
+
+Triage mutations return explicit missing/refused/success results. Missing reports map to 404; dependency failures follow the logged error path, regardless of exception wording. Undefined statuses leave the report and audit unchanged.

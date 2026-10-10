@@ -51,9 +51,77 @@ public sealed class TeamServiceEarlyEntryTests
             _eeInvalidator,
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
+                .With<ITeamResourceServiceRead>()
                 .Build(),
             _clock,
             NullLogger<TeamService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData((int)TeamUpdateConflict.SlugTaken, false)]
+    [Xunit.InlineData((int)TeamUpdateConflict.CustomSlugTaken, false)]
+    [Xunit.InlineData((int)TeamUpdateConflict.GroupPrefixTaken, false)]
+    [Xunit.InlineData((int)TeamUpdateConflict.GroupPrefixTaken, true)]
+    public async Task EditConflict_DoesNotProvisionGroupsOrAudit(int conflictValue, bool system)
+    {
+        var conflict = (TeamUpdateConflict)conflictValue;
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Alpha",
+            Slug = "alpha",
+            SystemTeamType = system ? Humans.Base.Enums.SystemTeamType.Volunteers : Humans.Base.Enums.SystemTeamType.None
+        };
+        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(conflict);
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, null, false, true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Conflict.Should().Be(conflict);
+        result.Team.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        // The fixture has no Google-sync binding: reaching that call would return a warning/fault.
+        result.GroupWarning.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task PageUpdateConflict_DoesNotAuditUnwrittenContent()
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
+        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(TeamUpdateConflict.SlugTaken);
+
+        var result = await _service.UpdateTeamPageContentAsync(
+            team.Id, "New content", [], false, false, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PermanentDelete_EvictsEarlyEntryAfterDeleteCompletion(bool saveFails)
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
+        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _repo.PermanentlyDeleteTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var failure = new IOException("Delete completion is uncertain");
+
+        var deletion = _service.PermanentlyDeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        _eeInvalidator.DidNotReceive().InvalidateAll();
+        if (saveFails) pending.SetException(failure);
+        else pending.SetResult(true);
+
+        Exception? error = null;
+        try { await deletion; }
+        catch (Exception ex) { error = ex; }
+        if (saveFails) error.Should().BeSameAs(failure);
+        else { error.Should().BeNull(); (await deletion).Should().BeTrue(); }
+        _eeInvalidator.Received(1).InvalidateAll();
     }
 
     private static TeamEarlyEntryGrant Grant(Guid teamId, Guid userId, string project = "P", LocalDate? date = null, string teamName = "Creativity") => new()
@@ -387,7 +455,7 @@ public sealed class TeamServiceEarlyEntryTests
         var team = new Team { Id = Guid.NewGuid(), Name = "Toggle", Slug = "toggle" };
         _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         _repo.SlugExistsAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
-        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<TeamUpdateConflict>(TaskCreationOptions.RunContinuationsAsynchronously);
         _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(pending.Task);
 
         var write = _service.UpdateTeamAsync(
@@ -401,7 +469,7 @@ public sealed class TeamServiceEarlyEntryTests
         }
         else
         {
-            pending.SetResult();
+            pending.SetResult(TeamUpdateConflict.None);
         }
         InvalidOperationException? failure = null;
         try { await write; }

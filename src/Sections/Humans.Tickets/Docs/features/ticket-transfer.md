@@ -67,6 +67,7 @@ Member request and cancellation errors are localized in all six cultures. Unknow
 - A Cancel control appears on the Sender's pending-transfer ticket on the homepage.
 - Cancel transitions the request to `Cancelled` (audit-logged) and re-enables transferring the ticket.
 - Cancel is only permitted for `Pending` requests where the caller is the Sender.
+- Member submit/cancel rule failures return structured refusal keys for localized feedback; dependency exceptions propagate without becoming member-facing messages.
 
 ### US-42.3: Request notifications
 - On request, an email goes to the **Sender** (confirmation) and to **tickets@nobodies.team** (action
@@ -169,3 +170,5 @@ a follow-up PR drops that one column after prod soak.
 
 - [`src/Sections/Humans.Tickets/Docs/Tickets.md`](../Tickets.md) — section invariants, sync, attendee model.
 - [`src/Sections/Humans.Budget/Docs/features/Budget-feature.md`](../../../Humans.Budget/Docs/features/Budget-feature.md) — `TicketingBudgetService` shares the attendee table.
+
+Admin decisions return explicit operator refusals for their known gates and actionable vendor failure/partial-recovery outcomes. The admin page renders those reasons without catching unrelated persistence/audit/notification exceptions. Vendor diagnostics and irreversible-state audit/retention boundaries remain.

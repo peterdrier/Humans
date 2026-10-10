@@ -178,7 +178,8 @@ public class NotificationRepositoryTests : IDisposable
 
         var deleted = await _repo.DeleteUnresolvedInformationalOlderThanAsync(cutoff, Xunit.TestContext.Current.CancellationToken);
 
-        deleted.Should().Be(1);
+        deleted.Deleted.Should().Be(1);
+        deleted.AffectedUserIds.Should().BeEquivalentTo([userId]);
         var remaining = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Class.Should().Be(NotificationClass.Actionable);
     }
@@ -368,7 +369,8 @@ public class NotificationRepositoryTests : IDisposable
             [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded],
             Xunit.TestContext.Current.CancellationToken);
 
-        deleted.Should().Be(2);
+        deleted.Deleted.Should().Be(2);
+        deleted.AffectedUserIds.Should().BeEquivalentTo([userId]);
         var remaining = await _dbContext.Notifications.AsNoTracking()
             .Select(n => n.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().BeEquivalentTo([liveIssue.Id, resolvedApp.Id]);

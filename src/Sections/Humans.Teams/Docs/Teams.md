@@ -22,6 +22,8 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 - A **Sub-team Manager** is a team member assigned to the management role on a sub-team. Managers have scoped authority over their sub-team only: member management, join requests, roles, shifts, and team page editing. They **cannot** manage Google resources, the parent department, or sibling sub-teams. They are **not** added to the Coordinators system team.
 - A **Team Page** is a Markdown-based public or member-facing page for a department, with optional calls to action.
 - Generated team slugs are non-empty and collision suffixes fit the 256-character column, shortening the base without a trailing separator. Names with no ASCII letters/digits use `team` on creation; renaming to such a name preserves the existing slug. Display names are preserved.
+- Member removal returns resource-key refusals for missing teams, system-managed teams, unauthorized actors and absent memberships. Coordinator-facing feedback is localized; dependency failures propagate. Account merges still abort on a refused removal.
+- Team edits return explicit parent/slug validation refusals and known unique slug/custom-slug/Google Group prefix conflicts. Only SQLSTATE 23505 with the corresponding named constraint is translated; unrelated database or dependency failures propagate. Refused edits do not provision Google Groups or report success.
 - The same reserved global route segments are enforced during creation, renaming and custom-slug edits. A reserved custom slug refuses the update before fields are saved; a rename deriving a reserved slug keeps the previous URL while saving the new display name.
 
 ## Data Model
@@ -183,6 +185,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
+
 - Resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
 
 - The inherited-access restriction POST rejects invalid binding with HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
@@ -213,6 +217,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Team member paging clamps pages below one to one and calculates large offsets without integer overflow; pages beyond the membership list stay empty.
 
+- My Teams reads the current member’s pending join requests live through the inner service, with team links and withdrawal forms; resolved requests and other members’ requests are excluded.
 - Birthday, My Teams and join-form GETs carry request cancellation through current-user resolution and their read-only Users/Teams calls. Join POST and membership mutations keep their existing cancellation policy.
 
 - A department can have **at most one** role flagged as management (coordinator). Enforced in both the toggle and edit paths.
@@ -220,6 +225,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Toggling or changing the `IsManagement` flag on a role definition is restricted to **TeamsAdmin / Admin** (`ToggleManagement` action and `EditRole` IsManagement field). Coordinators / sub-team managers can still create, rename, and delete other (non-management) role definitions on their team — they just cannot promote/demote the management role itself.
 - Role-definition creation and editing reject undefined slot-priority values before persistence or audit; all defined priorities, including `None`, remain valid.
 - A `TeamRoleDefinition.IsPublic = false` role is hidden from volunteer-facing views (team detail, roster) but remains visible to coordinators and admins. The team-detail roster's headings (including subteam leads), fallback role titles, role periods, priorities, and empty-slot labels use section or shared resources. The team-calendar link also uses the section resource in every supported culture.
+- The roster controller orders filtered slots by priority, team name, role name and slot number; the owner service and repository return materialized data without display ordering.
 - Members of sub-teams are also considered members of the department. They appear in the department's member roster and inherit the department's legal requirements and Google resource access.
 - A human can be a member of multiple teams simultaneously.
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.
@@ -345,3 +351,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `TeamsAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Permanent team deletion evicts all Early Entry answers after the repository delete attempt, including uncertain completion. Validation and authorization refusals happen before the delete and do not evict.

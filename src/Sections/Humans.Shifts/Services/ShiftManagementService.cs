@@ -1,3 +1,4 @@
+using Humans.EarlyEntry.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -34,7 +35,9 @@ internal sealed class ShiftManagementService(
     IMemoryCache cache,
     IShiftViewInvalidator viewInvalidator,
     EventCalendarResolver calendarResolver,
-    IClock clock) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+    IClock clock,
+    IEarlyEntryInvalidator earlyEntryInvalidator,
+    ILogger<ShiftManagementService> logger) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -201,10 +204,16 @@ internal sealed class ShiftManagementService(
         CancellationToken cancellationToken = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
-        var deleted = await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
-        EvictDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateAll();
-        return deleted;
+        try
+        {
+            return await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+        }
+        finally
+        {
+            EvictDashboardCaches(eventSettingsId);
+            viewInvalidator.InvalidateAll();
+            earlyEntryInvalidator.InvalidateAll();
+        }
     }
 
     public async Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
@@ -288,18 +297,17 @@ internal sealed class ShiftManagementService(
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }
-    public async Task DeleteRotaAsync(Guid rotaId)
+    public async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId)
     {
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.ShiftsWithSignups);
-        if (rota is null) throw new InvalidOperationException("Rota not found.");
+        if (rota is null) return RefuseDeletion(rotaId, "Shifts_Signup_RotaNotFound");
 
         var confirmedCount = rota.Shifts
             .SelectMany(s => s.ShiftSignups)
             .Count(d => d.Status == SignupStatus.Confirmed);
 
         if (confirmedCount > 0)
-            throw new InvalidOperationException(
-                $"Cannot delete — {confirmedCount} humans have confirmed signups. Bail or reassign them first.");
+            return RefuseDeletion(rotaId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
         // Snapshot user-ids pre-delete so cache eviction works after cascade.
         var affectedUserIds = rota.Shifts
@@ -313,6 +321,7 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        return new ShiftDeletionResult();
     }
 
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
@@ -735,15 +744,14 @@ internal sealed class ShiftManagementService(
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
-    public async Task DeleteShiftAsync(Guid shiftId)
+    public async Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId)
     {
         var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.ShiftSignups);
-        if (shift is null) throw new InvalidOperationException("Shift not found.");
+        if (shift is null) return RefuseDeletion(shiftId, "Shifts_Signup_ShiftNotFound");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
         if (confirmedCount > 0)
-            throw new InvalidOperationException(
-                $"Cannot delete — {confirmedCount} humans have confirmed signups. Bail or reassign them first.");
+            return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
         var rotaId = shift.RotaId;
         var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();
@@ -754,6 +762,14 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        return new ShiftDeletionResult();
+    }
+
+    private ShiftDeletionResult RefuseDeletion(Guid entityId, string errorKey, int confirmedSignups = 0)
+    {
+        logger.LogWarning("Shift/rota deletion rejected for {EntityId}: {ErrorKey}, confirmed signups {ConfirmedSignups}",
+            entityId, errorKey, confirmedSignups);
+        return new ShiftDeletionResult(errorKey, confirmedSignups);
     }
 
     public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>

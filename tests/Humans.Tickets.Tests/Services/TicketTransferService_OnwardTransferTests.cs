@@ -134,8 +134,7 @@ public sealed class TicketTransferService_OnwardTransferTests
         var act = async () => await _service.CreateRequestAsync(
             new TicketTransferRequestDto(attendeeId, UserC, "test"), UserA, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Tickets_TicketTransfer_NotCurrentHolder");
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_NotCurrentHolder");
     }
 
     [HumansFact]
@@ -169,7 +168,7 @@ public sealed class TicketTransferService_OnwardTransferTests
         var result = await _service.CreateRequestAsync(
             new TicketTransferRequestDto(attendeeId, UserC, "passing to Carol"), UserB, Xunit.TestContext.Current.CancellationToken);
 
-        result.SenderUserId.Should().Be(UserB);
-        result.ReceiverUserId.Should().Be(UserC);
+        result.Transfer!.SenderUserId.Should().Be(UserB);
+        result.Transfer!.ReceiverUserId.Should().Be(UserC);
     }
 }

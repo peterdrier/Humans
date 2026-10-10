@@ -100,4 +100,23 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Erstattungsbetrag</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Eine Rechnung kann nur ausgestellt werden, wenn der Saldo der Bestellung null ist.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Aktion</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Das Jahr der Bestellung konnte nicht ermittelt werden. Kontaktiere das Store-Team, bevor du Produkte hinzufügst.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Dieses Produkt gehört zu einem anderen Jahr als die Bestellung.</value></data>
+  <data name="Store_QuantityPositive" xml:space="preserve"><value>Die Menge muss größer als null sein.</value></data>
+  <data name="Store_OrderMissing" xml:space="preserve"><value>Diese Bestellung existiert nicht mehr.</value></data>
+  <data name="Store_OrderLinesFrozen" xml:space="preserve"><value>Positionen einer bereits fakturierten Bestellung können nicht geändert werden.</value></data>
+  <data name="Store_ProductMissing" xml:space="preserve"><value>Dieses Produkt existiert nicht mehr.</value></data>
+  <data name="Store_ProductInactive" xml:space="preserve"><value>Dieses Produkt kann nicht mehr bestellt werden.</value></data>
+  <data name="Store_LineMissing" xml:space="preserve"><value>Diese Position existiert nicht mehr.</value></data>
+  <data name="Store_LineWrongOrder" xml:space="preserve"><value>Diese Position gehört nicht zu dieser Bestellung.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>Stripe-Zahlungen sind nicht eingerichtet. Wende dich an einen Administrator.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>Der Zahlungsbetrag muss größer als null sein.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Der Zahlungsbetrag darf den offenen Betrag nicht überschreiten (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Eine Zahlung für diese Bestellung wird noch abgewickelt. Warte, bis sie abgeschlossen oder fehlgeschlagen ist, bevor du erneut zahlst.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>Diese Campsaison existiert nicht mehr.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>Diese Campsaison hat bereits eine Shop-Bestellung.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>Dieses Team existiert nicht mehr.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Nur Abteilungen können Teambestellungen haben.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>Diese Abteilung hat bereits eine Shop-Bestellung für das aktive Veranstaltungsjahr.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Die Bestellung konnte nicht erstellt werden.</value></data>
 </root>

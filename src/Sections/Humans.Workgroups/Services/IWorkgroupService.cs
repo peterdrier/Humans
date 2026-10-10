@@ -41,16 +41,16 @@ internal interface IWorkgroupService : IApplicationService
     /// Clause 1: applies for a group. The applicant becomes its first coordinator, the
     /// group starts <see cref="WorkgroupStatus.Applied"/>, and the Board is notified.
     /// </summary>
-    Task<Guid> ApplyAsync(Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default);
+    Task<WorkgroupMutationResult<Guid>> ApplyAsync(Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default);
 
     /// <summary>Standing approval (clause 3): joining is immediate. Requests a Drive sync.</summary>
-    Task JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Leaves the group. The last coordinator must name a replacement first; a
     /// <c>BoardOrAdmin</c> caller may override that with <paramref name="asAdmin"/>.
     /// </summary>
-    Task LeaveAsync(
+    Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
@@ -62,31 +62,31 @@ internal interface IWorkgroupService : IApplicationService
     /// unmetered: rationing how often a member may ask a group what it is doing would be the
     /// section deciding a group has gone quiet, which is the Board's call alone.
     /// </summary>
-    Task RequestStatusAsync(Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> RequestStatusAsync(Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default);
 
     // ── Member work on the group page ─────────────────────────────────────
 
     /// <summary>Register fields. A changed deliverable sentence writes a ScopeChanged entry.</summary>
-    Task EditRegisterAsync(
+    Task<WorkgroupMutationResult> EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the one or two coordinators. Members hand over among themselves;
     /// <paramref name="asAdmin"/> lets the Board override (design §5).
     /// </summary>
-    Task SetCoordinatorsAsync(
+    Task<WorkgroupMutationResult> SetCoordinatorsAsync(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
         bool asAdmin = false,
         CancellationToken ct = default);
 
-    Task<Guid> CreateMeetingAsync(
+    Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default);
 
-    Task UpdateMeetingAsync(Guid meetingId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> UpdateMeetingAsync(Guid meetingId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default);
 
-    Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Adds a member log entry (Update, Disclosure, StatusRequested or Note). System kinds are
@@ -94,51 +94,51 @@ internal interface IWorkgroupService : IApplicationService
     /// from a hand-made post, which costs nothing that <see cref="RequestStatusAsync"/> does not
     /// also allow — that path is unmetered too, and nothing downstream reads the entry.
     /// </summary>
-    Task<Guid> AddLogEntryAsync(
+    Task<WorkgroupMutationResult<Guid>> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);
 
-    Task UpdateLogEntryAsync(Guid entryId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> UpdateLogEntryAsync(Guid entryId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);
 
     /// <summary>Deletes a member log entry. Audited, because the log itself keeps no tombstone.</summary>
-    Task DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Attaches a survey the member authored in Surveys, by id. Writes SurveySubmitted.</summary>
-    Task LinkSurveyAsync(Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> LinkSurveyAsync(Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default);
 
     /// <summary>A member ends the group: Dormant with reason Delivered or Abandoned.</summary>
-    Task MarkDoneAsync(
+    Task<WorkgroupMutationResult> MarkDoneAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDormantReason reason, CancellationToken ct = default);
 
     // ── Documents ─────────────────────────────────────────────────────────
 
-    Task<Guid> CreateDocumentAsync(
+    Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default);
 
     /// <summary>Last write wins. Refused once the document is Delivered — the body is frozen.</summary>
-    Task UpdateDocumentAsync(
+    Task<WorkgroupMutationResult> UpdateDocumentAsync(
         Guid documentId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default);
 
     /// <summary>Publishes a Draft. Requires a non-empty body; notifies the members.</summary>
-    Task PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Opens the comment period. Published documents with at least one category only.</summary>
-    Task OpenCommentsAsync(
+    Task<WorkgroupMutationResult> OpenCommentsAsync(
         Guid documentId, Guid actorUserId, WorkgroupCommentWindow window, CancellationToken ct = default);
 
     /// <summary>Closes the window early or on time. Comments stay visible, read-only.</summary>
-    Task CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Delivers to the audience: freezes the body and puts the Board on the clock.</summary>
-    Task DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
 
     // ── Comments ──────────────────────────────────────────────────────────
 
     /// <summary>Any signed-in human, while the window is open, in one of the document's categories.</summary>
-    Task<Guid> AddCommentAsync(
+    Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default);
 
     /// <summary>The group's answer to one comment. Allowed after the window closes.</summary>
-    Task RespondToCommentAsync(
+    Task<WorkgroupMutationResult> RespondToCommentAsync(
         Guid commentId,
         Guid actorUserId,
         WorkgroupCommentDisposition disposition,
@@ -146,7 +146,7 @@ internal interface IWorkgroupService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>One disposition and response applied to every still-Pending comment in a category.</summary>
-    Task RespondToCategoryAsync(
+    Task<WorkgroupMutationResult> RespondToCategoryAsync(
         Guid documentId,
         Guid actorUserId,
         string category,
@@ -155,7 +155,7 @@ internal interface IWorkgroupService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>Moderation with a reason. Audited; the text stays readable to admins.</summary>
-    Task HideCommentAsync(Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> HideCommentAsync(Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default);
 
     // ── The Secretary and the Board ───────────────────────────────────────
 
@@ -165,28 +165,28 @@ internal interface IWorkgroupService : IApplicationService
     /// and surfaces the error, so the Secretary can retry (design §6).
     /// </summary>
     [ExternalWrite]
-    Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
 
-    Task ReferAsync(Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> ReferAsync(Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default);
 
-    Task RefuseAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> RefuseAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
 
-    Task WithdrawAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> WithdrawAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
 
     /// <summary>Closes a quiet group: Dormant with reason Quiet and the written reasons.</summary>
-    Task CloseAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> CloseAsync(Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default);
 
     /// <summary>Reverses Dormant: the page unfreezes and the Drive folder goes writable again.</summary>
-    Task ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Bootstrapping (design §21): applies on behalf, backdated, immediately Active.</summary>
     [ExternalWrite]
-    Task<Guid> RegisterExistingAsync(Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default);
+    Task<WorkgroupMutationResult<Guid>> RegisterExistingAsync(Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default);
 
     /// <summary>Board/Admin: set, change or clear the group's budget and bind its Holded account
     /// through Finance. Returns the account Finance resolved when one was created or linked this
     /// call, else null. Refused and Withdrawn groups are rejected.</summary>
-    Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+    Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
 
     /// <summary>The live Holded expense chart for the budget form's link-existing picker; empty
@@ -194,7 +194,7 @@ internal interface IWorkgroupService : IApplicationService
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The Board's written reply to a delivered document.</summary>
-    Task RecordDispositionAsync(
+    Task<WorkgroupMutationResult> RecordDispositionAsync(
         Guid documentId,
         Guid actorUserId,
         WorkgroupDisposition disposition,
@@ -206,7 +206,7 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>The Drive folder every group's subfolder is created under, or null when unset.</summary>
     Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default);
 
-    Task SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default);
+    Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default);
 
     // ── The daily job ─────────────────────────────────────────────────────
 
@@ -226,3 +226,13 @@ internal interface IWorkgroupService : IApplicationService
 
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
+
+/// <summary>Expected mutation refusal, localized only by the caller.</summary>
+internal record WorkgroupMutationResult(WorkgroupRefusal? Refusal = null);
+
+/// <summary>Mutation result carrying a created id or resolved account on success.</summary>
+internal sealed record WorkgroupMutationResult<T>(T? Value = default, WorkgroupRefusal? Refusal = null)
+    : WorkgroupMutationResult(Refusal);
+
+/// <summary>Resource key and formatting arguments for an expected refusal.</summary>
+internal sealed record WorkgroupRefusal(string Key, params object[] Args);

@@ -3,7 +3,3 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-10-04
-    id: EXP-8
-    what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync use separate saves. Found during the nightly production scan. Plan: one internal repository method that adds the new metadata, relinks the line and deletes the superseded metadata in a single SaveChanges, then audit and delete the old file after commit (same shape as EXP-6); internal, not public surface per debt-sweep-standing-policy D2, list in PR."
-    review: panel

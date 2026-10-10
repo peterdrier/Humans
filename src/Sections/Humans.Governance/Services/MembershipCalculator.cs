@@ -161,11 +161,15 @@ internal sealed class MembershipCalculator(
         membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Duration? expiringWithin = null)
     {
         var usersWithActiveRoles = await membershipQuery.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 
-        var usersWithAnyExpiredConsents = await GetUsersWithAnyExpiredConsentsAsync(usersWithActiveRoles, cancellationToken);
+        var horizon = expiringWithin ?? Duration.Zero;
+        if (horizon < Duration.Zero) throw new ArgumentOutOfRangeException(nameof(expiringWithin));
+        var usersWithAnyExpiredConsents = await GetUsersWithConsentDeadlineByAsync(
+            usersWithActiveRoles, clock.GetCurrentInstant() + horizon, cancellationToken);
 
         return usersWithAnyExpiredConsents.ToList();
     }
@@ -209,9 +213,13 @@ internal sealed class MembershipCalculator(
         return result;
     }
 
-    public async Task<IReadOnlySet<Guid>> GetUsersWithAnyExpiredConsentsAsync(
+    public Task<IReadOnlySet<Guid>> GetUsersWithAnyExpiredConsentsAsync(
         IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        GetUsersWithConsentDeadlineByAsync(userIds, clock.GetCurrentInstant(), cancellationToken);
+
+    private async Task<IReadOnlySet<Guid>> GetUsersWithConsentDeadlineByAsync(
+        IEnumerable<Guid> userIds, Instant deadline, CancellationToken cancellationToken)
     {
         var userIdList = userIds.ToList();
         if (userIdList.Count == 0)
@@ -219,16 +227,14 @@ internal sealed class MembershipCalculator(
             return new HashSet<Guid>();
         }
 
-        var now = clock.GetCurrentInstant();
-
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
-        var expiredVersionIds = requiredVersions
+        var dueVersionIds = requiredVersions
             .Where(v =>
-                v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= now)
+                v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= deadline)
             .Select(v => v.Id)
             .ToHashSet();
 
-        if (expiredVersionIds.Count == 0)
+        if (dueVersionIds.Count == 0)
         {
             return new HashSet<Guid>();
         }
@@ -239,7 +245,7 @@ internal sealed class MembershipCalculator(
         foreach (var userId in userIdList)
         {
             if (!consentsByUser.TryGetValue(userId, out var consented) ||
-                expiredVersionIds.Any(id => !consented.Contains(id)))
+                dueVersionIds.Any(id => !consented.Contains(id)))
             {
                 result.Add(userId);
             }

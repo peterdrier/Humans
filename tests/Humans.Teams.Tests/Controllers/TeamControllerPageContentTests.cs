@@ -30,12 +30,52 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamControllerPageContentTests
 {
+    [HumansFact]
+    public async Task Roster_OrdersUnsortedOwnerDataByPriorityTeamRoleAndSlot()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        TeamRosterSlotSummary Slot(string team, string role, int number, SlotPriority priority) =>
+            new(team, team.ToLowerInvariant(), role, null, Guid.NewGuid(), number,
+                priority.ToString(), "", nameof(RolePeriod.Event), false, null, null);
+        teams.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            Slot("Beta", "Lead", 1, SlotPriority.Important),
+            Slot("Alpha", "Zulu", 1, SlotPriority.Important),
+            Slot("Alpha", "Lead", 2, SlotPriority.Important),
+            Slot("Zulu", "Lead", 1, SlotPriority.Critical),
+            Slot("alpha", "Lead", 1, SlotPriority.Important),
+            Slot("Alpha", "Lead", 3, SlotPriority.None)
+        });
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
+            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance);
+
+        var result = await controller.Roster("Important", "Open", "Event", Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which;
+        model.Slots.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber)).Should().Equal(
+            ("Zulu", "Lead", 1), ("alpha", "Lead", 1), ("Alpha", "Lead", 2),
+            ("Alpha", "Zulu", 1), ("Beta", "Lead", 1), ("Alpha", "Lead", 3));
+        model.PriorityFilter.Should().Be("Important");
+        model.StatusFilter.Should().Be("Open");
+        model.PeriodFilter.Should().Be("Event");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("create", false, false)]
     [Xunit.InlineData("edit", false, false)]
     [Xunit.InlineData("delete", false, false)]
     [Xunit.InlineData("create", true, false)]
     [Xunit.InlineData("edit", true, false)]
+    [Xunit.InlineData("edit-database", true, false)]
+    [Xunit.InlineData("edit-dependency", true, false)]
+    [Xunit.InlineData("edit-slug", false, false)]
+    [Xunit.InlineData("edit-custom", false, false)]
+    [Xunit.InlineData("edit-group", false, false)]
     [Xunit.InlineData("delete", true, false)]
     [Xunit.InlineData("delete", false, true)]
     public async Task TeamMutation_RejectionsKeepReasonWithoutStack_AndUnexpectedHandling(
@@ -49,11 +89,26 @@ public class TeamControllerPageContentTests
             .Returns(AuthorizationResult.Success());
         var teamId = Guid.NewGuid();
         const string reason = "The team hierarchy does not permit this change";
-        Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
+        var editCase = action;
+        if (action.StartsWith("edit-", StringComparison.Ordinal)) action = "edit";
+        var conflict = editCase switch
+        {
+            "edit-slug" => Humans.Teams.Data.TeamUpdateConflict.SlugTaken,
+            "edit-custom" => Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken,
+            "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
+            _ => Humans.Teams.Data.TeamUpdateConflict.None
+        };
+        Exception failure = editCase switch
+        {
+            "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
+            "edit-dependency" => new InvalidOperationException(reason),
+            _ => unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason)
+        };
         teams.CreateTeamWithGoogleGroupAsync("", null, false)
             .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
-            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+            .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
         teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var actor = Guid.NewGuid();
@@ -106,7 +161,9 @@ public class TeamControllerPageContentTests
             else
             {
                 Func<Task> act = async () => await MutateAsync();
-                await act.Should().ThrowAsync<IOException>();
+                (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+                controller.ModelState.Should().BeEmpty();
+                controller.TempData.Should().BeEmpty();
                 logger.ReceivedCalls().Should().BeEmpty();
             }
             return;
@@ -117,15 +174,32 @@ public class TeamControllerPageContentTests
             result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(TeamController.Summary));
         else
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var expectedReason = conflict switch
+        {
+            Humans.Teams.Data.TeamUpdateConflict.SlugTaken => "This team URL is already in use by another team.",
+            Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken => "This custom slug is already in use by another team.",
+            Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "This Google Group prefix is already in use by another team.",
+            _ => reason
+        };
+        var expectedField = conflict switch
+        {
+            Humans.Teams.Data.TeamUpdateConflict.SlugTaken => "Name",
+            Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken => "CustomSlug",
+            Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "GoogleGroupPrefix",
+            _ => string.Empty
+        };
         if (string.Equals(action, "edit", StringComparison.Ordinal))
-            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(reason);
+        {
+            controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expectedReason);
+            controller.TempData.Should().NotContainKey("SuccessMessage");
+        }
         else
             controller.TempData["ErrorMessage"].Should().Be(reason);
         var args = logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         args[0].Should().Be(LogLevel.Warning);
         args[3].Should().BeNull();
-        args[2]!.ToString().Should().Contain(reason);
+        args[2]!.ToString().Should().Contain(expectedReason);
         if (!string.Equals(action, "create", StringComparison.Ordinal))
             args[2]!.ToString().Should().Contain(teamId.ToString());
     }
@@ -133,6 +207,7 @@ public class TeamControllerPageContentTests
     [HumansTheory]
     [Xunit.InlineData("birthdays", "viewer")]
     [Xunit.InlineData("my", "viewer")]
+    [Xunit.InlineData("my", "requests")]
     [Xunit.InlineData("join", "viewer")]
     [Xunit.InlineData("join", "entity")]
     [Xunit.InlineData("join", "info")]
@@ -173,6 +248,14 @@ public class TeamControllerPageContentTests
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         teams.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
+        var pendingRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), team.Id, team.Name,
+            userId, null, null, null, TeamJoinRequestStatus.Pending, null,
+            Instant.FromUtc(2026, 10, 1, 0, 0), null, null, team.Slug);
+        teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("requests", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([pendingRequest]);
+        });
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -199,7 +282,17 @@ public class TeamControllerPageContentTests
             _ => controller.Join(team.Slug)
         };
 
-        (await ReadAsync()).Should().BeOfType<ViewResult>();
+        var view = (await ReadAsync()).Should().BeOfType<ViewResult>().Subject;
+        if (string.Equals(action, "my", StringComparison.Ordinal))
+        {
+            var pending = view.Model.Should().BeOfType<MyTeamsViewModel>().Subject.PendingRequests
+                .Should().ContainSingle().Subject;
+            pending.Id.Should().Be(pendingRequest.Id);
+            pending.TeamName.Should().Be(team.Name);
+            pending.TeamSlug.Should().Be(team.Slug);
+            pending.RequestedAt.Should().Be(pendingRequest.RequestedAt.ToDateTimeUtc());
+            await teams.Received(1).GetPendingRequestsForUserAsync(userId, request.Token);
+        }
         await request.CancelAsync();
         Func<Task> abandonedRead = async () => await ReadAsync();
         await abandonedRead.Should().ThrowAsync<OperationCanceledException>();
