@@ -46,6 +46,7 @@ public record AddEmailResult(Guid EmailId, string Token, bool IsConflict);
 /// <summary>
 /// Result of verifying an email address.
 /// </summary>
-/// <param name="Email">The verified email address.</param>
+/// <param name="Email">The verified email address, or empty for a refusal.</param>
 /// <param name="MergeRequestCreated">True if a merge request was created instead of completing verification.</param>
-public record VerifyEmailResult(string Email, bool MergeRequestCreated);
+/// <param name="ErrorKey">Localized refusal resource key, or null on successful verification.</param>
+public record VerifyEmailResult(string Email, bool MergeRequestCreated, string? ErrorKey = null);

@@ -1641,7 +1641,7 @@ public class UserEmailServiceTests
         // Token was issued for row A (purpose "...:rowAId"). The user clicks
         // the link for row B (caller passes rowBId). The token is invalid for
         // row B's purpose, so VerifyUserTokenAsync returns false and
-        // ValidationException surfaces — but neither row gets verified.
+        // the invalid-link result is returned — neither row gets verified.
         var userId = Guid.NewGuid();
         var rowBId = Guid.NewGuid();
         var rowB = new UserEmail
@@ -1663,15 +1663,16 @@ public class UserEmailServiceTests
                 $"UserEmailVerification:{rowBId}", "token-issued-for-A")
             .Returns(false);
 
-        var act = async () => await _service.VerifyEmailAsync(
+        var result = await _service.VerifyEmailAsync(
             userId, rowBId, "token-issued-for-A", Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
         rowB.IsVerified.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task VerifyEmailAsync_RowAlreadyVerified_ThrowsWithoutDoubleVerifying()
+    public async Task VerifyEmailAsync_RowAlreadyVerified_RefusesWithoutDoubleVerifying()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -1689,13 +1690,14 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(verified);
 
-        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
     }
 
     [HumansFact]
-    public async Task VerifyEmailAsync_OAuthRow_Throws()
+    public async Task VerifyEmailAsync_OAuthRow_Refuses()
     {
         // Provider != null rows are tagged with an OAuth identity and verified
         // via the OAuth callback — never via a plain verification link.
@@ -1716,9 +1718,50 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauth);
 
-        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("user")]
+    [Xunit.InlineData("row")]
+    [Xunit.InlineData("token")]
+    [Xunit.InlineData("conflict")]
+    [Xunit.InlineData("update")]
+    public async Task VerifyEmailAsync_PreservesDependencyFaults(string stage)
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var user = new User { Id = userId, DisplayName = "U" };
+        var row = new UserEmail { Id = rowId, UserId = userId, Email = "pending@example.com" };
+        var failure = new InvalidOperationException("Private verification dependency diagnostic");
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(row);
+        _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider,
+            $"UserEmailVerification:{rowId}", "token").Returns(true);
+        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<UserEmail>());
+        if (string.Equals(stage, "user", StringComparison.Ordinal))
+            _userManager.FindByIdAsync(userId.ToString()).Returns(Task.FromException<User?>(failure));
+        if (string.Equals(stage, "row", StringComparison.Ordinal))
+            _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<UserEmail?>(failure));
+        if (string.Equals(stage, "token", StringComparison.Ordinal))
+            _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider,
+                $"UserEmailVerification:{rowId}", "token").Returns(Task.FromException<bool>(failure));
+        if (string.Equals(stage, "conflict", StringComparison.Ordinal))
+            _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyList<UserEmail>>(failure));
+        if (string.Equals(stage, "update", StringComparison.Ordinal))
+            _userService.UpdateUserEmailAsync(userId, rowId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<bool>(failure));
+
+        var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.VerifyEmailAsync(userId, rowId, "token", Xunit.TestContext.Current.CancellationToken));
+
+        thrown.Should().BeSameAs(failure);
+        row.IsVerified.Should().BeFalse();
     }
 
     // ─── AdminMarkVerifiedAsync — issue #659 ─────────────────────────────

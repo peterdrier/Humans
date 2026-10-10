@@ -48,7 +48,8 @@ public interface IUserEmailService
     /// multiple pending plain rows (issue nobodies-collective/Humans#611).
     /// If the email is already verified on another account, creates a merge
     /// request instead of completing verification. Returns a result
-    /// indicating the email and whether a merge request was created.
+    /// indicating the email and whether a merge request was created, or an
+    /// ErrorKey for an invalid link. Dependency faults propagate.
     /// </summary>
     Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
