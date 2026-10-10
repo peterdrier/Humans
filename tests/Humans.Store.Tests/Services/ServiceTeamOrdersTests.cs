@@ -65,7 +65,10 @@ public class ServiceTeamOrdersTests
         Order? captured = null;
         await _repo.AddOrderAsync(Arg.Do<Order>(o => captured = o), Arg.Any<CancellationToken>());
 
-        var id = await _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken);
+        var creation = await _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken);
+        creation.Succeeded.Should().BeTrue();
+        creation.ErrorKey.Should().BeNull();
+        var id = creation.CreatedId!.Value;
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(id);
@@ -76,7 +79,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_throws_when_team_already_has_order_this_year()
+    public async Task CreateTeamOrderAsync_refuses_when_team_already_has_order_this_year()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -85,12 +88,15 @@ public class ServiceTeamOrdersTests
         _repo.GetOrderForTeamAsync(teamId, 2026, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = Guid.NewGuid(), TeamId = teamId, Year = 2026 });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken));
+        var result = await _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_TeamOrderExists");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_throws_when_team_is_a_subteam()
+    public async Task CreateTeamOrderAsync_refuses_when_team_is_a_subteam()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -98,18 +104,24 @@ public class ServiceTeamOrdersTests
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns(MakeDepartment(teamId, "Sub", userId, parentTeamId: parentId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken));
+        var result = await _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_DepartmentOnly");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_throws_when_team_not_found()
+    public async Task CreateTeamOrderAsync_refuses_when_team_not_found()
     {
         var teamId = Guid.NewGuid();
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var result = await _service.CreateTeamOrderAsync(teamId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_TeamMissing");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -509,7 +521,7 @@ public class ServiceTeamOrdersTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task CreateOrderAsync_throws_when_camp_season_already_has_order_for_year()
+    public async Task CreateOrderAsync_refuses_when_camp_season_already_has_order_for_year()
     {
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
@@ -522,12 +534,15 @@ public class ServiceTeamOrdersTests
                 new() { Id = Guid.NewGuid(), CampSeasonId = seasonId, Year = 2026 }
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var result = await _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_CampOrderExists");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateOrderAsync_throws_when_the_camp_season_s_only_order_is_a_legacy_year_zero_row()
+    public async Task CreateOrderAsync_refuses_when_the_camp_season_s_only_order_is_a_legacy_year_zero_row()
     {
         // A CampSeason is a (camp, year) pair, so the only order a year comparison can miss is one
         // that pre-dates the Year column. AddLine backfills those lazily — an order with no lines
@@ -543,8 +558,11 @@ public class ServiceTeamOrdersTests
                 new() { Id = Guid.NewGuid(), CampSeasonId = seasonId, Year = 0 }
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var result = await _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_CampOrderExists");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     private static OrderDto MakeOrderDto(

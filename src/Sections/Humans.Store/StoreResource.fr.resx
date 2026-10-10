@@ -113,4 +113,10 @@
   <data name="Store_PaymentPositive" xml:space="preserve"><value>Le montant du paiement doit être supérieur à zéro.</value></data>
   <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Le montant du paiement ne peut pas dépasser le solde dû (EUR {0:0.00}).</value></data>
   <data name="Store_PaymentPending" xml:space="preserve"><value>Un paiement de cette commande est en cours de règlement. Attendez qu’il soit confirmé ou échoue avant de payer à nouveau.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>Cette saison du camp n’existe plus.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>Cette saison du camp a déjà une commande de la boutique.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>Cette équipe n’existe plus.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Seuls les départements peuvent avoir des commandes d’équipe.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>Ce département a déjà une commande de la boutique pour l’année de l’événement actif.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Impossible de créer la commande.</value></data>
 </root>

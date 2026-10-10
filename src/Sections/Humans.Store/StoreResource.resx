@@ -158,4 +158,10 @@
   <data name="Store_PaymentPositive" xml:space="preserve"><value>Payment amount must be greater than zero.</value></data>
   <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Payment amount cannot exceed the outstanding balance (EUR {0:0.00}).</value></data>
   <data name="Store_PaymentPending" xml:space="preserve"><value>A payment on this order is awaiting settlement. Wait for it to clear or fail before paying again.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>This camp season no longer exists.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>This camp season already has a Store order.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>This team no longer exists.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Only departments can have team orders.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>This department already has a Store order for the active event year.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Could not create the order.</value></data>
 </root>

@@ -121,4 +121,10 @@
   <data name="Store_PaymentPositive" xml:space="preserve"><value>El importe del pago debe ser mayor que cero.</value></data>
   <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>El importe del pago no puede superar el saldo pendiente (EUR {0:0.00}).</value></data>
   <data name="Store_PaymentPending" xml:space="preserve"><value>Un pago de este pedido está pendiente de liquidación. Espera a que se complete o falle antes de volver a pagar.</value></data>
+  <data name="Store_CampSeasonMissing" xml:space="preserve"><value>Esta temporada del campamento ya no existe.</value></data>
+  <data name="Store_CampOrderExists" xml:space="preserve"><value>Esta temporada del campamento ya tiene un pedido de la tienda.</value></data>
+  <data name="Store_TeamMissing" xml:space="preserve"><value>Este equipo ya no existe.</value></data>
+  <data name="Store_DepartmentOnly" xml:space="preserve"><value>Solo los departamentos pueden tener pedidos de equipo.</value></data>
+  <data name="Store_TeamOrderExists" xml:space="preserve"><value>Este departamento ya tiene un pedido de la tienda para el año del evento activo.</value></data>
+  <data name="Store_CreateOrderFailed" xml:space="preserve"><value>No se pudo crear el pedido.</value></data>
 </root>

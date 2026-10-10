@@ -429,17 +429,18 @@ internal sealed class Service(
         return true;
     }
 
-    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
-            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
+        if (season is null)
+            return RefuseCreation("Store_CampSeasonMissing", "camp season", campSeasonId, actorUserId);
 
         // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
         // already belongs to season.Year — except a legacy row still at Year = 0, which an
         // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
+            return RefuseCreation("Store_CampOrderExists", "camp season", campSeasonId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -457,7 +458,7 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for camp season {campSeasonId}",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
     }
 
     public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
@@ -490,18 +491,19 @@ internal sealed class Service(
             actorUserId);
     }
 
-    public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
-        var team = await teamService.GetTeamAsync(teamId, ct)
-            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        var team = await teamService.GetTeamAsync(teamId, ct);
+        if (team is null)
+            return RefuseCreation("Store_TeamMissing", "team", teamId, actorUserId);
         if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
+            return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
         var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
-            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
+            return RefuseCreation("Store_TeamOrderExists", "team", teamId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -519,7 +521,14 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
+    }
+
+    private MutationResult RefuseCreation(string errorKey, string counterpartyType, Guid counterpartyId, Guid actorUserId)
+    {
+        logger.LogWarning("Store order creation rejected for {CounterpartyType} {CounterpartyId}, actor {ActorUserId}: {ErrorKey}",
+            counterpartyType, counterpartyId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
     }
 
     public async Task<MutationResult> AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)

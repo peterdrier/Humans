@@ -192,3 +192,5 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - Line and billing-details refusals are returned as resource keys and localized by the member controller. Dependency failures are not interpreted as refusals or exposed as exception-message feedback.
 
 - Checkout business refusals use localized resource keys and amounts. Actual Stripe faults retain Error diagnostics and show only generic localized checkout failure feedback.
+
+- Duplicate or ineligible camp/department order creation returns localized feedback instead of throwing; successful creation still redirects to the created order.

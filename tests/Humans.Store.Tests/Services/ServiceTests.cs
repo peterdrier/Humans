@@ -506,7 +506,10 @@ public class ServiceTests
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
-        var orderId = await _service.CreateOrderAsync(campSeasonId, actor, TestContext.Current.CancellationToken);
+        var creation = await _service.CreateOrderAsync(campSeasonId, actor, TestContext.Current.CancellationToken);
+        creation.Succeeded.Should().BeTrue();
+        creation.ErrorKey.Should().BeNull();
+        var orderId = creation.CreatedId!.Value;
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(orderId);
@@ -519,6 +522,35 @@ public class ServiceTests
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrder_refuses_a_missing_season_without_writing()
+    {
+        var result = await _service.CreateOrderAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_CampSeasonMissing");
+        result.CreatedId.Should().BeNull();
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Order_creation_dependency_faults_propagate_unchanged(bool team)
+    {
+        var id = Guid.NewGuid();
+        var failure = new InvalidOperationException("Private lookup diagnostic");
+        _teams.GetTeamAsync(id, Arg.Any<CancellationToken>()).Returns(Task.FromException<TeamInfo?>(failure));
+        _campService.GetCampSeasonByIdAsync(id, Arg.Any<CancellationToken>()).Returns(Task.FromException<CampSeasonInfo?>(failure));
+        Func<Task> action = async () =>
+        {
+            if (team) await _service.CreateTeamOrderAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+            else await _service.CreateOrderAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        };
+        (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

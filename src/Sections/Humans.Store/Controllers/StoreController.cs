@@ -279,9 +279,14 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        var newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        var result = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        if (!result.Succeeded)
+        {
+            SetError(localizer[result.ErrorKey ?? "Store_CreateOrderFailed"].Value);
+            return RedirectToAction(nameof(Index));
+        }
         SetSuccess(localizer["Store_OrderCreated"].Value);
-        return RedirectToAction(nameof(Order), new { id = newId });
+        return RedirectToAction(nameof(Order), new { id = result.CreatedId });
     }
 
     [HttpPost("Team/{teamId:guid}/Create")]
@@ -297,17 +302,14 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
+        if (!result.Succeeded)
         {
-            var newId = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
-            SetSuccess(localizer["Store_TeamOrderCreated"].Value);
-            return RedirectToAction(nameof(Order), new { id = newId });
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
+            SetError(localizer[result.ErrorKey ?? "Store_CreateOrderFailed"].Value);
             return RedirectToAction(nameof(Index));
         }
+        SetSuccess(localizer["Store_TeamOrderCreated"].Value);
+        return RedirectToAction(nameof(Order), new { id = result.CreatedId });
     }
 
     [HttpPost("Order/{id:guid}/Delete")]
