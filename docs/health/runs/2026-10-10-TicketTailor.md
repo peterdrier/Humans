@@ -3,7 +3,7 @@
 - Invocation: scheduled unattended daily run, no arguments (routine prompt: skip Phase 8; gh GraphQL unavailable, PR list built via REST)
 - Anchor commit: `6f6e1f640` (origin/main at branch point); branch `section-doctor/2026-10-10T011616Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#1944
 
 ## Assessment summary
 

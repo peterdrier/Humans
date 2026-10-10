@@ -144,4 +144,4 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 |---|---|---|---|
 | 1 | 2026-09-05 | First doctoring — invariant doc written, wire records collapsed to one naming mechanism, dead test scaffolding cut, untested invariants pinned | peterdrier/Humans#1595 |
 | 2 | 2026-09-24 | Cache-move drift cleared from the docs; one issued-ticket mapping; dead test setup cut | peterdrier/Humans#1817 |
-| 3 | 2026-10-10 | One page-walk invariant; raw-exception and no-retry contracts pinned; target cites corrected | pending |
+| 3 | 2026-10-10 | One page-walk invariant; raw-exception and no-retry contracts pinned; target cites corrected | peterdrier/Humans#1944 |
