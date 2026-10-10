@@ -110,6 +110,29 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         (await db.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(status);
     }
 
+    [HumansTheory]
+    [InlineData(nameof(WorkgroupsAdminController.Refuse))]
+    [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
+    [InlineData(nameof(WorkgroupsAdminController.Close))]
+    public async Task In_bounds_rejected_reasons_are_kept_as_draft(string action)
+    {
+        var status = string.Equals(action, nameof(WorkgroupsAdminController.Refuse), StringComparison.Ordinal)
+            ? WorkgroupStatus.Applied : WorkgroupStatus.Active;
+        var workgroup = await SeedWorkgroupAsync(status: status);
+        var sut = MakeAdminController(action, errorMessage: "Reasons are required.");
+        const string reasons = "   ";
+
+        var result = action switch
+        {
+            nameof(WorkgroupsAdminController.Refuse) => await sut.Refuse(workgroup.Id, reasons, workgroup.Slug, Ct),
+            nameof(WorkgroupsAdminController.Withdraw) => await sut.Withdraw(workgroup.Id, reasons, workgroup.Slug, Ct),
+            _ => await sut.Close(workgroup.Id, reasons, workgroup.Slug, Ct)
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        sut.TempData[WorkgroupsAdminController.DraftKey(action)].Should().Be(reasons);
+    }
+
     [HumansFact]
     public async Task Close_WithReasons_RedirectsToDetails()
     {
