@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -582,20 +583,31 @@ internal sealed partial class WorkgroupService(
 
     // ── Settings ──────────────────────────────────────────────────────────
 
-    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
-        await repository.GetRootDriveFolderIdAsync(ct)
-        // Existing installations keep their configured root until an admin saves it
-        // locally. New state is section-owned; there is no automatic data backfill.
-        ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
+    {
+        var stored = await repository.GetRootDriveFolderIdAsync(ct)
+            // Existing installations keep their configured root until an admin saves it
+            // locally. New state is section-owned; there is no automatic data backfill.
+            ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+        // Values saved before the setter normalized may still hold the pasted URL.
+        return stored is null ? null : NormalizeFolderId(stored);
+    }
 
     public async Task SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 
-        await repository.SetRootDriveFolderIdAsync(folderId.Trim(), ct);
+        var id = NormalizeFolderId(folderId);
+        await repository.SetRootDriveFolderIdAsync(id, ct);
         await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
-            $"Root Drive folder set to {folderId.Trim()}", actorUserId);
+            $"Root Drive folder set to {id}", actorUserId);
     }
+
+    /// <summary>Secretaries paste the folder's browser URL as often as its id; only the id is kept.</summary>
+    private static string NormalizeFolderId(string value) =>
+        DriveFolderUrlId.Match(value) is { Success: true } m ? m.Groups["id"].Value : value.Trim();
+
+    private static readonly Regex DriveFolderUrlId = new(@"(?:/folders/|[?&]id=)(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
 }

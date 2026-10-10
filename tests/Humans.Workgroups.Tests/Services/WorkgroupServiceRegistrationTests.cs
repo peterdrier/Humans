@@ -123,6 +123,26 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA")]
+    [Xunit.InlineData("https://drive.google.com/drive/u/1/folders/0AFLHTK5u0wymUk9PVA?usp=sharing")]
+    [Xunit.InlineData("https://drive.google.com/open?id=0AFLHTK5u0wymUk9PVA")]
+    [Xunit.InlineData(" 0AFLHTK5u0wymUk9PVA ")]
+    public async Task SetRootDriveFolderId_PastedUrl_StoresBareId(string input)
+    {
+        await NewService().SetRootDriveFolderIdAsync(input, SeedUser(), Ct);
+
+        (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("0AFLHTK5u0wymUk9PVA");
+    }
+
+    [HumansFact]
+    public async Task GetRootDriveFolderId_StoredUrl_ReturnsBareId()
+    {
+        RootFolderId = "https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA";
+
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("0AFLHTK5u0wymUk9PVA");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("role")]
     [Xunit.InlineData("address")]
     [Xunit.InlineData("member")]

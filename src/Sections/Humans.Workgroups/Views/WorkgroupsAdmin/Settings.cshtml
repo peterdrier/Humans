@@ -15,6 +15,7 @@
                 <input asp-for="RootDriveFolderId" class="form-control" />
                 <div class="form-text">
                     Every registered group gets a subfolder created under this Drive folder.
+                    A shared drive's root works too. Pasting the folder's URL is fine; only the id is kept.
                     Registration is refused while this is unset.
                 </div>
                 <span asp-validation-for="RootDriveFolderId" class="text-danger"></span>
