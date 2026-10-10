@@ -131,8 +131,10 @@ System entries never change.
 
 Member log bodies are limited to 16000 characters and lifecycle reasons to 4000.
 Forms advertise these bounds and the service rejects overflow before writing any state.
-Validation failures re-render the submitted form; admin lifecycle reasons remain in the
-failed item's queue form, while successful decisions redirect back to the queue.
+Validation failures re-render the submitted form; admin lifecycle decisions (refuse, refer,
+withdraw, close, reactivate, coordinator override) are made from the group's Details page
+(Board/Admin actions panel) and redirect back to it, flashing any rule failure. Register
+alone stays on the queue.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
@@ -222,7 +224,7 @@ a clear error while unset.
 | `/Workgroups/{slug}/Documents/*`, `/Comments/*` | Documents and comments |
 | `/Workgroups/{slug}/Done` | Member ends the group: Dormant/Delivered or Dormant/Abandoned |
 | `/Workgroups/{slug}/Surveys/Link` | Attach an authored survey |
-| `/Workgroups/Admin/*` | Secretary/Board queue and decisions; `BoardOrAdmin`, localization-exempt |
+| `/Workgroups/Admin/*` | Secretary/Board overview queue and decision POSTs; `BoardOrAdmin`, localization-exempt. The queue is read-only except Register and Record disposition; the other decisions are forms on the group's Details page (the hardcoded-English Board/Admin panel, like Budget) that post here with the group's slug |
 | `/Workgroups/Admin/{id}/Budget` | Set, change or clear the budget; `BoardOrAdmin` |
 
 See `authorization.md` for the auth policy per route.
