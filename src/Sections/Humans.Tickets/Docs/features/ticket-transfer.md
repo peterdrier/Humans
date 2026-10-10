@@ -170,3 +170,5 @@ a follow-up PR drops that one column after prod soak.
 
 - [`src/Sections/Humans.Tickets/Docs/Tickets.md`](../Tickets.md) — section invariants, sync, attendee model.
 - [`src/Sections/Humans.Budget/Docs/features/Budget-feature.md`](../../../Humans.Budget/Docs/features/Budget-feature.md) — `TicketingBudgetService` shares the attendee table.
+
+Admin decisions return explicit operator refusals for their known gates and actionable vendor failure/partial-recovery outcomes. The admin page renders those reasons without catching unrelated persistence/audit/notification exceptions. Vendor diagnostics and irreversible-state audit/retention boundaries remain.

@@ -283,3 +283,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `TicketAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+- Admin transfer decisions return typed operator refusals for missing/non-pending requests, mid-processing cancellation/process attempts, invalid retry state/hold/attendee and missing cancellation reasons. The controller shows only these explicit refusal reasons; repository/audit/notification faults propagate unchanged. Automated vendor failure still persists and audits its failed/partial recovery state before returning actionable operator feedback; retries retain the hold. Existing decision locking, post-void detached writes, cache eviction and successful emails remain.

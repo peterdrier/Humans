@@ -196,29 +196,35 @@ internal sealed class TicketTransferService(
         return new TicketTransferMutationResult(null, null);
     }
 
-    public async Task<TicketTransferRowDto> ApproveAsync(
+    public async Task<TicketTransferMutationResult> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
-        var request = await LoadPendingAsync(transferRequestId, ct);
+        var (request, refusal) = await LoadPendingAsync(transferRequestId, ct);
+        if (request is null) return RefuseAdmin(transferRequestId, adminUserId, refusal!);
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
             "Transfer marked successful (processed manually in TicketTailor)", ct);
-        return await BuildRowDtoAsync(request, ct);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
     }
 
-    public async Task<TicketTransferRowDto> ProcessTransferAsync(
+    public async Task<TicketTransferMutationResult> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
-        var request = await LoadPendingAsync(transferRequestId, ct);
+        var (request, refusal) = await LoadPendingAsync(transferRequestId, ct);
+        if (request is null) return RefuseAdmin(transferRequestId, adminUserId, refusal!);
         // A partial (already-voided) request must not be re-processed — that would void the
         // already-voided ticket again and overwrite the partial state. Finish + Mark successful.
-        EnsureNotMidProcessing(request);
+        if (GetMidProcessingRefusal(request) is { } midProcessing)
+            return RefuseAdmin(transferRequestId, adminUserId, midProcessing);
 
         // Attempt the void(-to-hold)+reissue. On vendor failure this records the outcome on
         // the request but does NOT throw — we decide what to do with the result below.
-        await WriteToVendorAsync(request, ct);
+        var attendee = request.OriginalTicketAttendee
+            ?? await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
+        if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
+        await WriteToVendorAsync(request, attendee, ct);
 
         // Once a vendor void has committed it is irreversible — the recorded outcome must persist
         // regardless of whether the admin's HTTP request was aborted, or TT and Humans diverge.
@@ -244,7 +250,7 @@ internal sealed class TicketTransferService(
                 request.SenderUserId,
                 nameof(User));
 
-            throw new InvalidOperationException(
+            return RefuseAdmin(transferRequestId, adminUserId,
                 request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
                     ? $"Ticket was voided but the reissue failed ({request.VendorMessage}). Finish the reissue in TicketTailor, then use “Mark successful”."
                     : $"Automated void+reissue failed ({request.VendorMessage}). Process this transfer manually in TicketTailor, then use “Mark successful”.");
@@ -253,30 +259,30 @@ internal sealed class TicketTransferService(
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
             $"Transfer processed automatically (TT void+reissue OK, new ticket {request.NewVendorTicketId})", persistCt);
-        return await BuildRowDtoAsync(request, ct);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
     }
 
-    public async Task<TicketTransferRowDto> RetryReissueAsync(
+    public async Task<TicketTransferMutationResult> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
         // The original void is already committed; waiting must not cancel its reissue.
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, CancellationToken.None);
-        var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
-            ?? throw new InvalidOperationException("Transfer not found.");
+        var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
+        if (request is null) return RefuseAdmin(transferRequestId, adminUserId, "Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending
             || request.VendorResult != TicketTransferVendorResult.VoidSucceededIssueFailed)
         {
-            throw new InvalidOperationException(
+            return RefuseAdmin(transferRequestId, adminUserId,
                 "Retry is only available for a part-processed transfer (ticket voided, reissue pending).");
         }
         if (string.IsNullOrEmpty(request.VendorHoldId))
         {
-            throw new InvalidOperationException(
+            return RefuseAdmin(transferRequestId, adminUserId,
                 "No hold id was recorded for this transfer — finish the reissue in TicketTailor and use “Mark successful”.");
         }
 
-        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
-            ?? throw new InvalidOperationException("Original attendee missing.");
+        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
+        if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
 
         // This method only runs once the void has already committed
         // (VoidSucceededIssueFailed + a recorded hold id), so every step from here
@@ -316,7 +322,7 @@ internal sealed class TicketTransferService(
                 nameof(User));
             logger.LogError(ex, "Reissue retry failed for transfer {TransferId} against hold {HoldId}",
                 request.Id, request.VendorHoldId);
-            throw new InvalidOperationException(
+            return RefuseAdmin(transferRequestId, adminUserId,
                 $"Reissue retry failed ({VendorFailureDetail(ex)}). Try again, or finish in TicketTailor and use “Mark successful”.");
         }
 
@@ -335,28 +341,33 @@ internal sealed class TicketTransferService(
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
             $"Reissue retried OK (new ticket {issued.VendorTicketId})", CancellationToken.None);
-        return await BuildRowDtoAsync(request, ct);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
     }
 
-    private async Task<TicketTransferRequest> LoadPendingAsync(Guid transferRequestId, CancellationToken ct)
+    private async Task<(TicketTransferRequest? Request, string? Refusal)> LoadPendingAsync(Guid transferRequestId, CancellationToken ct)
     {
-        var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
-            ?? throw new InvalidOperationException("Transfer not found.");
+        var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
+        if (request is null) return (null, "Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
-            throw new InvalidOperationException("Only Pending transfers can be decided.");
-        return request;
+            return (null, "Only Pending transfers can be decided.");
+        return (request, null);
+    }
+
+    private TicketTransferMutationResult RefuseAdmin(Guid transferRequestId, Guid adminUserId, string reason)
+    {
+        logger.LogWarning("Ticket transfer decision rejected for transfer {TransferId}, actor {ActorId}: {Reason}",
+            transferRequestId, adminUserId, reason);
+        return new TicketTransferMutationResult(null, null, reason);
     }
 
     // A VoidSucceededIssueFailed request has already had its ticket voided at the vendor — that
     // void is irreversible. Cancel/Reject would drop it from the queue and strand the receiver
     // (seat gone, no replacement); the only forward path is to finish the reissue in TicketTailor
     // and then "Mark successful" (ApproveAsync).
-    private static void EnsureNotMidProcessing(TicketTransferRequest request)
-    {
-        if (request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
-            throw new InvalidOperationException(
-                "This transfer is mid-processing — the ticket was already voided and is awaiting reissue. Finish it in TicketTailor, then use “Mark successful”.");
-    }
+    private static string? GetMidProcessingRefusal(TicketTransferRequest request) =>
+        request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
+            ? "This transfer is mid-processing — the ticket was already voided and is awaiting reissue. Finish it in TicketTailor, then use “Mark successful”."
+            : null;
 
     private async Task MarkApprovedAsync(
         TicketTransferRequest request, Guid adminUserId, string? adminNotes,
@@ -398,11 +409,8 @@ internal sealed class TicketTransferService(
     /// the new row keeping the ORIGINAL price so revenue/VAT stay anchored to the order.</item>
     /// </list>
     /// </summary>
-    private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)
+    private async Task WriteToVendorAsync(TicketTransferRequest request, TicketAttendee attendee, CancellationToken ct)
     {
-        var attendee = request.OriginalTicketAttendee
-            ?? await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
-            ?? throw new InvalidOperationException("Original attendee missing during vendor writeback.");
 
         // 1: void to hold — reserves THIS ticket's allocation (same ticket type) off-sale so
         // the reissue lands on the original class even if it is now closed/sold out. TT never
@@ -480,18 +488,19 @@ internal sealed class TicketTransferService(
         cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
     }
 
-    public async Task<TicketTransferRowDto> RejectAsync(
+    public async Task<TicketTransferMutationResult> RejectAsync(
         Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(reason))
-            throw new InvalidOperationException("A reason is required to cancel a transfer.");
+            return RefuseAdmin(transferRequestId, adminUserId, "A reason is required to cancel a transfer.");
 
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
-        var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
-            ?? throw new InvalidOperationException("Transfer not found.");
+        var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
+        if (request is null) return RefuseAdmin(transferRequestId, adminUserId, "Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
-            throw new InvalidOperationException("Only Pending transfers can be decided.");
-        EnsureNotMidProcessing(request);
+            return RefuseAdmin(transferRequestId, adminUserId, "Only Pending transfers can be decided.");
+        if (GetMidProcessingRefusal(request) is { } midProcessing)
+            return RefuseAdmin(transferRequestId, adminUserId, midProcessing);
 
         var now = clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Rejected;
@@ -513,7 +522,7 @@ internal sealed class TicketTransferService(
 
         await NotifyDecisionAsync(request, successful: false, reason: reason, ct);
 
-        return await BuildRowDtoAsync(request, ct);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
     }
 
     public async Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
