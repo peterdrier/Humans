@@ -4,7 +4,7 @@ using NodaTime;
 
 namespace Humans.Store.Services;
 
-internal sealed record MutationResult(bool Succeeded, string? ErrorMessage)
+internal sealed record MutationResult(bool Succeeded, string? ErrorMessage, string? ErrorKey = null)
 {
     public static MutationResult Success { get; } = new(true, null);
 

@@ -145,4 +145,6 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Refund amount</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>An invoice can only be issued when the order balance is zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>The order year could not be resolved. Contact the store team before adding products.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>This product belongs to a different year from the order.</value></data>
 </root>

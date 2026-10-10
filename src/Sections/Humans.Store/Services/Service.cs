@@ -143,8 +143,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var year = await GetCurrentEventYearAsync();
-            catalog = (await GetActiveCatalogAsync(year, ct))
+            catalog = (await GetActiveCatalogAsync(order.Year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
         }
@@ -523,7 +522,7 @@ internal sealed class Service(
         return order.Id;
     }
 
-    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
             throw new StoreValidationException("Qty must be positive", nameof(qty));
@@ -534,12 +533,19 @@ internal sealed class Service(
         if (order.State != OrderState.Open)
             throw new StoreRuleException("Cannot add lines to an issued order");
 
+        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
+        if (order.Year == 0)
+            return new MutationResult(false, null, "Store_OrderYearUnresolved");
+
         var product = await repo.GetProductByIdAsync(productId, ct)
             ?? throw new StoreRuleException($"Product {productId} not found");
 
         if (!product.IsActive)
             throw new StoreRuleException(
                 $"Product '{product.Name}' has been deactivated and is no longer orderable");
+
+        if (product.Year != order.Year)
+            return new MutationResult(false, null, "Store_ProductYearMismatch");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -560,13 +566,13 @@ internal sealed class Service(
         };
         await repo.AddLineAsync(line, ct);
 
-        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
-
         await audit.LogAsync(
             AuditAction.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}"
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
+
+        return MutationResult.Success;
     }
 
     public async Task<MutationResult> AddLineWithResultAsync(
@@ -578,8 +584,10 @@ internal sealed class Service(
     {
         try
         {
-            await AddLineAsync(orderId, productId, qty, actorUserId, ct);
-            return MutationResult.Success;
+            var result = await AddLineAsync(orderId, productId, qty, actorUserId, ct);
+            if (!result.Succeeded)
+                logger.LogWarning("AddLine rejected for order {OrderId}: {ErrorKey}", orderId, result.ErrorKey);
+            return result;
         }
         catch (StoreValidationException ex)
         {

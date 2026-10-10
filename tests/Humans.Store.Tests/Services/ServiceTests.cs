@@ -124,7 +124,7 @@ public class ServiceTests
             TeamId: null,
             CounterpartyType: OrderCounterpartyType.Camp,
             CounterpartyDisplayName: "Camp Test",
-            Year: 2026,
+            Year: 2025,
             State: OrderState.Open,
             CounterpartyName: null,
             CounterpartyVatId: null,
@@ -140,10 +140,10 @@ public class ServiceTests
             PaymentsTotalEur: 0m,
             BalanceEur: 25m,
             CreatedAt: default);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _repo.GetActiveProductsForYearAsync(2025, Arg.Any<CancellationToken>())
             .Returns([
-                MakeProduct(name: "Tent"),
-                MakeProduct(name: "Blanket")
+                MakeProduct(name: "Tent", year: 2025),
+                MakeProduct(name: "Blanket", year: 2025)
             ]);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
@@ -154,6 +154,7 @@ public class ServiceTests
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
         result.IsStripeConfigured.Should().BeTrue();
+        await _repo.Received(1).GetActiveProductsForYearAsync(2025, TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -544,7 +545,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         var product = MakeProduct(orderableUntil: new LocalDate(2026, 1, 1));
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new Order { Id = orderId, State = OrderState.Open });
+            .Returns(new Order { Id = orderId, Year = 2026, State = OrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         // _clock = 2026-03-14, so 2026-01-01 is past.
 
@@ -567,7 +568,7 @@ public class ServiceTests
         var product = MakeProduct(price: 75m, vat: 10m, deposit: 50m,
             orderableUntil: new LocalDate(2026, 12, 31));
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new Order { Id = orderId, State = OrderState.Open });
+            .Returns(new Order { Id = orderId, Year = 2026, State = OrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
 
         OrderLine? captured = null;
@@ -612,7 +613,7 @@ public class ServiceTests
     {
         Exception failure = argumentError ? new ArgumentException("Private persistence diagnostic", nameof(operation))
             : new InvalidOperationException("Private persistence diagnostic");
-        var order = new Order { Id = Guid.NewGuid(), State = OrderState.Open };
+        var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open };
         var product = MakeProduct();
         var lineId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
@@ -662,6 +663,47 @@ public class ServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineAsync_refuses_a_product_from_another_year_without_writing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var order = new Order { Id = Guid.NewGuid(), Year = 2025, State = OrderState.Open };
+        var product = MakeProduct(year: 2026);
+        _repo.GetOrderByIdAsync(order.Id, ct).Returns(order);
+        _repo.GetProductByIdAsync(product.Id, ct).Returns(product);
+
+        var result = await _service.AddLineWithResultAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_ProductYearMismatch");
+        result.ErrorMessage.Should().BeNull();
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddLineAsync_refuses_an_unresolved_legacy_year_without_writing(bool campOrder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var order = new Order
+        {
+            Id = Guid.NewGuid(), Year = 0, State = OrderState.Open,
+            CampSeasonId = campOrder ? Guid.NewGuid() : null,
+            TeamId = campOrder ? null : Guid.NewGuid(),
+        };
+        _repo.GetOrderByIdAsync(order.Id, ct).Returns(order);
+
+        var result = await _service.AddLineWithResultAsync(order.Id, Guid.NewGuid(), 1, Guid.NewGuid(), ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Store_OrderYearUnresolved");
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
     {
         var result = await _service.AddLineWithResultAsync(
@@ -678,7 +720,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         var product = MakeProduct(orderableUntil: new LocalDate(2026, 12, 31));
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new Order { Id = orderId, State = OrderState.Open });
+            .Returns(new Order { Id = orderId, Year = 2026, State = OrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
 
         var result = await _service.AddLineWithResultAsync(orderId, product.Id, 2, actor, TestContext.Current.CancellationToken);
@@ -1053,7 +1095,7 @@ public class ServiceTests
 
         var orderId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new Order { Id = orderId, State = OrderState.Open });
+            .Returns(new Order { Id = orderId, Year = 2026, State = OrderState.Open });
 
         OrderLine? capturedLine = null;
         await _repo.AddLineAsync(Arg.Do<OrderLine>(l => capturedLine = l), Arg.Any<CancellationToken>());

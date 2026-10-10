@@ -187,7 +187,14 @@ public class ServiceTeamOrdersTests
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
-        await _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        _repo.AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            order.Year.Should().Be(2025, "the legacy year must be resolved before the line write");
+            return Task.CompletedTask;
+        });
+
+        var result = await _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
 
         await _repo.Received(1).UpdateOrderAsync(
             Arg.Is<Order>(o => o.Year == 2025),

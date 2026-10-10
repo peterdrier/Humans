@@ -100,4 +100,6 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Erstattungsbetrag</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Eine Rechnung kann nur ausgestellt werden, wenn der Saldo der Bestellung null ist.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Aktion</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Das Jahr der Bestellung konnte nicht ermittelt werden. Kontaktiere das Store-Team, bevor du Produkte hinzufügst.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Dieses Produkt gehört zu einem anderen Jahr als die Bestellung.</value></data>
 </root>

@@ -100,4 +100,6 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Import a reemborsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La factura només es pot emetre quan el saldo de la comanda és zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acció</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No s’ha pogut determinar l’any de la comanda. Contacta amb l’equip de la botiga abans d’afegir productes.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Aquest producte pertany a un any diferent del de la comanda.</value></data>
 </root>

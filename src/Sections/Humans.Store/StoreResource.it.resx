@@ -100,4 +100,6 @@
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importo da rimborsare</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La fattura può essere emessa solo quando il saldo dell'ordine è zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Azione</value></data>
+  <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Non è stato possibile determinare l’anno dell’ordine. Contatta il team del negozio prima di aggiungere prodotti.</value></data>
+  <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Questo prodotto appartiene a un anno diverso da quello dell’ordine.</value></data>
 </root>

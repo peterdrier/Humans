@@ -354,7 +354,9 @@ internal sealed class StoreController(
 
         var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? localizer["Store_AddLineFailed"].Value);
+            SetError(result.ErrorKey is { } key
+                ? localizer[key].Value
+                : result.ErrorMessage ?? localizer["Store_AddLineFailed"].Value);
         else
             SetSuccess(localizer["Store_LineAdded"].Value);
 
