@@ -102,27 +102,41 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 12, 10, 0));
-        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var driveSource = Substitute.For<IGoogleDriveAccessSource>();
+        driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var teams = await _teamService.GetTeamsAsync(call.ArgAt<CancellationToken>(1));
+                var access = teams.Count == 0
+                    ? new Dictionary<Guid, DrivePermissionLevel> { [TestUserId] = DrivePermissionLevel.Contributor }
+                    : teams.Values.Where(t => t.IsActive).SelectMany(t => t.Members)
+                        .Select(m => m.UserId).Distinct().ToDictionary(id => id, _ => DrivePermissionLevel.Contributor);
+                return new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal) { [call.ArgAt<string?>(0) ?? TestGoogleFolderId] = new(access) };
+            });
+        var driveSync = new GoogleDriveAccessSyncService(
+            [driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
+            _auditLogService, _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
+            Substitute.For<ITeamResourceService>(), clock,
+            Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
 
         _syncService = new GoogleWorkspaceSyncService(
             _groupProvisioning,
             _drivePermissions,
             _directory,
-            _teamResourceClient,
             _resourceRepository,
             _googleSyncOutboxRepository,
             _teamService,
             _userService,
             _userEmailService,
             _googleGroupSync,
+            driveSync,
+            [driveSource],
             _auditLogService,
             _googleSyncLog,
             _syncSettingsService,
-            _removalNotifications,
             _driveAccessSyncScheduler,
             options,
             clock,
-            serviceProvider,
             _logger);
     }
 
@@ -338,7 +352,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
             .Returns(driveResource);
         _resourceRepository
-            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
         // TeamInfo cache resolves the team cross-section. No expected members
@@ -763,6 +777,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // Gmail, so the base address must be used for the API call.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) });
 
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
@@ -905,13 +921,15 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // grant/revoke every night.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) });
 
         var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
         _resourceRepository
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
             .Returns(driveResource);
         _resourceRepository
-            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
         var member = new TeamMemberInfo(
@@ -976,7 +994,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
             .Returns(driveResource);
         _resourceRepository
-            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
         var teamInfo = new TeamInfo(
@@ -1027,7 +1045,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
             .Returns(driveResource);
         _resourceRepository
-            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
         // Empty team — every Google-side permission is "extra".

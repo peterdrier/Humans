@@ -21,7 +21,7 @@ internal sealed class WorkgroupDriveAccessSource(
     IUserServiceRead users,
     ITeamServiceRead teams) : IGoogleDriveAccessSource
 {
-    public async Task<Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>> GetExpectedAccessAsync(
+    public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)
     {
         var claimed = new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal);
@@ -54,10 +54,8 @@ internal sealed class WorkgroupDriveAccessSource(
 
         // The orchestrator asked about one folder; anything else this source claims is not
         // its business on this pass.
-        return folderId is null
-            ? claimed
-            : claimed.Where(e => string.Equals(e.Key, folderId, StringComparison.Ordinal))
-                .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
+        return claimed.Where(e => folderId is null || string.Equals(e.Key, folderId, StringComparison.Ordinal))
+            .ToDictionary(e => e.Key, e => new GoogleDriveAccessClaim(e.Value), StringComparer.Ordinal);
     }
 
     /// <summary>
