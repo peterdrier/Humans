@@ -132,7 +132,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 Arg.Any<string?>(), Arg.Any<List<CampLink>?>(), Arg.Any<bool>(), Arg.Any<int>(),
                 Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns(seeded.camp);
+            .Returns(new CampWriteResult<Camp>(seeded.camp));
 
         var newCampId = await ((ICampSeeding)_service).CreateCampForSeedAsync(
             createdByUserId: Guid.NewGuid(),
@@ -639,7 +639,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         {
             season.Status = CampSeasonStatus.Full;
             await SaveAllAsync(ct);
-            throw failure;
+            return await Task.FromException<CampUpdateResult>(failure);
         });
 
         Func<Task> change = () => _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, ct);
@@ -760,7 +760,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 Arg.Any<string?>(), Arg.Any<List<CampLink>?>(), Arg.Any<bool>(), Arg.Any<int>(),
                 Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns(camp);
+            .Returns(new CampWriteResult<Camp>(camp));
     }
 
     private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(

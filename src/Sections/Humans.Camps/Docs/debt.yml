@@ -3,10 +3,6 @@
 version: 1
 next_id: 8
 inbox:
-  - added: 2026-10-04
-    id: CAMPS-6
-    what: "CampController mutation actions localize InvalidOperationException.Message through campsLocalizer; other catches expose diagnostic Message directly. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: the CampService mutations return a result record carrying a refusal key the controller localizes (throw-to-result per no-localized-exception-messages); pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-06
     id: CAMPS-7
     what: "CampService.DeleteCampAsync removes a camp's seasons, members and their early-entry flags without calling IEarlyEntryInvalidator.InvalidateUser for the members, so their cached early-entry answer outlives the delete until another eviction (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."

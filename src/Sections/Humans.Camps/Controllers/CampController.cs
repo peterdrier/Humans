@@ -402,16 +402,16 @@ internal sealed class CampController(
                 historicalNames,
                 year);
 
+            if (camp.ErrorKey is { } key)
+            {
+                logger.LogWarning("Camp registration refused for user {UserId}, year {Year}: {ErrorKey}", user.Id, year, key);
+                ModelState.AddModelError(string.Empty, campsLocalizer[key, model.Name].Value);
+                await PopulateRegisterSeasonYearAsync();
+                await PopulateRegistrationInfoAsync();
+                return View(model);
+            }
             SetSuccess(campsLocalizer["Camps_Flash_RegistrationPendingReview"].Value);
-            return RedirectToAction(nameof(Details), new { slug = camp.Slug });
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
-            ModelState.AddModelError(string.Empty, campsLocalizer[ex.Message, model.Name].Value);
-            await PopulateRegisterSeasonYearAsync();
-            await PopulateRegistrationInfoAsync();
-            return View(model);
+            return RedirectToAction(nameof(Details), new { slug = camp.Value!.Slug });
         }
         catch (DbUpdateException ex)
         {
@@ -606,7 +606,9 @@ internal sealed class CampController(
 
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? campsLocalizer["Camps_Flash_UpdateFailed"].Value);
+            logger.LogWarning("Camp update refused for {CampId}, slug {Slug}, season {SeasonId}: {ErrorKey}",
+                camp.Id, slug, model.SeasonId, result.ErrorKey);
+            ModelState.AddModelError(string.Empty, campsLocalizer[result.ErrorKey ?? "Camps_Flash_UpdateFailed"].Value);
             await PopulateEditReadOnlyFieldsAsync(model, camp);
             return View(model);
         }
@@ -626,15 +628,15 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        try
+        var result = await _campService.OptInToSeasonAsync(camp.Id, year);
+        if (result.ErrorKey is { } key)
         {
-            await _campService.OptInToSeasonAsync(camp.Id, year);
-            SetSuccess(campsLocalizer["Camps_Flash_OptedIn", year].Value);
+            logger.LogWarning("Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}: {ErrorKey}", camp.Id, slug, year, key);
+            SetError(campsLocalizer[key, year].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
-            SetError(campsLocalizer[ex.Message, year].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_OptedIn", year].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug, year });
@@ -651,15 +653,15 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        try
+        var result = await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
+        if (result.ErrorKey is { } key)
         {
-            await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
-            SetSuccess(campsLocalizer["Camps_Flash_SeasonWithdrawn"].Value);
+            logger.LogWarning("Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}: {ErrorKey}", camp.Id, slug, seasonId, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
+            SetSuccess(campsLocalizer["Camps_Flash_SeasonWithdrawn"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -676,15 +678,15 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        try
+        var result = await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full);
+        if (result.ErrorKey is { } key)
         {
-            await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full);
-            SetSuccess(campsLocalizer["Camps_Flash_SeasonFull"].Value);
+            logger.LogWarning("Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}: {ErrorKey}", camp.Id, slug, seasonId, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning(ex, "Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
+            SetSuccess(campsLocalizer["Camps_Flash_SeasonFull"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -708,16 +710,8 @@ internal sealed class CampController(
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
-        try
-        {
-            await _campService.AddHistoricalNameAsync(camp.Id, name);
-            SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
-            SetError(ex.Message);
-        }
+        await _campService.AddHistoricalNameAsync(camp.Id, name);
+        SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
@@ -731,15 +725,15 @@ internal sealed class CampController(
         if (errorResult is not null)
             return errorResult;
 
-        try
+        var result = await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
+        if (result.ErrorKey is { } key)
         {
-            await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
-            SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameRemoved"].Value);
+            logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameRemoved"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -793,15 +787,15 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        try
+        var result = await _campService.DeleteImageAsync(camp.Id, imageId);
+        if (result.ErrorKey is { } key)
         {
-            await _campService.DeleteImageAsync(camp.Id, imageId);
-            SetSuccess(campsLocalizer["Camps_Flash_ImageDeleted"].Value);
+            logger.LogWarning("Deleting image {ImageId} failed for camp {CampId} and slug {Slug}: {Reason}", imageId, camp.Id, slug, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Deleting image {ImageId} failed for camp {CampId} and slug {Slug}: {Reason}", imageId, camp.Id, slug, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_ImageDeleted"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -818,16 +812,8 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        try
-        {
-            await _campService.ReorderImagesAsync(camp.Id, imageIds);
-            SetSuccess(campsLocalizer["Camps_Flash_ImageOrderUpdated"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
-            SetError(ex.Message);
-        }
+        await _campService.ReorderImagesAsync(camp.Id, imageIds);
+        SetSuccess(campsLocalizer["Camps_Flash_ImageOrderUpdated"].Value);
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
@@ -871,15 +857,15 @@ internal sealed class CampController(
         var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null) return currentUserError;
 
-        try
+        var result = await _campService.WithdrawCampMembershipRequestAsync(campMemberId, user.Id);
+        if (result.ErrorMessage is { } key)
         {
-            await _campService.WithdrawCampMembershipRequestAsync(campMemberId, user.Id);
-            SetSuccess(campsLocalizer["Camps_Flash_RequestWithdrawn"].Value);
+            logger.LogWarning("Withdraw camp membership request failed for member {MemberId} and user {UserId}: {Reason}", campMemberId, user.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Withdraw camp membership request failed for member {MemberId} and user {UserId}: {Reason}", campMemberId, user.Id, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_RequestWithdrawn"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -917,16 +903,16 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        try
+        // Cross-camp guard: ApproveCampMemberAsync rejects member ids outside camp.Id.
+        var result = await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
+        if (result.ErrorMessage is { } key)
         {
-            // Cross-camp guard: ApproveCampMemberAsync rejects member ids outside camp.Id.
-            await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess(campsLocalizer["Camps_Flash_MembershipApproved"].Value);
+            logger.LogWarning("Approve camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Approve camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_MembershipApproved"].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -940,15 +926,15 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        try
+        var result = await _campService.RejectCampMemberAsync(camp.Id, campMemberId, user.Id);
+        if (result.ErrorMessage is { } key)
         {
-            await _campService.RejectCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess(campsLocalizer["Camps_Flash_RequestRejected"].Value);
+            logger.LogWarning("Reject camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Reject camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_RequestRejected"].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -962,15 +948,15 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        try
+        var result = await _campService.RemoveCampMemberAsync(camp.Id, campMemberId, user.Id);
+        if (result.ErrorMessage is { } key)
         {
-            await _campService.RemoveCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess(campsLocalizer["Camps_Flash_MemberRemoved"].Value);
+            logger.LogWarning("Remove camp member failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Remove camp member failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(campsLocalizer[ex.Message].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_MemberRemoved"].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });

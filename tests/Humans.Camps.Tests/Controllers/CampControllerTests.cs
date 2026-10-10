@@ -236,7 +236,7 @@ public class CampControllerTests
         var reservedKey = "Camps_Flash_ReservedName";
         _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0,
                 default!, null, 0, default)
-            .ReturnsForAnyArgs(Task.FromException<Camp>(new InvalidOperationException(reservedKey)));
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, reservedKey));
         var controller = BuildController(userId, localizer);
         var model = new CampRegisterViewModel { Name = "Register" };
 
@@ -255,7 +255,7 @@ public class CampControllerTests
         })
         {
             _camps.OptInToSeasonAsync(camp.Id, 2027, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<CampSeason>(new InvalidOperationException(key)));
+                .Returns(new CampWriteResult<CampSeason>(null, key));
             (await controller.OptIn(camp.Slug, 2027)).Should().BeOfType<RedirectToActionResult>();
             expected = localizer[key, 2027];
             expected.ResourceNotFound.Should().BeFalse();
@@ -362,7 +362,7 @@ public class CampControllerTests
         foreach (var key in new[] { "Camps_Flash_RoleMemberNotFound", "Camps_Flash_WithdrawRequiresPending" })
         {
             _camps.WithdrawCampMembershipRequestAsync(memberId, userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException(new InvalidOperationException(key)));
+                .Returns(CampMembershipMutationResult.Failure(key));
             await controller.WithdrawMembershipRequest(camp.Slug, memberId);
             var expected = localizer[key];
             expected.ResourceNotFound.Should().BeFalse();
@@ -407,24 +407,23 @@ public class CampControllerTests
         })
         {
             logger.ClearReceivedCalls();
-            var failure = new InvalidOperationException(key);
             Task<IActionResult> result;
             switch (action)
             {
                 case "Approve":
-                    _camps.ApproveCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    _camps.ApproveCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.ApproveMembership(camp.Slug, targetId); break;
                 case "Reject":
-                    _camps.RejectCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    _camps.RejectCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.RejectMembership(camp.Slug, targetId); break;
                 case "Remove":
-                    _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.RemoveMembership(camp.Slug, targetId); break;
                 case "RemoveHistoricalName":
-                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId).ThrowsAsync(failure);
+                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
                     result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
                 case "DeleteImage":
-                    _camps.DeleteImageAsync(camp.Id, targetId).ThrowsAsync(failure);
+                    _camps.DeleteImageAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
                     result = controller.DeleteImage(camp.Slug, targetId); break;
                 default: throw new InvalidOperationException("Unknown test action");
             }
@@ -459,13 +458,13 @@ public class CampControllerTests
             .Returns(AuthorizationResult.Success());
         const string reason = "Camps_Flash_RoleMemberNotFound";
         _campsLocalizer[reason].Returns(new LocalizedString(reason, "Member not found"));
-        Exception failure = unexpected ? new IOException("Storage unavailable") : new InvalidOperationException(reason);
+        var failure = new InvalidOperationException("Storage unavailable");
         switch (action)
         {
-            case "Approve": _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
-            case "Reject": _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
-            case "Remove": _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
-            case "Withdraw": _camps.WithdrawCampMembershipRequestAsync(memberId, actorId).ThrowsAsync(failure); break;
+            case "Approve": if (unexpected) _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); else _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).Returns(CampMembershipMutationResult.Failure(reason)); break;
+            case "Reject": if (unexpected) _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); else _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).Returns(CampMembershipMutationResult.Failure(reason)); break;
+            case "Remove": if (unexpected) _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); else _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).Returns(CampMembershipMutationResult.Failure(reason)); break;
+            case "Withdraw": if (unexpected) _camps.WithdrawCampMembershipRequestAsync(memberId, actorId).ThrowsAsync(failure); else _camps.WithdrawCampMembershipRequestAsync(memberId, actorId).Returns(CampMembershipMutationResult.Failure(reason)); break;
         }
         var logger = Substitute.For<ILogger<CampController>>();
         var controller = BuildController(actorId, logger: logger);
@@ -479,7 +478,7 @@ public class CampControllerTests
         };
         if (unexpected)
         {
-            await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Storage unavailable");
             logger.ReceivedCalls().Should().BeEmpty();
             return;
         }
