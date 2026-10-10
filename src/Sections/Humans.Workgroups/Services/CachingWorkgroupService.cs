@@ -81,14 +81,14 @@ internal sealed class CachingWorkgroupService(
 
     // ── Applying and joining ──────────────────────────────────────────────
 
-    public Task<Guid> ApplyAsync(
+    public Task<WorkgroupMutationResult<Guid>> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default) =>
         MutateAsync(inner => inner.ApplyAsync(actorUserId, application, ct));
 
-    public Task JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.JoinAsync(workgroupId, userId, ct));
 
-    public Task LeaveAsync(
+    public Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
@@ -96,17 +96,17 @@ internal sealed class CachingWorkgroupService(
         CancellationToken ct = default) =>
         MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct));
 
-    public Task RequestStatusAsync(
+    public Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RequestStatusAsync(workgroupId, actorUserId, question, ct));
 
     // ── Member work ───────────────────────────────────────────────────────
 
-    public Task EditRegisterAsync(
+    public Task<WorkgroupMutationResult> EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default) =>
         MutateAsync(inner => inner.EditRegisterAsync(workgroupId, actorUserId, edit, ct));
 
-    public Task SetCoordinatorsAsync(
+    public Task<WorkgroupMutationResult> SetCoordinatorsAsync(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
@@ -114,66 +114,66 @@ internal sealed class CachingWorkgroupService(
         CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct));
 
-    public Task<Guid> CreateMeetingAsync(
+    public Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateMeetingAsync(workgroupId, actorUserId, save, ct));
 
-    public Task UpdateMeetingAsync(
+    public Task<WorkgroupMutationResult> UpdateMeetingAsync(
         Guid meetingId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateMeetingAsync(meetingId, actorUserId, save, ct));
 
-    public Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.DeleteMeetingAsync(meetingId, actorUserId, ct));
 
-    public Task<Guid> AddLogEntryAsync(
+    public Task<WorkgroupMutationResult<Guid>> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.AddLogEntryAsync(workgroupId, actorUserId, save, ct));
 
-    public Task UpdateLogEntryAsync(
+    public Task<WorkgroupMutationResult> UpdateLogEntryAsync(
         Guid entryId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateLogEntryAsync(entryId, actorUserId, save, ct));
 
-    public Task DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.DeleteLogEntryAsync(entryId, actorUserId, ct));
 
-    public Task LinkSurveyAsync(
+    public Task<WorkgroupMutationResult> LinkSurveyAsync(
         Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.LinkSurveyAsync(workgroupId, actorUserId, surveyId, ct));
 
-    public Task MarkDoneAsync(
+    public Task<WorkgroupMutationResult> MarkDoneAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDormantReason reason, CancellationToken ct = default) =>
         MutateAsync(inner => inner.MarkDoneAsync(workgroupId, actorUserId, reason, ct));
 
     // ── Documents ─────────────────────────────────────────────────────────
 
-    public Task<Guid> CreateDocumentAsync(
+    public Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateDocumentAsync(workgroupId, actorUserId, save, ct));
 
-    public Task UpdateDocumentAsync(
+    public Task<WorkgroupMutationResult> UpdateDocumentAsync(
         Guid documentId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateDocumentAsync(documentId, actorUserId, save, ct));
 
-    public Task PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.PublishDocumentAsync(documentId, actorUserId, ct));
 
-    public Task OpenCommentsAsync(
+    public Task<WorkgroupMutationResult> OpenCommentsAsync(
         Guid documentId, Guid actorUserId, WorkgroupCommentWindow window, CancellationToken ct = default) =>
         MutateAsync(inner => inner.OpenCommentsAsync(documentId, actorUserId, window, ct));
 
-    public Task CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CloseCommentsAsync(documentId, actorUserId, ct));
 
-    public Task DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.DeliverDocumentAsync(documentId, actorUserId, ct));
 
     // ── Comments ──────────────────────────────────────────────────────────
 
-    public Task<Guid> AddCommentAsync(
+    public Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default) =>
         MutateAsync(inner => inner.AddCommentAsync(documentId, actorUserId, category, body, ct));
 
-    public Task RespondToCommentAsync(
+    public Task<WorkgroupMutationResult> RespondToCommentAsync(
         Guid commentId,
         Guid actorUserId,
         WorkgroupCommentDisposition disposition,
@@ -181,7 +181,7 @@ internal sealed class CachingWorkgroupService(
         CancellationToken ct = default) =>
         MutateAsync(inner => inner.RespondToCommentAsync(commentId, actorUserId, disposition, response, ct));
 
-    public async Task RespondToCategoryAsync(
+    public async Task<WorkgroupMutationResult> RespondToCategoryAsync(
         Guid documentId,
         Guid actorUserId,
         string category,
@@ -189,50 +189,50 @@ internal sealed class CachingWorkgroupService(
         string? response,
         CancellationToken ct = default)
     {
-        await MutateAsync(inner =>
+        return await MutateAsync(inner =>
             inner.RespondToCategoryAsync(documentId, actorUserId, category, disposition, response, ct));
     }
 
-    public Task HideCommentAsync(
+    public Task<WorkgroupMutationResult> HideCommentAsync(
         Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default) =>
         MutateAsync(inner => inner.HideCommentAsync(commentId, actorUserId, reason, ct));
 
     // ── The Secretary and the Board ───────────────────────────────────────
 
-    public Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RegisterAsync(workgroupId, actorUserId, ct));
 
-    public Task ReferAsync(
+    public Task<WorkgroupMutationResult> ReferAsync(
         Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default) =>
         MutateAsync(inner => inner.ReferAsync(workgroupId, actorUserId, note, ct));
 
-    public Task RefuseAsync(
+    public Task<WorkgroupMutationResult> RefuseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RefuseAsync(workgroupId, actorUserId, reasons, ct));
 
-    public Task WithdrawAsync(
+    public Task<WorkgroupMutationResult> WithdrawAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default) =>
         MutateAsync(inner => inner.WithdrawAsync(workgroupId, actorUserId, reasons, ct));
 
-    public Task CloseAsync(
+    public Task<WorkgroupMutationResult> CloseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CloseAsync(workgroupId, actorUserId, reasons, ct));
 
-    public Task ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.ReactivateAsync(workgroupId, actorUserId, ct));
 
-    public Task<Guid> RegisterExistingAsync(
+    public Task<WorkgroupMutationResult<Guid>> RegisterExistingAsync(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RegisterExistingAsync(actorUserId, bootstrap, ct));
 
-    public Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+    public Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
 
     public Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.ListExpenseAccountsAsync(ct));
 
-    public Task RecordDispositionAsync(
+    public Task<WorkgroupMutationResult> RecordDispositionAsync(
         Guid documentId,
         Guid actorUserId,
         WorkgroupDisposition disposition,
@@ -247,7 +247,7 @@ internal sealed class CachingWorkgroupService(
     public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetRootDriveFolderIdAsync(ct));
 
-    public Task SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
         WithInner(inner => inner.SetRootDriveFolderIdAsync(folderId, actorUserId, ct));
 
     // ── The daily job ─────────────────────────────────────────────────────

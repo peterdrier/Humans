@@ -94,20 +94,15 @@ internal sealed class WorkgroupsAdminController(
         if (error is not null) return error;
         if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
 
-        try
+        // Backdated to when the group really started; midnight UTC is precise enough.
+        var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
+        var result = await workgroups.RegisterExistingAsync(user.Id,
+            new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
+                model.Budget.ToSave()), CancellationToken.None);
+        if (result.Refusal is { } refusal)
         {
-            // Backdated to when the group really started; midnight UTC is precise enough for
-            // a date somebody typed from memory.
-            var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
-            await workgroups.RegisterExistingAsync(user.Id,
-                new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
-                    model.Budget.ToSave()),
-                CancellationToken.None);
-        }
-        catch (WorkgroupRuleException ex)
-        {
-            logger.LogWarning("Workgroups admin RegisterExisting: rule {Rule}", ex.Key);
-            ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
+            logger.LogWarning("Workgroups admin RegisterExisting: rule {Rule}", refusal.Key);
+            ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
             return await RegisterExistingViewAsync(model, ct);
         }
 
@@ -138,20 +133,21 @@ internal sealed class WorkgroupsAdminController(
             return RedirectToAction("Details", "Workgroups", new { slug = id });
         }
 
-        try
+        var result = await workgroups.SetBudgetAsync(id, user.Id, model.ToSave(), ct);
+        if (result.Refusal is { } refusal)
         {
-            var account = await workgroups.SetBudgetAsync(id, user.Id, model.ToSave(), ct);
+            logger.LogWarning("Workgroups admin Budget: rule {Rule}", refusal.Key);
+            SetError(localizer[refusal.Key, refusal.Args]);
+        }
+        else
+        {
+            var account = result.Value;
             SetSuccess(account switch
             {
                 { Created: true } => $"Budget saved; created Holded account {account.AccountNum} '{account.Name}'.",
                 { Created: false } => $"Budget saved; linked to existing Holded account {account.AccountNum} '{account.Name}'.",
                 null => "Budget saved.",
             });
-        }
-        catch (WorkgroupRuleException ex)
-        {
-            logger.LogWarning("Workgroups admin Budget: rule {Rule}", ex.Key);
-            SetError(localizer[ex.Key, ex.Args]);
         }
         return RedirectToAction("Details", "Workgroups", new { slug = id });
     }
@@ -182,14 +178,11 @@ internal sealed class WorkgroupsAdminController(
         if (error is not null) return error;
         if (!ModelState.IsValid) return View(model);
 
-        try
+        var result = await workgroups.SetRootDriveFolderIdAsync(model.RootDriveFolderId, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await workgroups.SetRootDriveFolderIdAsync(model.RootDriveFolderId, user.Id, ct);
-        }
-        catch (WorkgroupRuleException ex)
-        {
-            logger.LogWarning("Workgroups root Drive folder rejected: rule {Rule}", ex.Key);
-            ModelState.AddModelError(nameof(model.RootDriveFolderId), localizer[ex.Key, ex.Args]);
+            logger.LogWarning("Workgroups root Drive folder rejected: rule {Rule}", refusal.Key);
+            ModelState.AddModelError(nameof(model.RootDriveFolderId), localizer[refusal.Key, refusal.Args]);
             return View(model);
         }
 
@@ -205,24 +198,24 @@ internal sealed class WorkgroupsAdminController(
     /// </summary>
     internal static string DraftKey(Guid? id, string action) => $"WorkgroupsDraft:{id}:{action}";
 
-    private async Task<IActionResult> ActAsync(
-        Func<Guid, Task> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null)
+    private async Task<IActionResult> ActAsync<T>(
+        Func<Guid, Task<T>> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null) where T : WorkgroupMutationResult
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        try
-        {
-            await action(user.Id);
-            SetSuccess(success);
-        }
-        catch (WorkgroupRuleException ex)
+        var result = await action(user.Id);
+        if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Workgroups admin {Action}: rule {Rule}",
-                ControllerContext.ActionDescriptor.ActionName, ex.Key);
-            SetError(localizer[ex.Key, ex.Args]);
-            // Hand the typed text back so Details can prefill the form; bounded (textarea maxlength) to keep the TempData cookie small.
+                ControllerContext.ActionDescriptor.ActionName, refusal.Key);
+            SetError(localizer[refusal.Key, refusal.Args]);
+            // Preserve the bounded draft so Details can prefill the form.
             if (draft is { Length: <= 4000 }) TempData[DraftKey(id, ControllerContext.ActionDescriptor.ActionName)] = draft;
+        }
+        else
+        {
+            SetSuccess(success);
         }
 
         return string.IsNullOrEmpty(slug)

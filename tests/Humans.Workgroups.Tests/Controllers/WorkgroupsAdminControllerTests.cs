@@ -34,9 +34,9 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var id = Guid.NewGuid();
         var failure = new KeyNotFoundException("Dependency lookup failed");
         service.SetBudgetAsync(id, Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Ct)
-            .Returns(Task.FromException<Humans.Finance.Contracts.HoldedExpenseAccountRef?>(failure));
+            .Returns(Task.FromException<WorkgroupMutationResult<Humans.Finance.Contracts.HoldedExpenseAccountRef?>>(failure));
         service.RecordDispositionAsync(id, Arg.Any<Guid>(), WorkgroupDisposition.Noted, "Noted", Ct)
-            .Returns(Task.FromException(failure));
+            .Returns(Task.FromException<WorkgroupMutationResult>(failure));
         var controller = MakeAdminController("Test", service: service);
         Func<Task<IActionResult>> act = budget
             ? () => controller.Budget(id, new WorkgroupBudgetFormViewModel { HasBudget = false }, "group", Ct)

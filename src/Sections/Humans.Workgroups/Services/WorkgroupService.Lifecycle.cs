@@ -14,16 +14,23 @@ namespace Humans.Workgroups.Services;
 /// </summary>
 internal sealed partial class WorkgroupService
 {
-    public async Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
         // Registration completes even if the initiating request disconnects.
         ct = CancellationToken.None;
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // The folder comes first: a group is not registered until it has somewhere to work,
         // and a failure here leaves the row exactly as it was so the Secretary can retry.
-        workgroup.DriveFolderId ??= await CreateGroupFolderAsync(workgroup, ct);
+        if (workgroup.DriveFolderId is null)
+        {
+            var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+            if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
+            workgroup.DriveFolderId = folderResult.Value!;
+        }
 
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Active;
@@ -37,13 +44,16 @@ internal sealed partial class WorkgroupService
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
+        return new();
     }
 
-    public async Task ReferAsync(
+    public async Task<WorkgroupMutationResult> ReferAsync(
         Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default)
     {
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Applied);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Referred;
@@ -62,14 +72,17 @@ internal sealed partial class WorkgroupService
             $"Referred to the Board: {workgroup.Name}", info,
             Trimmed(note) ?? "A refusal ground may apply; the Board decides at its next meeting.", ct);
         await EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
+        return new();
     }
 
-    public async Task RefuseAsync(
+    public async Task<WorkgroupMutationResult> RefuseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        RequireReasons(reasons);
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred);
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Refused;
@@ -83,14 +96,17 @@ internal sealed partial class WorkgroupService
         await AuditAsync(AuditAction.WorkgroupRefused, workgroup,
             $"Refused '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused, reasons.Trim(), ct);
+        return new();
     }
 
-    public async Task WithdrawAsync(
+    public async Task<WorkgroupMutationResult> WithdrawAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        RequireReasons(reasons);
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Active, WorkgroupStatus.Dormant);
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Withdrawn;
@@ -109,24 +125,30 @@ internal sealed partial class WorkgroupService
         // Withdrawn is not Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: false, ct);
+        return new();
     }
 
-    public async Task CloseAsync(
+    public async Task<WorkgroupMutationResult> CloseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        RequireReasons(reasons);
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Active);
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Active) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // The Secretary's close after the two-month silence; the member's own ending is
         // MarkDoneAsync, which cannot reach the Quiet reason.
         await EndAsync(workgroup, actorUserId, WorkgroupDormantReason.Quiet, reasons, ct);
+        return new();
     }
 
-    public async Task ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireStatus(workgroup, WorkgroupStatus.Dormant);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Active;
@@ -145,17 +167,20 @@ internal sealed partial class WorkgroupService
         // Active again: the source claims Contributor for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
+        return new();
     }
 
-    public async Task<Guid> RegisterExistingAsync(
+    public async Task<WorkgroupMutationResult<Guid>> RegisterExistingAsync(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default)
     {
         ct = CancellationToken.None;
         ArgumentNullException.ThrowIfNull(bootstrap);
-        ValidateApplication(bootstrap.Application);
+        if (ValidateApplication(bootstrap.Application) is { } applicationRefusal) return new(Refusal: applicationRefusal);
 
         var now = clock.GetCurrentInstant();
-        var slug = await ReserveSlugAsync(bootstrap.Application.Name, null, ct);
+        var slugResult = await ReserveSlugAsync(bootstrap.Application.Name, null, ct);
+        if (slugResult.Refusal is { } slugRefusal) return new(Refusal: slugRefusal);
+        var slug = slugResult.Value!;
         var workgroup = new Workgroup
         {
             Id = Guid.NewGuid(),
@@ -191,8 +216,10 @@ internal sealed partial class WorkgroupService
         if (budget is not null)
         {
             if (budget.Amount < 0)
-                throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetNegative);
-            var account = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
+                return new(Refusal: new(WorkgroupErrorKeys.BudgetNegative));
+            var accountResult = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
+            if (accountResult.Refusal is { } accountRefusal) return new(Refusal: accountRefusal);
+            var account = accountResult.Value!;
             workgroup.BudgetAmount = budget.Amount;
             workgroup.HoldedAccountNumber = account.AccountNum;
             workgroup.HoldedAccountId = account.AccountId;
@@ -200,7 +227,9 @@ internal sealed partial class WorkgroupService
                 BudgetLogBody(workgroup), actorUserId));
         }
 
-        workgroup.DriveFolderId = await CreateGroupFolderAsync(workgroup, ct);
+        var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+        if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
+        workgroup.DriveFolderId = folderResult.Value!;
         await repository.AddWorkgroupAsync(workgroup, ct);
 
         await AuditAsync(AuditAction.WorkgroupRegisteredExisting, workgroup,
@@ -212,10 +241,10 @@ internal sealed partial class WorkgroupService
         if (budget is not null)
             await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
 
-        return workgroup.Id;
+        return new(workgroup.Id);
     }
 
-    public async Task RecordDispositionAsync(
+    public async Task<WorkgroupMutationResult> RecordDispositionAsync(
         Guid documentId,
         Guid actorUserId,
         WorkgroupDisposition disposition,
@@ -223,13 +252,15 @@ internal sealed partial class WorkgroupService
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(note))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.ReasonsRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.ReasonsRequired));
 
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
         // The Board replies to what it received, so there is nothing to dispose of until
         // the group has delivered.
         if (document.Status != WorkgroupDocumentStatus.Delivered)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NotDelivered);
+            return new(Refusal: new(WorkgroupErrorKeys.NotDelivered));
 
         var now = clock.GetCurrentInstant();
         document.Disposition = disposition;
@@ -253,6 +284,7 @@ internal sealed partial class WorkgroupService
         // Members see it in-app; the coordinators, who owe the follow-up, also get the email.
         await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
+        return new();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -262,22 +294,22 @@ internal sealed partial class WorkgroupService
     /// the Secretary's to act on: an unset root is a settings problem, a Google failure is
     /// a retry — neither leaves the group half-registered.
     /// </summary>
-    private async Task<string> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
+    private async Task<WorkgroupMutationResult<string>> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
     {
         var root = await GetRootDriveFolderIdAsync(ct);
         if (string.IsNullOrWhiteSpace(root))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
+            return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
 
         try
         {
             // The entire registration uses a non-cancellable token.
-            return await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None);
+            return new(await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create the Drive subfolder for workgroup {WorkgroupId}",
                 workgroup.Id);
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.DriveFolderCreationFailed);
+            return new(Refusal: new(WorkgroupErrorKeys.DriveFolderCreationFailed));
         }
     }
 

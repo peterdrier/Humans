@@ -40,9 +40,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         await service.SetRootDriveFolderIdAsync("section-owned-root", actor, Ct);
         var id = group.Id;
         if (existing)
-            id = await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
+            id = (await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
                 new WorkgroupApplication("Existing", "Purpose", "Report", WorkgroupDeliverableKind.Report,
-                    WorkgroupAudience.Board, null, null, null), actor, Clock.GetCurrentInstant()), request.Token);
+                    WorkgroupAudience.Board, null, null, null), actor, Clock.GetCurrentInstant()), request.Token)).Value;
         else
             await service.RegisterAsync(id, actor, request.Token);
 
@@ -64,7 +64,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.DriveFolderCreationFailed);
 
         await using var ctx = OpenContext();
@@ -75,14 +75,14 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Register_WhenTheRootFolderIsUnset_ThrowsAndLeavesTheGroupApplied()
+    public async Task Register_WhenTheRootFolderIsUnset_RefusesAndLeavesTheGroupApplied()
     {
         RootFolderId = null;
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.RootFolderNotConfigured);
 
         await using var ctx = OpenContext();
@@ -94,11 +94,11 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetRootDriveFolderId_Blank_Throws()
+    public async Task SetRootDriveFolderId_Blank_ReturnsARefusal()
     {
         var act = () => NewService().SetRootDriveFolderIdAsync(" ", SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.RootFolderNotConfigured);
     }
 
@@ -162,9 +162,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
 
-        var id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+        var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
             "New group", "Purpose", "A report", WorkgroupDeliverableKind.Report,
-            WorkgroupAudience.Board, null, null, null), Ct);
+            WorkgroupAudience.Board, null, null, null), Ct)).Value;
 
         await using var ctx = OpenContext();
         (await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct)).Status.Should().Be(WorkgroupStatus.Applied);
@@ -195,7 +195,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             coordinator, Clock.GetCurrentInstant(),
             new WorkgroupBudgetSave(1200m, null));
 
-        var id = await NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
+        var id = (await NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct)).Value;
 
         await using var ctx = OpenContext();
         var w = await ctx.Workgroups.SingleAsync(x => x.Id == id, Ct);
@@ -216,7 +216,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.BudgetAccountFailed);
         await using var ctx = OpenContext();
         (await ctx.Workgroups.AnyAsync(Ct)).Should().BeFalse();
@@ -228,10 +228,10 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     {
         var name = new string('a', 200);
 
-        var id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+        var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
             name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
             WorkgroupAudience.Board, TargetDate: null, DiscordChannelUrl: null,
-            SecondCoordinatorUserId: null), Ct);
+            SecondCoordinatorUserId: null), Ct)).Value;
 
         await using var ctx = OpenContext();
         var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);

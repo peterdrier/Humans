@@ -36,6 +36,7 @@ namespace Humans.Workgroups.Tests.Controllers;
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
+    private readonly IStringLocalizer<WorkgroupsResource> _localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
@@ -52,9 +53,9 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         Exception failure = unauthorized ? new UnauthorizedAccessException("Dependency denied access")
             : new KeyNotFoundException("Dependency lookup failed");
         service.MarkDoneAsync(workgroup.Id, actor, WorkgroupDormantReason.Delivered, Ct)
-            .Returns(Task.FromException(failure));
+            .Returns(Task.FromException<WorkgroupMutationResult>(failure));
         service.CreateMeetingAsync(workgroup.Id, actor, Arg.Any<WorkgroupMeetingSave>(), Ct)
-            .Returns(Task.FromException<Guid>(failure));
+            .Returns(Task.FromException<WorkgroupMutationResult<Guid>>(failure));
         var controller = BuildController(actor, isBoard: false, service);
         var now = Clock.GetCurrentInstant();
         Func<Task<IActionResult>> act = form
@@ -67,12 +68,26 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form)
+    [InlineData(false, "en")]
+    [InlineData(false, "es")]
+    [InlineData(false, "de")]
+    [InlineData(false, "it")]
+    [InlineData(false, "fr")]
+    [InlineData(false, "ca")]
+    [InlineData(true, "en")]
+    [InlineData(true, "es")]
+    [InlineData(true, "de")]
+    [InlineData(true, "it")]
+    [InlineData(true, "fr")]
+    [InlineData(true, "ca")]
+    public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form, string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
         var (controller, workgroup) = await BuildAsync(asMember: true);
         var key = form ? WorkgroupErrorKeys.WindowInvalid : WorkgroupErrorKeys.DoneReasonInvalid;
+        var resources = new System.Resources.ResourceManager(typeof(WorkgroupsResource));
+        var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
+        _localizer[key, Arg.Any<object[]>()].Returns(new LocalizedString(key, translated));
 
         IActionResult result;
         if (form)
@@ -97,6 +112,10 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
             (await OpenContext().Workgroups.FindAsync([workgroup.Id], Ct))!.Status
                 .Should().Be(WorkgroupStatus.Active);
         }
+
+        translated.Should().NotBe(key);
+        if (form) controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(translated);
+        else controller.TempData["ErrorMessage"].Should().Be(translated);
 
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
@@ -351,12 +370,11 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         services.AddAuthorization();
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
         var provider = services.BuildServiceProvider();
-        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
-        localizer[Arg.Any<string>(), Arg.Any<object[]>()]
+        _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
             service ?? NewService(), Users, Teams,
-            localizer,
+            _localizer,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),
             _logger);
