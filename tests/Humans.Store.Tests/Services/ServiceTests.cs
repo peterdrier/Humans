@@ -1473,6 +1473,39 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData("record", false)]
+    [InlineData("record", true)]
+    [InlineData("payment-delete", false)]
+    [InlineData("payment-delete", true)]
+    [InlineData("order-delete", false)]
+    [InlineData("order-delete", true)]
+    public async Task Admin_ledger_mutations_propagate_repository_faults_unchanged(string operation, bool lookup)
+    {
+        var order = new Order { Id = Guid.NewGuid(), State = OrderState.Open, Year = 2026 };
+        var paymentId = Guid.NewGuid();
+        if (string.Equals(operation, "payment-delete", StringComparison.Ordinal))
+            order.Payments.Add(new Payment { Id = paymentId, OrderId = order.Id });
+        var failure = new InvalidOperationException("Private persistence diagnostic");
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => lookup
+            ? Task.FromException<Order?>(failure) : Task.FromResult<Order?>(order));
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.DeletePaymentAsync(paymentId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        Func<Task> action = async () =>
+        {
+            _ = operation switch
+            {
+                "record" => await _service.RecordAdminPaymentAsync(order.Id, PaymentMethod.Refund, 10m, "refund-ref", null,
+                    Guid.NewGuid(), TestContext.Current.CancellationToken),
+                "payment-delete" => await _service.DeletePaymentAsync(order.Id, paymentId, Guid.NewGuid(), TestContext.Current.CancellationToken),
+                _ => await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            };
+        };
+        (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansTheory]
     [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
     [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
     public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
@@ -1508,9 +1541,10 @@ public class ServiceTests
     public async Task RecordAdminPaymentAsync_rejects_other_methods(string methodName)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
-        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), method, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), method, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().NotBeNullOrEmpty();
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
@@ -1519,9 +1553,10 @@ public class ServiceTests
     [InlineData(-5)]
     public async Task RecordAdminPaymentAsync_rejects_non_positive_amount(decimal amount)
     {
-        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, amount, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, amount, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().NotBeNullOrEmpty();
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
@@ -1530,9 +1565,10 @@ public class ServiceTests
     [InlineData("   ")]
     public async Task RecordAdminPaymentAsync_rejects_refund_without_reference(string? externalRef)
     {
-        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, 10m, externalRef, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, 10m, externalRef, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("A refund needs a reference*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("A refund needs a reference*");
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
@@ -1575,9 +1611,10 @@ public class ServiceTests
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, TeamId = Guid.NewGuid() });
 
-        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Team orders are non-billable.");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("Team orders are non-billable.");
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
@@ -1590,9 +1627,10 @@ public class ServiceTests
         order.Payments.Add(new Payment { Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 30m, Method = PaymentMethod.DepositReturn, Status = PaymentStatus.Paid });
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70.01m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70.01m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Deposit return of EUR 70.01 exceeds the EUR 70.00 of deposit still held*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("Deposit return of EUR 70.01 exceeds the EUR 70.00 of deposit still held*");
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
 
         await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);

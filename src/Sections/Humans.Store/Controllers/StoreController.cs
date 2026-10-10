@@ -220,15 +220,9 @@ internal sealed class StoreController(
             && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded)
             return Forbid();
 
-        try
-        {
-            await storeService.RecordAdminPaymentAsync(id, method, amountEur, externalRef, notes, user.Id, CancellationToken.None);
-            SetSuccess(localizer["Store_PaymentRecorded"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-        }
+        var result = await storeService.RecordAdminPaymentAsync(id, method, amountEur, externalRef, notes, user.Id, CancellationToken.None);
+        if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
+        else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
     }
 
@@ -245,15 +239,9 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment);
         if (!auth.Succeeded) return Forbid();
 
-        try
-        {
-            await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
-            SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-        }
+        var result = await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
+        if (result.Succeeded) SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
+        else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
     }
 
@@ -319,16 +307,13 @@ internal sealed class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await storeService.DeleteOrderAsync(id, user.Id, ct);
+        if (!result.Succeeded)
         {
-            await storeService.DeleteOrderAsync(id, user.Id, ct);
-            SetSuccess(localizer["Store_OrderDeleted"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
+            SetError(result.Refusal!);
             return RedirectToAction(nameof(Order), new { id });
         }
+        SetSuccess(localizer["Store_OrderDeleted"].Value);
         return RedirectToAction(nameof(Index));
     }
 

@@ -196,3 +196,5 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - Duplicate or ineligible camp/department order creation returns localized feedback instead of throwing; successful creation still redirects to the created order.
 
 - Invoice issuance distinguishes typed operator refusals from dependency faults; an external InvalidOperationException cannot be surfaced as an expected refusal.
+
+- Manual payment and deletion feedback distinguishes typed operator refusals from persistence faults; expected refusals do not write money records or audits.

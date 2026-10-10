@@ -461,27 +461,27 @@ internal sealed class Service(
         return new MutationResult(true, null, order.Id);
     }
 
-    public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
         // An issued order is referenced by its store_invoices row under a restrictive foreign key,
         // and a paid one reads zero-balance — without this the delete would reach EF and blow up.
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
         // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
         // any payment row, whatever its status, is a money record that must outlive the order.
         if (order.Payments.Count > 0)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
 
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
 
         await repo.DeleteOrderAsync(orderId, ct);
@@ -489,6 +489,7 @@ internal sealed class Service(
             AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             $"Deleted store order {orderId}",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
     public async Task<MutationResult> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
@@ -744,7 +745,7 @@ internal sealed class Service(
     /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
     /// overpaid — but deposit returns can never add up to more than the order's deposits.
     /// </summary>
-    public async Task RecordAdminPaymentAsync(
+    public async Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
         PaymentMethod method,
         decimal amountEur,
@@ -754,16 +755,16 @@ internal sealed class Service(
         CancellationToken ct = default)
     {
         if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
-            throw new InvalidOperationException($"Only deposit returns and refunds can be recorded by hand, not {method}.");
+            return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
-            throw new InvalidOperationException("Amount must be greater than zero.");
+            return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
         if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
-            throw new InvalidOperationException("A refund needs a reference (e.g. the Stripe refund id).");
+            return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
 
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
 
         if (method == PaymentMethod.DepositReturn)
         {
@@ -773,7 +774,7 @@ internal sealed class Service(
                 .Sum(p => p.AmountEur);
             var remaining = depositTotal - alreadyReturned;
             if (amountEur > remaining)
-                throw new InvalidOperationException(
+                return RefuseAdminMutation(orderId, actorUserId,
                     $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
                     + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
         }
@@ -798,6 +799,7 @@ internal sealed class Service(
             $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
                 + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     /// <summary>
@@ -806,13 +808,13 @@ internal sealed class Service(
     /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
     /// it follows by itself.
     /// </summary>
-    public async Task DeletePaymentAsync(
+    public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
-        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId)
-            ?? throw new InvalidOperationException("Payment not found on this order.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
+        if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
 
         await repo.DeletePaymentAsync(paymentId, ct);
         await audit.LogAsync(
@@ -821,6 +823,7 @@ internal sealed class Service(
                 + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
                 + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)

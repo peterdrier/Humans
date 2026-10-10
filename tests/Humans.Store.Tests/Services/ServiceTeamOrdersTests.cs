@@ -416,8 +416,9 @@ public class ServiceTeamOrdersTests
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        refusal.Succeeded.Should().BeFalse();
+        refusal.Refusal.Should().NotBeNullOrEmpty();
 
         await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
     }
@@ -445,8 +446,9 @@ public class ServiceTeamOrdersTests
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        refusal.Succeeded.Should().BeFalse();
+        refusal.Refusal.Should().NotBeNullOrEmpty();
 
         await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
     }
@@ -477,8 +479,9 @@ public class ServiceTeamOrdersTests
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        refusal.Succeeded.Should().BeFalse();
+        refusal.Refusal.Should().NotBeNullOrEmpty();
 
         await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
     }
@@ -499,21 +502,23 @@ public class ServiceTeamOrdersTests
                 IssuedInvoiceId = Guid.NewGuid(),
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        refusal.Succeeded.Should().BeFalse();
+        refusal.Refusal.Should().NotBeNullOrEmpty();
 
         await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_throws_when_order_not_found()
+    public async Task DeleteOrderAsync_refuses_when_order_not_found()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
             .Returns((Order?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        refusal.Succeeded.Should().BeFalse();
+        refusal.Refusal.Should().NotBeNullOrEmpty();
     }
 
     // ==========================================================================
