@@ -64,7 +64,7 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:360`).
 - Attendee email is the answer to the custom question whose text is exactly `Email`,
   else the ticket's top-level email
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:441`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:440`).
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:71`), monetary discount
   values multiplied by 100 on the way out
@@ -73,7 +73,7 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:176`).
 - Void and issue map HTTP status to `TicketVendorFailureKind`: 400/422 Validation, 401/403
   AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:453`). Every other
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:452`). Every other
   method throws `HttpRequestException`.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an
   `ArgumentException` before any call
@@ -144,3 +144,4 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 |---|---|---|---|
 | 1 | 2026-09-05 | First doctoring — invariant doc written, wire records collapsed to one naming mechanism, dead test scaffolding cut, untested invariants pinned | peterdrier/Humans#1595 |
 | 2 | 2026-09-24 | Cache-move drift cleared from the docs; one issued-ticket mapping; dead test setup cut | peterdrier/Humans#1817 |
+| 3 | 2026-10-10 | One page-walk invariant; raw-exception and no-retry contracts pinned; target cites corrected | pending |
