@@ -109,6 +109,8 @@ themes:
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
       seams. Peter 2026-06-13: LEAVE in rotation (re-check periodically, do not
       flag as skip); KEEP IEventViewInvalidator as the #719 placeholder.
+      Superseded by Peter 2026-10-10 (peterdrier/Humans#1931): #719 is closed, so
+      DELETE IEventViewInvalidator in a follow-up — tracked as EVENTS-11.
       Ledger review 2026-10-06 (Peter): the standalone 'replace the invalidator
       family' row (CENTRAL-54) duplicated this theme and was deleted; 'todo for
       the winter' stands. Count re-measured: 16 [Grandfathered("HUM0028")] sites.

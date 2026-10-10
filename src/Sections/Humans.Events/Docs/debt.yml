@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Events. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 11
+next_id: 12
 inbox:
   - added: 2026-08-24
     id: EVENTS-1
@@ -24,4 +24,8 @@ inbox:
   - added: 2026-10-07
     id: EVENTS-10
     what: "No test pins that favourite and preference writes act only on the signed-in user (Controllers/EventsApiController.cs:161, :166): EventsApiControllerTests never posts as one user and checks another user's rows stay untouched. Found by /section-doctor on Events 2026-10-07 (Tests thread). Plan: a controller test with two users asserting the service receives the principal's id only."
+    review: light
+  - added: 2026-10-10
+    id: EVENTS-11
+    what: "IEventViewInvalidator (Services/IEventViewInvalidator.cs) has no caller: nobodies-collective/Humans#719 is closed and the Settings edge arrives through IEventSettingsChangeListener. Peter ruled 2026-10-10 on peterdrier/Humans#1931: delete it in a follow-up PR. Plan: drop the interface, CachingEventService's InvalidateGuideSettingsAsync and its Section.cs registration, the architecture-test assertion, the doc mentions, and the KEEP note on the HUM0028 theme in docs/architecture/debt-ledger.yml."
     review: light
