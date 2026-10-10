@@ -176,9 +176,14 @@ internal sealed class Service(
         return p is null ? null : MapProduct(p);
     }
 
-    public async Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+        {
+            logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
+            return CatalogSaveResult.Failure(null, refusal);
+        }
 
         var now = clock.GetCurrentInstant();
         var product = new Product
@@ -201,15 +206,18 @@ internal sealed class Service(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
-        return product.Id;
+        return CatalogSaveResult.Success(created: true) with { CreatedId = product.Id };
     }
 
-    public async Task UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
 
-        var product = await repo.GetProductByIdAsync(draft.Id, ct)
-            ?? throw new StoreRuleException($"Product {draft.Id} not found");
+        var product = await repo.GetProductByIdAsync(draft.Id, ct);
+        if (product is null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, $"Product {draft.Id} not found");
 
         var oldPrice = product.UnitPriceEur;
 
@@ -236,6 +244,7 @@ internal sealed class Service(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
                 $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
                 actorUserId);
+        return AdminMutationResult.Success;
     }
 
     public async Task<CatalogSaveResult> SaveProductWithResultAsync(
@@ -262,23 +271,12 @@ internal sealed class Service(
         try
         {
             if (request.Id is null)
-            {
-                await CreateProductAsync(dto, actorUserId, ct);
-                return CatalogSaveResult.Success(created: true);
-            }
+                return await CreateProductAsync(dto, actorUserId, ct);
 
-            await UpdateProductAsync(dto, actorUserId, ct);
-            return CatalogSaveResult.Success(created: false);
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
+            var result = await UpdateProductAsync(dto, actorUserId, ct);
+            return result.Succeeded
+                ? CatalogSaveResult.Success(created: false)
+                : CatalogSaveResult.Failure(null, result.Refusal!);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -287,10 +285,11 @@ internal sealed class Service(
         }
     }
 
-    public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
     {
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null)
+            return RefuseCatalogMutation(productId, actorUserId, $"Product {productId} not found");
 
         product.IsActive = false;
         product.UpdatedAt = clock.GetCurrentInstant();
@@ -300,20 +299,29 @@ internal sealed class Service(
             AuditAction.StoreProductDeactivated, AuditEntityTypes.Product, productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
-    private static void ValidateProductDraft(ProductDto draft)
+    private AdminMutationResult RefuseCatalogMutation(Guid productId, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store catalog mutation rejected for product {ProductId}, actor {ActorId}: {Reason}",
+            productId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
+    }
+
+    private static string? GetProductDraftRefusal(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
-            throw new StoreValidationException("Product name is required", nameof(draft));
+            return "Product name is required";
         if (draft.UnitPriceEur < 0m)
-            throw new StoreValidationException("Unit price cannot be negative", nameof(draft));
+            return "Unit price cannot be negative";
         if (draft.VatRatePercent < 0m)
-            throw new StoreValidationException("VAT rate cannot be negative", nameof(draft));
+            return "VAT rate cannot be negative";
         if (draft.DepositAmountEur is < 0m)
-            throw new StoreValidationException("Deposit cannot be negative", nameof(draft));
+            return "Deposit cannot be negative";
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
-            throw new StoreValidationException("Holded revenue account must be an 8-digit chart number", nameof(draft));
+            return "Holded revenue account must be an 8-digit chart number";
+        return null;
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
@@ -1458,20 +1466,4 @@ internal sealed class Service(
     private Task<string> ResolveCounterpartyDisplayNameAsync(Order order, CancellationToken ct) =>
         orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
 
-    private sealed class StoreRuleException : InvalidOperationException
-    {
-        public StoreRuleException() { }
-        public StoreRuleException(string message) : base(message) { }
-        public StoreRuleException(string message, Exception innerException) : base(message, innerException) { }
-    }
-
-    private sealed class StoreValidationException : ArgumentException
-    {
-        public StoreValidationException() { }
-        public StoreValidationException(string message) : base(message) { }
-        public StoreValidationException(string message, Exception innerException) : base(message, innerException) { }
-        public StoreValidationException(string message, string paramName) : base(message, paramName) { }
-        public StoreValidationException(string message, string paramName, Exception innerException)
-            : base(message, paramName, innerException) { }
-    }
 }

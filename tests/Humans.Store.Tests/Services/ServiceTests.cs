@@ -1009,7 +1009,9 @@ public class ServiceTests
             Guid.Empty, 2026, "Tent", "Big tent", 50m, 21m, 100m,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        var newId = await _service.CreateProductAsync(draft, actor, TestContext.Current.CancellationToken);
+        var result = await _service.CreateProductAsync(draft, actor, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
+        var newId = result.CreatedId!.Value;
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(newId);
@@ -1037,10 +1039,10 @@ public class ServiceTests
             Guid.Empty, 2026, "   ", "", 10m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.ParamName.Should().Be("draft");
-        rejection.Message.Should().Match("Product name is required*");
+        var result = await _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Product name is required");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1050,10 +1052,10 @@ public class ServiceTests
             Guid.Empty, 2026, "Tent", "", -1m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.ParamName.Should().Be("draft");
-        rejection.Message.Should().Match("Unit price cannot be negative*");
+        var result = await _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Unit price cannot be negative");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1063,10 +1065,10 @@ public class ServiceTests
             Guid.Empty, 2026, "Tent", "", 10m, -1m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.ParamName.Should().Be("draft");
-        rejection.Message.Should().Match("VAT rate cannot be negative*");
+        var result = await _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("VAT rate cannot be negative");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1146,7 +1148,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_throws_when_product_missing()
+    public async Task UpdateProductAsync_refuses_when_product_missing()
     {
         _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Product?)null);
@@ -1155,9 +1157,10 @@ public class ServiceTests
             Guid.NewGuid(), 2026, "Tent", "", 10m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => _service.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        rejection.Message.Should().Match("Product * not found*");
+        var result = await _service.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("Product * not found*");
+        await _repo.DidNotReceive().UpdateProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1269,13 +1272,54 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task DeactivateProductAsync_throws_when_product_missing()
+    public async Task DeactivateProductAsync_refuses_when_product_missing()
     {
         _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Product?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeactivateProductAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var result = await _service.DeactivateProductAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("Product * not found*");
+        await _repo.DidNotReceive().UpdateProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("lookup")]
+    [InlineData("save")]
+    [InlineData("audit")]
+    public async Task DeactivateProduct_PropagatesDependencyFaultsWithoutRefusalFeedback(string stage)
+    {
+        var product = MakeProduct();
+        var failure = new InvalidOperationException("Private catalog persistence diagnostic");
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        if (string.Equals(stage, "lookup", StringComparison.Ordinal))
+            _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException<Product?>(failure));
+        if (string.Equals(stage, "save", StringComparison.Ordinal))
+            _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        if (string.Equals(stage, "audit", StringComparison.Ordinal))
+            _audit.LogAsync(AuditAction.StoreProductDeactivated, AuditEntityTypes.Product, product.Id,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+                .Returns(Task.FromException(failure));
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
+            actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null, null,
+            false, false, null, null, null, null, null, null, [], [], [], null, []));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new StoreAdminController(_service, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            controller.Deactivate(product.Id, TestContext.Current.CancellationToken));
+
+        thrown.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
     }
 
     [HumansFact]
