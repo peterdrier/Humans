@@ -12,6 +12,7 @@ using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -1375,6 +1376,68 @@ public class SurveyServiceTests
                 // Blank custom copy for fr, so the standard localized wording stands.
                 && m.Subject.StartsWith("Please complete:", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task SendInvitesAsync_retries_unsent_failures_without_replacing_participation(
+        bool existingParticipation, bool preparationFails)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = new DbContextOptionsBuilder<SurveysDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using var db = new SurveysDbContext(options);
+        var repo = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        db.Surveys.Add(survey);
+        var participationId = Guid.NewGuid();
+        if (existingParticipation)
+            db.SurveyInvitations.Add(new SurveyInvitation
+            {
+                Id = participationId, SurveyId = survey.Id, UserId = userId,
+                CreatedAt = _clock.GetCurrentInstant(),
+            });
+        await db.SaveChangesAsync(ct);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, userId));
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "human@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        var fail = true;
+        _tokenProvider.Create(Arg.Any<Guid>()).Returns(_ => preparationFails && fail
+            ? throw new System.Security.Cryptography.CryptographicException("key unavailable") : "token");
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                (await repo.GetInvitedUserIdsAsync(survey.Id, ct)).Should().NotContain(userId,
+                    "the invitation is unsent until the outbox accepts it");
+                if (fail) throw new InvalidOperationException("outbox unavailable");
+            });
+        var service = new SurveyService(repo, _audit, _clock, NullLogger<SurveyService>.Instance,
+            _teamService, _userService, _ticketService, _shiftView, _userEmailService,
+            _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
+
+        var first = await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
+        first.Failed.Should().Be(1);
+        var unsent = (await repo.GetInvitationsAsync(survey.Id, ct)).Should().ContainSingle().Subject;
+        unsent.SentAt.Should().BeNull();
+        unsent.LatestEmailStatus.Should().Be(EmailOutboxStatus.Failed);
+        if (existingParticipation) unsent.Id.Should().Be(participationId);
+
+        fail = false;
+        var retry = await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
+        retry.EmailsQueued.Should().Be(1);
+        retry.Failed.Should().Be(0);
+        var sent = (await repo.GetInvitationsAsync(survey.Id, ct)).Should().ContainSingle().Subject;
+        sent.Id.Should().Be(unsent.Id);
+        sent.SentAt.Should().Be(_clock.GetCurrentInstant());
+        sent.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsCreated.Should().Be(0);
     }
 
     [HumansTheory]
