@@ -69,6 +69,12 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
 
     /// <summary>
+    /// Moderator withdrawal: withdraws the event and appends a
+    /// <see cref="EventModerationActionType.Withdrawn"/> history row naming the moderator.
+    /// </summary>
+    Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Admin / moderator in-place edit of a mutated event. Persists the field
     /// changes and bumps <see cref="Event.LastUpdatedAt"/> but leaves
     /// <see cref="Event.Status"/> untouched (an Approved event stays Approved /

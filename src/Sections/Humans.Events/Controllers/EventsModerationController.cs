@@ -123,7 +123,7 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
         }
 
-        await guide.WithdrawEventAsync(guideEvent);
+        await guide.ModeratorWithdrawAsync(guideEvent, moderator.Id);
 
         logger.LogInformation("Moderator {UserId} withdrew event '{Title}' ({EventId})",
             moderator.Id, guideEvent.Title, model.EventId);

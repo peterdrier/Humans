@@ -484,8 +484,8 @@ public sealed class EventServiceTests
     private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
         var userId = Guid.NewGuid();
-        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-        // UserInfo.BurnerName reads User.BurnerName only (#1098).
+        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
+        // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
         var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
@@ -561,6 +561,25 @@ public sealed class EventServiceTests
             && action.ActorUserId == actorUserId
             && action.Action == EventModerationActionType.Edited
             && action.Reason == "fixed the start time"
+            && action.CreatedAt == _clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ModeratorWithdrawAsync_ApprovedEvent_WithdrawsAndAppendsWithdrawnAction()
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved };
+        _repo.Events.Add(guideEvent);
+        var actorUserId = Guid.NewGuid();
+
+        await _service.ModeratorWithdrawAsync(guideEvent, actorUserId, TestContext.Current.CancellationToken);
+
+        guideEvent.Status.Should().Be(EventStatus.Withdrawn);
+        _repo.EventModerationActions.Should().ContainSingle(action =>
+            action.GuideEventId == guideEvent.Id
+            && action.ActorUserId == actorUserId
+            && action.Action == EventModerationActionType.Withdrawn
+            && action.Reason == null
             && action.CreatedAt == _clock.GetCurrentInstant());
         _repo.SaveChangesCount.Should().Be(1);
     }

@@ -10,18 +10,19 @@ injects `IDbContextFactory<EventGuideDbContext>`
 directly. Owns `Events`,
 `EventGuideSettings`, `EventCategories`, `EventVenues`,
 `EventModerationActions`, `EventPreferences`, `EventFavourites`. The
-name-colliding `EventSettings` table is **Shifts-owned** (lives on
-`ShiftsDbContext` — see [Shifts](../../Humans.Shifts/Docs/data-access.md)) and
+edition settings row is Settings' `settings_event` table (on
+`SettingsDbContext`, read only through `ISettingsService`; Shifts' similarly-named
+`event_settings` is a different table Events never reads) and
 `EventParticipations` is **Users-owned** (lives on `UsersDbContext` —
 see [Users](../../Humans.Users/Docs/data-access.md)); `EventGuideDbContext`
 deliberately excludes both
 (see its doc comment).
 
-`EventRepository` does not read `EventSettings` (the Shifts-owned table)
-directly — active-event discovery goes through a service-layer call.
-`EventSettings` lives in a different DbContext (`ShiftsDbContext`) than
-`EventRepository`'s `EventGuideDbContext`, so a direct EF read across the
-two is not possible without a second context injection. The inner
+`EventRepository` does not read the edition settings directly —
+active-event discovery goes through `ISettingsService`. They live in a
+different DbContext than `EventRepository`'s `EventGuideDbContext`, so a
+direct EF read across the two is not possible without a second context
+injection. The inner
 `IEventService` is wrapped by `Humans.Events.Services.CachingEventService`
 (Singleton decorator). It owns four split projections — a per-event
 `TrackedCache<Guid, ApprovedEventView>` (`Event.ApprovedEventView`) plus
@@ -33,7 +34,7 @@ only `EventRepository` references the Event DbSets).
 
 ### EventService (Scoped, keyed `"event-inner"` — inner of CachingEventService)
 
-Repository: `IEventRepository`.
+Repository: `IEventRepository`. Implements `IEventService` and `ICalendarFeedContributor`.
 
 | Table | R/W |
 |-------|-----|
@@ -60,7 +61,7 @@ Cross-section calls via `ISettingsService` (active event settings),
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
 Implements `IEventService` (which extends the cross-section read surface
-`IEventServiceRead`), `IEventViewInvalidator`, `IUserDataContributor`
+`IEventServiceRead`), `IEventViewInvalidator`, `IEventSettingsChangeListener`, `IUserDataContributor`
 (delegates to the inner service, then refreshes the affected cache slice —
 erasure edits a cached row's Host name),
 `IHostedService` (`StartAsync` warms all four projections).

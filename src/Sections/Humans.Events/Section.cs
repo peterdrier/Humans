@@ -24,7 +24,7 @@ public sealed class Section : ISection, IUserPart, ICampPart
 {
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
 
-    // The camp detail page's hosted-events card (nobodies-collective/Humans#1815).
+    // The camp detail page's hosted-events card (peterdrier/Humans#1815).
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)

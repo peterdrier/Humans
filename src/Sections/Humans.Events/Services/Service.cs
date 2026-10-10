@@ -37,7 +37,7 @@ internal sealed class EventService(
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Settings-owned settings_event row via
-        // ISettingsService (cross-section supplier API, nobodies-collective/Humans#719).
+        // ISettingsService (cross-section supplier API).
         var burn = await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
         return new EventGuideSettingsView(
             Id: settings.Id,
@@ -259,6 +259,22 @@ internal sealed class EventService(
     {
         guideEvent.Withdraw(clock);
         return repo.SaveEventAsync(guideEvent, ct);
+    }
+
+    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default)
+    {
+        guideEvent.Withdraw(clock);
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEvent.Id,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Withdrawn,
+            CreatedAt = guideEvent.LastUpdatedAt
+        };
+
+        return repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
     public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default)

@@ -419,7 +419,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 |---|---|---|---|
 | `city-planning` | CityPlanning | `CityPlanningMapAdmin` (CampAdmin/Admin or a city-planning team member — wider than the `CampAdminOrAdmin`-gated "Barrio map" nav item, since this tab is the only route to these controls) | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
 | `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
-| `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
+| `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (admin-nav item removed; the Events member-nav "Guide Settings" link points at the tab) |
 | `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
 | `shifts` | Shifts | `AdminOnly` | `/Shifts/Settings` (no nav item existed; inline links now point at the tab) |
 | `agent` | Agent | `AdminOnly` | `/Agent/Admin/Settings` (nav item removed) |
