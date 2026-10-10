@@ -70,7 +70,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();

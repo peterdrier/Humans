@@ -99,7 +99,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the

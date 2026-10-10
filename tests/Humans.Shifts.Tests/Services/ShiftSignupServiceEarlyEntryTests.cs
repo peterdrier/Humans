@@ -51,7 +51,8 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var users = Substitute.For<IUserServiceRead>();

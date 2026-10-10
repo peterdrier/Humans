@@ -349,3 +349,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `TeamsAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Permanent team deletion evicts all Early Entry answers after the repository delete attempt, including uncertain completion. Validation and authorization refusals happen before the delete and do not evict.

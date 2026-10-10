@@ -67,7 +67,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             Cache,
             _viewInvalidator,
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
     }
 
     // ============================================================
@@ -190,7 +191,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(),
             Cache, _viewInvalidator,
-            new EventCalendarResolver(settingsService), Clock);
+            new EventCalendarResolver(settingsService), Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));
 

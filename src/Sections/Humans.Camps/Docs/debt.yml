@@ -2,9 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 8
-inbox:
-  - added: 2026-10-06
-    id: CAMPS-7
-    what: "CampService.DeleteCampAsync removes a camp's seasons, members and their early-entry flags without calling IEarlyEntryInvalidator.InvalidateUser for the members, so their cached early-entry answer outlives the delete until another eviction (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
-    review: light
-    root: CENTRAL-54
+inbox: []

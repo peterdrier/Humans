@@ -67,7 +67,8 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();

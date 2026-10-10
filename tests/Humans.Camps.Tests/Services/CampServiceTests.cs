@@ -2395,6 +2395,40 @@ public sealed class CampServiceTests : CampsTestHarness
     // DeleteCampAsync — City Planning cleanup (nobodies-collective/Humans#992)
     // ==========================================================================
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DeleteCamp_EvictsEarlyEntryAfterTransactionDisposal(bool saveFails)
+    {
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "alpha" };
+        var repo = Substitute.For<ICampRepository>();
+        repo.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+        var pending = new TaskCompletionSource<IReadOnlyList<string>?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repo.DeleteCampAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var failure = new IOException("Delete completion is uncertain");
+        _earlyEntryInvalidator.When(x => x.InvalidateAll()).Do(_ =>
+            System.Transactions.Transaction.Current.Should().BeNull("the delete transaction must finish before reads can refill"));
+        var service = new CampService(
+            repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+
+        var deletion = service.DeleteCampAsync(camp.Id, Xunit.TestContext.Current.CancellationToken);
+        _earlyEntryInvalidator.DidNotReceive().InvalidateAll();
+        if (saveFails) pending.SetException(failure);
+        else pending.SetResult([]);
+
+        Exception? error = null;
+        try { await deletion; }
+        catch (Exception ex) { error = ex; }
+        if (saveFails) error.Should().BeSameAs(failure);
+        else error.Should().BeNull();
+        _earlyEntryInvalidator.Received(1).InvalidateAll();
+    }
+
     [HumansFact]
     public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()
     {

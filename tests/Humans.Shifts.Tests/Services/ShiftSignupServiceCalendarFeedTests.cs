@@ -42,7 +42,8 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         _service = new ShiftSignupService(
             repo,

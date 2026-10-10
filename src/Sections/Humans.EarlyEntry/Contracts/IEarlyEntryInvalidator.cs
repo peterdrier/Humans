@@ -18,8 +18,8 @@ public interface IEarlyEntryInvalidator : IInvalidator
     void InvalidateUser(Guid userId);
 
     /// <summary>
-    /// Evict the whole cache, for a change that moves every holder at once: a team's
-    /// <c>EarlyEntryEnabled</c> flip. Event-settings saves reach the same eviction through
+    /// Evict the whole cache after a capability change or aggregate removal (camp, team,
+    /// shift event), including uncertain deletion completion. A team's <c>EarlyEntryEnabled</c> flip also uses this. Event-settings saves reach the same eviction through
     /// the cache's <c>IEventSettingsChangeListener</c>.
     /// </summary>
     void InvalidateAll();

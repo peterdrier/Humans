@@ -51,6 +51,7 @@ public sealed class TeamServiceEarlyEntryTests
             _eeInvalidator,
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
+                .With<ITeamResourceServiceRead>()
                 .Build(),
             _clock,
             NullLogger<TeamService>.Instance);
@@ -92,6 +93,30 @@ public sealed class TeamServiceEarlyEntryTests
 
         result.Succeeded.Should().BeFalse();
         _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PermanentDelete_EvictsEarlyEntryAfterDeleteCompletion(bool saveFails)
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
+        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _repo.PermanentlyDeleteTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var failure = new IOException("Delete completion is uncertain");
+
+        var deletion = _service.PermanentlyDeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        _eeInvalidator.DidNotReceive().InvalidateAll();
+        if (saveFails) pending.SetException(failure);
+        else pending.SetResult(true);
+
+        Exception? error = null;
+        try { await deletion; }
+        catch (Exception ex) { error = ex; }
+        if (saveFails) error.Should().BeSameAs(failure);
+        else { error.Should().BeNull(); (await deletion).Should().BeTrue(); }
+        _eeInvalidator.Received(1).InvalidateAll();
     }
 
     private static TeamEarlyEntryGrant Grant(Guid teamId, Guid userId, string project = "P", LocalDate? date = null, string teamName = "Creativity") => new()

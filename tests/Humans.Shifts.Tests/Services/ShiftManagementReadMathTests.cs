@@ -58,7 +58,8 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
     }
 
     // ============================================================

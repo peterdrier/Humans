@@ -71,7 +71,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -123,7 +124,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
-            cache, invalidator, NewCalendarResolver(), Clock);
+            cache, invalidator, NewCalendarResolver(), Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
             : service.UpdateRotaAsync(rota, [Guid.NewGuid()]);
@@ -132,6 +134,39 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         cachedName ??= (await real.GetRotaAsync(
             rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name;
         cachedName.Should().Be("Changed rota");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DeleteEvent_EvictsEarlyEntryAfterDeleteCompletion(bool saveFails)
+    {
+        var eventId = Guid.NewGuid();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        var pending = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var ee = Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>();
+        var views = Substitute.For<IShiftViewInvalidator>();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
+        var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
+            new ServiceLocatorBuilder().Build(), cache, views, NewCalendarResolver(), Clock, ee);
+        var failure = new IOException("Delete completion is uncertain");
+
+        var deletion = service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
+        ee.DidNotReceive().InvalidateAll();
+        cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeTrue();
+        if (saveFails) pending.SetException(failure);
+        else pending.SetResult(1);
+
+        Exception? error = null;
+        try { await deletion; }
+        catch (Exception ex) { error = ex; }
+        if (saveFails) error.Should().BeSameAs(failure);
+        else { error.Should().BeNull(); (await deletion).Should().Be(1); }
+        ee.Received(1).InvalidateAll();
+        views.Received(1).InvalidateAll();
+        cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
     }
 
     [HumansFact]
@@ -160,7 +195,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1265,5 +1301,5 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock, Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 }

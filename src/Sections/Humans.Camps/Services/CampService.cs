@@ -899,30 +899,38 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
 
-        using (var scope = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled))
+        try
         {
-            if (seasonIds.Count > 0)
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
             {
-                var removed = await _cityPlanningService.Value
-                    .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                if (removed > 0)
+                if (seasonIds.Count > 0)
                 {
-                    _logger.LogInformation(
-                        "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                        removed, seasonIds.Count, campId);
+                    var removed = await _cityPlanningService.Value
+                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                    if (removed > 0)
+                    {
+                        _logger.LogInformation(
+                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                            removed, seasonIds.Count, campId);
+                    }
                 }
-            }
 
-            deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-            if (deletedImagePaths is null)
-            {
-                throw new InvalidOperationException("Camp not found.");
-            }
+                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
+                if (deletedImagePaths is null)
+                {
+                    throw new InvalidOperationException("Camp not found.");
+                }
 
-            scope.Complete();
+                scope.Complete();
+            }
+        }
+        finally
+        {
+            // Dispose the ambient transaction before evicting, including uncertain commit failures.
+            _earlyEntryInvalidator.InvalidateAll();
         }
 
         await _auditLog.LogAsync(

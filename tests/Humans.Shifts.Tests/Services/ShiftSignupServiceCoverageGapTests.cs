@@ -60,7 +60,8 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
 
         var signupRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _service = new ShiftSignupService(

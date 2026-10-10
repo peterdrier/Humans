@@ -1,3 +1,4 @@
+using Humans.EarlyEntry.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -34,7 +35,8 @@ internal sealed class ShiftManagementService(
     IMemoryCache cache,
     IShiftViewInvalidator viewInvalidator,
     EventCalendarResolver calendarResolver,
-    IClock clock) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+    IClock clock,
+    IEarlyEntryInvalidator earlyEntryInvalidator) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -201,10 +203,16 @@ internal sealed class ShiftManagementService(
         CancellationToken cancellationToken = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
-        var deleted = await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
-        EvictDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateAll();
-        return deleted;
+        try
+        {
+            return await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+        }
+        finally
+        {
+            EvictDashboardCaches(eventSettingsId);
+            viewInvalidator.InvalidateAll();
+            earlyEntryInvalidator.InvalidateAll();
+        }
     }
 
     public async Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)

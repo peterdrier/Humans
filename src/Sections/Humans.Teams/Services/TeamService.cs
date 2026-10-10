@@ -2025,7 +2025,14 @@ internal sealed class TeamService(
         if (resources.Count > 0)
             throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
 
-        return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
+        try
+        {
+            return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
+        }
+        finally
+        {
+            earlyEntryInvalidator.InvalidateAll();
+        }
     }
 
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(

@@ -341,3 +341,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Whole-camp deletion evicts all Early Entry answers after its ambient transaction has disposed, including failed completion; later audit or image-cleanup failures cannot retain removed camp grants.

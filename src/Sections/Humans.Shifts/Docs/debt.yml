@@ -2,9 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 9
-inbox:
-  - added: 2026-10-06
-    id: SHIFTS-8
-    what: "ShiftManagementService.DeleteEventAsync runs ShiftRepository.DeleteEventCascadeAsync, which deletes an event's shifts and signups, and evicts only the shift views — never IEarlyEntryInvalidator — so a shift-derived early-entry answer cached for a signed-up volunteer outlives the delete (/section-doctor on EarlyEntry 2026-10-06)."
-    review: light
-    root: CENTRAL-54
+inbox: []

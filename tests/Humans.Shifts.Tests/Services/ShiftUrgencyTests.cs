@@ -38,7 +38,8 @@ public class ShiftUrgencyTests
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
-            new FakeClock(TestNow));
+            new FakeClock(TestNow),
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
     }
 
     private static EventSettingsInfo MakeCalendar(
