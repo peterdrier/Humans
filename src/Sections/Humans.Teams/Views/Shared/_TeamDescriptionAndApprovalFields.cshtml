@@ -6,7 +6,7 @@
 }
 
 <div class="mb-3">
-    <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
+    <label asp-for="Description" class="form-label">@Localizer["Teams_AdminTeams_DescriptionOptional"]</label>
     @if (isReadOnly)
     {
         <div class="form-control bg-light" style="min-height: 6rem;">@Html.SanitizedMarkdown(Model.Description)</div>
@@ -22,10 +22,10 @@
 {
     <div class="mb-3 form-check">
         <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
-        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
+        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["Teams_AdminTeams_RequireApproval"]</label>
         @if (showRequiresApprovalHelp)
         {
-            <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
+            <div class="form-text">@Localizer["Teams_AdminTeams_RequireApprovalHelp"]</div>
         }
     </div>
 

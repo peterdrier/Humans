@@ -115,7 +115,7 @@ internal sealed class CalendarController : HumansControllerBase
         var from = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct);
 
         return new CalendarMonthViewModel(
             Month: ym,
@@ -186,7 +186,7 @@ internal sealed class CalendarController : HumansControllerBase
             return BadRequest();
         }
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, zone, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
     }
 
@@ -210,7 +210,7 @@ internal sealed class CalendarController : HumansControllerBase
         var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct);
 
         ViewData["TeamName"] = team.Name;
         return View(new CalendarMonthViewModel(
@@ -229,7 +229,7 @@ internal sealed class CalendarController : HumansControllerBase
         var zone = GetViewerZone();
         var now = _clock.GetCurrentInstant();
         var horizon = now.Plus(Duration.FromDays(180));
-        var upcoming = (await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
+        var upcoming = (await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, zone, ev.OwningTeamId, ct))
             .Where(o => o.EventId == id)
             .Take(5)
             .ToList();

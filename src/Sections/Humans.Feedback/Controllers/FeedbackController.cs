@@ -1,6 +1,7 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
@@ -64,13 +65,17 @@ internal sealed class FeedbackController(
         var assigneeOptions = await GetActiveAssigneeOptionsAsync(ct);
 
         var distinctReporters = await feedbackService.GetDistinctReportersAsync(ct);
+        var reporterUsers = await UserService.GetUserInfosAsync(
+            distinctReporters.Select(r => r.UserId).ToList(), ct);
         var reporters = distinctReporters
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new ReporterDropdownItem
+            .Select(r => (r.UserId, r.Count, Name: reporterUsers.TryGetValue(r.UserId, out var info)
+                ? info.BurnerName : r.UserId.ToString()))
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new SelectListItem
             {
-                UserId = r.UserId,
-                DisplayName = r.DisplayName,
-                Count = r.Count
+                Value = r.UserId.ToString(),
+                Text = $"{r.Name} ({r.Count})",
+                Selected = reporterUserId == r.UserId
             }).ToList();
 
         var viewModel = new FeedbackPageViewModel

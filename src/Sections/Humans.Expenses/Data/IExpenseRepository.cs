@@ -49,6 +49,9 @@ internal interface IExpenseRepository : IRepository
     Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default);
     Task SetLineAttachmentAsync(
         Guid lineId, Guid? attachmentId, CancellationToken ct = default);
+    /// <summary>Unlinks a report's line and deletes its attachment metadata in one save; returns the removed row for post-commit file cleanup.</summary>
+    Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default);
+
 
     /// <summary>
     /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be

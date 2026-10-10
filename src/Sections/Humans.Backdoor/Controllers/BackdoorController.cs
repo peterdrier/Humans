@@ -22,7 +22,7 @@ namespace Humans.Backdoor.Controllers;
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     IUserServiceRead users) : HumansControllerBase(users)
 {
     private const string NewKeyTempDataKey = "BackdoorNewKey";

@@ -89,7 +89,7 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
-`IGoogleSyncService`, `ITeamResourceService`, `IRoleAssignmentService`,
+`IGoogleSyncService`, `ITeamResourceServiceRead`, `IRoleAssignmentServiceRead`,
 `IEmailService`, `IUserServiceRead`, `ISystemTeamSync`. Implements `ITeamManagementService`
 (internal, `: ITeamService`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
@@ -116,7 +116,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
-over `ITeamManagementService`, `ITeamResourceService`,
+over `ITeamManagementService`, `ITeamResourceServiceRead`,
 `IShiftManagementServiceRead`, `ISettingsService` and `IUserServiceRead`;
 the mapper and the directory builder are pure.
 

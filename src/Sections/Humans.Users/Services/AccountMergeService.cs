@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
@@ -14,6 +15,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Users.Services;
 
 // AcceptAsync fans out IUserMerge across sections to re-FK source→target, then tombstones source via AnonymizeForMergeAsync.
+[CrossSectionWrite("Account merge invalidates Auth role and claims caches after folding assignments.")]
 internal sealed class AccountMergeService(
     IAccountMergeRepository mergeRepository,
     IUserRepository userRepository,

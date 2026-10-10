@@ -44,7 +44,6 @@ public class MarketingAudienceTests
         var audience = NewAudience([]);
         audience.Key.Should().Be("marketing");
         audience.MailerLiteGroupName.Should().Be("Humans - Marketing");
-        audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
     private static MarketingAudience NewAudience(IReadOnlyList<UserInfo> userInfos)

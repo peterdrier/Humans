@@ -335,9 +335,7 @@ internal sealed class EventsController(
 
             // One line per favourited occurrence: a day-specific favourite expands
             // to that single occurrence, a whole-event favourite to all of them.
-            IReadOnlyList<Instant> occurrences = gateOpeningDate.HasValue && tz != null
-                ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz, f.DayOffset)
-                : [e.StartAt];
+            IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, tz, f.DayOffset);
 
             return occurrences.Select(startInstant =>
             {

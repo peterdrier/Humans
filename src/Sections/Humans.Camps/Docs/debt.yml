@@ -3,10 +3,6 @@
 version: 1
 next_id: 8
 inbox:
-  - added: 2026-10-03
-    id: CAMPS-4
-    what: "CampService.ContributeForUserAsync exports only CampRoleAssignments, omitting CampMember affiliation/status/requested-confirmed-removed dates and early-entry state for ordinary members without a role. GetAllAssignmentsForUserAsync is role-filtered; year/active projections cannot provide complete membership history, and no existing repository read returns all user membership rows. Existing erasure already deletes these rows via DeleteCampFootprintForUserAsync. Plan: add an internal Camps repository read returning every CampMember row for a user (all years, all statuses) and project it into the export slice; repositories are internal, not public surface per debt-sweep-standing-policy D2, list in PR."
-    review: panel
   - added: 2026-10-04
     id: CAMPS-5
     what: "CachingCampService.WithSettings resolves ISettingsService sideways for ActiveYearAsync and GetEarlyEntriesAsync, contrary to decorators-talk-only-to-inner. The decorator also assembles EarlyEntryGrant rows (its IEarlyEntryProvider implementation) rather than delegating. Found during the daily production debt sweep. Plan: move the IEarlyEntryProvider assembly and the active-year read into CampService (which already has a private GetActiveYearAsync) and have the decorator delegate; uses the existing IEarlyEntryProvider contract, no new surface."

@@ -1,10 +1,6 @@
 version: 1
 next_id: 4
 inbox:
-  - added: 2026-09-22
-    id: WORKGROUPS-2
-    what: "SettingKeys.WorkgroupsRootDriveFolderId (Workgroups:RootDriveFolderId) lives in Settings' shared system_settings key/value store, which design-rules §8 says is not where new per-section state goes. Move it into Workgroups' own settings (Peter, freshness sweep 2026-09-22)."
-    review: light
   - added: 2026-10-04
     id: WORKGROUPS-3
     what: "WorkgroupRuleException carries a resource key and format args, and WorkgroupsController/WorkgroupsAdminController render localizer[ex.Key, ex.Args]. Exceptions are never localized (no-localized-exception-messages). Peter, debt review of peterdrier/Humans#1903. Plan: the rule-checking service methods return a result record carrying the refusal key and args, the controllers localize it, and WorkgroupRuleException is deleted; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."

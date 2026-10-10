@@ -545,7 +545,7 @@ internal sealed class HoldedClient : IHoldedClient
             // unexpected type is a property of the stored contact, not of this request, so retrying
             // cannot help — surface it as permanent so callers that already handle the client's typed
             // exceptions degrade instead of letting a raw parse failure escape the client. The only
-            // caller (ExpenseReportService.ProcessHoldedCreateAsync) would otherwise abort the whole
+            // caller (ExpenseHoldedPublisher.PublishAsync) would otherwise abort the whole
             // outbox batch and leave its own event neither processed nor failed.
             throw new HoldedPermanentException(
                 $"Holded contact {contactId} could not be read.", ex);

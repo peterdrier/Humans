@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services;
@@ -265,7 +264,7 @@ internal sealed partial class WorkgroupService
     /// </summary>
     private async Task<string> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
     {
-        var root = await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+        var root = await GetRootDriveFolderIdAsync(ct);
         if (string.IsNullOrWhiteSpace(root))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 

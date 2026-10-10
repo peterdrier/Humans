@@ -5,6 +5,7 @@ using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Base.Extensions;
+using Humans.Base.Constants;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -13,7 +14,7 @@ namespace Humans.Backdoor.Services;
 
 internal sealed class BackdoorApiKeyService(
     IBackdoorApiKeyRepository repository,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     IUserServiceRead users,
     IAuditLogService audit,
     IClock clock,
@@ -45,7 +46,7 @@ internal sealed class BackdoorApiKeyService(
         if (label.Length > MaxLabelLength)
             return BackdoorKeyIssueResult.Failed($"A label must be {MaxLabelLength} characters or fewer.");
 
-        if (!await IsEligibleAsync(ownerUserId, ct))
+        if (await GetEligibleOwnerAsync(ownerUserId, ct) is null)
         {
             logger.LogWarning(
                 "Backdoor key issue refused for {OwnerUserId}: not an active Admin or Board member", ownerUserId);
@@ -85,7 +86,7 @@ internal sealed class BackdoorApiKeyService(
 
         // Eligibility is re-checked on rotation, not just at first issue: an owner who has
         // since lost Admin/Board, or been suspended, does not get a fresh credential out of a rotate.
-        if (!await IsEligibleAsync(key.UserId, ct))
+        if (await GetEligibleOwnerAsync(key.UserId, ct) is null)
             return BackdoorKeyIssueResult.Failed(
                 "The key's owner is no longer a full Admin or a Board member with an active account.");
 
@@ -115,14 +116,15 @@ internal sealed class BackdoorApiKeyService(
     /// Refusal is deliberate rather than auto-revocation — a restored role restores the key,
     /// and a transient gap must not destroy a credential.
     /// </remarks>
-    public async Task<Guid?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default)
+    public async Task<BackdoorKeyOwner?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(presentedKey)) return null;
 
         var key = await repository.FindActiveByHashAsync(Hash(presentedKey), ct);
         if (key is null) return null;
 
-        if (!await IsEligibleAsync(key.UserId, ct))
+        var owner = await GetEligibleOwnerAsync(key.UserId, ct);
+        if (owner is null)
         {
             logger.LogWarning(
                 "Backdoor key {KeyId} refused: owner {OwnerUserId} is no longer an active Admin or Board member",
@@ -131,7 +133,7 @@ internal sealed class BackdoorApiKeyService(
         }
 
         await repository.TouchAsync(key.Id, clock.GetCurrentInstant(), ct);
-        return key.UserId;
+        return owner;
     }
 
     /// <summary>
@@ -141,12 +143,15 @@ internal sealed class BackdoorApiKeyService(
     /// leaves role assignments standing, so a role-only test would keep authenticating a
     /// suspended admin's key while the rest of the app shows them the account-status wall.
     /// </summary>
-    private async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct)
+    private async Task<BackdoorKeyOwner?> GetEligibleOwnerAsync(Guid userId, CancellationToken ct)
     {
         var user = await users.GetUserInfoAsync(userId, ct);
-        if (user is null || user.State != UserState.Active) return false;
+        if (user is null || user.State != UserState.Active) return null;
 
-        return await roles.IsUserAdminAsync(userId, ct) || await roles.IsUserBoardMemberAsync(userId, ct);
+        var assignments = await roles.GetActiveForUserAsync(userId, ct);
+        return assignments.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board)
+            ? new BackdoorKeyOwner(userId, assignments)
+            : null;
     }
 
     private async Task<string> PersistNewKeyAsync(

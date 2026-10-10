@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -157,6 +158,19 @@ public sealed class CachingRoleAssignmentServiceTests
         var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
         roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+    }
+
+    [HumansFact]
+    public void Section_read_and_write_interfaces_share_the_cached_service()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddSingleton<IClock>(new FakeClock(Instant.FromUtc(2026, 10, 7, 0, 0)));
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<IRoleAssignmentServiceRead>()
+            .Should().BeSameAs(provider.GetRequiredService<IRoleAssignmentService>());
     }
 
     private static (CachingRoleAssignmentService Service, IRoleAssignmentService Inner) BuildService(

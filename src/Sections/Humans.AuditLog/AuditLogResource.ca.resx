@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Enum_AuditAction_TeamMemberAdded" xml:space="preserve"><value>S'ha afegit un membre de l'equip</value></data>
+  <data name="Enum_AuditAction_TeamMemberRemoved" xml:space="preserve"><value>Membre de l'equip eliminat</value></data>
+  <data name="Enum_AuditAction_MemberSuspended" xml:space="preserve"><value>Membre suspès</value></data>
+  <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Membre reactivat</value></data>
+  <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Compte anonimitzat</value></data>
+  <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol assignat</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol finalitzat</value></data>
+  <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Voluntari aprovat</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accés als recursos de Google concedit</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>S'ha revocat l'accés als recursos de Google</value></data>
+  <data name="Enum_AuditAction_GoogleResourceProvisioned" xml:space="preserve"><value>Recursos de Google subministrats</value></data>
+  <data name="Enum_AuditAction_TeamJoinedDirectly" xml:space="preserve"><value>Incorporació directa a l’equip</value></data>
+  <data name="Enum_AuditAction_TeamLeft" xml:space="preserve"><value>Sortida de l’equip</value></data>
+  <data name="Enum_AuditAction_TeamJoinRequestApproved" xml:space="preserve"><value>Sol·licitud d’incorporació a l’equip aprovada</value></data>
+  <data name="Enum_AuditAction_TeamJoinRequestRejected" xml:space="preserve"><value>Sol·licitud d’incorporació a l’equip rebutjada</value></data>
+  <data name="Enum_AuditAction_TeamMemberRoleChanged" xml:space="preserve"><value>El rol dels membres de l'equip ha canviat</value></data>
+  <data name="Enum_AuditAction_AnomalousPermissionDetected" xml:space="preserve"><value>S'ha detectat un permís anòmal</value></data>
+  <data name="Enum_AuditAction_MembershipsRevokedOnDeletionRequest" xml:space="preserve"><value>Membres revocats en sol·licitud de supressió</value></data>
+  <data name="Enum_AuditAction_ConsentCheckCleared" xml:space="preserve"><value>Revisió del consentiment validada</value></data>
+  <data name="Enum_AuditAction_ConsentCheckFlagged" xml:space="preserve"><value>Comprovació de consentiment marcada</value></data>
+  <data name="Enum_AuditAction_SignupRejected" xml:space="preserve"><value>S'ha rebutjat la inscripció</value></data>
+  <data name="Enum_AuditAction_TierApplicationApproved" xml:space="preserve"><value>Sol·licitud de categoria aprovada</value></data>
+  <data name="Enum_AuditAction_TierApplicationRejected" xml:space="preserve"><value>Sol·licitud de categoria rebutjada</value></data>
+  <data name="Enum_AuditAction_TierDowngraded" xml:space="preserve"><value>Categoria rebaixada</value></data>
+  <data name="Enum_AuditAction_TierTermExpiryCorrected" xml:space="preserve"><value>Data de venciment del mandat de categoria corregida</value></data>
+  <data name="Enum_AuditAction_GoogleResourceDeactivated" xml:space="preserve"><value>Recurs de Google desactivat</value></data>
+  <data name="Enum_AuditAction_FacilitatedMessageSent" xml:space="preserve"><value>Missatge tramès amb l’ajuda d’un intermediari</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionCreated" xml:space="preserve"><value>Definició del rol de l’equip creada</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionUpdated" xml:space="preserve"><value>Definició del rol de l’equip actualitzada</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionDeleted" xml:space="preserve"><value>Definició del rol de l’equip eliminada</value></data>
+  <data name="Enum_AuditAction_TeamRoleAssigned" xml:space="preserve"><value>Rol de l'equip assignat</value></data>
+  <data name="Enum_AuditAction_TeamRoleUnassigned" xml:space="preserve"><value>Rol de l’equip retirat</value></data>
+  <data name="Enum_AuditAction_CampCreated" xml:space="preserve"><value>Es va crear un campament</value></data>
+  <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Campament actualitzat</value></data>
+  <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Campament suprimit</value></data>
+  <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Temporada de colònies creada</value></data>
+  <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Temporada de colònies aprovada</value></data>
+  <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Temporada de colònies rebutjada</value></data>
+  <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Temporada de colònies retirada</value></data>
+  <data name="Enum_AuditAction_CampSeasonStatusChanged" xml:space="preserve"><value>L'estat de la temporada de colònies ha canviat</value></data>
+  <data name="Enum_AuditAction_CampNameChanged" xml:space="preserve"><value>El nom del campament ha canviat</value></data>
+  <data name="Enum_AuditAction_CampLeadAdded" xml:space="preserve"><value>Responsable del campament afegit</value></data>
+  <data name="Enum_AuditAction_CampLeadRemoved" xml:space="preserve"><value>Responsable del campament retirat</value></data>
+  <data name="Enum_AuditAction_CampPrimaryLeadTransferred" xml:space="preserve"><value>Responsable principal del campament transferit</value></data>
+  <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>S'ha penjat la imatge del campament</value></data>
+  <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>S'ha suprimit la imatge del campament</value></data>
+  <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Inscripció al torn confirmada</value></data>
+  <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Inscripció al torn rebutjada</value></data>
+  <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Inscripció al torn assignada per la coordinació</value></data>
+  <data name="Enum_AuditAction_ShiftSignupBailed" xml:space="preserve"><value>Inscripció al torn retirada pel voluntari</value></data>
+  <data name="Enum_AuditAction_ShiftSignupNoShow" xml:space="preserve"><value>Absència al torn registrada</value></data>
+  <data name="Enum_AuditAction_ShiftSignupCancelled" xml:space="preserve"><value>Inscripció al torn cancel·lada</value></data>
+  <data name="Enum_AuditAction_TeamPageContentUpdated" xml:space="preserve"><value>S'ha actualitzat el contingut de la pàgina de l'equip</value></data>
+  <data name="Enum_AuditAction_FeedbackResponseSent" xml:space="preserve"><value>Resposta de comentaris enviada</value></data>
+  <data name="Enum_AuditAction_FeedbackStatusChanged" xml:space="preserve"><value>L'estat dels comentaris ha canviat</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountProvisioned" xml:space="preserve"><value>Compte de Workspace configurat</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountSuspended" xml:space="preserve"><value>Compte de Workspace suspès</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountReactivated" xml:space="preserve"><value>Compte de Workspace reactivat</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountPasswordReset" xml:space="preserve"><value>Contrasenya del compte de Workspace restablerta</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountLinked" xml:space="preserve"><value>Compte de Workspace vinculat</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>Codis de recuperació de Workspace generats</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountBackupCodesInvalidated" xml:space="preserve"><value>Codis de recuperació de Workspace invalidats</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountResetBlockedFor2Sv" xml:space="preserve"><value>Restabliment del compte de Workspace bloquejat per la verificació en dos passos</value></data>
+  <data name="Enum_AuditAction_AccountMergeRequested" xml:space="preserve"><value>S'ha sol·licitat la fusió del compte</value></data>
+  <data name="Enum_AuditAction_AccountMergeAccepted" xml:space="preserve"><value>S'ha acceptat la combinació de comptes</value></data>
+  <data name="Enum_AuditAction_AccountMergeRejected" xml:space="preserve"><value>S'ha rebutjat la fusió del compte</value></data>
+  <data name="Enum_AuditAction_GoogleResourceSettingsRemediated" xml:space="preserve"><value>S'ha corregit la configuració dels recursos de Google</value></data>
+  <data name="Enum_AuditAction_CommunicationPreferenceChanged" xml:space="preserve"><value>La preferència de comunicació ha canviat</value></data>
+  <data name="Enum_AuditAction_ContactCreated" xml:space="preserve"><value>Contacte creat</value></data>
+  <data name="Enum_AuditAction_RotaMovedToTeam" xml:space="preserve"><value>Quadrant de torns traslladat a l’equip</value></data>
+  <data name="Enum_AuditAction_GoogleResourceInheritanceDriftCorrected" xml:space="preserve"><value>S'ha corregit la deriva de l'herència dels recursos de Google</value></data>
+  <data name="Enum_AuditAction_FeedbackAssignmentChanged" xml:space="preserve"><value>L'assignació de comentaris ha canviat</value></data>
+  <data name="Enum_AuditAction_GoogleEmailRenamed" xml:space="preserve"><value>Adreça de correu de Google reanomenada</value></data>
+  <data name="Enum_AuditAction_CalendarEventCreated" xml:space="preserve"><value>S'ha creat l'esdeveniment del calendari</value></data>
+  <data name="Enum_AuditAction_CalendarEventUpdated" xml:space="preserve"><value>S'ha actualitzat l'esdeveniment del calendari</value></data>
+  <data name="Enum_AuditAction_CalendarEventDeleted" xml:space="preserve"><value>S'ha suprimit l'esdeveniment del calendari</value></data>
+  <data name="Enum_AuditAction_CalendarOccurrenceCancelled" xml:space="preserve"><value>Ocurrència del calendari cancel·lada</value></data>
+  <data name="Enum_AuditAction_CalendarOccurrenceOverridden" xml:space="preserve"><value>Ocurrència del calendari modificada</value></data>
+  <data name="Enum_AuditAction_CampMemberRequested" xml:space="preserve"><value>Membre del campament sol·licitat</value></data>
+  <data name="Enum_AuditAction_CampMemberApproved" xml:space="preserve"><value>Membre del campament aprovat</value></data>
+  <data name="Enum_AuditAction_CampMemberRejected" xml:space="preserve"><value>Membre del campament rebutjat</value></data>
+  <data name="Enum_AuditAction_CampMemberWithdrawn" xml:space="preserve"><value>Membre del campament retirat</value></data>
+  <data name="Enum_AuditAction_CampMemberLeft" xml:space="preserve"><value>Sortida d’un membre del campament</value></data>
+  <data name="Enum_AuditAction_CampMemberRemoved" xml:space="preserve"><value>Membre del campament eliminat</value></data>
+  <data name="Enum_AuditAction_CampMemberAddedByLead" xml:space="preserve"><value>Membre afegit al campament pel responsable</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionCreated" xml:space="preserve"><value>S'ha creat la definició del rol del campament</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionUpdated" xml:space="preserve"><value>S'ha actualitzat la definició del rol del campament</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionDeactivated" xml:space="preserve"><value>La definició del rol del campament s'ha desactivat</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionReactivated" xml:space="preserve"><value>S'ha reactivat la definició del rol del campament</value></data>
+  <data name="Enum_AuditAction_CampRoleAssigned" xml:space="preserve"><value>Funció de campament assignada</value></data>
+  <data name="Enum_AuditAction_CampRoleUnassigned" xml:space="preserve"><value>Rol del campament retirat</value></data>
+  <data name="Enum_AuditAction_IssueStatusChanged" xml:space="preserve"><value>Estat de la incidència canviat</value></data>
+  <data name="Enum_AuditAction_IssueAssigneeChanged" xml:space="preserve"><value>Persona assignada a la incidència canviada</value></data>
+  <data name="Enum_AuditAction_IssueSectionChanged" xml:space="preserve"><value>Secció de la incidència canviada</value></data>
+  <data name="Enum_AuditAction_IssueGitHubLinked" xml:space="preserve"><value>Incidència vinculada a GitHub</value></data>
+  <data name="Enum_AuditAction_AccountPurged" xml:space="preserve"><value>Compte eliminat definitivament</value></data>
+  <data name="Enum_AuditAction_UserEmailProviderBackfilled" xml:space="preserve"><value>Proveïdor del correu de l’usuari completat retroactivament</value></data>
+  <data name="Enum_AuditAction_UserEmailGoogleSet" xml:space="preserve"><value>Correu de l’usuari marcat com a adreça de Google</value></data>
+  <data name="Enum_AuditAction_UserEmailGoogleCleared" xml:space="preserve"><value>Marca d’adreça de Google retirada del correu de l’usuari</value></data>
+  <data name="Enum_AuditAction_UserEmailLinked" xml:space="preserve"><value>Correu electrònic de l'usuari enllaçat</value></data>
+  <data name="Enum_AuditAction_UserEmailUnlinked" xml:space="preserve"><value>Correu electrònic de l'usuari desenllaçat</value></data>
+  <data name="Enum_AuditAction_UserEmailPrimarySet" xml:space="preserve"><value>Correu de l’usuari establert com a principal</value></data>
+  <data name="Enum_AuditAction_UserEmailPrimaryCleared" xml:space="preserve"><value>Designació de correu principal retirada</value></data>
+  <data name="Enum_AuditAction_UserEmailDeleted" xml:space="preserve"><value>S'ha suprimit el correu electrònic de l'usuari</value></data>
+  <data name="Enum_AuditAction_UserEmailVisibilityChanged" xml:space="preserve"><value>La visibilitat del correu electrònic de l'usuari ha canviat</value></data>
+  <data name="Enum_AuditAction_UserEmailAdded" xml:space="preserve"><value>S'ha afegit el correu electrònic de l'usuari</value></data>
+  <data name="Enum_AuditAction_UserEmailManuallyVerified" xml:space="preserve"><value>Correu electrònic de l'usuari verificat manualment</value></data>
+  <data name="Enum_AuditAction_ShiftSignupCreated" xml:space="preserve"><value>Inscripció al torn creada</value></data>
+  <data name="Enum_AuditAction_ShiftSignupReassigned" xml:space="preserve"><value>Inscripció al torn reassignada</value></data>
+  <data name="Enum_AuditAction_StoreOrderCreated" xml:space="preserve"><value>Comanda de la botiga creada</value></data>
+  <data name="Enum_AuditAction_StoreOrderDeleted" xml:space="preserve"><value>Comanda de la botiga eliminada</value></data>
+  <data name="Enum_AuditAction_StoreLineAdded" xml:space="preserve"><value>Article afegit a la comanda</value></data>
+  <data name="Enum_AuditAction_StoreLineRemoved" xml:space="preserve"><value>Article retirat de la comanda</value></data>
+  <data name="Enum_AuditAction_StoreCounterpartyEdited" xml:space="preserve"><value>S'ha editat la contrapart de la botiga</value></data>
+  <data name="Enum_AuditAction_StoreProductCreated" xml:space="preserve"><value>Producte de botiga creat</value></data>
+  <data name="Enum_AuditAction_StoreProductUpdated" xml:space="preserve"><value>Producte de botiga actualitzat</value></data>
+  <data name="Enum_AuditAction_StoreProductPriceChanged" xml:space="preserve"><value>Preu del producte de la botiga canviat</value></data>
+  <data name="Enum_AuditAction_StoreProductDeactivated" xml:space="preserve"><value>Producte de botiga desactivat</value></data>
+  <data name="Enum_AuditAction_StoreInvoiceIssued" xml:space="preserve"><value>S'ha emès la factura de la botiga</value></data>
+  <data name="Enum_AuditAction_StorePaymentRecorded" xml:space="preserve"><value>Pagament a la botiga registrat</value></data>
+  <data name="Enum_AuditAction_StorePaymentSettled" xml:space="preserve"><value>Pagament a la botiga liquidat</value></data>
+  <data name="Enum_AuditAction_StorePaymentFailed" xml:space="preserve"><value>El pagament a la botiga ha fallat</value></data>
+  <data name="Enum_AuditAction_StorePaymentExpired" xml:space="preserve"><value>El pagament a la botiga ha caducat</value></data>
+  <data name="Enum_AuditAction_StorePaymentDeleted" xml:space="preserve"><value>S'ha suprimit el pagament a la botiga</value></data>
+  <data name="Enum_AuditAction_TicketTransferRequested" xml:space="preserve"><value>Sol·licitud de transferència d’entrada enviada</value></data>
+  <data name="Enum_AuditAction_TicketTransferApproved" xml:space="preserve"><value>Transferència d’entrada aprovada</value></data>
+  <data name="Enum_AuditAction_TicketTransferRejected" xml:space="preserve"><value>Transferència d’entrada rebutjada</value></data>
+  <data name="Enum_AuditAction_TicketTransferCancelled" xml:space="preserve"><value>Transferència d’entrada cancel·lada</value></data>
+  <data name="Enum_AuditAction_TicketTransferAutoFailed" xml:space="preserve"><value>Transferència automàtica d’entrada fallida</value></data>
+  <data name="Enum_AuditAction_OrphanUserEmailDeleted" xml:space="preserve"><value>Correu electrònic orfe eliminat</value></data>
+  <data name="Enum_AuditAction_GhostExternalLoginsDeleted" xml:space="preserve"><value>Inicis de sessió externs fantasma suprimits</value></data>
+  <data name="Enum_AuditAction_LegacyIdentityEmailBackfilled" xml:space="preserve"><value>Correu electrònic de la identitat antiga completat retroactivament</value></data>
+  <data name="Enum_AuditAction_CampEarlyEntryGranted" xml:space="preserve"><value>Accés anticipat al campament concedit</value></data>
+  <data name="Enum_AuditAction_CampEarlyEntryRevoked" xml:space="preserve"><value>Accés anticipat al campament revocat</value></data>
+  <data name="Enum_AuditAction_CampSeasonEeSlotCountChanged" xml:space="preserve"><value>Nombre de places Early Entry de la temporada del campament canviat</value></data>
+  <data name="Enum_AuditAction_CampSettingsEeStartDateChanged" xml:space="preserve"><value>Data d’inici d’Early Entry del campament canviada</value></data>
+  <data name="Enum_AuditAction_ExpenseSubmit" xml:space="preserve"><value>Despesa enviada</value></data>
+  <data name="Enum_AuditAction_ExpenseEndorse" xml:space="preserve"><value>Despesa avalada</value></data>
+  <data name="Enum_AuditAction_ExpenseCoordinatorReject" xml:space="preserve"><value>Despesa rebutjada pel coordinador</value></data>
+  <data name="Enum_AuditAction_ExpenseApprove" xml:space="preserve"><value>Despesa aprovada</value></data>
+  <data name="Enum_AuditAction_ExpenseReject" xml:space="preserve"><value>Despesa rebutjada</value></data>
+  <data name="Enum_AuditAction_ExpenseWithdraw" xml:space="preserve"><value>Despesa retirada</value></data>
+  <data name="Enum_AuditAction_ExpenseCategoryOverride" xml:space="preserve"><value>Categoria de la despesa modificada</value></data>
+  <data name="Enum_AuditAction_ExpenseSepaSent" xml:space="preserve"><value>Despesa enviada per SEPA</value></data>
+  <data name="Enum_AuditAction_ExpenseSepaReopened" xml:space="preserve"><value>Tramitació SEPA de la despesa reoberta</value></data>
+  <data name="Enum_AuditAction_ExpensePaid" xml:space="preserve"><value>Despesa pagada</value></data>
+  <data name="Enum_AuditAction_IbanSet" xml:space="preserve"><value>IBAN establert</value></data>
+  <data name="Enum_AuditAction_IbanRemove" xml:space="preserve"><value>S'ha eliminat l'IBAN</value></data>
+  <data name="Enum_AuditAction_IbanReveal" xml:space="preserve"><value>IBAN vist</value></data>
+  <data name="Enum_AuditAction_ExpenseAttachmentUploaded" xml:space="preserve"><value>Adjunt de la despesa pujat</value></data>
+  <data name="Enum_AuditAction_ExpenseAttachmentRemoved" xml:space="preserve"><value>Adjunt de la despesa retirat</value></data>
+  <data name="Enum_AuditAction_VolunteerCampSetupSet" xml:space="preserve"><value>Preferència de campament per al muntatge del voluntari establerta</value></data>
+  <data name="Enum_AuditAction_VolunteerCampSetupCleared" xml:space="preserve"><value>Preferència de campament per al muntatge del voluntari retirada</value></data>
+  <data name="Enum_AuditAction_VolunteerDayBlocked" xml:space="preserve"><value>Dia del voluntariat bloquejat</value></data>
+  <data name="Enum_AuditAction_VolunteerDayUnblocked" xml:space="preserve"><value>Dia del voluntariat desbloquejat</value></data>
+  <data name="Enum_AuditAction_VolunteerOwnBlockedDaysSaved" xml:space="preserve"><value>Dies de no disponibilitat del voluntari desats</value></data>
+  <data name="Enum_AuditAction_VolunteerDayOffMarked" xml:space="preserve"><value>Dia lliure del voluntari registrat</value></data>
+  <data name="Enum_AuditAction_VolunteerDayOffCleared" xml:space="preserve"><value>Marca del dia lliure del voluntari retirada</value></data>
+  <data name="Enum_AuditAction_OAuthRenameCollision" xml:space="preserve"><value>Conflicte de canvi de nom d'OAuth</value></data>
+  <data name="Enum_AuditAction_OAuthRenameCollisionBlocked" xml:space="preserve"><value>S'ha bloquejat el conflicte de canvi de nom d'OAuth</value></data>
+  <data name="Enum_AuditAction_UserEmailDisplacedByOAuthRename" xml:space="preserve"><value>Correu electrònic de l'usuari desplaçat pel canvi de nom d'OAuth</value></data>
+  <data name="Enum_AuditAction_MailerLiteReconciliationCompleted" xml:space="preserve"><value>Conciliació de MailerLite completada</value></data>
+  <data name="Enum_AuditAction_MailerLiteAudienceSyncCompleted" xml:space="preserve"><value>Sincronització de l’audiència de MailerLite completada</value></data>
+  <data name="Enum_AuditAction_GoogleSyncRetryScheduled" xml:space="preserve"><value>S'ha programat un nou intent de sincronització de Google</value></data>
+  <data name="Enum_AuditAction_TicketContactsImported" xml:space="preserve"><value>Contactes de les entrades importats</value></data>
+  <data name="Enum_AuditAction_TicketDonationsExported" xml:space="preserve"><value>Donacions associades a les entrades exportades</value></data>
+  <data name="Enum_AuditAction_ContainerCreated" xml:space="preserve"><value>Contenidor creat</value></data>
+  <data name="Enum_AuditAction_ContainerUpdated" xml:space="preserve"><value>Contenidor actualitzat</value></data>
+  <data name="Enum_AuditAction_ContainerDeleted" xml:space="preserve"><value>S'ha suprimit el contenidor</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementSaved" xml:space="preserve"><value>Ubicació del contenidor desada</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementCleared" xml:space="preserve"><value>Ubicació del contenidor retirada</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementNotesUpdated" xml:space="preserve"><value>Notes de la ubicació del contenidor actualitzades</value></data>
+  <data name="Enum_AuditAction_CoordinatorRotaMessageSent" xml:space="preserve"><value>Missatge de coordinació sobre els torns enviat</value></data>
+  <data name="Enum_AuditAction_CoordinatorTeamRotasMessageSent" xml:space="preserve"><value>Missatge de coordinació sobre els torns dels equips enviat</value></data>
+  <data name="Enum_AuditAction_VolunteerAvailabilitySet" xml:space="preserve"><value>Disponibilitat del voluntari establerta</value></data>
+  <data name="Enum_AuditAction_VolunteerAvailabilityCleared" xml:space="preserve"><value>Disponibilitat del voluntari retirada</value></data>
+  <data name="Enum_AuditAction_EarlyEntryGranted" xml:space="preserve"><value>Accés anticipat concedit</value></data>
+  <data name="Enum_AuditAction_EarlyEntryUpdated" xml:space="preserve"><value>Accés anticipat actualitzat</value></data>
+  <data name="Enum_AuditAction_EarlyEntryRevoked" xml:space="preserve"><value>Accés anticipat revocat</value></data>
+  <data name="Enum_AuditAction_StorePaymentsReconciled" xml:space="preserve"><value>Pagaments a la botiga conciliats</value></data>
+  <data name="Enum_AuditAction_GateTerminalPasswordSet" xml:space="preserve"><value>Contrasenya del terminal d’accés establerta</value></data>
+  <data name="Enum_AuditAction_GateStaffPinSet" xml:space="preserve"><value>PIN del personal d’accés establert</value></data>
+  <data name="Enum_AuditAction_GateStaffPinReset" xml:space="preserve"><value>PIN del personal d’accés restablert</value></data>
+  <data name="Enum_AuditAction_SurveyCreated" xml:space="preserve"><value>Enquesta creada</value></data>
+  <data name="Enum_AuditAction_SurveyUpdated" xml:space="preserve"><value>Enquesta actualitzada</value></data>
+  <data name="Enum_AuditAction_SurveyOpened" xml:space="preserve"><value>Enquesta oberta</value></data>
+  <data name="Enum_AuditAction_SurveyClosed" xml:space="preserve"><value>Enquesta tancada</value></data>
+  <data name="Enum_AuditAction_SurveyInvitesSent" xml:space="preserve"><value>S'han enviat les invitacions a l'enquesta</value></data>
+  <data name="Enum_AuditAction_SurveyReminderSent" xml:space="preserve"><value>S'ha enviat un recordatori de l'enquesta</value></data>
+  <data name="Enum_AuditAction_SurveySubmittedForApproval" xml:space="preserve"><value>Enquesta presentada per a aprovació</value></data>
+  <data name="Enum_AuditAction_SurveyApproved" xml:space="preserve"><value>Enquesta aprovada</value></data>
+  <data name="Enum_AuditAction_SurveyRejected" xml:space="preserve"><value>Enquesta rebutjada</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedPushed" xml:space="preserve"><value>Despesa enviada a Holded</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedFailed" xml:space="preserve"><value>La transferència de despeses a Holded ha fallat</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Despesa tornada a posar a la cua per a Holded</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Compte de despeses de Holded creat</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Compte de despeses de Holded vinculat</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Estat actiu del compte de despeses de Holded canviat</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Clau d’API interna emesa</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Clau d’API interna revocada</value></data>
+  <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Comentaris enllaçats a GitHub</value></data>
+  <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Problema creat</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>Pagament SEPA transferit</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Transferència de pagament SEPA comptabilitzada</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Període d’assignació urbanística obert</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Període d’assignació urbanística tancat</value></data>
+  <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Període d’ubicació urbanística de contenidors obert</value></data>
+  <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>Període d’ubicació urbanística de contenidors tancat</value></data>
+  <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>Zona límit urbanística actualitzada</value></data>
+  <data name="Enum_AuditAction_CityPlanningLimitZoneDeleted" xml:space="preserve"><value>S'ha suprimit la zona límit d'urbanisme</value></data>
+  <data name="Enum_AuditAction_CityPlanningOfficialZonesUpdated" xml:space="preserve"><value>Zones oficials d'urbanisme actualitzades</value></data>
+  <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>S'han suprimit les zones oficials d'urbanisme</value></data>
+  <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Despesa creada en nom d’una altra persona</value></data>
+  <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Despesa editada en nom d’una altra persona</value></data>
+  <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>IBAN del beneficiari de la despesa actualitzat</value></data>
+  <data name="Enum_AuditAction_RideshareSettingsUpdated" xml:space="preserve"><value>Configuració dels viatges compartits actualitzada</value></data>
+  <data name="Enum_AuditAction_WorkgroupRegistered" xml:space="preserve"><value>Grup de treball registrat</value></data>
+  <data name="Enum_AuditAction_WorkgroupReferred" xml:space="preserve"><value>Grup de treball derivat</value></data>
+  <data name="Enum_AuditAction_WorkgroupRefused" xml:space="preserve"><value>Grup de treball rebutjat</value></data>
+  <data name="Enum_AuditAction_WorkgroupWithdrawn" xml:space="preserve"><value>Grup de treball retirat</value></data>
+  <data name="Enum_AuditAction_WorkgroupClosed" xml:space="preserve"><value>Grup de treball tancat</value></data>
+  <data name="Enum_AuditAction_WorkgroupReactivated" xml:space="preserve"><value>Grup de treball reactivat</value></data>
+  <data name="Enum_AuditAction_WorkgroupCoordinatorsChanged" xml:space="preserve"><value>Coordinadors del grup de treball canviats</value></data>
+  <data name="Enum_AuditAction_WorkgroupDispositionRecorded" xml:space="preserve"><value>Decisió sobre el grup de treball registrada</value></data>
+  <data name="Enum_AuditAction_WorkgroupRegisteredExisting" xml:space="preserve"><value>Grup de treball existent registrat</value></data>
+  <data name="Enum_AuditAction_WorkgroupBudgetSet" xml:space="preserve"><value>Pressupost del grup de treball establert</value></data>
+  <data name="Enum_AuditAction_WorkgroupDormancyFlagged" xml:space="preserve"><value>Inactivitat del grup de treball assenyalada</value></data>
+  <data name="Enum_AuditAction_WorkgroupCloseCandidateFlagged" xml:space="preserve"><value>Grup de treball assenyalat per al tancament</value></data>
+  <data name="Enum_AuditAction_WorkgroupApplicationOverdue" xml:space="preserve"><value>Sol·licitud del grup de treball fora de termini</value></data>
+  <data name="Enum_AuditAction_WorkgroupUpdateDueNotified" xml:space="preserve"><value>Avís d’actualització pendent del grup de treball enviat</value></data>
+  <data name="Enum_AuditAction_WorkgroupLogEntryDeleted" xml:space="preserve"><value>Entrada del registre del grup de treball eliminada</value></data>
+  <data name="Enum_AuditAction_WorkgroupLogEntryUpdated" xml:space="preserve"><value>Entrada del registre del grup de treball actualitzada</value></data>
+  <data name="Enum_AuditAction_WorkgroupMeetingUpdated" xml:space="preserve"><value>Reunió del grup de treball actualitzada</value></data>
+  <data name="Enum_AuditAction_WorkgroupMeetingDeleted" xml:space="preserve"><value>Reunió del grup de treball eliminada</value></data>
+  <data name="Enum_AuditAction_WorkgroupCommentHidden" xml:space="preserve"><value>Comentari del grup de treball ocult</value></data>
+  <data name="Enum_AuditAction_WorkgroupsRootFolderUpdated" xml:space="preserve"><value>Carpeta arrel dels grups de treball actualitzada</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteOpened" xml:space="preserve"><value>Votació de l’Assemblea oberta</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteStopped" xml:space="preserve"><value>Votació de l’Assemblea aturada</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteExtended" xml:space="preserve"><value>Votació de l’Assemblea ampliada</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteCancelled" xml:space="preserve"><value>Votació de l’Assemblea cancel·lada</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteClosed" xml:space="preserve"><value>Votació de l’Assemblea tancada</value></data>
+  <data name="Enum_AuditAction_AssemblyVotePeeked" xml:space="preserve"><value>Votació de l’Assemblea consultada abans del tancament</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotCast" xml:space="preserve"><value>Papereta de l’Assemblea emesa</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotChanged" xml:space="preserve"><value>Papereta de l’Assemblea modificada</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotsViewed" xml:space="preserve"><value>Paperetes de l’Assemblea consultades</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteRosterMerged" xml:space="preserve"><value>Censos de la votació de l’Assemblea combinats</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteRemindersSent" xml:space="preserve"><value>Recordatoris de votació de l’Assemblea enviats</value></data>
+  <data name="Enum_AuditAction_DuplicateAccountFlagged" xml:space="preserve"><value>S'ha marcat el compte duplicat</value></data>
+  <data name="Enum_AuditAction_WorkgroupDormancyCleared" xml:space="preserve"><value>Indicador d’inactivitat del grup de treball retirat</value></data>
+  <data name="Enum_AuditAction_StoreOrderYearBackfilled" xml:space="preserve"><value>Any de la comanda de la botiga completat retroactivament</value></data>
+  <data name="Enum_AuditAction_EventSettingsUpdated" xml:space="preserve"><value>Configuració de l’esdeveniment actualitzada</value></data>
+  <data name="Enum_AuditAction_EmailDailySendCountsBackfilled" xml:space="preserve"><value>Recompte diari d’enviaments de correu completat retroactivament</value></data>
+  <data name="Enum_AuditAction_EmailComposerSelfTestSent" xml:space="preserve"><value>Prova automàtica de l’editor de correu enviada</value></data>
+  <data name="Enum_AuditAction_StorePaymentMethodBackfilled" xml:space="preserve"><value>Mètode de pagament de la botiga completat retroactivament</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorBound" xml:space="preserve"><value>Creditor de Holded vinculat</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorUnbound" xml:space="preserve"><value>Creditor de Holded desvinculat</value></data>
+  <data name="Enum_AuditAction_HoldedCategoryAccountProvisioned" xml:space="preserve"><value>Compte de categoria de Holded configurat</value></data>
+  <data name="Enum_AuditAction_CampaignCreated" xml:space="preserve"><value>Campanya creada</value></data>
+  <data name="Enum_AuditAction_CampaignUpdated" xml:space="preserve"><value>Campanya actualitzada</value></data>
+  <data name="Enum_AuditAction_CampaignActivated" xml:space="preserve"><value>Campanya activada</value></data>
+  <data name="Enum_AuditAction_CampaignCompleted" xml:space="preserve"><value>Campanya completada</value></data>
+  <data name="Enum_AuditAction_CampaignCodesImported" xml:space="preserve"><value>S'han importat codis de campanya</value></data>
+  <data name="Enum_AuditAction_CampaignWaveSent" xml:space="preserve"><value>Enviament de campanya enviat</value></data>
+  <data name="Enum_AuditAction_CampaignGrantResent" xml:space="preserve"><value>Assignació de campanya reenviada</value></data>
+  <data name="Enum_AuditAction_TicketAttendeesExported" xml:space="preserve"><value>Assistents als esdeveniments exportats</value></data>
+  <data name="Enum_AuditAction_TicketOrdersExported" xml:space="preserve"><value>Comandes d’entrades exportades</value></data>
+  <data name="AuditLog_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="AuditLog_InTeam" xml:space="preserve"><value>a</value></data>
+  <data name="AuditLog_Anomaly" xml:space="preserve"><value>Anomalia</value></data>
+  <data name="AuditLog_Verb_TeamMemberAdded" xml:space="preserve"><value>ha afegit</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberAdded" xml:space="preserve"><value>ha afegit</value></data>
+  <data name="AuditLog_Verb_TeamMemberRemoved" xml:space="preserve"><value>ha retirat</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberRemoved" xml:space="preserve"><value>ha retirat</value></data>
+  <data name="AuditLog_Verb_TeamMemberRoleChanged" xml:space="preserve"><value>ha canviat el rol de</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberRoleChanged" xml:space="preserve"><value>ha canviat el rol</value></data>
+  <data name="AuditLog_Verb_TeamJoinedDirectly" xml:space="preserve"><value>s’ha unit a</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinedDirectly" xml:space="preserve"><value>s’ha unit</value></data>
+  <data name="AuditLog_Verb_TeamLeft" xml:space="preserve"><value>ha deixat</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamLeft" xml:space="preserve"><value>ha deixat</value></data>
+  <data name="AuditLog_Verb_TeamJoinRequestApproved" xml:space="preserve"><value>ha aprovat la sol·licitud d’incorporació de</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinRequestApproved" xml:space="preserve"><value>ha aprovat la sol·licitud d’incorporació</value></data>
+  <data name="AuditLog_Verb_TeamJoinRequestRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud d’incorporació de</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinRequestRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud d’incorporació</value></data>
+  <data name="AuditLog_Verb_MemberSuspended" xml:space="preserve"><value>ha suspès</value></data>
+  <data name="AuditLog_NoSubjectVerb_MemberSuspended" xml:space="preserve"><value>ha suspès</value></data>
+  <data name="AuditLog_Verb_MemberUnsuspended" xml:space="preserve"><value>ha reactivat</value></data>
+  <data name="AuditLog_NoSubjectVerb_MemberUnsuspended" xml:space="preserve"><value>ha reactivat</value></data>
+  <data name="AuditLog_Verb_VolunteerApproved" xml:space="preserve"><value>ha aprovat</value></data>
+  <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>ha aprovat</value></data>
+  <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>ha assignat un rol a</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>ha assignat un rol</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>ha finalitzat el rol de</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>ha finalitzat un rol</value></data>
+  <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha restablert la contrasenya de Workspace de</value></data>
+  <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha restablert la contrasenya de Workspace</value></data>
+  <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>ha generat codis de recuperació de Workspace per a</value></data>
+  <data name="AuditLog_NoSubjectVerb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>ha generat codis de recuperació de Workspace</value></data>
+  <data name="AuditLog_Verb_ConsentCheckCleared" xml:space="preserve"><value>ha resolt la revisió del consentiment de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ConsentCheckCleared" xml:space="preserve"><value>ha resolt la revisió del consentiment</value></data>
+  <data name="AuditLog_Verb_ConsentCheckFlagged" xml:space="preserve"><value>ha assenyalat la revisió del consentiment de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ConsentCheckFlagged" xml:space="preserve"><value>ha assenyalat la revisió del consentiment</value></data>
+  <data name="AuditLog_Verb_SignupRejected" xml:space="preserve"><value>ha rebutjat la inscripció de</value></data>
+  <data name="AuditLog_NoSubjectVerb_SignupRejected" xml:space="preserve"><value>ha rebutjat la inscripció</value></data>
+  <data name="AuditLog_Verb_TierApplicationApproved" xml:space="preserve"><value>ha aprovat la sol·licitud de categoria de</value></data>
+  <data name="AuditLog_NoSubjectVerb_TierApplicationApproved" xml:space="preserve"><value>ha aprovat la sol·licitud de categoria</value></data>
+  <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud de categoria de</value></data>
+  <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud de categoria</value></data>
+  <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>ha creat la inscripció al torn de</value></data>
+  <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>ha confirmat la inscripció al torn de</value></data>
+  <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>ha rebutjat la inscripció al torn de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>ha rebutjat la inscripció al torn</value></data>
+  <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assignat un torn a</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assignat un torn</value></data>
+  <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>s’ha donat de baixa del torn de</value></data>
+  <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>ha marcat l’absència de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>ha marcat una absència</value></data>
+  <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>ha retirat la inscripció al torn de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupCancelled" xml:space="preserve"><value>ha retirat la inscripció al torn</value></data>
+  <data name="AuditLog_Verb_ShiftSignupReassigned" xml:space="preserve"><value>ha reassignat les inscripcions al torn de</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupReassigned" xml:space="preserve"><value>ha reassignat les inscripcions al torn</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupCreated" xml:space="preserve"><value>s’ha inscrit al</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupConfirmed" xml:space="preserve"><value>s’ha inscrit al</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupBailed" xml:space="preserve"><value>s’ha donat de baixa del</value></data>
+</root>

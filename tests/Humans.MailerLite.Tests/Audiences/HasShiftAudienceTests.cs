@@ -46,7 +46,6 @@ public class HasShiftAudienceTests
         var audience = NewAudience(new Dictionary<Guid, ShiftUserSummary>());
         audience.Key.Should().Be("has-shift");
         audience.MailerLiteGroupName.Should().Be("Humans - Has Shift");
-        audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
     private static HasShiftAudience NewAudience(IReadOnlyDictionary<Guid, ShiftUserSummary> viewsByUser)

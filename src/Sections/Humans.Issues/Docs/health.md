@@ -25,14 +25,11 @@ further — and every write it makes is attributed to that person.
 | 2 | *What is the story of this one?* | `GET /Issues/{id}` · `GetIssueByIdAsync` · `GetThreadAsync` |
 | 3 | *I want to report something* | `GET /Issues/New` (form) · `POST /Issues` (submit) · `_IssueWidgetModal` · `SubmitIssueAsync` · `CreateIssueAsync` |
 | 4 | *I want to say something on it* | `POST /Issues/{id}/Comments` · `PostCommentAsync` (auto-reopen, comment-and-resolve) |
-| 5 | *I want to move one field on it* | `POST /Issues/{id}/{Status,Assignee,Section,GitHubIssue}` · `Update{Status,Assignee,Section}Async` · `SetGitHubIssueNumberAsync` · four `…WithResultAsync` twins |
+| 5 | *I want to move one field on it* | `POST /Issues/{id}/{Status,Assignee,Section,GitHubIssue}` · `Update{Status,Assignee,Section}Async` · `SetGitHubIssueNumberAsync` |
 | 6 | *Make it go away* | `PurgeExpiredAsync` + `CleanupIssuesJob` · `EraseForUserAsync` · `ContributeForUserAsync` |
 
-Six questions. Shape 5 is one question wearing eight method signatures: every one of the four
-fields is *load the issue, establish the viewer may handle it, compare, set, save, audit, maybe
-notify, maybe invalidate*, and each is written twice — once throwing, once returning
-`IssueMutationResult` — because the machine door wants the exception and the browser door wants
-the message.
+Six questions. Shape 5 has four result-returning field mutations shared by browser and machine
+callers; missing issues, rule refusals and dependency failures are distinct outcomes.
 
 Every shape that answers *for* a viewer takes the asker with it — the queue, the badge count,
 and every per-item read and mutation in shapes 2, 4 and 5. `IssueViewer` — the person's id plus
@@ -57,8 +54,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   the four field mutations. It is the only enforcement point both doors share: `CanSee` gates
   every per-item read, `FindHandleableAsync` gates every mutation, and out-of-reach answers
   exactly what gone answers. **Target, not built:** the four mutations should be one *apply a
-  field change* pipeline they parameterise, with result-vs-throw as a single wrapper — see §2
-  shape 5 and §5.
+  field change* pipeline they parameterise — see §2 shape 5.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
@@ -103,12 +99,6 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 
 ## 5. Seams — specified, not built
 
-- **The collapsed field-mutation pipeline** (§3). Eight method signatures answer one
-  question-shape; the target is one parameterised pipeline behind one result wrapper.
-  Collapsing them changes `IIssueTriage`, the machine door's surface, so it is Peter's call.
-  The section's one English-only user-facing message rides with it: `UpdateSection`'s rejection
-  reason reaches the page as the service's own string because the service has no way to return
-  a resource key (`Controllers/IssuesController.cs:383`).
 - Otherwise nothing in the section's docs or specs describes behavior that has not shipped.
 
 ## 6. Deliberately not done

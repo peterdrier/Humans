@@ -3,10 +3,6 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-09-30
-    id: TICKETS-9
-    what: "/Tickets/Export/Orders and /Tickets/Export/Attendees (TicketController.ExportOrders/ExportAttendees) hand every TicketAdmin a CSV of buyer/attendee names and emails with no audit entry — violates memory/code/data-exports-are-audited.md. Plan: move the row building plus the audit call into the service with the same shape as GetDonationExportDataAsync(actorUserId) — two methods on the internal ITicketService, keeping today's columns; internal interface, not public surface per debt-sweep-standing-policy D2, list in PR."
-    review: light
   - added: 2026-10-04
     id: TICKETS-10
     what: "TicketTransferController.Submit/Cancel localize InvalidOperationException.Message as a resource key thrown by TicketTransferService. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: TicketTransferService's submit and cancel return a result record carrying the refusal key that the controller localizes; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."

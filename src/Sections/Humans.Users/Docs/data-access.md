@@ -55,7 +55,7 @@ Repository: `IUserRepository` (profile and contact-field methods).
 | Profiles | R |
 
 Cross-section reads via `IUserServiceRead`, `ITeamServiceRead`,
-`IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
+`IRoleAssignmentServiceRead` (visibility / coordinator-team lookups). Implements
 `IUserMerge`. Invalidates the User+Profile read-model via
 `IUserInfoInvalidator`. No `IMemoryCache`.
 
@@ -124,7 +124,7 @@ No repository, no cache, no direct DB access. Section-internal
 `ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
 for — active teams the viewer coordinates whose linked Google Group is synced.
 Cross-section reads via `ITeamServiceRead.GetTeamsAsync` and
-`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
+`ITeamResourceServiceRead.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
 neither section's tables.
 
 ## Human Lifecycle
@@ -329,7 +329,7 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService`, `ITeamService`, `IRoleAssignmentService`. No cache.
+`IUserService`, `ITeamService`, `IRoleAssignmentServiceRead`. No cache.
 
 ### ExternalLoginService (Scoped)
 

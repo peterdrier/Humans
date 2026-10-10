@@ -44,7 +44,7 @@ over from before orders carried their own year can be reviewed and given one.
 | 5 | *Change what is on this order* | `POST /Store/Order/{id}/AddLine`, `…/RemoveLine`, `…/UpdateCounterparty` |
 | 6 | *Pay it* | `POST /Store/Order/{id}/Pay`, `POST /Store/StripeWebhook` |
 | 7 | *Did the money arrive?* | `GET /Store/Admin/Payments`, `POST /Store/Admin/Payments/RecordMissing` |
-| 8 | *Bill it* | `POST /Store/Order/{id}/IssueInvoice` |
+| 8 | *Bill it* | `POST /Store/Order/{id}/IssueInvoice` · `StoreInvoiceIssuer` |
 | 9 | *What was ordered and paid in a year?* | `GET /Store/Admin/Summary`, the `/Admin` dashboard tile, and `IStoreAccountingRead` (served by Backdoor at `/api/backdoor/store/order-lines` and `/api/backdoor/store/payments`) |
 | 10 | *Give legacy orders their year* | `GET /Store/Admin/OrderYears`, `POST /Store/Admin/OrderYears/Repair` |
 
@@ -88,10 +88,10 @@ left at year zero the page says so and nothing else in the section depends on it
 - At most one team order per department per year, departments only —
   `Services/Service.cs:461` and `Services/Service.cs:467`.
 - Camp orders run `Open → InvoiceIssued`, one way — the only writer of the state is
-  `Services/Service.cs:1255`, behind the open-only guard at `Services/Service.cs:1045`.
+  `StoreInvoiceIssuer.CommitInvoiceAsync`, behind the open-only guard in `IssueAsync`.
 - An `Open` order is priced at the live catalog, an `InvoiceIssued` one at its frozen line
   snapshots — `Services/BalanceCalculator.cs:61`. Issuance rewrites the snapshots from the live
-  price first — `Services/Service.cs:1063`.
+  price first — `StoreInvoiceIssuer.IssueAsync`.
 - Lines change only while `Open` (`Services/Service.cs:497`, `Services/Service.cs:567`), and for
   everyone but a store admin only up to the product's `OrderableUntil`
   (`Authorization/OrderAuthorizationHandler.cs:70`).
@@ -102,15 +102,13 @@ left at year zero the page says so and nothing else in the section depends on it
 - Payment ingestion is idempotent on the Stripe PaymentIntent id whichever path records it —
   `Services/Service.cs:701`, backed by the filtered unique index at
   `Data/Configurations/PaymentConfiguration.cs:26`.
-- Issuance is idempotent locally (`Services/Service.cs:1045`) and remotely: Holded is searched for
-  a document tagged with the order before anything is created (`Services/Service.cs:1073`), and an
-  adopted document whose totals no longer match refuses (`Services/Service.cs:1180`).
-- Every issued document is approved before anything is written locally —
-  `Services/Service.cs:1154`. Every line books to its product's revenue account and a missing or
-  unknown account refuses by name (`Services/Service.cs:1283`, `Services/Service.cs:1309`); a
-  deposit with no liability account configured refuses (`Services/Service.cs:1291`).
-- A counterparty-less order above the simplified-invoice ceiling refuses rather than downgrading —
-  `Services/Service.cs:1117`.
+- Issuance is idempotent locally and remotely: `StoreInvoiceIssuer.IssueAsync` checks the
+  order before any Holded call, `FindAlreadyIssuedDocumentAsync` searches by tag, and
+  `EnsureRecoveredDocumentMatches` refuses adoption when totals differ.
+- Every issued document is approved before anything is written locally (`IssueAsync`).
+  `BuildInvoiceLinesAsync` resolves each revenue account and the deposit liability account,
+  refusing missing or unknown accounts by name.
+- `IssueAsync` refuses a counterparty-less order above the simplified-invoice ceiling.
 - Deposits carry no VAT — `Services/BalanceCalculator.cs:67`.
 - The accounting export selects orders by their persisted year, never through the counterparty,
   so an order whose camp or team has since gone still exports — `Data/Repository.cs:154`.

@@ -802,4 +802,8 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp Leads</value></data>
+  <data name="Application_MotivationLength" xml:space="preserve"><value>Motivation must contain between 50 and 2000 characters.</value></data>
+  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Additional information must not exceed 1000 characters.</value></data>
+  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
+  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
 </root>

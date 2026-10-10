@@ -90,12 +90,6 @@ internal sealed class ProfileController(
         [".heif"] = "image/heif",
         [".avif"] = "image/avif"
     };
-    private static readonly System.Text.Json.JsonSerializerOptions ExportJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-    };
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
 
@@ -338,11 +332,12 @@ internal sealed class ProfileController(
 
         var result = applicationDecisionService.ValidateSubmission(
             model.SelectedTier, model.ApplicationMotivation,
-            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding);
+            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding, model.ApplicationAdditionalInfo);
 
         if (result.Success)
             return null;
 
+        logger.LogWarning("Profile tier application validation refused for tier {Tier}: {ErrorKey}", model.SelectedTier, result.ErrorKey);
         switch (result.ErrorKey)
         {
             case "MotivationRequired":
@@ -356,6 +351,22 @@ internal sealed class ProfileController(
             case "RoleUnderstandingRequired":
                 ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
                     sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
+                break;
+            case "MotivationLength":
+                ModelState.AddModelError(nameof(model.ApplicationMotivation),
+                    sharedLocalizer["Application_MotivationLength"].Value);
+                break;
+            case "AdditionalInfoTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationAdditionalInfo),
+                    sharedLocalizer["Application_AdditionalInfoTooLong"].Value);
+                break;
+            case "SignificantContributionTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
+                    sharedLocalizer["Application_SignificantContributionTooLong"].Value);
+                break;
+            case "RoleUnderstandingTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
+                    sharedLocalizer["Application_RoleUnderstandingTooLong"].Value);
                 break;
             default:
                 ModelState.AddModelError(string.Empty, sharedLocalizer["Application_InvalidTier"].Value);
@@ -881,9 +892,7 @@ internal sealed class ProfileController(
         {
             var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
 
-            var payload = BuildExportPayload(export);
-            var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var bytes = GdprExportSerializer.Serialize(export);
             var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
@@ -899,22 +908,6 @@ internal sealed class ProfileController(
             return RedirectToAction(nameof(Privacy));
         }
     }
-
-    private static Dictionary<string, object?> BuildExportPayload(GdprExport export)
-    {
-        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ExportedAt"] = export.ExportedAt,
-            ["UserId"] = export.UserId,
-            ["MergedFromUserIds"] = export.MergedFromUserIds
-        };
-        foreach (var (section, data) in export.Sections)
-        {
-            payload[section] = data;
-        }
-        return payload;
-    }
-
 
     // ─── Helpers ─────────────────────────────────────────────────────
 

@@ -79,6 +79,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
             to: Instant.FromUtc(2026, 7, 1, 0, 0),
+            viewerZone: DateTimeZone.Utc,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().ContainSingle(o => o.Title == "Inside");
@@ -111,6 +112,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
+            viewerZone: DateTimeZone.Utc,
             teamId: a.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().ContainSingle(o => o.Title == "A-evt");
@@ -138,6 +140,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
+            viewerZone: DateTimeZone.Utc,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().BeEmpty();
@@ -171,6 +174,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 3, 1, 0, 0),
             to: Instant.FromUtc(2026, 5, 1, 0, 0),
+            viewerZone: zone,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(4);
@@ -204,6 +208,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 2, 1, 0, 0),
+            viewerZone: DateTimeZone.Utc,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().BeEmpty();
@@ -235,6 +240,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
+            viewerZone: zone,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(3);
@@ -275,6 +281,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
+            viewerZone: zone,
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(4);

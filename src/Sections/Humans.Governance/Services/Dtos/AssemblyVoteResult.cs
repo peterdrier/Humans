@@ -87,10 +87,10 @@ internal sealed record AssemblyVoteNote(AssemblyVoteNoteKind Kind, int Round, in
     /// </summary>
     public string ResourceKey => Kind switch
     {
-        AssemblyVoteNoteKind.NoMajority => "Votes_Note_NoMajority",
-        AssemblyVoteNoteKind.DecidingRoundLevel => "Votes_Note_DecidingRoundLevel",
-        AssemblyVoteNoteKind.TieBrokenByPreviousRound => "Votes_Note_TieBrokenByPreviousRound",
-        _ => "Votes_Note_TieBrokenByAuthoredOrder"
+        AssemblyVoteNoteKind.NoMajority => "Governance_Votes_Note_NoMajority",
+        AssemblyVoteNoteKind.DecidingRoundLevel => "Governance_Votes_Note_DecidingRoundLevel",
+        AssemblyVoteNoteKind.TieBrokenByPreviousRound => "Governance_Votes_Note_TieBrokenByPreviousRound",
+        _ => "Governance_Votes_Note_TieBrokenByAuthoredOrder"
     };
 }
 

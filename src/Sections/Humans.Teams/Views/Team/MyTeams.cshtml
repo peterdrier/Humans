@@ -1,22 +1,22 @@
 @model Humans.Teams.Models.MyTeamsViewModel
 @{
-    ViewData["Title"] = Localizer["MyTeams_Title"].Value;
+    ViewData["Title"] = Localizer["Teams_MyTeams_Title"].Value;
 }
 
 <nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["MyTeams_Title"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_MyTeams_Title"]</li>
     </ol>
 </nav>
 
-<h1>@Localizer["MyTeams_Title"]</h1>
+<h1>@Localizer["Teams_MyTeams_Title"]</h1>
 
 
 @if (Model.Memberships.Any())
 {
     <div class="card mb-4">
-        <div class="card-header">@Localizer["MyTeams_TeamMemberships"]</div>
+        <div class="card-header">@Localizer["Teams_MyTeams_TeamMemberships"]</div>
         @{
         Func<MyTeamMembershipViewModel, IHtmlContent> membershipTeamCell = @<text>
             <a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a>
@@ -44,17 +44,17 @@
             {
                 <form asp-action="Leave" asp-route-slug="@item.TeamSlug" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@string.Format(Localizer["MyTeams_LeaveConfirm"].Value, item.TeamName)">
-                        @Localizer["MyTeams_Leave"]
+                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@string.Format(Localizer["Teams_MyTeams_LeaveConfirm"].Value, item.TeamName)">
+                        @Localizer["Teams_MyTeams_Leave"]
                     </button>
                 </form>
             }
         </text>;
             var membershipsTable = TableModel.For(Model.Memberships)
-                .Template(Localizer["MyTeams_Team"].Value, membershipTeamCell)
+                .Template(Localizer["Teams_MyTeams_Team"].Value, membershipTeamCell)
                 .Template(SharedLocalizer["MyTeams_Role"].Value, membershipRoleCell)
-                .Column(Localizer["MyTeams_Joined"].Value, r => r.JoinedAt.ToDate())
-                .Template(Localizer["MyTeams_Actions"].Value, membershipActionsCell, c => c.NoSort())
+                .Column(Localizer["Teams_MyTeams_Joined"].Value, r => r.JoinedAt.ToDate())
+                .Template(Localizer["Teams_MyTeams_Actions"].Value, membershipActionsCell, c => c.NoSort())
                 .Build();
         }
         <partial name="_Table" model="membershipsTable" />
@@ -63,14 +63,14 @@
 else
 {
     <div class="alert alert-info">
-        @Localizer["MyTeams_NoTeams"] <a asp-action="Index">@Localizer["MyTeams_BrowseTeams"]</a>
+        @Localizer["Teams_MyTeams_NoTeams"] <a asp-action="Index">@Localizer["Teams_MyTeams_BrowseTeams"]</a>
     </div>
 }
 
 @if (Model.PendingRequests.Any())
 {
     <div class="card">
-        <div class="card-header">@Localizer["MyTeams_PendingRequests"]</div>
+        <div class="card-header">@Localizer["Teams_MyTeams_PendingRequests"]</div>
         @{
         Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestTeamCell =
             @<text><a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a></text>;
@@ -79,16 +79,16 @@ else
         Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestWithdrawCell = @<text>
             <form asp-action="WithdrawRequest" asp-route-id="@item.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["MyTeams_WithdrawConfirm"].Value">
-                    @Localizer["MyTeams_Withdraw"]
+                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_MyTeams_WithdrawConfirm"].Value">
+                    @Localizer["Teams_MyTeams_Withdraw"]
                 </button>
             </form>
         </text>;
             var pendingRequestsTable = TableModel.For(Model.PendingRequests)
-                .Template(Localizer["MyTeams_Team"].Value, requestTeamCell)
-                .Template(Localizer["MyTeams_Status"].Value, requestStatusCell)
-                .Column(Localizer["MyTeams_Requested"].Value, r => r.RequestedAt.ToDate())
-                .Template(Localizer["MyTeams_Actions"].Value, requestWithdrawCell, c => c.NoSort())
+                .Template(Localizer["Teams_MyTeams_Team"].Value, requestTeamCell)
+                .Template(Localizer["Teams_MyTeams_Status"].Value, requestStatusCell)
+                .Column(Localizer["Teams_MyTeams_Requested"].Value, r => r.RequestedAt.ToDate())
+                .Template(Localizer["Teams_MyTeams_Actions"].Value, requestWithdrawCell, c => c.NoSort())
                 .Build();
         }
         <partial name="_Table" model="pendingRequestsTable" />

@@ -45,7 +45,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        var teamResourceService = Substitute.For<ITeamResourceService>();
+        var teamResourceService = Substitute.For<ITeamResourceServiceRead>();
         teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
@@ -54,7 +54,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
             .With<IEmailService>()
             .With<ISystemTeamSync>()
             .With<IGoogleSyncOutboxService>(googleOutboxService)

@@ -99,7 +99,7 @@ internal sealed class EventsExportController(
             var campName = ResolveCampName(camp);
             var venueName = e.VenueName;
 
-            foreach (var occ in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+            foreach (var occ in e.GetOccurrenceInstants(gateOpeningDate, tz))
             {
                 allOccurrences.Add(new PrintGuideEntry
                 {
@@ -148,7 +148,7 @@ internal sealed class EventsExportController(
     private static List<(string Date, string Time)> GetOccurrences(EventInfo e, LocalDate? gateOpeningDate, DateTimeZone? tz)
     {
         var results = new List<(string, string)>();
-        foreach (var occurrence in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+        foreach (var occurrence in e.GetOccurrenceInstants(gateOpeningDate, tz))
         {
             var local = ToLocalDateTime(occurrence, tz);
             results.Add((local.ToInvariantDate(), local.ToInvariantTime()));

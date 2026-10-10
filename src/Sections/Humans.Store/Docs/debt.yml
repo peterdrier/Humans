@@ -3,10 +3,6 @@
 version: 1
 next_id: 7
 inbox:
-  - added: 2026-08-25
-    id: STORE-3
-    what: "Services/Service.cs is 1367 lines — the section's maxClassLoc and its only large class. It carries catalog CRUD, the order lifecycle, the Stripe payment state machine, Stripe reconciliation, the Holded issuance pipeline and the summary aggregation. Issuance alone (create + approve + adopt-a-recovered-document) is a cohesive concern with its own test class behind it and would split out without touching the others. Found by /section-doctor on Store 2026-08-25. Plan: extract into an internal class in this section (StoreInvoiceIssuer); pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-04
     id: STORE-6
     what: "Services/Service.cs GetOrderPageDataAsync selects the active event's catalog for editable historical orders, while Store.md defines Order.Year as the catalog year. AddLineAsync accepts any active product without checking its year; its legacy Year=0 repair runs after the line write. Historical Open orders can therefore acquire products from a different event year. Found during the daily debt sweep. Plan (follows Store.md's Order.Year rule): GetOrderPageDataAsync offers the catalog of Order.Year; AddLineAsync runs the existing audited Year=0 repair before validating, then refuses a product whose year differs from the order's (and refuses outright if the repair cannot resolve the year), writing nothing on refusal; section-internal, no public surface."

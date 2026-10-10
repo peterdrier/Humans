@@ -44,7 +44,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             .With<ITicketServiceRead>(fakeTicketService)
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -1113,6 +1113,9 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     {
         public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult(orders);
+
+        public Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(string? barcode, CancellationToken ct = default) =>
+            throw new NotSupportedException();
 
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

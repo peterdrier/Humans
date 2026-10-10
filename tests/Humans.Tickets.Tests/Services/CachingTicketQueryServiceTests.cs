@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Stores;
@@ -39,6 +40,31 @@ public sealed class CachingTicketQueryServiceTests
         SeedOrders();
         _inner.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserTicketHoldings(0, [])));
+    }
+
+    [HumansTheory]
+    [InlineData("BC-Exact", true)]
+    [InlineData(" BC-Exact ", true)]
+    [InlineData("bc-exact", false)]
+    [InlineData("old-event", false)]
+    [InlineData("unknown", false)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    [InlineData(null, false)]
+    public async Task Barcode_lookup_uses_current_event_and_exact_code(string? barcode, bool found)
+    {
+        var hit = MakeAttendee(UserA, TicketAttendeeStatus.Void) with { Barcode = "BC-Exact" };
+        var past = MakeOrder(Guid.NewGuid(), null,
+            MakeAttendee(UserB, TicketAttendeeStatus.Valid) with { Barcode = "old-event" })
+            with
+        { IsCurrentEvent = false };
+        SeedOrders(past, MakeOrder(Guid.NewGuid(), null, hit));
+
+        var result = await _decorator.FindCurrentEventAttendeeByBarcodeAsync(
+            barcode, Xunit.TestContext.Current.CancellationToken);
+
+        if (found) result.Should().BeSameAs(hit);
+        else result.Should().BeNull();
     }
 
     [HumansFact]

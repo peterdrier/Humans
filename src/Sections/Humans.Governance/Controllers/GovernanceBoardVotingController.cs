@@ -133,19 +133,19 @@ internal sealed class GovernanceBoardVotingController(
             {
                 SetError(result.ErrorKey switch
                 {
-                    "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
-                    _ => localizer["BoardVoting_ApplicationNotVotable"].Value
+                    "NotFound" => localizer["Governance_BoardVoting_ApplicationNotFound"].Value,
+                    _ => localizer["Governance_BoardVoting_ApplicationNotVotable"].Value
                 });
                 return RedirectToAction(nameof(BoardVoting));
             }
 
-            SetSuccess(localizer["BoardVoting_VoteSaved"].Value);
+            SetSuccess(localizer["Governance_BoardVoting_VoteSaved"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to cast board vote for application {ApplicationId}", applicationId);
-            SetError(localizer["BoardVoting_ApplicationNotVotable"].Value);
+            SetError(localizer["Governance_BoardVoting_ApplicationNotVotable"].Value);
             return RedirectToAction(nameof(BoardVoting));
         }
     }
@@ -174,7 +174,7 @@ internal sealed class GovernanceBoardVotingController(
 
         if (meetingDate is null)
         {
-            SetError(localizer["BoardVoting_MeetingDateRequired"].Value);
+            SetError(localizer["Governance_BoardVoting_MeetingDateRequired"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
@@ -194,22 +194,22 @@ internal sealed class GovernanceBoardVotingController(
                     model.ApplicationId, result.ErrorKey);
                 SetError(result.ErrorKey switch
                 {
-                    "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
-                    "NoVotes" => localizer["BoardVoting_NoVotes"].Value,
-                    _ => localizer["BoardVoting_ApplicationNotVotable"].Value
+                    "NotFound" => localizer["Governance_BoardVoting_ApplicationNotFound"].Value,
+                    "NotSubmitted" => localizer["Governance_BoardVoting_ApplicationNotVotable"].Value,
+                    "NoVotes" => localizer["Governance_BoardVoting_NoVotes"].Value,
+                    _ => localizer["Governance_BoardVoting_ApplicationNotVotable"].Value
                 });
                 return string.Equals(result.ErrorKey, "NoVotes", StringComparison.Ordinal)
                     ? RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId })
                     : RedirectToAction(nameof(BoardVoting));
             }
 
-            SetSuccess(localizer["BoardVoting_Finalized"].Value);
+            SetSuccess(localizer["Governance_BoardVoting_Finalized"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to finalize application {ApplicationId}", model.ApplicationId);
-            SetError(localizer["BoardVoting_ApplicationNotVotable"].Value);
+            SetError(localizer["Governance_BoardVoting_ApplicationNotVotable"].Value);
         }
         return RedirectToAction(nameof(BoardVoting));
     }

@@ -49,7 +49,6 @@ public class MarketingNoTicketAudienceTests
         var audience = NewAudience([], []);
         audience.Key.Should().Be("marketing-no-ticket");
         audience.MailerLiteGroupName.Should().Be("Humans - Marketing no Ticket");
-        audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
     private static MarketingNoTicketAudience NewAudience(

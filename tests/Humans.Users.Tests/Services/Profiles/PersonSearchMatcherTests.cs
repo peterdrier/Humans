@@ -203,14 +203,14 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Legal_name_matches_under_LegalName_scope_but_not_public()
+    public void Legal_name_matches_under_AdminAll_scope_but_not_public()
     {
         // Burner "Sparkle" hides legal name "María García". Searching the real name must work in
         // admin/coordinator windows but NEVER in public search (would deanonymize the burner).
         var human = Human(burnerName: "Sparkle", firstName: "María", lastName: "García",
             displayName: "Sparkle");
 
-        var match = PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.ManageAll);
+        var match = PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.AdminAll);
         match.Should().NotBeNull();
         match.Field.Should().Be("Legal Name");
         PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.PublicAll).Should().BeNull();

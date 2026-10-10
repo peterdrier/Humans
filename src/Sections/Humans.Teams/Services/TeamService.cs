@@ -48,11 +48,11 @@ internal sealed class TeamService(
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
     // Lazy resolution — UserService injects ITeamService, closing the cycle.
-    private ITeamResourceService TeamResourceService
-        => serviceProvider.GetRequiredService<ITeamResourceService>();
+    private ITeamResourceServiceRead TeamResourceService
+        => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
 
-    private IRoleAssignmentService RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private IRoleAssignmentServiceRead RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
 
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();
@@ -654,7 +654,7 @@ internal sealed class TeamService(
         return new TeamWithGroupResult(team, groupWarning);
     }
 
-    public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public async Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
@@ -668,13 +668,20 @@ internal sealed class TeamService(
 
         var now = clock.GetCurrentInstant();
 
-        var closedCount = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        foreach (var userId in closedUsers)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.TeamMemberRemoved, nameof(Team), teamId,
+                $"Membership ended when {team.Name} was deactivated",
+                actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
 
         // GoogleResource.IsActive flipped later by Google reconciliation tick (deferred).
 
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
-            teamId, team.Name, closedCount);
+            teamId, team.Name, closedUsers.Count);
     }
 
     public async Task<TeamJoinOutcome> JoinTeamAsync(
@@ -711,7 +718,7 @@ internal sealed class TeamService(
             throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Team_CannotJoinSystem");
+            throw new InvalidOperationException("Teams_Team_CannotJoinSystem");
 
         if (team.IsHidden)
             throw new InvalidOperationException("Teams_CannotJoinHidden");
@@ -721,12 +728,12 @@ internal sealed class TeamService(
 
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
         if (existingRequest is not null)
-            throw new InvalidOperationException("Team_AlreadyPendingRequest");
+            throw new InvalidOperationException("Teams_Team_AlreadyPendingRequest");
 
         var teamInfo = await GetTeamAsync(teamId, cancellationToken);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
         if (isMember)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         var request = new TeamJoinRequest
         {
@@ -757,7 +764,7 @@ internal sealed class TeamService(
             throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Team_CannotJoinSystem");
+            throw new InvalidOperationException("Teams_Team_CannotJoinSystem");
 
         if (team.IsHidden)
             throw new InvalidOperationException("Teams_CannotJoinHidden");
@@ -767,7 +774,7 @@ internal sealed class TeamService(
 
         var existingMember = await repo.IsActiveMemberAsync(teamId, userId, cancellationToken);
         if (existingMember)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         var member = new TeamMember
         {
@@ -793,7 +800,7 @@ internal sealed class TeamService(
         }
 
         if (!success)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         await auditLogService.LogAsync(
             AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
@@ -1201,7 +1208,7 @@ internal sealed class TeamService(
                 [requesterUserId],
                 body: noticeCopy.Body,
                 actionUrl: "/Teams",
-                actionLabel: NoticeResources.GetString("MyTeams_BrowseTeams", culture),
+                actionLabel: NoticeResources.GetString("Teams_MyTeams_BrowseTeams", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -1358,21 +1365,16 @@ internal sealed class TeamService(
         {
             if (pendingRequest is not null)
             {
-                // pendingRequest is AsNoTracking — re-fetch tracked + approve via full request-path.
-                if (pendingRequest.Status == TeamJoinRequestStatus.Pending)
-                {
-                    pendingRequest.Status = TeamJoinRequestStatus.Approved;
-                    pendingRequest.ReviewedByUserId = actorUserId;
-                    pendingRequest.ReviewNotes = "Added directly by team manager";
-                    pendingRequest.ResolvedAt = clock.GetCurrentInstant();
-                }
                 var tracked = await repo.FindRequestForMutationAsync(pendingRequest.Id, cancellationToken);
                 if (tracked is not null)
                 {
-                    tracked.Status = pendingRequest.Status;
-                    tracked.ReviewedByUserId = pendingRequest.ReviewedByUserId;
-                    tracked.ReviewNotes = pendingRequest.ReviewNotes;
-                    tracked.ResolvedAt = pendingRequest.ResolvedAt;
+                    if (tracked.Status == TeamJoinRequestStatus.Pending)
+                    {
+                        tracked.Status = TeamJoinRequestStatus.Approved;
+                        tracked.ReviewedByUserId = actorUserId;
+                        tracked.ReviewNotes = "Added directly by team manager";
+                        tracked.ResolvedAt = clock.GetCurrentInstant();
+                    }
                     success = await ApproveRequestWithMemberAndOutboxAsync(
                         tracked, member, outboxEvent, cancellationToken);
                 }

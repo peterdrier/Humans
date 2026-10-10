@@ -1,10 +1,10 @@
 @model Humans.Governance.Models.BoardVotingDashboardViewModel
 @{
-    ViewData["Title"] = Localizer["BoardVoting_Title"].Value;
+    ViewData["Title"] = Localizer["Governance_BoardVoting_Title"].Value;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["BoardVoting_Title"]</h1>
+    <h1>@Localizer["Governance_BoardVoting_Title"]</h1>
     <a asp-controller="Governance" asp-action="Index" class="btn btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i> @Localizer["Governance_Title"]
     </a>
@@ -14,7 +14,7 @@
 @if (Model.Applications.Count == 0)
 {
     <div class="alert alert-success">
-        @Localizer["BoardVoting_NoApplications"]
+        @Localizer["Governance_BoardVoting_NoApplications"]
     </div>
 }
 else
@@ -25,8 +25,8 @@ else
                 <table class="table table-hover table-bordered mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>@Localizer["BoardVoting_Applicant"]</th>
-                            <th class="text-center">@Localizer["BoardVoting_Tier"]</th>
+                            <th>@Localizer["Governance_BoardVoting_Applicant"]</th>
+                            <th class="text-center">@Localizer["Governance_BoardVoting_Tier"]</th>
                             <th class="text-center">@Localizer["Governance_Submitted"]</th>
                             @foreach (var member in Model.BoardMembers)
                             {
@@ -88,7 +88,7 @@ else
                                 <td class="text-center">
                                     <a asp-action="BoardVotingDetail" asp-route-applicationId="@app.ApplicationId"
                                        class="btn btn-sm btn-outline-primary">
-                                        @Localizer["BoardVoting_Details"]
+                                        @Localizer["Governance_BoardVoting_Details"]
                                     </a>
                                 </td>
                             </tr>
