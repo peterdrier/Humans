@@ -232,6 +232,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - The member shift-profile wizard localizes breadcrumb navigation labels in all six supported cultures.

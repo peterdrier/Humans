@@ -96,7 +96,7 @@ internal sealed class GovernanceEmails(
     {
         using (new CultureScope(culture, logger))
         {
-            return build();
+            return build() with { Culture = CultureInfo.CurrentUICulture.Name };
         }
     }
 }

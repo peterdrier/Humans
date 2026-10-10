@@ -43,6 +43,7 @@ namespace Humans.Email.Contracts;
 /// Retrying is not an option worth having here — it would mean keeping the address
 /// in order to retry with it.
 /// </param>
+/// <param name="Culture">Recipient/template culture for the shared footer; null falls back to English.</param>
 public sealed record EmailMessage(
     string RecipientEmail,
     string? RecipientName,
@@ -54,4 +55,5 @@ public sealed record EmailMessage(
     Guid? UserId = null,
     Guid? CampaignGrantId = null,
     Guid? CampaignId = null,
-    bool DoNotPersist = false);
+    bool DoNotPersist = false,
+    string? Culture = null);

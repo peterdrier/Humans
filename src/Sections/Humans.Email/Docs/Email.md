@@ -114,6 +114,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Invariants
 
+- The unsubscribe footer uses `EmailMessage.Culture`, captured by opt-outable senders before their template scope ends, with English fallback for missing/unsupported culture. Regional codes use their supported base language. Shared composer previews use the viewer’s UI culture. The scalar is not stored: the outbox retains the already-rendered body; suppression, unsubscribe URLs/headers, and no-persistence system delivery keep their existing paths.
+
 - Email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
 
 - Configured SMTP health probes propagate requested timeout/abort cancellation without logging or returning a connection failure; canceled probes start no connection.

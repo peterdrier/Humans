@@ -61,7 +61,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public OutboxEmailServiceTests()
     {
         // Default composer stub: returns the input HTML plus a stub plain text.
-        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
             .Returns(ci => ((string)ci[0], "plain-text-stub"));
 
         var emailDbOptions = NewSectionDbOptions<EmailDbContext>();
@@ -102,8 +102,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
         environment.EnvironmentName.Returns(Environments.Production);
         var composer = new BrandedEmailBodyComposer(
             Options.Create(new EmailSettings { BaseUrl = "https://humans.example" }), environment);
-        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
-            .Returns(call => composer.Compose(call.ArgAt<string>(0), call.ArgAt<string?>(1)));
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(call => composer.Compose(call.ArgAt<string>(0), call.ArgAt<string?>(1), call.ArgAt<string?>(2)));
         const string html = "<h2>Confirm address</h2><p><a href=\"https://humans.example/verify?t=A%2FB&amp;email=a%40example.com\">Verify email</a></p>";
 
         await _service.SendAsync(Message(html: html), Xunit.TestContext.Current.CancellationToken);
@@ -112,6 +112,43 @@ public sealed class OutboxEmailServiceTests : IDisposable
         queued.PlainTextBody.Should().Be(
             "Confirm address\n\nVerify email (https://humans.example/verify?t=A%2FB&email=a%40example.com)");
         queued.HtmlBody.Should().Contain("https://humans.example/verify?t=A%2FB&amp;email=a%40example.com");
+    }
+
+    [HumansTheory]
+    [InlineData("en", "Unsubscribe from these emails")]
+    [InlineData("es", "Dejar de recibir estos correos")]
+    [InlineData("de", "Diese E-Mails abbestellen")]
+    [InlineData("it", "Annulla l’iscrizione a queste email")]
+    [InlineData("fr", "Se désabonner de ces e-mails")]
+    [InlineData("ca", "Deixar de rebre aquests correus")]
+    [InlineData(null, "Unsubscribe from these emails")]
+    [InlineData("es-ES", "Dejar de recibir estos correos")]
+    [InlineData("unknown", "Unsubscribe from these emails")]
+    public async Task SendAsync_RendersTheUnsubscribeFooterInTheMessagesCulture(string? culture, string expected)
+    {
+        using var ambientCulture = new Humans.Base.Extensions.CultureScope("de");
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        var composer = new BrandedEmailBodyComposer(
+            Options.Create(new EmailSettings { BaseUrl = "https://humans.example" }), environment);
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(call => composer.Compose(call.ArgAt<string>(0), call.ArgAt<string?>(1), call.ArgAt<string?>(2)));
+        var userId = Guid.NewGuid();
+        const string unsubscribeUrl = "https://example.com/u?t=a&cat=4";
+        _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
+            .Returns(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["List-Unsubscribe"] = "<" + unsubscribeUrl + ">"
+            });
+        _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.Governance).Returns(unsubscribeUrl);
+        var message = Message(category: MessageCategory.Governance, userId: userId) with { Culture = culture };
+
+        await _service.SendAsync(message, TestContext.Current.CancellationToken);
+
+        var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
+        queued.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode(expected));
+        queued.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode(unsubscribeUrl));
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("de");
     }
 
     [HumansFact]

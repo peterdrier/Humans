@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
+
 - Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.

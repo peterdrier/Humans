@@ -74,7 +74,7 @@ internal sealed class OutboxEmailService(
         }
         var extraHeadersJson = JsonSerializer.Serialize(headers);
 
-        var (wrappedHtml, plainText) = bodyComposer.Compose(message.HtmlBody, unsubscribeUrl);
+        var (wrappedHtml, plainText) = bodyComposer.Compose(message.HtmlBody, unsubscribeUrl, message.Culture);
 
         if (message.DoNotPersist)
         {

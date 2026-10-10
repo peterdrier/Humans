@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Email.Services;
 using Humans.Users.Contracts;
@@ -53,6 +54,23 @@ public sealed class EmailMessageFactoryTests
         msg.HtmlBody.Should().Contain("<p>Second line</p>");
         msg.HtmlBody.Should().NotContain("&lt;strong&gt;");
         msg.HtmlBody.Should().NotContain("<br");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void FacilitatedMessage_CapturesCultureBeforeRestoringTheCaller(string culture)
+    {
+        using var callerCulture = new Humans.Base.Extensions.CultureScope("en");
+
+        var message = _factory.FacilitatedMessage("a@x.com", "Alice", "Bob", "Hi", false, null, culture);
+
+        message.Culture.Should().Be(culture);
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("en");
     }
 
     private static EmailMessageFactory CreateFactory()
