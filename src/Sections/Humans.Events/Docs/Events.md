@@ -84,7 +84,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | Reason | string? | max 500 |
 | CreatedAt | Instant | |
 
-Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted. Action values: `Approved` / `Rejected` / `ResubmitRequested` (state-transition decisions, Pending-only) and `Edited` (an admin/moderator in-place field edit — **not** a state transition; appended directly without going through `Event.ApplyModerationAction`).
+Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted. Action values: `Approved` / `Rejected` / `ResubmitRequested` (state-transition decisions, Pending-only), `Edited` (an admin/moderator in-place field edit — **not** a state transition; appended directly without going through `Event.ApplyModerationAction`), and `Withdrawn` (a moderator pulled an Approved event; the status change goes through `Event.Withdraw`, and a submitter's own withdrawal appends nothing).
 
 ### EventGuideSettings (singleton)
 
@@ -193,7 +193,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - My Submissions, individual submit/edit forms, Schedule and Browse GETs preserve request cancellation through viewer, guide/burn settings, dropdown, submission, camp, favourite and submitter reads. Shared form helpers keep their default token for POST redisplays; event mutations and permission gates are unchanged.
 
-- Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; the controller enforces this with `IClock` before creating or resubmitting.
+- Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; the controller enforces this with `IClock` before creating an individual or barrio event, and on every bulk upload. Editing, resubmitting or withdrawing an existing individual or barrio event stays open after the window closes, by design: late corrections still reach a moderator.
 - Personal calendar-feed descriptions reuse the Events host/category labels in the request UI culture, in all six languages; authored text, event data and iCal identifiers remain unchanged.
 - The individual and barrio submission forms render their field labels through `EventsResource` in every supported culture. Their required-field, length, and range validation messages use shared resources in all six cultures; validation limits are unchanged.
 - The My Submissions controller orders both personal and barrio event lists newest-submitted first; the service returns camp submission counts and event data without a display sort.
@@ -222,6 +222,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy lives in `EventsResource` in all six cultures and renders in the submitter's supported preferred language, with English fallback for blank, malformed or unsupported preferences (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
+- When a moderator withdraws an Approved event (`IEventService.ModeratorWithdrawAsync`): `Event.Status` transitions to `Withdrawn` and a `Withdrawn` `EventModerationAction` naming the moderator is appended.
 
 ## Cross-Section Dependencies
 

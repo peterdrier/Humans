@@ -274,6 +274,13 @@ internal sealed class CachingEventService(
             _eventCache.Invalidate(guideEvent.Id);
         });
 
+    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ModeratorWithdrawAsync(guideEvent, actorUserId, ct));
+            _eventCache.Invalidate(guideEvent.Id);
+        });
+
     public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {

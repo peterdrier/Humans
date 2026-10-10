@@ -91,6 +91,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - Withdraw action available to the original submitter on their own Approved event (the relevant block on My Event Submissions)
 - Transitions status to `Withdrawn`; event no longer returned by the public API
 - No email sent on withdrawal
+- A moderator's withdrawal appends a `Withdrawn` entry, naming the moderator, to the event's moderation history
 
 ### US-26.5: Submitter Responds to Rejection / Edit Request
 **As a** submitter (barrio organiser or individual human)

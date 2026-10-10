@@ -261,6 +261,22 @@ internal sealed class EventService(
         return repo.SaveEventAsync(guideEvent, ct);
     }
 
+    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default)
+    {
+        guideEvent.Withdraw(clock);
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEvent.Id,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Withdrawn,
+            CreatedAt = guideEvent.LastUpdatedAt
+        };
+
+        return repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+    }
+
     public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
