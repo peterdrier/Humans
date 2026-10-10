@@ -32,7 +32,7 @@ even though it takes seven cross-section reads to assemble: the card is the unit
 reads.
 
 Vocabulary: none of its own. The card speaks Tickets' `TicketStubInfo`/`TicketAttendeeStatus`,
-EarlyEntry's `UserEarlyEntry`, Calendar's `CalendarFeedItem`, and Shifts' `BurnSettingsInfo`.
+EarlyEntry's `EarlyEntryRosterRow`, Calendar's `CalendarFeedItem`, and Shifts' `BurnSettingsInfo`.
 
 ## 3. Structure
 

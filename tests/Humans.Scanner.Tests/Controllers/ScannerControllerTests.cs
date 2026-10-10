@@ -258,7 +258,7 @@ public class ScannerControllerTests
 
         var earlyEntry = Substitute.For<IEarlyEntryService>();
         earlyEntry.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserEarlyEntry(new LocalDate(2026, 6, 15), ["Teams: Gate"]));
+            .Returns(new EarlyEntryRosterRow(userId, new LocalDate(2026, 6, 15), ["Teams: Gate"], false));
 
         var consents = Substitute.For<IConsentServiceRead>();
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())

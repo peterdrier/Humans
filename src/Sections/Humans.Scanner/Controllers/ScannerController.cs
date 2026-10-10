@@ -47,7 +47,7 @@ internal sealed class ScannerController(
         if (hit is null)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, code, null, null, null, null));
 
-        UserEarlyEntry? ee = null;
+        EarlyEntryRosterRow? ee = null;
         Instant? checkedInAt = null;
         IReadOnlyList<string>? pendingConsents = null;
         IReadOnlyList<CalendarFeedItem>? provideItems = null;
