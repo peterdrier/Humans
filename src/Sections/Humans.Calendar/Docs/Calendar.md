@@ -212,3 +212,5 @@ A lazy per-key cache miss cannot republish its old result after an intervening c
 - Do not add navigation properties to Teams or Users on either entity — both carry bare Guids, and stitching happens in memory through the owning section's read interface.
 - Every new mutation must write an `AuditLogEntry` via `IAuditLogService`; do not skip audit for "admin convenience" operations.
 - Every new page must have a nav link (CLAUDE.md coding rules — no orphan pages).
+
+- Occurrence cancellation/override returns false for a missing series, invalid identity, invalid override range/type or invalid exception entity, warning without an exception before persistence/audit. The editor and cancellation action use the existing six-culture occurrence refusal resource; dependency faults propagate without becoming validation feedback. Date/time validation precedes repository mutation; legacy all-day identity conversion and preserved cancellation override fields remain. Only a successful write refreshes the parent cache; a refusal or fault clears its snapshot.

@@ -47,6 +47,10 @@ public class CalendarControllerICalTests
 
     public CalendarControllerICalTests()
     {
+        _calendar.CancelOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
+        _calendar.OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<OverrideOccurrenceDto>(),
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
         _calendarRead
             .GetOccurrencesInWindowAsync(
                 Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -306,6 +310,38 @@ public class CalendarControllerICalTests
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
         model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
         model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task EditOccurrence_DistinguishesRefusalFromDependencyFault(bool dependencyFault)
+    {
+        var id = Guid.NewGuid();
+        var original = Instant.FromUtc(2026, 6, 2, 17, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Weekly", null, null, null, Guid.NewGuid(), original, original.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "UTC", _now, _now));
+        var failure = new InvalidOperationException("Private occurrence persistence diagnostic");
+        _calendar.OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<OverrideOccurrenceDto>(),
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>())
+            .Returns(dependencyFault ? Task.FromException<bool>(failure) : Task.FromResult(false));
+        var controller = CreateController();
+        var form = new OccurrenceOverrideFormViewModel { OverrideTitle = "Changed", RecurrenceTimezone = "UTC" };
+
+        if (dependencyFault)
+        {
+            var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() =>
+                controller.EditOccurrence(id, "2026-06-02T17:00:00Z", form, Xunit.TestContext.Current.CancellationToken));
+            thrown.Should().BeSameAs(failure);
+            controller.ModelState.IsValid.Should().BeTrue();
+        }
+        else
+        {
+            var result = await controller.EditOccurrence(id, "2026-06-02T17:00:00Z", form, Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState[string.Empty]!.Errors.Single().ErrorMessage.Should().Be("Calendar_InvalidOccurrenceOverride");
+        }
     }
 
     [HumansFact]

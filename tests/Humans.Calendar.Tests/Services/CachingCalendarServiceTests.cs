@@ -94,6 +94,14 @@ public sealed class CachingCalendarServiceTests
             Fail ? throw Failure : ValueTask.FromResult(result);
     }
 
+    public CachingCalendarServiceTests()
+    {
+        _inner.CancelOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
+        _inner.OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<OverrideOccurrenceDto>(),
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
+    }
+
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();

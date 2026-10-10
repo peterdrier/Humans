@@ -78,11 +78,11 @@ internal interface ICalendarRepository : IRepository
     /// and <paramref name="now"/> for audit stamps. When a row exists, only
     /// <c>UpdatedAt</c> is refreshed. The caller's <paramref name="apply"/>
     /// delegate mutates the exception (cancel flag and/or override fields)
-    /// and is invoked after audit-stamp bookkeeping. Returns <c>true</c> on
-    /// success. Validation is the caller's responsibility (via
-    /// <see cref="CalendarEventException.Validate"/>).
+    /// and is invoked after audit-stamp bookkeeping. Returns null on success,
+    /// or an entity-validation reason without saving the candidate.
+    /// Caller-side series validation precedes this write.
     /// </summary>
-    Task UpsertExceptionAsync(
+    Task<string?> UpsertExceptionAsync(
         Guid eventId,
         Instant? originalOccurrenceStartUtc,
         Guid createdByUserId,

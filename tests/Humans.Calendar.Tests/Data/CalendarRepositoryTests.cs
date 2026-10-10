@@ -69,9 +69,9 @@ public sealed class CalendarRepositoryTests : IDisposable
         var service = CreateService();
         var timed = new OverrideOccurrenceDto(Instant.FromUtc(2026, 3, 28, 14, 0),
             Instant.FromUtc(2026, 3, 28, 16, 0), null, null, null, null);
-        var rejectTime = () => service.OverrideOccurrenceAsync(ev.Id, null, timed, Guid.NewGuid(),
+        var rejectTime = await service.OverrideOccurrenceAsync(ev.Id, null, timed, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken, ev.StartDate);
-        await rejectTime.Should().ThrowAsync<InvalidOperationException>();
+        rejectTime.Should().BeFalse();
         var invalid = timed with
         {
             OverrideStartUtc = null,
@@ -79,9 +79,9 @@ public sealed class CalendarRepositoryTests : IDisposable
             OverrideStartDate = ev.StartDate,
             OverrideEndDateExclusive = ev.StartDate
         };
-        var rejectRange = () => service.OverrideOccurrenceAsync(ev.Id, null, invalid, Guid.NewGuid(),
+        var rejectRange = await service.OverrideOccurrenceAsync(ev.Id, null, invalid, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken, ev.StartDate);
-        await rejectRange.Should().ThrowAsync<InvalidOperationException>();
+        rejectRange.Should().BeFalse();
         (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!.Exceptions.Should().BeEmpty();
     }
 
@@ -108,10 +108,10 @@ public sealed class CalendarRepositoryTests : IDisposable
             moveStart ? original.Plus(Duration.FromHours(2)) : null,
             original.Plus(Duration.FromHours(moveStart ? 1 : -1)),
             "Invalid replacement", null, null, null);
-        var act = () => service.OverrideOccurrenceAsync(ev.Id, original, invalid,
+        var result = await service.OverrideOccurrenceAsync(ev.Id, original, invalid,
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Should().BeFalse();
         var stored = (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!;
         if (existingOverride)
         {
@@ -450,19 +450,20 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertExceptionAsync_ThrowsWhenNeitherCancelledNorOverridden()
+    public async Task UpsertExceptionAsync_RefusesWithoutSavingWhenNeitherCancelledNorOverridden()
     {
         var ev = BuildEvent();
         await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _repo.UpsertExceptionAsync(
+        var refusal = await _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
             apply: _ => { }, ct: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        refusal.Should().StartWith("Exception is invalid:");
+        (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!.Exceptions.Should().BeEmpty();
     }
 
     // ==========================================================================
