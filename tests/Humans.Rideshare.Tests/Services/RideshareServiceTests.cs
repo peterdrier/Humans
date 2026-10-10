@@ -40,8 +40,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         RouteProvider.GeocodeAsync("Bordeaux", Arg.Any<CancellationToken>()).Returns((GeoPoint?)Bordeaux);
         var departure = new LocalDate(Year, 7, 3);
 
-        var id = await NewService().CreateOfferAsync(
-            driver, Year, NewTripSave(direction, waypoints: ["Lyon", "Bordeaux"], departure: departure, seats: 2), Ct);
+        var id = (await NewService().CreateOfferAsync(
+            driver, Year, NewTripSave(direction, waypoints: ["Lyon", "Bordeaux"], departure: departure, seats: 2), Ct)).Id!.Value;
 
         await using var ctx = OpenContext();
         var trips = await ctx.Trips.ToListAsync(Ct);
@@ -100,8 +100,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         RouteProvider.GeocodeAsync("Berlin", Arg.Any<CancellationToken>())
             .Returns((GeoPoint?)new GeoPoint(52.52, 13.405));
 
-        var id = await NewService().CreateOfferAsync(
-            SeedUser(), Year, NewTripSave(place: "Berlin", latitude: null, longitude: null), Ct);
+        var id = (await NewService().CreateOfferAsync(
+            SeedUser(), Year, NewTripSave(place: "Berlin", latitude: null, longitude: null), Ct)).Id!.Value;
 
         await using var ctx = OpenContext();
         var trip = await ctx.Trips.SingleAsync(t => t.Id == id, Ct);
@@ -129,7 +129,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var act = () => NewService().CreateOfferAsync(
             SeedUser(), Year, NewTripSave(place: "Atlantis", latitude: null, longitude: null), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain("Atlantis");
+        (await act()).Refusal!.Args.Should().Contain("Atlantis");
         await using var ctx = OpenContext();
         (await ctx.Trips.CountAsync(Ct)).Should().Be(0);
     }
@@ -143,7 +143,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var act = () => NewService().CreateOfferAsync(
             SeedUser(), Year, NewTripSave(waypoints: ["Nowhere Junction"]), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain("Nowhere Junction");
+        (await act()).Refusal!.Args.Should().Contain("Nowhere Junction");
     }
 
     [HumansFact]
@@ -153,7 +153,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         RouteProvider.GetRouteGeoJsonAsync(Arg.Any<IReadOnlyList<GeoPoint>>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        var id = await NewService().CreateOfferAsync(SeedUser(), Year, NewTripSave(), Ct);
+        var id = (await NewService().CreateOfferAsync(SeedUser(), Year, NewTripSave(), Ct)).Id!.Value;
 
         await using var ctx = OpenContext();
         var trips = await ctx.Trips.ToListAsync(Ct);
@@ -164,17 +164,17 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task CreateOffer_WithoutSettingsForTheYear_Throws()
+    public async Task CreateOffer_WithoutSettingsForTheYear_ReturnsARefusal()
     {
         var act = () => NewService().CreateOfferAsync(SeedUser(), Year, NewTripSave(), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain(Year);
+        (await act()).Refusal!.Args.Should().Contain(Year);
     }
 
     // ── Offers: ownership and state ───────────────────────────────────────
 
     [HumansFact]
-    public async Task UpdateOffer_OnACancelledTrip_Throws()
+    public async Task UpdateOffer_OnACancelledTrip_ReturnsARefusal()
     {
         await SeedSettingsAsync();
         var driver = SeedUser();
@@ -182,11 +182,11 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var act = () => NewService().UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 4), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_CancelledRideEdit");
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_CancelledRideEdit");
     }
 
     [HumansFact]
-    public async Task UpdateOffer_BelowTheAcceptedSeats_Throws_AtTheAcceptedCountItSaves()
+    public async Task UpdateOffer_BelowTheAcceptedSeats_Refuses_AtTheAcceptedCountItSaves()
     {
         await SeedSettingsAsync();
         var driver = SeedUser();
@@ -195,9 +195,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var tooFew = () => service.UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 1), Ct);
-        var thrown = (await tooFew.Should().ThrowAsync<RideshareRuleException>()).Which;
-        thrown.Key.Should().Be("Rideshare_Error_SeatsBelowAccepted");
-        thrown.Args.Should().Equal(2);
+        var refusal = (await tooFew()).Refusal!;
+        refusal.Key.Should().Be("Rideshare_Error_SeatsBelowAccepted");
+        refusal.Args.Should().Equal(2);
 
         await service.UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 2), Ct);
         await using var ctx = OpenContext();
@@ -298,14 +298,14 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRequest_OnACancelledRequest_Throws()
+    public async Task UpdateRequest_OnACancelledRequest_ReturnsARefusal()
     {
         var rider = SeedUser();
         var request = await SeedRequestAsync(rider, status: RequestStatus.Cancelled);
 
         var act = () => NewService().UpdateRequestAsync(request.Id, rider, NewRequestSave(partySize: 2), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_CancelledRequestEdit");
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_CancelledRequestEdit");
     }
 
     [HumansFact]
@@ -345,7 +345,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptInterest_BeyondTheRemainingSeats_Throws()
+    public async Task AcceptInterest_BeyondTheRemainingSeats_ReturnsARefusal()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver, seatsOffered: 2);
@@ -354,7 +354,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var act = () => NewService().AcceptInterestAsync(tooBig.Id, driver, Ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_NotEnoughSeats");
         await using var ctx = OpenContext();
         (await ctx.Interests.SingleAsync(i => i.Id == tooBig.Id, Ct)).Status.Should().Be(InterestStatus.Pending);
     }
@@ -370,13 +370,13 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var unavailable = () => service.ExpressInterestAsync(rider, cancelled.Id, null, 1, null, Ct);
-        (await unavailable.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideUnavailable");
+        (await unavailable()).Refusal!.Key.Should().Be("Rideshare_Error_RideUnavailable");
 
         var zeroSeats = () => service.ExpressInterestAsync(rider, full.Id, null, 0, null, Ct);
-        (await zeroSeats.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_SeatsMinimum");
+        (await zeroSeats()).Refusal!.Key.Should().Be("Rideshare_Error_SeatsMinimum");
 
         var overCapacity = () => service.ExpressInterestAsync(rider, full.Id, null, 1, null, Ct);
-        (await overCapacity.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_NotEnoughSeats");
+        (await overCapacity()).Refusal!.Key.Should().Be("Rideshare_Error_NotEnoughSeats");
     }
 
     [HumansFact]
@@ -423,10 +423,10 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var acceptAgain = () => service.AcceptInterestAsync(accepted.Id, driver, Ct);
-        (await acceptAgain.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_InterestNotPending");
+        (await acceptAgain()).Refusal!.Key.Should().Be("Rideshare_Error_InterestNotPending");
 
         var declineAgain = () => service.DeclineInterestAsync(declined.Id, driver, Ct);
-        (await declineAgain.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_InterestNotPending");
+        (await declineAgain()).Refusal!.Key.Should().Be("Rideshare_Error_InterestNotPending");
     }
 
     [HumansFact]
@@ -462,9 +462,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var closed = () => service.AcceptInterestAsync(onCancelled.Id, rider, Ct);
-        (await closed.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RequestClosed");
+        (await closed()).Refusal!.Key.Should().Be("Rideshare_Error_RequestClosed");
         var wrongDay = () => service.AcceptInterestAsync(onMoved.Id, rider, Ct);
-        (await wrongDay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+        (await wrongDay()).Refusal!.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
 
         await using var ctx = OpenContext();
         (await ctx.Interests.CountAsync(i => i.Status == InterestStatus.Accepted, Ct)).Should().Be(0);
@@ -492,7 +492,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task WithdrawInterest_OnceDeclined_Throws()
+    public async Task WithdrawInterest_OnceDeclined_ReturnsARefusal()
     {
         var rider = SeedUser("Bo");
         var trip = await SeedTripAsync(SeedUser("Ada"));
@@ -500,22 +500,22 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var act = () => NewService().WithdrawInterestAsync(declined.Id, rider, Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_InterestNotWithdrawable");
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_InterestNotWithdrawable");
     }
 
     [HumansFact]
-    public async Task ExpressInterest_InYourOwnTrip_Throws()
+    public async Task ExpressInterest_InYourOwnTrip_ReturnsARefusal()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver);
 
         var act = () => NewService().ExpressInterestAsync(driver, trip.Id, null, 1, null, Ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_OwnRide");
     }
 
     [HumansFact]
-    public async Task ExpressInterest_TwiceWhileTheFirstIsPending_Throws()
+    public async Task ExpressInterest_TwiceWhileTheFirstIsPending_ReturnsARefusal()
     {
         var trip = await SeedTripAsync(SeedUser("Ada"));
         var rider = SeedUser("Bo");
@@ -524,7 +524,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var again = () => service.ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
 
-        await again.Should().ThrowAsync<InvalidOperationException>();
+        (await again()).Refusal!.Key.Should().Be("Rideshare_Error_AlreadyInterested");
     }
 
     [HumansFact]
@@ -539,11 +539,11 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var wrongDay = () => service.ExpressInterestAsync(driver, otherDay.Id, request.Id, 0, null, Ct);
-        (await wrongDay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+        (await wrongDay()).Refusal!.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
         var wrongWay = () => service.ExpressInterestAsync(driver, otherWay.Id, request.Id, 0, null, Ct);
-        (await wrongWay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+        (await wrongWay()).Refusal!.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
 
-        var id = await service.ExpressInterestAsync(driver, covering.Id, request.Id, 0, null, Ct);
+        var id = (await service.ExpressInterestAsync(driver, covering.Id, request.Id, 0, null, Ct)).Id!.Value;
         await using var ctx = OpenContext();
         (await ctx.Interests.SingleAsync(i => i.Id == id, Ct)).TripId.Should().Be(covering.Id);
     }
@@ -569,9 +569,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var answerClosed = () => service.ExpressInterestAsync(driver, trip.Id, closed.Id, 0, null, Ct);
-        (await answerClosed.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RequestClosed");
+        (await answerClosed()).Refusal!.Key.Should().Be("Rideshare_Error_RequestClosed");
         var answerOwn = () => service.ExpressInterestAsync(driver, trip.Id, own.Id, 0, null, Ct);
-        (await answerOwn.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_OwnRequest");
+        (await answerOwn()).Refusal!.Key.Should().Be("Rideshare_Error_OwnRequest");
     }
 
     [HumansFact]
@@ -582,7 +582,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var trip = await SeedTripAsync(driver, seatsOffered: 3);
         var request = await SeedRequestAsync(rider, partySize: 2);
 
-        var id = await NewService().ExpressInterestAsync(driver, trip.Id, request.Id, 0, null, Ct);
+        var id = (await NewService().ExpressInterestAsync(driver, trip.Id, request.Id, 0, null, Ct)).Id!.Value;
 
         await using var ctx = OpenContext();
         var interest = await ctx.Interests.SingleAsync(i => i.Id == id, Ct);
@@ -815,7 +815,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var expectedStatus = InterestStatus.Pending;
         if (string.Equals(action, "express", StringComparison.Ordinal))
         {
-            interestId = await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
+            interestId = (await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct)).Id!.Value;
         }
         else
         {
@@ -851,7 +851,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("mail is down"));
 
-        var id = await NewService().ExpressInterestAsync(SeedUser("Bo"), trip.Id, null, 1, null, Ct);
+        var id = (await NewService().ExpressInterestAsync(SeedUser("Bo"), trip.Id, null, 1, null, Ct)).Id!.Value;
 
         await using var ctx = OpenContext();
         (await ctx.Interests.AnyAsync(i => i.Id == id, Ct)).Should().BeTrue();
@@ -924,7 +924,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
                 new LocalDate(Year, 7, 12), new LocalDate(Year, 7, 20)),
             SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_WindowOrder");
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_WindowOrder");
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
@@ -938,7 +938,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
                 new LocalDate(Year, 7, 12), new LocalDate(Year, 7, 20)),
             SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_DestinationRequired");
+        (await act()).Refusal!.Key.Should().Be("Rideshare_Error_DestinationRequired");
         await using var ctx = OpenContext();
         (await ctx.Settings.CountAsync(Ct)).Should().Be(0);
     }

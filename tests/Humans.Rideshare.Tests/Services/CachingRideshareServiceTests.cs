@@ -174,13 +174,13 @@ public sealed class CachingRideshareServiceTests
         {
             case "settings":
                 var settings = new SettingsSave("Elsewhere", 43.2, -2.4, July3, July3, July3, July3);
-                _inner.SaveSettingsAsync(2026, settings, actor, Ct).Returns(Task.FromException(failure));
+                _inner.SaveSettingsAsync(2026, settings, actor, Ct).Returns(Task.FromException<RideshareMutationResult>(failure));
                 write = () => _service.SaveSettingsAsync(2026, settings, actor, Ct);
                 break;
             case "offer":
                 var offer = new TripSave(RideshareDirection.Inbound, "Paris", 48.85, 2.35, [], July3, 1, null,
                     VehicleType.Car, 3, LuggageSize.Moderate, null, null, false, CostSharing.ShareFuel, null);
-                _inner.CreateOfferAsync(actor, 2026, offer, Ct).Returns(Task.FromException<Guid>(failure));
+                _inner.CreateOfferAsync(actor, 2026, offer, Ct).Returns(Task.FromException<RideshareMutationResult>(failure));
                 write = () => _service.CreateOfferAsync(actor, 2026, offer, Ct);
                 break;
             default:

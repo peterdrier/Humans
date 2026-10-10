@@ -76,8 +76,8 @@ internal sealed class RideshareController(
 
         return await SaveFormAsync(model, async () =>
         {
-            if (model.Id is { } id) await rideshare.UpdateOfferAsync(id, user.Id, save, ct);
-            else await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
+            if (model.Id is { } id) return await rideshare.UpdateOfferAsync(id, user.Id, save, ct);
+            else return await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
         }, "Rideshare_OfferSaved");
     }
 
@@ -126,8 +126,8 @@ internal sealed class RideshareController(
 
         return await SaveFormAsync(model, async () =>
         {
-            if (model.Id is { } id) await rideshare.UpdateRequestAsync(id, user.Id, save, ct);
-            else await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
+            if (model.Id is { } id) return await rideshare.UpdateRequestAsync(id, user.Id, save, ct);
+            else return await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
         }, "Rideshare_RequestSaved");
     }
 
@@ -203,12 +203,20 @@ internal sealed class RideshareController(
     // ── Error-contract mapping ────────────────────────────────────────────
 
     /// <summary>Redirect-style actions: 404 / 403 pass through, a rule becomes a localized error toast on Mine.</summary>
-    private async Task<IActionResult> RunThenMineAsync(Func<Task> action, string successKey)
+    private async Task<IActionResult> RunThenMineAsync(Func<Task<RideshareMutationResult>> action, string successKey)
     {
         try
         {
-            await action();
-            SetSuccess(localizer[successKey]);
+            var result = await action();
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
+                SetError(localizer[refusal.Key, refusal.Args]);
+            }
+            else
+            {
+                SetSuccess(localizer[successKey]);
+            }
         }
         catch (KeyNotFoundException ex)
         {
@@ -219,22 +227,23 @@ internal sealed class RideshareController(
         {
             logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return Forbid();
-        }
-        catch (RideshareRuleException ex)
-        {
-            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
-            SetError(localizer[ex.Key, ex.Args]);
         }
 
         return RedirectToAction(nameof(Mine));
     }
 
     /// <summary>Form POSTs: a rule re-renders the form with its localized message as a model error.</summary>
-    private async Task<IActionResult> SaveFormAsync(object model, Func<Task> action, string successKey)
+    private async Task<IActionResult> SaveFormAsync(object model, Func<Task<RideshareMutationResult>> action, string successKey)
     {
         try
         {
-            await action();
+            var result = await action();
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
+                ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
+                return View(model);
+            }
         }
         catch (KeyNotFoundException ex)
         {
@@ -245,12 +254,6 @@ internal sealed class RideshareController(
         {
             logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return Forbid();
-        }
-        catch (RideshareRuleException ex)
-        {
-            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
-            ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
-            return View(model);
         }
 
         SetSuccess(localizer[successKey]);

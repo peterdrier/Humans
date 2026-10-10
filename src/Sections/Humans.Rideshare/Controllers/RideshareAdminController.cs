@@ -44,14 +44,11 @@ internal sealed class RideshareAdminController(
             return View(model);
         }
 
-        try
+        var result = await rideshare.SaveSettingsAsync(year, save, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await rideshare.SaveSettingsAsync(year, save, user.Id, ct);
-        }
-        catch (RideshareRuleException ex)
-        {
-            logger.LogWarning("Rideshare settings save for {Year} rejected: rule {Rule}", year, ex.Key);
-            ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
+            logger.LogWarning("Rideshare settings save for {Year} rejected: rule {Rule}", year, refusal.Key);
+            ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
             model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
             return View(model);
         }

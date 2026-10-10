@@ -63,44 +63,44 @@ internal sealed class CachingRideshareService(
 
     // ── Offers ────────────────────────────────────────────────────────────
 
-    public Task<Guid> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateOfferAsync(userId, year, save, ct));
 
-    public Task UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateOfferAsync(tripId, actorUserId, save, ct));
 
-    public Task CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CancelOfferAsync(tripId, actorUserId, ct));
 
     // ── Requests ──────────────────────────────────────────────────────────
 
-    public Task<Guid> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateRequestAsync(userId, year, save, ct));
 
-    public Task UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateRequestAsync(requestId, actorUserId, save, ct));
 
-    public Task CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CancelRequestAsync(requestId, actorUserId, ct));
 
     // ── Interests ─────────────────────────────────────────────────────────
 
-    public Task<Guid> ExpressInterestAsync(
+    public Task<RideshareMutationResult> ExpressInterestAsync(
         Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default) =>
         MutateAsync(inner => inner.ExpressInterestAsync(fromUserId, tripId, requestId, seats, message, ct));
 
-    public Task AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.AcceptInterestAsync(interestId, actorUserId, ct));
 
-    public Task DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.DeclineInterestAsync(interestId, actorUserId, ct));
 
-    public Task WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.WithdrawInterestAsync(interestId, actorUserId, ct));
 
     // ── Admin ─────────────────────────────────────────────────────────────
 
-    public Task SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<RideshareMutationResult> SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SaveSettingsAsync(year, save, actorUserId, ct));
 
     // ── IUserDataContributor — GDPR export + erasure ──────────────────────
