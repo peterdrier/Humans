@@ -51,22 +51,22 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Refer")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refer(Guid id, string? note, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.ReferAsync(id, actor, note, ct), "Referred to the Board", ct, slug);
+        ActAsync(actor => workgroups.ReferAsync(id, actor, note, ct), "Referred to the Board", ct, slug, note);
 
     [HttpPost("{id:guid}/Refuse")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refuse(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, slug);
+        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, slug, reasons);
 
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Withdraw(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, slug);
+        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, slug, reasons);
 
     [HttpPost("{id:guid}/Close")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Close(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, slug);
+        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, slug, reasons);
 
     [HttpPost("{id:guid}/Reactivate")]
     [ValidateAntiForgeryToken]
@@ -203,8 +203,10 @@ internal sealed class WorkgroupsAdminController(
     /// Admin POSTs land back on the group's Details page when the form carries its slug,
     /// otherwise on the queue. A rule failure flashes the error and redirects the same way.
     /// </summary>
+    internal static string DraftKey(string action) => $"WorkgroupsDraft:{action}";
+
     private async Task<IActionResult> ActAsync(
-        Func<Guid, Task> action, string success, CancellationToken ct, string? slug = null)
+        Func<Guid, Task> action, string success, CancellationToken ct, string? slug = null, string? draft = null)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
@@ -219,6 +221,8 @@ internal sealed class WorkgroupsAdminController(
             logger.LogWarning("Workgroups admin {Action}: rule {Rule}",
                 ControllerContext.ActionDescriptor.ActionName, ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
+            // Hand the typed text back so Details can prefill the form it came from.
+            if (draft is not null) TempData[DraftKey(ControllerContext.ActionDescriptor.ActionName)] = draft;
         }
 
         return string.IsNullOrEmpty(slug)

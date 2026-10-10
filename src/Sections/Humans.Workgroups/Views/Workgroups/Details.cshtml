@@ -155,7 +155,7 @@
             {
                 <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Refer" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
                     <label class="form-label" for="refer-note">Refer to the Board (note, optional)</label>
-                    <textarea class="form-control mb-2" id="refer-note" name="note" rows="4" maxlength="4000"></textarea>
+                    <textarea class="form-control mb-2" id="refer-note" name="note" rows="4" maxlength="4000">@TempData[Humans.Workgroups.Controllers.WorkgroupsAdminController.DraftKey("Refer")]</textarea>
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Refer</button>
                 </form>
             }
@@ -163,7 +163,7 @@
             {
                 <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Refuse" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
                     <label class="form-label" for="refuse-reasons">Refuse registration — reasons</label>
-                    <textarea class="form-control mb-2" id="refuse-reasons" name="reasons" rows="4" maxlength="4000" required></textarea>
+                    <textarea class="form-control mb-2" id="refuse-reasons" name="reasons" rows="4" maxlength="4000" required>@TempData[Humans.Workgroups.Controllers.WorkgroupsAdminController.DraftKey("Refuse")]</textarea>
                     <button type="submit" class="btn btn-sm btn-outline-danger">Refuse</button>
                 </form>
             }
@@ -171,12 +171,12 @@
             {
                 <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Close" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
                     <label class="form-label" for="close-reasons">Close group — reasons</label>
-                    <textarea class="form-control mb-2" id="close-reasons" name="reasons" rows="4" maxlength="4000" required></textarea>
+                    <textarea class="form-control mb-2" id="close-reasons" name="reasons" rows="4" maxlength="4000" required>@TempData[Humans.Workgroups.Controllers.WorkgroupsAdminController.DraftKey("Close")]</textarea>
                     <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
                 </form>
                 <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Withdraw" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
                     <label class="form-label" for="withdraw-reasons">Withdraw registration — reasons</label>
-                    <textarea class="form-control mb-2" id="withdraw-reasons" name="reasons" rows="4" maxlength="4000" required></textarea>
+                    <textarea class="form-control mb-2" id="withdraw-reasons" name="reasons" rows="4" maxlength="4000" required>@TempData[Humans.Workgroups.Controllers.WorkgroupsAdminController.DraftKey("Withdraw")]</textarea>
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
                 </form>
                 <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Coordinators" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
