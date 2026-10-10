@@ -59,7 +59,7 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 
 1. Only `Pending` events accept a moderation decision — `Domain/Event.cs:188`.
 2. An admin in-place edit preserves `Status` — an approved listing is never silently re-queued —
-   `Services/Service.cs:267`.
+   `Services/Service.cs:283`.
 3. Nothing unapproved leaves through `/api/events*`: every read there is served from the
    approved-only projection — `Data/Repository.cs:264`, `Data/Repository.cs:291`,
    `Data/Repository.cs:389`.
@@ -73,7 +73,7 @@ Behavioural facts stated so a violation is recognisable, each with the line that
    withdrawing an existing submission is not window-gated, by design: late corrections still reach a
    moderator.
 6. Bulk CSV import is all-or-nothing, and its template round-trips: exporting a camp's events and
-   re-uploading them unchanged is a no-op — `Services/Service.cs:291`, `Services/Service.cs:338`.
+   re-uploading them unchanged is a no-op — `Services/Service.cs:307`, `Services/Service.cs:354`.
 7. Moderation history is append-only: the repository only ever adds to it —
    `Data/Repository.cs:365`.
 8. `StartAt` is stored as an `Instant`; every local rendering goes through the edition's zone —
@@ -81,7 +81,7 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 9. Erasure deletes a person's favourites and preference and blanks `Host` on their submissions;
    the submissions themselves survive, and the approved-events cache reflects the blanked host
    immediately — `Data/Repository.cs:485`, `Data/Repository.cs:501`,
-   `Services/CachingEventService.cs:475`.
+   `Services/CachingEventService.cs:482`.
 
 ## 5. Seams
 
