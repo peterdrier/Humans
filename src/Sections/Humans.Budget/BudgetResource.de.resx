@@ -146,4 +146,9 @@
   <data name="Budget_VatCredit" xml:space="preserve"><value>Mehrwertsteuer-Guthaben</value></data>
   <data name="Budget_BackToBudget" xml:space="preserve"><value>Zurück zum Budget</value></data>
   <data name="Budget_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
+  <data name="Budget_YearStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
+  <data name="Budget_YearStatus_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Budget_YearStatus_Closed" xml:space="preserve"><value>Abgeschlossen</value></data>
+  <data name="Budget_ExpenditureType_CapEx" xml:space="preserve"><value>Investitionsausgaben</value></data>
+  <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Betriebsausgaben</value></data>
 </root>

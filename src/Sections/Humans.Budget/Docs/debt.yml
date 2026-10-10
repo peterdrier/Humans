@@ -7,7 +7,3 @@ inbox:
     id: BUDGET-11
     what: "BudgetAdminController.CashFlow seeds the runway from every paid order GetTicketOrdersAsync returns (BudgetAdminController.cs:143), not the budget year's event, so a later year's cash flow starts with prior years' revenue. Found by the 2026-10-08 section-doctor run. Plan: scope to the year's orders alongside the sync input scoping in peterdrier/Humans#1942."
     review: panel
-  - added: 2026-10-08
-    id: BUDGET-14
-    what: "Views/Budget/Index.cshtml renders Year.Status and each category's ExpenditureType as raw enum names on member /Budget, untranslated in every culture. Found by the 2026-10-08 section-doctor run. Plan: add Budget_ resx keys for the enum values in all six cultures and render through the localizer."
-    review: light
