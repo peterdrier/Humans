@@ -201,11 +201,28 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return rows.Select(r => (r.Id, r.ParentTeamId!.Value)).ToList();
     }
 
-    public async Task UpdateTeamAsync(Team team, CancellationToken ct = default)
+    public async Task<TeamUpdateConflict> UpdateTeamAsync(Team team, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Teams.Update(team);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return TeamUpdateConflict.None;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug" or "IX_teams_GoogleGroupPrefix"
+        })
+        {
+            return ((Npgsql.PostgresException)ex.InnerException).ConstraintName switch
+            {
+                "IX_teams_Slug" => TeamUpdateConflict.SlugTaken,
+                "IX_teams_CustomSlug" => TeamUpdateConflict.CustomSlugTaken,
+                _ => TeamUpdateConflict.GroupPrefixTaken
+            };
+        }
     }
 
     public async Task<bool> AddTeamWithRequiresApprovalOverrideAsync(

@@ -122,9 +122,9 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Persists a <see cref="Team"/> that was loaded via
     /// <see cref="FindForMutationAsync"/> and mutated in the service layer.
-    /// Commits immediately.
+    /// Commits immediately; returns only known unique-constraint conflicts. Other failures propagate.
     /// </summary>
-    Task UpdateTeamAsync(Team team, CancellationToken ct = default);
+    Task<TeamUpdateConflict> UpdateTeamAsync(Team team, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a team with <paramref name="requiresApproval"/> in one save.
@@ -547,3 +547,5 @@ internal interface ITeamRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 }
+
+internal enum TeamUpdateConflict { None, SlugTaken, CustomSlugTaken, GroupPrefixTaken }

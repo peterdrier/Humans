@@ -592,7 +592,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         {
             repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
             repo.UpdateTeamAsync(Arg.Any<Team>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException(failure));
+                .Returns(Task.FromException<TeamUpdateConflict>(failure));
         }
         else
         {
@@ -645,13 +645,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task UpdateTeamAsync_TeamNotFound_Throws()
+    public async Task UpdateTeamAsync_TeamNotFound_Refuses()
     {
         var act = () => _service.UpdateTeamAsync(
             Guid.NewGuid(), "name", null, requiresApproval: false, isActive: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
+        (await act()).ErrorMessage.Should().Match("*not found*");
     }
 
     [HumansFact]
@@ -681,11 +680,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.Slug.Should().Be(originalSlug);
         stored.RequiresApproval.Should().BeFalse();
         stored.IsActive.Should().BeTrue();
-        result.Description.Should().Be("new");
+        result.Team!.Description.Should().Be("new");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_ParentIsSelf_Throws()
+    public async Task UpdateTeamAsync_ParentIsSelf_Refuses()
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -693,12 +692,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, parentTeamId: team.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*own parent*");
+        (await act()).ErrorMessage.Should().Match("*own parent*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_TeamHasChildren_Throws()
+    public async Task UpdateTeamAsync_TeamHasChildren_Refuses()
     {
         var parent = SeedTeam("Parent");
         var child = SeedTeam("Child");
@@ -709,12 +707,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             parent.Id, "Parent", null, false, true, parentTeamId: newParent.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sub-teams*");
+        (await act()).ErrorMessage.Should().Match("*sub-teams*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_ParentNotFound_Throws()
+    public async Task UpdateTeamAsync_ParentNotFound_Refuses()
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -722,12 +719,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, parentTeamId: Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Parent team*not found*");
+        (await act()).ErrorMessage.Should().Match("*Parent team*not found*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_ParentIsSystemTeam_Throws()
+    public async Task UpdateTeamAsync_ParentIsSystemTeam_Refuses()
     {
         var team = SeedTeam("Alpha");
         var systemParent = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
@@ -736,12 +732,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, parentTeamId: systemParent.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*System teams cannot be parents*");
+        (await act()).ErrorMessage.Should().Match("*System teams cannot be parents*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_ParentAlreadyHasParent_Throws()
+    public async Task UpdateTeamAsync_ParentAlreadyHasParent_Refuses()
     {
         var grandparent = SeedTeam("Grand");
         var parent = SeedTeam("Parent");
@@ -752,12 +747,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, parentTeamId: parent.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*nest more than one level*");
+        (await act()).ErrorMessage.Should().Match("*nest more than one level*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_InvalidCustomSlug_Throws()
+    public async Task UpdateTeamAsync_InvalidCustomSlug_Refuses()
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -765,12 +759,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, customSlug: "!@#$", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Custom slug is not valid*");
+        (await act()).ErrorMessage.Should().Match("*Custom slug is not valid*");
     }
 
     [HumansFact]
-    public async Task UpdateTeamAsync_CustomSlugTakenByAnotherTeam_Throws()
+    public async Task UpdateTeamAsync_CustomSlugTakenByAnotherTeam_Refuses()
     {
         SeedTeam("Other Team");
         var team = SeedTeam("Alpha");
@@ -779,8 +772,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(
             team.Id, "Alpha", null, false, true, customSlug: "other-team", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already in use*");
+        (await act()).ErrorMessage.Should().Match("*already in use*");
     }
 
     [HumansFact]
@@ -841,7 +833,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateTeamAsync(team.Id, "Changed Name", null, false, false,
             customSlug: slug, isHidden: true, cancellationToken: ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*reserved route*");
+        (await act()).ErrorMessage.Should().Match("*reserved route*");
         ClearAllTrackers();
         var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, ct);
         stored.Name.Should().Be("Original Name");

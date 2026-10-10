@@ -1,3 +1,4 @@
+using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Controllers;
@@ -701,47 +702,36 @@ internal sealed class TeamController(
             return View(model);
         }
 
-        try
+        // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
+        // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
+        // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
+        var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+        bool? isSensitive = isAdmin ? model.IsSensitive : null;
+        var result = await teamService.UpdateTeamWithGoogleGroupAsync(
+            id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
+            model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
+            model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
+        if (!result.Succeeded)
         {
-            // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
-            // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
-            // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
-            var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
-            bool? isSensitive = isAdmin ? model.IsSensitive : null;
-            var result = await teamService.UpdateTeamWithGoogleGroupAsync(
-                id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
-                model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
-                model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
+            var (field, reason) = result.Conflict switch
+            {
+                TeamUpdateConflict.SlugTaken => ("Name", "This team URL is already in use by another team."),
+                TeamUpdateConflict.CustomSlugTaken => ("CustomSlug", "This custom slug is already in use by another team."),
+                TeamUpdateConflict.GroupPrefixTaken => ("GoogleGroupPrefix", "This Google Group prefix is already in use by another team."),
+                _ => ("", result.ErrorMessage!)
+            };
+            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, reason);
+            ModelState.AddModelError(field, reason);
+            await PopulateEligibleParentsAsync(model, id);
+            return View(model);
+        }
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
-            SetSuccess(sharedLocalizer["Admin_TeamUpdated"].Value);
-            if (result.GroupWarning is not null)
-                SetError(result.GroupWarning);
-            return RedirectToAction(nameof(Summary));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, ex.Message);
-            ModelState.AddModelError("", ex.Message);
-            await PopulateEligibleParentsAsync(model, id);
-            return View(model);
-        }
-        catch (DbUpdateException ex)
-        {
-            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
-            var message = ex.InnerException?.Message ?? "";
-            if (message.Contains("CustomSlug", StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError("CustomSlug", "This custom slug is already in use by another team.");
-            }
-            else
-            {
-                ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            }
-            await PopulateEligibleParentsAsync(model, id);
-            return View(model);
-        }
+        SetSuccess(sharedLocalizer["Admin_TeamUpdated"].Value);
+        if (result.GroupWarning is not null)
+            SetError(result.GroupWarning);
+        return RedirectToAction(nameof(Summary));
     }
 
     [HttpPost("{id:guid}/Delete")]

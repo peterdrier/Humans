@@ -206,9 +206,9 @@ internal interface ITeamManagementService : ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a team's details.
+    /// Updates a team's details, returning expected validation or unique-constraint refusals.
     /// </summary>
-    Task<Team> UpdateTeamAsync(
+    Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -241,13 +241,13 @@ internal interface ITeamManagementService : ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a team's details, then reconciles its Google Group link.
+    /// Updates a team's details, then reconciles its Google Group link only on success.
     /// <c>GroupWarning</c> carries the operator-facing message when the group
     /// sync failed or needs reactivation confirmation; the team update itself
     /// has already succeeded in that case.
     /// </summary>
     [ExternalWrite]
-    Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+    Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
         string? description,
@@ -559,4 +559,19 @@ internal enum TeamJoinOutcome
 
     /// <summary>Approval-required team — a pending join request was created.</summary>
     RequestSubmitted,
+}
+
+internal sealed record TeamUpdateResult(
+    Team? Team = null,
+    Humans.Teams.Data.TeamUpdateConflict Conflict = Humans.Teams.Data.TeamUpdateConflict.None,
+    string? ErrorMessage = null,
+    string? GroupWarning = null)
+{
+    public bool Succeeded => Team is not null && Conflict == Humans.Teams.Data.TeamUpdateConflict.None && ErrorMessage is null;
+
+    // Non-interactive seed/compensation callers must not silently discard a refusal.
+    public void RequireSuccess()
+    {
+        if (!Succeeded) throw new InvalidOperationException(ErrorMessage ?? $"Team update rejected: {Conflict}");
+    }
 }

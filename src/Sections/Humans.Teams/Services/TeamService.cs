@@ -374,7 +374,7 @@ internal sealed class TeamService(
             .ToList();
     }
 
-    public async Task<Team> UpdateTeamAsync(
+    public async Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -390,48 +390,48 @@ internal sealed class TeamService(
         bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default)
     {
-        var team = await repo.FindForMutationAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+        var team = await repo.FindForMutationAsync(teamId, cancellationToken);
+        if (team is null) return new(ErrorMessage: $"Team {teamId} not found");
 
         if (team.IsSystemTeam)
         {
             team.Description = description;
             team.GoogleGroupPrefix = googleGroupPrefix;
             team.UpdatedAt = clock.GetCurrentInstant();
-            await repo.UpdateTeamAsync(team, cancellationToken);
-            return team;
+            var conflict = await repo.UpdateTeamAsync(team, cancellationToken);
+            return conflict == TeamUpdateConflict.None ? new(Team: team) : new(Conflict: conflict);
         }
 
         if (parentTeamId.HasValue)
         {
             if (parentTeamId.Value == teamId)
-                throw new InvalidOperationException("A team cannot be its own parent");
+                return new(ErrorMessage: "A team cannot be its own parent");
 
             var hasChildren = await repo.HasActiveChildrenAsync(teamId, cancellationToken);
             if (hasChildren)
-                throw new InvalidOperationException("This team has sub-teams and cannot become a child of another team");
+                return new(ErrorMessage: "This team has sub-teams and cannot become a child of another team");
 
-            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken)
-                ?? throw new InvalidOperationException($"Parent team {parentTeamId.Value} not found");
+            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken);
+            if (parent is null) return new(ErrorMessage: $"Parent team {parentTeamId.Value} not found");
 
             if (parent.IsSystemTeam)
-                throw new InvalidOperationException("System teams cannot be parents");
+                return new(ErrorMessage: "System teams cannot be parents");
 
             if (parent.ParentTeamId.HasValue)
-                throw new InvalidOperationException("Cannot nest more than one level — the parent team already has a parent");
+                return new(ErrorMessage: "Cannot nest more than one level — the parent team already has a parent");
         }
 
         if (!string.IsNullOrWhiteSpace(customSlug))
         {
             var normalized = SlugHelper.GenerateSlug(customSlug);
             if (string.IsNullOrEmpty(normalized))
-                throw new InvalidOperationException("Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
+                return new(ErrorMessage: "Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
             if (ReservedTeamSlugs.Contains(normalized))
-                throw new InvalidOperationException($"The slug '{normalized}' conflicts with a reserved route.");
+                return new(ErrorMessage: $"The slug '{normalized}' conflicts with a reserved route.");
 
             var customSlugTaken = await repo.SlugExistsAsync(normalized, excludingTeamId: teamId, cancellationToken);
             if (customSlugTaken)
-                throw new InvalidOperationException($"The slug '{normalized}' is already in use by another team.");
+                return new(ErrorMessage: $"The slug '{normalized}' is already in use by another team.");
 
             customSlug = normalized;
         }
@@ -491,7 +491,8 @@ internal sealed class TeamService(
 
         try
         {
-            await repo.UpdateTeamAsync(team, cancellationToken);
+            var conflict = await repo.UpdateTeamAsync(team, cancellationToken);
+            if (conflict != TeamUpdateConflict.None) return new(Conflict: conflict);
         }
         finally
         {
@@ -510,7 +511,7 @@ internal sealed class TeamService(
 
         logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
 
-        return team;
+        return new(Team: team);
     }
 
     public async Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
@@ -552,7 +553,12 @@ internal sealed class TeamService(
             team.PageContentUpdatedByUserId = updatedByUserId;
             team.UpdatedAt = now;
 
-            await repo.UpdateTeamAsync(team, cancellationToken);
+            var conflict = await repo.UpdateTeamAsync(team, cancellationToken);
+            if (conflict != TeamUpdateConflict.None)
+            {
+                logger.LogWarning("Team page update rejected for team {TeamId}: {Conflict}", teamId, conflict);
+                return new TeamPageUpdateResult(false, null);
+            }
 
             await auditLogService.LogAsync(
                 AuditAction.TeamPageContentUpdated, nameof(Team), teamId,
@@ -604,9 +610,10 @@ internal sealed class TeamService(
                 // Compensation: clear the prefix so the team never points at a
                 // group that does not exist; the admin can retry from team edit.
                 logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
-                await UpdateTeamAsync(
+                var compensation = await UpdateTeamAsync(
                     team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
                     team.ParentTeamId, googleGroupPrefix: null, cancellationToken: cancellationToken);
+                compensation.RequireSuccess();
                 groupWarning = $"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.";
             }
         }
@@ -614,7 +621,7 @@ internal sealed class TeamService(
         return new TeamWithGroupResult(team, groupWarning);
     }
 
-    public async Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+    public async Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
         string? description,
@@ -630,10 +637,12 @@ internal sealed class TeamService(
         bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default)
     {
-        var team = await UpdateTeamAsync(
+        var result = await UpdateTeamAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
             isPromotedToDirectory, earlyEntryEnabled, cancellationToken);
+
+        if (!result.Succeeded) return result;
 
         string? groupWarning;
         try
@@ -651,7 +660,7 @@ internal sealed class TeamService(
             groupWarning = $"Team updated but Google Group setup failed: {ex.Message}";
         }
 
-        return new TeamWithGroupResult(team, groupWarning);
+        return result with { GroupWarning = groupWarning };
     }
 
     public async Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -1910,7 +1919,7 @@ internal sealed class TeamService(
             ?? throw new InvalidOperationException($"Team {team.Id} missing from the read model after creation");
     }
 
-    Task ITeamSeeding.UpdateTeamAsync(
+    async Task ITeamSeeding.UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -1924,11 +1933,14 @@ internal sealed class TeamService(
         bool? isSensitive,
         bool? isPromotedToDirectory,
         bool? earlyEntryEnabled,
-        CancellationToken cancellationToken) =>
-        UpdateTeamAsync(
+        CancellationToken cancellationToken)
+    {
+        var result = await UpdateTeamAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId, googleGroupPrefix,
             customSlug, hasBudget, isHidden, isSensitive, isPromotedToDirectory, earlyEntryEnabled,
             cancellationToken);
+        result.RequireSuccess();
+    }
 
     Task ITeamSeeding.AddSeededMemberAsync(
         Guid teamId,

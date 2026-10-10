@@ -36,6 +36,11 @@ public class TeamControllerPageContentTests
     [Xunit.InlineData("delete", false, false)]
     [Xunit.InlineData("create", true, false)]
     [Xunit.InlineData("edit", true, false)]
+    [Xunit.InlineData("edit-database", true, false)]
+    [Xunit.InlineData("edit-dependency", true, false)]
+    [Xunit.InlineData("edit-slug", false, false)]
+    [Xunit.InlineData("edit-custom", false, false)]
+    [Xunit.InlineData("edit-group", false, false)]
     [Xunit.InlineData("delete", true, false)]
     [Xunit.InlineData("delete", false, true)]
     public async Task TeamMutation_RejectionsKeepReasonWithoutStack_AndUnexpectedHandling(
@@ -49,11 +54,26 @@ public class TeamControllerPageContentTests
             .Returns(AuthorizationResult.Success());
         var teamId = Guid.NewGuid();
         const string reason = "The team hierarchy does not permit this change";
-        Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
+        var editCase = action;
+        if (action.StartsWith("edit-", StringComparison.Ordinal)) action = "edit";
+        var conflict = editCase switch
+        {
+            "edit-slug" => Humans.Teams.Data.TeamUpdateConflict.SlugTaken,
+            "edit-custom" => Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken,
+            "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
+            _ => Humans.Teams.Data.TeamUpdateConflict.None
+        };
+        Exception failure = editCase switch
+        {
+            "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
+            "edit-dependency" => new InvalidOperationException(reason),
+            _ => unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason)
+        };
         teams.CreateTeamWithGoogleGroupAsync("", null, false)
             .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
-            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+            .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
         teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var actor = Guid.NewGuid();
@@ -106,7 +126,9 @@ public class TeamControllerPageContentTests
             else
             {
                 Func<Task> act = async () => await MutateAsync();
-                await act.Should().ThrowAsync<IOException>();
+                (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+                controller.ModelState.Should().BeEmpty();
+                controller.TempData.Should().BeEmpty();
                 logger.ReceivedCalls().Should().BeEmpty();
             }
             return;
@@ -117,15 +139,32 @@ public class TeamControllerPageContentTests
             result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(TeamController.Summary));
         else
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var expectedReason = conflict switch
+        {
+            Humans.Teams.Data.TeamUpdateConflict.SlugTaken => "This team URL is already in use by another team.",
+            Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken => "This custom slug is already in use by another team.",
+            Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "This Google Group prefix is already in use by another team.",
+            _ => reason
+        };
+        var expectedField = conflict switch
+        {
+            Humans.Teams.Data.TeamUpdateConflict.SlugTaken => "Name",
+            Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken => "CustomSlug",
+            Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "GoogleGroupPrefix",
+            _ => string.Empty
+        };
         if (string.Equals(action, "edit", StringComparison.Ordinal))
-            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(reason);
+        {
+            controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expectedReason);
+            controller.TempData.Should().NotContainKey("SuccessMessage");
+        }
         else
             controller.TempData["ErrorMessage"].Should().Be(reason);
         var args = logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         args[0].Should().Be(LogLevel.Warning);
         args[3].Should().BeNull();
-        args[2]!.ToString().Should().Contain(reason);
+        args[2]!.ToString().Should().Contain(expectedReason);
         if (!string.Equals(action, "create", StringComparison.Ordinal))
             args[2]!.ToString().Should().Contain(teamId.ToString());
     }
