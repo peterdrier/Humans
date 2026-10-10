@@ -15,7 +15,7 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 
 | Shape | Port methods | Vendor side | What the section adds |
 |---|---|---|---|
-| Changed-since list | `GetOrdersAsync`, `GetIssuedTicketsAsync`, `GetCheckInsAsync` | `GET /orders`, `/issued_tickets`, `/check_ins` — cursor-paged | Follows `links.next` by `starting_after=<last id>`; maps cents to euros; orders: discount code, discount and donation amounts from line items; tickets: attendee email from the "Email" custom question; check-ins: net quantity per ticket, earliest positive scan |
+| Changed-since list | `GetOrdersAsync`, `GetIssuedTicketsAsync`, `GetCheckInsAsync` | `GET /orders`, `/issued_tickets`, `/check_ins` — cursor-paged | One page walk for all three: `starting_after=<last id>` until `links.next` is null, each page timed alone, a malformed walk thrown rather than truncated; maps cents to euros; orders: discount code, discount and donation amounts from line items; tickets: attendee email from the "Email" custom question; check-ins: net quantity per ticket, earliest positive scan |
 | Snapshot read | `GetEventSummaryAsync` | `GET /events/{id}` | Capacity from `ticket_groups.max_quantity` (fallback `ticket_types.quantity_total`) |
 | Discount codes | `GenerateDiscountCodesAsync` | `POST /voucher_codes` | `NOBO-` prefixed codes; percentage vs monetary (cents) |
 | Ticket writes | `VoidIssuedTicketAsync`, `IssueTicketAsync`, `CreateCheckInAsync` | form-encoded `POST /issued_tickets/{id}/void`, `/issued_tickets`, `/check_ins` | Void and issue classify failures into `TicketVendorWriteException.Kind`; check-in throws the raw `HttpRequestException` |
@@ -25,13 +25,15 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 - `Section.cs` — the environment switch: Production binds the HTTP client, anything else the
   stub plus placeholder settings. Both under Tickets' keyed inner-service key; the unkeyed port
   and its caching decorator are Tickets' own registration.
-- `Services/TicketTailorService.cs` — the client: the port methods, then the private mapping
-  helpers, then the wire records it deserializes. One naming mechanism for the wire shape (the
-  snake_case policy), and one mapping per wire record — an issued ticket maps to the port's
-  DTO the same way whether it came from a list page or an issue response.
+- `Services/TicketTailorService.cs` — the client: the port methods around one private page
+  walk, then the private mapping helpers, then the wire records it deserializes. One naming
+  mechanism for the wire shape (the snake_case policy), and one mapping per wire record — an
+  issued ticket maps to the port's DTO the same way whether it came from a list page or an
+  issue response.
 - `Services/StubTicketVendorService.cs` — the fixture: a lazily built, process-wide sample
   event and per-instance ticket state for void/issue.
-- `Docs/` — the invariant doc (`TicketTailor.md`), the data-access map, this target.
+- `Docs/` — the invariant doc (`TicketTailor.md`), the data-access map, this target, the
+  section debt ledger.
 - `Contracts/` — deliberately empty (the port is Tickets'); a README says so.
 - `tests/Humans.TicketTailor.Tests` — a read-side and a write-side client test class over a
   single request-capturing handler and one service factory; a stub dataset test; a
@@ -46,33 +48,46 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
   when empty, so `IsConfigured` is true and Tickets' sync runs against the fixture
   (`src/Sections/Humans.TicketTailor/Section.cs:53`).
 - The Basic auth header is set only when `ApiKey` is non-empty
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:42`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:43`).
 - Every list read pages until `links.next` is null
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:101`). Orders and issued
-  tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not
-  scan time) so a late-uploaded offline scan is never skipped
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:156`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:156`); missing data, an
+  item without an id, an empty page that still links onward, and a blank or repeated cursor
+  each throw `HttpRequestException`, so a broken walk never returns a partial list
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:140`).
+- Each page is timed on its own under the public method's name, never the whole walk
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:133`).
+- Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte`
+  (upload time, not scan time) so a late-uploaded offline scan is never skipped
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:107`).
 - A check-in is reported only when a ticket's net quantity across records is positive; its
   time is the earliest positive record's `check_in_at`, falling back to `created_at`
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:369`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:360`).
 - Attendee email is the answer to the custom question whose text is exactly `Email`,
   else the ticket's top-level email
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:450`).
-- Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary
-  discount values multiplied by 100 on the way out
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:228`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:441`).
+- Money crosses the boundary in euros: vendor cents divided by 100 on the way in
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:71`), monetary discount
+  values multiplied by 100 on the way out
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:208`).
+- A missing event body throws rather than reporting a zero-capacity event
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:176`).
 - Void and issue map HTTP status to `TicketVendorFailureKind`: 400/422 Validation, 401/403
   AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:462`). Every other
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:453`). Every other
   method throws `HttpRequestException`.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an
   `ArgumentException` before any call
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:308`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:291`). A 2xx without a
+  ticket id is a Transient write failure, never a ticket
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:338`).
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1`, `check_in_at`
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:252`); the vendor call is
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:234`); the vendor call is
   not idempotent, so callers never retry it.
-- Both implementations are `internal sealed`; only `Section.Register` binds them, and
-  only Tickets injects the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`).
+- Both implementations are `internal` — the HUM0034 analyzer keeps every type outside
+  `Contracts/` internal (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:21`) —
+  so only `Section.Register` binds them; only Tickets injects the port, and the port has this
+  live/stub pair plus Tickets' caching decorator as its implementations
+  (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`).
 - The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid
   order holds one or two valid tickets and every non-paid order one void ticket; check-ins
   fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins
@@ -113,9 +128,9 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 - Reads, discount codes and check-in throw `HttpRequestException` while void/issue wrap into
   `TicketVendorWriteException`. Tickets' health check and Gate's mirror job catch on the
   raw contract; unifying it is a port change, not an adapter change.
-- `GetOrdersAsync` times each page; the other list reads time their whole loop. The per-page
-  timing is the fix for the orders sync's false Error entries (nobodies-collective/Humans#946);
-  the other two were not part of that incident.
+- Per-page timing, not per-walk, is the fix for the orders sync's false Error entries
+  (nobodies-collective/Humans#946): `HttpClient.Timeout` and the timing threshold are both
+  per request.
 - The nested wire records are `internal`, not `private`, because `System.Text.Json`
   cannot bind private nested types.
 - `InternalsVisibleTo("DynamicProxyGenAssembly2")` is the universal per-section
