@@ -1188,6 +1188,80 @@ public sealed class ExpenseReportServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AttachFileToLineAsync_SuccessfulReplacement_RemovesOldMetadataAndCleansFile(bool cleanupFails)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, ct);
+        var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
+        var previous = MakeAttachment(submitter);
+        await _expenseRepo.AddAttachmentAsync(previous, ct);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, previous.Id, ct);
+        var previousKey = ExpenseReportService.AttachmentKey(previous.Id, previous.Extension);
+        _fileStorage.DeleteAsync(previousKey, CancellationToken.None).Returns(async _ =>
+        {
+            await using var db = new ExpensesDbContext(_expensesOptions);
+            (await db.ExpenseAttachments.AnyAsync(a => a.Id == previous.Id, ct)).Should().BeFalse();
+            await AuditLog.Received(1).LogAsync(AuditAction.ExpenseAttachmentUploaded,
+                "ExpenseReport", id, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User);
+            if (cleanupFails) throw new IOException("file cleanup unavailable");
+        });
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(id, submitter, false, lineId,
+            "replacement.pdf", "application/pdf", content, ct);
+
+        result.Succeeded.Should().BeTrue();
+        await using var context = new ExpensesDbContext(_expensesOptions);
+        var replacement = (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle().Subject;
+        replacement.Id.Should().NotBe(previous.Id);
+        (await _sut.GetAsync(id, ct))!.Lines.Single().AttachmentId.Should().Be(replacement.Id);
+        await _fileStorage.Received(1).DeleteAsync(previousKey, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_SaveThrowsAfterCommit_RestoresPreviousMetadataAndFile()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, ct);
+        var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
+        var previous = MakeAttachment(submitter);
+        previous.HoldedUploadedAt = Clock.GetCurrentInstant();
+        await _expenseRepo.AddAttachmentAsync(previous, ct);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, previous.Id, ct);
+        var interceptor = new FailAfterCommit();
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions)
+            .AddInterceptors(interceptor).Options;
+        var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
+        var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
+            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _holdedClient, _holdedFinance, Clock, NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
+        string? newKey = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { newKey = call.Arg<string>(); return Task.CompletedTask; });
+        interceptor.Armed = true;
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await service.AttachFileToLineWithResultAsync(id, submitter, false, lineId,
+            "replacement.pdf", "application/pdf", content, ct);
+
+        result.Succeeded.Should().BeFalse();
+        (await service.GetAsync(id, ct))!.Lines.Single().AttachmentId.Should().Be(previous.Id);
+        await using var context = new ExpensesDbContext(_expensesOptions);
+        (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(previous);
+        await _fileStorage.Received(1).DeleteAsync(newKey!, CancellationToken.None);
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task AttachFileToLineAsync_FailedReplacement_RestoresPreviousAttachment()
     {
@@ -3312,6 +3386,19 @@ public sealed class ExpenseReportServiceTests
         UploadedByUserId = uploaderId,
         UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
     };
+    private sealed class FailAfterCommit : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Armed) return ValueTask.FromResult(result);
+            Armed = false;
+            throw new IOException("save committed before failing");
+        }
+    }
+
     private sealed class DisconnectAfterCommit(CancellationTokenSource request) : SaveChangesInterceptor
     {
         public bool Armed { get; set; }

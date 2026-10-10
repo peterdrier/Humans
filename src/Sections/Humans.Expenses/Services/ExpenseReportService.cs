@@ -612,7 +612,15 @@ internal sealed class ExpenseReportService(
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null) return new("Expenses_Validation_LineNotOnReport", []);
-        var previousAttachmentId = line.AttachmentId;
+        var previousAttachment = line.Attachment is { } previous
+            ? new ExpenseAttachment
+            {
+                Id = previous.Id, OriginalFileName = previous.OriginalFileName,
+                Extension = previous.Extension, ContentType = previous.ContentType,
+                SizeBytes = previous.SizeBytes, UploadedByUserId = previous.UploadedByUserId,
+                UploadedAt = previous.UploadedAt, HoldedUploadedAt = previous.HoldedUploadedAt,
+            }
+            : null;
 
         var attachmentId = Guid.NewGuid();
         await fileStorage.SaveAsync(AttachmentKey(attachmentId, extension), content, ct);
@@ -629,10 +637,24 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
+        ExpenseAttachment? replacedAttachment = null;
         try
         {
-            await repo.AddAttachmentAsync(attachment, ct);
-            await repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
+            var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct);
+            if (!replacement.Found)
+            {
+                // The line disappeared before the save; no metadata was written.
+                try
+                {
+                    await fileStorage.DeleteAsync(AttachmentKey(attachmentId, extension), CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
+                }
+                return new("Expenses_Validation_LineNotOnReport", []);
+            }
+            replacedAttachment = replacement.Replaced;
 
             await auditLogService.LogAsync(
                 AuditAction.ExpenseAttachmentUploaded,
@@ -647,10 +669,11 @@ internal sealed class ExpenseReportService(
             var metadataRemoved = true;
             try
             {
-                // Both repository operations are idempotent. Run them even when the failed write
-                // may have committed before throwing, and put any replaced attachment back.
-                await repo.SetLineAttachmentAsync(lineId, previousAttachmentId, CancellationToken.None);
-                await repo.RemoveAttachmentAsync(attachmentId, CancellationToken.None);
+                // Restore the complete previous metadata and linkage atomically, including
+                // when the failed save committed before throwing. Keep its file until audit succeeds.
+                var rollback = await repo.ReplaceLineAttachmentAsync(
+                    reportId, lineId, previousAttachment, CancellationToken.None);
+                metadataRemoved = rollback.Found;
             }
             catch (Exception ex)
             {
@@ -676,6 +699,19 @@ internal sealed class ExpenseReportService(
             }
 
             throw;
+        }
+
+        if (replacedAttachment is not null)
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(
+                    AttachmentKey(replacedAttachment.Id, replacedAttachment.Extension), CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
+            }
         }
 
         return null;
