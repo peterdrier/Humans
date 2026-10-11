@@ -22,7 +22,7 @@ internal interface IBudgetService : IBudgetServiceRead, IApplicationService
     Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
-    Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId);
+    Task UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
     Task DeleteYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);

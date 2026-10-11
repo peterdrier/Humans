@@ -131,11 +131,15 @@
                             <label class="form-label form-label-sm">Year Identifier</label>
                             <input type="text" name="year" class="form-control form-control-sm" value="@budgetYear.Year" required />
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label class="form-label form-label-sm">Name</label>
                             <input type="text" name="name" class="form-control form-control-sm" value="@budgetYear.Name" required />
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">Ticket Vendor Event ID</label>
+                            <input type="text" name="vendorEventId" class="form-control form-control-sm" value="@budgetYear.VendorEventId" maxlength="256" placeholder="blank = current event" />
+                        </div>
+                        <div class="col-md-2">
                             <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
                         </div>
                     </form>

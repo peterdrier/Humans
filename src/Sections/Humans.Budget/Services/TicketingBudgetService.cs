@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Budget.Contracts;
 using Humans.Tickets.Contracts;
 using NodaTime;
 
@@ -34,7 +35,7 @@ internal sealed class TicketingBudgetService(
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
-                    .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid)
+                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(activeYear, o))
                     .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                     .Where(g => g.Key < currentWeekMonday)
                     .OrderBy(g => g.Key)
@@ -100,6 +101,15 @@ internal sealed class TicketingBudgetService(
 
         return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
+
+    /// <summary>
+    /// The one event rule: a year with a configured <c>VendorEventId</c> counts only that
+    /// event's orders; an unconfigured year counts the current event's.
+    /// </summary>
+    internal static bool IsYearTicketOrder(BudgetYearDetail year, TicketOrderInfo order) =>
+        year.VendorEventId is { } eventId
+            ? string.Equals(order.VendorEventId, eventId, StringComparison.Ordinal)
+            : order.IsCurrentEvent;
 
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
     private static LocalDate GetIsoMonday(LocalDate date)

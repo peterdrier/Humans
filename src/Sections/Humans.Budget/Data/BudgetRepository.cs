@@ -164,6 +164,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Guid yearId,
         string year,
         string name,
+        string? vendorEventId,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default)
@@ -191,6 +192,14 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 nameof(BudgetYear.Name), budgetYear.Name, name,
                 actorUserId, now);
             budgetYear.Name = name;
+        }
+
+        if (!string.Equals(budgetYear.VendorEventId, vendorEventId, StringComparison.Ordinal))
+        {
+            AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
+                nameof(BudgetYear.VendorEventId), budgetYear.VendorEventId, vendorEventId,
+                actorUserId, now);
+            budgetYear.VendorEventId = vendorEventId;
         }
 
         budgetYear.UpdatedAt = now;

@@ -141,7 +141,8 @@ internal sealed class BudgetAdminController(
             }
 
             var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+                    && TicketingBudgetService.IsYearTicketOrder(activeYear, o))
                 .Sum(o => o.TotalAmount);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
@@ -244,14 +245,14 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Years/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateYear(Guid id, string year, string name)
+    public async Task<IActionResult> UpdateYear(Guid id, string year, string name, string? vendorEventId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
         {
-            await budgetService.UpdateYearAsync(id, year, name, user.Id);
+            await budgetService.UpdateYearAsync(id, year, name, vendorEventId, user.Id);
             SetSuccess("Budget year updated.");
             return RedirectToAction(nameof(Admin));
         }

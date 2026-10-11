@@ -58,7 +58,8 @@ public sealed record BudgetYearDetail(
     string Name,
     BudgetYearStatus Status,
     bool IsDeleted,
-    IReadOnlyList<BudgetGroupDetail> Groups);
+    IReadOnlyList<BudgetGroupDetail> Groups,
+    string? VendorEventId = null);
 
 public sealed record BudgetGroupDetail(
     Guid Id,

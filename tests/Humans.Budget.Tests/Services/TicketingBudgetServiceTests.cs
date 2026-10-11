@@ -243,6 +243,52 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncActualsAsync_ConfiguredVendorEvent_CountsOnlyThatEventsOrders()
+    {
+        _budgetService.GetActiveYearAsync().Returns(
+            new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026"));
+        var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0);
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(purchasedAt, 100m, 2m, 1m, TicketAttendeeStatus.Valid) with { VendorEventId = "event-2026", IsCurrentEvent = false },
+                BuildOrder(purchasedAt, 999m, 10m, 5m, TicketAttendeeStatus.Valid) with { VendorEventId = "event-2025", IsCurrentEvent = true },
+            });
+
+        List<TicketingWeeklyActuals>? capturedActuals = null;
+        _budgetService.SyncTicketingActualsAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        await CreateSut().SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
+
+        capturedActuals.Should().ContainSingle().Which.Revenue.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public void IsYearTicketOrder_ConfiguredEvent_ExcludesOtherEventOrders_ForCashFlow()
+    {
+        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026");
+        var order = BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, null, null, TicketAttendeeStatus.Valid);
+
+        TicketingBudgetService.IsYearTicketOrder(year, order with { VendorEventId = "event-2026" }).Should().BeTrue();
+        TicketingBudgetService.IsYearTicketOrder(year, order with { VendorEventId = "event-2025", IsCurrentEvent = true }).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsYearTicketOrder_UnconfiguredYear_FallsBackToCurrentEvent()
+    {
+        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
+        var order = BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, null, null, TicketAttendeeStatus.Valid);
+
+        TicketingBudgetService.IsYearTicketOrder(year, order).Should().BeTrue();
+        TicketingBudgetService.IsYearTicketOrder(year, order with { IsCurrentEvent = false }).Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task UpdateProjectionAndRefreshAsync_SavesParametersThenRefreshes()
     {
         var groupId = Guid.NewGuid();

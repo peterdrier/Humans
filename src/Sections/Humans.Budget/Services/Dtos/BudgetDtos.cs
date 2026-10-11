@@ -15,7 +15,8 @@ internal sealed record BudgetYearSummarySnapshot(
     string Name,
     BudgetYearStatus Status,
     bool IsDeleted,
-    IReadOnlyList<BudgetGroupSummarySnapshot> Groups);
+    IReadOnlyList<BudgetGroupSummarySnapshot> Groups,
+    string? VendorEventId = null);
 
 internal sealed record BudgetGroupSummarySnapshot(
     Guid Id,

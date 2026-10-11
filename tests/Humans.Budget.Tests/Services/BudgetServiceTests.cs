@@ -692,7 +692,7 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", null, Guid.NewGuid());
 
         await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var auditEntries = await ctx2.BudgetAuditLogs
@@ -701,6 +701,31 @@ public sealed class BudgetServiceTests
 
         auditEntries.Should().ContainSingle(a => a.FieldName == nameof(BudgetYear.Name));
         auditEntries.Should().NotContain(a => a.FieldName == nameof(BudgetYear.Year));
+    }
+
+    [HumansFact]
+    public async Task UpdateYearAsync_persists_vendor_event_id_and_audits_the_change()
+    {
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget 2026", " event-2026 ", Guid.NewGuid());
+
+        var detail = await _service.GetYearByIdAsync(_yearId);
+        detail!.VendorEventId.Should().Be("event-2026");
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await ctx2.BudgetAuditLogs.CountAsync(
+            a => a.BudgetYearId == _yearId && a.FieldName == nameof(BudgetYear.VendorEventId),
+            TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // ─── DeleteYearAsync refuses active ─────────────────────────────────────
@@ -1351,7 +1376,7 @@ public sealed class BudgetServiceTests
             "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
             "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
             "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
-            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", actor, now, ct),
+            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", null, actor, now, ct),
             "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)

@@ -63,7 +63,7 @@ internal interface IBudgetRepository : IRepository
     Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates the free-text fields on a budget year (<c>Year</c>, <c>Name</c>)
+    /// Updates the free-text fields on a budget year (<c>Year</c>, <c>Name</c>, <c>VendorEventId</c>)
     /// and appends field-level audit entries for any that changed. Atomic.
     /// Returns <c>true</c> if the year existed, <c>false</c> otherwise.
     /// </summary>
@@ -71,6 +71,7 @@ internal interface IBudgetRepository : IRepository
         Guid yearId,
         string year,
         string name,
+        string? vendorEventId,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default);
