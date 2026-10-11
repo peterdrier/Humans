@@ -287,15 +287,18 @@ internal sealed class SurveyAdminController(
 
         try
         {
-            var email = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
-            SetSuccess(localizer["Surveys_PreviewEmailQueued", email]);
+            var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
+            if (result.RecipientEmail is not null)
+                SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
+            else
+                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(
                 "Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
                 id, actorId, ex.Message);
-            SetError(ex.Message);
+            SetError(localizer["Surveys_PreviewQueueFailed"]);
         }
 
         // Send is Board-only, so an author who rehearsed their own invitation goes to the builder.
@@ -320,7 +323,13 @@ internal sealed class SurveyAdminController(
 
         try
         {
-            var message = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+            var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+            if (result.Preview is null)
+            {
+                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+            var message = result.Preview;
             return View("EmailPreview", new SurveyEmailPreviewViewModel
             {
                 SurveyId = id,
@@ -334,7 +343,7 @@ internal sealed class SurveyAdminController(
             logger.LogWarning(
                 "Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
                 id, actorId, ex.Message);
-            SetError(ex.Message);
+            SetError(localizer["Surveys_PreviewFailed"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
     }

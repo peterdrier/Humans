@@ -329,6 +329,7 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Enquesta desada.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>El correu de previsualització de l’enquesta s’ha posat a la cua per a {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No s’ha trobat l’enquesta.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>No s’ha pogut carregar la previsualització del correu. Torna-ho a provar.</value></data>
   <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Només qui ha creat l’enquesta la pot enviar perquè s’aprovi.</value></data>
   <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Només es pot enviar perquè s’aprovi una enquesta en esborrany.</value></data>
   <data name="Surveys_SubmitFailed" xml:space="preserve"><value>No s’ha pogut enviar l’enquesta perquè s’aprovi. Torna-ho a provar.</value></data>

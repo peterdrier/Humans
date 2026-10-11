@@ -324,6 +324,7 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Survey saved.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Survey preview email queued for {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Survey not found.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>Could not load the email preview. Please try again.</value></data>
   <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Only the survey’s author may submit it for approval.</value></data>
   <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Only a draft survey can be submitted for approval.</value></data>
   <data name="Surveys_SubmitFailed" xml:space="preserve"><value>Could not submit the survey for approval. Please try again.</value></data>

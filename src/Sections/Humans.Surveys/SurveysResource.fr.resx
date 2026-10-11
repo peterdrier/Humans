@@ -329,6 +329,7 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Sondage enregistré.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>L’e-mail d’aperçu du sondage a été mise en file d’attente pour {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Sondage introuvable.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>Impossible de charger l’aperçu de l’e-mail. Veuillez réessayer.</value></data>
   <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Seule la personne qui a créé le sondage peut le soumettre pour approbation.</value></data>
   <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Seul un brouillon de sondage peut être soumis pour approbation.</value></data>
   <data name="Surveys_SubmitFailed" xml:space="preserve"><value>Impossible de soumettre le sondage pour approbation. Veuillez réessayer.</value></data>

@@ -343,6 +343,7 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Encuesta guardada.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Correo de vista previa de la encuesta en cola para {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No se encontró la encuesta.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>No se pudo cargar la vista previa del correo. Inténtalo de nuevo.</value></data>
   <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Solo quien ha creado la encuesta puede enviarla para su aprobación.</value></data>
   <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Solo se puede enviar para aprobación una encuesta en borrador.</value></data>
   <data name="Surveys_SubmitFailed" xml:space="preserve"><value>No se pudo enviar la encuesta para su aprobación. Inténtalo de nuevo.</value></data>
