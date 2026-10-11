@@ -21,8 +21,9 @@ internal sealed class LegalDocumentService(
 
     public IReadOnlyList<LegalDocumentDefinition> GetAvailableDocuments() => Documents;
 
-    public async Task<Dictionary<string, string>> GetDocumentContentAsync(string slug)
+    public async Task<Dictionary<string, string>> GetDocumentContentAsync(string slug, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         var cacheKey = CacheKeys.LegalDocument(slug);
         if (cache.TryGetValue<Dictionary<string, string>>(cacheKey, out var cachedContent) &&
             cachedContent is not null)
@@ -42,14 +43,18 @@ internal sealed class LegalDocumentService(
             }
 
             var contentDict = await gitHub.GetFolderContentByPrefixAsync(
-                definition.RepoFolder, definition.FilePrefix);
+                definition.RepoFolder, definition.FilePrefix, ct);
 
             // Mutable copy per signature contract.
             var content = new Dictionary<string, string>(contentDict, StringComparer.Ordinal);
             cache.Set(cacheKey, content, CacheTtl);
             return content;
         }
-        catch (GitHubApiException ex)
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (GitHubApiException ex) when (!ct.IsCancellationRequested)
         {
             // Status code only — the inner Octokit exception can carry GitHub's HTML error body.
             logger.LogWarning("GitHub API error fetching legal document {Slug}: {StatusCode}", slug, ex.StatusCode);
@@ -57,7 +62,7 @@ internal sealed class LegalDocumentService(
             cache.Set(cacheKey, emptyContent, FailureCacheTtl);
             return emptyContent;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
             var emptyContent = new Dictionary<string, string>(StringComparer.Ordinal);

@@ -29,7 +29,7 @@ internal sealed class LegalController(
         if (currentDoc is null)
             return NotFound();
 
-        var content = await legalDocService.GetDocumentContentAsync(currentDoc.Slug);
+        var content = await legalDocService.GetDocumentContentAsync(currentDoc.Slug, HttpContext.RequestAborted);
         var orderedContent = content.OrderByDisplayLanguage(canonicalFirst: true).ToList();
         var defaultLang = content.GetDefaultDocumentLanguage();
 

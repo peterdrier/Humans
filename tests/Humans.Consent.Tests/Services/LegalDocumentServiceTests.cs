@@ -84,6 +84,38 @@ public sealed class LegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetDocumentContentAsync_CancelledFetchDoesNotPopulateFailureCache()
+    {
+        _connector.CancelFetch = true;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            _service.GetDocumentContentAsync("statutes"));
+
+        _cache.TryGetValue(CacheKeys.LegalDocument("statutes"), out _).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetDocumentContentAsync_CancelledCallerStopsBeforeCachedRead()
+    {
+        await _service.GetDocumentContentAsync("statutes");
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            _service.GetDocumentContentAsync("statutes", cancellation.Token));
+    }
+
+    [HumansFact]
+    public async Task GetDocumentContentAsync_ForwardsCallerTokenToConnector()
+    {
+        using var cancellation = new CancellationTokenSource();
+
+        await _service.GetDocumentContentAsync("statutes", cancellation.Token);
+
+        Assert.Equal(cancellation.Token, _connector.LastFetchToken);
+    }
+
+    [HumansFact]
     public async Task GetDocumentContentAsync_CachesResult()
     {
         _connector.Content = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -279,6 +311,8 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public Dictionary<string, string> Content { get; set; } =
             new(StringComparer.Ordinal);
         public bool ThrowOnFetch { get; set; }
+        public bool CancelFetch { get; set; }
+        public CancellationToken LastFetchToken { get; private set; }
 
         public Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
             string folderPath, CancellationToken ct = default) =>
@@ -294,6 +328,9 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
             string folderPath, string filePrefix, CancellationToken ct = default)
         {
+            LastFetchToken = ct;
+            if (CancelFetch)
+                throw new OperationCanceledException();
             if (ThrowOnFetch)
                 throw new InvalidOperationException("simulated failure");
             return Task.FromResult<IReadOnlyDictionary<string, string>>(Content);
