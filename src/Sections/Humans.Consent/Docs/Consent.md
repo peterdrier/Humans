@@ -134,6 +134,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
+- Anonymous Legal pages use the existing six-culture content-unavailable message when GitHub content is absent.
 
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 
