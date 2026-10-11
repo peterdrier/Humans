@@ -79,6 +79,19 @@
   </Target>
 
   <!--
+    Magick.NET ships natives for 8 platforms (~236 MB per executable output). With no RuntimeIdentifier,
+    keep only the host RID's. Pass -p:KeepAllRuntimeAssets=true to keep all (cross-OS or cross-arch builds).
+  -->
+  <Target Name="PruneForeignRuntimeAssets" AfterTargets="ResolvePackageAssets"
+          Condition="'$(RuntimeIdentifier)' == '' and '$(KeepAllRuntimeAssets)' != 'true'">
+    <ItemGroup>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+          Condition="'%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native'
+                     and '%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != '$(NETCoreSdkPortableRuntimeIdentifier)'" />
+    </ItemGroup>
+  </Target>
+
+  <!--
     NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.13.1.
     14.13.1 is the latest published version; these are upstream ImageMagick
     native-library CVEs awaiting a new Magick.NET release. Revisit on each
