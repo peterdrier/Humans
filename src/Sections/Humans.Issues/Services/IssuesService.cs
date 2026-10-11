@@ -489,18 +489,12 @@ internal sealed class IssuesService(
         return issue.Id;
     }
 
-    public async Task<IssueMutationResult> UpdateStatusAsync(
+    public Task<IssueMutationResult> UpdateStatusAsync(
         Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "UpdateStatus", "Failed to update status.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
             if (!Enum.IsDefined(newStatus))
             {
                 logger.LogWarning("Issue {IssueId} status update rejected: undefined status {Status}", issueId, newStatus);
@@ -541,27 +535,15 @@ internal sealed class IssuesService(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateStatus on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update status.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> UpdateAssigneeAsync(
+    public Task<IssueMutationResult> UpdateAssigneeAsync(
         Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "UpdateAssignee", "Failed to update assignee.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (issue.AssigneeUserId == newAssigneeUserId) return IssueMutationResult.Success();
 
             var oldAssigneeId = issue.AssigneeUserId;
@@ -599,29 +581,17 @@ internal sealed class IssuesService(
             }
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateAssignee on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update assignee.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> UpdateSectionAsync(
+    public Task<IssueMutationResult> UpdateSectionAsync(
         Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        // Authorized against the section the issue is in, not the one it is going to — the
+        // same test the browser applies, where a handler routes an issue out of their queue.
+        return MutateAsync(issueId, viewer, "UpdateSection", "Failed to update section.", async issue =>
         {
-            // Authorized against the section the issue is in, not the one it is going to — the
-            // same test the browser applies, where a handler routes an issue out of their queue.
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateSection", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (newSection?.Trim().Length > MaxSectionLength)
             {
                 logger.LogWarning("Issue {IssueId} section update rejected: section exceeds {MaxLength} characters", issueId, MaxSectionLength);
@@ -655,27 +625,15 @@ internal sealed class IssuesService(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateSection on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update section.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> SetGitHubIssueNumberAsync(
+    public Task<IssueMutationResult> SetGitHubIssueNumberAsync(
         Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "SetGitHubIssueNumber", "Failed to link GitHub issue.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during SetGitHubIssueNumber", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (issue.GitHubIssueNumber == githubIssueNumber) return IssueMutationResult.Success();
 
             issue.GitHubIssueNumber = githubIssueNumber;
@@ -687,11 +645,32 @@ internal sealed class IssuesService(
                 $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
 
             return IssueMutationResult.Success();
+        }, ct);
+    }
+
+    /// <summary>
+    /// The one mutation pipeline: find the issue as a handler, apply the change, and turn a
+    /// failure into a result. Out of reach and gone both answer Missing.
+    /// </summary>
+    private async Task<IssueMutationResult> MutateAsync(
+        Guid issueId, IssueViewer viewer, string operation, string failure,
+        Func<Issue, Task<IssueMutationResult>> apply, CancellationToken ct)
+    {
+        try
+        {
+            var issue = await FindHandleableAsync(issueId, viewer, ct);
+            if (issue is null)
+            {
+                logger.LogWarning("Issue {IssueId} not found during {Operation:l}", issueId, operation);
+                return IssueMutationResult.Missing("Issue not found.");
+            }
+
+            return await apply(issue);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Failed to apply SetGitHubIssueNumber on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to link GitHub issue.");
+            logger.LogError(ex, "Failed to apply {Operation:l} on issue {IssueId}", operation, issueId);
+            return IssueMutationResult.Failed(failure);
         }
     }
 
