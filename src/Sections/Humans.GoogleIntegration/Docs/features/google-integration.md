@@ -162,6 +162,8 @@ Group sync requests use Hangfire instead of in-process retry. Team membership an
 
 Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`.
 
+A direct role above the claimed level — including one raised by hand in Drive — is a `Downgrade`. The sync page lists every pending downgrade (resource, member, current and expected role, teams) above the per-resource tables so admins can give real access through a team role or permission level before an `AddAndRemove` run lowers it. A folder claimed by more than one source (e.g. a team and a workgroup) gets the union of the claims, highest level per user. If any source throws, the pass holds all removals and demotions and marks each claimed resource with an error.
+
 ## Data Model
 
 ### GoogleResource Entity
@@ -264,7 +266,7 @@ public class ResourceSyncDiff
     // Convenience properties, derived from Members
     public List<string> MembersToAdd => Members.Where(m => m.State == MemberSyncState.Missing).Select(m => m.Email).ToList();
     public List<string> MembersToRemove => Members.Where(m => m.State == MemberSyncState.Extra).Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole) && ErrorMessage is null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole or MemberSyncState.Downgrade) && ErrorMessage is null;
 }
 
 public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
@@ -273,7 +275,7 @@ public record MemberSyncStatus(
     string Email, string DisplayName, MemberSyncState State, List<TeamLink> TeamLinks,
     string? CurrentRole = null, string? ExpectedRole = null, Guid? UserId = null, string? ProfilePictureUrl = null);
 
-public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole }
+public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole, Downgrade }
 
 public class SyncPreviewResult
 {
@@ -314,7 +316,7 @@ All Drive API calls MUST use:
 ### Multi-Team Permission Level Resolution
 When the same Drive resource (same `GoogleId`) is linked to multiple teams with different `DrivePermissionLevel` values, the system resolves the **maximum** level before setting permissions. For example, if Team A links a folder as Viewer and Team B links the same folder as Contributor, a user who belongs to both teams gets Contributor access.
 
-`TeamDriveAccessSource` groups resources by `GoogleId` and computes each member's maximum level across active claiming teams. Both reconciliation and immediate `AddUserToTeamResourcesAsync` grants use that claim; an absent or colliding claim never falls back to an arbitrary level. Reconciliation detects and repairs `WrongRole` drift using the expected level and inherited floor.
+`TeamDriveAccessSource` groups resources by `GoogleId` and computes each member's maximum level across active claiming teams. Both reconciliation and immediate `AddUserToTeamResourcesAsync` grants use that claim; an absent claim never falls back to an arbitrary level; a folder Workgroups also claims gets the union. Reconciliation repairs `WrongRole` (below expected) and `Downgrade` (above expected) drift using the expected level and inherited floor.
 
 ## Subteam Member Rollup
 

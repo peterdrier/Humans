@@ -1040,14 +1040,6 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         var claims = await GoogleDriveAccessSyncService.LoadClaimsAsync(driveAccessSources, googleId, logger, ct);
         var claim = claims.SingleOrDefault(c => string.Equals(c.FolderId, googleId, StringComparison.OrdinalIgnoreCase));
-        if (claim?.IsCollision == true)
-        {
-            var error = $"Google Drive access source collision for {googleId}: {string.Join(", ", claim.SourceNames)}";
-            logger.LogError("{Error}", error);
-            await auditLogService.LogAsync(AuditAction.AnomalousPermissionDetected,
-                GoogleResourceType.DriveFolder.ToString(), Guid.Empty, error, nameof(GoogleWorkspaceSyncService));
-            return DrivePermissionLevel.None;
-        }
         var level = claim?.Access.GetValueOrDefault(userId) ?? DrivePermissionLevel.None;
         if (level == DrivePermissionLevel.None)
             logger.LogWarning("Skipping Drive grant for {UserId} on {GoogleId}: no source claims the user's access", userId, googleId);

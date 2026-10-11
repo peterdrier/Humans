@@ -98,7 +98,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
                 .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
         var driveSync = new GoogleDriveAccessSyncService(
             [driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
-            AuditLog, _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
+            _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
             Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });

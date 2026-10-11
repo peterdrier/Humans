@@ -6,8 +6,8 @@ namespace Humans.GoogleIntegration.Contracts;
 /// <summary>
 /// Orchestrates Drive access for resources claimed through
 /// <see cref="IGoogleDriveAccessSource"/> — the source fan-out including Teams. Loads every registered source's
-/// expected access per resource, detects collisions (two sources claiming the
-/// same resource), hydrates user IDs and applies user-state filtering
+/// expected access per resource, unions claims (two sources claiming the
+/// same resource get the highest level per user), hydrates user IDs and applies user-state filtering
 /// uniformly, then diffs against Google and applies changes through the
 /// section's Drive permissions connector.
 /// </summary>

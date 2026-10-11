@@ -1,6 +1,5 @@
 using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
-using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Helpers;
@@ -19,7 +18,6 @@ internal sealed class GoogleDriveAccessSyncService(
     IUserService userService,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
-    IAuditLogService auditLogService,
     IGoogleSyncLogService googleSyncLog,
     IGoogleRemovalNotificationService removalNotifications,
     IGoogleResourceRepository resourceRepository,
@@ -75,7 +73,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             const string error = "No Google Drive access source claims this folder";
             logger.LogWarning("Google Drive access sync: no source claims folder id {FolderId}", folderId);
-            return BuildDiff(new FolderClaim(folderId, 0, [], new([]),
+            return BuildDiff(new FolderClaim(folderId, new([]),
                 resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()), [], error);
         }
 
@@ -89,11 +87,15 @@ internal sealed class GoogleDriveAccessSyncService(
     /// <summary>
     /// Loads every source's claims, one <see cref="IGoogleDriveAccessSource"/>
     /// at a time so a throwing source is skipped without aborting the others.
+    /// A folder claimed by several sources gets the union of their claims, highest
+    /// level per user. When a source throws, every claim is marked partial so the
+    /// run grants but never removes or demotes on an incomplete roster.
     /// </summary>
     internal static async Task<IReadOnlyList<FolderClaim>> LoadClaimsAsync(
         IEnumerable<IGoogleDriveAccessSource> sources, string? folderId, ILogger logger, CancellationToken ct)
     {
-        var claims = new List<(string SourceName, string FolderId, GoogleDriveAccessClaim Claim)>();
+        var claims = new List<(string FolderId, GoogleDriveAccessClaim Claim)>();
+        var partial = false;
 
         foreach (var source in sources)
         {
@@ -107,6 +109,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 logger.LogError(ex,
                     "Google Drive access source {SourceType} threw while computing expected access; skipping this source",
                     source.GetType().Name);
+                partial = true;
                 continue;
             }
 
@@ -115,18 +118,32 @@ internal sealed class GoogleDriveAccessSyncService(
                 if (string.IsNullOrWhiteSpace(key))
                     continue;
 
-                claims.Add((source.GetType().Name, key.Trim(), access));
+                claims.Add((key.Trim(), access));
             }
         }
 
         return claims
             .GroupBy(c => c.FolderId, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new FolderClaim(
-                g.Key,
-                g.Count(),
-                g.Select(c => c.SourceName).Distinct(StringComparer.Ordinal).ToArray(),
-                g.First().Claim, []))
+            .Select(g => new FolderClaim(g.Key, Union(g.Select(c => c.Claim).ToList()), [], partial))
             .ToList();
+    }
+
+    private static GoogleDriveAccessClaim Union(IReadOnlyList<GoogleDriveAccessClaim> claims)
+    {
+        if (claims.Count == 1)
+            return claims[0];
+
+        var access = new Dictionary<Guid, DrivePermissionLevel>();
+        var memberLinks = new Dictionary<Guid, IReadOnlyList<TeamLink>>();
+        foreach (var claim in claims)
+        {
+            foreach (var (userId, level) in claim.Access)
+                access[userId] = access.TryGetValue(userId, out var held) && held > level ? held : level;
+            foreach (var (userId, links) in claim.MemberTeamLinks ?? new Dictionary<Guid, IReadOnlyList<TeamLink>>())
+                memberLinks[userId] = memberLinks.TryGetValue(userId, out var known) ? [.. known, .. links] : links;
+        }
+
+        return new GoogleDriveAccessClaim(access, claims.SelectMany(c => c.LinkedTeams ?? []).ToList(), memberLinks);
     }
 
     private async Task<IReadOnlyList<GoogleResource>> LoadResourcesAsync(CancellationToken ct)
@@ -143,9 +160,7 @@ internal sealed class GoogleDriveAccessSyncService(
         ResourceSyncDiff diff;
         try
         {
-            diff = claim.IsCollision
-                ? await BuildCollisionDiffAsync(claim)
-                : await ReconcileClaimAsync(claim, action, syncSource, ct);
+            diff = await ReconcileClaimAsync(claim, action, syncSource, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -202,10 +217,13 @@ internal sealed class GoogleDriveAccessSyncService(
             ResourceId = primary?.Id ?? Guid.Empty,
             ResourceName = primary?.Name ?? claim.FolderId,
             ResourceType = (primary?.ResourceType ?? GoogleResourceType.DriveFolder).ToString(),
-            GoogleId = claim.FolderId, Url = primary?.Url, ErrorMessage = error,
+            GoogleId = claim.FolderId,
+            Url = primary?.Url,
+            ErrorMessage = error,
             PermissionLevel = primary is { DrivePermissionLevel: not DrivePermissionLevel.None }
                 ? primary.DrivePermissionLevel.ToString() : null,
-            LinkedTeams = claim.Claim.LinkedTeams?.ToList() ?? [], Members = members
+            LinkedTeams = claim.Claim.LinkedTeams?.ToList() ?? [],
+            Members = members
         };
     }
 
@@ -242,7 +260,11 @@ internal sealed class GoogleDriveAccessSyncService(
             {
                 errors.AddRange(await ApplyMissingAndChangedAsync(claim, plan, mode, syncSource, ct));
 
-                if (mode == SyncMode.AddAndRemove)
+                // A failed source may have claimed this folder too; its members would read as
+                // extra or over-privileged, so hold removals and demotions until it answers.
+                if (mode == SyncMode.AddAndRemove && claim.Partial)
+                    errors.Add("Removals and demotions skipped: a Google Drive access source failed this run");
+                else if (mode == SyncMode.AddAndRemove)
                     errors.AddRange(await ApplyExtraAsync(claim, plan, syncSource, ct));
             }
         }
@@ -362,7 +384,9 @@ internal sealed class GoogleDriveAccessSyncService(
                     ? MemberSyncState.Inherited
                     : string.Equals(currentRole, expectedRole, StringComparison.Ordinal)
                         ? MemberSyncState.Correct
-                        : MemberSyncState.WrongRole;
+                        : DrivePermissionRoleMapper.Parse(currentRole) > DrivePermissionRoleMapper.Parse(expectedRole)
+                            ? MemberSyncState.Downgrade
+                            : MemberSyncState.WrongRole;
 
             members.Add(new MemberSyncStatus(
                 member.Email, member.DisplayName, state, [],
@@ -437,15 +461,15 @@ internal sealed class GoogleDriveAccessSyncService(
     private async Task<List<string>> ApplyExtraAsync(FolderClaim claim, DrivePlan plan, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var errors = new List<string>();
-        foreach (var member in plan.Members.Where(m => m.State == MemberSyncState.Extra))
+        foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Extra or MemberSyncState.Downgrade))
         {
             if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
                 continue;
 
             if (member.ExpectedRole is not null)
             {
-                // This is a mixed permission: only the direct elevation is extra.
-                // Preserve the inherited floor and do not claim all access was removed.
+                // A downgrade, or a mixed permission whose direct elevation is extra: lower
+                // it to the expected role and do not claim all access was removed.
                 if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, ct) is { } error) errors.Add(error);
                 continue;
             }
@@ -528,21 +552,6 @@ internal sealed class GoogleDriveAccessSyncService(
         }
     }
 
-    private async Task<ResourceSyncDiff> BuildCollisionDiffAsync(FolderClaim claim)
-    {
-        var error = $"Google Drive access source collision for {claim.FolderId}: {string.Join(", ", claim.SourceNames)}";
-        logger.LogError("{Error}", error);
-
-        await auditLogService.LogAsync(
-            AuditAction.AnomalousPermissionDetected,
-            (claim.Resources.FirstOrDefault()?.ResourceType ?? GoogleResourceType.DriveFolder).ToString(),
-            claim.ResourceId,
-            error,
-            nameof(GoogleDriveAccessSyncService));
-
-        return BuildDiff(claim, [], error);
-    }
-
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
         if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
@@ -555,10 +564,9 @@ internal sealed class GoogleDriveAccessSyncService(
         return perm.HasDirectComponent;
     }
 
-    internal sealed record FolderClaim(string FolderId, int ClaimCount, string[] SourceNames,
-        GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources)
+    internal sealed record FolderClaim(string FolderId,
+        GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources, bool Partial = false)
     {
-        public bool IsCollision => ClaimCount > 1;
         public Dictionary<Guid, DrivePermissionLevel> Access => Claim.Access;
         public Guid ResourceId => Resources.FirstOrDefault()?.Id ?? Guid.Empty;
     }

@@ -44,6 +44,44 @@
     </div>
 </div>
 
+@{
+    var downgrades = result.Diffs
+        .SelectMany(d => d.Members.Where(m => m.State == MemberSyncState.Downgrade).Select(m => (Diff: d, Member: m)))
+        .ToList();
+}
+@if (downgrades.Count > 0)
+{
+    <div class="card border-danger mb-4">
+        <div class="card-header bg-danger-subtle">
+            <strong>Pending downgrades (@downgrades.Count)</strong>
+            <small class="text-muted ms-2">Direct roles above what teams/workgroups grant. When Drive sync mode is AddAndRemove, the next sync lowers each to its expected role. Give anyone who needs the access a team role or permission level first.</small>
+        </div>
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Resource</th><th>Email</th><th>Name</th><th>Current</th><th>Expected</th><th>Teams</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var (d, m) in downgrades)
+                {
+                    <tr>
+                        <td>@d.ResourceName</td>
+                        <td>@m.Email</td>
+                        <td>@m.DisplayName</td>
+                        <td>@m.CurrentRole</td>
+                        <td>@m.ExpectedRole</td>
+                        <td>
+                            @foreach (var team in m.TeamLinks)
+                            {
+                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
 @if (result.Diffs.Count == 0)
 {
     <div class="alert alert-info">No resources found for this type.</div>
@@ -178,6 +216,7 @@ else
                                         MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
                                         MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
                                         MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
+                                        MemberSyncState.Downgrade => ("Downgrade", "bg-danger"),
                                         _ => ("Extra", "bg-danger")
                                     };
 

@@ -2,7 +2,7 @@ namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Implemented by each section that owns expected access to Drive resources.
-/// GoogleIntegration hydrates user IDs, filters user state, detects source collisions,
+/// GoogleIntegration hydrates user IDs, filters user state, unions multi-source claims,
 /// and owns vendor mutations and their logs. An empty roster still claims the resource
 /// so reconciliation can remove access after retirement.
 /// </summary>
