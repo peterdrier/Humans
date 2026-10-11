@@ -582,7 +582,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
-        foreach (var culture in new[] { "en", "es", "de", "it", "fr", "ca" })
+        foreach (var culture in supportedCultures)
         {
             try
             {
