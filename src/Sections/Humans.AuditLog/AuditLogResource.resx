@@ -236,6 +236,7 @@
   <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Issue created</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>SEPA payout transfer</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>SEPA payout transfer booked</value></data>
+  <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>SEPA bank line skipped</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>City planning placement opened</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>City planning placement closed</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>City planning container placement opened</value></data>

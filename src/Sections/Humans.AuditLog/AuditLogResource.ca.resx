@@ -236,6 +236,7 @@
   <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Problema creat</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>Pagament SEPA transferit</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Transferència de pagament SEPA comptabilitzada</value></data>
+  <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Línia bancària SEPA omesa</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Període d’assignació urbanística obert</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Període d’assignació urbanística tancat</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Període d’ubicació urbanística de contenidors obert</value></data>

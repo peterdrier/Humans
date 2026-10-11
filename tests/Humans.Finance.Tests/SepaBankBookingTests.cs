@@ -288,7 +288,7 @@ public class SepaBankBookingTests
         var reads = 0;
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
                 [Movement(status: reads++ == 0 ? "pending" : "reconciled")]);
 
@@ -530,7 +530,7 @@ public class SepaBankBookingTests
         // The stub honours the requested window, as the live feed does.
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
                 ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
                 : []);
@@ -555,7 +555,7 @@ public class SepaBankBookingTests
         // The stub honours the requested window, as the live feed does.
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
                 ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
                 : []);
@@ -577,6 +577,104 @@ public class SepaBankBookingTests
         await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
             default!, default, default, default);
         await AssertNothingPosted();
+    }
+
+    // ─── peterdrier/Humans#1946: one stuck line cannot block the feed forever ───
+
+    /// <summary>A feed where <paramref name="stuckIds"/> are pending outgoing lines with no readable
+    /// date: the client fails closed on the first one unless it was told to skip it.</summary>
+    private void SeedStuckFeed(params string[] stuckIds) =>
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(ci =>
+            {
+                var skip = ci.ArgAt<IReadOnlySet<string>?>(4);
+                var stuck = stuckIds.FirstOrDefault(id => skip is null || !skip.Contains(id));
+                return stuck is null
+                    ? Task.FromResult<IReadOnlyList<HoldedBankMovementDto>>([Movement()])
+                    : Task.FromException<IReadOnlyList<HoldedBankMovementDto>>(
+                        new HoldedPermanentException("no readable date", new FormatException(), stuck));
+            });
+
+    private async Task RunSweepAsync(int times)
+    {
+        for (var i = 0; i < times; i++)
+            await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
+    public async Task Sweep_LineStuckForFewerThanThreeRuns_StillBlocksTheWholeFeed()
+    {
+        SeedStuckFeed("stuck-1");
+
+        await RunSweepAsync(2);
+
+        await AssertNothingPosted();
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_LineStuckForThreeRuns_IsSkipped_TheRestBooks_AndItIsAudited()
+    {
+        SeedStuckFeed("stuck-1");
+
+        await RunSweepAsync(2);
+        await AssertNothingPosted();
+        await RunSweepAsync(1);
+
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaBankLineSkipped, "SepaBankLine", Guid.Empty,
+            Arg.Is<string>(d => d.Contains("stuck-1", StringComparison.Ordinal)),
+            "sepa-bank-booking", Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_SkippedLine_IsAuditedOnce_NotOnEveryLaterRun()
+    {
+        SeedStuckFeed("stuck-1");
+
+        await RunSweepAsync(5);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_DifferentStuckLine_RestartsTheCount()
+    {
+        SeedStuckFeed("stuck-1");
+        await RunSweepAsync(2);
+        SeedStuckFeed("stuck-2");
+
+        await RunSweepAsync(2);
+
+        await AssertNothingPosted();
+        SeedStuckFeed("stuck-2");
+        await RunSweepAsync(1);
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_LineThatReadsAgain_ResetsTheCount()
+    {
+        SeedStuckFeed("stuck-1");
+        await RunSweepAsync(2);
+        SeedMovements(Movement());
+        await RunSweepAsync(1);
+        SeedStuckFeed("stuck-1");
+
+        await RunSweepAsync(2);
+
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ─── H1-H3: the ways a booking could still over-post or over-claim ──────────
@@ -774,7 +872,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .ThrowsAsync(new HoldedTransientException("Holded 503"));
 
         var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(
@@ -914,7 +1012,7 @@ public class SepaBankBookingTests
         var reads = 0;
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
                 [Movement(status: reads++ == 0 ? "pending" : statusAfter)]);
 
@@ -963,7 +1061,7 @@ public class SepaBankBookingTests
         // The stub honours the requested window, as the live feed does.
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
                 ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(date: lineDate)]
                 : []);
@@ -1186,7 +1284,7 @@ public class SepaBankBookingTests
         var reads = 0;
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
                 [Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA", reads++ == 0 ? "pending" : "reconciled")]);
 
@@ -1325,7 +1423,7 @@ public class SepaBankBookingTests
 
     private void SeedMovements(params HoldedBankMovementDto[] movements) =>
         _client.ListBankMovementsAsync(
-                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(movements.ToList());
 
     /// <summary>The live chart of accounts, as one owed amount per creditor account.</summary>

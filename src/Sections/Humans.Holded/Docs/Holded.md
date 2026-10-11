@@ -119,6 +119,10 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
   it live over a bounded window. A follow-up reconciliation panel is where a
   `holded_bank_movements` mirror table would land; see
   `2026-08-10-holded-v2-migration-design.md`.
+  A line with no readable `date` is skipped and logged, except a **pending outgoing** one — it could
+  be a SEPA rival, so it fails the read closed with a `HoldedPermanentException` whose
+  `BankMovementId` names it, unless the caller passes that id in `skipUnreadableDateIds`
+  (peterdrier/Humans#1946: Finance does so after three stuck sweep runs).
 - Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
   It is not free of personal data: a creditor account's name is the member's and the lines on it
   are their reimbursement history, identifiable through Finance's member→creditor binding.

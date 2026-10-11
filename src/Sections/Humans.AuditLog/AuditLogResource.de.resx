@@ -236,6 +236,7 @@
   <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Problem erstellt</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>Sepa-Auszahlungsüberweisung</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Sepa-Auszahlungsüberweisung gebucht</value></data>
+  <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Sepa-Bankzeile übersprungen</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Platzierungszeitraum der Stadtplanung eröffnet</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Platzierungszeitraum der Stadtplanung geschlossen</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Zeitraum für Containerplatzierung eröffnet</value></data>
