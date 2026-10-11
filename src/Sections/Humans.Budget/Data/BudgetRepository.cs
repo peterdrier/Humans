@@ -903,14 +903,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                     -week.TicketTailorFees, week.Monday, TicketingFeeVatRate, null, now, omitNewZero: true);
         }
 
-        // Empty input means the sync found no orders (e.g. a moved VendorEventId), not that every
-        // week was refunded: leave the stored actuals alone rather than wipe them.
-        if (weeklyActuals.Count == 0)
-            logger.LogWarning(
-                "Ticketing sync for year {YearId} found no orders; stored weekly actuals left untouched", budgetYearId);
-        else
-            lineItemsChanged += ZeroDroppedActualWeeks(
-                weeklyActuals.Select(w => w.Monday).ToHashSet(), revenueCategory, feesCategory, now);
+        lineItemsChanged += ZeroDroppedActualWeeks(
+            weeklyActuals.Select(w => w.Monday).ToHashSet(), revenueCategory, feesCategory, now);
 
         // Refresh the projection's learned parameters from the new actuals
         // BEFORE materializing the projected-week schedule, so projected

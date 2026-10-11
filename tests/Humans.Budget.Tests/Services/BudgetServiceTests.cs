@@ -889,7 +889,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncTicketingActualsAsync_empty_input_leaves_stored_actuals_untouched()
+    public async Task SyncTicketingActualsAsync_all_refunded_empty_input_zeroes_stored_weeks()
     {
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
@@ -897,7 +897,7 @@ public sealed class BudgetServiceTests
             new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
-        // A moved VendorEventId (or missing sync state) yields no orders: must not wipe the year.
+        // Every order of the week was refunded: empty input zeroes the stored week.
         await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
 
         await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
@@ -906,7 +906,7 @@ public sealed class BudgetServiceTests
                 && !li.Description.StartsWith("Projected: "))
             .ToListAsync(ct);
         actuals.Should().HaveCount(3);
-        actuals.Sum(li => li.Amount).Should().Be(150m - 15m - 5m);
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
     }
 
     [HumansFact]

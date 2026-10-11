@@ -26,6 +26,16 @@ internal sealed class TicketingBudgetService(
         {
             var orders = await ticketService.GetTicketOrdersAsync(ct);
 
+            // No orders of any status for the year's event means a moved VendorEventId or missing
+            // sync state, not "everything refunded": write nothing rather than zero the year.
+            if (!orders.Any(o => IsYearTicketOrder(activeYear, o)))
+            {
+                logger.LogWarning(
+                    "Ticketing sync for budget year {YearId} found no orders for its event; stored actuals left untouched",
+                    budgetYearId);
+                return 0;
+            }
+
             var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 

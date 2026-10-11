@@ -208,6 +208,47 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncActualsAsync_EventWithNoOrdersOfAnyStatus_WritesNothing()
+    {
+        // Only another event's orders: the year's event has none (moved VendorEventId / missing state).
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)
+                    with { IsCurrentEvent = false },
+            });
+
+        var result = await CreateSut().SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(0);
+        await _budgetService.DidNotReceiveWithAnyArgs().SyncTicketingActualsAsync(
+            default, default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task SyncActualsAsync_AllOrdersRefunded_StillSyncsEmptyActuals()
+    {
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, 2m, 1m,
+                    TicketPaymentStatus.Refunded, TicketAttendeeStatus.Valid),
+            });
+
+        List<TicketingWeeklyActuals>? capturedActuals = null;
+        _budgetService.SyncTicketingActualsAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(0);
+
+        await CreateSut().SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
+
+        capturedActuals.Should().NotBeNull().And.BeEmpty();
+    }
+
+    [HumansFact]
     public async Task SyncActualsAsync_RefusesNonActiveYear_AndWritesNothing()
     {
         var act = () => CreateSut().SyncActualsAsync(
