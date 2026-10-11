@@ -154,6 +154,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - `IGoogleGroupSync.ReconcileOneAsync` reconciles one group key and, on Google API failure during Execute, schedules delayed scoped Hangfire retries for the same group key, capped at five retry attempts.
 - If more than one `IGoogleGroupMembershipSource` claims the same group key, the orchestrator logs/audits a collision and skips mutation for that group. First-wins is forbidden because it would silently revoke access claimed by another owner.
 - `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` does not inherit that interface; Google Integration registers the concrete `TeamService` as a source.
+- Drive file ids are matched exactly, including case, in both scoped reconciliation and claim collision detection.
 - If more than one `IGoogleDriveAccessSource` claims the same folder id, `IGoogleDriveSync` logs/audits a collision and skips that folder — same collision rule as the group side, applied per folder id instead of per group key.
 - `IGoogleSyncService.CreateSubfolderAsync` respects the `GoogleDrive` `SyncMode` (throws when it is `None`) and throws on a Google API failure rather than returning a bogus id, so a failed creation is visible to the caller.
 

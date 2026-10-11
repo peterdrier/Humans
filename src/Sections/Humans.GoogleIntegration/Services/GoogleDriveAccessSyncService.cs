@@ -50,7 +50,7 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var claims = await LoadClaimsAsync(folderId, ct);
         var claim = claims.SingleOrDefault(c =>
-            string.Equals(c.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.FolderId, folderId, StringComparison.Ordinal));
 
         if (claim is null)
         {
@@ -97,7 +97,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         return claims
-            .GroupBy(c => c.FolderId, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.FolderId, StringComparer.Ordinal)
             .Select(g => new FolderClaim(
                 g.Key,
                 g.Count(),

@@ -175,6 +175,21 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileAllAsync_CaseDistinctFolderIds_AreReconciledSeparately()
+    {
+        var service = CreateService(new StaticSource("folder-A"), new StaticSource("folder-a"));
+        StubFolder("folder-A");
+        StubFolder("folder-a");
+
+        var result = await service.ReconcileAllAsync(SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorCount.Should().Be(0);
+        result.Diffs.Select(d => d.GoogleId).Should().Equal("folder-A", "folder-a");
+        await _drivePermissions.Received(1).ListPermissionsAsync("folder-A", Arg.Any<CancellationToken>());
+        await _drivePermissions.Received(1).ListPermissionsAsync("folder-a", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileAllAsync_SourceThrows_OtherSourcesStillSync()
     {
         var alice = Guid.NewGuid();
@@ -655,10 +670,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
             string? folderId2 = null,
             CancellationToken ct = default)
         {
-            if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.OrdinalIgnoreCase))
-                return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.OrdinalIgnoreCase));
+            if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.Ordinal))
+                return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal));
 
-            return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.OrdinalIgnoreCase)
+            return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal)
             {
                 [folderId] = access.ToDictionary(a => a.UserId, a => a.Level)
             });
