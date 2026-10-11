@@ -857,14 +857,9 @@ internal sealed class IssuesService(
 
         if (senderIsReporter)
         {
-            // Reporter commented → notify section role-holders + assignee.
-            foreach (var role in routing.RolesFor(issue.Section))
-            {
-                foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
-                {
-                    if (id != comment.SenderUserId) recipients.Add(id);
-                }
-            }
+            // Reporter commented → notify the queue's handlers + assignee.
+            recipients.UnionWith(await QueueHandlerIdsAsync(issue.Section, ct));
+            if (comment.SenderUserId is { } senderId) recipients.Remove(senderId);
             if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
                 recipients.Add(aid);
         }
@@ -962,23 +957,24 @@ internal sealed class IssuesService(
         }
     }
 
+    /// <summary>
+    /// Whoever handles the queue: its owning roles' holders, or Admins when no role owns it.
+    /// </summary>
+    private async Task<HashSet<Guid>> QueueHandlerIdsAsync(string? section, CancellationToken ct)
+    {
+        var queueRoles = routing.RolesFor(section);
+        IEnumerable<string> notified = queueRoles.Count > 0 ? queueRoles : [RoleNames.Admin];
+        var ids = new HashSet<Guid>();
+        foreach (var role in notified)
+            ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+        return ids;
+    }
+
     private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
     {
-        // Fan out to Admins + section role-holders; exclude self-filer.
-        var recipients = new HashSet<Guid>();
-
-        foreach (var id in await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
-        {
-            if (id != issue.ReporterUserId) recipients.Add(id);
-        }
-
-        foreach (var role in routing.RolesFor(issue.Section))
-        {
-            foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
-            {
-                if (id != issue.ReporterUserId) recipients.Add(id);
-            }
-        }
+        // Fan out to the queue's handlers; exclude self-filer.
+        var recipients = await QueueHandlerIdsAsync(issue.Section, ct);
+        recipients.Remove(issue.ReporterUserId);
 
         if (recipients.Count == 0) return;
 

@@ -93,7 +93,7 @@ Everything you change is recorded in the thread, so the reporter can see what ha
 
 ### Notifications
 
-You're notified in-app when a new issue lands in one of your areas, and again when a reporter replies to one. Reporter replies don't email you — otherwise every conversation would page the whole queue. Your replies *do* email the reporter.
+You're notified in-app when a new issue lands in one of your areas, and again when a reporter replies to one. Admins get these only for issues no area owns. Reporter replies don't email you — otherwise every conversation would page the whole queue. Your replies *do* email the reporter.
 
 ## Automation
 

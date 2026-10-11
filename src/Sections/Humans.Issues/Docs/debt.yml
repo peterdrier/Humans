@@ -5,5 +5,5 @@ next_id: 12
 inbox:
   - added: 2026-10-11
     id: ISSUES-11
-    what: "Models/IssueViewModels.cs AreaLabelMap and Models/IssueSectionInference.cs name queues by hand, so a new IIssueQueueOwner gets no Area label and no page-path guess until both are edited; the label move onto the queue declaration was approved 2026-09-14 and is not built. Found by section-doctor 2026-10-11 (Docs/Issues.md claimed no list existed)."
+    what: "Models/IssueViewModels.cs AreaLabelMap and Models/IssueSectionInference.cs name queues by hand, so a new IIssueQueueOwner gets no Area label and no page-path guess until both are edited; moving both the label and the path guess onto the queue declaration is approved and not built. Found by section-doctor 2026-10-11 (Docs/Issues.md claimed no list existed)."
     review: panel

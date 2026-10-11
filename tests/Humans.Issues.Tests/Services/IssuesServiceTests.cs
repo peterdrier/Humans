@@ -378,8 +378,11 @@ public sealed class IssuesServiceTests
         stored.Status.Should().Be(IssueStatus.Triage);
     }
 
-    [HumansFact]
-    public async Task SubmitIssueAsync_notifies_admins_and_section_handlers_excluding_reporter()
+    [HumansTheory]
+    [InlineData("Tickets", false)]
+    [InlineData(null, true)]
+    public async Task SubmitIssueAsync_notifies_queue_handlers_with_admins_only_as_fallback(
+        string? section, bool expectAdmins)
     {
         var reporterId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -408,12 +411,12 @@ public sealed class IssuesServiceTests
 
         await _service.SubmitIssueAsync(
             reporterId, IssueCategory.Bug, "Title", "Desc",
-            section: "Tickets",
+            section: section,
             pageUrl: "/Tickets", userAgent: null, additionalContext: null,
             screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         capturedRecipients.Should().NotBeNull();
-        capturedRecipients.Should().BeEquivalentTo([adminId, ticketAdminId]);
+        capturedRecipients.Should().BeEquivalentTo(expectAdmins ? new[] { adminId } : new[] { ticketAdminId });
         capturedRecipients.Should().NotContain(reporterId);
     }
 
@@ -727,6 +730,39 @@ public sealed class IssuesServiceTests
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("Tickets", false)]
+    [InlineData(null, true)]
+    public async Task PostCommentAsync_reporter_notifies_queue_handlers_with_admins_only_as_fallback(
+        string? section, bool expectAdmins)
+    {
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: section);
+        var adminId = Guid.NewGuid();
+        var ticketAdminId = Guid.NewGuid();
+        _roleService
+            .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([adminId]));
+        _roleService
+            .GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([ticketAdminId]));
+
+        IReadOnlyList<Guid>? capturedRecipients = null;
+        await _notificationService
+            .SendAsync(
+                NotificationSource.IssueComment,
+                Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(),
+                Arg.Any<string>(),
+                Arg.Do<IReadOnlyList<Guid>>(r => capturedRecipients = r),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: Xunit.TestContext.Current.CancellationToken);
+
+        capturedRecipients.Should().BeEquivalentTo(expectAdmins ? new[] { adminId } : new[] { ticketAdminId });
     }
 
     [HumansFact]
