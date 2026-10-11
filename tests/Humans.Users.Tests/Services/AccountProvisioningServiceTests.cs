@@ -172,10 +172,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<string?> GetProfilePictureContentTypeAsync(
+        public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+        public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
             GetCustomPictureRowsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(

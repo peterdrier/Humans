@@ -92,6 +92,12 @@ internal sealed class Profile
     /// <summary>Doubles as the "has picture?" predicate; supplies the file extension.</summary>
     public string? ProfilePictureContentType { get; set; }
 
+    /// <summary>
+    /// Versioned <c>IFileStorage</c> key of the current picture. Null while the picture still lives at the
+    /// legacy deterministic key (profile id + extension); readers fall back to it.
+    /// </summary>
+    public string? ProfilePictureStorageKey { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }

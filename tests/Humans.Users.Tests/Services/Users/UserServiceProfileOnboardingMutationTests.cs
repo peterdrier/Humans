@@ -686,16 +686,18 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType = "image/png";
+        profile.ProfilePictureStorageKey = "uploads/profile-pictures/versioned.png";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.AnonymizeProfileForDeletionAsync(userId, TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
         result.ProfileId.Should().Be(profileId);
-        result.PreviousProfilePictureContentType.Should().Be("image/png");
+        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/versioned.png");
 
         var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();
+        fresh.ProfilePictureStorageKey.Should().BeNull();
         fresh.FirstName.Should().Be("Deleted");
         fresh.LastName.Should().Be("User");
     }

@@ -78,7 +78,8 @@ There is no Google-photo import; humans upload pictures via US-14.1 only.
 ```
 Profile
 ├── DateOfBirth: LocalDate? [PersonalData]
-└── ProfilePictureContentType: string? (100)
+├── ProfilePictureContentType: string? (100)
+└── ProfilePictureStorageKey: string? (300) — versioned key; null = legacy key
 ```
 
 ### Computed Properties
@@ -88,14 +89,14 @@ Profile.HasCustomProfilePicture: bool (computed, not mapped)
 ```
 
 ### Storage Approach
-Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The filesystem is the only store — there is no DB picture column. Writes go to a temporary sibling and rename into place so readers never see a partial file.
+Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). Each upload is written to a new versioned key `uploads/profile-pictures/{profileId}-{guid}{.ext}` (stored in `ProfilePictureStorageKey`) before the metadata saves, and the previous file is deleted only after that save commits. Pictures that predate versioning have a null stored key and live at the legacy key `uploads/profile-pictures/{profileId}{.ext}`; readers fall back to it. `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The filesystem is the only store — there is no DB picture column. Writes go to a temporary sibling and rename into place so readers never see a partial file.
 
 Profile pictures live under `uploads/` but are NOT publicly served — `Program.cs` registers middleware that 404s `/uploads/profile-pictures/*` before `UseStaticFiles` sees it, so reads must go through the controller (and therefore through the GDPR gate below).
 
 The read path lives in `IProfilePictureService.GetProfilePictureAsync` and is the only entry point the `Profile/Picture` endpoint calls — the controller does not touch `IFileStorage` directly. The service:
 
 1. Reads the DB `ProfilePictureContentType` column via a cheap scalar projection. If null (no picture, or the row was anonymized), it returns `null` and the endpoint responds with 404 — even if a stale file still exists on disk.
-2. Otherwise reads the filesystem store. A hit is returned immediately.
+2. Otherwise reads the filesystem store at the stored key (or the legacy key when none). A hit is returned immediately.
 3. On a filesystem miss it returns `null` — there is no DB-column fallback.
 
 Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes bytes before committing their content-type metadata, then the editor cleans superseded files without request cancellation. `IProfilePictureService` only reads pictures and migration snapshots. Removal/anonymization clears the content-type gate before best-effort file cleanup; failures are logged and stale files remain inaccessible through the read path.

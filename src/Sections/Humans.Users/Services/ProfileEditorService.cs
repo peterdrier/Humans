@@ -136,17 +136,14 @@ internal sealed class ProfileEditorService(
 
     private async Task CleanupPreviousProfilePictureAsync(UserProfileSaveResult storageResult)
     {
-        if (storageResult.PreviousProfilePictureContentType is null
-            || string.Equals(storageResult.PreviousProfilePictureContentType,
-                storageResult.CurrentProfilePictureContentType, StringComparison.Ordinal))
+        if (storageResult.PreviousProfilePictureKey is null
+            || string.Equals(storageResult.PreviousProfilePictureKey,
+                storageResult.CurrentProfilePictureKey, StringComparison.Ordinal))
             return;
 
         try
         {
-            await fileStorage.DeleteAsync(
-                ProfilePictureStorageKeys.ProfilePictureKey(
-                    storageResult.ProfileId, storageResult.PreviousProfilePictureContentType),
-                CancellationToken.None);
+            await fileStorage.DeleteAsync(storageResult.PreviousProfilePictureKey, CancellationToken.None);
         }
         catch (Exception ex)
         {

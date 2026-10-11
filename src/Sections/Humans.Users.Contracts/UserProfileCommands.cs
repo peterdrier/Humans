@@ -58,15 +58,16 @@ public enum UserProfilePictureMutation
     Remove,
 }
 
+/// <summary>Storage keys are null when the profile has no picture.</summary>
 public sealed record UserProfileSaveResult(
     Guid ProfileId,
-    string? PreviousProfilePictureContentType,
-    string? CurrentProfilePictureContentType);
+    string? PreviousProfilePictureKey,
+    string? CurrentProfilePictureKey);
 
 public sealed record UserProfileAnonymizeResult(
     bool Anonymized,
     Guid? ProfileId,
-    string? PreviousProfilePictureContentType);
+    string? PreviousProfilePictureKey);
 
 public sealed record UserProfileLanguagesSaveResult(
     bool Saved,
