@@ -10,7 +10,7 @@ namespace Humans.Web.Hosting;
 /// (repeated separators, <c>.</c>/<c>..</c> segments, <c>\</c>), so alternate spellings of a
 /// gated path cannot slip past a raw prefix comparison and still resolve to the same file.
 /// </summary>
-public sealed class GatedUploadsFileProvider(IFileProvider inner) : IFileProvider
+internal sealed class GatedUploadsFileProvider(IFileProvider inner) : IFileProvider
 {
     private static readonly string[][] GatedPrefixes =
     [

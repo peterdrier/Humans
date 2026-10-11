@@ -88,7 +88,7 @@ internal sealed class BackdoorIssuesController(
         var screenshot = await issues.GetScreenshotAsync(id, Viewer, HttpContext.RequestAborted);
         if (screenshot is null) return NotFound();
 
-        Response.Headers.CacheControl = "private, no-cache";
+        Response.Headers.CacheControl = "private, no-store";
         return File(screenshot.Content, screenshot.ContentType);
     }
 
