@@ -340,6 +340,46 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             "the extra permission must not be revoked outside AddAndRemove mode");
     }
 
+    [HumansTheory]
+    [InlineData(GoogleResourceType.DriveFolder)]
+    [InlineData(GoogleResourceType.DriveFile)]
+    public async Task SyncSingleResourceAsync_SharedDriveItem_PreservesOtherTeamsMemberAccess(
+        GoogleResourceType resourceType)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var firstTeam = Guid.NewGuid();
+        var secondTeam = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        const string email = "second-team@nobodies.team";
+        var googleId = CreateGoogleFolder("Shared Drive item");
+        await _drivePermissions.CreatePermissionAsync(googleId, email, "writer", ct);
+        var resourceId = SeedDriveResource(firstTeam, googleId, "First link", resourceType);
+        SeedDriveResource(secondTeam, googleId, "Second link", resourceType);
+        await SaveAllAsync(ct);
+        StubTeams(
+            (firstTeam, true, []),
+            (secondTeam, true,
+            [new TeamMemberInfo(Guid.NewGuid(), memberId, "Second-team human", email, null,
+                TeamMemberRole.Member, Clock.GetCurrentInstant(), GoogleEmailStatus.Valid)]));
+        _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>
+            {
+                [memberId] =
+                [new UserEmailRowSnapshot(Guid.NewGuid(), memberId, email, true, null, null, true, false,
+                    null, null, Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]
+            });
+
+        var diff = await _syncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute, ct);
+
+        diff.ErrorMessage.Should().BeNull();
+        diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Correct);
+        diff.LinkedTeams.Should().HaveCount(2);
+        var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
+        permissions.Permissions.Should().ContainSingle(p => p.EmailAddress == email && p.Role == "writer");
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
+            default!, default, default, default, default, default);
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
