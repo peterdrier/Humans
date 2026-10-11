@@ -15,10 +15,11 @@ namespace Humans.GoogleIntegration.Services;
 /// instead of Groups. The Teams-keyed <c>google_resources</c> Drive path
 /// (<see cref="GoogleWorkspaceSyncService"/>) is untouched by this class.
 /// </summary>
+[CrossSectionWrite("Drive access sync writes Google email status back to the user.")]
 internal sealed class GoogleDriveAccessSyncService(
     IEnumerable<IGoogleDriveAccessSource> sources,
     IGoogleDrivePermissionsClient drivePermissions,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IAuditLogService auditLogService,
@@ -309,16 +310,44 @@ internal sealed class GoogleDriveAccessSyncService(
                     logger.LogDebug("Permission already exists for {Email} on {FolderId}", member.Email, claim.FolderId);
                     break;
                 case DrivePermissionCreateOutcome.Failed:
-                    var error = $"Google Drive add failed for {member.Email} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
+                    var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
                     logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, Guid.Empty, error,
                         nameof(GoogleDriveAccessSyncService),
                         member.Email, role, GoogleSyncSource.ScheduledSync, success: false,
                         errorMessage: error, userId: member.UserId, ct: ct);
+                    await MarkRejectedIfTargetRejectionAsync(result.Error, member, ct);
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// #1938 — a permanent target-side rejection (e.g. 403 "Cannot share a shared drive with
+    /// non Google accounts") marks the member's Google email Rejected so later syncs skip them
+    /// (<see cref="HydrateExpectedMembersAsync"/>) until an admin clears it. Same predicate and
+    /// effect as <c>GoogleWorkspaceSyncService.HandleDriveAddFailureAsync</c> (#677).
+    /// </summary>
+    private async Task MarkRejectedIfTargetRejectionAsync(GoogleClientError? error, MemberSyncStatus member, CancellationToken ct)
+    {
+        if (member.UserId is not { } userId ||
+            error?.StatusCode is not (400 or 403) ||
+            !GoogleWorkspaceSyncService.IsDriveTargetRejection(error.RawMessage ?? string.Empty))
+            return;
+
+        await userService.TrySetGoogleEmailStatusFromSyncAsync(userId, GoogleEmailStatus.Rejected, ct);
+        logger.LogWarning(
+            "Google rejected target email {Email} for Drive sharing - HTTP {StatusCode}. " +
+            "Google email status marked Rejected until an admin clears it.",
+            member.Email, error.StatusCode);
+    }
+
+    /// <summary>Keeps two characters of the local part, like the log pipeline's email redaction.</summary>
+    private static string MaskEmail(string email)
+    {
+        var at = email.IndexOf('@', StringComparison.Ordinal);
+        return at <= 0 ? "***" : $"{email[..Math.Min(2, at)]}***{email[at..]}";
     }
 
     private async Task ApplyExtraAsync(FolderClaim claim, DrivePlan plan, CancellationToken ct)
