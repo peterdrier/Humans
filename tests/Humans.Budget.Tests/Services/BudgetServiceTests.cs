@@ -889,6 +889,27 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_dropped_zero_amount_week_resets_ticket_count_notes()
+    {
+        var (_, _, revenueCatId, _) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        // Fully-discounted week: 3 tickets, 0 revenue.
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var revenueRows = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && !li.Description.StartsWith("Projected: ")
+                && li.ExpectedDate == new LocalDate(2026, 3, 2))
+            .ToListAsync(ct);
+        revenueRows.Should().ContainSingle().Which.Notes.Should().Be("0 tickets");
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_all_refunded_empty_input_zeroes_stored_weeks()
     {
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
