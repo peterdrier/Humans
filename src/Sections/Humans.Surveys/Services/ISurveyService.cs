@@ -58,7 +58,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default);
 
     /// <summary>Transitions Draft → PendingApproval. Author-only — enforced here as the state machine's source of truth.</summary>
-    Task SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+    Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Board/Admin only — enforced here.</summary>
     Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
@@ -494,3 +494,5 @@ internal sealed record SurveyWizardAdvanceResult(
     SurveyWizardOutcome Outcome,
     IReadOnlyList<Guid> MissingRequired,
     IReadOnlyList<Guid>? InvalidAnswers = null);
+
+internal sealed record SurveySubmitResult(bool Succeeded, string? ErrorKey = null);

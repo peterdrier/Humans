@@ -4597,7 +4597,8 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        await CreateService().SubmitForApprovalAsync(survey.Id, authorId, TestContext.Current.CancellationToken);
+        var result = await CreateService().SubmitForApprovalAsync(survey.Id, authorId, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
 
         await _repo.Received(1).SubmitForApprovalAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
@@ -4605,16 +4606,18 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_throws_for_a_non_author()
+    public async Task SubmitForApprovalAsync_returns_refusal_for_a_non_author()
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_SubmitNotAuthor");
+        _audit.ReceivedCalls().Should().BeEmpty();
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -4622,28 +4625,32 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.PendingApproval)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task SubmitForApprovalAsync_throws_when_survey_is_not_a_draft(SurveyStatus status)
+    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_is_not_a_draft(SurveyStatus status)
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(status, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             survey.Id, authorId, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_SubmitNotDraft");
+        _audit.ReceivedCalls().Should().BeEmpty();
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_throws_when_survey_missing()
+    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_missing()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_PreviewNotFound");
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

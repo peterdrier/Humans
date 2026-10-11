@@ -540,6 +540,8 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        surveys.SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>())
+            .Returns(new SurveySubmitResult(true));
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
 
         var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
@@ -549,6 +551,48 @@ public sealed class SurveyAdminControllerTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(SurveyAdminController.Index));
         await surveys.Received(1).SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Submit_dependency_failure_uses_translated_feedback()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        surveys.SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SurveySubmitResult>(new InvalidOperationException("Private provider diagnostic")));
+        var localizer = SpanishLocalizer();
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
+            localizer: localizer);
+
+        await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_SubmitFailed"].Value);
+        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Surveys_SubmitNotAuthor")]
+    [Xunit.InlineData("Surveys_SubmitNotDraft")]
+    public async Task Submit_refusal_uses_translated_feedback(string errorKey)
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        surveys.SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>())
+            .Returns(new SurveySubmitResult(false, errorKey));
+        var localizer = SpanishLocalizer();
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
+            localizer: localizer);
+
+        await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer[errorKey].Value);
+        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
     }
 
     [HumansFact]

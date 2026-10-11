@@ -125,13 +125,16 @@ internal sealed class SurveyAdminController(
 
         try
         {
-            await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
-            SetSuccess(localizer["Survey_Admin_Index_Submitted"]);
+            var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
+            if (result.Succeeded)
+                SetSuccess(localizer["Survey_Admin_Index_Submitted"]);
+            else
+                SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            SetError(localizer["Surveys_SubmitFailed"]);
         }
         // Index, not Edit: a successful submit leaves the survey PendingApproval, which the
         // authorization handler no longer lets an ordinary author edit.

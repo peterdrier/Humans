@@ -329,6 +329,9 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Sondaggio salvato.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>L’email di anteprima del sondaggio è stata messa in coda per {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Sondaggio non trovato.</value></data>
+  <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Solo chi ha creato il sondaggio può inviarlo per l’approvazione.</value></data>
+  <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Solo una bozza del sondaggio può essere inviata per l’approvazione.</value></data>
+  <data name="Surveys_SubmitFailed" xml:space="preserve"><value>Non è stato possibile inviare il sondaggio per l’approvazione. Riprova.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Il tuo account non ha un indirizzo email per le notifiche.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>Non è stato possibile mettere in coda l’email di anteprima del sondaggio.</value></data>
   <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Solo anteprima</value></data>

@@ -610,19 +610,21 @@ internal sealed class SurveyService(
             .ToList();
     }
 
-    public async Task SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new SurveySubmitResult(false, "Surveys_PreviewNotFound");
         if (survey.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException("Only the survey's author may submit it for approval.");
+            return new SurveySubmitResult(false, "Surveys_SubmitNotAuthor");
         if (survey.Status != SurveyStatus.Draft)
-            throw new InvalidOperationException("Only a Draft survey can be submitted for approval.");
+            return new SurveySubmitResult(false, "Surveys_SubmitNotDraft");
 
         var now = clock.GetCurrentInstant();
         await repo.SubmitForApprovalAsync(surveyId, now, ct);
         await auditLog.LogAsync(AuditAction.SurveySubmittedForApproval, AuditEntityTypes.Survey, surveyId,
             $"Submitted survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}' for approval", actorUserId);
+        return new SurveySubmitResult(true);
     }
 
     public async Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
