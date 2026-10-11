@@ -89,10 +89,25 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     // at our scale (<5 deletes per request, single server) the impact
     // is negligible. If this ever moves to a high-throughput path,
     // wrap in Task.Run.
-    public Task DeleteAsync(string key, CancellationToken ct = default)
+    public Task DeleteAsync(string key, CancellationToken ct = default, bool recursiveDirectory = false)
     {
         var fullPath = ResolveAbsolute(key);
-        if (File.Exists(fullPath))
+        if (recursiveDirectory)
+        {
+            var segments = key.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 2 || !string.Equals(segments[0], "uploads", StringComparison.Ordinal)
+                || !segments.Skip(1).Any(s => !string.Equals(s, ".", StringComparison.Ordinal)))
+                throw new ArgumentException("Directory key must name an owned prefix below uploads.", nameof(key));
+            try
+            {
+                Directory.Delete(fullPath, recursive: true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // Already erased; other IO failures remain visible to the owner.
+            }
+        }
+        else if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
         }

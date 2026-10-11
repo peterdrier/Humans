@@ -168,6 +168,31 @@ public class FileSystemFileStorageTests : IDisposable
     }
 
     [HumansFact]
+    public async Task DeleteAsync_OwnedDirectory_RemovesNestedFilesAndKeepsSiblingUploads()
+    {
+        await _store.SaveAsync("uploads/issues/first/a.png", [1], Xunit.TestContext.Current.CancellationToken);
+        await _store.SaveAsync("uploads/issues/first/nested/b.png", [2], Xunit.TestContext.Current.CancellationToken);
+        await _store.SaveAsync("uploads/issues/second/c.png", [3], Xunit.TestContext.Current.CancellationToken);
+
+        await _store.DeleteAsync("uploads/issues/first", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+
+        Directory.Exists(Path.Combine(_wwwroot, "uploads", "issues", "first")).Should().BeFalse();
+        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal((byte)3);
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_OwnedDirectory_MissingIsNoOpAndTraversalIsRefused()
+    {
+        await _store.DeleteAsync("uploads/issues/missing", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+
+        foreach (var key in new[] { "uploads/../../outside", ".", "uploads", "uploads/.", "css" })
+        {
+            var escape = () => _store.DeleteAsync(key, Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+            await escape.Should().ThrowAsync<ArgumentException>();
+        }
+    }
+
+    [HumansFact]
     public async Task SaveAsync_RejectsParentDirectorySegment()
     {
         var act = async () =>

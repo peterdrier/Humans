@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
@@ -38,7 +37,6 @@ internal sealed class IssuesService(
     IIssuesBadgeCacheInvalidator issuesBadge,
     IMemoryCache cache,
     IClock clock,
-    IHostEnvironment env,
     IFileStorage fileStorage,
     ISectionCatalog sectionCatalog,
     IssueSectionRouting routing,
@@ -777,7 +775,7 @@ internal sealed class IssuesService(
         {
             try
             {
-                DeleteScreenshotDirectory(issueId);
+                await fileStorage.DeleteAsync($"uploads/issues/{issueId}", ct, recursiveDirectory: true);
                 cleaned.Add(issueId);
             }
             catch (Exception ex)
@@ -851,27 +849,11 @@ internal sealed class IssuesService(
         // A cleanup fault must stop erasure while the rows still identify the files.
         foreach (var issue in ownIssues)
         {
-            DeleteScreenshotDirectory(issue.Id);
+            await fileStorage.DeleteAsync($"uploads/issues/{issue.Id}", ct, recursiveDirectory: true);
         }
 
         await repo.EraseForUserAsync(userId, ct);
         issuesBadge.InvalidateMany(badgeUserIds);
-    }
-
-    /// <summary>Removes an issue's upload directory; the caller retains its row on failure.</summary>
-    private void DeleteScreenshotDirectory(Guid issueId)
-    {
-        var issueDir = Path.Combine(
-            env.ContentRootPath, "wwwroot", "uploads", "issues", issueId.ToString());
-
-        try
-        {
-            Directory.Delete(issueDir, recursive: true);
-        }
-        catch (DirectoryNotFoundException)
-        {
-            // An absent upload is already erased; permission and IO faults must propagate.
-        }
     }
 
     // ─── Helpers — audit, notifications, in-memory stitching ───

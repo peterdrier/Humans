@@ -29,9 +29,15 @@ public sealed class InMemoryFileStorage : IFileStorage
     public Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default) =>
         Task.FromResult(Files.TryGetValue(key, out var bytes) ? bytes : null);
 
-    public Task DeleteAsync(string key, CancellationToken ct = default)
+    public Task DeleteAsync(string key, CancellationToken ct = default, bool recursiveDirectory = false)
     {
-        Files.TryRemove(key, out _);
+        if (recursiveDirectory)
+        {
+            var prefix = key.TrimEnd('/') + "/";
+            foreach (var child in Files.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)))
+                Files.TryRemove(child, out _);
+        }
+        else Files.TryRemove(key, out _);
         return Task.CompletedTask;
     }
 }

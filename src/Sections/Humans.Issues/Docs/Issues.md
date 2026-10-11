@@ -137,6 +137,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
 - Screenshot writes use the shared atomic `IFileStorage`; a failed Issue-row save removes the saved upload with a non-cancellable cleanup. Cleanup faults are logged without replacing the persistence error.
+- Retention and GDPR directory erasure also use `IFileStorage`; Issues performs no direct filesystem access.
 - Retention cleans screenshot directories before removing rows; a failed cleanup is logged and its row remains for the next sweep. GDPR erasure also cleans screenshots first and propagates cleanup failures so deletion cannot complete with files left behind.
 - Screenshot URLs under `/uploads/issues/` authenticate the viewer before static serving and reuse `IIssueTriage.GetIssueByIdAsync` to enforce reporter/handler access. Only the stored screenshot path is served; denied requests return 404 and responses are private and non-cacheable.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".

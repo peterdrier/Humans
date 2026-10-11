@@ -26,7 +26,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -92,6 +91,12 @@ public sealed class IssuesServiceTests
 
     public IssuesServiceTests()
     {
+        _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>(), true).Returns(call =>
+        {
+            try { Directory.Delete(Path.Combine(Path.GetTempPath(), "wwwroot", call.ArgAt<string>(0)), recursive: true); }
+            catch (DirectoryNotFoundException) { }
+            return Task.CompletedTask;
+        });
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = TestIssuesEmails.Create(culture => _renderedEmailCultures.Add(culture));
         AuditLog
@@ -100,8 +105,6 @@ public sealed class IssuesServiceTests
                 Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
 
         _userService = NewRegistryBackedUserService();
 
@@ -135,7 +138,7 @@ public sealed class IssuesServiceTests
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
 
@@ -427,8 +430,6 @@ public sealed class IssuesServiceTests
         var root = Directory.CreateTempSubdirectory("humans-issue-upload-");
         try
         {
-            var env = Substitute.For<IHostEnvironment>();
-            env.ContentRootPath.Returns(root.FullName);
             _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(async call =>
             {
                 var path = Path.Combine(root.FullName, "wwwroot", call.ArgAt<string>(0));
@@ -449,7 +450,7 @@ public sealed class IssuesServiceTests
             var service = new IssuesApplicationService(
                 repo, _userService, _userEmailService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-                _issuesBadge, Cache, Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+                _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
             {
@@ -987,12 +988,10 @@ public sealed class IssuesServiceTests
         repo.FindForMutationAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(_ => failDuringLookup
             ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var result = field switch
@@ -1377,13 +1376,11 @@ public sealed class IssuesServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), ct: Xunit.TestContext.Current.CancellationToken);
@@ -1406,13 +1403,11 @@ public sealed class IssuesServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
@@ -1436,13 +1431,11 @@ public sealed class IssuesServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
@@ -1516,13 +1509,11 @@ public sealed class IssuesServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
@@ -1544,13 +1535,11 @@ public sealed class IssuesServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
@@ -1926,12 +1915,16 @@ public sealed class IssuesServiceTests
             await File.WriteAllBytesAsync(Path.Combine(screenshotDir, "shot.png"), [1, 2, 3], Ct);
             var failure = new IOException("Filesystem unavailable");
             var unavailable = true;
-            var env = Substitute.For<IHostEnvironment>();
-            env.ContentRootPath.Returns(_ => unavailable ? throw failure : root.FullName);
+            _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>(), true).Returns(call =>
+            {
+                if (unavailable) return Task.FromException(failure);
+                Directory.Delete(Path.Combine(root.FullName, "wwwroot", call.ArgAt<string>(0)), recursive: true);
+                return Task.CompletedTask;
+            });
             var service = new IssuesApplicationService(
                 _repository, _userService, _userEmailService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-                _issuesBadge, Cache, Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+                _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
             if (gdprErasure)
             {
