@@ -771,13 +771,21 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var deleted = await repo.DeleteByIdsAsync(expired, ct);
-
-        // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
+        var cleaned = new List<Guid>();
+        // Keep a failed cleanup's row so the next sweep can find and retry it.
         foreach (var issueId in expired)
         {
-            DeleteScreenshotDirectory(issueId);
+            try
+            {
+                DeleteScreenshotDirectory(issueId);
+                cleaned.Add(issueId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Screenshot cleanup failed for expired issue {IssueId}; retaining its row", issueId);
+            }
         }
+        var deleted = await repo.DeleteByIdsAsync(cleaned, ct);
 
         logger.LogInformation(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
@@ -839,17 +847,18 @@ internal sealed class IssuesService(
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
 
-        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
-        issuesBadge.InvalidateMany(badgeUserIds);
-
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var issueId in erasedIssueIds)
+        // A cleanup fault must stop erasure while the rows still identify the files.
+        foreach (var issue in ownIssues)
         {
-            DeleteScreenshotDirectory(issueId);
+            DeleteScreenshotDirectory(issue.Id);
         }
+
+        await repo.EraseForUserAsync(userId, ct);
+        issuesBadge.InvalidateMany(badgeUserIds);
     }
 
-    /// <summary>Best-effort removal of an issue's upload dir; failures are logged, never thrown.</summary>
+    /// <summary>Removes an issue's upload directory; the caller retains its row on failure.</summary>
     private void DeleteScreenshotDirectory(Guid issueId)
     {
         var issueDir = Path.Combine(
@@ -857,14 +866,11 @@ internal sealed class IssuesService(
 
         try
         {
-            if (Directory.Exists(issueDir))
-                Directory.Delete(issueDir, recursive: true);
+            Directory.Delete(issueDir, recursive: true);
         }
-        catch (Exception ex)
+        catch (DirectoryNotFoundException)
         {
-            logger.LogWarning(ex,
-                "Failed to delete screenshot directory {Dir} for issue {IssueId}",
-                issueDir, issueId);
+            // An absent upload is already erased; permission and IO faults must propagate.
         }
     }
 

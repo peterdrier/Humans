@@ -1909,6 +1909,48 @@ public sealed class IssuesServiceTests
     // PurgeExpiredAsync — 6-month retention sweep used by CleanupIssuesJob
     // ==========================================================================
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScreenshotCleanupFailure_RetainsRowsUntilRetry(bool gdprErasure)
+    {
+        var root = Directory.CreateTempSubdirectory("humans-issue-erasure-");
+        try
+        {
+            var issueId = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200));
+            var issue = await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct);
+            issue.ScreenshotStoragePath = $"uploads/issues/{issueId}/shot.png";
+            await _issuesDb.SaveChangesAsync(Ct);
+            var screenshotDir = Path.Combine(root.FullName, "wwwroot", "uploads", "issues", issueId.ToString());
+            Directory.CreateDirectory(screenshotDir);
+            await File.WriteAllBytesAsync(Path.Combine(screenshotDir, "shot.png"), [1, 2, 3], Ct);
+            var failure = new IOException("Filesystem unavailable");
+            var unavailable = true;
+            var env = Substitute.For<IHostEnvironment>();
+            env.ContentRootPath.Returns(_ => unavailable ? throw failure : root.FullName);
+            var service = new IssuesApplicationService(
+                _repository, _userService, _userEmailService, _roleService,
+                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+                _issuesBadge, Cache, Clock, env, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+            if (gdprErasure)
+            {
+                var erase = () => service.EraseForUserAsync(issue.ReporterUserId, Ct);
+                (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+            }
+            else (await service.PurgeExpiredAsync(Ct)).Should().Be(0);
+            (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Ct)).Should().BeTrue();
+            Directory.Exists(screenshotDir).Should().BeTrue();
+
+            unavailable = false;
+            if (gdprErasure) await service.EraseForUserAsync(issue.ReporterUserId, Ct);
+            else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
+            (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
+            Directory.Exists(screenshotDir).Should().BeFalse();
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()
     {

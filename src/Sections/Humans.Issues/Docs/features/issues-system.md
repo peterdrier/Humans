@@ -107,6 +107,8 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-l
 
 Uploads use atomic `IFileStorage.SaveAsync`. If saving the Issue row fails, the upload is deleted; cleanup failures are logged and the original persistence failure propagates.
 
+Retention and GDPR erasure remove screenshots before report rows. Retention keeps failed items for the next sweep; GDPR propagates the fault and leaves report rows available for retry.
+
 Direct screenshot reads reuse the viewer-scoped issue read before static-file serving. Anonymous and out-of-scope viewers receive 404; permitted reads must match the stored screenshot path and disable caching.
 
 ## Authorization Matrix
