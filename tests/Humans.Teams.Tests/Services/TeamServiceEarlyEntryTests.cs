@@ -87,6 +87,31 @@ public sealed class TeamServiceEarlyEntryTests
     }
 
     [HumansFact]
+    public async Task UpdateTeam_Deactivating_EvictsEarlyEntryCache()
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
+        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(TeamUpdateConflict.None);
+
+        await _service.UpdateTeamAsync(
+            team.Id, team.Name, null, false, false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        _eeInvalidator.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
+    public async Task DeleteTeam_EvictsEarlyEntryCache()
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
+        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.DeactivateTeamAsync(team.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _service.DeleteTeamAsync(team.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        _eeInvalidator.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
     public async Task PageUpdateConflict_DoesNotAuditUnwrittenContent()
     {
         var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };

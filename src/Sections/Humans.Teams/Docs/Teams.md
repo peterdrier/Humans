@@ -250,6 +250,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - `team_join_request_state_history` is append-only per §12.
 - Resource-based authorization per design-rules §11: `TeamAuthorizationHandler` + `TeamOperationRequirement`.
 - Early Entry is gated by the per-team `EarlyEntryEnabled` flag: only enabled teams contribute EE grants to the cross-section roster, expose the EE management page, and accept new grants (`AddEarlyEntryGrantAsync` rejects a disabled team). Multiple teams may enable it. A flag change evicts the EE cache after the team save attempt, including uncertain save completion, so reads during the save cannot retain grants under the old flag.
+- Inactive teams grant no Early Entry: the roster excludes grants of deactivated teams, and deactivating, reactivating or deleting a team evicts the EE cache. Grants are kept and resume if the team is reactivated.
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
 - `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
 - `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
