@@ -541,6 +541,8 @@ def trace_token(tok, doc, section, exclude):
         path = _resolve_path(tok, doc, section)
         if path:
             return "ok", path
+        if "/" in tok:
+            return "MISS", "no such path"
     hits = grep_hits(tok, CODE_GLOBS, word=False, exclude=exclude)
     if hits:
         return "ok", f"{len(hits)} hit(s), first {hits[0]}"
