@@ -195,26 +195,8 @@ internal sealed partial class TeamResourceService(
                 ErrorMessage: "The provided URL does not point to a Google Drive folder.");
         }
 
-        var now = clock.GetCurrentInstant();
-        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, folderId, GoogleResourceType.DriveFolder, ct);
-        var resource = await ReactivateOrInsertAsync(
-            inactive,
-            () => new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = teamId,
-                ResourceType = GoogleResourceType.DriveFolder,
-                GoogleId = lookup.Item.Id,
-                Name = lookup.Item.FullPath,
-                Url = lookup.Item.WebViewLink,
-                ProvisionedAt = now,
-                LastSyncedAt = now,
-                IsActive = true,
-                DrivePermissionLevel = permissionLevel,
-            },
-            id => repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
-            "Drive folder",
-            ct);
+        var resource = await ReactivateOrInsertDriveItemAsync(
+            teamId, folderId, GoogleResourceType.DriveFolder, lookup.Item, permissionLevel, ct);
 
         logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -254,26 +236,8 @@ internal sealed partial class TeamResourceService(
                 ErrorMessage: "The provided URL points to a folder, not a file. Please use the 'Link Drive Resource' form instead.");
         }
 
-        var now = clock.GetCurrentInstant();
-        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, fileId, GoogleResourceType.DriveFile, ct);
-        var resource = await ReactivateOrInsertAsync(
-            inactive,
-            () => new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = teamId,
-                ResourceType = GoogleResourceType.DriveFile,
-                GoogleId = lookup.Item.Id,
-                Name = lookup.Item.FullPath,
-                Url = lookup.Item.WebViewLink,
-                ProvisionedAt = now,
-                LastSyncedAt = now,
-                IsActive = true,
-                DrivePermissionLevel = permissionLevel,
-            },
-            id => repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
-            "Drive file",
-            ct);
+        var resource = await ReactivateOrInsertDriveItemAsync(
+            teamId, fileId, GoogleResourceType.DriveFile, lookup.Item, permissionLevel, ct);
 
         logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -362,6 +326,36 @@ internal sealed partial class TeamResourceService(
             lookup.Group.NormalizedEmail, lookup.Group.DisplayName, teamId);
 
         return new LinkResourceResult(true, Resource: resource);
+    }
+
+    private async Task<GoogleResource> ReactivateOrInsertDriveItemAsync(
+        Guid teamId,
+        string googleId,
+        GoogleResourceType resourceType,
+        DriveItem item,
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, googleId, resourceType, ct);
+        return await ReactivateOrInsertAsync(
+            inactive,
+            () => new GoogleResource
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                ResourceType = resourceType,
+                GoogleId = item.Id,
+                Name = item.FullPath,
+                Url = item.WebViewLink,
+                ProvisionedAt = now,
+                LastSyncedAt = now,
+                IsActive = true,
+                DrivePermissionLevel = permissionLevel,
+            },
+            id => repository.ReactivateAsync(id, item.FullPath, item.WebViewLink, now, null, permissionLevel, ct),
+            resourceType == GoogleResourceType.DriveFolder ? "Drive folder" : "Drive file",
+            ct);
     }
 
     private async Task<GoogleResource> ReactivateOrInsertAsync(
