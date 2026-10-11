@@ -150,6 +150,19 @@ public class FileSystemFileStorageTests : IDisposable
     }
 
     [HumansFact]
+    public async Task DeleteAsync_DirectoryAtFileKey_PropagatesFailure()
+    {
+        const string key = "uploads/profile-pictures/broken.jpg";
+        var directory = Path.Combine(_wwwroot, key);
+        Directory.CreateDirectory(directory);
+
+        var delete = () => _store.DeleteAsync(key, Xunit.TestContext.Current.CancellationToken);
+
+        await delete.Should().ThrowAsync<UnauthorizedAccessException>();
+        Directory.Exists(directory).Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task DeleteAsync_MissingFile_IsNoOp()
     {
         // Should not throw.

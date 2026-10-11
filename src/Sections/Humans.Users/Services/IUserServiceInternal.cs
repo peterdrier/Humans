@@ -98,9 +98,9 @@ internal interface IUserServiceInternal : IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Anonymizes profile-owned personal data for GDPR deletion and returns the
-    /// previous picture metadata so the orchestrator can remove filesystem
-    /// bytes after the DB read gate has been cleared.
+    /// Removes profile-picture bytes before anonymizing profile-owned personal data
+    /// for GDPR deletion. Storage failures propagate while the previous metadata
+    /// remains available for retry. Returns the previous picture metadata.
     /// </summary>
     Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,

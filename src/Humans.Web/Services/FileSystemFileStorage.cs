@@ -85,7 +85,7 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     }
 
     // Synchronous I/O wrapped as Task for the IFileStorage contract.
-    // File.Exists / File.Delete block for the duration of the syscall;
+    // File.Delete blocks for the duration of the syscall;
     // at our scale (<5 deletes per request, single server) the impact
     // is negligible. If this ever moves to a high-throughput path,
     // wrap in Task.Run.
@@ -107,9 +107,17 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
                 // Already erased; other IO failures remain visible to the owner.
             }
         }
-        else if (File.Exists(fullPath))
+        else
         {
-            File.Delete(fullPath);
+            // Existence checks hide IO faults; only an absent file/directory is a normal miss.
+            try
+            {
+                File.Delete(fullPath);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // The owning directory is already gone; other IO failures remain visible.
+            }
         }
         return Task.CompletedTask;
     }

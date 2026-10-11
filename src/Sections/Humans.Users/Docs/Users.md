@@ -750,6 +750,8 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ### Account deletion cascade
 
+Profile erasure deletes the picture bytes before anonymizing profile metadata or collapsing identity. Storage failures propagate through the GDPR fan-out, preserving the picture key and deletion markers for a scheduled retry or a repeated admin purge; an unsuccessful erasure produces no account-purge success audit. Missing files are idempotent no-ops.
+
 Account deletion cascades (user-requested / admin-initiated / expiry-triggered) are orchestrated by `IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`). `ProfileService` owns only profile-picture storage (`IProfilePictureService`); profile-data anonymization is `IUserServiceInternal.AnonymizeProfileForDeletionAsync`. User-initiated deletion request and cancel both live on `IAccountDeletionService` (`RequestDeletionAsync`, `CancelDeletionAsync`). `ProfileController.RequestDeletion` (signed-in users with profiles), `GuestAccountController.RequestDeletion` (profileless users) and `UserController.CancelDeletion` call the orchestrator directly — no manual `User.DeletionRequestedAt`/`DeletionScheduledFor`/`DeletionEligibleAfter` writes anywhere else. The orchestrator computes the optional `DeletionEligibleAfter` (post-event hold for current-event ticket holders) inline via `ITicketServiceRead.GetUserTicketHoldingsAsync` so every entry point gets the same treatment.
 
 Deletion requests invalidate the user's shift authorization and view caches after the write attempt, including failures in later membership/role cleanup or the confirmation email. Those failures still propagate; cache cleanup never reports an incomplete cascade as successful.
