@@ -836,7 +836,8 @@ internal sealed class ShiftManagementService(
         Guid? departmentId = null,
         LocalDate? startDate = null, LocalDate? endDate = null,
         ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null)
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false)
     {
         var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
@@ -861,13 +862,17 @@ internal sealed class ShiftManagementService(
                 : null;
         }
 
+        var flags = ShiftEventQueryFlags.IncludeSignups;
+        if (!includeRestricted)
+            flags |= ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas;
+
         var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             urgencyTeamIds,
             minDayOffset,
             maxDayOffset,
-            ShiftEventQueryFlags.IncludeSignups));
+            flags));
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
