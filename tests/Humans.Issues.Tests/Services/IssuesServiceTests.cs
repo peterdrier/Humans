@@ -499,6 +499,8 @@ public sealed class IssuesServiceTests
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
+        _issuesBadge.Received(1).InvalidateMany(
+            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(reporterId)));
     }
 
     [HumansFact]
@@ -776,7 +778,7 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task UpdateStatusAsync_to_terminal_sets_ResolvedAt_and_ResolvedByUserId()
     {
-        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
@@ -785,6 +787,8 @@ public sealed class IssuesServiceTests
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
+        _issuesBadge.Received(1).InvalidateMany(
+            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(reporterId)));
     }
 
     [HumansFact]
@@ -1129,6 +1133,10 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         _navBadge.ClearReceivedCalls();
         var actorId = Guid.NewGuid();
+        var ticketAdminId = Guid.NewGuid();
+        var teamsAdminId = Guid.NewGuid();
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([ticketAdminId]);
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TeamsAdmin, Arg.Any<CancellationToken>()).Returns([teamsAdminId]);
 
         await _service.UpdateSectionAsync(issueId, Admin, "Teams", actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1136,6 +1144,9 @@ public sealed class IssuesServiceTests
         stored.Section.Should().Be("Teams");
 
         _navBadge.Received(1).Invalidate();
+        // Both queues' holders: the issue left one count and joined the other.
+        _issuesBadge.Received(1).InvalidateMany(
+            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(ticketAdminId) && ids.Contains(teamsAdminId)));
 
         await AuditLog.Received().LogAsync(
             AuditAction.IssueSectionChanged,
