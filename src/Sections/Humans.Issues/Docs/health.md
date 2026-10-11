@@ -28,8 +28,9 @@ further — and every write it makes is attributed to that person.
 | 5 | *I want to move one field on it* | `POST /Issues/{id}/{Status,Assignee,Section,GitHubIssue}` · `Update{Status,Assignee,Section}Async` · `SetGitHubIssueNumberAsync` |
 | 6 | *Make it go away* | `PurgeExpiredAsync` + `CleanupIssuesJob` · `EraseForUserAsync` · `ContributeForUserAsync` |
 
-Six questions. Shape 5 has four result-returning field mutations shared by browser and machine
-callers; missing issues, rule refusals and dependency failures are distinct outcomes.
+Shape 5 is four field mutations over one pipeline: find the issue the viewer may handle, apply the
+change, save, audit, notify. Missing (or out of reach), rule-refused, succeeded and failed are the
+four outcomes, and both doors read them from the same `IssueMutationResult`.
 
 Every shape that answers *for* a viewer takes the asker with it — the queue, the badge count,
 and every per-item read and mutation in shapes 2, 4 and 5. `IssueViewer` — the person's id plus
@@ -46,60 +47,67 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 
 ## 3. Structure
 
-- **`Domain/`** — `Issue`, `IssueComment`, and `IssueSectionRouting`, the section→roles table
-  and the one statement of the handle rule (`CanHandle`).
+- **`Domain/`** — `Issue`, `IssueComment`, and `IssueSectionRouting`, the lookup over the queues
+  sections declared through `IIssueQueueOwner` and the one statement of the handle rule
+  (`CanHandle`).
 - **`Data/`** — `IssuesDbContext` + the one repository. Repository projections are repo-local
   tuples/records; no service-layer DTO travels down into `Data/`.
 - **`Services/`** — `IssuesService`: submit, thread assembly, badge count, retention, GDPR, and
-  the four field mutations. It is the only enforcement point both doors share: `CanSee` gates
-  every per-item read, `FindHandleableAsync` gates every mutation, and out-of-reach answers
-  exactly what gone answers. **Target, not built:** the four mutations should be one *apply a
-  field change* pipeline they parameterise — see §2 shape 5.
+  the four field mutations behind one private pipeline. It is the only enforcement point both
+  doors share: `CanSee` gates every per-item read, `FindHandleableAsync` gates every mutation,
+  and out-of-reach answers exactly what gone answers.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
-  and never a second viewer inline.
+  and never a second viewer inline. **Target, not built:** the Area label and the
+  page-path → queue guess come from the sections that own the queues, not from two lists in
+  `Models/` (`AreaLabelMap`, `IssueSectionInference`) that name sections by hand.
 - **`Authorization/`** — one requirement (`Handle`) and its resource handler, which asks
   `IssueSectionRouting.CanHandle` the same question the service asks, to shape the page and to
   answer 403 where the service would answer 404.
-- **Contracts leaf** — `IIssueTriage` (machine door), `IssueViewer` (who is asking),
-  `IIssuesRetention` (job), `IssueStatus`, `IssueCategory`, the read models the machine door
-  serialises.
+- **Contracts** — `IIssueTriage` (machine door), `IssueViewer` (who is asking),
+  `IIssueQueueOwner` (a section declaring a queue), `IIssuesRetention` (job), `IssueStatus`,
+  `IssueCategory`, the read models the machine door serialises.
 
 ## 4. Invariants
 
 - An issue always has a reporter; the reporter can always read and comment on it.
-  (`Data/Configurations/IssueConfiguration.cs:14`, `Services/IssuesService.cs:224`)
+  (`Data/Configurations/IssueConfiguration.cs:14`, `Services/IssuesService.cs:235`)
 - The handle rule is stated once: Admin, or a holder of a role
   `IssueSectionRouting.RolesFor(Section)` names. A null section is Admin-only. Both the service
   and the browser's authorization handler read that one statement.
-  (`Domain/IssueSectionRouting.cs:66`, `Authorization/IssuesAuthorizationHandler.cs:29`)
+  (`Domain/IssueSectionRouting.cs:69`, `Authorization/IssuesAuthorizationHandler.cs:31`)
 - Reach is the same at every door and for every shape: the queue lists only what the viewer may
   see, and a per-item read or mutation on anything else answers as if it did not exist — null
-  from `GetIssueByIdAsync`, the same "not found" `InvalidOperationException` everywhere else. An
-  id is not an oracle. (`Services/IssuesService.cs:210`, `:232`, `:269`, `:324`, `:392`)
+  from `GetIssueByIdAsync`, a missing result from every mutation, the "not found"
+  `InvalidOperationException` from `GetThreadAsync`. An id is not an oracle.
+  (`Services/IssuesService.cs:220`, `:245`, `:281`, `:334`, `:402`)
 - Only a handler may move a field. The reporter may read and comment on their own issue in any
   section, and may not resolve it — `resolveOnPost` from a non-handler is dropped, not refused.
-  (`Services/IssuesService.cs:446`)
+  (`Services/IssuesService.cs:455`)
 - A mutation is authorized against the section the issue is *in*, so a handler may route an
-  issue out of their own queue. (`Services/IssuesService.cs:615`)
+  issue out of their own queue. (`Services/IssuesService.cs:618`)
 - A reporter's comment on a terminal issue reopens it to `Open` and clears `ResolvedAt` /
   `ResolvedByUserId`, with an audit row naming the reporter as actor.
-  (`Services/IssuesService.cs:416`)
+  (`Services/IssuesService.cs:425`)
 - `Section` may be changed only while the issue is non-terminal.
-  (`Services/IssuesService.cs:619`)
+  (`Services/IssuesService.cs:635`)
+- An unrouted section value is stored as null (the Admin queue), never refused; only an
+  over-length value fails. (`Services/IssuesService.cs:101`)
 - Every field change is audit-logged **after** the save, never before.
-  (`Services/IssuesService.cs:505`, `:571`, `:631`, `:675`)
+  (`Services/IssuesService.cs:528`, `:590`, `:648`, `:683`)
 - Screenshots are JPEG/PNG/WebP and under 10 MB, or the submit fails.
-  (`Services/IssuesService.cs:149`)
+  (`Services/IssuesService.cs:157`)
+- The actionable badge counts `Triage` and `Open` only — `InProgress` needs no picking up.
+  (`Data/IssuesRepository.cs:113`)
 - Whenever a viewer's actionable count could have moved, both badge caches are dropped.
-  (`Services/IssuesService.cs:178`, `:516`, `:636`)
+  (`Services/IssuesService.cs:186`, `:539`, `:653`)
 - The activity thread has no table of its own: it is `issue_comments` merged with the
-  `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:375`)
+  `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:385`)
 
 ## 5. Seams — specified, not built
 
-- Otherwise nothing in the section's docs or specs describes behavior that has not shipped.
+- None. Nothing in the section's docs or specs describes behavior that has not shipped.
 
 ## 6. Deliberately not done
 
@@ -118,20 +126,21 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   `SenderUserId` to `Issue.ReporterUserId`.
 - **No status-transition graph.** Any handler may set any status; the lifecycle in the docs is
   the intended path, not an enforced one.
+- **No `IssueViewer.From(ClaimsPrincipal)`.** The contracts stay free of ASP.NET types; the
+  controller's private `ViewerFor` is the one builder (Peter, 2026-09-14).
 
 ## Load-bearing weirdness
 
 - **`Section` is a free string, not an enum or FK.** The routing table is meant to change
   without a migration, so unknown values degrade to the Admin queue rather than failing.
 - **The routing table outlives sections.** `Profiles` and `Legal` name sections that no longer
-  exist; they stay routable while stored rows still carry those strings, and `SectionAnnotations`
-  surfaces the drift on `/Debug/Sections` rather than hiding it.
+  exist; Users and Consent declare them under the spelling their stored rows carry, so they stay
+  routable, and `/Debug/Sections` lists them as unmatched annotations rather than hiding the drift.
 - **`IssuesResource` is `public` and sits at the project root** beside its `.resx` files —
   the SDK derives the manifest name from the adjacent `.cs` file's namespace, and the boot
   localization diagnostic finds section markers via `GetExportedTypes()`.
-- **The section's resource keys are `Issue_`-prefixed, not `Issues_`.** The conformance
-  detector counts them as non-conforming; renaming them is churn across six cultures with no
-  reader benefit, so they stay until a rename is asked for.
+- **The section's resource keys are `Issue_`-prefixed, not `Issues_`.** Exempt by Peter's ruling
+  (peterdrier/Humans#1682); both conformance detectors skip it.
 - **`DeleteByIdsAsync` loads then removes** instead of `ExecuteDeleteAsync`, because the
   EF InMemory provider used by the unit tests does not support the latter.
 - **`SaveTrackedIssueAsync` attaches and force-marks Modified**, because the repository hands
