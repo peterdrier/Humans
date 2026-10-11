@@ -506,13 +506,14 @@ public class UserEmailServiceTests
 
         var result = await _service.DeleteEmailAsync(userId, providerRowId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("EmailGrid_DeleteRejectedHasProvider");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_LastVerifiedEmailNoOAuthLogin_ThrowsValidationException()
+    public async Task DeleteEmailAsync_LastVerifiedEmailNoOAuthLogin_ReturnsRefusal()
     {
         // The user has one verified UserEmail and zero AspNetUserLogins. Deleting
         // the email would leave no auth method — block.
@@ -524,7 +525,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "only@example.com",
             IsVerified = true,
-            IsPrimary = true,
+            IsPrimary = false,
         };
         _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
@@ -533,15 +534,16 @@ public class UserEmailServiceTests
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo>());
 
-        var act = async () => await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailDelete_LastVerifiedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_LastVerifiedEmailEvenWithOAuthLogin_ThrowsValidationException()
+    public async Task DeleteEmailAsync_LastVerifiedEmailEvenWithOAuthLogin_ReturnsRefusal()
     {
         // Tightened from the original auth-method rule: even with an OAuth
         // login present, deleting the last verified email is blocked because
@@ -558,16 +560,17 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "only@example.com",
             IsVerified = true,
-            IsPrimary = true,
+            IsPrimary = false,
         };
         _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
 
-        var act = async () => await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailDelete_LastVerifiedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
@@ -598,7 +601,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_PrimaryEmail_ThrowsValidationException()
+    public async Task DeleteEmailAsync_PrimaryEmail_ReturnsRefusal()
     {
         // see nobodies-collective/Humans#758 — the primary email can't be deleted even
         // when other verified emails remain; the user must promote another to primary first.
@@ -625,14 +628,15 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { primary, secondary });
 
-        var act = async () => await _service.DeleteEmailAsync(userId, primaryId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.DeleteEmailAsync(userId, primaryId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("EmailGrid_DeletePrimaryBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_TicketLinkedEmail_ThrowsValidationException()
+    public async Task DeleteEmailAsync_TicketLinkedEmail_ReturnsRefusal()
     {
         // see nobodies-collective/Humans#758 — a non-primary verified email that matches the
         // user's ticket (attendee email here) is blocked: removing it could disconnect the ticket.
@@ -687,9 +691,10 @@ public class UserEmailServiceTests
                     ])
             ]));
 
-        var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.DeleteEmailAsync(userId, ticketEmailId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("EmailGrid_DeleteTicketLinkedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 

@@ -277,7 +277,8 @@ IUserEmailService
 ├── SetVisibilityAsync(userId, emailId, visibility)
 │   → Updates profile visibility for an email
 └── DeleteEmailAsync(userId, emailId)
-    → Removes a non-OAuth email
+    → Removes a non-OAuth email, or returns a refusal key for provider, primary,
+      last-verified or ticket-linked protections
 ```
 
 ## Related Features

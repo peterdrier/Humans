@@ -280,20 +280,20 @@ internal sealed class ProfileEmailsController(
         try
         {
             var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
-            if (deleted)
+            if (deleted.Succeeded)
             {
                 await LogSelfEmailDeletedAsync(user.Id, emailId);
                 SetSuccess(localizer["Profile_EmailDeleted"].Value);
             }
             else
             {
-                SetError(localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+                SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "EmailGrid_DeleteRejectedHasProvider"));
             }
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -942,11 +942,11 @@ internal sealed class ProfileEmailsController(
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    private async Task SetAdminEmailDeletedResultAsync(Guid userId, Guid emailId, Guid actorId, bool deleted)
+    private async Task SetAdminEmailDeletedResultAsync(Guid userId, Guid emailId, Guid actorId, DeleteEmailResult deleted)
     {
-        if (!deleted)
+        if (!deleted.Succeeded)
         {
-            SetError(localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+            SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "EmailGrid_DeleteRejectedHasProvider"));
             return;
         }
 

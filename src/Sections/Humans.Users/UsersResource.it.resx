@@ -1203,4 +1203,7 @@
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>È già in attesa una richiesta di unione per questo indirizzo email.</value>
   </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Non puoi rimuovere il tuo ultimo indirizzo email verificato. Aggiungi prima un altro indirizzo verificato per continuare a ricevere le notifiche del sistema.</value>
+  </data>
 </root>

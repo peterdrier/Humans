@@ -140,7 +140,7 @@ public class ProfileEmailsControllerGridTests
     [HumansTheory]
     [InlineData("SetPrimary", true)]
     [InlineData("SetEmailVisibility", true)]
-    [InlineData("DeleteEmail", true)]
+    [InlineData("DeleteEmail", false)]
     [InlineData("SetGoogle", true)]
     [InlineData("ClearGoogle", true)]
     [InlineData("ClearPrimary", true)]
@@ -161,7 +161,7 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(rejection));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
+            .Returns(Task.FromException<DeleteEmailResult>(rejection));
         _userEmailService.SetGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<bool>(rejection));
         _userEmailService.ClearGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -194,7 +194,7 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        _controller.TempData["ErrorMessage"].Should().Be(string.Equals(action, "Unlink", StringComparison.Ordinal)
+        _controller.TempData["ErrorMessage"].Should().Be((string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
             ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
             : reason);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
@@ -613,7 +613,7 @@ public class ProfileEmailsControllerGridTests
         var targetUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         _userEmailService.DeleteEmailAsync(targetUserId, emailId, Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(new DeleteEmailResult(true));
 
         var result = await _controller.AdminDeleteEmail(targetUserId, emailId, Xunit.TestContext.Current.CancellationToken);
 
@@ -716,11 +716,35 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("Emails");
     }
 
+    [HumansTheory]
+    [InlineData("EmailGrid_DeleteRejectedHasProvider", false)]
+    [InlineData("EmailGrid_DeletePrimaryBlocked", false)]
+    [InlineData("Users_EmailDelete_LastVerifiedBlocked", false)]
+    [InlineData("EmailGrid_DeleteTicketLinkedBlocked", false)]
+    [InlineData("EmailGrid_DeleteRejectedHasProvider", true)]
+    [InlineData("EmailGrid_DeletePrimaryBlocked", true)]
+    [InlineData("Users_EmailDelete_LastVerifiedBlocked", true)]
+    [InlineData("EmailGrid_DeleteTicketLinkedBlocked", true)]
+    public async Task DeleteEmail_ExpectedRefusal_IsLocalizedWithoutDeletionAudit(string errorKey, bool admin)
+    {
+        var emailId = Guid.NewGuid();
+        _userEmailService.DeleteEmailAsync(_userId, emailId, Arg.Any<CancellationToken>())
+            .Returns(new DeleteEmailResult(false, errorKey));
+
+        var result = admin
+            ? await _controller.AdminDeleteEmail(_userId, emailId, Xunit.TestContext.Current.CancellationToken)
+            : await _controller.DeleteEmail(emailId);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(admin ? "AdminEmails" : "Emails");
+        _controller.TempData["ErrorMessage"].Should().Be(errorKey);
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task DeleteEmail_AsSelf_AuditsWithUserAsActor()
     {
         var emailId = Guid.NewGuid();
-        _userEmailService.DeleteEmailAsync(_userId, emailId, Arg.Any<CancellationToken>()).Returns(true);
+        _userEmailService.DeleteEmailAsync(_userId, emailId, Arg.Any<CancellationToken>()).Returns(new DeleteEmailResult(true));
 
         var result = await _controller.DeleteEmail(emailId);
 

@@ -1203,4 +1203,7 @@
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Für diese E-Mail-Adresse ist bereits eine Anfrage zur Zusammenführung offen.</value>
   </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Du kannst deine letzte verifizierte E-Mail-Adresse nicht entfernen. Füge zuerst eine weitere verifizierte Adresse hinzu, damit du weiterhin Systembenachrichtigungen erhältst.</value>
+  </data>
 </root>

@@ -233,7 +233,7 @@ internal sealed class UserEmailService(
             cancellationToken);
     }
 
-    public async Task<bool> DeleteEmailAsync(
+    public async Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
         var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken)
@@ -242,7 +242,7 @@ internal sealed class UserEmailService(
         if (!string.IsNullOrEmpty(email.Provider))
         {
             // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
-            return false;
+            return new DeleteEmailResult(false, "EmailGrid_DeleteRejectedHasProvider");
         }
 
         // see nobodies-collective/Humans#758 — block removal of the primary email.
@@ -250,9 +250,7 @@ internal sealed class UserEmailService(
         // can accidentally delete their sign-in/notification target (the original incident).
         if (email.IsPrimary)
         {
-            throw new ValidationException(
-                "Cannot remove your primary email. Set another verified email as primary first, " +
-                "then remove this one.");
+            return new DeleteEmailResult(false, "EmailGrid_DeletePrimaryBlocked");
         }
 
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
@@ -263,9 +261,7 @@ internal sealed class UserEmailService(
 
             if (verifiedRemaining == 0)
             {
-                throw new ValidationException(
-                    "Cannot remove your last verified email. Add another verified email first " +
-                    "so you can still receive system notifications.");
+                return new DeleteEmailResult(false, "Users_EmailDelete_LastVerifiedBlocked");
             }
         }
 
@@ -274,16 +270,15 @@ internal sealed class UserEmailService(
         // un-matching the user's event ticket on the next vendor re-sync.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
-            throw new ValidationException(
-                "Cannot remove this email — it is linked to your event ticket. " +
-                "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
+            return new DeleteEmailResult(false, "EmailGrid_DeleteTicketLinkedBlocked");
         }
 
-        return await userService.RemoveUserEmailAsync(
+        var removed = await userService.RemoveUserEmailAsync(
             userId,
             emailId,
             new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail),
             cancellationToken);
+        return new DeleteEmailResult(removed);
     }
 
     /// <inheritdoc />

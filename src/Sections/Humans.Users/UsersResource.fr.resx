@@ -1203,4 +1203,7 @@
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Une demande de fusion est déjà en attente pour cette adresse e-mail.</value>
   </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Tu ne peux pas supprimer ta dernière adresse e-mail vérifiée. Ajoute d’abord une autre adresse vérifiée pour continuer à recevoir les notifications du système.</value>
+  </data>
 </root>

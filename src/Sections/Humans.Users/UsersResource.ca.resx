@@ -1203,4 +1203,7 @@
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu.</value>
   </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>No pots eliminar el teu últim correu verificat. Afegeix primer un altre correu verificat per continuar rebent notificacions del sistema.</value>
+  </data>
 </root>
