@@ -16,7 +16,7 @@ namespace Humans.Web.Services;
 /// volume mount. Subpaths under uploads/ that should NOT be publicly served
 /// (e.g. profile pictures, which need the GDPR gate in
 /// <c>ProfileService.GetProfilePictureAsync</c>) are excluded from
-/// <c>app.UseStaticFiles()</c> via dedicated middleware in <c>Program.cs</c>.
+/// <c>app.UseStaticFiles()</c> by <c>GatedUploadsFileProvider</c> (wired in <c>Program.cs</c>).
 /// </remarks>
 public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<FileSystemFileStorage> logger)
     : IFileStorage

@@ -676,28 +676,17 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
-// Block direct /uploads/profile-pictures/ before UseStaticFiles — must go through /Profile/Picture/{id} for GDPR anonymization gate.
-// Likewise /uploads/issues/ — screenshots are served by /Issues/{id}/Screenshot behind the issue's reach check.
-app.Use(async (context, next) =>
-{
-    var path = context.Request.Path.Value;
-    if (path is not null &&
-        (path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase) ||
-         path.StartsWith("/uploads/issues/", StringComparison.OrdinalIgnoreCase)))
-    {
-        context.Response.StatusCode = StatusCodes.Status404NotFound;
-        return;
-    }
-    await next();
-});
-
 // "no-cache" = cache but always revalidate (cheap 304s at this scale). Without an explicit policy,
 // browsers heuristically cache static files (~10% of time since Last-Modified) with NO request at
 // all, so after a release some long-running kiosk tablets kept serving week-old CSS/JS while others
 // didn't. Fingerprinted URLs (asp-append-version / FileVersionProvider) change per release, but
 // unfingerprinted paths — and nested JS module imports, which no tag helper can reach — need this.
+// /uploads/profile-pictures/ (GDPR gate, via /Profile/Picture/{id}) and /uploads/issues/ (reach check, via
+// /Issues/{id}/Screenshot) are structurally unreachable here: GatedUploadsFileProvider canonicalizes the
+// subpath, so alternate spellings like /uploads//issues/ cannot bypass the gate.
 app.UseStaticFiles(new StaticFileOptions
 {
+    FileProvider = new Humans.Web.Hosting.GatedUploadsFileProvider(app.Environment.WebRootFileProvider),
     OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
 });
 
