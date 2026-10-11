@@ -73,6 +73,7 @@ public sealed class ExpenseReportServiceTests
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
+    private readonly ExpenseReportBackgroundProcessor _backgroundProcessor;
 
     private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
         NewSectionDbOptions<ExpensesDbContext>();
@@ -105,6 +106,9 @@ public sealed class ExpenseReportServiceTests
             Clock,
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
+        _backgroundProcessor = new ExpenseReportBackgroundProcessor(
+            _expenseRepo, _fileStorage, _userService, _holdedClient, _holdedFinance, AuditLog, Clock,
+            NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
@@ -3069,12 +3073,12 @@ public sealed class ExpenseReportServiceTests
 
         // First report links the member to contact-123 — this is the pre-existing Holded contact.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
         _holdedFinance.ClearReceivedCalls();
 
         // Act — a fresh report for the same member carries no contact id of its own.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — the earlier report's contact id (and its account number) are passed as the seed,
         // so Finance updates the existing contact instead of creating a duplicate.
@@ -3123,7 +3127,7 @@ public sealed class ExpenseReportServiceTests
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         // Act
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — both the binding and its account number land on the survivor, never the tombstone.
         await _holdedFinance.Received(1).EnsureCreditorContactAsync(
@@ -3191,7 +3195,7 @@ public sealed class ExpenseReportServiceTests
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         // Act
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
         // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
