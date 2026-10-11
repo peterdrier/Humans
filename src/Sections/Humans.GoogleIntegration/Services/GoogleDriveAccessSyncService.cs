@@ -121,7 +121,7 @@ internal sealed class GoogleDriveAccessSyncService(
             return BuildErrorDiff(claim.FolderId, error);
         }
 
-        var plan = BuildPlan(expectedMembers, permsResult.Permissions);
+        var plan = await BuildPlanAsync(expectedMembers, permsResult.Permissions, ct);
 
         if (action == SyncAction.Execute)
         {
@@ -195,9 +195,10 @@ internal sealed class GoogleDriveAccessSyncService(
         return result;
     }
 
-    private static DrivePlan BuildPlan(
+    private async Task<DrivePlan> BuildPlanAsync(
         IReadOnlyDictionary<Guid, DriveExpectedMember> expectedMembers,
-        IReadOnlyList<DrivePermission> permissions)
+        IReadOnlyList<DrivePermission> permissions,
+        CancellationToken ct)
     {
         var byEmail = expectedMembers.Values.ToDictionary(m => m.Email, NormalizingEmailComparer.Instance);
 
@@ -262,6 +263,9 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         var extraEmails = directEmails.Where(email => !byEmail.ContainsKey(email)).ToList();
+        var extraOwners = UserEmailMatchOwner.ByEmail(extraEmails.Count == 0
+            ? []
+            : await userEmailService.MatchByEmailsAsync(extraEmails, ct));
         foreach (var email in extraEmails)
         {
             roleByEmail.TryGetValue(email, out var extraRole);
@@ -272,7 +276,8 @@ internal sealed class GoogleDriveAccessSyncService(
             // nothing beyond the parent. It cannot be deleted here (#945).
             if (inheritedRole is not null && DrivePermissionRoleMapper.Parse(extraRole) <= inheritedLevel)
                 continue;
-            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
+            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole,
+                UserId: extraOwners.TryGetValue(email, out var owner) ? owner.UserId : null));
         }
 
         return new DrivePlan(members, idByEmail);

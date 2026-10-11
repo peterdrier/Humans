@@ -77,6 +77,45 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ReconcileOneAsync_ExtraMember_AttributesRevocationToVerifiedAliasOwner(
+        bool mixedPermission, bool mutationFails)
+    {
+        var owner = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1"));
+        var permission = mixedPermission
+            ? MixedPermission("writer", "reader") with { EmailAddress = "olduser@gmail.com" }
+            : new DrivePermission("perm-1", "user", "writer", "olduser@gmail.com", false);
+        StubFolder("folder-1", permission);
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Is<IReadOnlyCollection<string>>(emails => emails.Contains("olduser@gmail.com")),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("olduser@gmail.com", Guid.NewGuid(), false, false, _now),
+                new("old.user+burn@googlemail.com", owner, true, true, _now)
+            });
+        var error = mutationFails ? new GoogleClientError(403, "permission denied") : null;
+        _drivePermissions.DeletePermissionAsync("folder-1", "perm-1", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(
+                mutationFails ? DrivePermissionDeleteOutcome.Failed : DrivePermissionDeleteOutcome.Deleted, error));
+        _drivePermissions.UpdatePermissionAsync("folder-1", "perm-1", "reader", Arg.Any<CancellationToken>())
+            .Returns(error);
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.Members.Should().ContainSingle().Which.UserId.Should().Be(owner);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, Guid.Empty, Arg.Any<string>(),
+            nameof(GoogleDriveAccessSyncService), "olduser@gmail.com", mixedPermission ? "reader" : "MEMBER",
+            GoogleSyncSource.ScheduledSync, success: !mutationFails,
+            errorMessage: Arg.Any<string?>(), userId: owner, ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("reader", DrivePermissionLevel.Contributor, "writer")]
     [Xunit.InlineData("writer", DrivePermissionLevel.Viewer, "reader")]
     public async Task ReconcileOneAsync_DirectLevelChange_UpdatesInPlace(
