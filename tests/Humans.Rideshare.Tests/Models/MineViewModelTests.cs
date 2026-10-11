@@ -82,7 +82,7 @@ public sealed class MineViewModelTests
     }
 
     [HumansFact]
-    public void OffersAndRequests_SortByDirectionThenDate()
+    public void OffersAndRequests_SortByDirectionThenDateThenCreationTime()
     {
         var me = Guid.NewGuid();
         var outLate = Trip(me, RideshareDirection.Outbound, July3.PlusDays(10));
@@ -90,13 +90,15 @@ public sealed class MineViewModelTests
         var inEarly = Trip(me, RideshareDirection.Inbound, July3);
         var reqOut = Request(me, RideshareDirection.Outbound, July3.PlusDays(10));
         var reqIn = Request(me, RideshareDirection.Inbound, July3);
-        var snapshot = Snapshot(trips: [outLate, inLate, inEarly], requests: [reqOut, reqIn]);
+        var inEarlyLater = inEarly with { Id = Guid.NewGuid(), CreatedAt = Now.Plus(Duration.FromHours(1)) };
+        var reqInLater = reqIn with { Id = Guid.NewGuid(), CreatedAt = Now.Plus(Duration.FromHours(1)) };
+        var snapshot = Snapshot(trips: [outLate, inEarlyLater, inLate, inEarly], requests: [reqOut, reqInLater, reqIn]);
 
         var vm = MineViewModel.Build(snapshot, me);
 
         vm.Year.Should().Be(2026);
-        vm.Offers.Select(o => o.Trip.Id).Should().Equal(inEarly.Id, inLate.Id, outLate.Id);
-        vm.Requests.Select(r => r.Request.Id).Should().Equal(reqIn.Id, reqOut.Id);
+        vm.Offers.Select(o => o.Trip.Id).Should().Equal(inEarly.Id, inEarlyLater.Id, inLate.Id, outLate.Id);
+        vm.Requests.Select(r => r.Request.Id).Should().Equal(reqIn.Id, reqInLater.Id, reqOut.Id);
     }
 
     private static RideshareSnapshot Snapshot(

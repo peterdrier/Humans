@@ -126,7 +126,10 @@ internal sealed class DevPersonaSeeder(
             lastName: lastName,
             bio: $"Dev persona for testing the {displayNameSuffix} role.");
 
-        var profileId = await profileEditorService.SaveProfileAsync(id, displayName, saveRequest);
+        var save = await profileEditorService.SaveProfileAsync(id, displayName, saveRequest);
+        if (!save.Succeeded)
+            throw new InvalidOperationException("Dev persona profile validation failed.");
+        var profileId = save.ProfileId!.Value;
 
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. The CachingUserService decorator handles
@@ -360,7 +363,7 @@ internal sealed class DevPersonaSeeder(
             return;
         }
 
-        await profileEditorService.SaveProfileAsync(
+        var save = await profileEditorService.SaveProfileAsync(
             userId,
             burnerName,
             BuildPersonaProfileRequest(
@@ -368,6 +371,8 @@ internal sealed class DevPersonaSeeder(
                 firstName: string.Empty,
                 lastName: string.Empty,
                 bio: "Dev No-Name gate-test persona — legal names re-blanked on each sign-in."));
+        if (!save.Succeeded)
+            throw new InvalidOperationException("Dev persona name-reset profile validation failed.");
 
         logger.LogInformation("DEV: reset legal names for No-Name persona {UserId}", userId);
     }

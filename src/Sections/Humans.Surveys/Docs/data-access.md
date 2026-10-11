@@ -23,7 +23,7 @@ single-member `ISurveyReminderSender`, which the section's own
 machine API reads. Everything else — authoring, sending, the wizard, submission —
 has no caller outside Surveys.
 
-### SurveyService (Scoped — `ISurveyService`, `ISurveyReminderSender`, `IUserDataContributor`, `IUserMerge`)
+### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`, `IUserMerge`)
 
 `ISurveyService` also carries `ISurveyAnalysisRead` — Backdoor's read-only
 machine-API surface (survey list, one survey's question graph, the raw
@@ -47,7 +47,7 @@ enumeration, display-name stitching in results / export), `ITicketServiceRead`
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
 shift participants for `SurveyAudienceType.ShiftParticipants`),
 `IUserEmailService` (notification email per invitee), `IEmailService` (outbox
-enqueue), the section's own `SurveysEmails` builder (invite and reminder templates),
+enqueue), the section's own `SurveysEmails` builder (invitation templates),
 `ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),
 `IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
 helper), `IAuditLogService`, `IFileStorage` (Information-block images under
@@ -65,6 +65,13 @@ Implements
 A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
 column) resolves from the cached `UserInfo.LastLoginAt` via the existing
 `IUserServiceRead` fan-out.
+
+### SurveyReminderSender (Scoped — `ISurveyReminderSender`)
+
+Owns the daily reminder batch through the existing job contract. Reads `surveys` and
+`survey_invitations` through `ISurveyRepository`, then stamps `ReminderSentAt` after
+Email outbox acceptance. Uses `IUserServiceRead`, `IUserEmailService`, `SurveysEmails`,
+`ISurveyInviteTokenProvider`, `IEmailService`, `IAuditLogService` and `IClock`.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
 

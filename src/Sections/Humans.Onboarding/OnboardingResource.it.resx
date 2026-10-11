@@ -319,4 +319,5 @@
   <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>La tua iscrizione non ha potuto essere approvata al momento.</value></data>
   <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>La tua iscrizione non ha potuto essere approvata: {0}</value></data>
   <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
+  <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>Non è stato possibile salvare il tuo profilo. Riprova.</value></data>
 </root>

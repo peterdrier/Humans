@@ -61,7 +61,7 @@ public class ShiftBrowsePageBuilderRowTests
             signups: [new ShiftSignupInfo(userId, "Tester", SignupStatus.Confirmed)]);
 
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
-        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
+        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns([urgent]);
 
         var userSignups = new List<ShiftSignup>

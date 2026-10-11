@@ -232,6 +232,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Department browse groups label all-phase rotas as “All phases”, using the shared localized phase labels rather than the event-only label.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
@@ -242,7 +244,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
-- Browse and My shifts GETs forward request cancellation to viewer and cached per-user row reads; My shifts also forwards it to active-event and team-name reads.
+- Browse and My shifts GETs forward request cancellation to viewer, cached per-user rows and signup history. Browse also forwards it through coordinator cache misses, filtered/day-option/row browse reads, department options and their calendar/team/user/repository lookups. Gallery browse and department reads use the same request token. My shifts also forwards it to active-event and team-name reads.
 
 - Dashboard and department volunteer-search boxes debounce independently per shift. Each edit clears the prior results and invalidates pending responses, so older results or errors cannot expose an outdated assignment choice. Range-voluntell searches apply the same isolation per rota input, clear its form’s selected identity immediately, and enable assignment only after picking a current result.
 
@@ -254,6 +256,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 - MaxVolunteers is a hard capacity ceiling. SignUp, Approve, Voluntell, and ApproveRange are blocked when the confirmed count reaches MaxVolunteers. Range signups skip full shifts; ApproveRange auto-refuses pending signups for shifts that have filled since the request was placed.
 - Editing a rota or shift updates only that row; loaded shifts, rotas, tags, settings, and signups are not rewritten. Rota tags are reconciled separately.
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
+- Member-dashboard urgent cards exclude `AdminOnly` shifts and hidden rotas before scoring/limiting, so restricted work cannot displace visible recommendations. The protected operator dashboard explicitly includes both through the existing urgency read method.
 - Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](features/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `IShiftManagementService.CanApproveSignupsAsync`.
 - Voluntelling (admin/coordinator-initiated signup) creates a Confirmed `ShiftSignup` with `Enrolled = true` and records `EnrolledByUserId` / `ReviewedByUserId`. Range voluntell uses a shared `SignupBlockId` and skips shifts that are full or already booked.
 - The team-wide coordinator message (`/Teams/{slug}/Shifts/Email`) targets distinct users holding a **Pending or Confirmed** signup on any shift in any of the team's rotas the compose form's audience selection admits. Default ("upcoming rotas only") keeps a rota with at least one shift not yet ended (`shift.GetAbsoluteEnd(eventSettings) > now` — end, not start); clearing it opens the whole active event and the Build/Event/Strike boxes then filter on `Rota.Period`, a `RotaPeriod.All` rota riding on any selected period. Those period boxes are hidden under "upcoming" and `TeamRotasAudienceFilter.Includes` ignores them there, so a hidden cleared box can never narrow an upcoming send. Each recipient gets exactly one email; `Reply-To` is the sending coordinator while `From` stays the shared address.
@@ -364,7 +367,7 @@ section and is not on the leaf.
 
 ### Outbound
 
-- **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftManagementServiceRead.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. `RotaSearchHit` is `(RotaId, Name, Score)` — Search passes the id and no display fields (nobodies-collective/Humans#1062). `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
+- **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftManagementServiceRead.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. Both display reads receive request cancellation so abandoning search can cancel a cold load. `RotaSearchHit` is `(RotaId, Name, Score)` — Search passes the id and no display fields (nobodies-collective/Humans#1062). `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
 - **Teams:** `ITeamServiceRead` — rotas belong to a department or sub-team. Used for `GetTeamsAsync`, `GetTeamAsync`, `GetTeamBySlugAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserServiceRead` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentServiceRead` (lazy-resolved) — role checks for `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` from `HasActiveRoleAsync`.

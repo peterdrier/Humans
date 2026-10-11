@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;
 using Humans.Email.Models;
@@ -56,7 +57,8 @@ public sealed class EmailPreviewGalleryTests
 
         var model = Render(contributor);
 
-        contributor.Asked.Select(p => p.Culture).Should().BeEquivalentTo(model.Previews.Keys);
+        contributor.Asked.Select(p => p.Culture).Should().BeEquivalentTo(CultureCatalog.SupportedCultureCodes);
+        model.Previews.Keys.Should().BeEquivalentTo(CultureCatalog.SupportedCultureCodes);
         contributor.Asked.Should().AllSatisfy(p => p.Email.Should().NotBeNullOrWhiteSpace());
         foreach (var (culture, items) in model.Previews)
         {

@@ -22,7 +22,7 @@ namespace Humans.Expenses.Services;
 
 /// <summary>
 /// Expenses' application service: the report state machine over the section's repository,
-/// plus the Holded outbox drain and the GDPR export contributor.
+/// and the GDPR export contributor.
 /// </summary>
 [CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
@@ -40,25 +40,12 @@ internal sealed class ExpenseReportService(
     IClock clock,
     ILogger<ExpenseReportService> logger,
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
-        IExpenseReportBackgroundProcessor, IUserDataContributor
+        IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";
     internal const string ExpenseAuditLog = "ExpenseAuditLog";
 
-    private readonly ExpenseHoldedPublisher holdedPublisher = new(
-        repo, fileStorage, userService, holdedClient, holdedFinance, auditLogService, logger);
-
     private readonly TravelReimbursementConfig _travel = travelConfig.Value;
-
-    /// <summary>
-    /// Attempts a Holded push gets before it is written off. With the 2^n-minute backoff below,
-    /// ten attempts span roughly 17 hours — long enough to ride out a Holded outage, short enough
-    /// that a genuinely broken push surfaces on /Expenses/Review the same day.
-    /// </summary>
-    private const int MaxOutboxRetries = 10;
-
-    /// <summary>Audit actor for pushes, which run unattended. Matches the Hangfire job's type name.</summary>
-    internal const string OutboxJobName = "HoldedExpenseOutboxJob";
 
     internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
@@ -125,7 +112,7 @@ internal sealed class ExpenseReportService(
             QueuedAt = outboxEvent?.OccurredAt,
             SettledAt = outboxEvent?.ProcessedAt,
             RetryCount = outboxEvent?.RetryCount ?? 0,
-            MaxRetries = MaxOutboxRetries,
+            MaxRetries = ExpenseReportBackgroundProcessor.MaxOutboxRetries,
             LastError = outboxEvent?.LastError,
             NextRetryAt = outboxEvent is { ProcessedAt: null, FailedPermanently: false }
                 ? outboxEvent.NextRetryAt
@@ -270,9 +257,20 @@ internal sealed class ExpenseReportService(
         return report.Id;
     }
 
-    /// <summary>How a member is named in an audit description written by somebody else.</summary>
-    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct) =>
-        (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
+    /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
+    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
+        }
+        catch (Exception ex)
+        {
+            // Name enrichment must not skip the audit or fail an edit that already committed.
+            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
+            return userId.ToString();
+        }
+    }
 
     /// <summary>
     /// Records an edit an admin made to somebody else's report. A member editing their own leaves
@@ -1185,150 +1183,6 @@ internal sealed class ExpenseReportService(
             return false;
 
         return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
-    }
-
-    Task IExpenseReportBackgroundProcessor.DrainHoldedOutboxAsync(
-        int batchSize, CancellationToken ct)
-        => DrainHoldedOutboxAsync(batchSize, ct);
-
-    internal async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
-    {
-        // No Holded API key (PR-preview / local dev envs) → don't drain. A 401 here is a permanent
-        // error that would write off every queued event. Debug-level: this job runs every minute.
-        // The same flag is what makes /Expenses/{id} report NotConfigured instead of Queued.
-        if (!holdedClient.IsConfigured)
-        {
-            logger.LogDebug(
-                "HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
-            return;
-        }
-
-        var events = await repo
-            .GetUnprocessedOutboxAsync(clock.GetCurrentInstant(), batchSize, ct);
-
-        if (events.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var outboxEvent in events)
-        {
-            try
-            {
-                var report = await repo
-                    .GetByIdAsync(outboxEvent.ExpenseReportId, ct);
-
-                if (report is null)
-                {
-                    logger.LogWarning(
-                        "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
-                        outboxEvent.Id, outboxEvent.ExpenseReportId);
-                    await WriteOffOutboxEventAsync(
-                        outboxEvent, "Report not found", ct);
-                    continue;
-                }
-
-                var submitterName = string.IsNullOrWhiteSpace(report.PayeeName)
-                    ? "Unknown"
-                    : report.PayeeName;
-
-                var now = clock.GetCurrentInstant();
-
-                switch (outboxEvent.EventType)
-                {
-                    case HoldedExpenseOutboxEventType.CreateIncomingDoc:
-                        await holdedPublisher.PublishAsync(
-                            outboxEvent.Id, report, submitterName, now, ct);
-                        break;
-
-                    case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
-                        // v2 has no tag/doc-update endpoint (PUT /purchases/{id} is a full-replacement
-                        // update with no tags field, and no separate tag-assignment endpoint exists).
-                        // Recategorize-after-push is now done by reclassifying the line inside Holded
-                        // directly; the ledger mirror + reconciliation pull the correction back. The
-                        // enum member stays so any queued rows from before this change still drain
-                        // instead of poisoning the outbox.
-                        logger.LogInformation(
-                            "Skipping UpdateIncomingDocTag outbox event {OutboxEventId} for report " +
-                            "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
-                            "now done by reclassifying the line directly in Holded.",
-                            outboxEvent.Id, report.Id);
-                        await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, ct);
-                        break;
-
-                    default:
-                        throw new InvalidOperationException(
-                            $"Unknown outbox event type '{outboxEvent.EventType}'.");
-                }
-            }
-            catch (HoldedTransientException ex)
-            {
-                var attempts = outboxEvent.RetryCount + 1;
-                if (attempts >= MaxOutboxRetries)
-                {
-                    logger.LogError(
-                        ex,
-                        "Holded outbox event {OutboxEventId} exhausted its {MaxRetries} attempts — writing it off",
-                        outboxEvent.Id, MaxOutboxRetries);
-                    await WriteOffOutboxEventAsync(
-                        outboxEvent,
-                        $"Gave up after {attempts} attempts. Last error: {ex.Message}",
-                        ct);
-                }
-                else
-                {
-                    // Same curve as the Email outbox: 2, 4, 8 … minutes, so a Holded outage longer
-                    // than a few minutes is survived instead of being re-hit every 60 seconds.
-                    var nextRetryAt = clock.GetCurrentInstant()
-                        + Duration.FromMinutes((long)Math.Pow(2, attempts));
-                    logger.LogWarning(
-                        ex,
-                        "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
-                        outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
-                    await repo.IncrementOutboxRetryAsync(
-                        outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
-                }
-            }
-            catch (HoldedPermanentException ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
-                    outboxEvent.Id, ex.StatusCode);
-                await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Writes an outbox event off and records why in the audit log. The outbox columns alone are
-    /// not readable outside the database and do not survive row cleanup; the audit entry is what
-    /// keeps "this push failed, here is the error" on the report's history
-    /// (nobodies-collective/Humans#1045).
-    /// </summary>
-    private async Task WriteOffOutboxEventAsync(
-        HoldedExpenseOutboxEvent outboxEvent, string error, CancellationToken ct)
-    {
-        error = BoundOutboxError(error);
-        await repo.MarkOutboxFailedPermanentlyAsync(
-            outboxEvent.Id, error, clock.GetCurrentInstant(), ct);
-
-        await auditLogService.LogAsync(
-            AuditAction.ExpenseHoldedFailed,
-            AuditEntityTypes.Report, outboxEvent.ExpenseReportId,
-            $"Holded push failed permanently: {error}",
-            OutboxJobName);
-    }
-
-    // Fits the outbox's varchar(2000) and the prefixed audit description; logs retain the exception.
-    private static string BoundOutboxError(string error)
-    {
-        const int maxLength = 2000;
-        if (error.Length <= maxLength) return error;
-        var length = maxLength;
-        if (char.IsHighSurrogate(error[length - 1]) && char.IsLowSurrogate(error[length]))
-            length--;
-        return error[..length];
     }
 
     /// <summary>

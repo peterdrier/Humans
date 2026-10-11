@@ -123,7 +123,7 @@ internal sealed class ExpenseHoldedPublisher(
             AuditAction.ExpenseHoldedPushed,
             AuditEntityTypes.Report, report.Id,
             pushedSummary,
-            ExpenseReportService.OutboxJobName);
+            ExpenseReportBackgroundProcessor.OutboxJobName);
     }
 
     /// <summary>

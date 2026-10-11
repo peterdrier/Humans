@@ -245,6 +245,26 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         urgent.Select(u => u.Shift.Id).Should().Equal(future.Id);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetUrgentShifts_PublicCardsExcludeRestrictedShiftsBeforeLimiting(bool adminOnly)
+    {
+        var (es, rota) = SeedScenario();
+        var visible = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
+        var restrictedRota = SeedRota(es, rota.TeamId, ShiftPriority.Essential);
+        restrictedRota.IsVisibleToVolunteers = adminOnly;
+        var restricted = SeedShift(restrictedRota, dayOffset: 8, min: 1, max: 3);
+        restricted.AdminOnly = adminOnly;
+        await SaveAllAsync(Ct);
+
+        var urgent = await _service.GetUrgentShiftsAsync(es.Id, limit: 1);
+
+        urgent.Select(u => u.Shift.Id).Should().Equal(visible.Id);
+        var operatorUrgency = await _service.GetUrgentShiftsAsync(es.Id, limit: 1, includeRestricted: true);
+        operatorUrgency.Select(u => u.Shift.Id).Should().Equal(restricted.Id);
+    }
+
     [HumansFact]
     public async Task GetUrgentShifts_ExcludesFullShiftsAndClampsRemainingAtZero()
     {

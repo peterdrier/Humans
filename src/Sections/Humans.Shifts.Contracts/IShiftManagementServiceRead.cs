@@ -28,7 +28,7 @@ public interface IShiftManagementServiceRead
     /// <summary>
     /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
+    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Volunteer-visible rotas in the active event whose <c>Name</c>
@@ -51,19 +51,21 @@ public interface IShiftManagementServiceRead
     Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets shifts ranked by urgency score, with optional filtering.
+    /// Gets shifts ranked by urgency score, excluding admin-only shifts and hidden rotas by default.
+    /// The role-protected operator dashboard opts into restricted shifts.
     /// </summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
         Guid? departmentId = null,
         LocalDate? startDate = null, LocalDate? endDate = null,
         ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false);
 
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
     /// </summary>
-    Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
+    Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the per-day staffing chart snapshot for all periods.
@@ -82,7 +84,7 @@ public interface IShiftManagementServiceRead
     /// Gets all parent teams that have active rotas in the given event.
     /// </summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
-        Guid eventSettingsId);
+        Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns overall shift coverage for the active event:

@@ -309,7 +309,7 @@
     <value>Enquesta desada: no faltava cap traducció.</value>
   </data>
   <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
-    <value>Enquesta desada, però la traducció ha fallat: {0}</value>
+    <value>Enquesta desada, però la traducció ha fallat. Torna-ho a provar.</value>
   </data>
   <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve"><value>Si us plau, completa: {0}</value></data>
   <data name="Surveys_Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
@@ -329,6 +329,10 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Enquesta desada.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>El correu de previsualització de l’enquesta s’ha posat a la cua per a {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No s’ha trobat l’enquesta.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>No s’ha pogut carregar la previsualització del correu. Torna-ho a provar.</value></data>
+  <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Només qui ha creat l’enquesta la pot enviar perquè s’aprovi.</value></data>
+  <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Només es pot enviar perquè s’aprovi una enquesta en esborrany.</value></data>
+  <data name="Surveys_SubmitFailed" xml:space="preserve"><value>No s’ha pogut enviar l’enquesta perquè s’aprovi. Torna-ho a provar.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>El teu compte no té cap adreça electrònica de notificació.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>No s’ha pogut posar a la cua el correu de previsualització de l’enquesta.</value></data>
   <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Només previsualització</value></data>
@@ -344,4 +348,44 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegació de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>El públic seleccionat per a l’enquesta no és compatible.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Els assumptes dels correus d’invitació han d’ocupar una sola línia ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Els assumptes dels correus d’invitació no poden superar els {0} caràcters ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Els missatges dels correus d’invitació no poden superar els {0} caràcters ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>Un element d’informació pot tenir com a màxim {0} imatges.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>L’element d’informació {0} no pot ser obligatori.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>L’element d’informació {0} pot tenir com a màxim {1} imatges.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>L’element d’informació {0} ha de contenir Markdown o almenys una imatge.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Totes les imatges de l’element d’informació {0} han de tenir una etiqueta.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Totes les imatges de l’element d’informació {0} han de tenir text alternatiu.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>La pregunta de graella {0} ha de triar un mode de selecció.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir almenys una fila.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir entre una i cinc columnes.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} no poden estar en blanc.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} han de ser únics.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} no poden estar en blanc.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} han de ser únics.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>La pregunta d’elecció ordenada {0} ha de tenir almenys dues opcions.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>La pregunta d’elecció ordenada {0} ha de tenir una configuració d’ordenació vàlida.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>Els valors de les opcions de la pregunta d’elecció ordenada {0} no poden estar en blanc.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>Els valors de les opcions de la pregunta d’elecció ordenada {0} han de ser únics.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>Una condició de ramificació ha de fer referència a una pregunta anterior. IDs de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>Una condició És/No és de ramificació ha d’incloure valors d’opció. IDs de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Les preguntes de graella, elecció ordenada i informació no poden ser l’origen d’una ramificació. IDs de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Les votacions d’Asociado s’han de dirigir al públic Asociados.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Les votacions d’Asociado fan servir una representació fixa amb seguiment de finalització.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>No es poden afegir ni eliminar preguntes d’elecció ordenada després d’iniciar-se la votació.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Els candidats, l’ordre i la configuració de l’elecció ordenada no es poden canviar després de desar la primera resposta.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Selecciona un fitxer d’imatge per a cada fila d’imatge. Si el desament anterior ha fallat, torna a seleccionar el fitxer.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>La imatge seleccionada és buida.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Només es permeten imatges JPEG, PNG i WebP.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Cada imatge d’informació ha de tenir menys de 10 MB.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Els noms dels fitxers d’imatge han d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Els noms dels fitxers d’imatge no poden superar els {0} caràcters.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>El slug de l’enllaç públic no pot tenir més de {0} caràcters.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>El slug de l’enllaç públic «{0}» està reservat.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Només qui ha creat l’enquesta la pot editar.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Una votació d’Asociado no es pot editar després d’obrir-se.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El mode de votació d’Asociado no es pot canviar després d’obrir-se l’enquesta.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’enquesta. Torna-ho a provar.</value></data>
 </root>

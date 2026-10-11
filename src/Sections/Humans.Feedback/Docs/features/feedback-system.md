@@ -97,7 +97,7 @@ Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-sectio
 
 Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable to support system/API messages.
 
-**Screenshot storage:** `IFileStorage` keys of historical uploads (`uploads/feedback/{reportId}/{guid}.{ext}`); the only remaining consumer is GDPR erasure's `DeleteAsync`
+**Screenshot storage:** `IFileStorage` keys of historical uploads (`uploads/feedback/{reportId}/{guid}.{ext}`). Detail views link these historical files; Shell's private-upload gate enforces `AdminOnly` before static serving and disables caching. GDPR erasure deletes them via `DeleteAsync`.
 
 ## Authorization Matrix
 

@@ -7,5 +7,5 @@ public record LegalDocumentDefinition(string Slug, string DisplayName, string Re
 public interface ILegalDocumentService : IApplicationService
 {
     IReadOnlyList<LegalDocumentDefinition> GetAvailableDocuments();
-    Task<Dictionary<string, string>> GetDocumentContentAsync(string slug);
+    Task<Dictionary<string, string>> GetDocumentContentAsync(string slug, CancellationToken ct = default);
 }

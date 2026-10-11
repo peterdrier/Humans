@@ -515,11 +515,15 @@
                         }
                         @foreach (var periodGroup in rotasByPeriod)
                         {
-                            var periodName = periodGroup.Key == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value
-                                : periodGroup.Key == RotaPeriod.Strike ? SharedLocalizer["Shifts_Strike"].Value
-                                : SharedLocalizer["Shifts_Event"].Value;
+                            var periodName = periodGroup.Key switch
+                            {
+                                RotaPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
+                                RotaPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
+                                RotaPeriod.All => SharedLocalizer["Shifts_AllPhases"].Value,
+                                _ => SharedLocalizer["Shifts_Event"].Value
+                            };
                             <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-                                <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
+                                <span class="badge @(periodGroup.Key switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) me-1">@periodName</span>
                             </h6>
                             @foreach (var rotaGroup in periodGroup)
                             {

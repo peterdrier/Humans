@@ -240,9 +240,11 @@ internal sealed class GoogleDriveAccessSyncService(
         for (var i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            if (member.State == MemberSyncState.Extra && owners.TryGetValue(member.Email, out var owner)
-                && users.TryGetValue(owner.UserId, out var user))
-                members[i] = member with { UserId = user.Id, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl };
+            if (member.State != MemberSyncState.Extra || !owners.TryGetValue(member.Email, out var owner))
+                continue;
+            members[i] = users.TryGetValue(owner.UserId, out var user)
+                ? member with { UserId = owner.UserId, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl }
+                : member with { UserId = owner.UserId };
         }
     }
 
@@ -316,47 +318,14 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyDictionary<Guid, DrivePermissionLevel> access,
         CancellationToken ct)
     {
-        var userIds = access.Keys.ToList();
-        if (userIds.Count == 0)
-            return [];
-
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-
+        var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
+            access.Keys.ToList(), userService, userEmailService, ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
-            if (level == DrivePermissionLevel.None)
-                continue;
-            if (!users.TryGetValue(userId, out var user))
-                continue;
-            // #1704: the read resolves merges forward, so a tombstone id answers with the
-            // survivor and the MergedToUserId test can no longer see one. Comparing the row
-            // back against the requested id keeps this the skip it has always been: an ACL
-            // entry keyed to an archived id grants nobody, least of all silently granting the
-            // human who absorbed it.
-            if (user.Id != userId || user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
-                continue;
-
-            var emails = emailsByUserId.TryGetValue(userId, out var list) ? list : [];
-            var email = emails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? emails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (email is null)
-                continue;
-
-            // Drive rejects a Gmail "+tag" address and reports/grants the
-            // canonical form (#945), matching the immediate join gateway.
-            var canonicalEmail = EmailNormalization.CanonicalizeGmail(email);
-            result[userId] = new DriveExpectedMember(userId, canonicalEmail, user.BurnerName, user.ProfilePictureUrl, level);
+            if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
+                result[userId] = new DriveExpectedMember(
+                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level);
         }
 
         return result;
@@ -366,10 +335,14 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyDictionary<Guid, DriveExpectedMember> expectedMembers,
         IReadOnlyList<DrivePermission> permissions)
     {
-        // Drive canonicalizes Gmail aliases; union users resolving to the same address
-        // before planning so the highest claim wins rather than producing duplicate grants.
-        var byEmail = expectedMembers.Values.GroupBy(m => m.Email, NormalizingEmailComparer.Instance)
-            .ToDictionary(g => g.Key, g => g.MaxBy(m => m.Level)!, NormalizingEmailComparer.Instance);
+        // Distinct member IDs may carry aliases that Google resolves to one address.
+        // Reconcile that address once at the highest level already claimed by a source.
+        var byEmail = expectedMembers.Values
+            .GroupBy(member => member.Email, NormalizingEmailComparer.Instance)
+            .ToDictionary(group => group.Key,
+                group => group.OrderByDescending(member => member.Level)
+                    .ThenBy(member => member.UserId).First(),
+                NormalizingEmailComparer.Instance);
 
         var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
         var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);

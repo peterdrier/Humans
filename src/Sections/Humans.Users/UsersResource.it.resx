@@ -1197,4 +1197,19 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloccato — hai un biglietto per quest’anno</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operazioni dell’evento</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novità della comunità</value></data>
+  <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
+    <value>Questo indirizzo email è già nel tuo account.</value>
+  </data>
+  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
+    <value>È già in attesa una richiesta di unione per questo indirizzo email.</value>
+  </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Non puoi rimuovere il tuo ultimo indirizzo email verificato. Aggiungi prima un altro indirizzo verificato per continuare a ricevere le notifiche del sistema.</value>
+  </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>Questo indirizzo email non è stato trovato in questo account.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Solo gli indirizzi email verificati possono ricevere le notifiche dell’account.</value>
+  </data>
 </root>

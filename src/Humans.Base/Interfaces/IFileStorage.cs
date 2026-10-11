@@ -35,10 +35,11 @@ public interface IFileStorage
     Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default);
 
     /// <summary>
-    /// Delete the file at <paramref name="key"/> if it exists. No-op when
-    /// the file is missing. IO failures (locked file, permissions) are
+    /// Delete the file at <paramref name="key"/> if it exists, or recursively delete
+    /// the owned directory below uploads when <paramref name="recursiveDirectory"/> is true.
+    /// No-op when the file or directory is missing. IO failures (locked file, permissions) are
     /// propagated so the caller can decide how to handle them — relevant
     /// for GDPR deletion paths that need to log on failure.
     /// </summary>
-    Task DeleteAsync(string key, CancellationToken ct = default);
+    Task DeleteAsync(string key, CancellationToken ct = default, bool recursiveDirectory = false);
 }

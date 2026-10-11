@@ -55,7 +55,7 @@ internal sealed class ShiftsController(
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
 
         // Cached ShiftUserView, already event-scoped.
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
@@ -467,7 +467,7 @@ internal sealed class ShiftsController(
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
         var ct = HttpContext.RequestAborted;
-        var active = (await signupService.GetByUserAsync(userId))
+        var active = (await signupService.GetByUserAsync(userId, ct: ct))
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Where(s => s.Shift?.Rota is not null)
             .ToList();
