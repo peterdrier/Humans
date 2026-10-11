@@ -205,7 +205,7 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 - `TicketVendorGateway` — the section's forwarding edge onto its vendor port, and the only place in the codebase that names both the application's ticketing vocabulary (`TicketDiscountCodeRequest` / `TicketDiscountKind`) and the port's (`DiscountCodeSpec` / `DiscountType`). Serves `ITicketDiscountCodes` (Campaigns' grant waves) and `ITicketVendorMirror` (`GateVendorCheckInJob`'s gate-admission mirror).
 - `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the MailerLite import; squatter protection uses Users' atomic replacement-and-provisioning operation).
 - `OnsiteRosterService` — the "Who's Onsite" join of checked-in attendees with user, team, camp and role labels.
-- `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password; backs `/Tickets/Admin/Gate`.
+- `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password; a refused profile save returns failure before consent-check, cache or password effects; backs `/Tickets/Admin/Gate`.
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`
 

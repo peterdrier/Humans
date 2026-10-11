@@ -319,4 +319,5 @@
   <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>Deine Anmeldung konnte derzeit nicht genehmigt werden.</value></data>
   <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>Deine Anmeldung konnte nicht genehmigt werden: {0}</value></data>
   <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Profil ansehen</value></data>
+  <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>Dein Profil konnte nicht gespeichert werden. Bitte versuche es erneut.</value></data>
 </root>

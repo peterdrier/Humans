@@ -35,6 +35,8 @@ public class OnboardingWidgetControllerNamesTests
 
     public OnboardingWidgetControllerNamesTests()
     {
+        _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _consentLocalizer[Arg.Any<string>()].Returns(ci =>
@@ -114,7 +116,7 @@ public class OnboardingWidgetControllerNamesTests
                 "Burner1",
                 Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Guid.NewGuid());
+            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
@@ -135,6 +137,23 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
+    public async Task Names_Post_RefusalRetainsTheFormWithoutConsentCheck()
+    {
+        var userId = Guid.NewGuid();
+        _profileEditor.SaveProfileAsync(userId, Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_DietaryMedical_AllergyOther_Required"));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.Names(new NamesViewModel
+            { BurnerName = "Burner", FirstName = "First", LastName = "Last" }, TestContext.Current.CancellationToken);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("Burner", Assert.IsType<NamesViewModel>(view.Model).BurnerName);
+        Assert.Equal("Onboarding_ProfileSaveFailed", Assert.Single(ctrl.ModelState[string.Empty]!.Errors).ErrorMessage);
+        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
+    }
+
+    [HumansFact]
     public async Task Names_Post_TriggersOnboardingConsentCheck_AfterSave()
     {
         // The consent-check trigger is a controller peer-call after SaveProfileAsync,
@@ -142,7 +161,7 @@ public class OnboardingWidgetControllerNamesTests
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
                 userId, Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Guid.NewGuid());
+            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
@@ -252,6 +271,7 @@ public class OnboardingWidgetControllerNamesTests
             "Drifted",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.LastName == "NowSet" &&
+                r.DietaryPreference == null && r.Allergies == null && r.AllergyOtherText == null &&
                 r.City == "Madrid" &&
                 r.Bio == "existing bio"),
             Arg.Any<CancellationToken>());

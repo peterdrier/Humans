@@ -65,6 +65,8 @@ public class ProfileControllerDietaryMedicalReplayTests
 
     public ProfileControllerDietaryMedicalReplayTests()
     {
+        _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(true));
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
@@ -279,6 +281,29 @@ public class ProfileControllerDietaryMedicalReplayTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Shifts");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DietaryMedical_refusal_or_dependency_validation_failure_stops_signup_replay(bool dependencyFailure)
+    {
+        if (dependencyFailure)
+            _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
+                .Returns<ProfileEditResult>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException("Private diagnostic"));
+        else
+            _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
+                .Returns(new ProfileEditResult(false, ErrorKey: "Profile_DietaryMedical_IntoleranceOther_Required"));
+        var model = MakeValidModel();
+        model.ReturnAction = "SignUp";
+        model.ShiftId = Guid.NewGuid();
+
+        var result = await _controller.DietaryMedical(model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(dependencyFailure
+            ? "Profile_DietaryMedical_SaveFailed" : "Profile_DietaryMedical_IntoleranceOther_Required");
+        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default, default, default);
     }
 
     private static DietaryMedicalViewModel MakeValidModel() => new()
