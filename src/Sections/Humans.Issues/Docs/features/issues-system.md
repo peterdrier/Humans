@@ -105,6 +105,8 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-l
 
 **Screenshot storage:** `wwwroot/uploads/issues/{issueId}/{guid}.{ext}`
 
+Uploads use atomic `IFileStorage.SaveAsync`. If saving the Issue row fails, the upload is deleted; cleanup failures are logged and the original persistence failure propagates.
+
 Direct screenshot reads reuse the viewer-scoped issue read before static-file serving. Anonymous and out-of-scope viewers receive 404; permitted reads must match the stored screenshot path and disable caching.
 
 ## Authorization Matrix
