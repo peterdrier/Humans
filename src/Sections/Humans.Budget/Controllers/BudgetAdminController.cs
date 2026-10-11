@@ -3,7 +3,6 @@ using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Base.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +30,6 @@ internal sealed class BudgetAdminController(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     TicketingBudgetService ticketingBudgetService,
-    ITicketServiceRead ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
     IHoldedFinanceServiceRead holdedFinance,
@@ -140,10 +138,7 @@ internal sealed class BudgetAdminController(
                 return RedirectToAction(nameof(Index));
             }
 
-            var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                    && TicketingBudgetService.IsYearTicketOrder(activeYear, o))
-                .Sum(o => o.TotalAmount);
+            var grossTicketRevenue = await ticketingBudgetService.GetGrossTicketRevenueAsync(activeYear);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }

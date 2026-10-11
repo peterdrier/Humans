@@ -269,23 +269,38 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public void IsYearTicketOrder_ConfiguredEvent_ExcludesOtherEventOrders_ForCashFlow()
+    public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders()
     {
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026");
         var order = BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, null, null, TicketAttendeeStatus.Valid);
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                order with { VendorEventId = "event-2026" },
+                order with { VendorEventId = "event-2025", IsCurrentEvent = true, TotalAmount = 999m },
+                order with { VendorEventId = "event-2026", PaymentStatus = TicketPaymentStatus.Refunded, TotalAmount = 50m },
+            });
 
-        TicketingBudgetService.IsYearTicketOrder(year, order with { VendorEventId = "event-2026" }).Should().BeTrue();
-        TicketingBudgetService.IsYearTicketOrder(year, order with { VendorEventId = "event-2025", IsCurrentEvent = true }).Should().BeFalse();
+        var total = await CreateSut().GetGrossTicketRevenueAsync(year, Xunit.TestContext.Current.CancellationToken);
+
+        total.Should().Be(100m);
     }
 
     [HumansFact]
-    public void IsYearTicketOrder_UnconfiguredYear_FallsBackToCurrentEvent()
+    public async Task GetGrossTicketRevenueAsync_UnconfiguredYear_FallsBackToCurrentEvent()
     {
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
         var order = BuildOrder(Instant.FromUtc(2026, 3, 3, 10, 0), 100m, null, null, TicketAttendeeStatus.Valid);
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                order,
+                order with { IsCurrentEvent = false, TotalAmount = 999m },
+            });
 
-        TicketingBudgetService.IsYearTicketOrder(year, order).Should().BeTrue();
-        TicketingBudgetService.IsYearTicketOrder(year, order with { IsCurrentEvent = false }).Should().BeFalse();
+        var total = await CreateSut().GetGrossTicketRevenueAsync(year, Xunit.TestContext.Current.CancellationToken);
+
+        total.Should().Be(100m);
     }
 
     [HumansFact]
