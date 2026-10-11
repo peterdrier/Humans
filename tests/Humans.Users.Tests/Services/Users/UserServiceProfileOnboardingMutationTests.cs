@@ -40,6 +40,37 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             NullLogger<UserService>.Instance);
     }
 
+    [HumansTheory]
+    [InlineData("unverified-primary")]
+    [InlineData("missing-primary")]
+    [InlineData("missing-visibility")]
+    public async Task UpdateUserEmailAsync_ExpectedRefusal_PreservesEmailFlags(string refusal)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        SeedUser(userId);
+        Db.UserEmails.Add(new UserEmail
+        {
+            Id = rowId, UserId = userId, Email = "unverified@example.com",
+            IsVerified = false, IsPrimary = false
+        });
+        await Db.SaveChangesAsync(ct);
+        var targetId = string.Equals(refusal, "unverified-primary", StringComparison.Ordinal) ? rowId : Guid.NewGuid();
+        var command = string.Equals(refusal, "missing-visibility", StringComparison.Ordinal)
+            ? new UserEmailUpdateCommand(ChangeVisibility: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
+            : new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.MakePrimary);
+        var update = () => _service.UpdateUserEmailAsync(userId, targetId, command, ct);
+
+        var result = await update();
+        var expectedKey = string.Equals(refusal, "unverified-primary", StringComparison.Ordinal)
+            ? "Users_EmailUpdate_UnverifiedTarget" : "Users_EmailUpdate_NotFound";
+        result.Should().Be(new UpdateEmailResult(false, expectedKey));
+        var row = await Db.UserEmails.AsNoTracking().SingleAsync(e => e.Id == rowId, ct);
+        row.IsPrimary.Should().BeFalse();
+        row.Visibility.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn()
     {

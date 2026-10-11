@@ -62,6 +62,10 @@ public class ProfileEmailsControllerGridTests
 
     public ProfileEmailsControllerGridTests()
     {
+        _userEmailService.SetPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UpdateEmailResult(true));
+        _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
+            .Returns(new UpdateEmailResult(true));
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
@@ -157,9 +161,9 @@ public class ProfileEmailsControllerGridTests
         const string reason = "Email mutation rejected by a guardrail";
         Exception rejection = validationFailure ? new ValidationException(reason) : new InvalidOperationException(reason);
         _userEmailService.SetPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(rejection));
+            .Returns(Task.FromException<UpdateEmailResult>(rejection));
         _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(rejection));
+            .Returns(Task.FromException<UpdateEmailResult>(rejection));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<DeleteEmailResult>(rejection));
         _userEmailService.SetGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -194,9 +198,12 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        _controller.TempData["ErrorMessage"].Should().Be((string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
-            ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
-            : reason);
+        var expectedError = action is "SetPrimary" or "SetEmailVisibility"
+            ? "Common_Error"
+            : (string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
+                ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
+                : reason;
+        _controller.TempData["ErrorMessage"].Should().Be(expectedError);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
@@ -250,12 +257,42 @@ public class ProfileEmailsControllerGridTests
         _logger.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task EmailUpdate_RefusalIsLocalizedWithoutSuccessAudit(bool adminRoute, bool primary)
+    {
+        var emailId = Guid.NewGuid();
+        var targetId = adminRoute ? Guid.NewGuid() : _userId;
+        var errorKey = primary ? "Users_EmailUpdate_UnverifiedTarget" : "Users_EmailUpdate_NotFound";
+        _userEmailService.SetPrimaryAsync(targetId, emailId, Arg.Any<CancellationToken>())
+            .Returns(new UpdateEmailResult(false, errorKey));
+        _userEmailService.SetVisibilityAsync(targetId, emailId, Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
+            .Returns(new UpdateEmailResult(false, errorKey));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = (adminRoute, primary) switch
+        {
+            (true, true) => await _controller.AdminSetPrimary(targetId, emailId, ct),
+            (true, false) => await _controller.AdminSetVisibility(targetId, emailId, null, ct),
+            (false, true) => await _controller.SetPrimary(emailId, ct),
+            (false, false) => await _controller.SetEmailVisibility(emailId, null)
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        _controller.TempData["ErrorMessage"].Should().Be(errorKey);
+        _controller.TempData["SuccessMessage"].Should().BeNull();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task SetPrimary_UnexpectedDependencyFailure_Propagates()
     {
         var emailId = Guid.NewGuid();
         _userEmailService.SetPrimaryAsync(_userId, emailId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new IOException("email store unavailable")));
+            .Returns(Task.FromException<UpdateEmailResult>(new IOException("email store unavailable")));
 
         var action = () => _controller.SetPrimary(emailId, Xunit.TestContext.Current.CancellationToken);
 

@@ -1206,4 +1206,10 @@
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>No pots eliminar el teu últim correu verificat. Afegeix primer un altre correu verificat per continuar rebent notificacions del sistema.</value>
   </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>No s'ha trobat aquesta adreça de correu en aquest compte.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Només les adreces de correu verificades poden rebre notificacions del compte.</value>
+  </data>
 </root>

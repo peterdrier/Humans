@@ -690,7 +690,7 @@ internal sealed class UserService(
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
-    public async Task<bool> UpdateUserEmailAsync(
+    public async Task<UpdateEmailResult> UpdateUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailUpdateCommand command,
@@ -700,11 +700,11 @@ internal sealed class UserService(
 
         if (command.MarkVerified)
         {
-            var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
-                ?? throw new InvalidOperationException("Email not found.");
+            var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
+            if (email is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
 
             if (email.IsVerified || email.Provider is not null)
-                throw new ValidationException("No email pending verification.");
+                return new UpdateEmailResult(false, "Profile_InvalidVerificationLink");
 
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
@@ -716,7 +716,8 @@ internal sealed class UserService(
 
         if (command.Primary == UserEmailPrimaryChange.MakePrimary)
         {
-            await SetPrimaryEmailAsync(userId, emailId, ct);
+            var primary = await SetPrimaryEmailAsync(userId, emailId, ct);
+            if (!primary.Succeeded) return primary;
             changed = true;
         }
         else if (command.Primary == UserEmailPrimaryChange.ClearDuplicatePrimary)
@@ -727,7 +728,7 @@ internal sealed class UserService(
         if (command.Google == UserEmailGoogleChange.MakeGoogle)
         {
             var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-            if (row is null || !row.IsVerified) return false;
+            if (row is null || !row.IsVerified) return new UpdateEmailResult(false);
             await repo.SetUserEmailGoogleExclusiveAsync(userId, emailId, clock.GetCurrentInstant(), ct);
             changed = true;
         }
@@ -738,15 +739,15 @@ internal sealed class UserService(
 
         if (command.ChangeVisibility)
         {
-            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
-                ?? throw new InvalidOperationException("Email not found.");
+            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
+            if (row is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
             row.Visibility = command.Visibility;
             row.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(row, ct);
             changed = true;
         }
 
-        return changed;
+        return new UpdateEmailResult(changed);
     }
 
     public async Task<bool> RemoveUserEmailAsync(
@@ -1138,15 +1139,15 @@ internal sealed class UserService(
         await ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 
-    private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
+    private async Task<UpdateEmailResult> SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
         var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
 
-        var target = emails.FirstOrDefault(e => e.Id == emailId)
-            ?? throw new InvalidOperationException("Email not found.");
+        var target = emails.FirstOrDefault(e => e.Id == emailId);
+        if (target is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
 
         if (!target.IsVerified)
-            throw new ValidationException("Only verified emails can be the notification target.");
+            return new UpdateEmailResult(false, "Users_EmailUpdate_UnverifiedTarget");
 
         var now = clock.GetCurrentInstant();
         var changed = new List<UserEmail>();
@@ -1163,6 +1164,7 @@ internal sealed class UserService(
 
         if (changed.Count > 0)
             await repo.UpdateUserEmailsAsync(changed, ct);
+        return new UpdateEmailResult(true);
     }
 
     private async Task<bool> ClearDuplicatePrimaryAsync(Guid userId, Guid emailId, CancellationToken ct)

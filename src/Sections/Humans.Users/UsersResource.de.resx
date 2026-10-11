@@ -1206,4 +1206,10 @@
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Du kannst deine letzte verifizierte E-Mail-Adresse nicht entfernen. Füge zuerst eine weitere verifizierte Adresse hinzu, damit du weiterhin Systembenachrichtigungen erhältst.</value>
   </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>Diese E-Mail-Adresse wurde in diesem Konto nicht gefunden.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Nur verifizierte E-Mail-Adressen können Kontobenachrichtigungen erhalten.</value>
+  </data>
 </root>

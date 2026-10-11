@@ -82,17 +82,17 @@ public interface IUserEmailService
 
     /// <summary>
     /// Sets which email is the notification target.
-    /// The email must be verified.
+    /// Returns a refusal when the row is missing or unverified.
     /// </summary>
-    Task SetPrimaryAsync(
+    Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates the profile visibility for an email.
+    /// Updates the profile visibility for an email; returns a refusal when the row is missing.
     /// </summary>
-    Task SetVisibilityAsync(
+    Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId,
         Guid emailId,
         ContactFieldVisibility? visibility,

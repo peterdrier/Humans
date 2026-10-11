@@ -165,11 +165,12 @@ internal sealed class UserEmailService(
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
         // see nobodies-collective/Humans#687 — flipping unverified→verified may newly satisfy the Google invariant.
-        await userService.UpdateUserEmailAsync(
+        var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
             new UserEmailUpdateCommand(MarkVerified: true),
             cancellationToken);
+        if (!update.Succeeded) return Refuse("Email update refused");
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
 
@@ -196,11 +197,12 @@ internal sealed class UserEmailService(
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
         // see nobodies-collective/Humans#687
-        await userService.UpdateUserEmailAsync(
+        var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
             new UserEmailUpdateCommand(MarkVerified: true),
             cancellationToken);
+        if (!update.Succeeded) return new VerifyEmailResult(string.Empty, false, update.ErrorKey);
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailManuallyVerified,
@@ -212,21 +214,21 @@ internal sealed class UserEmailService(
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
-    public async Task SetPrimaryAsync(
+    public async Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        await userService.UpdateUserEmailAsync(
+        return await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.MakePrimary),
             cancellationToken);
     }
 
-    public async Task SetVisibilityAsync(
+    public async Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId, Guid emailId, ContactFieldVisibility? visibility,
         CancellationToken cancellationToken = default)
     {
-        await userService.UpdateUserEmailAsync(
+        return await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(ChangeVisibility: true, Visibility: visibility),
@@ -583,7 +585,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Google: UserEmailGoogleChange.MakeGoogle),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
 
         var description = previousGoogle is null
             ? $"Set Google identity to {row.Email}"
@@ -616,7 +618,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Google: UserEmailGoogleChange.ClearDuplicateGoogle),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailGoogleCleared,
@@ -645,7 +647,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.ClearDuplicatePrimary),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
         // No auto-promote — admin is resolving a duplicate and picks the new primary deliberately.
         await auditLogService.LogAsync(
             AuditAction.UserEmailPrimaryCleared,

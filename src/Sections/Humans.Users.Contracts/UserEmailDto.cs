@@ -44,6 +44,11 @@ public record UserEmailEditDto(
 /// <param name="ErrorKey">Expected refusal resource key; refused additions have an empty Id and token.</param>
 public record AddEmailResult(Guid EmailId, string Token, bool IsConflict, string? ErrorKey = null);
 
+/// <summary>Result of updating email flags, including an expected refusal.</summary>
+/// <param name="Succeeded">Whether the update was applied.</param>
+/// <param name="ErrorKey">Member-facing refusal resource key, or null.</param>
+public record UpdateEmailResult(bool Succeeded, string? ErrorKey = null);
+
 /// <summary>Result of deleting an email row, including an expected refusal.</summary>
 /// <param name="Succeeded">Whether the email row was removed.</param>
 /// <param name="ErrorKey">Member-facing refusal resource key, or null.</param>

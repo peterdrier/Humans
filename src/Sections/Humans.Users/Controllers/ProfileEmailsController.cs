@@ -200,7 +200,12 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
+            var result = await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
+            if (!result.Succeeded)
+            {
+                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+                return RedirectToAction(nameof(Emails));
+            }
             // Self audit at controller — SetPrimaryAsync doesn't take actorUserId.
             await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
@@ -213,7 +218,7 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -235,14 +240,19 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+            var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+            if (!result.Succeeded)
+            {
+                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+                return RedirectToAction(nameof(Emails));
+            }
             await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
             SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -637,7 +647,12 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            await userEmailService.SetPrimaryAsync(id, emailId, ct);
+            var result = await userEmailService.SetPrimaryAsync(id, emailId, ct);
+            if (!result.Succeeded)
+            {
+                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+                return RedirectToAction(nameof(AdminEmails), new { id });
+            }
             // Audit at controller — SetPrimaryAsync has no actorUserId.
             await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
@@ -870,7 +885,11 @@ internal sealed class ProfileEmailsController(
         try
         {
             var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
-            if (result.MergeRequestCreated)
+            if (result.ErrorKey is { } errorKey)
+            {
+                SetError(LocalizeEmailRefusal(errorKey));
+            }
+            else if (result.MergeRequestCreated)
             {
                 SetSuccess(localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
             }
@@ -974,7 +993,12 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+            var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+            if (!result.Succeeded)
+            {
+                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+                return RedirectToAction(nameof(AdminEmails), new { id });
+            }
             await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
