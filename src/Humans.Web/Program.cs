@@ -676,18 +676,8 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
-// Block direct /uploads/profile-pictures/ before UseStaticFiles — must go through /Profile/Picture/{id} for GDPR anonymization gate.
-app.Use(async (context, next) =>
-{
-    var path = context.Request.Path.Value;
-    if (path is not null &&
-        path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase))
-    {
-        context.Response.StatusCode = StatusCodes.Status404NotFound;
-        return;
-    }
-    await next();
-});
+// Private uploads must pass their access gate before static-file serving.
+app.UseMiddleware<PrivateUploadMiddleware>();
 
 // "no-cache" = cache but always revalidate (cheap 304s at this scale). Without an explicit policy,
 // browsers heuristically cache static files (~10% of time since Last-Modified) with NO request at
@@ -696,7 +686,11 @@ app.Use(async (context, next) =>
 // unfingerprinted paths — and nested JS module imports, which no tag helper can reach — need this.
 app.UseStaticFiles(new StaticFileOptions
 {
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
+    OnPrepareResponse = ctx =>
+    {
+        if (!ctx.Context.Response.Headers.ContainsKey("Cache-Control"))
+            ctx.Context.Response.Headers.CacheControl = "no-cache";
+    },
 });
 
 // Serve .well-known directory (blocked by default since it starts with a dot)
