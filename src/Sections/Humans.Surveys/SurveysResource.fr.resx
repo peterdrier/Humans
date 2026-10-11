@@ -309,7 +309,7 @@
     <value>Questionnaire enregistré — aucune traduction manquante.</value>
   </data>
   <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
-    <value>Questionnaire enregistré, mais la traduction a échoué : {0}</value>
+    <value>Questionnaire enregistré, mais la traduction a échoué. Veuillez réessayer.</value>
   </data>
   <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve"><value>Merci de compléter : {0}</value></data>
   <data name="Surveys_Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
@@ -348,4 +348,44 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>Le public sélectionné pour le questionnaire n’est pas pris en charge.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Les objets des e-mails d’invitation doivent tenir sur une seule ligne ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Les objets des e-mails d’invitation ne peuvent pas dépasser {0} caractères ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Les messages des e-mails d’invitation ne peuvent pas dépasser {0} caractères ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>Un élément d’information peut contenir au maximum {0} images.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>L’élément d’information {0} ne peut pas être obligatoire.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>L’élément d’information {0} peut contenir au maximum {1} images.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>L’élément d’information {0} doit contenir du Markdown ou au moins une image.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Chaque image de l’élément d’information {0} doit avoir un libellé.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Chaque image de l’élément d’information {0} doit avoir un texte alternatif.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>La question de grille {0} doit choisir un mode de sélection.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>La question de grille {0} doit comporter au moins une ligne.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>La question de grille {0} doit comporter entre une et cinq colonnes.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>Les valeurs des lignes de la question de grille {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>Les valeurs des lignes de la question de grille {0} doivent être uniques.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>Les valeurs des colonnes de la question de grille {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>Les valeurs des colonnes de la question de grille {0} doivent être uniques.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>La question à classement {0} doit comporter au moins deux options.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>La question à classement {0} doit avoir des paramètres de classement valides.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>Les valeurs des options de la question à classement {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>Les valeurs des options de la question à classement {0} doivent être uniques.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>Une condition de branchement doit faire référence à une question précédente. Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>Une condition Est/N’est pas de branchement doit inclure des valeurs d’option. Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Les questions de grille, à classement et d’information ne peuvent pas être à l’origine d’un branchement. Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Les votes des Asociados doivent cibler le public Asociados.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Les votes des Asociados utilisent une représentation fixe avec suivi de complétion.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>Les questions à classement ne peuvent pas être ajoutées ou supprimées après le début du vote.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Les candidats, l’ordre et les paramètres d’une question à classement ne peuvent pas changer après l’enregistrement de la première réponse.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Sélectionnez un fichier image pour chaque ligne d’image. Si l’enregistrement précédent a échoué, sélectionnez à nouveau le fichier.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>L’image sélectionnée est vide.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Seules les images JPEG, PNG et WebP sont autorisées.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Chaque image d’information doit faire moins de 10 Mo.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Les noms de fichier image doivent se terminer par .jpg, .jpeg, .png ou .webp.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Les noms de fichier image ne peuvent pas dépasser {0} caractères.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>Le slug du lien public ne peut pas dépasser {0} caractères.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>Le slug du lien public « {0} » est réservé.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Seul l’auteur du questionnaire peut le modifier.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Un vote des Asociados ne peut pas être modifié après son ouverture.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Le mode de vote des Asociados ne peut pas être modifié après l’ouverture du questionnaire.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer le questionnaire. Réessayez.</value></data>
 </root>

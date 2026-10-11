@@ -172,24 +172,33 @@ internal sealed class SurveyService(
     public Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
         => repo.HasSavedAnswersAsync(surveyId, ct);
 
-    public async Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveySaveResult> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateAudienceConfiguration(
+        var error = AudienceConfigurationError(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
+        if (error is not null) return new(Error: error);
         var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
         var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
-        ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        error = ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        if (error is not null) return new(Error: error);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
-        var publicSlug = PreparePublicSlugForWrite(input.PublicSlug);
+        var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
+        if (slugError is not null) return new(Error: slugError);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing: null, ct);
+        if (prepared.Error is not null) return new(Error: prepared.Error);
         List<SurveyQuestion> questions;
         try
         {
             questions = MapQuestions(surveyId, prepared.Input);
-            ValidateQuestionConfiguration(questions);
-            ValidateBranching(questions);
-            ValidateVoteConfiguration(input);
+            error = ValidateQuestionConfiguration(questions)
+                ?? ValidateBranching(questions)
+                ?? ValidateVoteConfiguration(input);
+            if (error is not null)
+            {
+                await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                return new(Error: error);
+            }
         }
         catch
         {
@@ -233,13 +242,13 @@ internal sealed class SurveyService(
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
         await auditLog.LogAsync(AuditAction.SurveyCreated, AuditEntityTypes.Survey, surveyId,
             $"Created survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'", actorUserId);
-        return surveyId;
+        return new(surveyId);
     }
 
-    public Task UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default)
+    public Task<SurveySaveResult> UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default)
         => UpdateCoreAsync(surveyId, input, viewer, allowRankedAvailabilityChanges: false, ct);
 
-    private async Task UpdateCoreAsync(
+    private async Task<SurveySaveResult> UpdateCoreAsync(
         Guid surveyId,
         SurveyEditInput input,
         SurveyViewer viewer,
@@ -247,33 +256,37 @@ internal sealed class SurveyService(
         CancellationToken ct)
     {
         var actorUserId = viewer.UserId;
-        ValidateAudienceConfiguration(
+        var error = AudienceConfigurationError(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
+        if (error is not null) return new(Error: error);
         var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
         var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
-        ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        error = ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        if (error is not null) return new(Error: error);
         var now = clock.GetCurrentInstant();
-        var existing = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var existing = await repo.GetByIdAsync(surveyId, ct);
+        if (existing is null) return new(Error: new("Surveys_PreviewNotFound", "Survey not found."));
         // The controller's resource handler says the same thing before rendering a button; this is
         // the enforcing copy, so an edit refused there is refused here too whoever the caller is.
         if (!viewer.IsBoardOrAdmin && existing.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException("Only the survey's author may edit it.");
+            return new(Error: new("Surveys_Validation_SaveNotAuthor", "Only the survey's author may edit it."));
         if (existing.IsAsociadoVote == true
             && existing.Status != SurveyStatus.Draft
             && !allowRankedAvailabilityChanges)
         {
-            throw new InvalidOperationException(
-                "An Asociado vote cannot be edited after it has opened.");
+            return new(Error: new("Surveys_Validation_VoteReadOnly",
+                "An Asociado vote cannot be edited after it has opened."));
         }
         if (existing.Status != SurveyStatus.Draft
             && (existing.IsAsociadoVote == true) != input.IsAsociadoVote)
         {
-            throw new InvalidOperationException(
-                "Asociado vote mode cannot change after the survey has opened.");
+            return new(Error: new("Surveys_Validation_VoteModeFrozen",
+                "Asociado vote mode cannot change after the survey has opened."));
         }
-        var publicSlug = PreparePublicSlugForWrite(input.PublicSlug);
+        var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
+        if (slugError is not null) return new(Error: slugError);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
+        if (prepared.Error is not null) return new(Error: prepared.Error);
         List<SurveyQuestion> questions;
         try
         {
@@ -290,12 +303,22 @@ internal sealed class SurveyService(
                     }
                 }
             }
-            ValidateQuestionConfiguration(questions);
-            ValidateBranching(questions);
-            ValidateVoteConfiguration(input);
+            error = ValidateQuestionConfiguration(questions)
+                ?? ValidateBranching(questions)
+                ?? ValidateVoteConfiguration(input);
+            if (error is not null)
+            {
+                await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                return new(Error: error);
+            }
             if (await repo.HasSavedAnswersAsync(surveyId, ct))
             {
-                ValidateRankedDefinitionFrozen(existing.Questions, questions);
+                error = ValidateRankedDefinitionFrozen(existing.Questions, questions);
+                if (error is not null)
+                {
+                    await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                    return new(Error: error);
+                }
             }
         }
         catch
@@ -337,6 +360,7 @@ internal sealed class SurveyService(
             throw;
         }
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
+        return new(surveyId);
     }
 
     /// <summary>
@@ -519,7 +543,7 @@ internal sealed class SurveyService(
             }).ToList(),
             e.IsAsociadoVote);
 
-        await UpdateAsync(surveyId, input, viewer, ct);
+        (await UpdateAsync(surveyId, input, viewer, ct)).RequireSuccess();
         logger.LogInformation(
             "Survey {SurveyId}: pre-filled {Count} missing translations from {Source}", surveyId, filled, source);
         return filled;
@@ -1574,12 +1598,12 @@ internal sealed class SurveyService(
                 ? candidate with { RankedUnavailableOptionValues = normalized }
                 : candidate)
             .ToList();
-        await UpdateCoreAsync(
+        (await UpdateCoreAsync(
             surveyId,
             detail.Editable with { Questions = updatedQuestions },
             viewer,
             allowRankedAvailabilityChanges: true,
-            ct);
+            ct)).RequireSuccess();
     }
 
     private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch
@@ -2345,20 +2369,20 @@ internal sealed class SurveyService(
     {
         var error = AudienceConfigurationError(type, teamId, loggedInSince, requireAudience);
         if (error is not null)
-            throw new InvalidOperationException(error);
+            throw new InvalidOperationException(error.DiagnosticMessage);
     }
 
-    private static string? AudienceConfigurationError(
+    private static SurveyAuthoringError? AudienceConfigurationError(
         SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
     {
         if (type is null)
-            return requireAudience ? "Survey has no audience to invite." : null;
+            return requireAudience ? new(null, "Survey has no audience to invite.") : null;
         if (!Enum.IsDefined(type.Value))
-            return "The selected survey audience is not supported.";
+            return new("Surveys_Validation_AudienceUnsupported", "The selected survey audience is not supported.");
         if (type == SurveyAudienceType.Team && teamId is null)
-            return "A team is required for the Team audience.";
+            return new("Survey_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return "A cutoff date is required for the Logged in since audience.";
+            return new("Survey_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
         return null;
     }
 
@@ -2368,7 +2392,7 @@ internal sealed class SurveyService(
             pair => pair.Value?.Trim() ?? string.Empty,
             StringComparer.OrdinalIgnoreCase));
 
-    private static void ValidateInvitationEmailCopy(
+    private static SurveyAuthoringError? ValidateInvitationEmailCopy(
         LocalizedText subject,
         LocalizedText message)
     {
@@ -2376,28 +2400,20 @@ internal sealed class SurveyService(
             pair => pair.Value.Contains('\r', StringComparison.Ordinal)
                     || pair.Value.Contains('\n', StringComparison.Ordinal));
         if (!string.IsNullOrEmpty(multilineSubject.Key))
-        {
-            throw new InvalidOperationException(
-                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).");
-        }
+            return new("Surveys_Validation_SubjectSingleLine",
+                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).", multilineSubject.Key);
 
-        ValidateLocalizedLength(
-            subject,
-            InvitationEmailSubjectMaxLength,
-            "Survey invitation email subjects");
-        ValidateLocalizedLength(
-            message,
-            InvitationEmailMessageMaxLength,
-            "Survey invitation email messages");
+        return ValidateLocalizedLength(subject, InvitationEmailSubjectMaxLength,
+                   "Survey invitation email subjects", "Surveys_Validation_SubjectLength")
+               ?? ValidateLocalizedLength(message, InvitationEmailMessageMaxLength,
+                   "Survey invitation email messages", "Surveys_Validation_MessageLength");
 
-        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string description)
+        static SurveyAuthoringError? ValidateLocalizedLength(
+            LocalizedText text, int maxLength, string description, string key)
         {
             var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
-            if (!string.IsNullOrEmpty(offender.Key))
-            {
-                throw new InvalidOperationException(
-                    $"{description} must be {maxLength} characters or fewer ({offender.Key}).");
-            }
+            return string.IsNullOrEmpty(offender.Key) ? null : new(key,
+                $"{description} must be {maxLength} characters or fewer ({offender.Key}).", maxLength, offender.Key);
         }
     }
 
@@ -2432,8 +2448,8 @@ internal sealed class SurveyService(
                 var requestedImages = question.InformationImages ?? [];
                 if (requestedImages.Count > MaxInformationImages)
                 {
-                    throw new InvalidOperationException(
-                        $"An Information item can have at most {MaxInformationImages} images.");
+                    return await RejectAsync(new("Surveys_Validation_ImagesLimit",
+                        $"An Information item can have at most {MaxInformationImages} images.", MaxInformationImages));
                 }
 
                 var preparedImages = new List<InformationImageInput>(requestedImages.Count);
@@ -2441,7 +2457,9 @@ internal sealed class SurveyService(
                 {
                     if (requested.Upload is { } upload)
                     {
-                        var fileName = ValidateInformationImage(upload);
+                        var imageError = ValidateInformationImage(upload);
+                        if (imageError is not null) return await RejectAsync(imageError);
+                        var fileName = DisplayFileName(upload.FileName);
                         // Replacements get a fresh key so a failed database save cannot delete or
                         // overwrite the still-authoritative existing file.
                         var imageId = Guid.NewGuid();
@@ -2473,9 +2491,9 @@ internal sealed class SurveyService(
                         continue;
                     }
 
-                    throw new InvalidOperationException(
+                    return await RejectAsync(new("Surveys_Validation_ImageRequired",
                         "Select an image file for every image row. " +
-                        "If a previous save failed, select the file again.");
+                        "If a previous save failed, select the file again."));
                 }
 
                 preparedQuestions.Add(question with
@@ -2502,35 +2520,40 @@ internal sealed class SurveyService(
         return new PreparedInformationImages(
             input with { Questions = preparedQuestions },
             newStoragePaths);
+
+        async Task<PreparedInformationImages> RejectAsync(SurveyAuthoringError error)
+        {
+            await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
+            return new(input, [], error);
+        }
     }
 
-    private static string ValidateInformationImage(SurveyImageUpload upload)
+    private static SurveyAuthoringError? ValidateInformationImage(SurveyImageUpload upload)
     {
         var fileName = DisplayFileName(upload.FileName);
         if (upload.Length <= 0)
         {
-            throw new InvalidOperationException("The selected image is empty.");
+            return new("Surveys_Validation_ImageEmpty", "The selected image is empty.");
         }
         if (!AllowedInformationImageContentTypes.Contains(upload.ContentType))
         {
-            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+            return new("Surveys_Validation_ImageContentType", "Only JPEG, PNG, and WebP images are allowed.");
         }
         if (upload.Length > MaxInformationImageBytes)
         {
-            throw new InvalidOperationException("Each Information image must be under 10 MB.");
+            return new("Surveys_Validation_ImageSize", "Each Information image must be under 10 MB.");
         }
         if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(fileName)))
         {
-            throw new InvalidOperationException(
-                "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
+            return new("Surveys_Validation_ImageExtension", "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
         }
         if (fileName.Length > MaxInformationImageFileNameLength)
         {
-            throw new InvalidOperationException(
-                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.");
+            return new("Surveys_Validation_ImageFileNameLength",
+                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.", MaxInformationImageFileNameLength);
         }
 
-        return fileName;
+        return null;
     }
 
     private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
@@ -2554,7 +2577,8 @@ internal sealed class SurveyService(
 
     private sealed record PreparedInformationImages(
         SurveyEditInput Input,
-        IReadOnlyList<string> NewStoragePaths);
+        IReadOnlyList<string> NewStoragePaths,
+        SurveyAuthoringError? Error = null);
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
     private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)
@@ -2606,127 +2630,128 @@ internal sealed class SurveyService(
             };
         }).ToList();
 
-    private static void ValidateQuestionConfiguration(IReadOnlyList<SurveyQuestion> questions)
+    private static SurveyAuthoringError? ValidateQuestionConfiguration(IReadOnlyList<SurveyQuestion> questions)
     {
         foreach (var question in questions)
         {
-            if (question.Type == SurveyQuestionType.Information)
+            var error = question.Type switch
             {
-                ValidateInformationQuestion(question);
-                continue;
-            }
-
-            if (question.Type == SurveyQuestionType.RankedChoice)
-            {
-                ValidateRankedQuestion(question);
-                continue;
-            }
-
-            if (question.Type != SurveyQuestionType.Grid) continue;
-
-            ValidateGridQuestion(question);
+                SurveyQuestionType.Information => ValidateInformationQuestion(question),
+                SurveyQuestionType.RankedChoice => ValidateRankedQuestion(question),
+                SurveyQuestionType.Grid => ValidateGridQuestion(question),
+                _ => null,
+            };
+            if (error is not null) return error;
         }
+        return null;
 
-        static void ValidateInformationQuestion(SurveyQuestion question)
+        static SurveyAuthoringError? ValidateInformationQuestion(SurveyQuestion question)
         {
             if (question.IsRequired)
-                throw new InvalidOperationException($"Information item {question.Id} cannot be required.");
+                return new("Surveys_Validation_InformationRequired", $"Information item {question.Id} cannot be required.", question.Id);
 
             var images = question.InformationImages ?? [];
             if (images.Count > MaxInformationImages)
             {
-                throw new InvalidOperationException(
-                    $"Information item {question.Id} can have at most {MaxInformationImages} images.");
+                return new("Surveys_Validation_InformationImagesLimit",
+                    $"Information item {question.Id} can have at most {MaxInformationImages} images.", question.Id, MaxInformationImages);
             }
 
             if (!question.HelpText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))
                 && images.Count == 0)
             {
-                throw new InvalidOperationException(
-                    $"Information item {question.Id} must contain Markdown or at least one image.");
+                return new("Surveys_Validation_InformationContentRequired",
+                    $"Information item {question.Id} must contain Markdown or at least one image.", question.Id);
             }
 
             if (images.Any(image =>
                 !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
-                throw new InvalidOperationException(
-                    $"Every image in Information item {question.Id} must have a label.");
+                return new("Surveys_Validation_InformationLabelRequired",
+                    $"Every image in Information item {question.Id} must have a label.", question.Id);
             }
 
             if (images.Any(image =>
                 !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
-                throw new InvalidOperationException(
-                    $"Every image in Information item {question.Id} must have alt text.");
+                return new("Surveys_Validation_InformationAltTextRequired",
+                    $"Every image in Information item {question.Id} must have alt text.", question.Id);
             }
+            return null;
         }
 
-        static void ValidateGridQuestion(SurveyQuestion question)
+        static SurveyAuthoringError? ValidateGridQuestion(SurveyQuestion question)
         {
             if (question.GridSelectionMode is null
                 || !Enum.IsDefined(question.GridSelectionMode.Value))
             {
-                throw new InvalidOperationException($"Grid question {question.Id} must choose a selection mode.");
+                return new("Surveys_Validation_GridMode", $"Grid question {question.Id} must choose a selection mode.", question.Id);
             }
 
             var rows = question.GridRows ?? [];
             if (rows.Count == 0)
-                throw new InvalidOperationException($"Grid question {question.Id} must have at least one row.");
+                return new("Surveys_Validation_GridRows", $"Grid question {question.Id} must have at least one row.", question.Id);
 
             if (question.Options.Count == 0 || question.Options.Count > 5)
             {
-                throw new InvalidOperationException(
-                    $"Grid question {question.Id} must have between one and five columns.");
+                return new("Surveys_Validation_GridColumns",
+                    $"Grid question {question.Id} must have between one and five columns.", question.Id);
             }
 
-            ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row");
-            ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column");
+            return ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row",
+                       question.Id, "Surveys_Validation_GridRow")
+                   ?? ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column",
+                       question.Id, "Surveys_Validation_GridColumn");
         }
 
-        static void ValidateRankedQuestion(SurveyQuestion question)
+        static SurveyAuthoringError? ValidateRankedQuestion(SurveyQuestion question)
         {
             if (question.Options.Count < 2)
-                throw new InvalidOperationException($"Ranked-choice question {question.Id} must have at least two options.");
-            ValidateStableValues(
+                return new("Surveys_Validation_RankedOptions",
+                    $"Ranked-choice question {question.Id} must have at least two options.", question.Id);
+            var error = ValidateStableValues(
                 question.Options.OrderBy(option => option.Order).Select(option => option.Value),
-                $"Ranked-choice question {question.Id} option");
+                $"Ranked-choice question {question.Id} option", question.Id, "Surveys_Validation_RankedOption");
+            if (error is not null) return error;
             if (question.RankedSettings is null
                 || !Enum.IsDefined(question.RankedSettings.OfficialMethod))
             {
-                throw new InvalidOperationException(
-                    $"Ranked-choice question {question.Id} must have valid ranking settings.");
+                return new("Surveys_Validation_RankedSettings",
+                    $"Ranked-choice question {question.Id} must have valid ranking settings.", question.Id);
             }
+            return null;
         }
 
-        static void ValidateStableValues(IEnumerable<string> values, string description)
+        static SurveyAuthoringError? ValidateStableValues(IEnumerable<string> values, string description, Guid questionId, string keyPrefix)
         {
             var materialized = values.ToList();
             if (materialized.Any(string.IsNullOrWhiteSpace))
             {
-                throw new InvalidOperationException($"{description} values must not be blank.");
+                return new(keyPrefix + "Blank", $"{description} values must not be blank.", questionId);
             }
 
             if (materialized.Distinct(StringComparer.Ordinal).Count() != materialized.Count)
             {
-                throw new InvalidOperationException($"{description} values must be unique.");
+                return new(keyPrefix + "Unique", $"{description} values must be unique.", questionId);
             }
+            return null;
         }
     }
 
-    private static void ValidateBranching(IReadOnlyList<SurveyQuestion> questions)
+    private static SurveyAuthoringError? ValidateBranching(IReadOnlyList<SurveyQuestion> questions)
     {
         var offenders = SurveyBranchingEvaluator.ValidateNoForwardReferences(questions);
         if (offenders.Count > 0)
         {
-            throw new InvalidOperationException(
-                $"A branching condition references a question that is not strictly earlier. Offending question ids: {string.Join(", ", offenders)}.");
+            return new("Surveys_Validation_BranchEarlier",
+                $"A branching condition references a question that is not strictly earlier. Offending question ids: {string.Join(", ", offenders)}.", string.Join(", ", offenders));
         }
 
         var emptyClauses = SurveyBranchingEvaluator.ValidateClauseOptionValues(questions);
         if (emptyClauses.Count > 0)
         {
-            throw new InvalidOperationException(
-                $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.");
+            return new("Surveys_Validation_BranchEmptyClause",
+                $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.", string.Join(", ", emptyClauses));
         }
 
         var types = questions.ToDictionary(question => question.Id, question => question.Type);
@@ -2738,18 +2763,20 @@ internal sealed class SurveyService(
             .ToList();
         if (nonAnswerSources.Count > 0)
         {
-            throw new InvalidOperationException(
-                $"Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
+            return new("Surveys_Validation_BranchUnsupportedSource",
+                $"Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.", string.Join(", ", nonAnswerSources));
         }
+        return null;
     }
 
-    private static void ValidateVoteConfiguration(SurveyEditInput input)
+    private static SurveyAuthoringError? ValidateVoteConfiguration(SurveyEditInput input)
     {
-        if (!input.IsAsociadoVote) return;
+        if (!input.IsAsociadoVote) return null;
         if (input.AudienceType != SurveyAudienceType.Asociados)
-            throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
+            return new("Surveys_Validation_VoteAudience", "Asociado votes must target the Asociados audience.");
         if (input.AllowAnonymous)
-            throw new InvalidOperationException("Asociado votes use fixed completion-tracked representation.");
+            return new("Surveys_Validation_VoteAnonymity", "Asociado votes use fixed completion-tracked representation.");
+        return null;
     }
 
     private sealed record RespondentAnswerContext(
@@ -2757,7 +2784,7 @@ internal sealed class SurveyService(
         IReadOnlyDictionary<Guid, string> Prompts,
         IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
 
-    private static void ValidateRankedDefinitionFrozen(
+    private static SurveyAuthoringError? ValidateRankedDefinitionFrozen(
         IEnumerable<SurveyQuestion> existing,
         IEnumerable<SurveyQuestion> updated)
     {
@@ -2770,7 +2797,7 @@ internal sealed class SurveyService(
             .OrderBy(question => question.PageNumber).ThenBy(question => question.Order)
             .ToList();
         if (oldRanked.Count != newRanked.Count)
-            throw new InvalidOperationException("Ranked-choice questions cannot be added or removed after voting starts.");
+            return new("Surveys_Validation_FrozenRankedCount", "Ranked-choice questions cannot be added or removed after voting starts.");
         for (var index = 0; index < oldRanked.Count; index++)
         {
             var before = oldRanked[index];
@@ -2781,10 +2808,11 @@ internal sealed class SurveyService(
                 || !beforeValues.SequenceEqual(afterValues, StringComparer.Ordinal)
                 || before.RankedSettings != after.RankedSettings)
             {
-                throw new InvalidOperationException(
+                return new("Surveys_Validation_FrozenRankedSettings",
                     "Ranked-choice candidates, order, and settings cannot change after the first saved answer.");
             }
         }
+        return null;
     }
 
     private static RankedAnswer? NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
@@ -2875,21 +2903,21 @@ internal sealed class SurveyService(
         new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
 
     /// <summary>Normalizes authoring input (null when blank) and rejects overlong/reserved slugs.</summary>
-    private static string? PreparePublicSlugForWrite(string? slug)
+    private static (string? Slug, SurveyAuthoringError? Error) PreparePublicSlugForWrite(string? slug)
     {
-        if (string.IsNullOrWhiteSpace(slug)) return null;
+        if (string.IsNullOrWhiteSpace(slug)) return (null, null);
         var normalized = slug.Trim().ToLowerInvariant();
         // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
         if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
         {
-            throw new InvalidOperationException(
-                $"The public link slug must be no longer than {PublicSlugMaxLength} characters.");
+            return (null, new("Surveys_Validation_SlugLength",
+                $"The public link slug must be no longer than {PublicSlugMaxLength} characters.", PublicSlugMaxLength));
         }
         if (ReservedSlugs.Contains(normalized))
         {
-            throw new InvalidOperationException($"Slug '{normalized}' is reserved.");
+            return (null, new("Surveys_Validation_SlugReserved", $"Slug '{normalized}' is reserved.", normalized));
         }
 
-        return normalized;
+        return (normalized, null);
     }
 }

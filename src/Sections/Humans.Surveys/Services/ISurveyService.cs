@@ -26,14 +26,14 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Whether any draft or submitted answer has frozen counting-affecting ranked settings.</summary>
     Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Creates a Draft survey from the builder input; returns the new survey id.</summary>
-    Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Creates a Draft survey from the builder input; returns its id or an expected validation refusal.</summary>
+    Task<SurveySaveResult> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Replaces a survey's editable graph (questions/options reconciled by id). Validates branching.
+    /// Replaces a survey's editable graph (questions/options reconciled by id), or returns an expected refusal. Validates branching.
     /// Board/Admin may edit any survey; anyone else may edit only one they authored.
     /// </summary>
-    Task UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default);
+    Task<SurveySaveResult> UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>
     /// Machine-translates the survey's authored content (title, intro, thank-you, invitation copy,
@@ -496,3 +496,17 @@ internal sealed record SurveyWizardAdvanceResult(
     IReadOnlyList<Guid>? InvalidAnswers = null);
 
 internal sealed record SurveySubmitResult(bool Succeeded, string? ErrorKey = null);
+
+/// <summary>An expected authoring refusal, with UI arguments kept separate from diagnostics.</summary>
+internal sealed record SurveyAuthoringError(string? Key, string DiagnosticMessage, params object[] Args);
+
+/// <summary>A committed survey id, or an expected refusal before persistence.</summary>
+internal sealed record SurveySaveResult(Guid? SurveyId = null, SurveyAuthoringError? Error = null)
+{
+    public bool Succeeded => SurveyId is not null;
+
+    public void RequireSuccess()
+    {
+        if (!Succeeded) throw new InvalidOperationException(Error?.DiagnosticMessage ?? "Survey save failed.");
+    }
+}

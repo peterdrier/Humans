@@ -378,20 +378,25 @@ internal sealed class SurveyAdminController(
         try
         {
             var input = model.ToEditInput(Zone);
-            if (model.Id is null)
+            var result = model.Id is null
+                ? await surveyService.CreateAsync(input, actorId.Value, ct)
+                : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
+            if (!result.Succeeded)
             {
-                id = await surveyService.CreateAsync(input, actorId.Value, ct);
+                var error = result.Error;
+                logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, error?.DiagnosticMessage);
+                ModelState.AddModelError(string.Empty, error?.Key is { } key
+                    ? localizer[key, error.Args].Value
+                    : localizer["Surveys_Validation_SaveFailed"].Value);
+                await PrepareBuilderForRenderAsync(model, ct);
+                return View("Builder", model);
             }
-            else
-            {
-                id = model.Id.Value;
-                await surveyService.UpdateAsync(id, input, CurrentViewer(actorId.Value), ct);
-            }
+            id = result.SurveyId!.Value;
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            logger.LogWarning("Survey save failed for {SurveyId}: {Reason}", model.Id, ex.Message);
+            ModelState.AddModelError(string.Empty, localizer["Surveys_Validation_SaveFailed"]);
             await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
@@ -450,9 +455,7 @@ internal sealed class SurveyAdminController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(string.Format(
-                CultureInfo.CurrentCulture,
-                localizer["Survey_Admin_Builder_Saved_TranslationFailed"].Value, ex.Message));
+            SetError(localizer["Survey_Admin_Builder_Saved_TranslationFailed"]);
         }
     }
 

@@ -309,7 +309,7 @@
     <value>Umfrage gespeichert — es fehlten keine Übersetzungen.</value>
   </data>
   <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
-    <value>Umfrage gespeichert, aber die Übersetzung ist fehlgeschlagen: {0}</value>
+    <value>Umfrage gespeichert, aber die Übersetzung ist fehlgeschlagen. Bitte versuche es erneut.</value>
   </data>
   <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve"><value>Bitte ausfüllen: {0}</value></data>
   <data name="Surveys_Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
@@ -348,4 +348,44 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Vorschau starten</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Dankesseite ansehen</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>Die ausgewählte Umfrage-Zielgruppe wird nicht unterstützt.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Betreffzeilen der Einladungs-E-Mail müssen einzeilig sein ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Betreffzeilen der Einladungs-E-Mail dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Nachrichten der Einladungs-E-Mail dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>Ein Informationselement darf höchstens {0} Bilder enthalten.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>Informationselement {0} darf nicht erforderlich sein.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>Informationselement {0} darf höchstens {1} Bilder enthalten.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>Informationselement {0} muss Markdown oder mindestens ein Bild enthalten.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Jedes Bild in Informationselement {0} muss eine Beschriftung haben.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Jedes Bild in Informationselement {0} muss Alternativtext haben.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>Rasterfrage {0} muss einen Auswahlmodus festlegen.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>Rasterfrage {0} muss mindestens eine Zeile haben.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>Rasterfrage {0} muss zwischen einer und fünf Spalten haben.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>Die Zeilenwerte der Rasterfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>Die Zeilenwerte der Rasterfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>Die Spaltenwerte der Rasterfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>Die Spaltenwerte der Rasterfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>Die Rangordnungsfrage {0} muss mindestens zwei Optionen haben.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>Für die Rangordnungsfrage {0} müssen gültige Einstellungen festgelegt sein.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>Die Optionswerte der Rangordnungsfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>Die Optionswerte der Rangordnungsfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>Eine Verzweigungsbedingung muss sich auf eine vorherige Frage beziehen. Betroffene Fragen-IDs: {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>Eine Verzweigungsbedingung „Ist/Ist nicht“ muss Optionswerte enthalten. Betroffene Fragen-IDs: {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Raster-, Rangordnungs- und Information-Fragen können keine Quelle für Verzweigungen sein. Betroffene Fragen-IDs: {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Abstimmungen von Asociados müssen sich an die Zielgruppe „Asociados“ richten.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Bei Abstimmungen von Asociados wird eine feste, abschlussverfolgte Darstellung verwendet.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>Rangordnungsfragen können nach Beginn der Abstimmung nicht hinzugefügt oder entfernt werden.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Kandidaten, Reihenfolge und Einstellungen von Rangordnungsfragen können nach der ersten gespeicherten Antwort nicht geändert werden.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Wähle für jede Bildzeile eine Bilddatei aus. Wenn ein vorheriges Speichern fehlgeschlagen ist, wähle die Datei erneut aus.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>Das ausgewählte Bild ist leer.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Nur JPEG-, PNG- und WebP-Bilder sind zulässig.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Jedes Information-Bild muss kleiner als 10 MB sein.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Bilddateinamen müssen auf .jpg, .jpeg, .png oder .webp enden.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Bilddateinamen dürfen höchstens {0} Zeichen lang sein.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>Der öffentliche Link-Slug darf höchstens {0} Zeichen lang sein.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>Der öffentliche Link-Slug „{0}“ ist reserviert.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Nur die Autorin oder der Autor der Umfrage darf sie bearbeiten.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Eine Abstimmung von Asociados kann nach ihrem Beginn nicht mehr bearbeitet werden.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Der Abstimmungsmodus einer Abstimmung von Asociados kann nach Beginn der Umfrage nicht geändert werden.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Die Umfrage konnte nicht gespeichert werden. Bitte versuche es erneut.</value></data>
 </root>
