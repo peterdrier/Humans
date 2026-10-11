@@ -100,7 +100,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 Two controllers serve this section:
 
 - `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Screenshot`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
-- `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
+- `BackdoorIssuesController` (`/api/backdoor/issues/*`, including `GET /api/backdoor/issues/{id}/screenshot`, the target of the payload's `ScreenshotUrl`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
 
 Member submission required-field and length errors use shared translations in all six cultures, for both the form and widget validation response. Existing input limits are unchanged.
 
@@ -136,7 +136,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - A mutation is authorized against the section the issue is **in**, not the one it is moving to, so a handler may route an issue out of their own queue.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage, and are written and deleted only through `IFileStorage`.
-- A screenshot is served only by `GET /Issues/{id}/Screenshot` to a viewer who may see the issue (a handler of its section, or its reporter; everyone else gets 404, same as Detail). The Shell blocks the static `/uploads/issues/` path, so a known URL grants nothing.
+- A screenshot is served only by `GET /Issues/{id}/Screenshot` (cookie) or `GET /api/backdoor/issues/{id}/screenshot` (API key, same `IssueViewer` reach check) to a viewer who may see the issue (a handler of its section, or its reporter; everyone else gets 404, same as Detail). The Shell blocks the static `/uploads/issues/` path, so a known URL grants nothing.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
 - API-initiated changes are audit-logged with the key's owner as actor — the key resolves to a human before any handler runs, so nothing on this path writes as nobody.

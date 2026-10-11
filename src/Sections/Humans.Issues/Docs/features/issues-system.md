@@ -103,7 +103,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 
 See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` are bare columns with no FK and no nav property at all (nobodies-collective/Humans#1188), and display data is stitched in `IssuesService` via `IUserServiceRead.GetUserInfosAsync`.
 
-**Screenshot storage:** `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (the store is rooted at wwwroot, so legacy rows keep resolving unchanged). The static `/uploads/issues/` path is blocked in the Shell; `GET /Issues/{id}/Screenshot` streams the file after the same reach check as Detail.
+**Screenshot storage:** `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (the store is rooted at wwwroot, so legacy rows keep resolving unchanged). The static `/uploads/issues/` path is blocked in the Shell; `GET /Issues/{id}/Screenshot` (cookie) and `GET /api/backdoor/issues/{id}/screenshot` (API key; the Backdoor payload's `ScreenshotUrl`) stream the file after the same reach check as Detail.
 
 ## Authorization Matrix
 

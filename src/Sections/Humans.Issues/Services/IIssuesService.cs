@@ -36,16 +36,7 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
         CancellationToken ct = default);
 
     Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// The issue's screenshot, or <c>null</c> when the issue is missing, out of the viewer's reach
-    /// (the same test as <c>GetIssueByIdAsync</c>), has no screenshot, or its file is gone.
-    /// </summary>
-    Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default);
 }
-
-/// <summary>A stored screenshot's bytes and the content type validated at upload.</summary>
-internal sealed record IssueScreenshot(byte[] Content, string ContentType);
 
 /// <summary>A distinct reporter and how many issues they filed — the index page's filter list.</summary>
 internal sealed record DistinctReporterRow(Guid UserId, string DisplayName, int Count);
