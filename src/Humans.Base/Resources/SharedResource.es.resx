@@ -1311,4 +1311,5 @@
   <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>La información adicional no debe superar los 1000 caracteres.</value></data>
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribución significativa no debe superar los 2000 caracteres.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La explicación del rol no debe superar los 2000 caracteres.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
 </root>

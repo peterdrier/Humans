@@ -257,6 +257,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries. The admin list bounds motivation previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; stored motivations remain complete.
 - Governance overview GETs propagate request cancellation to user, application, tier-count and GitHub statutes reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
 - The overview's statutes card shows the existing localized content-unavailable message when no translations are returned, rather than an empty tab body.
+- Statutes language tabs retain native language names and use the localized canonical Spanish legal marker.
 
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).

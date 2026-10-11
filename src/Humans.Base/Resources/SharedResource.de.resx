@@ -1311,4 +1311,5 @@
   <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Zusätzliche Informationen dürfen höchstens 1000 Zeichen enthalten.</value></data>
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Der wesentliche Beitrag darf höchstens 2000 Zeichen enthalten.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Die Erläuterung des Rollenverständnisses darf höchstens 2000 Zeichen enthalten.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Rechtsverbindlich</value></data>
 </root>

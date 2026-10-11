@@ -136,6 +136,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
 - Anonymous Legal pages use the existing six-culture content-unavailable message when GitHub content is absent.
 - The shared document partial renders the supplied localized empty message for zero translations as well as empty translation text; unavailable Legal content does not leave a blank card.
+- Legal and consent document tabs retain native language names and localize the canonical Spanish legal marker in all six cultures.
 - Legal content reads retain caller cancellation through GitHub reads, including anonymous Legal and Governance pages. Cancelled reads propagate without caching unavailable content; already-cancelled callers also stop on cache hits.
 
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
