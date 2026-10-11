@@ -1627,6 +1627,7 @@ internal sealed class Service(
                 }
 
                 skip.Add(id);
+                RememberStuckLines(thisRun);
                 logger.LogWarning(ex,
                     "SEPA sweep: skipping Sabadell line {MovementId}, pending outgoing with no readable date "
                     + "for {Runs} consecutive runs; the rest of the feed is booked without it.", id, runs);

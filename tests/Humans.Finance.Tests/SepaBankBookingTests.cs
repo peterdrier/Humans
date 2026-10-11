@@ -646,6 +646,26 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
+    public async Task Sweep_ReReadFailsAfterThresholdSkip_NextRunDoesNotAuditTheSkipAgain()
+    {
+        SeedStuckFeed("stuck-1");
+        await RunSweepAsync(2);
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(ci => ci.ArgAt<IReadOnlySet<string>?>(4) is { Count: > 0 }
+                ? Task.FromException<IReadOnlyList<HoldedBankMovementDto>>(new HoldedTransientException("down"))
+                : Task.FromException<IReadOnlyList<HoldedBankMovementDto>>(
+                    new HoldedPermanentException("no readable date", new FormatException(), "stuck-1")));
+
+        await RunSweepAsync(2);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task Sweep_DifferentStuckLine_RestartsTheCount()
     {
         SeedStuckFeed("stuck-1");
