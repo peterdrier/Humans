@@ -22,7 +22,7 @@ namespace Humans.Issues.Services;
 
 /// <summary>
 /// <see cref="IIssuesService"/> impl. Data via <see cref="IIssuesRepository"/>; cross-section reads via user/email/role services;
-/// audit after save (design-rules §7a); notifications and emails dispatched at the end.
+/// audit after save; notifications and emails dispatched at the end.
 /// </summary>
 internal sealed class IssuesService(
     IIssuesRepository repo,
@@ -985,7 +985,7 @@ internal sealed class IssuesService(
 
     private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
     {
-        // Fan out to Admins + section role-holders (US-28.4); exclude self-filer.
+        // Fan out to Admins + section role-holders; exclude self-filer.
         var recipients = new HashSet<Guid>();
 
         foreach (var id in await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
@@ -1058,7 +1058,6 @@ internal sealed class IssuesService(
     private async Task DispatchAssignedNotificationAsync(
         Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
     {
-        // Self-assign → no notification.
         if (newAssigneeUserId == actorUserId) return;
 
         try

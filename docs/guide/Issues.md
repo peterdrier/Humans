@@ -4,6 +4,9 @@
   src/Sections/Humans.Issues/Domain/**
   src/Sections/Humans.Issues/Data/Configurations/**
   src/Sections/Humans.Issues/Views/**
+  src/Sections/Humans.Issues/Models/**
+  src/Sections/Humans.Issues/SectionJobs.cs
+  src/Sections/*/Section.cs
 -->
 <!-- freshness:flag-on-change
   Reporter-facing submission flow plus handler triage. Review when the submit form, the help-widget modal, the routing table (IssueSectionRouting), the status enum, the retention window, or the attachment rules change. The area→role table below is a copy of IssueSectionRouting.RolesFor — re-check it on any routing change.
@@ -55,7 +58,7 @@ Six months after an issue is finally closed, it and its attachment are deleted f
 
 Other people's issues. You see exactly the ones you reported — no more, in any area — unless you hold a role that owns a queue.
 
-## As a Coordinator (Ticket Admin, Camp Admin, Teams Admin, No Info Admin, Consent Coordinator, Volunteer Coordinator, Human Admin, Finance Admin)
+## As a Coordinator (Ticket Admin, Camp Admin, Teams Admin, No Info Admin, Consent Coordinator, Volunteer Coordinator, Human Admin, Finance Admin, Board)
 
 If you hold a role that owns an area, that area's queue is yours. You see it at `/Issues` alongside your own reports, and the badge in your user menu counts everything in it still needing attention — issues in **Triage** or **Open**.
 

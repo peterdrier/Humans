@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Issues/**
-  src/Sections/Humans.Issues/Contracts/**
+  src/Sections/Humans.Backdoor/Controllers/BackdoorIssuesController.cs
+  src/Sections/*/Section.cs
 -->
 <!-- freshness:flag-on-change
   Issues entities, controller routes, API surface, status transitions, section routing, or handler-vs-reporter auth rules may have changed; verify the auth matrix and routes table.
@@ -172,7 +173,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 - `src/Sections/Humans.Feedback/Docs/features/feedback-system.md` — the retired global feedback queue Issues replaced: closed to new reports, Admin-only, kept as a historical archive.
 - Email outbox (`EmailOutboxMessage`) — used for comment notification emails.
-- Notifications (`37-notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
+- Notifications (`src/Sections/Humans.Notifications/Docs/features/notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
 - `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count.
 - Role management — `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `VolunteerCoordinator`, `HumanAdmin`, `NoInfoAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

@@ -30,7 +30,7 @@ public class IssueStatusTransitionTests
 
     /// <summary>
     /// A key no section declares keeps falling through to the Admin-only queue rather than
-    /// becoming unroutable (PR peterdrier/Humans#1762).
+    /// becoming unroutable.
     /// </summary>
     [HumansTheory]
     [InlineData("ZSomethingElse")]

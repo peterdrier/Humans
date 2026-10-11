@@ -1,6 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Issues/**
-  src/Sections/Humans.Issues/Contracts/**
+  src/Sections/Humans.Backdoor/Controllers/BackdoorIssuesController.cs
+  src/Sections/*/Section.cs
+  src/Humans.Base/Caching/CacheKeys.cs
+  src/Humans.Base/Caching/MemoryCacheInvalidators.cs
 -->
 <!-- freshness:flag-on-change
   Issue lifecycle, auto-reopen, role-based section routing, screenshot validation, and reporter-vs-handler authorization — review when Issues service/entities/controllers change.
@@ -174,7 +177,8 @@ Known area labels in the member submission form, issue list and detail view use 
 - **Notifications:** `INotificationEmitter` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications; `INotificationAutoResolve` — resolves the `IssueSubmitted` notifications when the issue goes terminal.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueCreated`, `AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count) — both invalidated whenever the actionable count for a viewer could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under the export key declared as `IssuesService.Issues`.
+- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under the export key declared as `IssuesService.Issues`, and to erase them (`EraseForUserAsync`).
+- **Base:** `ISectionCatalog` — tells the unrouted-section warning whether the value names a real section.
 
 ## Architecture
 
@@ -197,7 +201,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - Do **not** reintroduce `.Include(i => i.Reporter | i.Assignee | i.ResolvedByUser)` or `.Include(c => c.SenderUser)` anywhere — new read paths should go through the repository's existing methods (or extend the repository with a new narrowly-shaped query) and stitch display data in `IssuesService` via `IUserServiceRead`.
 - Aggregate-local `.Include(i => i.Comments)` is fine — `issue_comments` is Issues-owned.
 - `IssuesService` injects `IMemoryCache` for the per-viewer actionable-count cache (`CacheKeys.IssuesBadge(userId)`, short-TTL). This is appropriate per design-rules §15 (short-TTL request-acceleration cache, not a canonical domain-data cache). `IssuesUserMenuViewComponent` passes `HttpContext.RequestAborted` to that count read. Do **not** add new `IMemoryCache` entries for domain data — use `IIssuesBadgeCacheInvalidator.Invalidate/InvalidateMany` to evict the count cache after mutations, and `INavBadgeCacheInvalidator` to invalidate the global nav count.
-- A section gains a queue by implementing `IIssueQueueOwner` (in Issues' `Contracts/` folder) on its own `Section` entry point — a queue key and the roles that own it. Issues holds no list of sections: `IssueSectionRouting` is a lookup over the `IEnumerable<IIssueQueueOwner>` DI discovered, so nothing here is edited when a section joins or leaves. Do not invent free-form section strings outside the declared set.
+- A section gains a queue by implementing `IIssueQueueOwner` (in Issues' `Contracts/` folder) on its own `Section` entry point — a queue key and the roles that own it. Routing holds no list of sections: `IssueSectionRouting` is a lookup over the `IEnumerable<IIssueQueueOwner>` DI discovered, so a section joins or leaves the routing table without an edit here. Two lists in `Models/` still name queues by hand — `AreaLabelMap` (the Area label and the form's Area options) and `IssueSectionInference` (the page-path guess) — so a new queue gets no label or path inference until both are edited. Do not invent free-form section strings outside the declared set.
 - **`Issue.Section` is validated on every write** (nobodies-collective/Humans#1509). Both write paths — the reporter's Area dropdown and a handler re-routing — go through `IssuesService.NormalizeSection`, which trims, canonicalizes casing against `IssueSectionRouting.Resolve`, and coerces anything unrouted to `null` (the Admin queue) with a logged warning. Over 64 characters (the column width) is the one hard failure: no dropdown and no handler produces it, so it throws rather than being silently truncated. Coercing rather than rejecting an unknown value is deliberate — the routing table is meant to change without a migration.
 - **A queue exists because a section declared it, so the table cannot drift from the section list.** `IIssueQueueOwner` derives from `ISectionAnnotations` and publishes its own "Issue queue" annotation, so `/Debug/Sections` still shows where a reported issue lands — contributed by the owning section, not by Issues. A queue key need not equal its section's name: `Profiles` (merged into Users) and `Legal` (renamed Consent) are declared by Users and Consent under the spelling their stored rows carry, so those queues keep routing to `HumanAdmin` and `ConsentCoordinator` with no migration — and `/Debug/Sections` lists both as unmatched annotations, which is the rename showing rather than hiding. A key nobody declares falls through to the Admin-only queue. Validation still keys off `IssueSectionRouting`, not `ISectionCatalog`: the catalog is the set of sections that exist, the routing lookup is the set of queues they declared.
 - New tables that logically belong to Issues must be added to `design-rules.md §8`; do not silently grow the section's footprint.

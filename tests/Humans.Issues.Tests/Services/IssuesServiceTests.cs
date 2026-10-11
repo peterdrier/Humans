@@ -185,8 +185,7 @@ public sealed class IssuesServiceTests
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             DisplayName = displayName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName (dual-written from Profile by CopyNamesToUser), so set it here.
             BurnerName = displayName,
             PreferredLanguage = "en",
             CreatedAt = Clock.GetCurrentInstant()
@@ -1998,7 +1997,7 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
-    // Merged-away ids (#1704): in-app notifications reach the survivor, and the
+    // Merged-away ids (peterdrier/Humans#1704): in-app notifications reach the survivor, and the
     // assignee is stored as the live id.
     // ==========================================================================
 
