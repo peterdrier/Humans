@@ -198,7 +198,7 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "SetPrimary" or "SetEmailVisibility"
+        var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "SetGoogle" or "ClearGoogle" or "ClearPrimary"
             ? "Common_Error"
             : (string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
                 ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
