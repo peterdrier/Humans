@@ -39,7 +39,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | UserAgent | string? | Browser user agent (max 1000) |
 | AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000 UTF-16 units; truncation preserves surrogate pairs) |
 | ScreenshotFileName | string? | Original filename (max 256) |
-| ScreenshotStoragePath | string? | Relative path under `wwwroot/uploads/issues/{issueId}/` (max 512) |
+| ScreenshotStoragePath | string? | `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (max 512); bytes are read only through `GET /Issues/{id}/Screenshot`, never as a static URL |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
 | Status | IssueStatus | Triage (default), Open, InProgress, Resolved, WontFix, Duplicate. Stored as string (max 32). |
 | GitHubIssueNumber | int? | Linked GitHub issue (org-scoped) |
@@ -99,7 +99,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 
 Two controllers serve this section:
 
-- `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
+- `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Screenshot`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
 - `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
 
 Member submission required-field and length errors use shared translations in all six cultures, for both the form and widget validation response. Existing input limits are unchanged.
@@ -135,7 +135,8 @@ Known area labels in the member submission form, issue list and detail view use 
 - Both rules above are enforced in `IssuesService`, not in a controller, and every member that answers for a viewer — the per-item reads and mutations, the queue, the badge count — takes an `IssueViewer` to make that possible. The handle test itself is `IssueSectionRouting.CanHandle`, which `IssuesAuthorizationHandler` also reads, so the browser and a Backdoor key cannot drift apart. Out of reach and gone are the same answer: a read returns null, mutations return the same missing result as for a deleted issue, while thread reads throw the same not-found exception, so an id is not an oracle for issues outside the caller's queue.
 - A mutation is authorized against the section the issue is **in**, not the one it is moving to, so a handler may route an issue out of their own queue.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
-- Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
+- Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage, and are written and deleted only through `IFileStorage`.
+- A screenshot is served only by `GET /Issues/{id}/Screenshot` to a viewer who may see the issue (a handler of its section, or its reporter; everyone else gets 404, same as Detail). The Shell blocks the static `/uploads/issues/` path, so a known URL grants nothing.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
 - API-initiated changes are audit-logged with the key's owner as actor — the key resolves to a human before any handler runs, so nothing on this path writes as nobody.
@@ -161,9 +162,9 @@ Known area labels in the member submission form, issue list and detail view use 
 - In-app recipients are the ids the user read resolves to: a reporter or assignee id merged away since the issue was filed is delivered to its survivor, and the actor/sender is excluded by resolved id. `UpdateAssigneeAsync` stores the resolved id, and the Detail assignee dropdown selects the survivor's option for a stored id that was merged away.
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
 - When the actionable count for a viewer could have changed (issue created, status changed, comment posted, section changed), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`. Assignment does not move the count — `CountActionableAsync` filters on status + section + reporter only — so `UpdateAssigneeAsync` does not invalidate.
-- **Retention.** Issues that have been in a terminal state (Resolved / WontFix / Duplicate) for at least 6 months are deleted by `CleanupIssuesJob` (daily Hangfire job at 05:00 UTC). Comments cascade via FK; the screenshot directory under `wwwroot/uploads/issues/{id}/` is removed best-effort in the same pass. A reporter comment that auto-reopens a terminal issue clears `ResolvedAt`, which automatically excludes the issue from the retention sweep.
+- **Retention.** Issues that have been in a terminal state (Resolved / WontFix / Duplicate) for at least 6 months are deleted by `CleanupIssuesJob` (daily Hangfire job at 05:00 UTC). Comments cascade via FK; the screenshot file (via `IFileStorage.DeleteAsync` on the row's stored key) is removed best-effort in the same pass. A reporter comment that auto-reopens a terminal issue clears `ResolvedAt`, which automatically excludes the issue from the retention sweep.
 - GDPR erasure resolves the reporter, admins and role-holders for the owned issues’ sections before deletion, then invalidates their actionable-count caches after the save and before screenshot cleanup.
-- When a user is purged via `IAccountDeletionService.PurgeAsync`, `IssuesService.EraseForUserAsync` deletes their reported issues outright (comments cascade via the one real FK, `FK_issue_comments_issues_IssueId`; the screenshot directory is removed). Comments they left on other people's issues keep the row with `SenderUserId` nulled; `AssigneeUserId` / `ResolvedByUserId` on other people's issues are nulled the same way — in C#, not by a DB delete behavior, since there is none.
+- When a user is purged via `IAccountDeletionService.PurgeAsync`, `IssuesService.EraseForUserAsync` deletes their reported issues outright (comments cascade via the one real FK, `FK_issue_comments_issues_IssueId`; the screenshot file is removed). Comments they left on other people's issues keep the row with `SenderUserId` nulled; `AssigneeUserId` / `ResolvedByUserId` on other people's issues are nulled the same way — in C#, not by a DB delete behavior, since there is none.
 
 ## Cross-Section Dependencies
 

@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
@@ -38,7 +37,7 @@ internal sealed class IssuesService(
     IIssuesBadgeCacheInvalidator issuesBadge,
     IMemoryCache cache,
     IClock clock,
-    IHostEnvironment env,
+    IFileStorage fileStorage,
     ISectionCatalog sectionCatalog,
     IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
@@ -60,7 +59,7 @@ internal sealed class IssuesService(
 
     /// <summary>
     /// Issues are kept for 6 months after they enter a terminal state. After
-    /// that the row + comments + screenshot directory are removed by
+    /// that the row + comments + screenshot are removed by
     /// <c>CleanupIssuesJob</c>. Days, not months, so the cutoff is a simple
     /// <see cref="Duration"/>.
     /// </summary>
@@ -168,17 +167,14 @@ internal sealed class IssuesService(
                 _ => throw new InvalidOperationException($"Unexpected content type: {screenshot.ContentType}")
             };
 
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var relativePath = Path.Combine("uploads", "issues", issueId.ToString(), fileName);
-            var absolutePath = Path.Combine(env.ContentRootPath, "wwwroot", relativePath);
-
-            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-
-            await using var stream = new FileStream(absolutePath, FileMode.Create);
-            await screenshot.CopyToAsync(stream, ct);
+            var key = $"uploads/issues/{issueId}/{Guid.NewGuid()}{ext}";
+            await using (var stream = screenshot.OpenReadStream())
+            {
+                await fileStorage.SaveAsync(key, stream, ct);
+            }
 
             issue.ScreenshotFileName = screenshot.FileName;
-            issue.ScreenshotStoragePath = relativePath.Replace('\\', '/');
+            issue.ScreenshotStoragePath = key;
             issue.ScreenshotContentType = screenshot.ContentType;
         }
 
@@ -218,6 +214,16 @@ internal sealed class IssuesService(
     {
         var issue = await repo.GetByIdAsync(id, ct);
         return issue is null || !CanSee(issue, viewer) ? null : MapDetail(issue);
+    }
+
+    public async Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
+    {
+        var issue = await repo.GetByIdAsync(id, ct);
+        if (issue is null || !CanSee(issue, viewer) || issue.ScreenshotStoragePath is not { } key)
+            return null;
+
+        var content = await fileStorage.TryReadAsync(key, ct);
+        return content is null ? null : new IssueScreenshot(content, issue.ScreenshotContentType ?? "application/octet-stream");
     }
 
     /// <summary>
@@ -758,13 +764,9 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var deleted = await repo.DeleteByIdsAsync(expired, ct);
+        var (deleted, screenshotKeys) = await repo.DeleteByIdsAsync(expired, ct);
 
-        // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
-        foreach (var issueId in expired)
-        {
-            DeleteScreenshotDirectory(issueId);
-        }
+        await DeleteScreenshotsAsync(screenshotKeys);
 
         logger.LogInformation(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
@@ -826,32 +828,29 @@ internal sealed class IssuesService(
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
 
-        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
+        var screenshotKeys = await repo.EraseForUserAsync(userId, ct);
         issuesBadge.InvalidateMany(badgeUserIds);
 
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var issueId in erasedIssueIds)
-        {
-            DeleteScreenshotDirectory(issueId);
-        }
+        await DeleteScreenshotsAsync(screenshotKeys);
     }
 
-    /// <summary>Best-effort removal of an issue's upload dir; failures are logged, never thrown.</summary>
-    private void DeleteScreenshotDirectory(Guid issueId)
+    /// <summary>
+    /// Best-effort removal of screenshots whose rows have already committed; failures are logged,
+    /// never thrown. Cancellation must not strand them, and a stranded blob must not abort the cascade.
+    /// </summary>
+    private async Task DeleteScreenshotsAsync(IReadOnlyList<string> keys)
     {
-        var issueDir = Path.Combine(
-            env.ContentRootPath, "wwwroot", "uploads", "issues", issueId.ToString());
-
-        try
+        foreach (var key in keys)
         {
-            if (Directory.Exists(issueDir))
-                Directory.Delete(issueDir, recursive: true);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Failed to delete screenshot directory {Dir} for issue {IssueId}",
-                issueDir, issueId);
+            try
+            {
+                await fileStorage.DeleteAsync(key, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete issue screenshot {Key}", key);
+            }
         }
     }
 

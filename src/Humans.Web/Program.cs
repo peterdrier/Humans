@@ -677,11 +677,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Block direct /uploads/profile-pictures/ before UseStaticFiles — must go through /Profile/Picture/{id} for GDPR anonymization gate.
+// Likewise /uploads/issues/ — screenshots are served by /Issues/{id}/Screenshot behind the issue's reach check.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value;
     if (path is not null &&
-        path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase))
+        (path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase) ||
+         path.StartsWith("/uploads/issues/", StringComparison.OrdinalIgnoreCase)))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;

@@ -25,7 +25,7 @@ Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentServiceRead`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
-`ISectionCatalog`, `IHostEnvironment`. Routes through `IssueSectionRouting`
+`ISectionCatalog`, `IFileStorage` (screenshot bytes; the row keeps only the key). Routes through `IssueSectionRouting`
 (Singleton, owns no table): the queue lookup built from every
 `IIssueQueueOwner` DI discovered — each owning section declares its own queue
 key and roles, so Issues names no section. Implements `IUserDataContributor`,

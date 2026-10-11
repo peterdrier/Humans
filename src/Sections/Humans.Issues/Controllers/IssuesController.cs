@@ -224,6 +224,23 @@ internal sealed class IssuesController(
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
+    /// <summary>
+    /// The issue's screenshot, behind the same reach as <see cref="Detail"/>: a handler of its
+    /// section, or its reporter. Missing and out-of-reach answer alike.
+    /// </summary>
+    [HttpGet("{id}/Screenshot")]
+    public async Task<IActionResult> Screenshot(Guid id)
+    {
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
+        if (userMissing is not null) return userMissing;
+
+        var screenshot = await issues.GetScreenshotAsync(id, ViewerFor(user.Id), HttpContext.RequestAborted);
+        if (screenshot is null) return NotFound();
+
+        Response.Headers.CacheControl = "private, no-cache";
+        return File(screenshot.Content, screenshot.ContentType);
+    }
+
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm, CancellationToken ct)
     {
         var activeIds = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
@@ -472,7 +489,7 @@ internal sealed class IssuesController(
             PageUrl = i.PageUrl,
             UserAgent = i.UserAgent,
             AdditionalContext = i.AdditionalContext,
-            ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
+            ScreenshotUrl = i.ScreenshotStoragePath is not null ? Url.Action(nameof(Screenshot), "Issues", new { id = i.Id }) : null,
             ReporterUserId = i.ReporterUserId,
             AssigneeUserId = i.AssigneeUserId,
             GitHubIssueNumber = i.GitHubIssueNumber,
