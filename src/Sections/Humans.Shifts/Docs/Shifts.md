@@ -232,6 +232,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Department browse groups label all-phase rotas as “All phases”, using the shared localized phase labels rather than the event-only label.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
