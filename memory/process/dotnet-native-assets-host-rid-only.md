@@ -1,9 +1,9 @@
 ---
 name: bin/ keeps only the host RID's native assets
-description: Builds prune native runtime assets for other RIDs from bin/; pass `-p:KeepAllRuntimeAssets=true` to keep them all.
+description: Builds prune Magick.NET native assets for other RIDs from bin/; pass `-p:KeepAllRuntimeAssets=true` to keep them all.
 ---
 
-`Directory.Build.props` target `PruneForeignRuntimeAssets` drops native assets (`runtimes/<rid>/native`) whose RID isn't the SDK's host RID, when no `RuntimeIdentifier` is set.
+`Directory.Build.props` targets `PruneForeignMagickRuntimeAssets` and `CleanForeignMagickRuntimeDirs` drop Magick.NET's native assets (`runtimes/<rid>/native`) whose RID isn't the SDK's host RID, when no `RuntimeIdentifier` is set, and delete the foreign `runtimes/<rid>` dirs left in bin by earlier builds (the first build reclaims the space). Other packages' natives, including generic-RID ones like `runtimes/unix/native`, are untouched.
 
 **Why:** Magick.NET ships natives for 8 platforms, ~236 MB per executable output. 10 outputs carry them (Web plus 9 test projects), ~2 GB per worktree.
 
