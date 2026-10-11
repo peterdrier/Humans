@@ -16,6 +16,11 @@ internal sealed class TicketingBudgetService(
     public async Task<int> SyncActualsAsync(
         Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
+        var activeYear = await budgetService.GetActiveYearAsync();
+        if (activeYear is null || activeYear.Id != budgetYearId)
+            throw new InvalidOperationException(
+                "Ticketing actuals can only be synced into the active budget year.");
+
         try
         {
             var orders = await ticketService.GetTicketOrdersAsync(ct);
@@ -29,7 +34,7 @@ internal sealed class TicketingBudgetService(
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
-                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                    .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid)
                     .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                     .Where(g => g.Key < currentWeekMonday)
                     .OrderBy(g => g.Key)

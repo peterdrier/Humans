@@ -839,6 +839,27 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_zeroes_weeks_absent_from_next_sync()
+    {
+        var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        // All of the week's orders were refunded: it no longer appears in the input.
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actuals = await ctx.BudgetLineItems
+            .Where(li => (li.BudgetCategoryId == revenueCatId || li.BudgetCategoryId == feesCatId)
+                && !li.Description.StartsWith("Projected: "))
+            .ToListAsync(ct);
+        actuals.Should().HaveCount(3, because: "rows are zeroed, not deleted");
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_writes_audit_entry_with_null_actor_for_automation()
     {
         await SeedTicketingYearAsync();
