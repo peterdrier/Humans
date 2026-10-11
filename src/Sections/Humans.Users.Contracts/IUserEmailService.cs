@@ -33,7 +33,9 @@ public interface IUserEmailService
     /// <summary>
     /// Adds a new email address and initiates verification.
     /// Returns a result containing the verification token and whether the email conflicts
-    /// with another account (which will trigger a merge request on verification).
+    /// with another account (which will trigger a merge request on verification),
+    /// or an ErrorKey for invalid format, an existing account address, or a pending merge.
+    /// Expected refusals create no email row or verification token.
     /// </summary>
     Task<AddEmailResult> AddEmailAsync(
         Guid userId,

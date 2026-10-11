@@ -91,20 +91,15 @@ internal sealed class ProfileEmailsController(
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
-        try
+        var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail);
+        if (result.ErrorKey is { } errorKey)
         {
-            var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail);
-            await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
-            SetAddedEmailFlash(model.NewEmail, result.IsConflict);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(
-                "Rejected email add for user {UserId} ({Email}): {Reason}",
-                user.Id, model.NewEmail, ex.Message);
-            ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
+            ModelState.AddModelError(nameof(model.NewEmail), LocalizeEmailRefusal(errorKey));
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
+
+        await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
+        SetAddedEmailFlash(model.NewEmail, result.IsConflict);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -469,11 +464,17 @@ internal sealed class ProfileEmailsController(
         return RedirectToAction(nameof(Emails));
     }
 
+    private string LocalizeEmailRefusal(string key)
+    {
+        var message = localizer[key];
+        return message.ResourceNotFound ? sharedLocalizer[key].Value : message.Value;
+    }
+
     private void SetEmailUnlinkedResult(UnlinkEmailResult result)
     {
         if (result.ErrorKey is { } errorKey)
         {
-            SetError(localizer[errorKey].Value);
+            SetError(LocalizeEmailRefusal(errorKey));
             return;
         }
 
@@ -732,6 +733,12 @@ internal sealed class ProfileEmailsController(
         try
         {
             var result = await userEmailService.AddEmailAsync(id, email, ct);
+            if (result.ErrorKey is { } errorKey)
+            {
+                SetError(LocalizeEmailRefusal(errorKey));
+                return RedirectToAction(nameof(AdminEmails), new { id });
+            }
+
             await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id, ct);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)

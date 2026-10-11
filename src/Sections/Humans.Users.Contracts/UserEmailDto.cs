@@ -41,7 +41,8 @@ public record UserEmailEditDto(
 /// (issue nobodies-collective/Humans#611).</param>
 /// <param name="Token">Verification token for building the confirmation URL.</param>
 /// <param name="IsConflict">True if the email is already verified on another account (merge flow).</param>
-public record AddEmailResult(Guid EmailId, string Token, bool IsConflict);
+/// <param name="ErrorKey">Expected refusal resource key; refused additions have an empty Id and token.</param>
+public record AddEmailResult(Guid EmailId, string Token, bool IsConflict, string? ErrorKey = null);
 
 /// <summary>Result of unlinking a sign-in provider, including an expected refusal.</summary>
 /// <param name="Succeeded">Whether the provider and email row were removed.</param>

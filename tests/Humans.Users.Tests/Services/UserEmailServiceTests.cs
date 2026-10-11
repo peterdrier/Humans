@@ -1432,16 +1432,40 @@ public class UserEmailServiceTests
         await _repository.Received(1).AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddEmailAsync_InvalidOrPendingAddress_ReturnsRefusalWithoutCreatingEmail(bool pendingMerge)
+    {
+        var userId = Guid.NewGuid();
+        var email = pendingMerge ? "new@example.com" : "not an email";
+        _mergeService.HasPendingForUserAndEmailAsync(
+            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(pendingMerge);
+
+        var result = await _service.AddEmailAsync(userId, email, Xunit.TestContext.Current.CancellationToken);
+
+        result.EmailId.Should().Be(Guid.Empty);
+        result.Token.Should().BeEmpty();
+        result.ErrorKey.Should().Be(pendingMerge ? "Users_Profile_EmailMergePending" : "Validation_EmailAddress");
+        await _userService.DidNotReceive().AddUserEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>());
+        await _userManager.DidNotReceive().GenerateUserTokenAsync(
+            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
     [HumansFact]
-    public async Task AddEmailAsync_AddressAlreadyHeldAsUserEmailRow_ThrowsValidationException()
+    public async Task AddEmailAsync_AddressAlreadyHeldAsUserEmailRow_ReturnsRefusal()
     {
         var userId = Guid.NewGuid();
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "katja@gmail.com" }]);
 
-        var act = async () => await _service.AddEmailAsync(userId, "katja@gmail.com", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AddEmailAsync(userId, "katja@gmail.com", Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.EmailId.Should().Be(Guid.Empty);
+        result.Token.Should().BeEmpty();
+        result.ErrorKey.Should().Be("Users_Profile_EmailAlreadyAdded");
         await _userService.DidNotReceive().AddUserEmailAsync(
             Arg.Any<Guid>(),
             Arg.Any<UserEmailAddCommand>(),

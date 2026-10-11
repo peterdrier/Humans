@@ -79,6 +79,8 @@ public class ProfileEmailsControllerGridTests
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
+        localizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Validation_EmailAddress", resourceNotFound: true));
+
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileEmailsController(
@@ -423,6 +425,40 @@ public class ProfileEmailsControllerGridTests
             targetUserId, emailId, Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansTheory]
+    [InlineData("Validation_EmailAddress", false)]
+    [InlineData("Users_Profile_EmailAlreadyAdded", false)]
+    [InlineData("Users_Profile_EmailMergePending", false)]
+    [InlineData("Validation_EmailAddress", true)]
+    [InlineData("Users_Profile_EmailAlreadyAdded", true)]
+    [InlineData("Users_Profile_EmailMergePending", true)]
+    public async Task AddEmail_ExpectedRefusal_DoesNotSendOrAudit(string errorKey, bool admin)
+    {
+        const string email = "new@example.com";
+        _userManager.FindByIdAsync(_userId.ToString()).Returns(new User { Id = _userId });
+        _userEmailService.AddEmailAsync(_userId, email, Arg.Any<CancellationToken>())
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, errorKey));
+        _sharedLocalizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Invalid email"));
+        var expectedMessage = string.Equals(errorKey, "Validation_EmailAddress", StringComparison.Ordinal)
+            ? "Invalid email" : errorKey;
+
+        if (admin)
+        {
+            var result = await _controller.AdminAddEmail(_userId, email, Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("AdminEmails");
+            _controller.TempData["ErrorMessage"].Should().Be(expectedMessage);
+        }
+        else
+        {
+            var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = email });
+            result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("Emails");
+            _controller.ModelState[nameof(EmailsViewModel.NewEmail)]!.Errors.Single().ErrorMessage.Should().Be(expectedMessage);
+        }
+
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

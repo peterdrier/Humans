@@ -1197,4 +1197,10 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
+  <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
+    <value>Diese E-Mail-Adresse ist bereits in deinem Konto.</value>
+  </data>
+  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
+    <value>Für diese E-Mail-Adresse ist bereits eine Anfrage zur Zusammenführung offen.</value>
+  </data>
 </root>

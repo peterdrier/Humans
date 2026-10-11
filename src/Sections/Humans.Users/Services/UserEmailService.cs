@@ -103,15 +103,15 @@ internal sealed class UserEmailService(
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
-            throw new ValidationException("Please enter a valid email address.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Validation_EmailAddress");
 
         var held = await repository.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, cancellationToken);
         if (held.Any(e => e.UserId == userId))
-            throw new ValidationException("This email address is already in your account.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailAlreadyAdded");
 
         if (await MergeService.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
-            throw new ValidationException("A merge request is already pending for this email address.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailMergePending");
 
         // FindByIdAsync, not cache: UserManager token APIs read SecurityStamp directly and cache-rehydrated Users lack it.
         var user = await userManager.FindByIdAsync(userId.ToString())
