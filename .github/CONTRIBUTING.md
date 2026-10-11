@@ -41,7 +41,7 @@ Either way, after review and QA we promote tested changes to production via a se
 
 Preview environments are provisioned by Coolify off the `pull_request` webhook, and it refuses PRs whose head branch lives outside `peterdrier/Humans`. Fork code is untrusted, and the preview runs on our hardware against a database cloned from QA. Coolify's trust check (`author_association`) is never reached for a fork PR, so **collaborator status alone does not restore the preview — the branch has to live in `peterdrier/Humans`.**
 
-To get a preview on a fork PR, a maintainer deploys it manually: Coolify → Humans → **Previews** → Load PRs → Deploy. That is per-push, not automatic.
+To get a preview on a fork PR, a maintainer deploys it manually: first run the **Preview Database** workflow (Actions → Run workflow, with the PR number) so the self-hosted clone exists, then Coolify → Humans → **Previews** → Load PRs → Deploy. That is per-push, not automatic.
 
 ### Why Not PR Directly to Production?
 

@@ -3,17 +3,24 @@ on:
   pull_request:
     types: [opened, reopened, closed]
     branches: [main]
+  # Manual path for fork PRs a maintainer deploys by hand (CONTRIBUTING.md).
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to create a preview database for
+        required: true
 
 jobs:
-  # Self-hosted jobs run only for PRs whose branch lives in this repo — i.e.
-  # collaborators. Fork PRs get no preview (AGENTS.md) and never touch the NUC.
+  # Clone only for PRs whose branch lives in this repo (collaborators) or on
+  # manual dispatch. Fork PRs get no preview (AGENTS.md). Cleanup stays
+  # unguarded: it runs no PR code and must still drop clones made before this guard.
   clone-db:
-    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.action == 'opened' || github.event.action == 'reopened')
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (github.event.action == 'opened' || github.event.action == 'reopened'))
     runs-on: [self-hosted, nuc]
     steps:
       - name: Create preview database (clone from QA)
         run: |
-          PR_ID=${{ github.event.pull_request.number }}
+          PR_ID=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
           DB_NAME="humans_pr_${PR_ID}"
 
           # Terminate connections and drop if exists (handles reopened PRs)
@@ -28,10 +35,10 @@ jobs:
 
       - name: Create preview uploads directory
         run: |
-          mkdir -p /opt/docker/human/uploads-pr-${{ github.event.pull_request.number }}
+          mkdir -p /opt/docker/human/uploads-pr-${{ github.event.inputs.pr_number || github.event.pull_request.number }}
 
   cleanup-db:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'closed'
+    if: github.event.action == 'closed'
     runs-on: [self-hosted, nuc]
     steps:
       - name: Drop preview database
