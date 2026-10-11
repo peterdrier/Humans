@@ -28,9 +28,9 @@ further — and every write it makes is attributed to that person.
 | 5 | *I want to move one field on it* | `POST /Issues/{id}/{Status,Assignee,Section,GitHubIssue}` · `Update{Status,Assignee,Section}Async` · `SetGitHubIssueNumberAsync` |
 | 6 | *Make it go away* | `PurgeExpiredAsync` + `CleanupIssuesJob` · `EraseForUserAsync` · `ContributeForUserAsync` |
 
-Shape 5 is four field mutations over one pipeline: find the issue the viewer may handle, apply the
+Shape 5 is the field mutations over one pipeline: find the issue the viewer may handle, apply the
 change, save, audit, notify. Missing (or out of reach), rule-refused, succeeded and failed are the
-four outcomes, and both doors read them from the same `IssueMutationResult`.
+outcomes, and both doors read them from the same `IssueMutationResult`.
 
 Every shape that answers *for* a viewer takes the asker with it — the queue, the badge count,
 and every per-item read and mutation in shapes 2, 4 and 5. `IssueViewer` — the person's id plus
@@ -53,14 +53,14 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 - **`Data/`** — `IssuesDbContext` + the one repository. Repository projections are repo-local
   tuples/records; no service-layer DTO travels down into `Data/`.
 - **`Services/`** — `IssuesService`: submit, thread assembly, badge count, retention, GDPR, and
-  the four field mutations behind one private pipeline. It is the only enforcement point both
+  the field mutations behind one private pipeline. It is the only enforcement point both
   doors share: `CanSee` gates every per-item read, `FindHandleableAsync` gates every mutation,
   and out-of-reach answers exactly what gone answers.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
   and never a second viewer inline. **Target, not built:** the Area label and the
-  page-path → queue guess come from the sections that own the queues, not from two lists in
+  page-path → queue guess come from the sections that own the queues, not from hand lists in
   `Models/` (`AreaLabelMap`, `IssueSectionInference`) that name sections by hand.
 - **`Authorization/`** — one requirement (`Handle`) and its resource handler, which asks
   `IssueSectionRouting.CanHandle` the same question the service asks, to shape the page and to
@@ -127,7 +127,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 - **No status-transition graph.** Any handler may set any status; the lifecycle in the docs is
   the intended path, not an enforced one.
 - **No `IssueViewer.From(ClaimsPrincipal)`.** The contracts stay free of ASP.NET types; the
-  controller's private `ViewerFor` is the one builder (Peter, 2026-09-14).
+  controller's private `ViewerFor` is the one builder.
 
 ## Load-bearing weirdness
 
@@ -158,4 +158,4 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 |---|---|---|---|
 | 2026-08-25 | [2026-08-25-Issues](../../../../docs/health/runs/2026-08-25-Issues.md) | 260 → 258 | First doctor run. Three user-visible defects fixed (case-sensitive search, unlocalized toasts, wrong attachment hint). PR: peterdrier/Humans#1499 |
 | 2026-09-14 | [2026-09-14-Issues](../../../../docs/health/runs/2026-09-14-Issues.md) | | `IssueViewer` is now the only spelling of who is asking on every member that answers for a viewer; every status pill and the category filter speak all six cultures; the docs stopped describing cross-section foreign keys the section never configured. PR: peterdrier/Humans#1671 |
-| 2026-10-11 | [2026-10-11-Issues](../../../../docs/health/runs/2026-10-11-Issues.md) | | The four field mutations run through one pipeline; badge eviction on status, reopen and section change, source-section routing and the reporter-reopen audit are now pinned by tests; the docs stopped claiming Issues names no queue by hand. PR: peterdrier/Humans#1954 |
+| 2026-10-11 | [2026-10-11-Issues](../../../../docs/health/runs/2026-10-11-Issues.md) | | The field mutations run through one pipeline; badge eviction on status, reopen and section change, source-section routing and the reporter-reopen audit are now pinned by tests; the docs stopped claiming Issues names no queue by hand. PR: peterdrier/Humans#1954 |
