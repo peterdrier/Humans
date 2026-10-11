@@ -59,6 +59,10 @@ public class SurveyServiceTests
         _teamService, _userService, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
+    private SurveyReminderSender CreateReminderSender() => new(
+        _repo, _audit, _clock, _userService, _userEmailService, _emailService,
+        _emailMessages, _tokenProvider, NullLogger<SurveyReminderSender>.Instance);
+
     /// <summary>A Board/Admin viewer: may edit any survey, so ownership never shadows what a test is pinning.</summary>
     private static SurveyViewer Board(Guid userId) => new(userId, IsBoardOrAdmin: true);
 
@@ -1618,7 +1622,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1671,7 +1675,7 @@ public class SurveyServiceTests
                 [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de" }
             }));
 
-        (await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+        (await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
 
         var messages = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0])
             .OfType<EmailMessage>().ToList();
@@ -1711,7 +1715,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         // The link would land on the Closed page, and the one-shot ReminderSentAt would be spent.
         count.Should().Be(0);
@@ -1743,7 +1747,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -1755,7 +1759,7 @@ public class SurveyServiceTests
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(new List<SurveyInvitation>());
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1783,7 +1787,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1834,7 +1838,7 @@ public class SurveyServiceTests
                     _ => Task.FromException(new InvalidOperationException("smtp down")),
                     _ => Task.CompletedTask);
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _emailService.Received(preparationFails ? 1 : 2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());

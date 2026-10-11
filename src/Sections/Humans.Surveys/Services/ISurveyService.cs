@@ -89,13 +89,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Job-driven sweep: sends the one-time 7-day reminder to every invitee of an Open survey who
-    /// hasn't completed and hasn't already been reminded (<c>SentAt</c> ≥ 7 days ago). Stamps
-    /// <c>ReminderSentAt</c> per invitee so it never fires twice (idempotent). Returns the number reminded.
-    /// </summary>
-    Task<int> SendDueRemindersAsync(CancellationToken ct = default);
-
     // ── Answering (wizard entry) ────────────────────────────────────────────
     /// <summary>
     /// Resolves a tokenised invite link into the answering context (survey definition + any resumable
