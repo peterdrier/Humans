@@ -257,9 +257,20 @@ internal sealed class ExpenseReportService(
         return report.Id;
     }
 
-    /// <summary>How a member is named in an audit description written by somebody else.</summary>
-    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct) =>
-        (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
+    /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
+    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
+        }
+        catch (Exception ex)
+        {
+            // Name enrichment must not skip the audit or fail an edit that already committed.
+            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
+            return userId.ToString();
+        }
+    }
 
     /// <summary>
     /// Records an edit an admin made to somebody else's report. A member editing their own leaves
