@@ -489,8 +489,13 @@ internal sealed class TeamController(
 
         try
         {
-            var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
-            SetSuccess(outcome == TeamJoinOutcome.RequestSubmitted
+            var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
+            if (result.ErrorKey is not null)
+            {
+                SetError(localizer[result.ErrorKey].Value);
+                return RedirectToAction(nameof(Details), new { slug });
+            }
+            SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
                 ? localizer["Teams_Team_JoinRequestSubmitted"].Value
                 : localizer["Teams_Team_Joined"].Value);
 
@@ -499,7 +504,7 @@ internal sealed class TeamController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetMemberActionError(ex.Message);
+            SetError(localizer["Teams_ActionFailed"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -566,12 +571,6 @@ internal sealed class TeamController(
         }
 
         return RedirectToAction(nameof(MyTeams));
-    }
-
-    private void SetMemberActionError(string error)
-    {
-        var message = localizer[error];
-        SetError(message.ResourceNotFound ? localizer["Teams_ActionFailed"].Value : message.Value);
     }
 
     [HttpGet("Summary")]

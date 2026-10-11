@@ -273,7 +273,7 @@ internal interface ITeamManagementService : ITeamService
     /// teams get a pending <c>TeamJoinRequest</c>, open teams an immediate
     /// membership. The outcome tells the caller which happened.
     /// </summary>
-    Task<TeamJoinOutcome> JoinTeamAsync(
+    Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
         string? message,
@@ -579,3 +579,7 @@ internal sealed record TeamUpdateResult(
 internal sealed record TeamMemberRemovalResult(string? ErrorKey = null, string? ErrorMessage = null);
 
 internal sealed record TeamMembershipMutationResult(bool Succeeded, string? ErrorKey = null, bool WasCoordinator = false);
+
+internal sealed record TeamJoinResult(TeamJoinOutcome? Outcome = null, string? ErrorKey = null);
+internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, string? ErrorKey = null);
+internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);

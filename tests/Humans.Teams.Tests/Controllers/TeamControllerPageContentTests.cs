@@ -319,14 +319,16 @@ public class TeamControllerPageContentTests
             var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
             var teams = Substitute.For<ITeamManagementService>();
             teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
-            var key = unknown ? "untranslated provider failure" : action switch
+            var key = unknown ? "Teams_NotMember" : action switch
             {
                 "Join" => "Teams_Team_AlreadyPendingRequest",
                 "Leave" => "Teams_NotMember",
                 _ => "Teams_RequestUnavailable"
             };
             teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<TeamJoinOutcome>(new InvalidOperationException(key)));
+                .Returns(unknown
+                    ? Task.FromException<TeamJoinResult>(new InvalidOperationException(key))
+                    : Task.FromResult(new TeamJoinResult(ErrorKey: key)));
             teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
                 .Returns(unknown
                     ? Task.FromException<TeamMembershipMutationResult>(new InvalidOperationException(key))
@@ -439,6 +441,8 @@ public class TeamControllerPageContentTests
             .Which.ErrorMessage.Should().Be(expected.Value);
         await teams.DidNotReceive().JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
+        teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamJoinResult(TeamJoinOutcome.Joined));
         controller.ModelState.Clear();
         model.Message = new string('x', 2000);
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);

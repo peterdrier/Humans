@@ -458,7 +458,7 @@ internal sealed class CachingTeamService(
     public Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken));
 
-    public Task<TeamJoinOutcome> JoinTeamAsync(
+    public Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
         string? message,
