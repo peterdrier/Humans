@@ -58,7 +58,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _pictureStorage);
         _editor = new ProfileEditorService(
             _userService,
-            _pictureStorage,
             NullLogger<ProfileEditorService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
@@ -305,6 +304,35 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().Be("image/png");
         profile.ProfilePictureStorageKey.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_PostCommitDisplayNameFailure_StillDeletesThePreviousFile()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        var repo = Substitute.For<IUserRepository>();
+        repo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
+        repo.UpdateDisplayNameAsync(userId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Display name update failed"));
+        var sut = new UserService(
+            repo,
+            _communicationPreferenceRepository,
+            AdminAuthorization,
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+            _pictureStorage,
+            Clock,
+            NullLogger<UserService>.Instance);
+        var command = new UserProfileSaveCommand(
+            "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
+
+        var act = () => sut.SaveProfileAsync(userId, command, [4, 5, 6], Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
+        _fileStorage.Files.Should().ContainSingle();
     }
 
     [HumansFact]

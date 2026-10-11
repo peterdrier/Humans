@@ -542,14 +542,35 @@ internal sealed class UserService(
             await DeleteUnreferencedPictureAsync(profile.Id, newPictureKey);
             throw;
         }
+
+        // Delete the superseded file before the fallible post-commit steps below, so a throw there
+        // cannot orphan it (the old key is no longer in the DB).
+        var currentPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
+        if (previousPictureKey is not null
+            && !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
+        {
+            await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
+        }
+
         await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
 
-        return new UserProfileSaveResult(
-            profile.Id,
-            previousPictureKey,
-            ProfilePictureKeys.Resolve(
-                profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
+        return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+    }
+
+    private async Task DeleteSupersededPictureAsync(Guid profileId, string key)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
+                profileId);
+        }
     }
 
     // The metadata save failed, so the freshly written file is unreferenced; the previous picture is untouched.
