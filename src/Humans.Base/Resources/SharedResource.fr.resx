@@ -167,6 +167,7 @@
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Se connecter avec Google</value>
   </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>Nous n’avons pas pu terminer la configuration de votre compte. Veuillez réessayer.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Échec de la connexion. Cela peut se produire si vous avez mis trop de temps ou si votre navigateur a bloqué les cookies. Veuillez réessayer.</value>
   </data>

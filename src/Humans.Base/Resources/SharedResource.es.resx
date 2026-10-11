@@ -167,6 +167,7 @@
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Iniciar sesión con Google</value>
   </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>No hemos podido terminar de configurar tu cuenta. Inténtalo de nuevo.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Error de inicio de sesión. Esto puede ocurrir si tardaste demasiado o tu navegador bloqueó las cookies. Por favor, inténtalo de nuevo.</value>
   </data>

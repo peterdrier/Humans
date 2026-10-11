@@ -167,6 +167,7 @@
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Mit Google anmelden</value>
   </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>Wir konnten die Einrichtung deines Kontos nicht abschließen. Bitte versuche es erneut.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen. Dies kann passieren, wenn du zu lange gewartet hast oder dein Browser Cookies blockiert hat. Bitte versuche es erneut.</value>
   </data>
