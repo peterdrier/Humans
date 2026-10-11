@@ -143,6 +143,28 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileAllAsync_FolderIdsDifferingOnlyByCase_ProduceSeparateClaims()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(
+            new StaticSource("AbC123", (alice, DrivePermissionLevel.Viewer)),
+            new StaticSource("abc123", (alice, DrivePermissionLevel.Viewer)));
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("AbC123");
+        StubFolder("abc123");
+        _drivePermissions.CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        result.Diffs.Should().HaveCount(2);
+        await _drivePermissions.Received(1)
+            .CreatePermissionAsync("AbC123", "alice@nobodies.team", "reader", Arg.Any<CancellationToken>());
+        await _drivePermissions.Received(1)
+            .CreatePermissionAsync("abc123", "alice@nobodies.team", "reader", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_HandRaisedRole_PreviewListsPendingDowngrade()
     {
         var alice = Guid.NewGuid();
@@ -235,7 +257,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var resource = new GoogleResource
         {
-            Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1", Name = "Folder",
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
             ResourceType = GoogleResourceType.DriveFolder
         };
         _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
@@ -257,7 +282,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .Returns(SyncMode.AddOnly);
         var resource = new GoogleResource
         {
-            Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1", Name = "Folder",
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
             ResourceType = GoogleResourceType.DriveFolder
         };
         _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
@@ -792,10 +820,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
             string? folderId2 = null,
             CancellationToken ct = default)
         {
-            if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.OrdinalIgnoreCase))
-                return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.OrdinalIgnoreCase));
+            if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.Ordinal))
+                return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal));
 
-            return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.OrdinalIgnoreCase)
+            return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal)
             {
                 [folderId] = new(access.ToDictionary(a => a.UserId, a => a.Level))
             });

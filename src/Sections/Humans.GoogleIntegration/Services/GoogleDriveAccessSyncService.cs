@@ -71,7 +71,7 @@ internal sealed class GoogleDriveAccessSyncService(
         var resources = await LoadResourcesAsync(ct);
         var load = await LoadClaimsAsync(sources, folderId, logger, ct);
         var claim = load.Claims.SingleOrDefault(c =>
-            string.Equals(c.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.FolderId, folderId, StringComparison.Ordinal));
 
         if (claim is null)
         {
@@ -133,7 +133,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         return new ClaimLoad(claims
-            .GroupBy(c => c.FolderId, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.FolderId, StringComparer.Ordinal)
             .Select(g => new FolderClaim(g.Key, Union(g.Select(c => c.Claim).ToList()), [], partial))
             .ToList(), partial);
     }
@@ -149,7 +149,7 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyList<GoogleResource> resources, IReadOnlyList<FolderClaim> claims,
         GoogleResourceType? resourceType, SyncAction action, CancellationToken ct)
     {
-        var claimed = claims.Select(c => c.FolderId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var claimed = claims.Select(c => c.FolderId).ToHashSet(StringComparer.Ordinal);
         var diffs = new List<ResourceSyncDiff>();
         foreach (var group in resources
             .Where(r => (resourceType is null || r.ResourceType == resourceType) && !claimed.Contains(r.GoogleId))
