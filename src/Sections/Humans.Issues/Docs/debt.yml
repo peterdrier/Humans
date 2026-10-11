@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 11
-inbox: []
+next_id: 12
+inbox:
+  - added: 2026-10-11
+    id: ISSUES-11
+    what: "Models/IssueViewModels.cs AreaLabelMap and Models/IssueSectionInference.cs name queues by hand, so a new IIssueQueueOwner gets no Area label and no page-path guess until both are edited; the label move onto the queue declaration was approved 2026-09-14 and is not built. Found by section-doctor 2026-10-11 (Docs/Issues.md claimed no list existed)."
+    review: panel
