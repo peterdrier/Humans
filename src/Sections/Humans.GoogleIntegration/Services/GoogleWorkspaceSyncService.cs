@@ -1038,8 +1038,11 @@ internal sealed class GoogleWorkspaceSyncService(
     private async Task<DrivePermissionLevel> ResolvePermissionLevelForUserAsync(
         string googleId, Guid userId, CancellationToken ct)
     {
-        var claims = await GoogleDriveAccessSyncService.LoadClaimsAsync(driveAccessSources, googleId, logger, ct);
-        var claim = claims.SingleOrDefault(c => string.Equals(c.FolderId, googleId, StringComparison.OrdinalIgnoreCase));
+        // A failing source throws out of here: the outbox retries the event, whereas a partial
+        // roster would read as "no claim" and silently drop the new member's grant.
+        var load = await GoogleDriveAccessSyncService.LoadClaimsAsync(
+            driveAccessSources, googleId, logger, ct, rethrowSourceFailures: true);
+        var claim = load.Claims.SingleOrDefault(c => string.Equals(c.FolderId, googleId, StringComparison.OrdinalIgnoreCase));
         var level = claim?.Access.GetValueOrDefault(userId) ?? DrivePermissionLevel.None;
         if (level == DrivePermissionLevel.None)
             logger.LogWarning("Skipping Drive grant for {UserId} on {GoogleId}: no source claims the user's access", userId, googleId);

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 
@@ -92,6 +93,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private const string TestGoogleFolderId = "01drivegoogleid";
     private const string TestUserEmail = "alice@nobodies.team";
 
+    private readonly IGoogleDriveAccessSource _driveSource = Substitute.For<IGoogleDriveAccessSource>();
+
     public GoogleWorkspaceSyncServiceTests()
     {
         // Safe defaults for audit / service-account helpers that every code
@@ -102,8 +105,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 12, 10, 0));
-        var driveSource = Substitute.For<IGoogleDriveAccessSource>();
-        driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var teams = await _teamService.GetTeamsAsync(call.ArgAt<CancellationToken>(1));
@@ -114,7 +116,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 return new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal) { [call.ArgAt<string?>(0) ?? TestGoogleFolderId] = new(access) };
             });
         var driveSync = new GoogleDriveAccessSyncService(
-            [driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
+            [_driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
             _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
             Substitute.For<ITeamResourceService>(), clock,
             Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
@@ -130,7 +132,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _userEmailService,
             _googleGroupSync,
             driveSync,
-            [driveSource],
+            [_driveSource],
             _auditLogService,
             _googleSyncLog,
             _syncSettingsService,
@@ -512,6 +514,31 @@ public sealed class GoogleWorkspaceSyncServiceTests
             await _googleGroupSync.Received(1).RequestSyncAsync("team@example.org", ct);
             await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
         }
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_AccessSourceThrows_PropagatesSoTheOutboxRetriesAndNothingIsGranted()
+    {
+        // A failing source must not read as "no claim": that would return Deferred, which the
+        // outbox processor marks processed, silently dropping the new member's Drive grant.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(TestUserId, TestUserEmail));
+        _userEmailService.GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([new UserEmailRowSnapshot(Guid.NewGuid(), TestUserId, TestUserEmail,
+                IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true, IsPrimary: false,
+                Visibility: null, VerificationSentAt: null, CreatedAt: default, UpdatedAt: default)]);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("source down"));
+
+        var act = () => _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
     }
 
     [HumansFact]

@@ -230,6 +230,50 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileAllAsync_OnlySourceThrows_FlagsItsResourcesInsteadOfSkippingThemSilently()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1", Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
+        _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
+            .Returns([resource]);
+
+        var result = await CreateService(new ThrowingSource()).ReconcileAllAsync(SyncAction.Execute, ct);
+
+        result.Diffs.Should().ContainSingle().Which.ErrorMessage.Should().Contain("source failed");
+        await _resources.Received(1).SetErrorMessageManyAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Any<string>(), ct);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task ReconcileAllAsync_SourceThrowsInAddOnly_RecordsFailureAndDoesNotMarkSynced()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddOnly);
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1", Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
+        _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>())
+            .Returns([resource]);
+        var service = CreateService(new ThrowingSource(), new StaticSource("folder-1"));
+        StubFolder("folder-1");
+
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, ct);
+
+        result.Diffs.Should().ContainSingle().Which.ErrorMessage.Should().Contain("source failed");
+        await _resources.Received(1).SetErrorMessageManyAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Any<string>(), ct);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_MergeTombstoneInTheAccessList_IsFilteredOut()
     {
         // #1704: the read resolves merges forward, so an ACL entry keyed to an archived id

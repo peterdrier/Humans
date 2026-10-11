@@ -33,8 +33,8 @@ internal sealed class GoogleDriveAccessSyncService(
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         var resources = await LoadResourcesAsync(ct);
-        var claims = await LoadClaimsAsync(sources, folderId: null, logger, ct);
-        claims = claims.Select(claim => claim with
+        var load = await LoadClaimsAsync(sources, folderId: null, logger, ct);
+        var claims = load.Claims.Select(claim => claim with
         {
             Resources = resources.Where(r => string.Equals(r.GoogleId, claim.FolderId, StringComparison.Ordinal)).ToList()
         }).Where(claim => resourceType is null || (claim.Resources.Count == 0
@@ -51,6 +51,10 @@ internal sealed class GoogleDriveAccessSyncService(
             diffs.Add(await ReconcileClaimSafelyAsync(claim, action, syncSource, ct));
         }
 
+        if (load.Partial)
+            diffs.AddRange(await FlagUnclaimedResourcesAsync(
+                resources, claims, resourceType, action, ct));
+
         if (action == SyncAction.Execute
             && await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct) == SyncMode.AddAndRemove)
             await DeactivateRetiredTeamResourcesAsync(
@@ -65,13 +69,15 @@ internal sealed class GoogleDriveAccessSyncService(
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         var resources = await LoadResourcesAsync(ct);
-        var claims = await LoadClaimsAsync(sources, folderId, logger, ct);
-        var claim = claims.SingleOrDefault(c =>
+        var load = await LoadClaimsAsync(sources, folderId, logger, ct);
+        var claim = load.Claims.SingleOrDefault(c =>
             string.Equals(c.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
 
         if (claim is null)
         {
-            const string error = "No Google Drive access source claims this folder";
+            var error = load.Partial
+                ? SourceFailedMessage
+                : "No Google Drive access source claims this folder";
             logger.LogWarning("Google Drive access sync: no source claims folder id {FolderId}", folderId);
             return BuildDiff(new FolderClaim(folderId, new([]),
                 resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()), [], error);
@@ -89,10 +95,14 @@ internal sealed class GoogleDriveAccessSyncService(
     /// at a time so a throwing source is skipped without aborting the others.
     /// A folder claimed by several sources gets the union of their claims, highest
     /// level per user. When a source throws, every claim is marked partial so the
-    /// run grants but never removes or demotes on an incomplete roster.
+    /// run grants but never removes or demotes on an incomplete roster, and
+    /// <see cref="ClaimLoad.Partial"/> is set even if no claim survived. With
+    /// <paramref name="rethrowSourceFailures"/> the first failure propagates instead,
+    /// for callers (the join-time grant) that must retry rather than act on a partial roster.
     /// </summary>
-    internal static async Task<IReadOnlyList<FolderClaim>> LoadClaimsAsync(
-        IEnumerable<IGoogleDriveAccessSource> sources, string? folderId, ILogger logger, CancellationToken ct)
+    internal static async Task<ClaimLoad> LoadClaimsAsync(
+        IEnumerable<IGoogleDriveAccessSource> sources, string? folderId, ILogger logger, CancellationToken ct,
+        bool rethrowSourceFailures = false)
     {
         var claims = new List<(string FolderId, GoogleDriveAccessClaim Claim)>();
         var partial = false;
@@ -104,7 +114,7 @@ internal sealed class GoogleDriveAccessSyncService(
             {
                 expected = await source.GetExpectedAccessAsync(folderId, ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException && !rethrowSourceFailures)
             {
                 logger.LogError(ex,
                     "Google Drive access source {SourceType} threw while computing expected access; skipping this source",
@@ -122,10 +132,37 @@ internal sealed class GoogleDriveAccessSyncService(
             }
         }
 
-        return claims
+        return new ClaimLoad(claims
             .GroupBy(c => c.FolderId, StringComparer.OrdinalIgnoreCase)
             .Select(g => new FolderClaim(g.Key, Union(g.Select(c => c.Claim).ToList()), [], partial))
-            .ToList();
+            .ToList(), partial);
+    }
+
+    private const string SourceFailedMessage =
+        "A Google Drive access source failed this run: its roster is incomplete and removals and demotions are skipped";
+
+    /// <summary>
+    /// A failed source takes with it the folders only it knew, so those resources get no claim and
+    /// would otherwise be skipped without a trace. Surface each as an error diff (and on the row).
+    /// </summary>
+    private async Task<List<ResourceSyncDiff>> FlagUnclaimedResourcesAsync(
+        IReadOnlyList<GoogleResource> resources, IReadOnlyList<FolderClaim> claims,
+        GoogleResourceType? resourceType, SyncAction action, CancellationToken ct)
+    {
+        var claimed = claims.Select(c => c.FolderId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var diffs = new List<ResourceSyncDiff>();
+        foreach (var group in resources
+            .Where(r => (resourceType is null || r.ResourceType == resourceType) && !claimed.Contains(r.GoogleId))
+            .GroupBy(r => r.GoogleId, StringComparer.Ordinal))
+        {
+            var claim = new FolderClaim(group.Key, new([]), group.ToList(), Partial: true);
+            diffs.Add(BuildDiff(claim, [], SourceFailedMessage));
+            if (action == SyncAction.Execute)
+                await resourceRepository.SetErrorMessageManyAsync(
+                    claim.Resources.Select(r => r.Id).ToList(), SourceFailedMessage, ct);
+        }
+
+        return diffs;
     }
 
     private static GoogleDriveAccessClaim Union(IReadOnlyList<GoogleDriveAccessClaim> claims)
@@ -262,12 +299,15 @@ internal sealed class GoogleDriveAccessSyncService(
 
                 // A failed source may have claimed this folder too; its members would read as
                 // extra or over-privileged, so hold removals and demotions until it answers.
-                if (mode == SyncMode.AddAndRemove && claim.Partial)
-                    errors.Add("Removals and demotions skipped: a Google Drive access source failed this run");
-                else if (mode == SyncMode.AddAndRemove)
+                if (mode == SyncMode.AddAndRemove && !claim.Partial)
                     errors.AddRange(await ApplyExtraAsync(claim, plan, syncSource, ct));
             }
         }
+
+        // Recorded in every mode and for previews: the roster is incomplete, so the folder is
+        // neither "synced" nor trustworthy drift.
+        if (claim.Partial)
+            errors.Add(SourceFailedMessage);
 
         return BuildDiff(claim, plan.Members, errors.Count == 0 ? null : string.Join("; ", errors));
     }
@@ -563,6 +603,8 @@ internal sealed class GoogleDriveAccessSyncService(
         // can be updated down to the inherited floor.
         return perm.HasDirectComponent;
     }
+
+    internal sealed record ClaimLoad(IReadOnlyList<FolderClaim> Claims, bool Partial);
 
     internal sealed record FolderClaim(string FolderId,
         GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources, bool Partial = false)
