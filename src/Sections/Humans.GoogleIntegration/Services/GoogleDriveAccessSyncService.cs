@@ -167,7 +167,14 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyList<DrivePermission> permissions,
         CancellationToken ct)
     {
-        var byEmail = expectedMembers.Values.ToDictionary(m => m.Email, NormalizingEmailComparer.Instance);
+        // Distinct member IDs may carry aliases that Google resolves to one address.
+        // Reconcile that address once at the highest level already claimed by a source.
+        var byEmail = expectedMembers.Values
+            .GroupBy(member => member.Email, NormalizingEmailComparer.Instance)
+            .ToDictionary(group => group.Key,
+                group => group.OrderByDescending(member => member.Level)
+                    .ThenBy(member => member.UserId).First(),
+                NormalizingEmailComparer.Instance);
 
         var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
         var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
@@ -198,7 +205,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         var members = new List<MemberSyncStatus>();
-        foreach (var member in expectedMembers.Values)
+        foreach (var member in byEmail.Values)
         {
             roleByEmail.TryGetValue(member.Email, out var currentRole);
             inheritedLevelByEmail.TryGetValue(member.Email, out var inheritedLevel);
