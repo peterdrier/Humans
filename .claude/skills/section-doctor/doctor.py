@@ -539,7 +539,8 @@ def trace_token(tok, doc, section, exclude):
         return "CHECK", "route literal not in code; read the attribute"
     if PATH_TOKEN_RE.search(tok):
         path = _resolve_path(tok, doc, section)
-        return ("ok", path) if path else ("MISS", "no such path")
+        if path:
+            return "ok", path
     hits = grep_hits(tok, CODE_GLOBS, word=False, exclude=exclude)
     if hits:
         return "ok", f"{len(hits)} hit(s), first {hits[0]}"
