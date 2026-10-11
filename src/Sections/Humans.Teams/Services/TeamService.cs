@@ -1026,20 +1026,21 @@ internal sealed class TeamService(
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
 
-    public async Task<bool> LeaveTeamAsync(
+    public async Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException("Teams_NotFound");
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return new TeamMembershipMutationResult(false, "Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Teams_CannotLeaveSystem");
+            return new TeamMembershipMutationResult(false, "Teams_CannotLeaveSystem");
 
         var member = await repo.FindActiveMemberForMutationAsync(teamId, userId, cancellationToken);
         if (member is null)
-            throw new InvalidOperationException("Teams_NotMember");
+            return new TeamMembershipMutationResult(false, "Teams_NotMember");
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
@@ -1064,10 +1065,10 @@ internal sealed class TeamService(
                 userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
-        return wasCoordinator;
+        return new TeamMembershipMutationResult(true, WasCoordinator: wasCoordinator);
     }
 
-    public async Task WithdrawJoinRequestAsync(
+    public async Task<TeamMembershipMutationResult> WithdrawJoinRequestAsync(
         Guid requestId,
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -1075,11 +1076,12 @@ internal sealed class TeamService(
         var now = clock.GetCurrentInstant();
         var withdrew = await repo.WithdrawRequestAsync(requestId, userId, now, cancellationToken);
         if (!withdrew)
-            throw new InvalidOperationException("Teams_RequestUnavailable");
+            return new TeamMembershipMutationResult(false, "Teams_RequestUnavailable");
 
         notificationMeterInvalidator.Invalidate();
 
         logger.LogInformation("User {UserId} withdrew join request {RequestId}", userId, requestId);
+        return new TeamMembershipMutationResult(true);
     }
 
     public async Task<TeamMember> ApproveJoinRequestAsync(

@@ -282,7 +282,7 @@ internal interface ITeamManagementService : ITeamService
     /// <summary>
     /// Leaves a team.
     /// </summary>
-    Task<bool> LeaveTeamAsync(
+    Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -290,7 +290,7 @@ internal interface ITeamManagementService : ITeamService
     /// <summary>
     /// Withdraws a pending join request.
     /// </summary>
-    Task WithdrawJoinRequestAsync(
+    Task<TeamMembershipMutationResult> WithdrawJoinRequestAsync(
         Guid requestId,
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -577,3 +577,5 @@ internal sealed record TeamUpdateResult(
 }
 
 internal sealed record TeamMemberRemovalResult(string? ErrorKey = null, string? ErrorMessage = null);
+
+internal sealed record TeamMembershipMutationResult(bool Succeeded, string? ErrorKey = null, bool WasCoordinator = false);

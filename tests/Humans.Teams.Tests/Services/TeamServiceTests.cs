@@ -2383,6 +2383,52 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // GetUserPendingRequestAsync
     // ==========================================================================
 
+    [HumansTheory]
+    [InlineData("missing")]
+    [InlineData("system")]
+    [InlineData("nonmember")]
+    public async Task LeaveTeamAsync_ExpectedRefusal_DoesNotThrowOrRemoveMembership(string refusal)
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha", type: string.Equals(refusal, "system", StringComparison.Ordinal) ? SystemTeamType.Volunteers : SystemTeamType.None);
+        var member = SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.LeaveTeamAsync(
+            string.Equals(refusal, "missing", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id,
+            string.Equals(refusal, "nonmember", StringComparison.Ordinal) ? Guid.NewGuid() : user.Id,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be(refusal switch
+        {
+            "missing" => "Teams_NotFound",
+            "system" => "Teams_CannotLeaveSystem",
+            _ => "Teams_NotMember"
+        });
+        TeamsDb.ChangeTracker.Clear();
+        (await TeamsDb.TeamMembers.SingleAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken))
+            .LeftAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task WithdrawJoinRequestAsync_OtherMembersRequest_DoesNotThrowOrWithdraw()
+    {
+        var team = SeedTeam("Alpha");
+        var owner = SeedUser();
+        var other = SeedUser();
+        var request = SeedJoinRequest(team.Id, owner.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.WithdrawJoinRequestAsync(request.Id, other.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Teams_RequestUnavailable");
+        TeamsDb.ChangeTracker.Clear();
+        (await TeamsDb.TeamJoinRequests.SingleAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken))
+            .Status.Should().Be(TeamJoinRequestStatus.Pending);
+    }
+
     [HumansFact]
     public async Task GetPendingRequestsForUserAsync_ExcludesOtherMembersAndResolvedRequests()
     {
@@ -2746,7 +2792,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var result = await _service.LeaveTeamAsync(team.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
+        result.WasCoordinator.Should().BeTrue();
         Cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
     }
 
@@ -3156,4 +3203,5 @@ public sealed class TeamServiceTests : TeamsTestHarness
         };
         ShiftsDb.ShiftSignups.Add(signup);
     }
+
 }

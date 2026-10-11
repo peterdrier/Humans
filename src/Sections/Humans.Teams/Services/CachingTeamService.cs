@@ -465,13 +465,13 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.JoinTeamAsync(teamId, userId, message, cancellationToken));
 
-    public Task<bool> LeaveTeamAsync(
+    public Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.LeaveTeamAsync(teamId, userId, cancellationToken));
 
-    public Task WithdrawJoinRequestAsync(
+    public Task<TeamMembershipMutationResult> WithdrawJoinRequestAsync(
         Guid requestId,
         Guid userId,
         CancellationToken cancellationToken = default) =>

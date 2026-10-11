@@ -328,9 +328,13 @@ public class TeamControllerPageContentTests
             teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<TeamJoinOutcome>(new InvalidOperationException(key)));
             teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<bool>(new InvalidOperationException(key)));
+                .Returns(unknown
+                    ? Task.FromException<TeamMembershipMutationResult>(new InvalidOperationException(key))
+                    : Task.FromResult(new TeamMembershipMutationResult(false, key)));
             teams.WithdrawJoinRequestAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException(new InvalidOperationException(key)));
+                .Returns(unknown
+                    ? Task.FromException<TeamMembershipMutationResult>(new InvalidOperationException(key))
+                    : Task.FromResult(new TeamMembershipMutationResult(false, key)));
             var http = new DefaultHttpContext
             {
                 RequestServices = services,
