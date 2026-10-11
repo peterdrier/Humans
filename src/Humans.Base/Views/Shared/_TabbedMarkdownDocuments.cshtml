@@ -18,6 +18,10 @@
 </ul>
 
 <div class="@Model.ContentCssClass" id="@Model.ContentId" style="@Model.ContentStyle">
+    @if (Model.Documents.Count == 0)
+    {
+        <p class="text-muted">@Model.EmptyMessage</p>
+    }
     @foreach (var document in Model.Documents)
     {
         var isActive = document.Key == Model.DefaultLanguage;
