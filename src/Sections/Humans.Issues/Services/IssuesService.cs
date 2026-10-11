@@ -94,7 +94,7 @@ internal sealed class IssuesService(
 
         if (trimmed.Length > MaxSectionLength)
         {
-            throw new IssueRuleException(
+            throw new InvalidOperationException(
                 $"Section must be {MaxSectionLength} characters or fewer.");
         }
 
@@ -1125,13 +1125,5 @@ internal sealed class IssuesService(
                 logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
             }
         }
-    }
-
-
-    private sealed class IssueRuleException : InvalidOperationException
-    {
-        public IssueRuleException() { }
-        public IssueRuleException(string message) : base(message) { }
-        public IssueRuleException(string message, Exception innerException) : base(message, innerException) { }
     }
 }
