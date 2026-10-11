@@ -36,7 +36,8 @@ internal sealed class ShiftDashboardPageBuilder(
             request.ActiveStart,
             request.ActiveEnd,
             request.Period,
-            request.SubPeriod);
+            request.SubPeriod,
+            includeRestricted: true);
         var staffing = await shiftManagement.GetStaffingSnapshotAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
         var overview = await shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod);
         var coordinatorActivity = await shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod);

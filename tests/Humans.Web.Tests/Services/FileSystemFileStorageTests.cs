@@ -150,6 +150,19 @@ public class FileSystemFileStorageTests : IDisposable
     }
 
     [HumansFact]
+    public async Task DeleteAsync_DirectoryAtFileKey_PropagatesFailure()
+    {
+        const string key = "uploads/profile-pictures/broken.jpg";
+        var directory = Path.Combine(_wwwroot, key);
+        Directory.CreateDirectory(directory);
+
+        var delete = () => _store.DeleteAsync(key, Xunit.TestContext.Current.CancellationToken);
+
+        await delete.Should().ThrowAsync<UnauthorizedAccessException>();
+        Directory.Exists(directory).Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task DeleteAsync_MissingFile_IsNoOp()
     {
         // Should not throw.
@@ -165,6 +178,31 @@ public class FileSystemFileStorageTests : IDisposable
 
         var bytes = await _store.TryReadAsync("uploads/profile-pictures/p3.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_OwnedDirectory_RemovesNestedFilesAndKeepsSiblingUploads()
+    {
+        await _store.SaveAsync("uploads/issues/first/a.png", [1], Xunit.TestContext.Current.CancellationToken);
+        await _store.SaveAsync("uploads/issues/first/nested/b.png", [2], Xunit.TestContext.Current.CancellationToken);
+        await _store.SaveAsync("uploads/issues/second/c.png", [3], Xunit.TestContext.Current.CancellationToken);
+
+        await _store.DeleteAsync("uploads/issues/first", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+
+        Directory.Exists(Path.Combine(_wwwroot, "uploads", "issues", "first")).Should().BeFalse();
+        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal((byte)3);
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_OwnedDirectory_MissingIsNoOpAndTraversalIsRefused()
+    {
+        await _store.DeleteAsync("uploads/issues/missing", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+
+        foreach (var key in new[] { "uploads/../../outside", ".", "uploads", "uploads/.", "css" })
+        {
+            var escape = () => _store.DeleteAsync(key, Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
+            await escape.Should().ThrowAsync<ArgumentException>();
+        }
     }
 
     [HumansFact]

@@ -73,6 +73,7 @@ public sealed class ExpenseReportServiceTests
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
+    private readonly ExpenseReportBackgroundProcessor _backgroundProcessor;
 
     private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
         NewSectionDbOptions<ExpensesDbContext>();
@@ -105,6 +106,9 @@ public sealed class ExpenseReportServiceTests
             Clock,
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
+        _backgroundProcessor = new ExpenseReportBackgroundProcessor(
+            _expenseRepo, _fileStorage, _userService, _holdedClient, _holdedFinance, AuditLog, Clock,
+            NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
@@ -1149,6 +1153,66 @@ public sealed class ExpenseReportServiceTests
             AuditAction.ExpenseEditedOnBehalf,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddLineWithResultAsync_MemberNameLookupFails_KeepsSuccessfulEditAndAudit(bool withFile)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        _userService.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(
+                new IOException("member lookup unavailable"))));
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var result = await _sut.AddLineWithResultAsync(
+            id, admin, true, "Timber", 40m,
+            file: withFile ? new ExpenseFileUpload("receipt.pdf", "application/pdf", content) : null,
+            ct: ct);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = await _sut.GetAsync(id, ct);
+        loaded!.Lines.Should().ContainSingle(l => l.Id == result.LineId);
+        loaded.Total.Should().Be(40m);
+        loaded.Lines.Single().AttachmentId.HasValue.Should().Be(withFile);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            Arg.Is<string>(description => description.Contains(member.ToString())),
+            admin, member, AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_MemberNameLookupFails_StillAuditsAndCleansFile()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        var lineId = (await _sut.AddLineWithResultAsync(
+            id, member, false, "Timber", 40m, ct: ct)).LineId!.Value;
+        var attachment = MakeAttachment(member);
+        await _expenseRepo.AddAttachmentAsync(attachment, ct);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachment.Id, ct);
+        _userService.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(
+                new IOException("member lookup unavailable"))));
+
+        var result = await _sut.RemoveLineWithResultAsync(id, admin, true, lineId, ct);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(id, ct))!.Lines.Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            Arg.Is<string>(description => description.Contains(member.ToString())),
+            admin, member, AuditEntityTypes.User);
+        await _fileStorage.Received(1).DeleteAsync(
+            ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
 
     [HumansFact]
@@ -3069,12 +3133,12 @@ public sealed class ExpenseReportServiceTests
 
         // First report links the member to contact-123 — this is the pre-existing Holded contact.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
         _holdedFinance.ClearReceivedCalls();
 
         // Act — a fresh report for the same member carries no contact id of its own.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — the earlier report's contact id (and its account number) are passed as the seed,
         // so Finance updates the existing contact instead of creating a duplicate.
@@ -3123,7 +3187,7 @@ public sealed class ExpenseReportServiceTests
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         // Act
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — both the binding and its account number land on the survivor, never the tombstone.
         await _holdedFinance.Received(1).EnsureCreditorContactAsync(
@@ -3191,7 +3255,7 @@ public sealed class ExpenseReportServiceTests
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         // Act
-        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
         // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).

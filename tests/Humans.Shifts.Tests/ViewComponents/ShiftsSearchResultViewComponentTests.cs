@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.ViewComponents;
 using Humans.Teams.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
@@ -26,13 +28,17 @@ public class ShiftsSearchResultViewComponentTests
         _shifts.GetRotaAsync(rotaId, Arg.Any<CancellationToken>()).Returns(Rota(rotaId, teamId, "Kitchen Prep"));
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(Team(teamId, "Cantina"));
 
-        var result = await new ShiftsSearchResultViewComponent(_shifts, _teams).InvokeAsync(rotaId);
+        using var request = new CancellationTokenSource();
+        var component = CreateComponent(request.Token);
+        var result = await component.InvokeAsync(rotaId);
 
         var model = result.Should().BeOfType<ViewViewComponentResult>()
             .Subject.ViewData!.Model.Should().BeOfType<ShiftsSearchResultViewModel>().Subject;
         model.Name.Should().Be("Kitchen Prep");
         model.TeamId.Should().Be(teamId);
         model.TeamName.Should().Be("Cantina");
+        await _shifts.Received(1).GetRotaAsync(rotaId, request.Token);
+        await _teams.Received(1).GetTeamAsync(teamId, request.Token);
     }
 
     [HumansFact]
@@ -44,7 +50,7 @@ public class ShiftsSearchResultViewComponentTests
         _shifts.GetRotaAsync(rotaId, Arg.Any<CancellationToken>()).Returns(Rota(rotaId, teamId, "Kitchen Prep"));
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
-        var result = await new ShiftsSearchResultViewComponent(_shifts, _teams).InvokeAsync(rotaId);
+        var result = await CreateComponent().InvokeAsync(rotaId);
 
         result.Should().BeOfType<ViewViewComponentResult>()
             .Subject.ViewData!.Model.Should().BeOfType<ShiftsSearchResultViewModel>()
@@ -56,11 +62,19 @@ public class ShiftsSearchResultViewComponentTests
     {
         _shifts.GetRotaAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((RotaInfo?)null);
 
-        var result = await new ShiftsSearchResultViewComponent(_shifts, _teams).InvokeAsync(Guid.NewGuid());
+        var result = await CreateComponent().InvokeAsync(Guid.NewGuid());
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         await _teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
+
+    private ShiftsSearchResultViewComponent CreateComponent(CancellationToken ct = default) => new(_shifts, _teams)
+    {
+        ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } }
+        }
+    };
 
     private static RotaInfo Rota(Guid rotaId, Guid teamId, string name) => new(
         rotaId, EventSettingsId: Guid.NewGuid(), teamId, name,

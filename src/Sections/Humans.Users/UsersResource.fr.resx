@@ -1197,4 +1197,19 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Verrouillé — tu as un billet pour cette année</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Organisation de l’événement</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Actualités de la communauté</value></data>
+  <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
+    <value>Cette adresse e-mail figure déjà dans ton compte.</value>
+  </data>
+  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
+    <value>Une demande de fusion est déjà en attente pour cette adresse e-mail.</value>
+  </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Tu ne peux pas supprimer ta dernière adresse e-mail vérifiée. Ajoute d’abord une autre adresse vérifiée pour continuer à recevoir les notifications du système.</value>
+  </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>Cette adresse e-mail est introuvable dans ce compte.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Seules les adresses e-mail vérifiées peuvent recevoir les notifications du compte.</value>
+  </data>
 </root>

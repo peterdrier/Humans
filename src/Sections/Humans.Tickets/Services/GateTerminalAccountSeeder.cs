@@ -102,7 +102,7 @@ internal sealed class GateTerminalAccountSeeder(
 
         // Names via the canonical profile path so UserStateClassifier yields Active
         // (the membership filter requires it); no email, no teams, no roles.
-        await profileEditorService.SaveProfileAsync(
+        var profileSave = await profileEditorService.SaveProfileAsync(
             SystemUserIds.GateTerminal,
             SystemUserIds.GateTerminalDisplayName,
             new ProfileSaveRequest(
@@ -116,6 +116,12 @@ internal sealed class GateTerminalAccountSeeder(
                 EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
                 NoPriorBurnExperience: false,
                 ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false));
+
+        if (!profileSave.Succeeded)
+        {
+            logger.LogWarning("Gate terminal profile save refused: {ErrorKey}", profileSave.ErrorKey);
+            return null;
+        }
 
         // Keep the account out of the Consent Coordinator review queue.
         var consentResult = await userService.ApplyProfileOnboardingMutationAsync(

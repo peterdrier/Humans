@@ -36,7 +36,7 @@ internal sealed class AccountProvisioningService(
             var row = rows.SingleOrDefault(r => r.Id == emailId && r.UserId == userId);
             if (rows.Count != 1 || row is null || row.IsVerified || !string.IsNullOrEmpty(row.Provider))
                 throw new InvalidOperationException("The unverified email replacement plan is stale.");
-            if (!await userEmailService.DeleteEmailAsync(userId, emailId, ct))
+            if (!(await userEmailService.DeleteEmailAsync(userId, emailId, ct)).Succeeded)
                 throw new InvalidOperationException("The planned unverified email could not be removed.");
             var result = await FindOrCreateCoreAsync(email, displayName, source, ct, affectedUsers);
             await auditLogService.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), emailId,

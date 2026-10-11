@@ -53,16 +53,13 @@ internal sealed class RideshareService(
 
         var interests = graph.Trips
             .SelectMany(t => t.Interests)
-            .OrderBy(i => i.CreatedAt)
             .Select(ToView)
             .ToList();
         var trips = graph.Trips
-            .OrderBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt)
             .Select(ToView)
             .ToList();
         var activeTrips = graph.Trips.Where(t => t.Status == TripStatus.Active).ToDictionary(t => t.Id);
         var requests = graph.Requests
-            .OrderBy(r => r.DesiredDate).ThenBy(r => r.CreatedAt)
             .Select(r => ToView(r, interests, activeTrips))
             .ToList();
 

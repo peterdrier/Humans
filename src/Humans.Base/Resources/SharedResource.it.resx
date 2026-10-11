@@ -167,6 +167,7 @@
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Accedi con Google</value>
   </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>Non siamo riusciti a completare la configurazione del tuo account. Riprova.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Accesso non riuscito. Questo può accadere se hai impiegato troppo tempo o se il tuo browser ha bloccato i cookie. Per favore riprova.</value>
   </data>
@@ -1310,4 +1311,5 @@
   <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Le informazioni aggiuntive non devono superare i 1000 caratteri.</value></data>
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Il contributo significativo non deve superare i 2000 caratteri.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La descrizione del ruolo non deve superare i 2000 caratteri.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Versione legale</value></data>
 </root>

@@ -137,7 +137,7 @@ public class AccountController(
     private IActionResult LoginViewWithModelError(string returnUrl)
     {
         ModelState.AddModelError(string.Empty,
-            "We couldn't finish setting up your account. Please try again.");
+            localizer["Login_SetupFailed"].Value);
         ViewData["ReturnUrl"] = returnUrl;
         return View(nameof(Login));
     }

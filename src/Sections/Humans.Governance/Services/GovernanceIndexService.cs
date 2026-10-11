@@ -13,7 +13,7 @@ internal sealed class GovernanceIndexService(
     {
         var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-        var statutesContent = await legalDocService.GetDocumentContentAsync("statutes");
+        var statutesContent = await legalDocService.GetDocumentContentAsync("statutes", ct);
 
         var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);

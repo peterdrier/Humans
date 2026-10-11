@@ -30,7 +30,7 @@ internal sealed record MineViewModel(
 
         var offers = snapshot.Trips
             .Where(t => t.UserId == me)
-            .OrderBy(t => t.Direction).ThenBy(t => t.DepartureDate)
+            .OrderBy(t => t.Direction).ThenBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt)
             .Select(t => new MineOfferRow(t, snapshot.Interests
                 .Where(i => i.TripId == t.Id && i.FromUserId != me && i.RequestId is null)
                 .OrderByDescending(i => i.CreatedAt)
@@ -40,7 +40,7 @@ internal sealed record MineViewModel(
 
         var requests = snapshot.Requests
             .Where(r => r.UserId == me)
-            .OrderBy(r => r.Direction).ThenBy(r => r.DesiredDate)
+            .OrderBy(r => r.Direction).ThenBy(r => r.DesiredDate).ThenBy(r => r.CreatedAt)
             .Select(r => new MineRequestRow(r, snapshot.Interests
                 .Where(i => i.RequestId == r.Id && i.FromUserId != me && tripsById.ContainsKey(i.TripId))
                 .OrderByDescending(i => i.CreatedAt)
