@@ -145,21 +145,7 @@ internal sealed partial class TeamResourceService(
     public async Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
         var resource = await repository.GetByIdAsync(resourceId, ct);
-        return resource is null
-            ? null
-            : new GoogleResourceSnapshot(
-                resource.Id,
-                resource.TeamId,
-                resource.GoogleId,
-                resource.Name,
-                resource.ResourceType,
-                resource.Url,
-                resource.ProvisionedAt,
-                resource.LastSyncedAt,
-                resource.IsActive,
-                resource.ErrorMessage,
-                resource.DrivePermissionLevel,
-                resource.RestrictInheritedAccess);
+        return resource is null ? null : ToSnapshot(resource);
     }
 
     private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
