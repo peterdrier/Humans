@@ -4,6 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Email.Domain;
 using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -126,10 +127,6 @@ internal sealed class EmailController(
         return RedirectToAction(nameof(EmailOutbox));
     }
 
-    // Persona + culture data for the gallery, held here so EmailPreview itself is just
-    // "loop cultures, ask the contributors, return the view".
-    private static readonly string[] Cultures = ["en", "es", "de", "fr", "it", "ca"];
-
     private static readonly Dictionary<string, (string Name, string Email)> Personas = new(StringComparer.Ordinal)
     {
         ["en"] = ("Sally Smith", "sally@example.com"),
@@ -154,7 +151,7 @@ internal sealed class EmailController(
         var contributorList = contributors.ToList();
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
 
-        foreach (var culture in Cultures)
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
         {
             var (name, email) = Personas[culture];
 
