@@ -43,6 +43,11 @@ public record UserEmailEditDto(
 /// <param name="IsConflict">True if the email is already verified on another account (merge flow).</param>
 public record AddEmailResult(Guid EmailId, string Token, bool IsConflict);
 
+/// <summary>Result of unlinking a sign-in provider, including an expected refusal.</summary>
+/// <param name="Succeeded">Whether the provider and email row were removed.</param>
+/// <param name="ErrorKey">Member-facing refusal resource key, or null.</param>
+public record UnlinkEmailResult(bool Succeeded, string? ErrorKey = null);
+
 /// <summary>
 /// Result of verifying an email address.
 /// </summary>

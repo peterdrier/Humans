@@ -1171,7 +1171,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -1183,7 +1183,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_LastVerifiedEmail_ThrowsAndMutatesNothing()
+    public async Task UnlinkAsync_LastVerifiedEmail_ReturnsRefusalAndMutatesNothing()
     {
         // Auth-method invariant (P5): unlinking the user's only verified email would
         // lock them out completely — magic link also requires a verified address.
@@ -1207,16 +1207,16 @@ public class UserEmailServiceTests
                 new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "unverified@example.com", IsVerified = false },
             ]));
 
-        var act = async () => await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>().WithMessage("*last verified sign-in method*");
+        result.Should().Be(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"));
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_UnverifiedRow_NoOtherVerifiedEmail_ThrowsAndMutatesNothing()
+    public async Task UnlinkAsync_UnverifiedRow_NoOtherVerifiedEmail_ReturnsRefusalAndMutatesNothing()
     {
         // An unverified row can still carry the user's only OAuth login (reachable via
         // AddUserEmailAsync IsVerified=false and the provider backfill). OAuth sign-in
@@ -1239,9 +1239,9 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([row]));
 
-        var act = async () => await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>().WithMessage("*last verified sign-in method*");
+        result.Should().Be(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"));
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1278,7 +1278,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
     }
 
@@ -1304,7 +1304,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Succeeded.Should().BeFalse();
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1489,7 +1489,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
         secondary.IsPrimary.Should().BeTrue();
     }
 
@@ -1532,12 +1532,12 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
         primary.IsPrimary.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_RemoveLoginAsyncFails_DoesNotDeleteUserEmailRow_ReturnsFalse()
+    public async Task UnlinkAsync_RemoveLoginAsyncFails_DoesNotDeleteUserEmailRow_ReturnsFailure()
     {
         // Hard-fail: when RemoveLoginAsync fails, the UserEmail row MUST NOT be
         // removed. Otherwise AspNetUserLogins persists with a stale Google login
@@ -1570,7 +1570,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());

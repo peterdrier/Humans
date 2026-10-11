@@ -339,16 +339,16 @@ public interface IUserEmailService
 
     /// <summary>
     /// Removes both the AspNetUserLogins row and the UserEmail row for a
-    /// Provider-attached email. Owner-gated. Returns <c>false</c> if the row
+    /// Provider-attached email. Owner-gated. Returns an unsuccessful result if the row
     /// is not found for this user or has no <see cref="UserEmail.Provider"/>/
-    /// <see cref="UserEmail.ProviderKey"/>. Throws <c>ValidationException</c>
-    /// when unlinking a verified row would leave the user with zero verified
+    /// <see cref="UserEmail.ProviderKey"/>. Returns a typed refusal
+    /// when unlinking a row would leave the user with zero verified
     /// emails (auth-method invariant, nobodies-collective/Humans#731 — magic
     /// link needs a verified address too, so this would be a full lockout).
     /// <paramref name="userId"/> is the <b>target</b> user;
     /// <paramref name="actorUserId"/> is the actor.
     /// </summary>
-    Task<bool> UnlinkAsync(
+    Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId,
         Guid userEmailId,
         Guid actorUserId,

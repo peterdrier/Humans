@@ -53,6 +53,7 @@ internal sealed class ProfileEmailsController(
     IAuditLogService auditLogService,
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
+    IStringLocalizer<SharedResource> sharedLocalizer,
     ITicketServiceRead ticketQueryService,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
@@ -456,21 +457,27 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            var ok = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
-            SetEmailUnlinkedResult(ok);
+            var result = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+            SetEmailUnlinkedResult(result);
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to unlink email {EmailId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
     }
 
-    private void SetEmailUnlinkedResult(bool ok)
+    private void SetEmailUnlinkedResult(UnlinkEmailResult result)
     {
-        if (ok)
+        if (result.ErrorKey is { } errorKey)
+        {
+            SetError(localizer[errorKey].Value);
+            return;
+        }
+
+        if (result.Succeeded)
         {
             SetSuccess(localizer["EmailGrid_UnlinkSuccess"].Value);
             return;
@@ -510,7 +517,7 @@ internal sealed class ProfileEmailsController(
         }
 
         // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
-        // The last-verified-sign-in-method invariant is enforced inside UnlinkAsync (ValidationException).
+        // The last-verified-sign-in-method invariant is returned by UnlinkAsync as a typed refusal.
         var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
@@ -520,8 +527,8 @@ internal sealed class ProfileEmailsController(
         {
             if (matching is not null)
             {
-                var ok = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
-                SetEmailUnlinkedResult(ok);
+                var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
+                SetEmailUnlinkedResult(result);
             }
             else
             {
@@ -554,16 +561,12 @@ internal sealed class ProfileEmailsController(
                 }
             }
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
             logger.LogWarning(
                 "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
                 provider, user.Id, ex.Message);
-            // UnlinkAsync's auth-method guard is the only ValidationException source here —
-            // surface it via the localized string instead of the English exception message.
-            SetError(ex is ValidationException
-                ? localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value
-                : ex.Message);
+            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -894,8 +897,8 @@ internal sealed class ProfileEmailsController(
 
         try
         {
-            var ok = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
-            SetEmailUnlinkedResult(ok);
+            var result = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
+            SetEmailUnlinkedResult(result);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {

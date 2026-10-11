@@ -730,14 +730,14 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> UnlinkAsync(
+    public async Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
-        if (row is null) return false;
+        if (row is null) return new(false);
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
-            return false;
+            return new(false);
 
         // Auth-method invariant: at least one verified email must remain after unlink —
         // otherwise a programmatic unlink locks the user out of sign-in entirely (magic
@@ -753,13 +753,14 @@ internal sealed class UserEmailService(
         var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
         if (verifiedRemaining == 0)
         {
-            throw new ValidationException(
-                "Cannot unlink your last verified sign-in method. Add another verified " +
-                "email first so you can still sign in.");
+            logger.LogWarning(
+                "Refused unlink of email {EmailId} for user {UserId}: no other verified sign-in method remains",
+                userEmailId, userId);
+            return new(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is null) return false;
+        if (user is null) return new(false);
 
         // Capture before RemoveUserEmailAsync may detach the entity.
         var provider = row.Provider;
@@ -774,7 +775,7 @@ internal sealed class UserEmailService(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
                 string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-            return false;
+            return new(false);
         }
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -784,7 +785,7 @@ internal sealed class UserEmailService(
                 UserEmailRemovalMode.ProviderLinkedEmail,
                 PreserveLastVerifiedEmail: false),
             cancellationToken);
-        if (!removed) return false;
+        if (!removed) return new(false);
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -793,7 +794,7 @@ internal sealed class UserEmailService(
             actorUserId,
             relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
 
-        return true;
+        return new(true);
     }
 
     private static string ShortHash(string s)
