@@ -76,7 +76,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 - The handle rule is stated once: Admin, or a holder of a role
   `IssueSectionRouting.RolesFor(Section)` names. A null section is Admin-only. Both the service
   and the browser's authorization handler read that one statement.
-  (`Domain/IssueSectionRouting.cs:69`, `Authorization/IssuesAuthorizationHandler.cs:31`)
+  (`Domain/IssueSectionRouting.cs:69`, `Authorization/IssuesAuthorizationHandler.cs:26`)
 - Reach is the same at every door and for every shape: the queue lists only what the viewer may
   see, and a per-item read or mutation on anything else answers as if it did not exist — null
   from `GetIssueByIdAsync`, a missing result from every mutation, the "not found"
@@ -86,22 +86,22 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   section, and may not resolve it — `resolveOnPost` from a non-handler is dropped, not refused.
   (`Services/IssuesService.cs:455`)
 - A mutation is authorized against the section the issue is *in*, so a handler may route an
-  issue out of their own queue. (`Services/IssuesService.cs:618`)
+  issue out of their own queue. (`Services/IssuesService.cs:591`)
 - A reporter's comment on a terminal issue reopens it to `Open` and clears `ResolvedAt` /
   `ResolvedByUserId`, with an audit row naming the reporter as actor.
   (`Services/IssuesService.cs:425`)
 - `Section` may be changed only while the issue is non-terminal.
-  (`Services/IssuesService.cs:635`)
+  (`Services/IssuesService.cs:605`)
 - An unrouted section value is stored as null (the Admin queue), never refused; only an
   over-length value fails. (`Services/IssuesService.cs:101`)
 - Every field change is audit-logged **after** the save, never before.
-  (`Services/IssuesService.cs:528`, `:590`, `:648`, `:683`)
+  (`Services/IssuesService.cs:522`, `:572`, `:618`, `:641`)
 - Screenshots are JPEG/PNG/WebP and under 10 MB, or the submit fails.
   (`Services/IssuesService.cs:157`)
 - The actionable badge counts `Triage` and `Open` only — `InProgress` needs no picking up.
-  (`Data/IssuesRepository.cs:113`)
+  (`Data/IssuesRepository.cs:110`)
 - Whenever a viewer's actionable count could have moved, both badge caches are dropped.
-  (`Services/IssuesService.cs:186`, `:539`, `:653`)
+  (`Services/IssuesService.cs:186`, `:533`, `:623`)
 - The activity thread has no table of its own: it is `issue_comments` merged with the
   `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:385`)
 
@@ -158,3 +158,4 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 |---|---|---|---|
 | 2026-08-25 | [2026-08-25-Issues](../../../../docs/health/runs/2026-08-25-Issues.md) | 260 → 258 | First doctor run. Three user-visible defects fixed (case-sensitive search, unlocalized toasts, wrong attachment hint). PR: peterdrier/Humans#1499 |
 | 2026-09-14 | [2026-09-14-Issues](../../../../docs/health/runs/2026-09-14-Issues.md) | | `IssueViewer` is now the only spelling of who is asking on every member that answers for a viewer; every status pill and the category filter speak all six cultures; the docs stopped describing cross-section foreign keys the section never configured. PR: peterdrier/Humans#1671 |
+| 2026-10-11 | [2026-10-11-Issues](../../../../docs/health/runs/2026-10-11-Issues.md) | | The four field mutations run through one pipeline; badge eviction on status, reopen and section change, source-section routing and the reporter-reopen audit are now pinned by tests; the docs stopped claiming Issues names no queue by hand. PR: pending |
