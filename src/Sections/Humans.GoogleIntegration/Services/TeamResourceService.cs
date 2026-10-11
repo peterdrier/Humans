@@ -245,27 +245,39 @@ internal sealed partial class TeamResourceService(
         return new LinkResourceResult(true, Resource: resource);
     }
 
+    private const string TeamAuditEntityType = "Team";
+
     public async Task<LinkResourceResult> LinkDriveResourceAsync(
         Guid teamId,
         string url,
         DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
+        Guid? actorUserId = null,
         CancellationToken ct = default)
     {
+        LinkResourceResult result;
         if (ParseDriveFolderId(url) is not null)
         {
-            return await LinkDriveFolderAsync(teamId, url, permissionLevel, ct);
+            result = await LinkDriveFolderAsync(teamId, url, permissionLevel, ct);
         }
-
-        if (ParseDriveFileId(url) is not null)
+        else if (ParseDriveFileId(url) is not null)
         {
-            return await LinkDriveFileAsync(teamId, url, permissionLevel, ct);
+            result = await LinkDriveFileAsync(teamId, url, permissionLevel, ct);
+        }
+        else
+        {
+            return new LinkResourceResult(false,
+                ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
         }
 
-        return new LinkResourceResult(false,
-            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
+        if (result.Success && result.Resource is not null)
+        {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, result.Resource,
+                $"Linked {result.Resource.ResourceType} resource to team.", actorUserId);
+        }
+        return result;
     }
 
-    public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, Guid? actorUserId = null, CancellationToken ct = default)
     {
         var normalizedGroupEmail = NormalizeGroupEmail(groupEmail);
         if (normalizedGroupEmail is null)
@@ -325,6 +337,8 @@ internal sealed partial class TeamResourceService(
         logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
             lookup.Group.NormalizedEmail, lookup.Group.DisplayName, teamId);
 
+        await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, resource,
+            "Linked Google Group resource to team.", actorUserId);
         return new LinkResourceResult(true, Resource: resource);
     }
 
@@ -381,7 +395,7 @@ internal sealed partial class TeamResourceService(
         return fresh;
     }
 
-    public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
+    public async Task UnlinkResourceAsync(Guid resourceId, Guid? actorUserId = null, CancellationToken ct = default)
     {
         var existing = await repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
@@ -391,6 +405,11 @@ internal sealed partial class TeamResourceService(
         }
 
         await repository.UnlinkAsync(resourceId, ct);
+        if (existing.IsActive)
+        {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUnlinked, existing,
+                "Unlinked resource from team.", actorUserId);
+        }
         logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, existing.Name);
     }
 
@@ -420,11 +439,20 @@ internal sealed partial class TeamResourceService(
             deactivated.Count, resourceType?.ToString() ?? "all", teamId);
     }
 
-    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default)
+    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, Guid? actorUserId = null, CancellationToken ct = default)
     {
+        var existing = await repository.GetByIdAsync(resourceId, ct);
+        if (existing is null)
+        {
+            logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found", resourceId);
+            return;
+        }
+
         var updated = await repository.UpdatePermissionLevelAsync(resourceId, level, ct);
         if (updated)
         {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, existing,
+                $"Set Drive permission level from {existing.DrivePermissionLevel} to {level}.", actorUserId);
             logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
         }
         else
@@ -436,6 +464,7 @@ internal sealed partial class TeamResourceService(
     public async Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(
         Guid resourceId,
         bool restrict,
+        Guid? actorUserId = null,
         CancellationToken ct = default)
     {
         try
@@ -461,6 +490,9 @@ internal sealed partial class TeamResourceService(
                 return TeamResourceMutationResult.Success();
             }
 
+            // Audit the committed preference, even if the subsequent Drive enforcement fails.
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, mutated,
+                $"Set desired inherited-access restriction from {existing.RestrictInheritedAccess} to {restrict}; Drive enforcement requested.", actorUserId);
             var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
             if (error is not null)
             {
@@ -478,6 +510,14 @@ internal sealed partial class TeamResourceService(
             return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
         }
     }
+
+    private Task AuditResourceChangeAsync(
+        AuditAction action, GoogleResource resource, string description, Guid? actorUserId) =>
+        actorUserId is { } actor
+            ? auditLogService.LogAsync(action, nameof(GoogleResource), resource.Id, description,
+                actor, resource.TeamId, TeamAuditEntityType)
+            : auditLogService.LogAsync(action, nameof(GoogleResource), resource.Id, description,
+                nameof(TeamResourceService), resource.TeamId, TeamAuditEntityType);
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {

@@ -261,7 +261,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Regular humans **cannot** manage other teams' members, roles, or settings.
 - Coordinators **cannot** create, delete, or edit team admin settings (name, approval mode, parent, Google prefix). They can only edit the team page and manage members/roles for their own department.
 - Sub-team managers **cannot** manage Google resources, the parent department, sibling sub-teams, or team admin settings.
-- A resource manager cannot target another team’s resource ID through an authorized team’s URL.
+- A resource manager cannot target another team’s resource ID through an authorized team’s URL. Resource administration passes the authenticated manager ID to GoogleIntegration, which records persisted changes in the audit trail.
 - TeamsAdmin **cannot** delete teams or execute sync actions.
 - Nobody can manually add or remove members from system teams.
 

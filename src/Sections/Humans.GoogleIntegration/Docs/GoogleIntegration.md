@@ -17,6 +17,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 
 ## Concepts
 
+- Resource administration audits persisted Drive/group links and reactivations, active unlinks, permission-level saves and inherited-access preferences, with the acting manager and owning team. Refused or missing-resource paths do not write entries; the committed inherited-access preference is audited even when subsequent Drive enforcement fails.
 - The member-dashboard Google resources card uses the section’s localized title in every supported culture.
 - **Google Resources** are Shared Drive folders, Shared Drives, Drive files, and Google Groups linked to a team. When a human joins or leaves a team, their access to the team's linked Google resources is automatically managed. Resource rows live in `google_resources` and are owned by Team Resources (sub-aggregate of Teams) per design-rules §8.
 - **Sync Mode** controls how the system interacts with Google APIs for each service type. Modes are: None (disabled), AddOnly (grant access but never revoke), or AddAndRemove (full bidirectional sync).

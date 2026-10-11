@@ -464,7 +464,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
+        var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel, actorUserId: user.Id);
         if (result.Success)
             SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
         else
@@ -500,7 +500,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
+        var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail, actorUserId: user.Id);
         if (result.Success)
             SetSuccess(string.Format(localizer["Teams_TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
         else
@@ -539,7 +539,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        await teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
+        await teamResourceService.UpdatePermissionLevelAsync(resourceId, level, actorUserId: user.Id);
         SetSuccess($"Permission level updated to {level}.");
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -578,6 +578,7 @@ internal sealed class TeamAdminController(
         var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
             resourceId,
             restrict,
+            user.Id,
             CancellationToken.None);
         if (result.Succeeded)
         {
@@ -616,7 +617,7 @@ internal sealed class TeamAdminController(
         if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
             return NotFound();
 
-        await teamResourceService.UnlinkResourceAsync(resourceId);
+        await teamResourceService.UnlinkResourceAsync(resourceId, actorUserId: user.Id);
         SetSuccess(localizer["Teams_TeamAdmin_ResourceUnlinked"].Value);
 
         return RedirectToAction(nameof(Resources), new { slug });
