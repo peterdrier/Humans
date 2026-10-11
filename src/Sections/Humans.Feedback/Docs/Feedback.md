@@ -133,6 +133,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 ## Negative Access Rules
 
 - Non-Admins **cannot** reach `/Feedback` or `/Feedback/{id}` at all — including reporters looking for their own reports. `FeedbackAdmin` alone is denied.
+- Historical screenshot URLs under `/uploads/feedback/` enforce the same `AdminOnly` policy before static-file serving; denied requests return 404 and screenshot responses are private and non-cacheable.
 - Nobody, at any privilege level, **can** create a feedback report through the app. File an Issue instead.
 - No Feedback link is rendered outside the Admin nav tree: it is absent from the user dropdown, from the Help widget, and from the agent conversation view.
 - Feedback counts (the admin nav pill and the `/Admin` dashboard "Open feedback" tile) render for **Admin only**, not for the other admin-shaped roles that can reach the admin shell.

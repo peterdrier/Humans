@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Resources;
 using Humans.Surveys.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Extensions;
@@ -10,12 +8,12 @@ namespace Humans.Surveys.Services;
 
 internal interface ISurveyPreviewEmailService : IOrchestrator
 {
-    Task<RenderedEmailPreview> PreviewForUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
-    Task<string> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
+    Task<SurveyEmailPreviewResult> PreviewForUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
+    Task<SurveyPreviewEmailSendResult> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Sends a side-effect-free survey invitation preview to the requesting Board/Admin user. It reuses
+/// Sends a side-effect-free survey invitation preview to the requesting author or Board/Admin user. It reuses
 /// the production invitation template and transport but creates no invitation, response, or funnel row.
 /// </summary>
 internal sealed class SurveyPreviewEmailService(
@@ -28,20 +26,22 @@ internal sealed class SurveyPreviewEmailService(
     SurveyPreviewTokenProvider previewTokens,
     ILogger<SurveyPreviewEmailService> logger) : ISurveyPreviewEmailService
 {
-    private static readonly ResourceManager ErrorResources = new(typeof(SurveysResource));
-
-    public async Task<RenderedEmailPreview> PreviewForUserAsync(
+    public async Task<SurveyEmailPreviewResult> PreviewForUserAsync(
         Guid surveyId,
         Guid userId,
         CancellationToken ct = default)
     {
-        var message = await BuildForUserAsync(surveyId, userId, ct);
-        return emailPreviews.RenderSystemMessage(message);
+        var (message, errorKey) = await BuildForUserAsync(surveyId, userId, ct);
+        if (message is null)
+            return new SurveyEmailPreviewResult(ErrorKey: errorKey);
+        return new SurveyEmailPreviewResult(emailPreviews.RenderSystemMessage(message));
     }
 
-    public async Task<string> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
+    public async Task<SurveyPreviewEmailSendResult> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
     {
-        var message = await BuildForUserAsync(surveyId, userId, ct);
+        var (message, errorKey) = await BuildForUserAsync(surveyId, userId, ct);
+        if (message is null)
+            return new SurveyPreviewEmailSendResult(ErrorKey: errorKey);
 
         try
         {
@@ -57,26 +57,27 @@ internal sealed class SurveyPreviewEmailService(
                 ex,
                 "Failed to queue survey {SurveyId} preview email for requesting user {UserId}",
                 surveyId, userId);
-            throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewQueueFailed", CultureInfo.CurrentUICulture)!, ex);
+            return new SurveyPreviewEmailSendResult(ErrorKey: "Surveys_PreviewQueueFailed");
         }
 
         logger.LogInformation(
             "Survey {SurveyId} preview email queued for requesting user {UserId}",
             surveyId, userId);
-        return message.RecipientEmail;
+        return new SurveyPreviewEmailSendResult(message.RecipientEmail);
     }
 
-    private async Task<EmailMessage> BuildForUserAsync(
+    private async Task<(EmailMessage? Message, string? ErrorKey)> BuildForUserAsync(
         Guid surveyId,
         Guid userId,
         CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(surveyId, ct)
-            ?? throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewNotFound", CultureInfo.CurrentUICulture)!);
+        var detail = await surveyService.GetForEditAsync(surveyId, ct);
+        if (detail is null)
+            return (null, "Surveys_PreviewNotFound");
         var survey = detail.Editable;
         var emails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
         if (!emails.TryGetValue(userId, out var email))
-            throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewNoEmail", CultureInfo.CurrentUICulture)!);
+            return (null, "Surveys_PreviewNoEmail");
 
         var user = await userService.GetUserInfoAsync(userId, ct);
         var name = user?.BurnerName ?? string.Empty;
@@ -87,7 +88,10 @@ internal sealed class SurveyPreviewEmailService(
         var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
         var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
         var token = previewTokens.Create(surveyId, culture);
-        return emailMessages.SurveyInvitation(
-            email, name, title, token, culture, customSubject, customMessage);
+        return (emailMessages.SurveyInvitation(
+            email, name, title, token, culture, customSubject, customMessage), null);
     }
 }
+
+internal sealed record SurveyEmailPreviewResult(RenderedEmailPreview? Preview = null, string? ErrorKey = null);
+internal sealed record SurveyPreviewEmailSendResult(string? RecipientEmail = null, string? ErrorKey = null);

@@ -363,4 +363,7 @@ public enum AuditAction
     TicketAttendeesExported,
     TicketOrdersExported,
     SurveyResponsesExported,
+    GoogleResourceLinked,
+    GoogleResourceUnlinked,
+    GoogleResourceUpdated,
 }

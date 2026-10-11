@@ -33,7 +33,9 @@ public interface IUserEmailService
     /// <summary>
     /// Adds a new email address and initiates verification.
     /// Returns a result containing the verification token and whether the email conflicts
-    /// with another account (which will trigger a merge request on verification).
+    /// with another account (which will trigger a merge request on verification),
+    /// or an ErrorKey for invalid format, an existing account address, or a pending merge.
+    /// Expected refusals create no email row or verification token.
     /// </summary>
     Task<AddEmailResult> AddEmailAsync(
         Guid userId,
@@ -80,30 +82,29 @@ public interface IUserEmailService
 
     /// <summary>
     /// Sets which email is the notification target.
-    /// The email must be verified.
+    /// Returns a refusal when the row is missing or unverified.
     /// </summary>
-    Task SetPrimaryAsync(
+    Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates the profile visibility for an email.
+    /// Updates the profile visibility for an email; returns a refusal when the row is missing.
     /// </summary>
-    Task SetVisibilityAsync(
+    Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId,
         Guid emailId,
         ContactFieldVisibility? visibility,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a UserEmail row. Returns <c>true</c> when the row was removed,
-    /// <c>false</c> when the precondition rejected the delete (currently:
+    /// Deletes a UserEmail row. Returns a successful result when the row was removed,
+    /// or an expected refusal key when a precondition rejected the delete:
+    ///
     /// rows with a non-empty <see cref="UserEmail.Provider"/> must go through
     /// <see cref="UnlinkAsync"/>, which removes the AspNetUserLogins row and
-    /// the UserEmail row in one step). Blocks the delete (throws
-    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>)
-    /// when:
+    /// the UserEmail row in one step. Also refuses deletion when:
     /// <list type="bullet">
     /// <item>the row is the primary email (issue nobodies-collective/Humans#758)
     /// — the user must promote another verified email to primary first; or</item>
@@ -118,7 +119,7 @@ public interface IUserEmailService
     /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
     /// PRs 1 and 4 for the original design rationale.
     /// </summary>
-    Task<bool> DeleteEmailAsync(
+    Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);
@@ -339,16 +340,16 @@ public interface IUserEmailService
 
     /// <summary>
     /// Removes both the AspNetUserLogins row and the UserEmail row for a
-    /// Provider-attached email. Owner-gated. Returns <c>false</c> if the row
+    /// Provider-attached email. Owner-gated. Returns an unsuccessful result if the row
     /// is not found for this user or has no <see cref="UserEmail.Provider"/>/
-    /// <see cref="UserEmail.ProviderKey"/>. Throws <c>ValidationException</c>
-    /// when unlinking a verified row would leave the user with zero verified
+    /// <see cref="UserEmail.ProviderKey"/>. Returns a typed refusal
+    /// when unlinking a row would leave the user with zero verified
     /// emails (auth-method invariant, nobodies-collective/Humans#731 — magic
     /// link needs a verified address too, so this would be a full lockout).
     /// <paramref name="userId"/> is the <b>target</b> user;
     /// <paramref name="actorUserId"/> is the actor.
     /// </summary>
-    Task<bool> UnlinkAsync(
+    Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId,
         Guid userEmailId,
         Guid actorUserId,

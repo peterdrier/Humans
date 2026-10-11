@@ -582,7 +582,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
-        foreach (var culture in new[] { "en", "es", "de", "it", "fr", "ca" })
+        foreach (var culture in supportedCultures)
         {
             try
             {
@@ -676,6 +676,9 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
+// Private uploads must pass their access gate before static-file serving.
+app.UseMiddleware<PrivateUploadMiddleware>();
+
 // "no-cache" = cache but always revalidate (cheap 304s at this scale). Without an explicit policy,
 // browsers heuristically cache static files (~10% of time since Last-Modified) with NO request at
 // all, so after a release some long-running kiosk tablets kept serving week-old CSS/JS while others
@@ -687,7 +690,11 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Humans.Web.Hosting.GatedUploadsFileProvider(app.Environment.WebRootFileProvider),
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
+    OnPrepareResponse = ctx =>
+    {
+        if (!ctx.Context.Response.Headers.ContainsKey("Cache-Control"))
+            ctx.Context.Response.Headers.CacheControl = "no-cache";
+    },
 });
 
 // Serve .well-known directory (blocked by default since it starts with a dot)

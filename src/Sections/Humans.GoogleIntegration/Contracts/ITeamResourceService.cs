@@ -84,18 +84,18 @@ public interface ITeamResourceService : IApplicationService, ITeamResourceServic
     /// Detects the resource type from the URL. The item must be on a Shared Drive
     /// pre-shared with the service account as Editor.
     /// </summary>
-    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default);
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, Guid? actorUserId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Links an existing Google Group to a team by email address.
     /// The service account must be added as a Group Manager.
     /// </summary>
-    Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default);
+    Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, Guid? actorUserId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Unlinks a resource from a team (soft-delete: sets IsActive = false).
     /// </summary>
-    Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default);
+    Task UnlinkResourceAsync(Guid resourceId, Guid? actorUserId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Deactivates Google resources owned by a team (soft-delete: IsActive = false) and
@@ -126,7 +126,7 @@ public interface ITeamResourceService : IApplicationService, ITeamResourceServic
     /// <summary>
     /// Updates the Drive permission level for a resource.
     /// </summary>
-    Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default);
+    Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, Guid? actorUserId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the RestrictInheritedAccess flag on a Drive folder resource and immediately
@@ -134,7 +134,7 @@ public interface ITeamResourceService : IApplicationService, ITeamResourceServic
     /// returning a result that captures any Google Drive mutation failure.
     /// </summary>
     [ExternalWrite]
-    Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
+    Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, Guid? actorUserId = null, CancellationToken ct = default);
 }
 
 public sealed record TeamResourceMutationResult(bool Succeeded, string? ErrorMessage)

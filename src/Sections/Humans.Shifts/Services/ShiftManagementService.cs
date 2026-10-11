@@ -112,12 +112,12 @@ internal sealed class ShiftManagementService(
         return await IsDeptCoordinatorAsync(userId, departmentTeamId);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId)
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default)
     {
         var result = await cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
-            return await TeamService.GetUserCoordinatedTeamIdsAsync(userId);
+            return await TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
         });
         return result ?? [];
     }
@@ -836,7 +836,8 @@ internal sealed class ShiftManagementService(
         Guid? departmentId = null,
         LocalDate? startDate = null, LocalDate? endDate = null,
         ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null)
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false)
     {
         var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
@@ -861,13 +862,17 @@ internal sealed class ShiftManagementService(
                 : null;
         }
 
+        var flags = ShiftEventQueryFlags.IncludeSignups;
+        if (!includeRestricted)
+            flags |= ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas;
+
         var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             urgencyTeamIds,
             minDayOffset,
             maxDayOffset,
-            ShiftEventQueryFlags.IncludeSignups));
+            flags));
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
@@ -894,9 +899,9 @@ internal sealed class ShiftManagementService(
         return urgentShifts;
     }
 
-    public async Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query)
+    public async Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default)
     {
-        var es = await calendarResolver.GetAsync(query.EventSettingsId);
+        var es = await calendarResolver.GetAsync(query.EventSettingsId, ct);
         if (es is null) return [];
 
         int? fromOffset = query.FromDate.HasValue
@@ -910,7 +915,7 @@ internal sealed class ShiftManagementService(
         var includeSignups = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeSignups);
         var includeHidden = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeHidden);
 
-        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(query.DepartmentId);
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(query.DepartmentId, ct);
 
         var flags = ShiftEventQueryFlags.IncludeSignups | ShiftEventQueryFlags.IncludeRotaTags;
         if (!includeAdminOnly)
@@ -923,11 +928,11 @@ internal sealed class ShiftManagementService(
             departmentTeamIds,
             fromOffset,
             toOffset,
-            flags));
+            flags), ct);
 
         // Cross-domain lookups via services.
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
         IReadOnlyDictionary<Guid, UserInfo>? userLookup = null;
         if (includeSignups)
@@ -939,7 +944,7 @@ internal sealed class ShiftManagementService(
                 .Distinct()
                 .ToList();
             if (userIds.Count > 0)
-                userLookup = await UserService.GetUserInfosAsync(userIds);
+                userLookup = await UserService.GetUserInfosAsync(userIds, ct);
         }
 
         return shifts
@@ -976,10 +981,10 @@ internal sealed class ShiftManagementService(
     // department includes its non-promoted sub-teams (which roll up into the parent's
     // pie) but excludes promoted sub-teams (which have their own pie and filter).
     // Uses the warm in-process team cache (GetTeamsAsync) rather than a fresh DB scope.
-    private async Task<IReadOnlyCollection<Guid>?> ResolveDepartmentTeamIdsAsync(Guid? departmentId)
+    private async Task<IReadOnlyCollection<Guid>?> ResolveDepartmentTeamIdsAsync(Guid? departmentId, CancellationToken ct = default)
     {
         if (!departmentId.HasValue) return null;
-        var allTeams = await TeamService.GetTeamsAsync();
+        var allTeams = await TeamService.GetTeamsAsync(ct);
         var ids = new HashSet<Guid> { departmentId.Value };
         foreach (var team in allTeams.Values)
         {
@@ -1287,14 +1292,14 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
-        Guid eventSettingsId)
+        Guid eventSettingsId, CancellationToken ct = default)
     {
-        var teamIds = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId);
+        var teamIds = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
         if (teamIds.Count == 0) return [];
 
         // Filter parents back out — only rota-owning teams belong in the department dropdown.
         var rotaOwningIds = teamIds.ToHashSet();
-        var teams = await GetTeamLookupWithParentsAsync(teamIds);
+        var teams = await GetTeamLookupWithParentsAsync(teamIds, ct);
         return teams.Values
             .Where(t => rotaOwningIds.Contains(t.Id))
             .Select(t => (t.Id, t.Name))

@@ -355,4 +355,7 @@
   <data name="AuditLog_SelfVerb_ShiftSignupCreated" xml:space="preserve"><value>registrierte sich für</value></data>
   <data name="AuditLog_SelfVerb_ShiftSignupConfirmed" xml:space="preserve"><value>registrierte sich für</value></data>
   <data name="AuditLog_SelfVerb_ShiftSignupBailed" xml:space="preserve"><value>verzichtete auf</value></data>
+  <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Google-Ressource verknüpft</value></data>
+  <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Google-Ressource getrennt</value></data>
+  <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Einstellungen der Google-Ressource aktualisiert</value></data>
 </root>

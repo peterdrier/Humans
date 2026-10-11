@@ -146,7 +146,7 @@ internal interface IUserServiceInternal : IUserService
     /// Updates mutable UserEmail row state through one invariant-aware command
     /// instead of one public method per flag transition.
     /// </summary>
-    Task<bool> UpdateUserEmailAsync(
+    Task<UpdateEmailResult> UpdateUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailUpdateCommand command,

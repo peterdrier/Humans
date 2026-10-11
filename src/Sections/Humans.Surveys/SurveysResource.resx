@@ -304,7 +304,7 @@
     <value>Survey saved — no missing translations to fill.</value>
   </data>
   <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
-    <value>Survey saved, but translation failed: {0}</value>
+    <value>Survey saved, but translation failed. Please try again.</value>
   </data>
   <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Surveys_Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
@@ -324,6 +324,10 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Survey saved.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Survey preview email queued for {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Survey not found.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>Could not load the email preview. Please try again.</value></data>
+  <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Only the survey’s author may submit it for approval.</value></data>
+  <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Only a draft survey can be submitted for approval.</value></data>
+  <data name="Surveys_SubmitFailed" xml:space="preserve"><value>Could not submit the survey for approval. Please try again.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Your account has no notification email.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>The survey preview email could not be queued.</value></data>
   <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Preview only</value></data>
@@ -339,4 +343,44 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb navigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Start preview</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Preview thank-you</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>The selected survey audience is not supported.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Invitation email subjects must be a single line ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Invitation email subjects must be {0} characters or fewer ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Invitation email messages must be {0} characters or fewer ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>An Information item can have at most {0} images.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>Information item {0} cannot be required.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>Information item {0} can have at most {1} images.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>Information item {0} must contain Markdown or at least one image.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Every image in Information item {0} must have a label.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Every image in Information item {0} must have alt text.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>Grid question {0} must choose a selection mode.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>Grid question {0} must have at least one row.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>Grid question {0} must have between one and five columns.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>Grid question {0} row values must not be blank.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>Grid question {0} row values must be unique.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>Grid question {0} column values must not be blank.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>Grid question {0} column values must be unique.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>Ranked-choice question {0} must have at least two options.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>Ranked-choice question {0} must have valid ranking settings.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>Ranked-choice question {0} option values must not be blank.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>Ranked-choice question {0} option values must be unique.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>A branching condition must reference an earlier question. Affected question IDs: {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>A branching Is/IsNot condition must include option values. Affected question IDs: {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Grid, RankedChoice and Information questions cannot be branching sources. Affected question IDs: {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Asociado votes must target the Asociados audience.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Asociado votes use fixed completion-tracked representation.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>Ranked-choice questions cannot be added or removed after voting starts.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Ranked-choice candidates, order and settings cannot change after the first saved answer.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Select an image file for every image row. If a previous save failed, select the file again.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>The selected image is empty.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Only JPEG, PNG and WebP images are allowed.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Each Information image must be under 10 MB.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Image filenames must end in .jpg, .jpeg, .png or .webp.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Image filenames must be {0} characters or fewer.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>The public link slug must be no longer than {0} characters.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>The public link slug “{0}” is reserved.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Only the survey’s author may edit it.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>An Asociado vote cannot be edited after it has opened.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Could not save the survey. Please try again.</value></data>
 </root>

@@ -234,7 +234,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Team deactivation closes live memberships and writes one `TeamMemberRemoved` audit per affected member, attributed to the acting admin. Previously-left members and repeated deactivation produce no additional removal audit; Google resources remain active until reconciliation revokes access.
 - Inactive teams cannot be self-joined or receive new self-service join requests. Their detail pages offer no Join action, and Join GET/POST return 404; both direct-join and request services recheck activity before mutation so a stale form cannot reopen memberships ended by deactivation. Historical team details remain readable under their existing visibility rules.
 - Joining a team that requires approval creates a join request (Pending). The request must be approved by a coordinator or TeamsAdmin before membership is granted. Teams that do not require approval add the human immediately.
-- Member join, leave, and request-withdrawal errors use the selected UI language. Validation guards return resource keys; unknown errors use a translated fallback while logs retain the reason.
+- Member join, leave, and request-withdrawal errors use the selected UI language. Join, leave and withdrawal guards return ordinary refusal results; unavailable or foreign requests stay unchanged, and refusal paths do not emit success/audit. Unexpected failures use a translated fallback while logs retain the reason.
 - Coordinator notifications after a saved join request or direct join are best-effort, including display-name lookup. Notification preparation failures are logged and do not fail the committed operation.
 - Coordinators can approve/reject join requests for their own department and any sub-teams within that department (enforced by `IsUserCoordinatorOfTeamAsync`).
 - All member additions and removals are audit-logged via `AuditLogEntry`. Direct addition resolves an existing pending join request on the reloaded request, saving its review fields together with the membership.
@@ -261,7 +261,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Regular humans **cannot** manage other teams' members, roles, or settings.
 - Coordinators **cannot** create, delete, or edit team admin settings (name, approval mode, parent, Google prefix). They can only edit the team page and manage members/roles for their own department.
 - Sub-team managers **cannot** manage Google resources, the parent department, sibling sub-teams, or team admin settings.
-- A resource manager cannot target another team’s resource ID through an authorized team’s URL.
+- A resource manager cannot target another team’s resource ID through an authorized team’s URL. Resource administration passes the authenticated manager ID to GoogleIntegration, which records persisted changes in the audit trail.
 - TeamsAdmin **cannot** delete teams or execute sync actions.
 - Nobody can manually add or remove members from system teams.
 

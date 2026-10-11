@@ -319,4 +319,5 @@
   <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>Tu inscripción no se ha podido aprobar en este momento.</value></data>
   <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>Tu inscripción no se ha podido aprobar: {0}</value></data>
   <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
+  <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>No se pudo guardar tu perfil. Inténtalo de nuevo.</value></data>
 </root>

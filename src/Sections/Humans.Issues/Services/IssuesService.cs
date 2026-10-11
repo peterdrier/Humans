@@ -178,7 +178,23 @@ internal sealed class IssuesService(
             issue.ScreenshotContentType = screenshot.ContentType;
         }
 
-        await repo.AddIssueAsync(issue, ct);
+        try
+        {
+            await repo.AddIssueAsync(issue, ct);
+        }
+        catch when (issue.ScreenshotStoragePath is not null)
+        {
+            try
+            {
+                // A failed submission owns no row that could later erase this upload.
+                await fileStorage.DeleteAsync(issue.ScreenshotStoragePath, CancellationToken.None);
+            }
+            catch (Exception cleanupError)
+            {
+                logger.LogWarning(cleanupError, "Failed to remove screenshot for unpersisted issue {IssueId}", issueId);
+            }
+            throw;
+        }
         navBadge.Invalidate();
         issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));

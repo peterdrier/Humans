@@ -489,8 +489,13 @@ internal sealed class TeamController(
 
         try
         {
-            var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
-            SetSuccess(outcome == TeamJoinOutcome.RequestSubmitted
+            var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
+            if (result.ErrorKey is not null)
+            {
+                SetError(localizer[result.ErrorKey].Value);
+                return RedirectToAction(nameof(Details), new { slug });
+            }
+            SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
                 ? localizer["Teams_Team_JoinRequestSubmitted"].Value
                 : localizer["Teams_Team_Joined"].Value);
 
@@ -499,7 +504,7 @@ internal sealed class TeamController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetMemberActionError(ex.Message);
+            SetError(localizer["Teams_ActionFailed"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -522,14 +527,19 @@ internal sealed class TeamController(
 
         try
         {
-            await teamService.LeaveTeamAsync(team.Id, user.Id);
+            var result = await teamService.LeaveTeamAsync(team.Id, user.Id);
+            if (!result.Succeeded)
+            {
+                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
+                return RedirectToAction(nameof(Details), new { slug });
+            }
             SetSuccess(localizer["Teams_Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetMemberActionError(ex.Message);
+            SetError(localizer["Teams_ActionFailed"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -546,22 +556,21 @@ internal sealed class TeamController(
 
         try
         {
-            await teamService.WithdrawJoinRequestAsync(id, user.Id);
+            var result = await teamService.WithdrawJoinRequestAsync(id, user.Id);
+            if (!result.Succeeded)
+            {
+                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
+                return RedirectToAction(nameof(MyTeams));
+            }
             SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetMemberActionError(ex.Message);
+            SetError(localizer["Teams_ActionFailed"].Value);
         }
 
         return RedirectToAction(nameof(MyTeams));
-    }
-
-    private void SetMemberActionError(string error)
-    {
-        var message = localizer[error];
-        SetError(message.ResourceNotFound ? localizer["Teams_ActionFailed"].Value : message.Value);
     }
 
     [HttpGet("Summary")]

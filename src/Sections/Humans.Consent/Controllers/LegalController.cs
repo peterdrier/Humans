@@ -2,6 +2,7 @@ using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 using Humans.Base.Models;
 using Humans.Consent.Models;
@@ -10,7 +11,9 @@ namespace Humans.Consent.Controllers;
 
 [Route("Legal")]
 [AllowAnonymous]
-internal sealed class LegalController(ILegalDocumentService legalDocService) : Controller
+internal sealed class LegalController(
+    ILegalDocumentService legalDocService,
+    IStringLocalizer<ConsentResource> localizer) : Controller
 {
     [HttpGet("{slug?}")]
     public async Task<IActionResult> Index(string? slug)
@@ -26,7 +29,7 @@ internal sealed class LegalController(ILegalDocumentService legalDocService) : C
         if (currentDoc is null)
             return NotFound();
 
-        var content = await legalDocService.GetDocumentContentAsync(currentDoc.Slug);
+        var content = await legalDocService.GetDocumentContentAsync(currentDoc.Slug, HttpContext.RequestAborted);
         var orderedContent = content.OrderByDisplayLanguage(canonicalFirst: true).ToList();
         var defaultLang = content.GetDefaultDocumentLanguage();
 
@@ -42,7 +45,7 @@ internal sealed class LegalController(ILegalDocumentService legalDocService) : C
                 TabsId = "legal-tabs",
                 ContentId = "legal-tabs-content",
                 ContentStyle = "",
-                EmptyMessage = "Document not yet available.",
+                EmptyMessage = localizer["ConsentReview_ContentNotAvailable"].Value,
                 UseLegalLanguageLabels = true
             }
         };

@@ -16,7 +16,7 @@ public class ExpensesArchitectureTests
     [HumansFact]
     public void ContractsDoNotReExposeTheHoldedConnector()
     {
-        // ExpenseReportService.DrainHoldedOutboxAsync uses IHoldedClient,
+        // ExpenseReportBackgroundProcessor.DrainHoldedOutboxAsync uses IHoldedClient,
         // HoldedPurchaseDocumentInput, HoldedAttachmentInput and HoldedTransientException
         // heavily. Those belong to the Base connector, which did not move
         // (memory/architecture/vendor-connectors-own-sections.md). Letting one into the
