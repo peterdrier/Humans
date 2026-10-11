@@ -109,6 +109,17 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task GetByUserAsync_CanceledToken_StopsRepositoryRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+
+        var read = () => _service.GetByUserAsync(Guid.NewGuid(), ct: aborted.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_IncludesSignupLastUpdateWithoutAReview()
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);

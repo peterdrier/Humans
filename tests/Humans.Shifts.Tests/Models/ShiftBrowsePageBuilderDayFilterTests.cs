@@ -83,7 +83,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
         var fullUrgent = UrgentShiftFixtures.Urgent(
             shift: fullShift, rota: fullRota, burn: Event, confirmedCount: 2, remainingSlots: 0);
 
-        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
+        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns([openUrgent, fullUrgent]);
 
         var builder = CreateBuilder();
@@ -100,7 +100,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
     [HumansFact]
     public async Task NoDaySelected_FilterDayIsNull_AndExistingSortIsHonored()
     {
-        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns([]);
+        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         var builder = CreateBuilder();
 
         var model = await builder.BuildAsync(RequestFor(day: null, sort: "department"), Xunit.TestContext.Current.CancellationToken);
@@ -122,7 +122,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
         var eventShift2 = UrgentShiftFixtures.Shift(rotaId: Guid.NewGuid(), dayOffset: 3);
         var eventUrgent2 = UrgentShiftFixtures.Urgent(shift: eventShift2, burn: Event);
 
-        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
+        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns([buildUrgent, eventUrgent1, eventUrgent2]);
 
         var builder = CreateBuilder();

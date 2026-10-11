@@ -28,7 +28,7 @@ public interface IShiftManagementServiceRead
     /// <summary>
     /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
+    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Volunteer-visible rotas in the active event whose <c>Name</c>
@@ -65,7 +65,7 @@ public interface IShiftManagementServiceRead
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
     /// </summary>
-    Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
+    Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the per-day staffing chart snapshot for all periods.
@@ -84,7 +84,7 @@ public interface IShiftManagementServiceRead
     /// Gets all parent teams that have active rotas in the given event.
     /// </summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
-        Guid eventSettingsId);
+        Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns overall shift coverage for the active event:
