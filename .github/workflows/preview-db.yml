@@ -18,6 +18,14 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (github.event.action == 'opened' || github.event.action == 'reopened'))
     runs-on: [self-hosted, nuc]
     steps:
+      - name: Check the PR is open
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATE=$(gh pr view "${{ github.event.inputs.pr_number }}" --repo "${{ github.repository }}" --json state --jq .state)
+          [ "$STATE" = "OPEN" ] || { echo "PR ${{ github.event.inputs.pr_number }} is $STATE, not OPEN"; exit 1; }
+
       - name: Create preview database (clone from QA)
         run: |
           PR_ID=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
