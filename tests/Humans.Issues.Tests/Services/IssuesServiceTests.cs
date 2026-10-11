@@ -998,10 +998,21 @@ public sealed class IssuesServiceTests
         stored.ResolvedByUserId.Should().Be(actorId);
     }
 
-    [HumansFact]
-    public async Task UpdateStatusAsync_returns_not_found_when_issue_is_missing()
+    [HumansTheory]
+    [InlineData("Status")]
+    [InlineData("Assignee")]
+    [InlineData("Section")]
+    [InlineData("GitHub")]
+    public async Task Mutations_return_not_found_when_issue_is_missing(string field)
     {
-        var result = await _service.UpdateStatusAsync(Guid.NewGuid(), Admin, IssueStatus.Resolved, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var result = field switch
+        {
+            "Status" => await _service.UpdateStatusAsync(Guid.NewGuid(), Admin, IssueStatus.Resolved, Guid.NewGuid(), ct),
+            "Assignee" => await _service.UpdateAssigneeAsync(Guid.NewGuid(), Admin, Guid.NewGuid(), Guid.NewGuid(), ct),
+            "Section" => await _service.UpdateSectionAsync(Guid.NewGuid(), Admin, "Teams", Guid.NewGuid(), ct),
+            _ => await _service.SetGitHubIssueNumberAsync(Guid.NewGuid(), Admin, 1234, Guid.NewGuid(), ct),
+        };
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
@@ -1106,20 +1117,6 @@ public sealed class IssuesServiceTests
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().Be(assigneeId);
-    }
-
-    [HumansFact]
-    public async Task UpdateAssigneeAsync_returns_not_found_when_issue_is_missing()
-    {
-        var result = await _service.UpdateAssigneeAsync(Guid.NewGuid(), Admin, Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.NotFound.Should().BeTrue();
-        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
-        _logger.ReceivedCalls().Should().ContainSingle(call =>
-            call.GetMethodInfo().Name == "Log" &&
-            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
-            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -1291,112 +1288,9 @@ public sealed class IssuesServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_returns_not_found_when_issue_is_missing()
-    {
-        var result = await _service.SetGitHubIssueNumberAsync(Guid.NewGuid(), Admin, 1234, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.NotFound.Should().BeTrue();
-        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
-        _logger.ReceivedCalls().Should().ContainSingle(call =>
-            call.GetMethodInfo().Name == "Log" &&
-            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
-            call.GetArguments()[3] == null);
-    }
-
     // ==========================================================================
-    // GetIssueListAsync visibility filter
+    // GetIssueListAsync
     // ==========================================================================
-
-    [HumansFact]
-    public async Task GetIssueListAsync_admin_passes_null_section_filter()
-    {
-        var repo = Substitute.For<IIssuesRepository>();
-        repo.GetListAsync(
-                Arg.Any<IssueListFilter>(),
-                Arg.Any<IReadOnlySet<string>?>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
-
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
-        var svc = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
-            _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
-
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), ct: Xunit.TestContext.Current.CancellationToken);
-
-        await repo.Received(1).GetListAsync(
-            Arg.Any<IssueListFilter>(),
-            Arg.Is<IReadOnlySet<string>?>(s => s == null),
-            Arg.Is<Guid?>(g => g == null),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetIssueListAsync_role_holder_passes_section_filter_and_reporter_fallback()
-    {
-        var repo = Substitute.For<IIssuesRepository>();
-        repo.GetListAsync(
-                Arg.Any<IssueListFilter>(),
-                Arg.Any<IReadOnlySet<string>?>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
-
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
-        var svc = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
-            _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
-
-        var viewerId = Guid.NewGuid();
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, [RoleNames.TicketAdmin]), ct: Xunit.TestContext.Current.CancellationToken);
-
-        await repo.Received(1).GetListAsync(
-            Arg.Any<IssueListFilter>(),
-            Arg.Is<IReadOnlySet<string>?>(s => s != null && s.Contains("Tickets")),
-            Arg.Is<Guid?>(g => g == viewerId),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetIssueListAsync_no_roles_filters_to_own_reports_only()
-    {
-        var repo = Substitute.For<IIssuesRepository>();
-        repo.GetListAsync(
-                Arg.Any<IssueListFilter>(),
-                Arg.Any<IReadOnlySet<string>?>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>([]));
-
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
-        var svc = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
-            _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
-
-        var viewerId = Guid.NewGuid();
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: []), ct: Xunit.TestContext.Current.CancellationToken);
-
-        await repo.Received(1).GetListAsync(
-            Arg.Any<IssueListFilter>(),
-            Arg.Is<IReadOnlySet<string>?>(s => s != null && s.Count == 0),
-            Arg.Is<Guid?>(g => g == viewerId),
-            Arg.Any<CancellationToken>());
-    }
 
     [HumansFact]
     public async Task GetIssueListAsync_applies_updated_descending_limit()
@@ -1446,72 +1340,8 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
-    // GetActionableCountForViewerAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetActionableCountForViewerAsync_admin_passes_null_filter()
-    {
-        var repo = Substitute.For<IIssuesRepository>();
-        repo.CountActionableAsync(
-                Arg.Any<IReadOnlySet<string>?>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(0));
-
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
-        var svc = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
-            _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
-
-        await svc.GetActionableCountForViewerAsync(
-            new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), Xunit.TestContext.Current.CancellationToken);
-
-        await repo.Received(1).CountActionableAsync(
-            Arg.Is<IReadOnlySet<string>?>(s => s == null),
-            Arg.Is<Guid?>(g => g == null),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetActionableCountForViewerAsync_section_owner_passes_section_set()
-    {
-        var repo = Substitute.For<IIssuesRepository>();
-        repo.CountActionableAsync(
-                Arg.Any<IReadOnlySet<string>?>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(0));
-
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
-        var svc = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
-            _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
-
-        var viewerId = Guid.NewGuid();
-        await svc.GetActionableCountForViewerAsync(
-            new IssueViewer(viewerId, [RoleNames.TeamsAdmin]), Xunit.TestContext.Current.CancellationToken);
-
-        await repo.Received(1).CountActionableAsync(
-            Arg.Is<IReadOnlySet<string>?>(s => s != null && s.Contains("Teams")),
-            Arg.Is<Guid?>(g => g == viewerId),
-            Arg.Any<CancellationToken>());
-    }
-
-    // ==========================================================================
-    // Visibility predicate, against the real repository
-    //
-    // The substitute-backed tests above pin which arguments the service passes.
-    // These run the predicate itself: "in one of my sections OR reported by me".
-    // With a substitute returning [], flipping that OR to an AND still passes.
+    // Visibility predicate, against the real repository:
+    // "in one of my sections OR reported by me"; Admin sees everything.
     // ==========================================================================
 
     [HumansFact]
@@ -1536,6 +1366,39 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task GetIssueListAsync_admin_sees_every_section()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var tickets = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Tickets", "Tickets");
+        var camps = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Camps", "Camps");
+        var unrouted = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Unrouted", null);
+
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), Admin, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(i => i.Id).Should().BeEquivalentTo([tickets, camps, unrouted]);
+    }
+
+    [HumansFact]
+    public async Task GetIssueListAsync_no_roles_sees_own_reports_only()
+    {
+        var viewerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
+        SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var ownReport = await SeedIssueRowAsync(viewerId, IssueStatus.Open, "Mine", "Tickets");
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Tickets");
+
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: []), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(i => i.Id).Should().Equal(ownReport);
+    }
+
+    [HumansFact]
     public async Task CountActionableAsync_counts_own_section_and_own_reports_only()
     {
         var viewerId = Guid.NewGuid();
@@ -1548,12 +1411,15 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Camps");
         await SeedIssueRowAsync(viewerId, IssueStatus.Triage, "Mine, elsewhere", "Camps");
         await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", "Tickets");
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Unrouted", null);
 
         var count = await _service.GetActionableCountForViewerAsync(
             new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
             Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
+        (await _service.GetActionableCountForViewerAsync(Admin, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(4, "Admin counts every Triage/Open issue, unrouted included");
     }
 
     // ==========================================================================
