@@ -149,47 +149,14 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyDictionary<Guid, DrivePermissionLevel> access,
         CancellationToken ct)
     {
-        var userIds = access.Keys.ToList();
-        if (userIds.Count == 0)
-            return [];
-
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-
+        var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
+            access.Keys.ToList(), userService, userEmailService, ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
-            if (level == DrivePermissionLevel.None)
-                continue;
-            if (!users.TryGetValue(userId, out var user))
-                continue;
-            // #1704: the read resolves merges forward, so a tombstone id answers with the
-            // survivor and the MergedToUserId test can no longer see one. Comparing the row
-            // back against the requested id keeps this the skip it has always been: an ACL
-            // entry keyed to an archived id grants nobody, least of all silently granting the
-            // human who absorbed it.
-            if (user.Id != userId || user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
-                continue;
-
-            var emails = emailsByUserId.TryGetValue(userId, out var list) ? list : [];
-            var email = emails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? emails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (email is null)
-                continue;
-
-            // Drive rejects a Gmail "+tag" address and reports/grants the
-            // canonical form (#945), same as the Teams-keyed Drive path.
-            var canonicalEmail = EmailNormalization.CanonicalizeGmail(email);
-            result[userId] = new DriveExpectedMember(userId, canonicalEmail, user.BurnerName, user.ProfilePictureUrl, level);
+            if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
+                result[userId] = new DriveExpectedMember(
+                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level);
         }
 
         return result;
