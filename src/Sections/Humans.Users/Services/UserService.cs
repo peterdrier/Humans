@@ -571,11 +571,6 @@ internal sealed class UserService(
         CancellationToken ct = default)
     {
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
-        if (profile?.ProfilePictureContentType is { } contentType)
-        {
-            // Keep the key's metadata until byte deletion succeeds so GDPR can retry a storage fault.
-            await fileStorage.DeleteAsync(ProfilePictureStorageKeys.ProfilePictureKey(profile.Id, contentType), ct);
-        }
         var anonymized = await repo.AnonymizeForDeletionByUserIdAsync(userId, ct);
         return new UserProfileAnonymizeResult(
             anonymized,
@@ -1113,14 +1108,30 @@ internal sealed class UserService(
     public bool ErasesLast => true;
 
     /// <summary>
-    /// Removes profile-picture bytes before anonymizing the profile (contact fields
-    /// and volunteer history go with it), clears the Article 9 health/diet fields
+    /// Anonymizes the profile (contact fields and volunteer history go with it),
+    /// removes the profile-picture bytes, clears the Article 9 health/diet fields
     /// and the language + communication-preference rows, then collapses the User
     /// aggregate's identity and drops every UserEmail and external login.
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        await AnonymizeProfileForDeletionAsync(userId, ct);
+        var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
+        if (profileAnonymization.Anonymized &&
+            profileAnonymization.ProfileId is { } profileId &&
+            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(
+                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType), ct);
+            }
+            catch (Exception ex)
+            {
+                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
+                logger.LogError(ex,
+                    "Failed to delete profile picture during GDPR erasure for user {UserId}", userId);
+            }
+        }
 
         await repo.EraseProfileExtrasForUserAsync(userId, ct);
         await communicationPreferenceRepo.DeleteAllForUserAsync(userId, ct);

@@ -769,21 +769,11 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var cleaned = new List<Guid>();
-        // Keep a failed cleanup's row so the next sweep can find and retry it.
+        var deleted = await repo.DeleteByIdsAsync(expired, ct);
         foreach (var issueId in expired)
         {
-            try
-            {
-                await fileStorage.DeleteAsync($"uploads/issues/{issueId}", ct, recursiveDirectory: true);
-                cleaned.Add(issueId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Screenshot cleanup failed for expired issue {IssueId}; retaining its row", issueId);
-            }
+            await DeleteScreenshotDirectoryAsync(issueId);
         }
-        var deleted = await repo.DeleteByIdsAsync(cleaned, ct);
 
         logger.LogInformation(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
@@ -845,15 +835,25 @@ internal sealed class IssuesService(
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
 
-        // The screenshots are the reporter's own uploads — they go with the rows.
-        // A cleanup fault must stop erasure while the rows still identify the files.
-        foreach (var issue in ownIssues)
-        {
-            await fileStorage.DeleteAsync($"uploads/issues/{issue.Id}", ct, recursiveDirectory: true);
-        }
-
-        await repo.EraseForUserAsync(userId, ct);
+        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
         issuesBadge.InvalidateMany(badgeUserIds);
+
+        foreach (var issueId in erasedIssueIds)
+        {
+            await DeleteScreenshotDirectoryAsync(issueId);
+        }
+    }
+
+    private async Task DeleteScreenshotDirectoryAsync(Guid issueId)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync($"uploads/issues/{issueId}", CancellationToken.None, recursiveDirectory: true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete screenshot directory for issue {IssueId}", issueId);
+        }
     }
 
     // ─── Helpers — audit, notifications, in-memory stitching ───

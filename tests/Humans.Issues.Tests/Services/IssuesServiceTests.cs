@@ -1901,47 +1901,28 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ScreenshotCleanupFailure_RetainsRowsUntilRetry(bool gdprErasure)
+    public async Task ScreenshotCleanupFailure_AfterCommittedErasure_DoesNotReverseSuccess(bool gdprErasure)
     {
-        var root = Directory.CreateTempSubdirectory("humans-issue-erasure-");
-        try
+        var issueId = await SeedIssueWithResolvedAtAsync(
+            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200));
+        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
+        var key = $"uploads/issues/{issueId}";
+        var rowRemovedAtCleanup = false;
+        CancellationToken? cleanupToken = null;
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>(), true).Returns(async call =>
         {
-            var issueId = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200));
-            var issue = await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct);
-            issue.ScreenshotStoragePath = $"uploads/issues/{issueId}/shot.png";
-            await _issuesDb.SaveChangesAsync(Ct);
-            var screenshotDir = Path.Combine(root.FullName, "wwwroot", "uploads", "issues", issueId.ToString());
-            Directory.CreateDirectory(screenshotDir);
-            await File.WriteAllBytesAsync(Path.Combine(screenshotDir, "shot.png"), [1, 2, 3], Ct);
-            var failure = new IOException("Filesystem unavailable");
-            var unavailable = true;
-            _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>(), true).Returns(call =>
-            {
-                if (unavailable) return Task.FromException(failure);
-                Directory.Delete(Path.Combine(root.FullName, "wwwroot", call.ArgAt<string>(0)), recursive: true);
-                return Task.CompletedTask;
-            });
-            var service = new IssuesApplicationService(
-                _repository, _userService, _userEmailService, _roleService,
-                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-                _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            rowRemovedAtCleanup = !await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct);
+            cleanupToken = call.ArgAt<CancellationToken>(1);
+            throw new IOException("Screenshot storage unavailable");
+        });
 
-            if (gdprErasure)
-            {
-                var erase = () => service.EraseForUserAsync(issue.ReporterUserId, Ct);
-                (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-            }
-            else (await service.PurgeExpiredAsync(Ct)).Should().Be(0);
-            (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Ct)).Should().BeTrue();
-            Directory.Exists(screenshotDir).Should().BeTrue();
+        if (gdprErasure) await _service.EraseForUserAsync(reporterId, Ct);
+        else (await _service.PurgeExpiredAsync(Ct)).Should().Be(1);
 
-            unavailable = false;
-            if (gdprErasure) await service.EraseForUserAsync(issue.ReporterUserId, Ct);
-            else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
-            (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
-            Directory.Exists(screenshotDir).Should().BeFalse();
-        }
-        finally { root.Delete(recursive: true); }
+        (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
+        rowRemovedAtCleanup.Should().BeTrue();
+        cleanupToken.Should().Be(CancellationToken.None);
+        await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None, true);
     }
 
     [HumansFact]

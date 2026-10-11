@@ -30,7 +30,6 @@ namespace Humans.Users.Tests.Services.Users;
 /// </summary>
 public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarness
 {
-    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly UserService _userService;
     private readonly AccountDeletionService _service;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
@@ -49,7 +48,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             communicationPreferenceRepo,
             AdminAuthorization,
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            _fileStorage,
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
 
@@ -81,46 +80,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             TestUsersEmails.Create(),
             Clock,
             NullLogger<AccountDeletionService>.Instance);
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Erasure_PictureDeletionFailure_PreservesMetadataForRetry(bool scheduled)
-    {
-        var user = SeedUser(Guid.NewGuid(), "Retry Human");
-        var deletionDate = Clock.GetCurrentInstant();
-        user.DeletionRequestedAt = deletionDate;
-        user.DeletionScheduledFor = deletionDate;
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(), UserId = user.Id, BurnerName = "Retry Human",
-            ProfilePictureContentType = "image/png", CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        Db.Profiles.Add(profile);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-        var key = ProfilePictureStorageKeys.ProfilePictureKey(profile.Id, "image/png");
-        var failure = new IOException("Picture storage unavailable");
-        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
-        Func<Task> erase = scheduled
-            ? () => _service.AnonymizeExpiredAccountAsync(user.Id, TestContext.Current.CancellationToken)
-            : () => _service.PurgeAsync(user.Id, ct: TestContext.Current.CancellationToken);
-
-        (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        ClearAllTrackers();
-        (await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == user.Id, TestContext.Current.CancellationToken))
-            .ProfilePictureContentType.Should().Be("image/png");
-        var retained = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
-        retained.DisplayName.Should().Be("Retry Human");
-        retained.DeletionScheduledFor.Should().Be(deletionDate);
-
-        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        await erase();
-        ClearAllTrackers();
-        (await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == user.Id, TestContext.Current.CancellationToken))
-            .ProfilePictureContentType.Should().BeNull();
-        await _fileStorage.Received(2).DeleteAsync(key, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
