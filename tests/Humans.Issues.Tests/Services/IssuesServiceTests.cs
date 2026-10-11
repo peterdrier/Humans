@@ -504,6 +504,23 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task PostCommentAsync_reporter_reopen_is_audited_as_the_reporter()
+    {
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
+
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.IssueStatusChanged,
+            nameof(Issue),
+            issueId,
+            Arg.Any<string>(),
+            reporterId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task PostCommentAsync_reporter_on_terminal_clears_resolved_fields()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.WontFix, withResolvedFields: true);
@@ -1160,6 +1177,21 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateSectionAsync_section_handler_routes_an_issue_out_of_their_queue()
+    {
+        // Authorized against the source section: a Ticket Admin holds no Teams role.
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
+        var ticketAdmin = new IssueViewer(Guid.NewGuid(), [RoleNames.TicketAdmin]);
+
+        var result = await _service.UpdateSectionAsync(
+            issueId, ticketAdmin, "Teams", ticketAdmin.UserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.Section.Should().Be("Teams");
+    }
+
+    [HumansFact]
     public async Task UpdateSectionAsync_returns_success_when_section_updates()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
@@ -1422,6 +1454,7 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Camps");
         await SeedIssueRowAsync(viewerId, IssueStatus.Triage, "Mine, elsewhere", "Camps");
         await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", "Tickets");
+        await SeedIssueRowAsync(strangerId, IssueStatus.InProgress, "Being worked, my section", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Unrouted", null);
 
         var count = await _service.GetActionableCountForViewerAsync(
