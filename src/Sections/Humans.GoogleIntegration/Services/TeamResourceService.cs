@@ -186,7 +186,7 @@ internal sealed partial class TeamResourceService(
         var lookup = await googleClient.GetDriveItemAsync(folderId, expectFolder: true, ct);
         if (lookup.Item is null)
         {
-            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: true, folderId, ct);
+            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: true, ct);
         }
 
         if (!lookup.Item.IsFolder)
@@ -245,7 +245,7 @@ internal sealed partial class TeamResourceService(
         var lookup = await googleClient.GetDriveItemAsync(fileId, expectFolder: false, ct);
         if (lookup.Item is null)
         {
-            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: false, fileId, ct);
+            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: false, ct);
         }
 
         if (lookup.Item.IsFolder)
@@ -511,7 +511,6 @@ internal sealed partial class TeamResourceService(
     private async Task<LinkResourceResult> BuildDriveLookupErrorAsync(
         GoogleClientError? error,
         bool isFolder,
-        string itemId,
         CancellationToken ct)
     {
         var subject = isFolder ? "folder" : "file";
@@ -521,8 +520,6 @@ internal sealed partial class TeamResourceService(
             403 => $"The service account does not have permission to access this {subject}.",
             _ => $"Google API error ({error?.StatusCode}): {error?.RawMessage}",
         };
-        _ = itemId; // Already captured in connector logs.
-
         var serviceAccountEmail = await googleClient.GetServiceAccountEmailAsync(ct);
         var trailer = isFolder
             ? "Please share the folder with the service account as Contributor."
