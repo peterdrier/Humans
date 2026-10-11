@@ -61,7 +61,7 @@ public class TeamAdminControllerMembersTests
                 new GoogleResourceSnapshot(resourceId,
                     string.Equals(scenario, "foreign", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id,
                     "google-id", "Folder", GoogleResourceType.DriveFolder, null));
-        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, CancellationToken.None)
+        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
             .Returns(TeamResourceMutationResult.Success());
         sync.SyncSingleResourceAsync(resourceId, SyncAction.Execute, CancellationToken.None)
             .Returns(new ResourceSyncDiff { ResourceId = resourceId });
@@ -124,7 +124,7 @@ public class TeamAdminControllerMembersTests
         resources.GetResourceByIdAsync(resourceId, Arg.Any<CancellationToken>()).Returns(
             new GoogleResourceSnapshot(resourceId, team.Id, "google-id", "Folder", GoogleResourceType.DriveFolder, null));
         resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(allowed);
-        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, CancellationToken.None)
+        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
             .Returns(TeamResourceMutationResult.Success());
         var http = new DefaultHttpContext
         {
@@ -149,8 +149,8 @@ public class TeamAdminControllerMembersTests
         else Assert.IsType<RedirectToActionResult>(result);
         if (!allowed || invalidBinding)
             await resources.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
-                Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-        else await resources.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, CancellationToken.None);
+                Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        else await resources.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);
     }
 
     [HumansTheory]

@@ -49,6 +49,12 @@ public class DevPersonaSeederTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
+    public DevPersonaSeederTests()
+    {
+        _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+    }
+
     private DevPersonaSeeder BuildSut() => new(
         _userManager,
         _profileEditor,

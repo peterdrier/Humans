@@ -501,6 +501,30 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     // GetBrowseShiftsAsync — includeSignups
     // ============================================================
 
+    [HumansTheory]
+    [Xunit.InlineData("coordinators")]
+    [Xunit.InlineData("browse")]
+    [Xunit.InlineData("departments")]
+    public async Task BrowseReads_CanceledToken_ReachesColdSource(string boundary)
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        SeedShift(rota, dayOffset: 1);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _teamService.GetUserCoordinatedTeamIdsAsync(Arg.Any<Guid>(), aborted.Token)
+            .Returns(Task.FromCanceled<IReadOnlyList<Guid>>(aborted.Token));
+
+        Func<Task> read = boundary switch
+        {
+            "coordinators" => () => _service.GetCoordinatorTeamIdsAsync(Guid.NewGuid(), aborted.Token),
+            "browse" => () => _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id), aborted.Token),
+            _ => () => _service.GetDepartmentsWithRotasAsync(es.Id, aborted.Token)
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
     {

@@ -167,6 +167,7 @@
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Inicia la sessió amb Google</value>
   </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>No hem pogut acabar de configurar el teu compte. Torna-ho a provar.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Error d'inici de sessió. Això pot passar si has trigat massa o si el teu navegador ha bloquejat les galetes. Si us plau, torna-ho a provar.</value>
   </data>
@@ -1310,4 +1311,5 @@
   <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>La informació addicional no ha de superar els 1000 caràcters.</value></data>
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribució significativa no ha de superar els 2000 caràcters.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>L’explicació del rol no ha de superar els 2000 caràcters.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
 </root>

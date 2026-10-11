@@ -309,7 +309,7 @@
     <value>Encuesta guardada: no faltaba ninguna traducción.</value>
   </data>
   <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
-    <value>Encuesta guardada, pero la traducción falló: {0}</value>
+    <value>Encuesta guardada, pero la traducción ha fallado. Inténtalo de nuevo.</value>
   </data>
   <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve">
     <value>Por favor, completa: {0}</value>
@@ -343,6 +343,10 @@
   <data name="Surveys_Saved" xml:space="preserve"><value>Encuesta guardada.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Correo de vista previa de la encuesta en cola para {0}.</value></data>
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No se encontró la encuesta.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>No se pudo cargar la vista previa del correo. Inténtalo de nuevo.</value></data>
+  <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Solo quien ha creado la encuesta puede enviarla para su aprobación.</value></data>
+  <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Solo se puede enviar para aprobación una encuesta en borrador.</value></data>
+  <data name="Surveys_SubmitFailed" xml:space="preserve"><value>No se pudo enviar la encuesta para su aprobación. Inténtalo de nuevo.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Tu cuenta no tiene un correo electrónico de notificación.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>No se pudo poner en cola el correo de vista previa de la encuesta.</value></data>
   <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Solo vista previa</value></data>
@@ -358,4 +362,44 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegación de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Iniciar vista previa</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Vista previa del agradecimiento</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>El público seleccionado para la encuesta no es compatible.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Los asuntos de los correos de invitación deben ocupar una sola línea ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Los asuntos de los correos de invitación no pueden superar {0} caracteres ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Los mensajes de los correos de invitación no pueden superar {0} caracteres ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>Un elemento de información puede tener como máximo {0} imágenes.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>El elemento de información {0} no puede ser obligatorio.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>El elemento de información {0} puede tener como máximo {1} imágenes.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>El elemento de información {0} debe contener Markdown o al menos una imagen.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Todas las imágenes del elemento de información {0} deben tener una etiqueta.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Todas las imágenes del elemento de información {0} deben tener texto alternativo.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe elegir un modo de selección.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe tener al menos una fila.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe tener entre una y cinco columnas.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>Los valores de las filas de la pregunta de cuadrícula {0} no pueden estar en blanco.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>Los valores de las filas de la pregunta de cuadrícula {0} deben ser únicos.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>Los valores de las columnas de la pregunta de cuadrícula {0} no pueden estar en blanco.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>Los valores de las columnas de la pregunta de cuadrícula {0} deben ser únicos.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>La pregunta de elección ordenada {0} debe tener al menos dos opciones.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>La pregunta de elección ordenada {0} debe tener una configuración de ordenación válida.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>Los valores de las opciones de la pregunta de elección ordenada {0} no pueden estar en blanco.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>Los valores de las opciones de la pregunta de elección ordenada {0} deben ser únicos.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>Una condición de ramificación debe hacer referencia a una pregunta anterior. IDs de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>Una condición Es/No es de ramificación debe incluir valores de opción. IDs de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Las preguntas de cuadrícula, elección ordenada e información no pueden ser el origen de una ramificación. IDs de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Las votaciones de Asociado deben dirigirse al público Asociados.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Las votaciones de Asociado usan una representación fija con seguimiento de finalización.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>No se pueden añadir ni eliminar preguntas de elección ordenada una vez iniciada la votación.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Los candidatos, el orden y la configuración de la elección ordenada no se pueden cambiar después de guardar la primera respuesta.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Selecciona un archivo de imagen para cada fila de imagen. Si el guardado anterior ha fallado, vuelve a seleccionar el archivo.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>La imagen seleccionada está vacía.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Solo se permiten imágenes JPEG, PNG y WebP.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Cada imagen de información debe ocupar menos de 10 MB.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Los nombres de archivo de imagen deben terminar en .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Los nombres de archivo de imagen no pueden superar {0} caracteres.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>El slug del enlace público no puede superar {0} caracteres.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>El slug del enlace público «{0}» está reservado.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Solo quien ha creado la encuesta puede editarla.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Una votación de Asociado no se puede editar después de abrirse.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El modo de votación de Asociado no se puede cambiar después de abrirse la encuesta.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No se ha podido guardar la encuesta. Inténtalo de nuevo.</value></data>
 </root>

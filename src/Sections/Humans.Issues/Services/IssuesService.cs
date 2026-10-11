@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
@@ -38,7 +37,7 @@ internal sealed class IssuesService(
     IIssuesBadgeCacheInvalidator issuesBadge,
     IMemoryCache cache,
     IClock clock,
-    IHostEnvironment env,
+    IFileStorage fileStorage,
     ISectionCatalog sectionCatalog,
     IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
@@ -169,20 +168,32 @@ internal sealed class IssuesService(
             };
 
             var fileName = $"{Guid.NewGuid()}{ext}";
-            var relativePath = Path.Combine("uploads", "issues", issueId.ToString(), fileName);
-            var absolutePath = Path.Combine(env.ContentRootPath, "wwwroot", relativePath);
-
-            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-
-            await using var stream = new FileStream(absolutePath, FileMode.Create);
-            await screenshot.CopyToAsync(stream, ct);
+            var relativePath = $"uploads/issues/{issueId}/{fileName}";
+            using var stream = screenshot.OpenReadStream();
+            await fileStorage.SaveAsync(relativePath, stream, ct);
 
             issue.ScreenshotFileName = screenshot.FileName;
-            issue.ScreenshotStoragePath = relativePath.Replace('\\', '/');
+            issue.ScreenshotStoragePath = relativePath;
             issue.ScreenshotContentType = screenshot.ContentType;
         }
 
-        await repo.AddIssueAsync(issue, ct);
+        try
+        {
+            await repo.AddIssueAsync(issue, ct);
+        }
+        catch when (issue.ScreenshotStoragePath is not null)
+        {
+            try
+            {
+                // A failed submission owns no row that could later erase this upload.
+                await fileStorage.DeleteAsync(issue.ScreenshotStoragePath, CancellationToken.None);
+            }
+            catch (Exception cleanupError)
+            {
+                logger.LogWarning(cleanupError, "Failed to remove screenshot for unpersisted issue {IssueId}", issueId);
+            }
+            throw;
+        }
         navBadge.Invalidate();
         issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
@@ -738,11 +749,9 @@ internal sealed class IssuesService(
         if (expired.Count == 0) return 0;
 
         var deleted = await repo.DeleteByIdsAsync(expired, ct);
-
-        // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
         foreach (var issueId in expired)
         {
-            DeleteScreenshotDirectory(issueId);
+            await DeleteScreenshotDirectoryAsync(issueId);
         }
 
         logger.LogInformation(
@@ -808,29 +817,21 @@ internal sealed class IssuesService(
         var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
         issuesBadge.InvalidateMany(badgeUserIds);
 
-        // The screenshots are the reporter's own uploads — they go with the rows.
         foreach (var issueId in erasedIssueIds)
         {
-            DeleteScreenshotDirectory(issueId);
+            await DeleteScreenshotDirectoryAsync(issueId);
         }
     }
 
-    /// <summary>Best-effort removal of an issue's upload dir; failures are logged, never thrown.</summary>
-    private void DeleteScreenshotDirectory(Guid issueId)
+    private async Task DeleteScreenshotDirectoryAsync(Guid issueId)
     {
-        var issueDir = Path.Combine(
-            env.ContentRootPath, "wwwroot", "uploads", "issues", issueId.ToString());
-
         try
         {
-            if (Directory.Exists(issueDir))
-                Directory.Delete(issueDir, recursive: true);
+            await fileStorage.DeleteAsync($"uploads/issues/{issueId}", CancellationToken.None, recursiveDirectory: true);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Failed to delete screenshot directory {Dir} for issue {IssueId}",
-                issueDir, issueId);
+            logger.LogWarning(ex, "Failed to delete screenshot directory for issue {IssueId}", issueId);
         }
     }
 

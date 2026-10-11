@@ -72,7 +72,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 ## 4. Invariants
 
 - An issue always has a reporter; the reporter can always read and comment on it.
-  (`Data/Configurations/IssueConfiguration.cs:14`, `Services/IssuesService.cs:235`)
+  (`Data/Configurations/IssueConfiguration.cs:14`, `Services/IssuesService.cs:246`)
 - The handle rule is stated once: Admin, or a holder of a role
   `IssueSectionRouting.RolesFor(Section)` names. A null section is Admin-only. Both the service
   and the browser's authorization handler read that one statement.
@@ -81,31 +81,31 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   see, and a per-item read or mutation on anything else answers as if it did not exist — null
   from `GetIssueByIdAsync`, a missing result from every mutation, the "not found"
   `InvalidOperationException` from `GetThreadAsync`. An id is not an oracle.
-  (`Services/IssuesService.cs:220`, `:245`, `:281`, `:334`, `:402`)
+  (`Services/IssuesService.cs:231`, `:256`, `:292`, `:345`, `:413`)
 - Only a handler may move a field. The reporter may read and comment on their own issue in any
   section, and may not resolve it — `resolveOnPost` from a non-handler is dropped, not refused.
-  (`Services/IssuesService.cs:455`)
+  (`Services/IssuesService.cs:466`)
 - A mutation is authorized against the section the issue is *in*, so a handler may route an
-  issue out of their own queue. (`Services/IssuesService.cs:591`)
+  issue out of their own queue. (`Services/IssuesService.cs:602`)
 - A reporter's comment on a terminal issue reopens it to `Open` and clears `ResolvedAt` /
   `ResolvedByUserId`, with an audit row naming the reporter as actor.
-  (`Services/IssuesService.cs:425`)
+  (`Services/IssuesService.cs:436`)
 - A new issue and a reporter's comment notify the queue's role-holders; Admins are notified
-  only when no role owns the queue. (`Services/IssuesService.cs:963`)
+  only when no role owns the queue. (`Services/IssuesService.cs:964`)
 - `Section` may be changed only while the issue is non-terminal.
-  (`Services/IssuesService.cs:605`)
+  (`Services/IssuesService.cs:616`)
 - An unrouted section value is stored as null (the Admin queue), never refused; only an
-  over-length value fails. (`Services/IssuesService.cs:101`)
+  over-length value fails. (`Services/IssuesService.cs:100`)
 - Every field change is audit-logged **after** the save, never before.
-  (`Services/IssuesService.cs:522`, `:572`, `:618`, `:641`)
+  (`Services/IssuesService.cs:533`, `:583`, `:629`, `:652`)
 - Screenshots are JPEG/PNG/WebP and under 10 MB, or the submit fails.
-  (`Services/IssuesService.cs:157`)
+  (`Services/IssuesService.cs:156`)
 - The actionable badge counts `Triage` and `Open` only — `InProgress` needs no picking up.
   (`Data/IssuesRepository.cs:110`)
 - Whenever a viewer's actionable count could have moved, both badge caches are dropped.
-  (`Services/IssuesService.cs:186`, `:533`, `:623`)
+  (`Services/IssuesService.cs:197`, `:544`, `:634`)
 - The activity thread has no table of its own: it is `issue_comments` merged with the
-  `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:385`)
+  `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:396`)
 
 ## 5. Seams — specified, not built
 

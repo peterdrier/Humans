@@ -393,7 +393,11 @@ public class AccountControllerOAuthReconcileTests
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns<OAuthReconcileResult>(_ => throw new InvalidOperationException("boom"));
 
-        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+        var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("Login");
+        _controller.ModelState.Values.SelectMany(value => value.Errors)
+            .Should().ContainSingle().Which.ErrorMessage.Should().Be("Login_SetupFailed");
 
         // Failed reconcile rolls back: DeleteAsync called for the newly-created user.
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());

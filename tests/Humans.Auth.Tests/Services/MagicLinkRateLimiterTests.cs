@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Auth.Services;
 using Microsoft.Extensions.Caching.Memory;
+using Xunit;
 
 // The subject is internal to Humans.Auth; this project reaches it through that
 // assembly's InternalsVisibleTo. Run against a real MemoryCache rather than a
@@ -110,6 +111,31 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
 
         (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeTrue();
         (await _limiter.TryReserveUserSendAsync(second, cooldown)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData("first.last@gmail.com", "firstlast@gmail.com")]
+    [InlineData("firstlast+signup@gmail.com", "FIRSTLAST@googlemail.com")]
+    [InlineData("Member@example.org", "member@example.org")]
+    public async Task SignupSendReservations_ShareInboxCooldownAndRelease(string first, string alias)
+    {
+        var cooldown = TimeSpan.FromSeconds(60);
+        (await _limiter.TryReserveSignupSendAsync(first, cooldown)).Should().BeTrue();
+        (await _limiter.TryReserveSignupSendAsync(alias, cooldown)).Should().BeFalse();
+        (await _limiter.TryReserveSignupSendAsync("another@gmail.com", cooldown)).Should().BeTrue();
+
+        _limiter.ReleaseSignupReservation(alias);
+
+        (await _limiter.TryReserveSignupSendAsync(first, cooldown)).Should().BeTrue();
+        (await _limiter.TryReserveSignupSendAsync("another@gmail.com", cooldown)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SignupSendReservations_NonGmailPlusAddressesRemainDistinct()
+    {
+        var cooldown = TimeSpan.FromSeconds(60);
+        (await _limiter.TryReserveSignupSendAsync("member@example.org", cooldown)).Should().BeTrue();
+        (await _limiter.TryReserveSignupSendAsync("member+signup@example.org", cooldown)).Should().BeTrue();
     }
 
     public void Dispose() => _cache.Dispose();

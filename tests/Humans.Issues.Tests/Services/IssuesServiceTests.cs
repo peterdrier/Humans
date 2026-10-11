@@ -26,7 +26,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -84,6 +83,7 @@ public sealed class IssuesServiceTests
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
+    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly IssuesApplicationService _service;
     private readonly ILogger<IssuesApplicationService> _logger = Substitute.For<ILogger<IssuesApplicationService>>();
 
@@ -91,6 +91,12 @@ public sealed class IssuesServiceTests
 
     public IssuesServiceTests()
     {
+        _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>(), true).Returns(call =>
+        {
+            try { Directory.Delete(Path.Combine(Path.GetTempPath(), "wwwroot", call.ArgAt<string>(0)), recursive: true); }
+            catch (DirectoryNotFoundException) { }
+            return Task.CompletedTask;
+        });
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = TestIssuesEmails.Create(culture => _renderedEmailCultures.Add(culture));
         AuditLog
@@ -99,8 +105,6 @@ public sealed class IssuesServiceTests
                 Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]));
 
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
 
         _userService = NewRegistryBackedUserService();
 
@@ -134,7 +138,7 @@ public sealed class IssuesServiceTests
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
 
@@ -418,6 +422,60 @@ public sealed class IssuesServiceTests
         capturedRecipients.Should().NotBeNull();
         capturedRecipients.Should().BeEquivalentTo(expectAdmins ? new[] { adminId } : new[] { ticketAdminId });
         capturedRecipients.Should().NotContain(reporterId);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitIssueAsync_FailedPersistence_CleansScreenshotAndPreservesPrimaryError(bool cleanupFails)
+    {
+        var root = Directory.CreateTempSubdirectory("humans-issue-upload-");
+        try
+        {
+            _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(async call =>
+            {
+                var path = Path.Combine(root.FullName, "wwwroot", call.ArgAt<string>(0));
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await using var output = File.Create(path);
+                await call.ArgAt<Stream>(1).CopyToAsync(output);
+            });
+            var cleanupFailure = new IOException("Screenshot cleanup failed");
+            _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                if (cleanupFails) return Task.FromException(cleanupFailure);
+                File.Delete(Path.Combine(root.FullName, "wwwroot", call.ArgAt<string>(0)));
+                return Task.CompletedTask;
+            });
+            var repo = Substitute.For<IIssuesRepository>();
+            var failure = new IOException("Issue persistence failed");
+            repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+            var service = new IssuesApplicationService(
+                repo, _userService, _userEmailService, _roleService,
+                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+                _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            using var content = new MemoryStream([1, 2, 3]);
+            var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = "image/png"
+            };
+
+            var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
+                null, null, null, null, screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+
+            (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+            var remaining = Directory.GetFiles(root.FullName, "*.png", SearchOption.AllDirectories);
+            if (cleanupFails)
+            {
+                remaining.Should().ContainSingle();
+                _logger.ReceivedCalls().Should().Contain(call => call.GetMethodInfo().Name == "Log"
+                    && call.GetArguments()[0]!.Equals(LogLevel.Warning)
+                    && ReferenceEquals(call.GetArguments()[3], cleanupFailure));
+            }
+            else remaining.Should().BeEmpty();
+            await _fileStorage.Received(1).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
     }
 
     [HumansFact]
@@ -987,12 +1045,10 @@ public sealed class IssuesServiceTests
         repo.FindForMutationAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(_ => failDuringLookup
             ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
-        var env = Substitute.For<IHostEnvironment>();
-        env.ContentRootPath.Returns(Path.GetTempPath());
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var result = field switch
@@ -1797,6 +1853,33 @@ public sealed class IssuesServiceTests
     // ==========================================================================
     // PurgeExpiredAsync — 6-month retention sweep used by CleanupIssuesJob
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScreenshotCleanupFailure_AfterCommittedErasure_DoesNotReverseSuccess(bool gdprErasure)
+    {
+        var issueId = await SeedIssueWithResolvedAtAsync(
+            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200));
+        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
+        var key = $"uploads/issues/{issueId}";
+        var rowRemovedAtCleanup = false;
+        CancellationToken? cleanupToken = null;
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>(), true).Returns(async call =>
+        {
+            rowRemovedAtCleanup = !await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct);
+            cleanupToken = call.ArgAt<CancellationToken>(1);
+            throw new IOException("Screenshot storage unavailable");
+        });
+
+        if (gdprErasure) await _service.EraseForUserAsync(reporterId, Ct);
+        else (await _service.PurgeExpiredAsync(Ct)).Should().Be(1);
+
+        (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
+        rowRemovedAtCleanup.Should().BeTrue();
+        cleanupToken.Should().Be(CancellationToken.None);
+        await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None, true);
+    }
 
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()

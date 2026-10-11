@@ -64,11 +64,12 @@ public static class CultureCodeExtensions
             : cultureCode.ToUpperInvariant();
     }
 
-    public static string ToLegalLanguageLabel(this string? cultureCode)
+    public static string ToLegalLanguageLabel(this string? cultureCode, string legalLabel)
     {
+        ArgumentNullException.ThrowIfNull(legalLabel);
         var name = cultureCode.ToDisplayLanguageName();
         return string.Equals(cultureCode, CultureCatalog.CanonicalLegalCultureCode, StringComparison.Ordinal)
-            ? $"{name} (Legal)"
+            ? $"{name} ({legalLabel})"
             : name;
     }
 

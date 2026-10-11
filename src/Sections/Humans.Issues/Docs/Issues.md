@@ -139,6 +139,10 @@ Known area labels in the member submission form, issue list and detail view use 
 - A mutation is authorized against the section the issue is **in**, not the one it is moving to, so a handler may route an issue out of their own queue.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
+- Screenshot writes use the shared atomic `IFileStorage`; a failed Issue-row save removes the saved upload with a non-cancellable cleanup. Cleanup faults are logged without replacing the persistence error.
+- Retention and GDPR directory erasure also use `IFileStorage`; Issues performs no direct filesystem access.
+- Retention and GDPR erasure commit row removal before non-cancellable screenshot cleanup. Storage failures are logged without reversing committed erasure; private screenshot reads remain gated by the surviving Issue row.
+- Screenshot URLs under `/uploads/issues/` authenticate the viewer before static serving and reuse `IIssueTriage.GetIssueByIdAsync` to enforce reporter/handler access. Only the stored screenshot path is served; denied requests return 404 and responses are private and non-cacheable.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
 - API-initiated changes are audit-logged with the key's owner as actor — the key resolves to a human before any handler runs, so nothing on this path writes as nobody.

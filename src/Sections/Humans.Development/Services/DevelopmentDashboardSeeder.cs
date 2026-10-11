@@ -324,7 +324,7 @@ internal sealed class DevelopmentDashboardSeeder(
         foreach (var user in users)
         {
             var burnerName = user.BurnerName!; // Assigned for every fixture above.
-            await profileEditor.SaveProfileAsync(user.Id, burnerName, new ProfileSaveRequest(
+            var save = await profileEditor.SaveProfileAsync(user.Id, burnerName, new ProfileSaveRequest(
                 BurnerName: burnerName, FirstName: "Dev", LastName: "Human",
                 City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
                 Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
@@ -333,6 +333,8 @@ internal sealed class DevelopmentDashboardSeeder(
                 NoPriorBurnExperience: false,
                 ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false),
                 cancellationToken);
+            if (!save.Succeeded)
+                throw new InvalidOperationException("Dashboard fixture profile validation failed.");
         }
 
         // Per-user team assignments: ~80% stick to a single parent team, ~20% switch

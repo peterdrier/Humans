@@ -1038,8 +1038,8 @@ internal sealed class ShiftSignupService(
         return new();
     }
 
-    public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
-        repo.GetForUsersAsync([userId], eventSettingsId);
+    public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default) =>
+        repo.GetForUsersAsync([userId], eventSettingsId, ct);
 
     public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {
