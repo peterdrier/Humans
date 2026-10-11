@@ -145,7 +145,7 @@ public class OnboardingWidgetControllerNamesTests
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Names(new NamesViewModel
-            { BurnerName = "Burner", FirstName = "First", LastName = "Last" }, TestContext.Current.CancellationToken);
+        { BurnerName = "Burner", FirstName = "First", LastName = "Last" }, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Burner", Assert.IsType<NamesViewModel>(view.Model).BurnerName);

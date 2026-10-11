@@ -742,31 +742,6 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_ServiceValidationFailure_RerendersWithModelError()
-    {
-        // Unexpected dependency validation diagnostics stay out of the form;
-        // no page-specific saves run after a failed profile save.
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _profileEditorService.SaveProfileAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<CancellationToken>())
-            .Returns<ProfileEditResult>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException(
-                "Selecting the \"Other\" allergy requires describing it."));
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-
-        var result = await _controller.Edit(model);
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState.IsValid.Should().BeFalse();
-        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Common_Error");
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(
-            Guid.Empty, null!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Edit_Get_PopulatesDietaryFieldsFromProfile()
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())

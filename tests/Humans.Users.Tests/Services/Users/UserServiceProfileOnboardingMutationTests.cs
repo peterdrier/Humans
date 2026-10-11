@@ -52,8 +52,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(userId);
         Db.UserEmails.Add(new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "unverified@example.com",
-            IsVerified = false, IsPrimary = false
+            Id = rowId,
+            UserId = userId,
+            Email = "unverified@example.com",
+            IsVerified = false,
+            IsPrimary = false
         });
         await Db.SaveChangesAsync(ct);
         var targetId = string.Equals(refusal, "unverified-primary", StringComparison.Ordinal) ? rowId : Guid.NewGuid();

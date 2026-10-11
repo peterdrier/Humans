@@ -80,7 +80,9 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         diff.Members.Should().ContainSingle().Which.Should().BeEquivalentTo(new
         {
-            Email = "member@gmail.com", ExpectedRole = "writer", UserId = (Guid?)contributor
+            Email = "member@gmail.com",
+            ExpectedRole = "writer",
+            UserId = (Guid?)contributor
         });
         await _drivePermissions.Received(1)
             .CreatePermissionAsync("folder-1", "member@gmail.com", "writer", Arg.Any<CancellationToken>());

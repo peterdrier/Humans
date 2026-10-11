@@ -283,17 +283,11 @@ public class ProfileControllerDietaryMedicalReplayTests
         redirect.ControllerName.Should().Be("Shifts");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task DietaryMedical_refusal_or_dependency_validation_failure_stops_signup_replay(bool dependencyFailure)
+    [HumansFact]
+    public async Task DietaryMedical_refusal_stops_signup_replay()
     {
-        if (dependencyFailure)
-            _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
-                .Returns<ProfileEditResult>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException("Private diagnostic"));
-        else
-            _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
-                .Returns(new ProfileEditResult(false, ErrorKey: "Profile_DietaryMedical_IntoleranceOther_Required"));
+        _profileEditor.SaveDietaryMedicalAsync(Arg.Any<Guid>(), Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_DietaryMedical_IntoleranceOther_Required"));
         var model = MakeValidModel();
         model.ReturnAction = "SignUp";
         model.ShiftId = Guid.NewGuid();
@@ -301,8 +295,7 @@ public class ProfileControllerDietaryMedicalReplayTests
         var result = await _controller.DietaryMedical(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(dependencyFailure
-            ? "Profile_DietaryMedical_SaveFailed" : "Profile_DietaryMedical_IntoleranceOther_Required");
+        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Profile_DietaryMedical_IntoleranceOther_Required");
         await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default, default, default);
     }
 

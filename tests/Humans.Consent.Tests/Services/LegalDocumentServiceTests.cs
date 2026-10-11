@@ -86,12 +86,23 @@ public sealed class LegalDocumentServiceTests : IDisposable
     [HumansFact]
     public async Task GetDocumentContentAsync_CancelledFetchDoesNotPopulateFailureCache()
     {
-        _connector.CancelFetch = true;
+        using var cancellation = new CancellationTokenSource();
+        _connector.CancelDuringFetch = cancellation;
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            _service.GetDocumentContentAsync("statutes"));
+            _service.GetDocumentContentAsync("statutes", cancellation.Token));
 
         _cache.TryGetValue(CacheKeys.LegalDocument("statutes"), out _).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetDocumentContentAsync_FetchTimeoutReturnsEmptyDictionary()
+    {
+        _connector.CancelFetch = true;
+
+        var result = await _service.GetDocumentContentAsync("statutes");
+
+        result.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -312,6 +323,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
             new(StringComparer.Ordinal);
         public bool ThrowOnFetch { get; set; }
         public bool CancelFetch { get; set; }
+        public CancellationTokenSource? CancelDuringFetch { get; set; }
         public CancellationToken LastFetchToken { get; private set; }
 
         public Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
@@ -325,15 +337,20 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default) =>
             Task.FromResult<string?>(null);
 
-        public Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
+        public async Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
             string folderPath, string filePrefix, CancellationToken ct = default)
         {
             LastFetchToken = ct;
+            if (CancelDuringFetch is not null)
+            {
+                await CancelDuringFetch.CancelAsync();
+                ct.ThrowIfCancellationRequested();
+            }
             if (CancelFetch)
                 throw new OperationCanceledException();
             if (ThrowOnFetch)
                 throw new InvalidOperationException("simulated failure");
-            return Task.FromResult<IReadOnlyDictionary<string, string>>(Content);
+            return Content;
         }
     }
 }

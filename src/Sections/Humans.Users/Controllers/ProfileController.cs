@@ -4,7 +4,6 @@ using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using AngleSharp.Dom;
@@ -429,19 +428,10 @@ internal sealed class ProfileController(
     {
         var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
 
-        string? errorKey;
-        try
-        {
-            var result = await profileEditorService.SaveProfileAsync(
-                userId, model.BurnerName, saveRequest);
-            if (result.Succeeded) return (result.ProfileId!.Value, null);
-            errorKey = result.ErrorKey;
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning("Profile save failed for {UserId}: {Reason}", userId, ex.Message);
-            errorKey = null;
-        }
+        var result = await profileEditorService.SaveProfileAsync(
+            userId, model.BurnerName, saveRequest);
+        if (result.Succeeded) return (result.ProfileId!.Value, null);
+        var errorKey = result.ErrorKey;
 
         ModelState.AddModelError(string.Empty, errorKey is not null
             ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
@@ -772,12 +762,6 @@ internal sealed class ProfileController(
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
             return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning("Dietary/medical save failed: {Reason}", ex.Message);
-            ModelState.AddModelError(string.Empty, localizer["Profile_DietaryMedical_SaveFailed"].Value);
-            return View(model);
         }
         catch (Exception ex)
         {

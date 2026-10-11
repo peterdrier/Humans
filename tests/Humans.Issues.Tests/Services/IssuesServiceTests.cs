@@ -454,7 +454,8 @@ public sealed class IssuesServiceTests
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
             {
-                Headers = new HeaderDictionary(), ContentType = "image/png"
+                Headers = new HeaderDictionary(),
+                ContentType = "image/png"
             };
 
             var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",

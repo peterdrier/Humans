@@ -50,7 +50,7 @@ internal sealed class LegalDocumentService(
             cache.Set(cacheKey, content, CacheTtl);
             return content;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
