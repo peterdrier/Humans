@@ -546,7 +546,7 @@ internal sealed partial class TeamResourceService(
         input = input.Trim();
 
         // Direct folder ID (no URL, just the ID itself)
-        if (FolderIdPattern().IsMatch(input))
+        if (DriveItemIdPattern().IsMatch(input))
         {
             return input;
         }
@@ -584,7 +584,7 @@ internal sealed partial class TeamResourceService(
         input = input.Trim();
 
         // Direct file ID (no URL, just the ID itself)
-        if (FileIdPattern().IsMatch(input))
+        if (DriveItemIdPattern().IsMatch(input))
         {
             return input;
         }
@@ -624,10 +624,7 @@ internal sealed partial class TeamResourceService(
     }
 
     [GeneratedRegex(@"^[a-zA-Z0-9_-]{10,}$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex FolderIdPattern();
-
-    [GeneratedRegex(@"^[a-zA-Z0-9_-]{10,}$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex FileIdPattern();
+    private static partial Regex DriveItemIdPattern();
 
     [GeneratedRegex(@"drive\.google\.com/(?:drive/)?(?:u/\d+/)?folders/(?<id>[a-zA-Z0-9_-]+)", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex DriveFolderUrlPattern();
