@@ -131,9 +131,7 @@ public sealed class CampRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetActiveLeadUserIdsAsync_ReturnsDistinctActiveLeadUsers()
     {
-        // Post-Camp-Lead-retirement (issue nobodies-collective/Humans#753):
-        // GetActiveLeadUserIdsAsync now reads from CampRoleAssignment where
-        // SpecialRole == Lead, not the legacy camp_leads table.
+        // GetActiveLeadUserIdsAsync reads CampRoleAssignment where SpecialRole == Lead.
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
         var camp1 = await SeedCampAsync("camp-1");

@@ -394,7 +394,7 @@ internal sealed class CampRoleService(
         if (!definitions.Any())
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
 
-        // Same shape as GetComplianceReportAsync but over all active definitions,
+        // Same shape as BuildComplianceMatrixAsync but over all active definitions,
         // with SlotCount as the denominator.
         var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
         var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);

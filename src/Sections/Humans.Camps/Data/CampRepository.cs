@@ -30,8 +30,7 @@ internal sealed partial class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
-        // Seasons.Members included so RefreshEntryAsync sees the same shape
-        // as the warmup path — otherwise EeGrantedCount projects as 0 on each invalidation.
+        // Seasons.Members included so the CachingCampService invalidation rebuild sees the same shape as warmup — otherwise EeGrantedCount projects as 0.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()

@@ -5,9 +5,8 @@ using Humans.Camps.ViewComponents;
 namespace Humans.Camps;
 
 /// <summary>
-/// Camps' /Settings tab (peterdrier/Humans#1634): open seasons, moved off
-/// <c>/Camps/Admin</c> — the rest of that page's Season Management card (Name Lock Date)
-/// and its other content stay there (see <c>CampAdminController</c>).
+/// Camps' /Settings tab (peterdrier/Humans#1634): open seasons. Name Lock Date and the
+/// rest of the directory live on <c>/Camps/Admin</c> (see <c>CampAdminController</c>).
 /// </summary>
 internal sealed class SectionSettings : ISectionSettings
 {

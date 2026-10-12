@@ -875,10 +875,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         var camp = await _repo.GetByIdAsync(campId, cancellationToken)
             ?? throw new InvalidOperationException("Camp not found.");
 
-        // Removing the camp cascades to its seasons. City Planning keeps polygons and
-        // polygon history keyed on CampSeasonId; the Restrict FK that used to make the
-        // database refuse this delete was dropped by nobodies-collective/Humans#992, so
-        // the Camps section now clears them through the owning section's service.
+        // CityPlanning keys polygon history on CampSeasonId; clear through its service before deleting.
         //
         // Both writes share one ambient transaction (the TeamService.TryAddMemberWithOutboxAsync
         // shape) so a failure in either does not leave a live camp with its polygon history
@@ -1584,7 +1581,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     {
         // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
         // Folds the source's CampMember rows onto the survivor and carries their
-        // CampRoleAssignments along — Camp Lead is a CampRoleAssignment now, so leads move too.
+        // CampRoleAssignments along — leads move too.
         var leadUserIds = await _repo.GetActiveLeadUserIdsAsync(ct);
         await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         // Folding duplicate pending requests also changes the reviewing leads' counts.
@@ -1643,7 +1640,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
     /// <summary>
     /// Drops the user's camp memberships and every role assignment hanging off
-    /// them (Camp Lead included — it is a role assignment since #753).
+    /// them (Camp Lead included — it is a role assignment).
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
