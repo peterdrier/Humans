@@ -19,7 +19,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserDataContributor, IUserMerge
+internal sealed class CampService : ICampService, ICampLeadDirectory, ICampRoleCampAccess, IUserDataContributor, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
@@ -1748,10 +1748,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return info?.EventParticipations.Any(p =>
             p.Year == year && p.Status == ParticipationStatus.Attended) ?? false;
     }
-    // ==========================================================================
-    // Leaf carves (design §15 step 6b / Teams' ITeamSeeding shape). See
-    // Humans.Camps.Contracts.ICampLeadDirectory and ICampSeeding for why each exists.
-    // ==========================================================================
+
+    // ICampLeadDirectory — see Humans.Camps.Contracts.ICampLeadDirectory.
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken cancellationToken = default) =>
@@ -1760,36 +1758,4 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     /// <inheritdoc />
     public Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _repo.IsLeadAnywhereAsync(userId, cancellationToken);
-
-    /// <inheritdoc />
-    async Task<Guid> ICampSeeding.CreateCampForSeedAsync(
-        Guid createdByUserId, string name, string contactEmail, string contactPhone,
-        bool isSwissCamp, int timesAtNowhere, CampSeasonData seasonData, int year,
-        CancellationToken cancellationToken)
-    {
-        var camp = await CreateCampAsync(
-            createdByUserId, name, contactEmail, contactPhone,
-            webOrSocialUrl: null, links: [], isSwissCamp, timesAtNowhere,
-            seasonData, historicalNames: [], year, cancellationToken);
-        return camp.Value?.Id ?? throw new InvalidOperationException("Camp seed registration was refused.");
-    }
-
-    /// <inheritdoc />
-    async Task ICampSeeding.OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken)
-    {
-        var result = await OptInToSeasonAsync(campId, year, cancellationToken);
-        if (result.ErrorKey is not null) throw new InvalidOperationException("Camp seed season opt-in was refused.");
-    }
-
-    /// <inheritdoc />
-    Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken) =>
-        ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken);
-
-    /// <inheritdoc />
-    async Task ICampSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(
-        Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken) =>
-        await AddMemberAndAssignRoleInActiveSeasonAsync(
-            campId, roleDefinitionId, userId, actorUserId, cancellationToken);
-
 }
