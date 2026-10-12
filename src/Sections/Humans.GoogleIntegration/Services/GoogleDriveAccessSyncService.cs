@@ -62,6 +62,9 @@ internal sealed class GoogleDriveAccessSyncService(
         return new SyncPreviewResult { Diffs = diffs };
     }
 
+    public Task<ResourceSyncDiff> ReconcileOneAsync(string folderId, SyncAction action, CancellationToken ct)
+        => ReconcileOneAsync(folderId, action, ct, GoogleSyncSource.ScheduledSync);
+
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
         string folderId,
         SyncAction action,
