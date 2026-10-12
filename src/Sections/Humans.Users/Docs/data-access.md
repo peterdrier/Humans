@@ -358,7 +358,7 @@ Repository: `IUserRepository`.
 Operator-driven BurnerName/legal-name backfill: finds `User`/`Profile`
 pairs where the User row is missing a name the Profile carries, then
 re-saves the Profile through the normal dual-write path. Cross-section
-calls via `IUserService` (`GetAllUserInfosAsync`, for email display only).
+calls via `IUserService` (`GetAllUserInfosAsync`, for email display only) and `IAuditLogService` (actor-attributed `UserNamesBackfilled` per saved member).
 No `IMemoryCache`.
 
 ### UsersAudienceService (Scoped)
