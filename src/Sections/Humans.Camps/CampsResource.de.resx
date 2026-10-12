@@ -293,6 +293,7 @@
   <data name="Camps_Details_Next" xml:space="preserve"><value>Weiter</value></data>
   <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Saisonseite für {0} ansehen</value></data>
   <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Meine Mitgliedschaft</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>Du bist Lead für {0}.</value></data>
   <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Damit trittst du dem Camp nicht bei. Tritt zuerst über das eigene Verfahren des Camps bei und informiere dann Humans, um Zugang zu Camp-Rollen, Early-Entry-Zuteilungen und Benachrichtigungen zu erhalten.</value></data>
   <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Dieses Camp meldet sich für {0} als voll — du kannst trotzdem einen Beitritt beantragen.</value></data>
   <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Beitritt für {0} beantragen</value></data>

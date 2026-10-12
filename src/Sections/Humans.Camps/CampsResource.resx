@@ -242,6 +242,7 @@
   <data name="Camps_Details_Next" xml:space="preserve"><value>Next</value></data>
   <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>View {0} season page</value></data>
   <data name="Camps_Details_MyMembership" xml:space="preserve"><value>My membership</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>You are a lead for {0}.</value></data>
   <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>This does not join you to the camp. Join through the camp’s own process first, then tell Humans so you get access to any per-camp roles, Early Entry allocations, and notifications.</value></data>
   <data name="Camps_Details_FullSeason" xml:space="preserve"><value>This camp says it’s full for {0} — you can still request to join.</value></data>
   <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Request to join for {0}</value></data>
