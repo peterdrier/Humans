@@ -15,7 +15,7 @@ namespace Humans.Workgroups.Tests.Services.Contributors;
 
 /// <summary>
 /// Workgroups' half of the Drive access fan-out (design §9, §20): Active folders go
-/// Contributor for current members (a pending request is not one), Dormant folders go
+/// ContentManager for current members (a pending request is not one), Dormant folders go
 /// Viewer, and the configured root goes Viewer for the Board only. A group with no folder
 /// is not claimed, and a <c>folderId</c> filter returns at most that one entry.
 /// </summary>
@@ -35,7 +35,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task ActiveGroup_CurrentMembers_GetContributor()
+    public async Task ActiveGroup_CurrentMembers_GetContentManager()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, driveFolderId: "folder-1");
         var coordinator = workgroup.Members.Single().UserId;
@@ -43,7 +43,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("folder-1");
-        access["folder-1"].Access.Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.Contributor);
+        access["folder-1"].Access.Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.ContentManager);
     }
 
     [HumansFact]

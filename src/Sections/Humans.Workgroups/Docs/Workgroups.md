@@ -416,7 +416,7 @@ should end is the Board's decision, taken on the register in front of them.
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
-  folders → Contributor for current members (never a pending request), Dormant → Viewer,
+  folders → ContentManager (`fileOrganizer`) for current members (never a pending request), Dormant → Viewer,
   root → Board readers only. Withdrawn folders remain claimed with an empty roster so existing direct
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
