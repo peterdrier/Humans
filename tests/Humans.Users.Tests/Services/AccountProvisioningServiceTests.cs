@@ -861,8 +861,13 @@ public class AccountProvisioningServiceTests
             _userRepo.Seed(legacy);
             _userEmailFake.Seed(new UserEmail
             {
-                Id = Guid.NewGuid(), UserId = legacy.Id, Email = "retry@example.org", IsVerified = true,
-                IsPrimary = true, CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                UserId = legacy.Id,
+                Email = "retry@example.org",
+                IsVerified = true,
+                IsPrimary = true,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
             });
         }
         var attempts = 0;

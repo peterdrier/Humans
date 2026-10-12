@@ -27,10 +27,24 @@ public sealed class UserServiceGoogleStatusTests : ServiceTestHarness
         GoogleEmailStatus initial, GoogleEmailStatus result, bool changed)
     {
         var userId = Guid.NewGuid();
-        var attempted = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "old@example.org",
-            IsVerified = true, IsGoogle = false, GoogleEmailStatus = initial };
-        var selected = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "new@example.org",
-            IsVerified = true, IsGoogle = true, GoogleEmailStatus = GoogleEmailStatus.Unknown };
+        var attempted = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "old@example.org",
+            IsVerified = true,
+            IsGoogle = false,
+            GoogleEmailStatus = initial
+        };
+        var selected = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "new@example.org",
+            IsVerified = true,
+            IsGoogle = true,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown
+        };
         _repo.GetUserEmailsByUserIdReadOnlyAsync(userId, Xunit.TestContext.Current.CancellationToken)
             .Returns([attempted, selected]);
 
@@ -47,8 +61,15 @@ public sealed class UserServiceGoogleStatusTests : ServiceTestHarness
     public async Task MissingAttemptedRow_DoesNotFallBackToTheNewSelection()
     {
         var userId = Guid.NewGuid();
-        var selected = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "new@example.org",
-            IsVerified = true, IsGoogle = true, GoogleEmailStatus = GoogleEmailStatus.Unknown };
+        var selected = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "new@example.org",
+            IsVerified = true,
+            IsGoogle = true,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown
+        };
         _repo.GetUserEmailsByUserIdReadOnlyAsync(userId, Xunit.TestContext.Current.CancellationToken).Returns([selected]);
 
         var updated = await Service().TrySetGoogleEmailStatusFromSyncAsync(

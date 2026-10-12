@@ -31,7 +31,10 @@ public sealed class TeamDriveAccessSourceTests
         var inactiveChild = Team(departedChildId, "inactive", departed) with { ParentTeamId = parentId, IsActive = false };
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
-            [parentId] = parent, [childId] = childTeam, [siblingId] = sibling, [departedChildId] = inactiveChild
+            [parentId] = parent,
+            [childId] = childTeam,
+            [siblingId] = sibling,
+            [departedChildId] = inactiveChild
         });
         resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
@@ -46,7 +49,8 @@ public sealed class TeamDriveAccessSourceTests
         var claim = claims.Should().ContainSingle().Subject.Value;
         claim.Access.Should().BeEquivalentTo(new Dictionary<Guid, DrivePermissionLevel>
         {
-            [direct] = DrivePermissionLevel.Contributor, [child] = childLevel
+            [direct] = DrivePermissionLevel.Contributor,
+            [child] = childLevel
         });
         claim.MemberTeams[direct].Select(t => t.Slug).Should().BeEquivalentTo(["parent", "sibling"]);
         claim.MemberTeams[child].Should().ContainSingle().Which.Slug.Should().Be("child");

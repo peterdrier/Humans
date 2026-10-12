@@ -984,8 +984,12 @@ public sealed class GoogleGroupSyncServiceTests
             };
             _usersByUserId[u.UserId].UserEmails.Add(new UserEmail
             {
-                Id = Guid.NewGuid(), UserId = u.UserId, Email = u.Email,
-                IsVerified = true, IsGoogle = true, CreatedAt = _clock.GetCurrentInstant(),
+                Id = Guid.NewGuid(),
+                UserId = u.UserId,
+                Email = u.Email,
+                IsVerified = true,
+                IsGoogle = true,
+                CreatedAt = _clock.GetCurrentInstant(),
                 UpdatedAt = _clock.GetCurrentInstant()
             });
         }

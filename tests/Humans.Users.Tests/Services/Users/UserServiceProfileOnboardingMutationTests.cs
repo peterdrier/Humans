@@ -51,8 +51,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(attendedId);
         Db.EventParticipations.Add(new EventParticipation
         {
-            Id = Guid.NewGuid(), UserId = attendedId, Year = 2025,
-            Status = ParticipationStatus.Attended, Source = ParticipationSource.TicketSync
+            Id = Guid.NewGuid(),
+            UserId = attendedId,
+            Year = 2025,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync
         });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         AuditLog.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,

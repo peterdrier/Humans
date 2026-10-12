@@ -1205,8 +1205,14 @@ public sealed class GoogleWorkspaceSyncServiceTests
     public async Task SyncSingleResourceAsync_GroupDispatchCarriesManualTrigger()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var resource = new GoogleResource { Id = Guid.NewGuid(), TeamId = TestTeamId,
-            ResourceType = GoogleResourceType.Group, GoogleId = "team@nobodies.team", Name = "Group" };
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = TestTeamId,
+            ResourceType = GoogleResourceType.Group,
+            GoogleId = "team@nobodies.team",
+            Name = "Group"
+        };
         _resourceRepository.GetByIdAsync(resource.Id, ct).Returns(resource);
         _teamService.GetTeamAsync(TestTeamId, ct).Returns(ExpectedMemberTeam()[TestTeamId]);
 
