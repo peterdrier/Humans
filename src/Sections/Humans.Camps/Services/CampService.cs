@@ -745,11 +745,19 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                         actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
                         cancellationToken: cancellationToken);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to send CampMembershipSeasonClosed notification for season {SeasonId} in {Culture}", seasonId, culture.Name);
                 }
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -1421,6 +1429,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
                 cancellationToken: cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to notify requester {UserId} about approved camp membership {MemberId}", member.UserId, member.Id);
@@ -1464,6 +1476,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 [requesterUserId],
                 body: noticeCopy.Body,
                 cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
