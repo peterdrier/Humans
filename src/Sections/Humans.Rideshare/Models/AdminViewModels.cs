@@ -82,9 +82,10 @@ internal sealed record DayViewModel(int Year, LocalDate Date, IReadOnlyList<DayR
     {
         var requestOwners = snapshot.Requests.ToDictionary(r => r.Id, r => r.UserId);
         var rows = snapshot.TripsHappeningOn(date)
-            .OrderBy(t => t.Direction).ThenBy(t => t.DepartureDate).ThenBy(t => t.MemberPlaceLabel, StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(t => t.Direction).ThenBy(t => t.DepartureDate).ThenBy(t => t.MemberPlaceLabel, StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.CreatedAt)
             .Select(t => new DayRosterRow(t, snapshot.Interests
                 .Where(i => i.TripId == t.Id && i.Status == InterestStatus.Accepted)
+                .OrderBy(i => i.CreatedAt)
                 .Select(i => new RosterRider(RiderOf(i, requestOwners), i.Seats))
                 .ToList()))
             .ToList();

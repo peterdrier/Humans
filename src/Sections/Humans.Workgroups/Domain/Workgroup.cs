@@ -43,6 +43,10 @@ internal sealed class Workgroup
 
     public string? DiscordChannelUrl { get; set; }
 
+    /// <summary>Roster, documents and history are visible to members and Board/Admin only.
+    /// Nullable so the column adds no physical default; null reads as not sensitive.</summary>
+    public bool? IsSensitive { get; set; }
+
     /// <summary>Allocated budget in EUR; null means the group has no budget. Shown on the register
     /// to association members. Finance and Expenses never read it.</summary>
     public decimal? BudgetAmount { get; set; }

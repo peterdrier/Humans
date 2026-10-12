@@ -4,7 +4,6 @@ using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using AngleSharp.Dom;
@@ -429,22 +428,19 @@ internal sealed class ProfileController(
     {
         var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
 
-        try
-        {
-            var profileId = await profileEditorService.SaveProfileAsync(
-                userId, model.BurnerName, saveRequest);
-            return (profileId, null);
-        }
-        catch (ValidationException ex)
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.IsInitialSetup = isInitialSetup;
-            model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                && string.IsNullOrEmpty(model.LastName)
-                && string.IsNullOrEmpty(model.EmergencyContactName);
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return (Guid.Empty, View(model));
-        }
+        var result = await profileEditorService.SaveProfileAsync(
+            userId, model.BurnerName, saveRequest);
+        if (result.Succeeded) return (result.ProfileId!.Value, null);
+        var errorKey = result.ErrorKey;
+
+        ModelState.AddModelError(string.Empty, errorKey is not null
+            ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
+        model.IsInitialSetup = isInitialSetup;
+        model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
+            && string.IsNullOrEmpty(model.LastName)
+            && string.IsNullOrEmpty(model.EmergencyContactName);
+        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+        return (Guid.Empty, View(model));
     }
 
     private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, ProfileViewModel model, bool isInitialSetup)
@@ -730,7 +726,7 @@ internal sealed class ProfileController(
 
         // Controller guards are the localized, field-targeted primary path for the
         // "Other text required iff Other selected" rule. SaveDietaryMedicalAsync
-        // throws ValidationException as a backstop for non-controller callers.
+        // returns an ordinary refusal as a backstop for non-controller callers.
         if (model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
         {
             ModelState.AddModelError(nameof(model.AllergyOtherText), localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
@@ -750,7 +746,13 @@ internal sealed class ProfileController(
 
             // Owner editing their own dietary + medical — write the six Profile
             // columns (the editor leaves all other profile fields untouched).
-            await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
+            var save = await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
+            if (!save.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty,
+                    localizer[save.ErrorKey ?? "Profile_DietaryMedical_SaveFailed"].Value);
+                return View(model);
+            }
 
             // Signup-replay — the user was bounced here from
             // ShiftsController.ToggleDay by the dietary gate. After a
@@ -760,11 +762,6 @@ internal sealed class ProfileController(
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
             return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);
-        }
-        catch (ValidationException ex)
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View(model);
         }
         catch (Exception ex)
         {

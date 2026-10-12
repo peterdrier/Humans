@@ -44,7 +44,7 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
 
     Task<BailRangeResult> BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
-    Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
+    Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Gets signup team ownership data for admin authorization checks.

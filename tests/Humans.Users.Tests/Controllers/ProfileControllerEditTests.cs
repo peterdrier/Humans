@@ -150,7 +150,7 @@ public class ProfileControllerEditTests
         _profileEditorService.SaveProfileAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(_profileId);
+            .Returns(new ProfileEditResult(true, _profileId));
         _userService.SaveProfileVolunteerHistoryAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(true));
@@ -725,27 +725,20 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_ServiceValidationFailure_RerendersWithModelError()
+    public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
-        // The service-side cross-field backstop (ValidationException from
-        // SaveProfileAsync) is mapped back onto the form; no page-specific
-        // saves run after a refused profile save.
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _profileEditorService.SaveProfileAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<CancellationToken>())
-            .Returns<Guid>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException(
-                "Selecting the \"Other\" allergy requires describing it."));
-
+        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
         var model = MakeValidModel(MembershipTier.Volunteer);
 
         var result = await _controller.Edit(model);
 
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState.IsValid.Should().BeFalse();
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(
-            Guid.Empty, null!, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be("Profile_BurnerCVRequired");
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
     }
 
     [HumansFact]

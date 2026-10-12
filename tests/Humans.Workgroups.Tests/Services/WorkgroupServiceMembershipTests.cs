@@ -111,9 +111,16 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         await using var db = OpenContext();
         var entries = await db.LogEntries.Where(e => e.WorkgroupId == group.Id).ToListAsync(Ct);
-        entries.Should().HaveCount(string.Equals(action, "handover", StringComparison.Ordinal) ? 2 : 1);
+        entries.Should().HaveCount(action switch { "handover" => 2, "join" => 0, _ => 1 });
         await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
-        if (string.Equals(action, "coordinators", StringComparison.Ordinal))
+        if (string.Equals(action, "join", StringComparison.Ordinal))
+        {
+            // A request is not membership yet: the coordinators are told, nothing else moves.
+            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+                .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+            await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else if (string.Equals(action, "coordinators", StringComparison.Ordinal))
         {
             AuditLog.ReceivedCalls().Should().ContainSingle();
             Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
@@ -129,7 +136,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("join")]
     [InlineData("leave")]
     [InlineData("handover")]
     [InlineData("coordinators")]
@@ -138,8 +144,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var group = await SeedWorkgroupAsync();
         var coordinator = group.Members.Single().UserId;
         var member = SeedUser("Member");
-        if (!string.Equals(action, "join", StringComparison.Ordinal))
-            await AddMemberAsync(group.Id, member);
+        await AddMemberAsync(group.Id, member);
         var failure = new IOException("required name lookup failed");
         Users.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(failure));
@@ -151,7 +156,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var service = NewService();
         Func<Task> mutate = action switch
         {
-            "join" => () => service.JoinAsync(group.Id, member, Ct),
             "leave" => () => service.LeaveAsync(group.Id, member, null, ct: Ct),
             "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: Ct),
             _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct)
@@ -300,7 +304,237 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var act = () => NewService().JoinAsync(workgroup.Id, member, Ct);
 
         (await act()).Refusal!.Key
+            .Should().Be(WorkgroupErrorKeys.MembershipPending);
+    }
+
+    // ── Join requests: a coordinator decides ─────────────────────────────
+
+    [HumansFact]
+    public async Task Join_CreatesAPendingRow_ThatIsNotAMemberYet()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var requester = SeedUser("Requester");
+
+        await NewService().JoinAsync(workgroup.Id, requester, Ct);
+
+        var info = (await NewService().GetByIdAsync(workgroup.Id, Ct))!;
+        info.IsMember(requester).Should().BeFalse();
+        info.IsPendingMember(requester).Should().BeTrue();
+        info.CurrentMemberUserIds().Should().NotContain(requester);
+        (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
+        await Notifications.Received(1).SendAsync(
+            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipRequested,
+            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == workgroup.Members.Single().UserId),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveMember_ByACoordinatorOrAdmin_AdmitsWithLogAuditNoticeAndDriveSync(bool asAdmin)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+        var actor = asAdmin ? SeedUser("Secretary") : coordinator;
+
+        var result = await NewService().ApproveMemberAsync(workgroup.Id, actor, requester, asAdmin, Ct);
+
+        result.Refusal.Should().BeNull();
+        var info = (await NewService().GetByIdAsync(workgroup.Id, Ct))!;
+        info.IsMember(requester).Should().BeTrue();
+        info.PendingMembers().Should().BeEmpty();
+        (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
+            .Should().Be(WorkgroupLogKind.MemberJoined);
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
+            Arg.Any<string>(), actor, requester, "User");
+        await Notifications.Received(1).SendAsync(
+            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
+            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [InlineData("approve")]
+    [InlineData("decline")]
+    [InlineData("add")]
+    public async Task MembershipDecisions_ByAPlainMember_AreRefused(string action)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = SeedUser("Member");
+        await AddMemberAsync(workgroup.Id, member);
+        var subject = SeedUser("Subject");
+        await AddMemberAsync(workgroup.Id, subject, isPending: true);
+        var service = NewService();
+
+        var result = action switch
+        {
+            "approve" => await service.ApproveMemberAsync(workgroup.Id, member, subject, ct: Ct),
+            "decline" => await service.DeclineMemberAsync(workgroup.Id, member, subject, ct: Ct),
+            _ => await service.AddMemberAsync(workgroup.Id, member, SeedUser("Newcomer"), ct: Ct)
+        };
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotACoordinator);
+        (await OpenContext().Members.SingleAsync(m => m.UserId == subject, Ct)).IsPending.Should().BeTrue();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DeclineMember_ClosesTheRequest_AuditedAndTold()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var result = await NewService().DeclineMemberAsync(workgroup.Id, coordinator, requester, ct: Ct);
+
+        result.Refusal.Should().BeNull();
+        var row = await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct);
+        row.LeftAt.Should().NotBeNull();
+        (await NewService().GetByIdAsync(workgroup.Id, Ct))!.PendingMembers().Should().BeEmpty();
+        (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
+            Arg.Any<string>(), coordinator, requester, "User");
+        await Notifications.Received(1).SendAsync(
+            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
+            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveOrDecline_WithNoPendingRequest_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var stranger = SeedUser("Stranger");
+
+        (await NewService().ApproveMemberAsync(workgroup.Id, coordinator, stranger, ct: Ct)).Refusal!.Key
+            .Should().Be(WorkgroupErrorKeys.NoPendingRequest);
+        (await NewService().DeclineMemberAsync(workgroup.Id, coordinator, stranger, ct: Ct)).Refusal!.Key
+            .Should().Be(WorkgroupErrorKeys.NoPendingRequest);
+    }
+
+    [HumansFact]
+    public async Task AddMember_ByACoordinator_AdmitsDirectly()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var newcomer = SeedUser("Newcomer");
+
+        var result = await NewService().AddMemberAsync(workgroup.Id, coordinator, newcomer, ct: Ct);
+
+        result.Refusal.Should().BeNull();
+        var info = (await NewService().GetByIdAsync(workgroup.Id, Ct))!;
+        info.IsMember(newcomer).Should().BeTrue();
+        (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
+            .Should().Be(WorkgroupLogKind.MemberJoined);
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), workgroup.Id,
+            Arg.Any<string>(), coordinator, newcomer, "User");
+        await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task AddMember_WithAPendingRequest_ApprovesIt()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var result = await NewService().AddMemberAsync(workgroup.Id, coordinator, requester, ct: Ct);
+
+        result.Refusal.Should().BeNull();
+        (await OpenContext().Members.Where(m => m.UserId == requester).ToListAsync(Ct))
+            .Should().ContainSingle().Which.IsPending.Should().NotBe(true);
+    }
+
+    [HumansFact]
+    public async Task AddMember_AnExistingMemberOrUnknownUser_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+
+        (await NewService().AddMemberAsync(workgroup.Id, coordinator, coordinator, ct: Ct)).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.AlreadyAMember);
+        (await NewService().AddMemberAsync(workgroup.Id, coordinator, Guid.NewGuid(), ct: Ct)).Refusal!.Key
+            .Should().Be(WorkgroupErrorKeys.NotFound);
+    }
+
+    [HumansFact]
+    public async Task Leave_WhilePending_WithdrawsTheRequestWithoutALogEntry()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var result = await NewService().LeaveAsync(workgroup.Id, requester, null, ct: Ct);
+
+        result.Refusal.Should().BeNull();
+        (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).LeftAt.Should().NotBeNull();
+        (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
+        await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Leave_NamingAPendingRequesterAsReplacement_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var result = await NewService().LeaveAsync(workgroup.Id, coordinator, requester, ct: Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
+        (await OpenContext().Members.SingleAsync(m => m.UserId == coordinator, Ct)).LeftAt.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("close")]
+    [InlineData("withdraw")]
+    [InlineData("done")]
+    public async Task EndingOrWithdrawingTheGroup_ClosesItsPendingRequests(string action)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+        var service = NewService();
+
+        var result = action switch
+        {
+            "close" => await service.CloseAsync(workgroup.Id, SeedUser("Secretary"), "Quiet", Ct),
+            "withdraw" => await service.WithdrawAsync(workgroup.Id, SeedUser("Secretary"), "Withdrawn", Ct),
+            _ => await service.MarkDoneAsync(workgroup.Id, coordinator, WorkgroupDormantReason.Delivered, Ct)
+        };
+
+        result.Refusal.Should().BeNull();
+        (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).LeftAt.Should().NotBeNull();
+        (await service.GetByIdAsync(workgroup.Id, Ct))!.PendingMembers().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SetCoordinators_APendingMember_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var act = () => NewService().SetCoordinatorsAsync(workgroup.Id, coordinator, [requester], ct: Ct);
+
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
     }
 
     // ── Status requests ──────────────────────────────────────────────────

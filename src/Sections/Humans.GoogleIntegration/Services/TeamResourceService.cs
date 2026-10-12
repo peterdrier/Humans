@@ -145,21 +145,7 @@ internal sealed partial class TeamResourceService(
     public async Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
         var resource = await repository.GetByIdAsync(resourceId, ct);
-        return resource is null
-            ? null
-            : new GoogleResourceSnapshot(
-                resource.Id,
-                resource.TeamId,
-                resource.GoogleId,
-                resource.Name,
-                resource.ResourceType,
-                resource.Url,
-                resource.ProvisionedAt,
-                resource.LastSyncedAt,
-                resource.IsActive,
-                resource.ErrorMessage,
-                resource.DrivePermissionLevel,
-                resource.RestrictInheritedAccess);
+        return resource is null ? null : ToSnapshot(resource);
     }
 
     private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
@@ -200,7 +186,7 @@ internal sealed partial class TeamResourceService(
         var lookup = await googleClient.GetDriveItemAsync(folderId, expectFolder: true, ct);
         if (lookup.Item is null)
         {
-            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: true, folderId, ct);
+            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: true, ct);
         }
 
         if (!lookup.Item.IsFolder)
@@ -209,26 +195,8 @@ internal sealed partial class TeamResourceService(
                 ErrorMessage: "The provided URL does not point to a Google Drive folder.");
         }
 
-        var now = clock.GetCurrentInstant();
-        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, folderId, GoogleResourceType.DriveFolder, ct);
-        var resource = await ReactivateOrInsertAsync(
-            inactive,
-            () => new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = teamId,
-                ResourceType = GoogleResourceType.DriveFolder,
-                GoogleId = lookup.Item.Id,
-                Name = lookup.Item.FullPath,
-                Url = lookup.Item.WebViewLink,
-                ProvisionedAt = now,
-                LastSyncedAt = now,
-                IsActive = true,
-                DrivePermissionLevel = permissionLevel,
-            },
-            id => repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
-            "Drive folder",
-            ct);
+        var resource = await ReactivateOrInsertDriveItemAsync(
+            teamId, folderId, GoogleResourceType.DriveFolder, lookup.Item, permissionLevel, ct);
 
         logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -259,7 +227,7 @@ internal sealed partial class TeamResourceService(
         var lookup = await googleClient.GetDriveItemAsync(fileId, expectFolder: false, ct);
         if (lookup.Item is null)
         {
-            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: false, fileId, ct);
+            return await BuildDriveLookupErrorAsync(lookup.Error, isFolder: false, ct);
         }
 
         if (lookup.Item.IsFolder)
@@ -268,26 +236,8 @@ internal sealed partial class TeamResourceService(
                 ErrorMessage: "The provided URL points to a folder, not a file. Please use the 'Link Drive Resource' form instead.");
         }
 
-        var now = clock.GetCurrentInstant();
-        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, fileId, GoogleResourceType.DriveFile, ct);
-        var resource = await ReactivateOrInsertAsync(
-            inactive,
-            () => new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = teamId,
-                ResourceType = GoogleResourceType.DriveFile,
-                GoogleId = lookup.Item.Id,
-                Name = lookup.Item.FullPath,
-                Url = lookup.Item.WebViewLink,
-                ProvisionedAt = now,
-                LastSyncedAt = now,
-                IsActive = true,
-                DrivePermissionLevel = permissionLevel,
-            },
-            id => repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
-            "Drive file",
-            ct);
+        var resource = await ReactivateOrInsertDriveItemAsync(
+            teamId, fileId, GoogleResourceType.DriveFile, lookup.Item, permissionLevel, ct);
 
         logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -295,27 +245,39 @@ internal sealed partial class TeamResourceService(
         return new LinkResourceResult(true, Resource: resource);
     }
 
+    private const string TeamAuditEntityType = "Team";
+
     public async Task<LinkResourceResult> LinkDriveResourceAsync(
         Guid teamId,
         string url,
         DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
+        Guid? actorUserId = null,
         CancellationToken ct = default)
     {
+        LinkResourceResult result;
         if (ParseDriveFolderId(url) is not null)
         {
-            return await LinkDriveFolderAsync(teamId, url, permissionLevel, ct);
+            result = await LinkDriveFolderAsync(teamId, url, permissionLevel, ct);
         }
-
-        if (ParseDriveFileId(url) is not null)
+        else if (ParseDriveFileId(url) is not null)
         {
-            return await LinkDriveFileAsync(teamId, url, permissionLevel, ct);
+            result = await LinkDriveFileAsync(teamId, url, permissionLevel, ct);
+        }
+        else
+        {
+            return new LinkResourceResult(false,
+                ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
         }
 
-        return new LinkResourceResult(false,
-            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
+        if (result.Success && result.Resource is not null)
+        {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, result.Resource,
+                $"Linked {result.Resource.ResourceType} resource to team.", actorUserId);
+        }
+        return result;
     }
 
-    public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, Guid? actorUserId = null, CancellationToken ct = default)
     {
         var normalizedGroupEmail = NormalizeGroupEmail(groupEmail);
         if (normalizedGroupEmail is null)
@@ -375,7 +337,39 @@ internal sealed partial class TeamResourceService(
         logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
             lookup.Group.NormalizedEmail, lookup.Group.DisplayName, teamId);
 
+        await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, resource,
+            "Linked Google Group resource to team.", actorUserId);
         return new LinkResourceResult(true, Resource: resource);
+    }
+
+    private async Task<GoogleResource> ReactivateOrInsertDriveItemAsync(
+        Guid teamId,
+        string googleId,
+        GoogleResourceType resourceType,
+        DriveItem item,
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        var inactive = await repository.FindInactiveByGoogleIdAsync(teamId, googleId, resourceType, ct);
+        return await ReactivateOrInsertAsync(
+            inactive,
+            () => new GoogleResource
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                ResourceType = resourceType,
+                GoogleId = item.Id,
+                Name = item.FullPath,
+                Url = item.WebViewLink,
+                ProvisionedAt = now,
+                LastSyncedAt = now,
+                IsActive = true,
+                DrivePermissionLevel = permissionLevel,
+            },
+            id => repository.ReactivateAsync(id, item.FullPath, item.WebViewLink, now, null, permissionLevel, ct),
+            resourceType == GoogleResourceType.DriveFolder ? "Drive folder" : "Drive file",
+            ct);
     }
 
     private async Task<GoogleResource> ReactivateOrInsertAsync(
@@ -401,7 +395,7 @@ internal sealed partial class TeamResourceService(
         return fresh;
     }
 
-    public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
+    public async Task UnlinkResourceAsync(Guid resourceId, Guid? actorUserId = null, CancellationToken ct = default)
     {
         var existing = await repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
@@ -411,6 +405,11 @@ internal sealed partial class TeamResourceService(
         }
 
         await repository.UnlinkAsync(resourceId, ct);
+        if (existing.IsActive)
+        {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUnlinked, existing,
+                "Unlinked resource from team.", actorUserId);
+        }
         logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, existing.Name);
     }
 
@@ -440,11 +439,20 @@ internal sealed partial class TeamResourceService(
             deactivated.Count, resourceType?.ToString() ?? "all", teamId);
     }
 
-    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default)
+    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, Guid? actorUserId = null, CancellationToken ct = default)
     {
+        var existing = await repository.GetByIdAsync(resourceId, ct);
+        if (existing is null)
+        {
+            logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found", resourceId);
+            return;
+        }
+
         var updated = await repository.UpdatePermissionLevelAsync(resourceId, level, ct);
         if (updated)
         {
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, existing,
+                $"Set Drive permission level from {existing.DrivePermissionLevel} to {level}.", actorUserId);
             logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
         }
         else
@@ -456,6 +464,7 @@ internal sealed partial class TeamResourceService(
     public async Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(
         Guid resourceId,
         bool restrict,
+        Guid? actorUserId = null,
         CancellationToken ct = default)
     {
         try
@@ -481,6 +490,9 @@ internal sealed partial class TeamResourceService(
                 return TeamResourceMutationResult.Success();
             }
 
+            // Audit the committed preference, even if the subsequent Drive enforcement fails.
+            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, mutated,
+                $"Set desired inherited-access restriction from {existing.RestrictInheritedAccess} to {restrict}; Drive enforcement requested.", actorUserId);
             var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
             if (error is not null)
             {
@@ -498,6 +510,14 @@ internal sealed partial class TeamResourceService(
             return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
         }
     }
+
+    private Task AuditResourceChangeAsync(
+        AuditAction action, GoogleResource resource, string description, Guid? actorUserId) =>
+        actorUserId is { } actor
+            ? auditLogService.LogAsync(action, nameof(GoogleResource), resource.Id, description,
+                actor, resource.TeamId, TeamAuditEntityType)
+            : auditLogService.LogAsync(action, nameof(GoogleResource), resource.Id, description,
+                nameof(TeamResourceService), resource.TeamId, TeamAuditEntityType);
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
@@ -525,7 +545,6 @@ internal sealed partial class TeamResourceService(
     private async Task<LinkResourceResult> BuildDriveLookupErrorAsync(
         GoogleClientError? error,
         bool isFolder,
-        string itemId,
         CancellationToken ct)
     {
         var subject = isFolder ? "folder" : "file";
@@ -535,8 +554,6 @@ internal sealed partial class TeamResourceService(
             403 => $"The service account does not have permission to access this {subject}.",
             _ => $"Google API error ({error?.StatusCode}): {error?.RawMessage}",
         };
-        _ = itemId; // Already captured in connector logs.
-
         var serviceAccountEmail = await googleClient.GetServiceAccountEmailAsync(ct);
         var trailer = isFolder
             ? "Please share the folder with the service account as Contributor."
@@ -560,7 +577,7 @@ internal sealed partial class TeamResourceService(
         input = input.Trim();
 
         // Direct folder ID (no URL, just the ID itself)
-        if (FolderIdPattern().IsMatch(input))
+        if (DriveItemIdPattern().IsMatch(input))
         {
             return input;
         }
@@ -598,7 +615,7 @@ internal sealed partial class TeamResourceService(
         input = input.Trim();
 
         // Direct file ID (no URL, just the ID itself)
-        if (FileIdPattern().IsMatch(input))
+        if (DriveItemIdPattern().IsMatch(input))
         {
             return input;
         }
@@ -638,10 +655,7 @@ internal sealed partial class TeamResourceService(
     }
 
     [GeneratedRegex(@"^[a-zA-Z0-9_-]{10,}$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex FolderIdPattern();
-
-    [GeneratedRegex(@"^[a-zA-Z0-9_-]{10,}$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex FileIdPattern();
+    private static partial Regex DriveItemIdPattern();
 
     [GeneratedRegex(@"drive\.google\.com/(?:drive/)?(?:u/\d+/)?folders/(?<id>[a-zA-Z0-9_-]+)", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex DriveFolderUrlPattern();

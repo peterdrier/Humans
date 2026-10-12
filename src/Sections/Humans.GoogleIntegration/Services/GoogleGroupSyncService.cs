@@ -53,9 +53,8 @@ internal sealed class GoogleGroupSyncService(
     {
         var claims = await LoadClaimsAsync(groupKey: null, ct);
         var resourcesByGroup = await LoadActiveGroupResourcesByEmailAsync(ct);
-        var expectedMembersByUserId = await HydrateExpectedMembersByUserIdAsync(
-            claims.SelectMany(c => c.UserIds).Distinct().ToList(),
-            ct);
+        var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
+            claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, userEmailService, ct);
         var diffs = new List<ResourceSyncDiff>();
 
         foreach (var claim in claims)
@@ -157,7 +156,7 @@ internal sealed class GoogleGroupSyncService(
         GoogleResourceSnapshot? resource,
         bool scheduleRetryOnFailure,
         int nextRetryAttempt,
-        IReadOnlyDictionary<Guid, ExpectedMember>? expectedMembersByUserId,
+        IReadOnlyDictionary<Guid, GoogleSyncMember>? expectedMembersByUserId,
         CancellationToken ct)
     {
         var lookup = await LookupOrProvisionGroupAsync(claim, action, ct);
@@ -174,8 +173,8 @@ internal sealed class GoogleGroupSyncService(
                 ct);
         }
 
-        expectedMembersByUserId ??= await HydrateExpectedMembersByUserIdAsync(claim.UserIds, ct);
-        var expectedMembers = new Dictionary<string, ExpectedMember>(NormalizingEmailComparer.Instance);
+        expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, userEmailService, ct);
+        var expectedMembers = new Dictionary<string, GoogleSyncMember>(NormalizingEmailComparer.Instance);
         foreach (var userId in claim.UserIds)
         {
             if (expectedMembersByUserId.TryGetValue(userId, out var member))
@@ -318,7 +317,7 @@ internal sealed class GoogleGroupSyncService(
     }
 
     private async Task<GroupMembershipPlan> BuildGroupMembershipPlanAsync(
-        IReadOnlyDictionary<string, ExpectedMember> expectedMembers,
+        IReadOnlyDictionary<string, GoogleSyncMember> expectedMembers,
         IReadOnlyList<GroupMembership> memberships,
         CancellationToken ct)
     {
@@ -537,59 +536,6 @@ internal sealed class GoogleGroupSyncService(
             await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);
 
         return BuildErrorDiff(claim.GroupKey, resource, error, members);
-    }
-
-    private async Task<Dictionary<Guid, ExpectedMember>> HydrateExpectedMembersByUserIdAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct)
-    {
-        if (userIds.Count == 0)
-            return [];
-
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-
-        var result = new Dictionary<Guid, ExpectedMember>();
-        foreach (var userId in userIds)
-        {
-            if (!users.TryGetValue(userId, out var user))
-                continue;
-            // A claim on a merged-away id resolves to its survivor, but the email rows below are
-            // the claimed id's own; skip rather than pair the survivor with an archived address.
-            if (user.Id != userId)
-                continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
-                continue;
-
-            var emails = emailsByUserId.TryGetValue(userId, out var list)
-                ? list
-                : [];
-
-            var email = emails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? emails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (email is null)
-                continue;
-
-            var displayName = user.BurnerName;
-
-            // Google's Directory API rejects a Gmail "+tag" address (HTTP 404),
-            // and Google stores/returns the canonical form — so we canonicalize
-            // here for both the add and the membership match. Other domains pass
-            // through untouched.
-            result[user.Id] = new ExpectedMember(
-                user.Id, EmailNormalization.CanonicalizeGmail(email), displayName, user.ProfilePictureUrl);
-        }
-
-        return result;
     }
 
     private async Task<ResourceSyncDiff> BuildCollisionDiffAsync(
@@ -815,8 +761,6 @@ internal sealed class GoogleGroupSyncService(
     {
         public bool IsCollision => ClaimCount > 1;
     }
-
-    private sealed record ExpectedMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl);
 
     private sealed record GroupMembershipPlan(
         List<MemberSyncStatus> Members,

@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 
 namespace Humans.Auth.Services;
 
@@ -37,13 +38,14 @@ internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateL
 
     public Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown)
     {
-        var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
-        return cache.TryReserveAsync(cacheKey, cooldown);
+        return cache.TryReserveAsync(SignupSendKey(email), cooldown);
     }
 
     public void ReleaseSignupReservation(string email)
     {
-        var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
-        cache.Remove(cacheKey);
+        cache.Remove(SignupSendKey(email));
     }
+
+    private static string SignupSendKey(string email) =>
+        CacheKeys.MagicLinkSignupRateLimit(EmailNormalization.CanonicalizeGmailAlias(email).ToUpperInvariant());
 }

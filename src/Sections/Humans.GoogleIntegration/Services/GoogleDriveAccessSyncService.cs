@@ -50,7 +50,7 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var claims = await LoadClaimsAsync(folderId, ct);
         var claim = claims.SingleOrDefault(c =>
-            string.Equals(c.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.FolderId, folderId, StringComparison.Ordinal));
 
         if (claim is null)
         {
@@ -97,7 +97,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         return claims
-            .GroupBy(c => c.FolderId, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.FolderId, StringComparer.Ordinal)
             .Select(g => new FolderClaim(
                 g.Key,
                 g.Count(),
@@ -121,7 +121,7 @@ internal sealed class GoogleDriveAccessSyncService(
             return BuildErrorDiff(claim.FolderId, error);
         }
 
-        var plan = BuildPlan(expectedMembers, permsResult.Permissions);
+        var plan = await BuildPlanAsync(expectedMembers, permsResult.Permissions, ct);
 
         if (action == SyncAction.Execute)
         {
@@ -149,57 +149,32 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyDictionary<Guid, DrivePermissionLevel> access,
         CancellationToken ct)
     {
-        var userIds = access.Keys.ToList();
-        if (userIds.Count == 0)
-            return [];
-
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-
+        var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
+            access.Keys.ToList(), userService, userEmailService, ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
-            if (level == DrivePermissionLevel.None)
-                continue;
-            if (!users.TryGetValue(userId, out var user))
-                continue;
-            // #1704: the read resolves merges forward, so a tombstone id answers with the
-            // survivor and the MergedToUserId test can no longer see one. Comparing the row
-            // back against the requested id keeps this the skip it has always been: an ACL
-            // entry keyed to an archived id grants nobody, least of all silently granting the
-            // human who absorbed it.
-            if (user.Id != userId || user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
-                continue;
-
-            var emails = emailsByUserId.TryGetValue(userId, out var list) ? list : [];
-            var email = emails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? emails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (email is null)
-                continue;
-
-            // Drive rejects a Gmail "+tag" address and reports/grants the
-            // canonical form (#945), same as the Teams-keyed Drive path.
-            var canonicalEmail = EmailNormalization.CanonicalizeGmail(email);
-            result[userId] = new DriveExpectedMember(userId, canonicalEmail, user.BurnerName, user.ProfilePictureUrl, level);
+            if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
+                result[userId] = new DriveExpectedMember(
+                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level);
         }
 
         return result;
     }
 
-    private static DrivePlan BuildPlan(
+    private async Task<DrivePlan> BuildPlanAsync(
         IReadOnlyDictionary<Guid, DriveExpectedMember> expectedMembers,
-        IReadOnlyList<DrivePermission> permissions)
+        IReadOnlyList<DrivePermission> permissions,
+        CancellationToken ct)
     {
-        var byEmail = expectedMembers.Values.ToDictionary(m => m.Email, NormalizingEmailComparer.Instance);
+        // Distinct member IDs may carry aliases that Google resolves to one address.
+        // Reconcile that address once at the highest level already claimed by a source.
+        var byEmail = expectedMembers.Values
+            .GroupBy(member => member.Email, NormalizingEmailComparer.Instance)
+            .ToDictionary(group => group.Key,
+                group => group.OrderByDescending(member => member.Level)
+                    .ThenBy(member => member.UserId).First(),
+                NormalizingEmailComparer.Instance);
 
         var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
         var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
@@ -230,7 +205,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         var members = new List<MemberSyncStatus>();
-        foreach (var member in expectedMembers.Values)
+        foreach (var member in byEmail.Values)
         {
             roleByEmail.TryGetValue(member.Email, out var currentRole);
             inheritedLevelByEmail.TryGetValue(member.Email, out var inheritedLevel);
@@ -262,6 +237,9 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         var extraEmails = directEmails.Where(email => !byEmail.ContainsKey(email)).ToList();
+        var extraOwners = UserEmailMatchOwner.ByEmail(extraEmails.Count == 0
+            ? []
+            : await userEmailService.MatchByEmailsAsync(extraEmails, ct));
         foreach (var email in extraEmails)
         {
             roleByEmail.TryGetValue(email, out var extraRole);
@@ -272,7 +250,8 @@ internal sealed class GoogleDriveAccessSyncService(
             // nothing beyond the parent. It cannot be deleted here (#945).
             if (inheritedRole is not null && DrivePermissionRoleMapper.Parse(extraRole) <= inheritedLevel)
                 continue;
-            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
+            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole,
+                UserId: extraOwners.TryGetValue(email, out var owner) ? owner.UserId : null));
         }
 
         return new DrivePlan(members, idByEmail);

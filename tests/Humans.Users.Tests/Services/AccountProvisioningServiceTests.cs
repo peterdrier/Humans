@@ -415,7 +415,7 @@ public class AccountProvisioningServiceTests
                 Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.FindByAddress(call.ArgAt<string>(0), call.ArgAt<bool>(2)));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.Delete(call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
+            .Returns(async call => new DeleteEmailResult(await _userEmailFake.Delete(call.ArgAt<Guid>(0), call.ArgAt<Guid>(1))));
         _userEmailService.AddProvisionedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.AddProvisioned(

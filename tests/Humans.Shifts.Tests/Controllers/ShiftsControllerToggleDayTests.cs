@@ -211,7 +211,7 @@ public class ShiftsControllerToggleDayTests
             signups: signups);
 
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
-        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns([urgent]);
     }
 
@@ -320,7 +320,7 @@ public class ShiftsControllerToggleDayTests
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
-        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>());
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns(new List<UrgentShiftInfo>());
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 

@@ -23,11 +23,23 @@ public sealed class GovernanceIndexServiceTests
 
     private GovernanceIndexService CreateService()
     {
-        LegalDocuments.GetDocumentContentAsync("statutes")
+        LegalDocuments.GetDocumentContentAsync("statutes", Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
         Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserInfo>)[]);
         return new GovernanceIndexService(Applications, LegalDocuments, Users);
+    }
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_ForwardsCancellationToStatutesRead()
+    {
+        using var cancellation = new CancellationTokenSource();
+        Applications.GetUserApplicationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<UserApplicationSnapshot>)[]);
+
+        await CreateService().GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
+
+        await LegalDocuments.Received(1).GetDocumentContentAsync("statutes", cancellation.Token);
     }
 
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>

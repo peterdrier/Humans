@@ -592,4 +592,19 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
+  <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
+    <value>This email address is already in your account.</value>
+  </data>
+  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
+    <value>A merge request is already pending for this email address.</value>
+  </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.</value>
+  </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>Email address not found on this account.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Only verified email addresses can receive account notifications.</value>
+  </data>
 </root>

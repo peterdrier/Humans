@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
+using Xunit;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Data;
@@ -22,8 +23,10 @@ namespace Humans.GoogleIntegration.Tests;
 /// </summary>
 public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIntegrationTestHarness
 {
+    private const string TeamAuditEntityType = "Team";
     private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly TeamResourceService _service;
+    private readonly ITeamResourceGoogleClient _googleClient = Substitute.For<ITeamResourceGoogleClient>();
 
     public TeamResourceServiceDeactivateTests()
         : base(Instant.FromUtc(2026, 4, 15, 12, 0))
@@ -34,7 +37,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
 
         _service = new TeamResourceService(
             repository,
-            googleClient: Substitute.For<ITeamResourceGoogleClient>(),
+            googleClient: _googleClient,
             drivePermissions: _drivePermissions,
             teamService: Substitute.For<ITeamService>(),
             serviceProvider: new ServiceLocatorBuilder().Build(),
@@ -42,6 +45,89 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
             resourceOptions: new TeamResourceManagementOptions(),
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ResourceAdministration_WritesAuditAfterMutation(bool unlink)
+    {
+        var teamId = Guid.NewGuid();
+        var resourceId = SeedResource(teamId, "Resource", GoogleResourceType.DriveFolder);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var actorId = Guid.NewGuid();
+        if (unlink)
+            await _service.UnlinkResourceAsync(resourceId, actorUserId: actorId);
+        else
+            await _service.UpdatePermissionLevelAsync(resourceId, DrivePermissionLevel.Viewer, actorUserId: actorId);
+
+        await AuditLog.Received(1).LogAsync(
+            unlink ? AuditAction.GoogleResourceUnlinked : AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+            Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(GoogleResourceType.DriveFolder)]
+    [Xunit.InlineData(GoogleResourceType.DriveFile)]
+    [Xunit.InlineData(GoogleResourceType.Group)]
+    public async Task LinkResource_AuditsCommittedLink(GoogleResourceType type)
+    {
+        var teamId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        const string googleId = "abcdefghijklmno";
+        var url = type == GoogleResourceType.DriveFolder
+            ? $"https://drive.google.com/drive/folders/{googleId}"
+            : $"https://drive.google.com/file/d/{googleId}/view";
+        _googleClient.GetDriveItemAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new DriveLookupResult(new DriveItem(googleId, "Resource", url,
+                type == GoogleResourceType.DriveFolder, "Resource"), null));
+        _googleClient.LookupGroupAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupResult(new ResolvedGroup(googleId, "crew@nobodies.team", "Crew", "https://groups.google.com/crew"), null));
+
+        var result = type == GoogleResourceType.Group
+            ? await _service.LinkGroupAsync(teamId, "crew@nobodies.team", actorUserId: actorId)
+            : await _service.LinkDriveResourceAsync(teamId, url, actorUserId: actorId);
+
+        Assert.True(result.Success);
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceLinked, nameof(GoogleResource), row.Id,
+            Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
+    }
+
+    [HumansFact]
+    public async Task InheritedAccess_EnforcementFailureStillAuditsCommittedPreference()
+    {
+        var actorId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var resourceId = SeedResource(teamId, "Resource", GoogleResourceType.DriveFolder);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _drivePermissions.SetInheritedPermissionsDisabledAsync(Arg.Any<string>(), true, Arg.Any<CancellationToken>())
+            .Returns(new GoogleClientError(403, "Denied"));
+
+        var result = await _service.SetRestrictInheritedAccessWithResultAsync(resourceId, true, actorUserId: actorId);
+
+        Assert.False(result.Succeeded);
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        Assert.True(row.RestrictInheritedAccess);
+        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+            Arg.Is<string>(text => text.Contains("desired", StringComparison.Ordinal)), actorId, teamId, TeamAuditEntityType);
+    }
+
+    [HumansFact]
+    public async Task MissingOrRefusedResourceAdministration_DoesNotAudit()
+    {
+        var actorId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
+        await _service.UnlinkResourceAsync(missingId, actorUserId: actorId);
+        await _service.UpdatePermissionLevelAsync(missingId, DrivePermissionLevel.Viewer, actorUserId: actorId);
+        await _service.SetRestrictInheritedAccessWithResultAsync(missingId, true, actorUserId: actorId);
+        var drive = await _service.LinkDriveResourceAsync(Guid.NewGuid(), "invalid", actorUserId: actorId);
+        var group = await _service.LinkGroupAsync(Guid.NewGuid(), string.Empty, actorUserId: actorId);
+        Assert.False(drive.Success);
+        Assert.False(group.Success);
+        await AuditLog.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), actorId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -123,6 +209,8 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
 
         var stored = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, Xunit.TestContext.Current.CancellationToken);
         stored.RestrictInheritedAccess.Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+            Arg.Any<string>(), nameof(TeamResourceService), teamId, TeamAuditEntityType);
     }
 
     // ==========================================================================

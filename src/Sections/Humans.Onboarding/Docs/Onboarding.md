@@ -53,7 +53,7 @@ Multiple controllers serve this section:
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Reject` | CC reject (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingWidgetController` | `GET /OnboardingWidget` | The dispatcher. Reads `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the step; `Complete` → `/`. Every step page ends here rather than deciding what comes next. |
-| `OnboardingWidgetController` | `GET`/`POST /OnboardingWidget/Names` | Step 1. POST saves through `IProfileEditorService.SaveProfileAsync`, peer-calls the threshold check, → Shifts. |
+| `OnboardingWidgetController` | `GET`/`POST /OnboardingWidget/Names` | Step 1. POST saves through `IProfileEditorService.SaveProfileAsync`; success peer-calls the threshold check, → Shifts. A refusal retains the names form with translated feedback, without a threshold check. Dietary fields and CV are omitted so Users preserves them without validating unrelated data. |
 | `OnboardingWidgetController` | `GET /OnboardingWidget/Shifts` | Step 2. Priority shifts for the active burn; renders Shifts' own list view component. |
 | `OnboardingWidgetController` | `POST /OnboardingWidget/SignUp`, `.../SignUpRange`, `.../Skip` | Step 2 actions — single shift, multi-day Build/Strike rota, and the session-flag skip. All → Consents. |
 | `OnboardingWidgetController` | `GET /OnboardingWidget/Consents` | Step 3. Next unsigned required document, or Home with an error when its detail will not load (see `NextConsentStepOutcome`). |

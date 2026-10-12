@@ -32,7 +32,7 @@ public sealed class Section : ISection
         services.AddSingleton<ISurveyRepository, SurveyRepository>();   // IDbContextFactory ⇒ Singleton-safe
         services.AddScoped<SurveyService>();
         services.AddScoped<ISurveyService>(sp => sp.GetRequiredService<SurveyService>());
-        services.AddScoped<ISurveyReminderSender>(sp => sp.GetRequiredService<SurveyService>());
+        services.AddScoped<ISurveyReminderSender, SurveyReminderSender>();
         services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<SurveyService>());
         // Owns the user-scoped survey_responses/survey_invitations tables → GDPR export
         // contributor (design-rules §8a).

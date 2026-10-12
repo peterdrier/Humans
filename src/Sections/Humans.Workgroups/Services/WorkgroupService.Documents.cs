@@ -217,6 +217,10 @@ internal sealed partial class WorkgroupService
         // Withdraw leave an open window alone, so the group's status has to be checked here.
         if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
+        // A sensitive group's documents are its members' business; everyone else never sees them.
+        if (workgroup.IsSensitive == true && !workgroup.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true))
+            return new(Refusal: new(WorkgroupErrorKeys.MembersOnly));
+
         // Beyond that the window is the only gate: any signed-in human may comment while it is
         // open, whatever the group's own membership says.
         if (!ToInfo(document).IsOpenForComment(now))

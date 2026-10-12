@@ -267,7 +267,8 @@ IUserEmailService
 ├── GetVisibleEmailsAsync(userId, accessLevel)
 │   → Emails visible on profile based on viewer access
 ├── AddEmailAsync(userId, email)
-│   → Adds new email and returns verification token
+│   → Adds new email and returns verification token, or ErrorKey before any mutation
+│     for invalid format, an existing account address, or a pending merge
 ├── VerifyEmailAsync(userId, emailId, token)
 │   → Verifies email, returns verified address (emailId disambiguates when
 │     the user has multiple pending rows)
@@ -276,7 +277,8 @@ IUserEmailService
 ├── SetVisibilityAsync(userId, emailId, visibility)
 │   → Updates profile visibility for an email
 └── DeleteEmailAsync(userId, emailId)
-    → Removes a non-OAuth email
+    → Removes a non-OAuth email, or returns a refusal key for provider, primary,
+      last-verified or ticket-linked protections
 ```
 
 ## Related Features

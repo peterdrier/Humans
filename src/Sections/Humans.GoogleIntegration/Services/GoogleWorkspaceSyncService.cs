@@ -508,13 +508,12 @@ internal sealed class GoogleWorkspaceSyncService(
             return await ReconcileGroupResourceAsync(resource, teamGoogleGroupEmail, action, cancellationToken);
 
         // Drive resource: find ALL resources with same GoogleId to get full team union.
-        var all = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var all = await resourceRepository.GetActiveByResourceTypeAsync(resource.ResourceType, cancellationToken);
         var allWithSameGoogleId = all
-            .Where(r => string.Equals(r.GoogleId, resource.GoogleId, StringComparison.Ordinal) && r.IsActive)
+            .Where(r => string.Equals(r.GoogleId, resource.GoogleId, StringComparison.Ordinal))
             .ToList();
 
-        // For files (non-folder), the query above may have excluded them — merge back.
-        if (allWithSameGoogleId.Count == 0 || resource.ResourceType != GoogleResourceType.DriveFolder)
+        if (allWithSameGoogleId.Count == 0)
         {
             allWithSameGoogleId = [resource];
         }

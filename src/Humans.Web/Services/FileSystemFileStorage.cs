@@ -85,16 +85,39 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     }
 
     // Synchronous I/O wrapped as Task for the IFileStorage contract.
-    // File.Exists / File.Delete block for the duration of the syscall;
+    // File.Delete blocks for the duration of the syscall;
     // at our scale (<5 deletes per request, single server) the impact
     // is negligible. If this ever moves to a high-throughput path,
     // wrap in Task.Run.
-    public Task DeleteAsync(string key, CancellationToken ct = default)
+    public Task DeleteAsync(string key, CancellationToken ct = default, bool recursiveDirectory = false)
     {
         var fullPath = ResolveAbsolute(key);
-        if (File.Exists(fullPath))
+        if (recursiveDirectory)
         {
-            File.Delete(fullPath);
+            var segments = key.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 2 || !string.Equals(segments[0], "uploads", StringComparison.Ordinal)
+                || !segments.Skip(1).Any(s => !string.Equals(s, ".", StringComparison.Ordinal)))
+                throw new ArgumentException("Directory key must name an owned prefix below uploads.", nameof(key));
+            try
+            {
+                Directory.Delete(fullPath, recursive: true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // Already erased; other IO failures remain visible to the owner.
+            }
+        }
+        else
+        {
+            // Existence checks hide IO faults; only an absent file/directory is a normal miss.
+            try
+            {
+                File.Delete(fullPath);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // The owning directory is already gone; other IO failures remain visible.
+            }
         }
         return Task.CompletedTask;
     }

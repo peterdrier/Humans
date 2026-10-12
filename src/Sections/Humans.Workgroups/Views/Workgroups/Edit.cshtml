@@ -60,6 +60,12 @@
                 <span asp-validation-for="DiscordChannelUrl" class="text-danger"></span>
             </div>
 
+            <div class="form-check mb-3">
+                <input asp-for="IsSensitive" class="form-check-input" />
+                <label asp-for="IsSensitive" class="form-check-label">@Localizer["Workgroups_Field_IsSensitive"]</label>
+                <div class="form-text">@Localizer["Workgroups_Field_IsSensitiveHelp"]</div>
+            </div>
+
             <div class="form-text mb-3">@Localizer["Workgroups_ScopeChangeNote"]</div>
 
             <div class="d-flex gap-2">
