@@ -29,14 +29,12 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
-    private readonly ICampRoleCampAccess _innerRoleAccess;
     private readonly ISettingsService _settingsService;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
-        _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess, IUserMerge>();
-        _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
+        _innerSubstitute = Substitute.For<ICampService, IUserMerge>();
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
         var inner = new CampService(
@@ -67,9 +65,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
             (_, _) => _innerSubstitute);
-        services.AddKeyedScoped<ICampRoleCampAccess>(
-            CachingCampService.InnerServiceKey,
-            (_, _) => _innerRoleAccess);
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (_, _) => (IUserMerge)_innerSubstitute);
@@ -389,7 +384,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         _ = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
         _innerSubstitute.ClearReceivedCalls();
-        _innerRoleAccess.ClearReceivedCalls();
 
         var result = await _service.GetCampSeasonsForComplianceAsync(2026, TestContext.Current.CancellationToken);
 
@@ -401,9 +395,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         await _innerSubstitute
             .DidNotReceive()
             .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _innerRoleAccess
-            .DidNotReceive()
-            .GetCampSeasonsForComplianceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

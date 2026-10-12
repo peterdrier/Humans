@@ -28,6 +28,9 @@ internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyE
     /// <summary>The live active-event year, falling back to the clock year before an event exists.</summary>
     Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Season, user and status of one membership row; null when the row does not exist.</summary>
+    Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);
+
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,

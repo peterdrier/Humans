@@ -19,7 +19,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-internal sealed class CampService : ICampService, ICampLeadDirectory, ICampRoleCampAccess, IUserDataContributor, IUserMerge
+internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataContributor, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
@@ -257,17 +257,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampRoleC
         var settings = await GetSettingsAsync(cancellationToken);
         var camps = await GetCampsForYearAsync(settings.PublicYear, cancellationToken);
         return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
-    }
-
-    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
-            CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
-        // Canonical name lives on CampSeason (per-season), not Camp. Members are not
-        // loaded by this query, so JoinedMemberCount is null on the uncached path.
-        return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
-            (c.Id, s.Name, c.Slug, s.Id, s.Status, s.MemberCount, (int?)null))).ToList();
     }
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)

@@ -32,9 +32,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());
-        services.AddKeyedScoped<ICampRoleCampAccess>(
-            CachingCampService.InnerServiceKey,
-            (sp, _) => sp.GetRequiredService<CampService>());
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());

@@ -168,7 +168,7 @@ internal sealed class CachingCampService(
     }
 
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
-        WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
+        WithInner(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
             CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
@@ -636,13 +636,6 @@ internal sealed class CachingCampService(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
-        return await work(inner);
-    }
-
-    private async Task<T> WithInnerCampRoleAccess<T>(Func<ICampRoleCampAccess, Task<T>> work)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampRoleCampAccess>(InnerServiceKey);
         return await work(inner);
     }
 
