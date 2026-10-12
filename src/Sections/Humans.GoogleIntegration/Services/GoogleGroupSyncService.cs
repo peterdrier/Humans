@@ -259,6 +259,10 @@ internal sealed class GoogleGroupSyncService(
             }
 
             logger.LogInformation("Auto-provisioned Google Group for {GroupKey}", groupKey);
+            await auditLogService.LogAsync(
+                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), Guid.Empty,
+                $"Auto-provisioned Google Group '{groupKey}' ({create.GroupNumericId})",
+                nameof(GoogleGroupSyncService));
             await TryApplyProvisionedGroupSettingsAsync(groupKey, ct);
             return await provisioningClient.LookupGroupIdAsync(groupKey, ct);
         }
@@ -443,12 +447,12 @@ internal sealed class GoogleGroupSyncService(
                 return diff;
             }
 
-            if (resource is not null && add.Outcome == GroupMembershipMutationOutcome.Added)
+            if (add.Outcome == GroupMembershipMutationOutcome.Added)
             {
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessGranted,
-                    resource.Id,
-                    $"Granted Google Group access to {member.Email} ({resource.Name})",
+                    resource?.Id ?? Guid.Empty,
+                    $"Granted Google Group access to {member.Email} ({resource?.Name ?? claim.GroupKey})",
                     nameof(GoogleGroupSyncService),
                     member.Email,
                     "MEMBER",
@@ -491,20 +495,17 @@ internal sealed class GoogleGroupSyncService(
                     ct);
             }
 
-            if (resource is not null)
-            {
-                await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessRevoked,
-                    resource.Id,
-                    $"Removed {member.Email} from Google Group ({resource.Name})",
-                    nameof(GoogleGroupSyncService),
-                    member.Email,
-                    "MEMBER",
-                    GoogleSyncSource.ScheduledSync,
-                    success: true,
-                    userId: member.UserId,
-                    ct: ct);
-            }
+            await googleSyncLog.LogAsync(
+                GoogleSyncLogAction.AccessRevoked,
+                resource?.Id ?? Guid.Empty,
+                $"Removed {member.Email} from Google Group ({resource?.Name ?? claim.GroupKey})",
+                nameof(GoogleGroupSyncService),
+                member.Email,
+                "MEMBER",
+                GoogleSyncSource.ScheduledSync,
+                success: true,
+                userId: member.UserId,
+                ct: ct);
 
             await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, ct);
         }
@@ -530,21 +531,20 @@ internal sealed class GoogleGroupSyncService(
             email,
             error);
         if (resource is not null)
-        {
             await teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
-            await googleSyncLog.LogAsync(
-                syncAction,
-                resource.Id,
-                error,
-                nameof(GoogleGroupSyncService),
-                email,
-                "MEMBER",
-                GoogleSyncSource.ScheduledSync,
-                success: false,
-                errorMessage: error,
-                userId: userId,
-                ct: ct);
-        }
+
+        await googleSyncLog.LogAsync(
+            syncAction,
+            resource?.Id ?? Guid.Empty,
+            $"{error} (group {claim.GroupKey})",
+            nameof(GoogleGroupSyncService),
+            email,
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: false,
+            errorMessage: error,
+            userId: userId,
+            ct: ct);
 
         if (scheduleRetryOnFailure)
             await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);

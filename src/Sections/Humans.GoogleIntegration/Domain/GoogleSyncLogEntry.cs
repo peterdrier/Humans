@@ -15,7 +15,7 @@ internal sealed class GoogleSyncLogEntry
     /// <summary>What the sync did to the resource.</summary>
     public GoogleSyncLogAction Action { get; init; }
 
-    /// <summary>The <c>google_resources</c> row the mutation targeted.</summary>
+    /// <summary>The linked <c>google_resources</c> row, or <see cref="Guid.Empty"/> for an unlinked source claim.</summary>
     public Guid ResourceId { get; init; }
 
     /// <summary>The human the access belongs to, when the caller knows it.</summary>

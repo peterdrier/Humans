@@ -77,6 +77,14 @@ public sealed class GoogleGroupSyncServiceTests
             .DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>());
         await _userService.Received(1)
             .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, Guid.Empty,
+            Arg.Is<string>(text => text.Contains("team@nobodies.team")), nameof(GoogleGroupSyncService),
+            "bob@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
+            userId: bob, ct: Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessRevoked, Guid.Empty,
+            Arg.Is<string>(text => text.Contains("team@nobodies.team")), nameof(GoogleGroupSyncService),
+            "old@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
+            userId: null, ct: Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -432,6 +440,28 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_UnlinkedGroup_AddFailureStillLeavesSyncLog()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Failed,
+                new GoogleClientError(503, "backend error")));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute,
+            Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().Contain("backend error");
+        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, Guid.Empty,
+            Arg.Is<string>(text => text.Contains("team@nobodies.team")), nameof(GoogleGroupSyncService),
+            "alice@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync, success: false,
+            errorMessage: Arg.Is<string>(text => text.Contains("backend error")), userId: userId,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_RejectionStatusWriteFails_RecordsGoogleFailureAndRetryFirst()
     {
         var userId = Guid.NewGuid();
@@ -615,6 +645,9 @@ public sealed class GoogleGroupSyncServiceTests
             "new-group@nobodies.team", Arg.Any<CancellationToken>());
         await _membershipClient.Received(1).CreateMembershipAsync(
             "group-new", "alice@nobodies.team", Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(AuditAction.GoogleResourceProvisioned,
+            nameof(GoogleResource), Guid.Empty, Arg.Is<string>(text => text.Contains("new-group@nobodies.team")),
+            nameof(GoogleGroupSyncService));
     }
 
     [HumansFact]

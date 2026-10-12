@@ -179,6 +179,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
 - On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` / `GoogleDriveAccessSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure. Group recipient failures record the resource error, failed sync log and applicable scoped retry before updating the attempted Users email row; a status-write failure propagates with those diagnostics preserved.
+- Source-claimed groups without a linked resource row still log applied and failed membership writes with `ResourceId = Guid.Empty`, the group key in the description and the known member ID. Auto-provisioning a missing claimed group writes `GoogleResourceProvisioned` to the audit trail. Existing sync-log export and erasure cover these rows.
 - The daily reconciliation job also runs `IGoogleDriveSync.ReconcileAllAsync` as its own phase, reconciling every folder claimed by a registered `IGoogleDriveAccessSource`.
 
 ## Cross-Section Dependencies
