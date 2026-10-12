@@ -35,7 +35,7 @@ internal sealed class GoogleGroupSyncService(
 
     private readonly GoogleWorkspaceOptions _options = options.Value;
 
-    public Task RequestSyncAsync(string groupKey, CancellationToken ct = default)
+    public Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         if (string.IsNullOrWhiteSpace(groupKey))
         {
@@ -43,15 +43,16 @@ internal sealed class GoogleGroupSyncService(
             return Task.CompletedTask;
         }
 
-        syncScheduler.Enqueue(groupKey.Trim());
+        syncScheduler.Enqueue(groupKey.Trim(), syncSource);
         return Task.CompletedTask;
     }
 
     public async Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(groupKey: null, ct);
+        var claims = await LoadClaimsAsync(groupKey: null, ct, syncSource);
         var resourcesByGroup = await LoadActiveGroupResourcesByEmailAsync(ct);
         var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
             claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, ct);
@@ -78,21 +79,15 @@ internal sealed class GoogleGroupSyncService(
         return new SyncPreviewResult { Diffs = diffs };
     }
 
-    public Task<ResourceSyncDiff> ReconcileOneAsync(
-        string groupKey,
-        SyncAction action,
-        CancellationToken ct,
-        int retryAttempt)
-        => ReconcileOneAsync(groupKey, action, ct, retryAttempt, scheduleRetries: true);
-
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,
         CancellationToken ct = default,
         int retryAttempt = 0,
-        bool scheduleRetries = true)
+        bool scheduleRetries = true,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(groupKey, ct);
+        var claims = await LoadClaimsAsync(groupKey, ct, syncSource);
         var claim = claims.SingleOrDefault(c =>
             string.Equals(c.GroupKey, groupKey, StringComparison.OrdinalIgnoreCase));
 
@@ -124,7 +119,8 @@ internal sealed class GoogleGroupSyncService(
 
     private async Task<IReadOnlyList<GroupClaim>> LoadClaimsAsync(
         string? groupKey,
-        CancellationToken ct)
+        CancellationToken ct,
+        GoogleSyncSource syncSource)
     {
         var claims = new List<(string SourceName, string GroupKey, Guid[] UserIds)>();
 
@@ -146,7 +142,8 @@ internal sealed class GoogleGroupSyncService(
                 g.Key,
                 g.Count(),
                 g.Select(c => c.SourceName).Distinct(StringComparer.Ordinal).ToArray(),
-                g.SelectMany(c => c.UserIds).Distinct().ToArray()))
+                g.SelectMany(c => c.UserIds).Distinct().ToArray(),
+                syncSource))
             .ToList();
     }
 
@@ -315,7 +312,7 @@ internal sealed class GoogleGroupSyncService(
         await RecordGroupErrorAsync(resource, error, ct);
         logger.LogWarning("Google group sync failed for {GroupKey}: {Error}", claim.GroupKey, error);
         if (scheduleRetryOnFailure)
-            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);
+            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
 
         return BuildErrorDiff(claim.GroupKey, resource, error);
     }
@@ -456,7 +453,7 @@ internal sealed class GoogleGroupSyncService(
                     nameof(GoogleGroupSyncService),
                     member.Email,
                     "MEMBER",
-                    GoogleSyncSource.ScheduledSync,
+                    claim.SyncSource,
                     success: true,
                     userId: member.UserId,
                     ct: ct);
@@ -502,7 +499,7 @@ internal sealed class GoogleGroupSyncService(
                 nameof(GoogleGroupSyncService),
                 member.Email,
                 "MEMBER",
-                GoogleSyncSource.ScheduledSync,
+                claim.SyncSource,
                 success: true,
                 userId: member.UserId,
                 ct: ct);
@@ -540,14 +537,14 @@ internal sealed class GoogleGroupSyncService(
             nameof(GoogleGroupSyncService),
             email,
             "MEMBER",
-            GoogleSyncSource.ScheduledSync,
+            claim.SyncSource,
             success: false,
             errorMessage: error,
             userId: userId,
             ct: ct);
 
         if (scheduleRetryOnFailure)
-            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);
+            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
 
         return BuildErrorDiff(claim.GroupKey, resource, error, members);
     }
@@ -675,7 +672,7 @@ internal sealed class GoogleGroupSyncService(
             || rawMessage.Contains("error(4002)", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("membership cannot be created", StringComparison.OrdinalIgnoreCase);
 
-    private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt)
+    private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt, GoogleSyncSource syncSource)
     {
         logger.LogWarning(
             "Scheduling scoped Google Group membership retry {RetryAttempt}/{MaxRetryAttempts} for {GroupKey} in {DelayMinutes} minutes after failure: {Error}",
@@ -685,7 +682,7 @@ internal sealed class GoogleGroupSyncService(
             ScopedRetryDelay.TotalMinutes,
             error);
 
-        syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt);
+        syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt, syncSource);
 
         await auditLogService.LogAsync(
             AuditAction.GoogleSyncRetryScheduled,
@@ -752,7 +749,7 @@ internal sealed class GoogleGroupSyncService(
     private static bool IsGroupNotFound(GoogleClientError? error)
         => error is { StatusCode: 404 } || error is { StatusCode: 403 };
 
-    private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds)
+    private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds, GoogleSyncSource SyncSource)
     {
         public bool IsCollision => ClaimCount > 1;
     }

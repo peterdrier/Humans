@@ -49,6 +49,46 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task ReconcileAsync_ManualTriggerSurvivesLogsAndRetries(bool bulk, bool fails)
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        var resource = StageResource("team@nobodies.team");
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(fails ? GroupMembershipMutationOutcome.Failed : GroupMembershipMutationOutcome.Added,
+                fails ? new GoogleClientError(503, "backend error") : null));
+
+        if (bulk)
+            await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken, GoogleSyncSource.ManualSync);
+        else
+            await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute,
+                Xunit.TestContext.Current.CancellationToken, syncSource: GoogleSyncSource.ManualSync);
+
+        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, resource.Id,
+            Arg.Any<string>(), nameof(GoogleGroupSyncService), "alice@nobodies.team", "MEMBER",
+            GoogleSyncSource.ManualSync, success: !fails, errorMessage: Arg.Any<string?>(),
+            userId: userId, ct: Arg.Any<CancellationToken>());
+        if (fails)
+            _syncScheduler.Scheduled.Should().ContainSingle().Which.Source.Should().Be(GoogleSyncSource.ManualSync);
+    }
+
+    [HumansFact]
+    public async Task RequestSyncAsync_PreservesTriggerWhenEnqueuing()
+    {
+        await CreateService().RequestSyncAsync(" team@nobodies.team ", Xunit.TestContext.Current.CancellationToken,
+            GoogleSyncSource.TeamMemberJoined);
+
+        _syncScheduler.Enqueued.Should().ContainSingle().Which
+            .Should().Be(("team@nobodies.team", GoogleSyncSource.TeamMemberJoined));
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_ScopedHappyPath_DiffsAndAppliesMembership()
     {
@@ -1115,13 +1155,13 @@ public sealed class GoogleGroupSyncServiceTests
 
     private sealed class RecordingGoogleGroupSyncScheduler : IGoogleGroupSyncScheduler
     {
-        public List<string> Enqueued { get; } = [];
-        public List<(string GroupKey, TimeSpan Delay, int RetryAttempt)> Scheduled { get; } = [];
+        public List<(string GroupKey, GoogleSyncSource Source)> Enqueued { get; } = [];
+        public List<(string GroupKey, TimeSpan Delay, int RetryAttempt, GoogleSyncSource Source)> Scheduled { get; } = [];
 
-        public void Enqueue(string groupKey) => Enqueued.Add(groupKey);
+        public void Enqueue(string groupKey, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync) => Enqueued.Add((groupKey, syncSource));
 
-        public void Schedule(string groupKey, TimeSpan delay, int retryAttempt) =>
-            Scheduled.Add((groupKey, delay, retryAttempt));
+        public void Schedule(string groupKey, TimeSpan delay, int retryAttempt, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync) =>
+            Scheduled.Add((groupKey, delay, retryAttempt, syncSource));
     }
 
     private sealed class RecordingLogger<T> : ILogger<T>

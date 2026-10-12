@@ -241,15 +241,13 @@ public interface IGoogleSyncService
 ```csharp
 public interface IGoogleGroupSync
 {
-    Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
-    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default);
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true);
-
-    // Pre-#663 4-param overload, kept so in-flight Hangfire jobs serialized
-    // against the old signature can still deserialize.
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct, int retryAttempt);
+    Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 }
 ```
+
+The trigger follows queued and retry work into sync logs. Hangfire calls serialize the current signature with every argument explicit and `CancellationToken.None`; no compatibility overload is retained (standing policy D13).
 
 ### SyncAction Enum
 ```

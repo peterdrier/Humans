@@ -611,7 +611,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Should().Be(expected);
         if (groupOnly)
         {
-            await _googleGroupSync.Received(1).RequestSyncAsync("team@example.org", ct);
+            await _googleGroupSync.Received(1).RequestSyncAsync("team@example.org", ct, GoogleSyncSource.ManualSync);
             await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
         }
     }
@@ -1200,6 +1200,23 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    [HumansFact]
+    public async Task SyncSingleResourceAsync_GroupDispatchCarriesManualTrigger()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var resource = new GoogleResource { Id = Guid.NewGuid(), TeamId = TestTeamId,
+            ResourceType = GoogleResourceType.Group, GoogleId = "team@nobodies.team", Name = "Group" };
+        _resourceRepository.GetByIdAsync(resource.Id, ct).Returns(resource);
+        _teamService.GetTeamAsync(TestTeamId, ct).Returns(ExpectedMemberTeam()[TestTeamId]);
+
+        await _syncService.SyncSingleResourceAsync(resource.Id, SyncAction.Execute, ct);
+
+        var dispatch = _googleGroupSync.ReceivedCalls().Single(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IGoogleGroupSync.ReconcileOneAsync), StringComparison.Ordinal));
+        dispatch.GetArguments().OfType<GoogleSyncSource>().Should().ContainSingle()
+            .Which.Should().Be(GoogleSyncSource.ManualSync);
+    }
 
     [HumansTheory]
     [Xunit.InlineData("parent404")]

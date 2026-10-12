@@ -1,3 +1,5 @@
+using Humans.Base.Enums;
+
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Humans.GoogleIntegration.Services;
 /// </summary>
 internal interface IGoogleGroupSyncScheduler
 {
-    void Enqueue(string groupKey);
+    void Enqueue(string groupKey, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 
-    void Schedule(string groupKey, TimeSpan delay, int retryAttempt);
+    void Schedule(string groupKey, TimeSpan delay, int retryAttempt, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 }

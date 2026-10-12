@@ -1,4 +1,5 @@
 using Humans.Base.Attributes;
+using Humans.Base.Enums;
 
 namespace Humans.GoogleIntegration.Contracts;
 
@@ -30,7 +31,7 @@ public interface IGoogleGroupSync
     /// Enqueues a deferred reconcile for one group key. Called by section
     /// services after a DB commit (e.g. team membership change).
     /// </summary>
-    Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
+    Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 
     /// <summary>
     /// Reconciles every group claimed by any registered source. Used by the
@@ -43,10 +44,12 @@ public interface IGoogleGroupSync
     /// admin-configured <c>SyncSettings</c> mode (None / AddOnly / AddAndRemove).
     /// </param>
     /// <param name="ct">Token used to cancel reconciliation.</param>
+    /// <param name="syncSource">Trigger recorded on sync logs and carried into scoped retries.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 
     /// <summary>
     /// Reconciles one group. Called by Hangfire-scoped sync requests and by
@@ -58,20 +61,6 @@ public interface IGoogleGroupSync
         SyncAction action,
         CancellationToken ct = default,
         int retryAttempt = 0,
-        bool scheduleRetries = true);
-
-    // Hangfire serializes the exact MethodInfo at enqueue time; adding a
-    // parameter (even an optional one) to the method above leaves in-flight
-    // jobs unable to resolve. This 4-param overload preserves the pre-#663
-    // signature so jobs queued before that deploy can still deserialize.
-    // Overload resolution picks this for the unnamed-arg call sites in
-    // HangfireGoogleGroupSyncScheduler, so new jobs are also serialized
-    // against this signature. Do not remove without first draining queued
-    // ReconcileOneAsync jobs.
-    [ExternalWrite]
-    Task<ResourceSyncDiff> ReconcileOneAsync(
-        string groupKey,
-        SyncAction action,
-        CancellationToken ct,
-        int retryAttempt);
+        bool scheduleRetries = true,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 }

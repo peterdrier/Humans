@@ -181,7 +181,7 @@ internal sealed class GoogleWorkspaceSyncService(
             if (resource.ResourceType == GoogleResourceType.Group)
             {
                 // Group membership reconciliation owned by IGoogleGroupSync; this path handles Drive only.
-                await RequestGoogleGroupSyncAsync(resource, team?.GoogleGroupEmail, cancellationToken);
+                await RequestGoogleGroupSyncAsync(resource, team?.GoogleGroupEmail, cancellationToken, syncSource);
                 continue;
             }
 
@@ -200,7 +200,7 @@ internal sealed class GoogleWorkspaceSyncService(
             {
                 if (resource.ResourceType == GoogleResourceType.Group)
                 {
-                    await RequestGoogleGroupSyncAsync(resource, parentTeam?.GoogleGroupEmail, cancellationToken);
+                    await RequestGoogleGroupSyncAsync(resource, parentTeam?.GoogleGroupEmail, cancellationToken, syncSource);
                     continue;
                 }
 
@@ -225,7 +225,8 @@ internal sealed class GoogleWorkspaceSyncService(
     private async Task RequestGoogleGroupSyncAsync(
         GoogleResource resource,
         string? teamGoogleGroupEmail,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        GoogleSyncSource syncSource)
     {
         var groupKey = GoogleGroupKeyHelper.TryGetGroupKey(resource, teamGoogleGroupEmail, _options.Domain);
         if (groupKey is null)
@@ -236,7 +237,7 @@ internal sealed class GoogleWorkspaceSyncService(
             return;
         }
 
-        await googleGroupSync.RequestSyncAsync(groupKey, cancellationToken);
+        await googleGroupSync.RequestSyncAsync(groupKey, cancellationToken, syncSource);
     }
 
     /// <inheritdoc />
@@ -380,7 +381,7 @@ internal sealed class GoogleWorkspaceSyncService(
                 Url = resource.Url,
                 ErrorMessage = "Cannot determine Google group email for this resource"
             }
-            : await googleGroupSync.ReconcileOneAsync(groupKey, action, cancellationToken);
+            : await googleGroupSync.ReconcileOneAsync(groupKey, action, cancellationToken, syncSource: GoogleSyncSource.ManualSync);
     }
 
     /// <inheritdoc />
@@ -532,7 +533,7 @@ internal sealed class GoogleWorkspaceSyncService(
         // group, auto-provisions it (with enforced settings) when missing, and
         // syncs membership. Returns a diff carrying the Google numeric id on
         // success — we use it to write the team-side GoogleResource row.
-        var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken, scheduleRetries: false);
+        var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken, scheduleRetries: false, syncSource: GoogleSyncSource.ManualSync);
         if (string.IsNullOrEmpty(diff.GoogleId))
         {
             logger.LogWarning(
