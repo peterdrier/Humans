@@ -8,6 +8,8 @@ using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
@@ -93,8 +95,19 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
 
+        var services = new ServiceCollection();
+        new Humans.Teams.Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddSingleton(_teamService);
+        services.AddSingleton<ITeamResourceServiceRead>(teamResourceService);
+        using var sourceProvider = services.BuildServiceProvider();
+        var driveSync = new GoogleDriveAccessSyncService(sourceProvider.GetServices<IGoogleDriveAccessSource>(),
+            _drivePermissions, _userService, _userEmailService, _syncSettingsService, AuditLog,
+            _syncLog, _removalNotifications, teamResourceService, Clock,
+            NullLogger<GoogleDriveAccessSyncService>.Instance);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamResourceService>(teamResourceService)
+            .With<IGoogleDriveSync>(driveSync)
+            .With<IEnumerable<IGoogleDriveAccessSource>>(sourceProvider.GetServices<IGoogleDriveAccessSource>())
             .Build();
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
@@ -103,7 +116,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleGroupProvisioningClient>(),
             _drivePermissions,
             Substitute.For<IGoogleDirectoryClient>(),
-            _teamResourceClient,
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
@@ -113,7 +125,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             AuditLog,
             _syncLog,
             _syncSettingsService,
-            _removalNotifications,
             Substitute.For<IGoogleDriveAccessSyncScheduler>(),
             options,
             Clock,
@@ -419,5 +430,12 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
                 Members: t.Members));
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(dict);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                dict.Values.SelectMany(t => t.Members).DistinctBy(m => m.UserId)
+                    .Where(m => call.ArgAt<IReadOnlyCollection<Guid>>(0).Contains(m.UserId))
+                    .ToDictionary(m => m.UserId, m => UserInfo.Create(
+                        new User { Id = m.UserId, DisplayName = m.DisplayName, Email = m.Email },
+                        [], [], [], null, []))));
     }
 }

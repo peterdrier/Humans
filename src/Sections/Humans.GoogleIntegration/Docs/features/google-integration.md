@@ -82,6 +82,8 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - "Sync Now" button per resource (Admin-only, executes adds/removes based on sync mode)
 - "Sync All" button per tab (Admin-only)
 - Inherited Shared Drive permissions are excluded from drift detection
+- Teams supplies expected Drive membership through `IGoogleDriveAccessSource`; reconciliation unions all shared-item claims before computing drift. Stronger Teams permissions remain valid, and Workgroups-only access uses its own exact-role policy.
+- A source failure aborts reconciliation before Google mutation; a partial roster never authorizes removal.
 
 ### US-7.5: Link Existing Shared Drive Folder
 **As a** Board member or authorized Coordinator

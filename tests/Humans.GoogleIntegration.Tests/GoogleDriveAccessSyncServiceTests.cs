@@ -6,6 +6,8 @@ using Humans.GoogleIntegration.Services;
 using Humans.Base.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using NodaTime.Testing;
+using Humans.GoogleIntegration.Data;
 using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Tests.Infrastructure;
@@ -15,12 +17,13 @@ namespace Humans.GoogleIntegration.Tests;
 public sealed class GoogleDriveAccessSyncServiceTests
 {
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
+    private readonly ITeamResourceService _resourceService = Substitute.For<ITeamResourceService>();
     private readonly RecordingLogger<GoogleDriveAccessSyncService> _logger = new();
     private readonly Instant _now = Instant.FromUtc(2026, 9, 10, 12, 0);
 
@@ -88,6 +91,100 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .CreatePermissionAsync("folder-1", "member@gmail.com", "writer", Arg.Any<CancellationToken>());
         await _drivePermissions.DidNotReceive()
             .CreatePermissionAsync("folder-1", Arg.Any<string>(), "reader", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ReconcileOneAsync_SharedTeamItem_UnionsClaimsWithoutDemotingTeamMembers(bool reverseSources)
+    {
+        var teamMember = Guid.NewGuid();
+        var workgroupMember = Guid.NewGuid();
+        var team = new StaticSource("shared", (teamMember, DrivePermissionLevel.Viewer))
+        {
+            AllowSharedAccess = true,
+            PreserveHigherPermissions = true
+        };
+        var workgroup = new StaticSource("shared", (workgroupMember, DrivePermissionLevel.Contributor));
+        var service = CreateService(reverseSources ? [workgroup, team] : [team, workgroup]);
+        StubUsers((teamMember, "Team human", "team@nobodies.team"),
+            (workgroupMember, "Workgroup human", "workgroup@nobodies.team"));
+        StubFolder("shared", new DrivePermission("team-permission", "user", "writer", "team@nobodies.team", false));
+        _drivePermissions.CreatePermissionAsync("shared", "workgroup@nobodies.team", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var diff = await service.ReconcileOneAsync("shared", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().BeNull();
+        diff.Members.Single(m => m.UserId == teamMember).State.Should().Be(MemberSyncState.Correct);
+        await _drivePermissions.Received(1)
+            .CreatePermissionAsync("shared", "workgroup@nobodies.team", "writer", Arg.Any<CancellationToken>());
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_SharedTeamItem_StillReducesWorkgroupOnlyMembersToTheirExpectedRole()
+    {
+        var workgroupMember = Guid.NewGuid();
+        var team = new StaticSource("shared") { AllowSharedAccess = true, PreserveHigherPermissions = true };
+        var workgroup = new StaticSource("shared", (workgroupMember, DrivePermissionLevel.Viewer));
+        var service = CreateService(team, workgroup);
+        StubUsers((workgroupMember, "Workgroup human", "workgroup@nobodies.team"));
+        StubFolder("shared", new DrivePermission("workgroup-permission", "user", "writer", "workgroup@nobodies.team", false));
+
+        var diff = await service.ReconcileOneAsync("shared", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.WrongRole);
+        await _drivePermissions.Received(1)
+            .UpdatePermissionAsync("shared", "workgroup-permission", "reader", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ReconcileOneAsync_TeamInheritedPermissionBelowExpected_RemainsUntouched(bool mixed)
+    {
+        var alice = Guid.NewGuid();
+        var source = new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor))
+        {
+            PreserveHigherPermissions = true,
+            PreserveInheritedPermissions = true
+        };
+        var service = CreateService(source);
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1", mixed ? MixedPermission("reader", "reader")
+            : new DrivePermission("perm-1", "user", "reader", "alice@nobodies.team", true));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Inherited);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(400, "The recipient has no Google account", true)]
+    [Xunit.InlineData(400, "Precondition check failed for shared drive sharing policy", false)]
+    [Xunit.InlineData(403, "The recipient has no Google account", false)]
+    public async Task ReconcileOneAsync_FailedGrant_RejectsOnlyAnExplicitRecipientError(
+        int statusCode, string message, bool rejectsAddress)
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(statusCode, message)));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().NotBeNull();
+        if (rejectsAddress)
+            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+        else
+            await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
     }
 
     [HumansFact]
@@ -224,21 +321,21 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
-    public async Task ReconcileAllAsync_SourceThrows_OtherSourcesStillSync()
+    public async Task ReconcileAllAsync_SourceThrows_DoesNotMutateFromAnIncompleteUnion()
     {
         var alice = Guid.NewGuid();
-        var service = CreateService(new ThrowingSource(), new StaticSource("folder-1", (alice, DrivePermissionLevel.Viewer)));
-        StubUsers((alice, "Alice", "alice@nobodies.team"));
-        StubFolder("folder-1");
-        _drivePermissions.CreatePermissionAsync("folder-1", "alice@nobodies.team", "reader", Arg.Any<CancellationToken>())
-            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+        var service = CreateService(
+            new StaticSource("folder-1", (alice, DrivePermissionLevel.Viewer)) { AllowSharedAccess = true },
+            new ThrowingSource());
 
-        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+        var act = () => service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        result.Diffs.Should().ContainSingle();
-        await _drivePermissions.Received(1)
-            .CreatePermissionAsync("folder-1", "alice@nobodies.team", "reader", Arg.Any<CancellationToken>());
-        _logger.Messages.Should().Contain(m => m.Contains("threw", StringComparison.Ordinal));
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        await _drivePermissions.DidNotReceiveWithAnyArgs().ListPermissionsAsync(default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+        _logger.Messages.Should().Contain(m => m.Contains("aborting", StringComparison.Ordinal));
     }
 
     [HumansFact]
@@ -599,6 +696,8 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _auditLogService,
         _googleSyncLog,
         _removalNotifications,
+        _resourceService,
+        new FakeClock(_now),
         _logger);
 
     private readonly Dictionary<Guid, UserInfo> _usersById = new();
@@ -700,23 +799,32 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private sealed class StaticSource(string folderId, params (Guid UserId, DrivePermissionLevel Level)[] access)
         : IGoogleDriveAccessSource
     {
-        public Task<Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>> GetExpectedAccessAsync(
+        public bool AllowSharedAccess { get; init; }
+        public bool PreserveHigherPermissions { get; init; }
+        public bool PreserveInheritedPermissions { get; init; }
+
+        public Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
             string? folderId2 = null,
             CancellationToken ct = default)
         {
             if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.Ordinal))
-                return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal));
+                return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal));
 
-            return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal)
+            return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal)
             {
-                [folderId] = access.ToDictionary(a => a.UserId, a => a.Level)
+                [folderId] = new GoogleDriveAccessClaim(access.ToDictionary(a => a.UserId, a => a.Level))
+                {
+                    AllowSharedAccess = AllowSharedAccess,
+                    PreserveHigherPermissions = PreserveHigherPermissions,
+                    PreserveInheritedPermissions = PreserveInheritedPermissions
+                }
             });
         }
     }
 
     private sealed class ThrowingSource : IGoogleDriveAccessSource
     {
-        public Task<Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>> GetExpectedAccessAsync(
+        public Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
             string? folderId = null,
             CancellationToken ct = default)
             => throw new InvalidOperationException("boom");

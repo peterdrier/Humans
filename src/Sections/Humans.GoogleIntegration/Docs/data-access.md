@@ -31,11 +31,11 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleSyncOutboxEvents | R/W |
 
 Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
-`ITeamService`, `IUserEmailService`, `ISyncSettingsService`,
+`ITeamServiceRead`, `IUserEmailService`, `ISyncSettingsService`,
 `IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
 `IGoogleGroupProvisioningClient`, `IGoogleGroupSync` (sync orchestrator),
-`ITeamResourceGoogleClient`, `IGoogleRemovalNotificationService`. Lazy
-`IServiceProvider` resolution for parallel/per-batch scope creation. No
+`IGoogleDriveSync`, `IEnumerable<IGoogleDriveAccessSource>`. Lazy
+`IServiceProvider` resolution for sync orchestration. No
 `IMemoryCache`.
 
 ### GoogleGroupSyncService (Scoped)
@@ -51,14 +51,13 @@ direct DB access, no cache.
 
 ### GoogleDriveAccessSyncService (Scoped)
 
-No repository directly — operates over the `IGoogleDrivePermissionsClient`
-connector and the in-process `IEnumerable<IGoogleDriveAccessSource>` (empty
-until a consumer section registers one, e.g. Workgroups). Cross-section calls
-via `IUserServiceRead`, `IUserEmailService`, `ISyncSettingsService`,
-`IAuditLogService`, `IGoogleRemovalNotificationService`,
-`IGoogleDriveAccessSyncScheduler`. No direct DB access, no cache. Mirrors
-`GoogleGroupSyncService` for source-claimed Drive folders; the Teams-keyed
-`google_resources` Drive path stays on `GoogleWorkspaceSyncService`.
+No repository directly — operates over `IGoogleDrivePermissionsClient` and
+`IEnumerable<IGoogleDriveAccessSource>`. Sources own membership and permission
+policy; reconciliation owns email hydration, planning, mutation and sync logs.
+Calls `IUserService` (reads and rejected-Google-address writes), `IUserEmailService`,
+`ISyncSettingsService`, `IAuditLogService`, `IGoogleSyncLogService`,
+`IGoogleRemovalNotificationService`, and `ITeamResourceService` (linked-resource
+status and post-reconciliation deactivation). Uses `IClock`; no direct DB access or cache.
 
 ### GoogleAdminService (Scoped)
 

@@ -381,7 +381,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` (inbound) — Active group
   folders → Contributor for current members, Dormant → Viewer, root → Board/Asociado/Colaborador
   readers. Withdrawn folders remain claimed with an empty roster so existing direct
-  grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
+  grants are revoked unless another section still claims that human’s access on the same item. Shared Teams items use the complete source union; Workgroups-only humans retain the exact-role policy. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the

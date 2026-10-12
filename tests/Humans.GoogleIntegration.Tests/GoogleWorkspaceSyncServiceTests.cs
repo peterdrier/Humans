@@ -6,6 +6,8 @@ using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.Base.Enums;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -102,13 +104,43 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 12, 10, 0));
-        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        _resourceRepository.GetActiveByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
+                var ct = call.ArgAt<CancellationToken>(1);
+                var folders = await _resourceRepository.GetActiveDriveFoldersAsync(ct);
+                var result = new Dictionary<Guid, IReadOnlyList<GoogleResource>>();
+                foreach (var id in ids)
+                    result[id] = (await _resourceRepository.GetActiveByTeamIdAsync(id, ct))
+                        .Concat(folders.Where(r => r.TeamId == id)).DistinctBy(r => r.Id).ToList();
+                return (IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>)result;
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.ArgAt<IReadOnlyCollection<Guid>>(0).ToDictionary(id => id, id => MakeUser(id, TestUserEmail))));
+        var resourceService = new TeamResourceService(_resourceRepository, _teamResourceClient,
+            _drivePermissions, Substitute.For<ITeamService>(), new ServiceLocatorBuilder().Build(),
+            _auditLogService, new TeamResourceManagementOptions(), clock, NullLogger<TeamResourceService>.Instance);
+        var services = new ServiceCollection();
+        new Humans.Teams.Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddSingleton(_teamService);
+        services.AddSingleton<ITeamResourceServiceRead>(resourceService);
+        services.AddSingleton<ITeamResourceService>(resourceService);
+        using var sourceProvider = services.BuildServiceProvider();
+        var driveSync = new GoogleDriveAccessSyncService(sourceProvider.GetServices<IGoogleDriveAccessSource>(),
+            _drivePermissions, _userService, _userEmailService, _syncSettingsService, _auditLogService,
+            _googleSyncLog, _removalNotifications, resourceService, clock,
+            NullLogger<GoogleDriveAccessSyncService>.Instance);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<IGoogleDriveSync>(driveSync)
+            .With<IEnumerable<IGoogleDriveAccessSource>>(sourceProvider.GetServices<IGoogleDriveAccessSource>())
+            .Build();
 
         _syncService = new GoogleWorkspaceSyncService(
             _groupProvisioning,
             _drivePermissions,
             _directory,
-            _teamResourceClient,
             _resourceRepository,
             _googleSyncOutboxRepository,
             _teamService,
@@ -118,12 +150,35 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _auditLogService,
             _googleSyncLog,
             _syncSettingsService,
-            _removalNotifications,
             _driveAccessSyncScheduler,
             options,
             clock,
             serviceProvider,
             _logger);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task EnqueueUserSyncAsync_UsesOwnedMembershipProjectionAndUsersRejectionState(bool rejected)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userService.GetUserInfoAsync(TestUserId, ct)
+            .Returns(MakeUser(TestUserId, TestUserEmail, rejected ? GoogleEmailStatus.Rejected : GoogleEmailStatus.Valid));
+        _teamService.GetUserTeamMembershipsAsync(TestUserId, ct).Returns(
+            [new UserTeamMembershipInfo(Guid.NewGuid(), TestTeamId, "Test Team", "test-team", false,
+                TeamMemberRole.Member, Instant.MinValue)]);
+
+        var count = await _syncService.EnqueueUserSyncAsync(TestUserId, ct);
+
+        count.Should().Be(rejected ? 0 : 1);
+        await _teamService.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        if (rejected)
+            await _googleSyncOutboxRepository.DidNotReceiveWithAnyArgs().AddRangeAsync(default!, default);
+        else
+            await _googleSyncOutboxRepository.Received(1).AddRangeAsync(
+                Arg.Is<IReadOnlyList<GoogleSyncOutboxEvent>>(events => events.Count == 1 &&
+                    events[0].TeamId == TestTeamId && events[0].UserId == TestUserId), ct);
     }
 
     // ==========================================================================
@@ -310,7 +365,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         var outcome = await _syncService.AddUserToTeamResourcesAsync(
             TestTeamId,
@@ -434,7 +489,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -476,7 +531,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 ? [new GoogleResource { Id = TestDriveFolderResourceId, TeamId = TestTeamId,
                     ResourceType = GoogleResourceType.Group, GoogleId = "team@example.org", Name = "Group" }]
                 : [MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
         _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail,
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(Enum.Parse<DrivePermissionCreateOutcome>(vendorOutcome), Error: null));
@@ -532,7 +587,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
@@ -604,7 +659,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -674,7 +729,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -734,7 +789,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -800,7 +855,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((TeamInfo?)null);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(ExpectedMemberTeam());
 
         _drivePermissions
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -1081,6 +1136,14 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // Helpers
     // ==========================================================================
 
+    private static Dictionary<Guid, TeamInfo> ExpectedMemberTeam() => new()
+    {
+        [TestTeamId] = new TeamInfo(TestTeamId, "Test Team", null, "test-team", true, false,
+            SystemTeamType.None, false, false, false, false, Instant.MinValue,
+            [new TeamMemberInfo(Guid.NewGuid(), TestUserId, "Alice Test", TestUserEmail, null,
+                TeamMemberRole.Member, Instant.MinValue, GoogleEmailStatus.Valid)])
+    };
+
     private static GoogleResource MakeDriveFolderResource(Guid id, Guid teamId, string googleId) =>
         new()
         {
@@ -1093,7 +1156,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             IsActive = true
         };
 
-    private static UserInfo MakeUser(Guid userId, string email) =>
+    private static UserInfo MakeUser(Guid userId, string email, GoogleEmailStatus status = GoogleEmailStatus.Unknown) =>
         UserInfo.Create(
             new User
             {
@@ -1102,5 +1165,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 DisplayName = "Alice Test",
                 Email = email
             },
-            [], [], [], null, []);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
+                IsVerified = true, IsGoogle = true, GoogleEmailStatus = status }],
+            [], [], null, []);
 }

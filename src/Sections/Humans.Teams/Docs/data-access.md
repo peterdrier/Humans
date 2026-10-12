@@ -136,3 +136,10 @@ registered in `Section.Register`) — builds one sample per template via
 ---
 
 
+
+### TeamDriveAccessSource
+
+Implements `IGoogleDriveAccessSource` using the section’s `ITeamServiceRead` cache
+and `ITeamResourceServiceRead.GetResourcesByTeamIdsAsync`. Owns direct/child-team
+membership union and Drive permission policy; publishes user IDs and resource/team
+provenance without reading GoogleIntegration tables or calling Users.
