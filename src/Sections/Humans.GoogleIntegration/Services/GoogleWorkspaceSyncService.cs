@@ -158,11 +158,12 @@ internal sealed class GoogleWorkspaceSyncService(
             return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, user?.Id ?? userId,
                 ErrorMessage: "No eligible Google email for provisioning");
         }
-        if (target.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        // An old outbox event must not restore access excluded by reconciliation.
+        if (!GoogleSyncMemberHydration.CanReceiveAccess(user!))
         {
-            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — Google email {GoogleEmailId} is rejected", userId, target.Id);
+            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — suspended, deletion pending, or Google email rejected", userId);
             return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, user!.Id, target.Id,
-                ErrorMessage: "The attempted Google email is rejected");
+                ErrorMessage: "Member is ineligible for Google access: suspended, deletion pending, or email rejected");
         }
         var googleEmail = target.Email;
 

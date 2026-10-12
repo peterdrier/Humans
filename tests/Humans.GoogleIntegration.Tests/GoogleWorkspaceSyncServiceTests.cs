@@ -540,6 +540,36 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(UserState.Suspended, false)]
+    [Xunit.InlineData(UserState.AdminSuspended, false)]
+    [Xunit.InlineData(UserState.Active, true)]
+    public async Task AddUserToTeamResourcesAsync_IneligibleMember_DoesNotRestoreAccess(
+        UserState state, bool deletionPending)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, TestUserEmail) with
+        {
+            State = state,
+            DeletionRequestedAt = deletionPending ? Instant.FromUtc(2026, 5, 12, 10, 0) : null
+        });
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct).Returns(SyncMode.AddAndRemove);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, ct).Returns(
+            [MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId),
+             new GoogleResource { Id = Guid.NewGuid(), TeamId = TestTeamId, ResourceType = GoogleResourceType.Group,
+                 GoogleId = "team@example.org", Name = "Group" }]);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), ct)
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, Error: null));
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
+
+        result.Outcome.Should().Be(GoogleResourceGrantOutcome.Failed);
+        result.Retryable.Should().BeFalse();
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _googleGroupSync.DidNotReceiveWithAnyArgs().RequestSyncAsync(default!, default);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Created", false, false, GoogleResourceGrantOutcome.Accepted)]
     [Xunit.InlineData("AlreadyExists", false, false, GoogleResourceGrantOutcome.Accepted)]
     [Xunit.InlineData("Failed", false, false, GoogleResourceGrantOutcome.Failed)]

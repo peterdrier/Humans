@@ -25,9 +25,7 @@ internal static class GoogleSyncMemberHydration
             // A merged-away claim must not be reinterpreted as a survivor's membership.
             if (user.Id != userId)
                 continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
+            if (!CanReceiveAccess(user))
                 continue;
 
             // The address and its status come from the same immutable user snapshot.
@@ -43,6 +41,9 @@ internal static class GoogleSyncMemberHydration
 
         return result;
     }
+
+    internal static bool CanReceiveAccess(UserInfo user) =>
+        !user.IsSuspended && !user.IsDeletionPending && user.GoogleEmailStatus != GoogleEmailStatus.Rejected;
 
     internal static UserEmailInfo? SelectTargetEmail(UserInfo user) =>
         user.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
