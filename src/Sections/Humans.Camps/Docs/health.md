@@ -49,24 +49,24 @@ on every read.
 - A season outside Active/Full renders to nobody but its leads and camp admins; others get a
   404. `Controllers/CampController.cs:195`, `Controllers/CampController.cs:231`.
 - Lead authority comes only from a role assignment on the Lead definition, held in any of
-  the camp's seasons. `src/Sections/Humans.Camps.Contracts/CampReadModels.cs:101`,
+  the camp's seasons. `src/Sections/Humans.Camps.Contracts/CampReadModels.cs:100`,
   `Authorization/CampAuthorizationHandler.cs:53`.
 - A lead's ids from a form must belong to the slug-resolved camp, else the write is refused.
-  `Services/CampService.cs:561`, `Services/CampService.cs:670`, `Services/CampService.cs:769`,
-  `Services/CampService.cs:978`, `Services/CampService.cs:1088`, `Services/CampService.cs:1152`.
+  `Services/CampService.cs:550`, `Services/CampService.cs:659`, `Services/CampService.cs:758`,
+  `Services/CampService.cs:964`, `Services/CampService.cs:1074`, `Services/CampService.cs:1138`.
 - One live (non-Removed) membership row per season and user.
   `Data/Configurations/CampMemberConfiguration.cs:23`.
 - Early Entry: granted only to Active members, never beyond the season cap counted over every
   row still flagged; a grant consumed at the gate cannot be revoked and survives removal.
-  `Services/CampService.cs:1709`, `Services/CampService.cs:1713`, `Services/CampService.cs:1716`,
-  `Services/CampService.cs:1280`.
-- Full is a label: join requests still match Full seasons. `Services/CampService.cs:1307`.
+  `Services/CampService.cs:1695`, `Services/CampService.cs:1699`, `Services/CampService.cs:1702`,
+  `Services/CampService.cs:1266`.
+- Full is a label: join requests still match Full seasons. `Services/CampService.cs:1293`.
 - Only camp admins reactivate a season, approve or reject one; only full admins delete a camp.
   `Controllers/CampAdminController.cs:10`, `Controllers/CampAdminController.cs:224`.
 - A failed write never leaves a stale projection: the decorator clears it before rethrowing.
   `Services/CachingCampService.cs:614`.
 - Lead and member mutations on someone's behalf leave audit entries.
-  `Services/CampService.cs:1291`, `Services/CampService.cs:1728`.
+  `Services/CampService.cs:1277`, `Services/CampService.cs:1714`.
 
 ## 5. Seams
 
@@ -105,3 +105,4 @@ on every read.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | [2026-08-28-Camps](../../../../docs/health/runs/2026-08-28-Camps.md) | 2026-08-28 | Migration sediment cleared; cross-camp scoping and Rejoin authority queued | [peterdrier/Humans#1561](https://github.com/peterdrier/Humans/pull/1561) |
+| [2026-10-12-Camps](../../../../docs/health/runs/2026-10-12-Camps.md) | 2026-10-12 | Help guide matches the real lifecycle; dead inner ports removed | pending |
