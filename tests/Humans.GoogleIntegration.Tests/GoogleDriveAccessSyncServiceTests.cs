@@ -60,6 +60,25 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("a.l.i.c.e+burn@googlemail.com", "alice@gmail.com", true)]
+    [Xunit.InlineData("a.l.i.c.e@example.org", "alice@example.org", false)]
+    public async Task ReconcileOneAsync_GmailIdentityAliasesMatchWithoutConflatingOtherDomains(
+        string selected, string vendorEmail, bool sameIdentity)
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (userId, DrivePermissionLevel.Contributor)));
+        StubUsers((userId, "Alice", selected));
+        StubFolder("folder-1", new DrivePermission("permission-1", "user", "writer", vendorEmail, false));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
+
+        diff.MembersToAdd.Should().HaveCount(sameIdentity ? 0 : 1);
+        diff.MembersToRemove.Should().HaveCount(sameIdentity ? 0 : 1);
+        if (sameIdentity)
+            diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Correct);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task ReconcileOneAsync_UserClaimsShareCanonicalAddress_GrantsHighestLevelOnce(bool reverseClaims)
@@ -73,7 +92,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         };
         var service = CreateService(new StaticSource("folder-1",
             reverseClaims ? claims.Reverse().ToArray() : claims));
-        StubUsers((viewer, "Viewer", "member+viewer@gmail.com"),
+        StubUsers((viewer, "Viewer", "m.e.m.b.e.r+viewer@gmail.com"),
             (contributor, "Contributor", "member+contributor@googlemail.com"));
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", "member@gmail.com", "writer", Arg.Any<CancellationToken>())

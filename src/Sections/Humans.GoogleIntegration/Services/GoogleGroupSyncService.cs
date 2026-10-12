@@ -174,12 +174,12 @@ internal sealed class GoogleGroupSyncService(
         }
 
         expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, ct);
-        var expectedMembers = new Dictionary<string, GoogleSyncMember>(NormalizingEmailComparer.Instance);
-        foreach (var userId in claim.UserIds)
+        var expectedMembers = new Dictionary<string, GoogleSyncMember>(GmailAliasEmailComparer.Instance);
+        foreach (var userId in claim.UserIds.Order())
         {
             if (expectedMembersByUserId.TryGetValue(userId, out var member))
             {
-                expectedMembers[member.Email] = member;
+                expectedMembers.TryAdd(member.Email, member);
             }
         }
 
@@ -323,8 +323,8 @@ internal sealed class GoogleGroupSyncService(
     {
         var currentByEmail = memberships
             .Where(member => !string.IsNullOrWhiteSpace(member.MemberEmail))
-            .GroupBy(member => member.MemberEmail!, NormalizingEmailComparer.Instance)
-            .ToDictionary(group => group.Key, group => group.First().ResourceName, NormalizingEmailComparer.Instance);
+            .GroupBy(member => member.MemberEmail!, GmailAliasEmailComparer.Instance)
+            .ToDictionary(group => group.Key, group => group.First().ResourceName, GmailAliasEmailComparer.Instance);
         var members = new List<MemberSyncStatus>();
         foreach (var (email, expected) in expectedMembers)
         {
@@ -338,7 +338,7 @@ internal sealed class GoogleGroupSyncService(
         }
 
         var serviceAccountEmail = await teamResourceClient.GetServiceAccountEmailAsync(ct);
-        var expectedEmailSet = expectedMembers.Keys.ToHashSet(NormalizingEmailComparer.Instance);
+        var expectedEmailSet = expectedMembers.Keys.ToHashSet(GmailAliasEmailComparer.Instance);
         var extraEmails = currentByEmail.Keys.Where(email =>
                 !expectedEmailSet.Contains(email) &&
                 !string.Equals(email, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))

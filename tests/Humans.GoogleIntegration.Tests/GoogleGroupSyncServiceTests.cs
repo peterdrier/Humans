@@ -79,6 +79,47 @@ public sealed class GoogleGroupSyncServiceTests
             .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("a.l.i.c.e+burn@googlemail.com", "alice@gmail.com", true)]
+    [Xunit.InlineData("a.l.i.c.e@example.org", "alice@example.org", false)]
+    public async Task ReconcileOneAsync_GmailIdentityAliasesMatchWithoutConflatingOtherDomains(
+        string selected, string vendorEmail, bool sameIdentity)
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", selected));
+        StubGroup("team@nobodies.team", "group-1", new GroupMembership(vendorEmail, "membership-1"));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Preview,
+            Xunit.TestContext.Current.CancellationToken);
+
+        diff.MembersToAdd.Should().HaveCount(sameIdentity ? 0 : 1);
+        diff.MembersToRemove.Should().HaveCount(sameIdentity ? 0 : 1);
+        if (sameIdentity)
+            diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Correct);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ReconcileOneAsync_AliasClaims_GrantOnceWithStableAttribution(bool reverseClaims)
+    {
+        var first = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var second = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var service = CreateService(new StaticSource("team@nobodies.team",
+            reverseClaims ? [second, first] : [first, second]));
+        StubUsers((first, "First", "a.l.i.c.e+burn@gmail.com"), (second, "Second", "alice@googlemail.com"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "a.l.i.c.e@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute,
+            Xunit.TestContext.Current.CancellationToken);
+
+        diff.Members.Should().ContainSingle().Which.UserId.Should().Be(first);
+        await _membershipClient.Received(1).CreateMembershipAsync("group-1", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_GmailPlusTagMember_AddsCanonicalAddress()
     {

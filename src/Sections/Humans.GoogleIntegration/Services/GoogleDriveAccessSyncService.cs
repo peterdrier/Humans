@@ -251,7 +251,7 @@ internal sealed class GoogleDriveAccessSyncService(
         // Distinct member IDs may carry aliases that Google resolves to one address.
         // Reconcile that address once at the highest level already claimed by a source.
         var byEmail = expectedMembers.Values
-            .GroupBy(member => member.Email, NormalizingEmailComparer.Instance)
+            .GroupBy(member => member.Email, GmailAliasEmailComparer.Instance)
             .ToDictionary(group => group.Key,
                 group =>
                 {
@@ -264,14 +264,14 @@ internal sealed class GoogleDriveAccessSyncService(
                         TeamLinks = group.SelectMany(member => member.TeamLinks).Distinct().ToList()
                     };
                 },
-                NormalizingEmailComparer.Instance);
+                GmailAliasEmailComparer.Instance);
 
-        var inheritedEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-        var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-        var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-        var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        var idByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        var inheritedLevelByEmail = new Dictionary<string, DrivePermissionLevel>(NormalizingEmailComparer.Instance);
+        var inheritedEmails = new HashSet<string>(GmailAliasEmailComparer.Instance);
+        var allEmails = new HashSet<string>(GmailAliasEmailComparer.Instance);
+        var directEmails = new HashSet<string>(GmailAliasEmailComparer.Instance);
+        var roleByEmail = new Dictionary<string, string>(GmailAliasEmailComparer.Instance);
+        var idByEmail = new Dictionary<string, string>(GmailAliasEmailComparer.Instance);
+        var inheritedLevelByEmail = new Dictionary<string, DrivePermissionLevel>(GmailAliasEmailComparer.Instance);
 
         foreach (var perm in permissions)
         {
@@ -336,7 +336,7 @@ internal sealed class GoogleDriveAccessSyncService(
         var serviceAccountEmail = await resourceService.GetServiceAccountEmailAsync(ct);
         var extraEmails = (claim.Resources.Count > 0 ? allEmails : directEmails)
             .Where(email => !byEmail.ContainsKey(email) &&
-            !NormalizingEmailComparer.Instance.Equals(email, serviceAccountEmail)).ToList();
+            !GmailAliasEmailComparer.Instance.Equals(email, serviceAccountEmail)).ToList();
         var extraOwners = UserEmailMatchOwner.ByEmail(extraEmails.Count == 0
             ? []
             : await userEmailService.MatchByEmailsAsync(extraEmails, ct));
@@ -373,7 +373,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         return new DrivePlan(members, idByEmail,
-            byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.GoogleEmailId, NormalizingEmailComparer.Instance));
+            byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.GoogleEmailId, GmailAliasEmailComparer.Instance));
     }
 
     private async Task ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, List<string> errors, CancellationToken ct)
