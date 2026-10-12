@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -62,7 +63,7 @@ public class EmailOutboxProcessorTests : IDisposable
         // Settings is its own section (#866 G5): its repository, service and
         // DbContext are internal to it, so this job test substitutes the contract.
         _settingsStore = Substitute.For<ISettingsService>();
-        _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock);
+        _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock, Substitute.For<IAuditLogService>());
 
         _job = NewProcessor(_settings);
     }
@@ -403,7 +404,7 @@ public class EmailOutboxProcessorTests : IDisposable
         {
             AutoAdvance = Duration.FromSeconds(40)
         };
-        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock);
+        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock, Substitute.For<IAuditLogService>());
         var processor = WithoutThrottle(new EmailOutboxProcessor(
             _repo, outboxService, _campaignService, _transport, _metrics, _meters, clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));

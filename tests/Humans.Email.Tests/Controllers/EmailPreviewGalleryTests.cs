@@ -8,6 +8,7 @@ using Humans.Email.Models;
 using Humans.Email.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -48,6 +49,23 @@ public sealed class EmailPreviewGalleryTests
         var result = controller.EmailPreview(composer, Options.Create(new EmailSettings()), contributors);
 
         return (EmailPreviewViewModel)((ViewResult)result).Model!;
+    }
+
+    [HumansFact]
+    public async Task OutboxMutations_WithoutActor_RefuseBeforeWriting()
+    {
+        var outbox = Substitute.For<IEmailOutboxService>();
+        var controller = new EmailController(Substitute.For<IUserServiceRead>(), outbox,
+            Substitute.For<IAuditLogService>(), NullLogger<EmailController>.Instance,
+            Options.Create(new EmailSettings()))
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        (await controller.RetryEmailOutboxMessage(Guid.NewGuid())).Should().BeOfType<UnauthorizedResult>();
+        (await controller.DiscardEmailOutboxMessage(Guid.NewGuid())).Should().BeOfType<UnauthorizedResult>();
+        (await controller.PauseEmailSending()).Should().BeOfType<UnauthorizedResult>();
+        (await controller.ResumeEmailSending()).Should().BeOfType<UnauthorizedResult>();
+        outbox.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

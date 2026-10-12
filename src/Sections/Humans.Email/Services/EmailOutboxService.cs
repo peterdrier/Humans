@@ -1,4 +1,5 @@
 using Humans.Email.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
 using Humans.Base.Attributes;
 using Humans.Base.Configuration;
@@ -27,7 +28,8 @@ internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
-    IClock clock) : IEmailOutboxService, IUserDataContributor
+    IClock clock,
+    IAuditLogService audit) : IEmailOutboxService, IUserDataContributor
 {
     internal const string EmailOutbox = "EmailOutbox";
 
@@ -41,11 +43,23 @@ internal sealed class EmailOutboxService(
         return repo.DeleteSentOlderThanAsync(cutoff, cancellationToken);
     }
 
-    public Task<string?> RetryMessageAsync(Guid id, CancellationToken cancellationToken = default) =>
-        repo.RetryAsync(id, cancellationToken);
+    public async Task<string?> RetryMessageAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var recipient = await repo.RetryAsync(id, cancellationToken);
+        if (recipient is not null)
+            await audit.LogAsync(AuditAction.EmailOutboxRetried, nameof(EmailOutboxMessage), id,
+                "Queued outbox message for retry.", actorUserId);
+        return recipient;
+    }
 
-    public Task<string?> DiscardMessageAsync(Guid id, CancellationToken cancellationToken = default) =>
-        repo.DiscardAsync(id, cancellationToken);
+    public async Task<string?> DiscardMessageAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var recipient = await repo.DiscardAsync(id, cancellationToken);
+        if (recipient is not null)
+            await audit.LogAsync(AuditAction.EmailOutboxDiscarded, nameof(EmailOutboxMessage), id,
+                "Discarded outbox message.", actorUserId);
+        return recipient;
+    }
 
     public async Task<EmailOutboxStats> GetOutboxStatsAsync(
         int recentMessageCount = 50, CancellationToken cancellationToken = default)
@@ -88,11 +102,13 @@ internal sealed class EmailOutboxService(
         return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
-    public Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default) =>
-        settingsStore.SetValueAsync(
-            SettingKeys.IsEmailSendingPaused,
-            paused ? "true" : "false",
-            cancellationToken);
+    public async Task SetEmailPausedAsync(bool paused, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        await settingsStore.SetValueAsync(SettingKeys.IsEmailSendingPaused,
+            paused ? "true" : "false", cancellationToken);
+        await audit.LogAsync(paused ? AuditAction.EmailSendingPaused : AuditAction.EmailSendingResumed,
+            "EmailSending", Guid.Empty, paused ? "Paused email sending." : "Resumed email sending.", actorUserId);
+    }
 
     // --- Daily send counts (#1195) ---
 

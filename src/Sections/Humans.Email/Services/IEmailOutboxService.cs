@@ -22,13 +22,13 @@ internal interface IEmailOutboxService : IEmailOutboxServiceRead, IEmailOutboxRe
     /// Requeues a failed or stuck email outbox message for retry.
     /// Returns the recipient email if found, or null if the message does not exist.
     /// </summary>
-    Task<string?> RetryMessageAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<string?> RetryMessageAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Discards (deletes) an email outbox message.
     /// Returns the recipient email if found, or null if the message does not exist.
     /// </summary>
-    Task<string?> DiscardMessageAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<string?> DiscardMessageAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets whether email sending is currently paused.
@@ -38,7 +38,7 @@ internal interface IEmailOutboxService : IEmailOutboxServiceRead, IEmailOutboxRe
     /// <summary>
     /// Sets the email sending paused state.
     /// </summary>
-    Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default);
+    Task SetEmailPausedAsync(bool paused, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Aggregate daily send/failure counts for the outbox dashboard's rolling

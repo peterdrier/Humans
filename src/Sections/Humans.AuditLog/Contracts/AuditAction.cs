@@ -366,4 +366,8 @@ public enum AuditAction
     GoogleResourceLinked,
     GoogleResourceUnlinked,
     GoogleResourceUpdated,
+    EmailOutboxRetried,
+    EmailOutboxDiscarded,
+    EmailSendingPaused,
+    EmailSendingResumed,
 }
