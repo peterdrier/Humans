@@ -417,17 +417,30 @@ internal sealed class GoogleGroupSyncService(
             var add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, ct);
             if (add.Outcome == GroupMembershipMutationOutcome.Failed)
             {
-                return await BuildMemberMutationErrorDiffAsync(
+                var failure = DescribeGroupAddFailure(resource, claim.GroupKey, member.Email, add.Error);
+                // Preserve the vendor failure and its retry before the separate Users write.
+                var diff = await BuildMemberMutationErrorDiffAsync(
                     claim,
                     resource,
                     member.Email,
-                    await HandleGroupAddFailureAsync(resource, claim.GroupKey, plan.ExpectedByEmail[member.Email], add.Error, ct),
+                    failure.Error,
                     GoogleSyncLogAction.AccessGranted,
                     members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
                     member.UserId,
                     ct);
+                if (failure.RejectTarget)
+                {
+                    var target = plan.ExpectedByEmail[member.Email];
+                    await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                        target.UserId, GoogleEmailStatus.Rejected, ct, target.GoogleEmailId);
+                    logger.LogWarning(
+                        "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
+                        "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
+                        member.Email, claim.GroupKey, resource?.GoogleId, add.Error?.StatusCode, add.Error?.RawMessage);
+                }
+                return diff;
             }
 
             if (resource is not null && add.Outcome == GroupMembershipMutationOutcome.Added)
@@ -605,14 +618,12 @@ internal sealed class GoogleGroupSyncService(
         return teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
     }
 
-    private async Task<string> HandleGroupAddFailureAsync(
+    private (string Error, bool RejectTarget) DescribeGroupAddFailure(
         GoogleResourceSnapshot? resource,
         string groupKey,
-        GoogleSyncMember member,
-        GoogleClientError? error,
-        CancellationToken ct)
+        string email,
+        GoogleClientError? error)
     {
-        var email = member.Email;
         var statusCode = error?.StatusCode ?? 0;
         var rawMessage = error?.RawMessage ?? string.Empty;
 
@@ -622,7 +633,7 @@ internal sealed class GoogleGroupSyncService(
         // map to a permanent target rejection.
         if (statusCode != 403 && statusCode != 400)
         {
-            return FormatGoogleError($"Google group add failed for {email}", error);
+            return (FormatGoogleError($"Google group add failed for {email}", error), false);
         }
 
         if (statusCode == 403)
@@ -638,28 +649,16 @@ internal sealed class GoogleGroupSyncService(
                     groupKey,
                     resource?.GoogleId,
                     rawMessage);
-                return FormatGoogleError($"Google group add failed for {email}", error);
+                return (FormatGoogleError($"Google group add failed for {email}", error), false);
             }
         }
 
         if (IsTargetMemberRejection(rawMessage))
         {
-            await userService.TrySetGoogleEmailStatusFromSyncAsync(
-                member.UserId, GoogleEmailStatus.Rejected, ct, member.GoogleEmailId);
-
-            logger.LogWarning(
-                "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
-                "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
-                email,
-                groupKey,
-                resource?.GoogleId,
-                statusCode,
-                rawMessage);
-
-            return $"Google rejected {email} for group membership - no Google account for this address (HTTP {statusCode})";
+            return ($"Google rejected {email} for group membership - no Google account for this address (HTTP {statusCode})", true);
         }
 
-        return FormatGoogleError($"Google group add failed for {email}", error);
+        return (FormatGoogleError($"Google group add failed for {email}", error), false);
     }
 
     /// <summary>Cloud Identity group-membership "no Google account" detector. Group-specific — Drive path has its own predicate (#677).</summary>

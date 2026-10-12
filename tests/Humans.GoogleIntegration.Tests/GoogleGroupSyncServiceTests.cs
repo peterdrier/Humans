@@ -391,6 +391,34 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_RejectionStatusWriteFails_RecordsGoogleFailureAndRetryFirst()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        var resource = StageResource("team@nobodies.team");
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Failed,
+                new GoogleClientError(403, "member does not have a Google account")));
+        var failure = new IOException("Email status write failed");
+        _userService.TrySetGoogleEmailStatusFromSyncAsync(userId, GoogleEmailStatus.Rejected,
+                Arg.Any<CancellationToken>(), Arg.Any<Guid?>()).Returns(Task.FromException<bool>(failure));
+
+        Func<Task> reconcile = () => service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute,
+            Xunit.TestContext.Current.CancellationToken);
+        (await reconcile.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await _teamResourceService.Received(1).RecordResourceErrorAsync(resource.Id,
+            Arg.Is<string>(s => s.Contains("Google rejected alice@nobodies.team")), Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, resource.Id,
+            Arg.Any<string>(), nameof(GoogleGroupSyncService), "alice@nobodies.team", "MEMBER",
+            GoogleSyncSource.ScheduledSync, success: false, errorMessage: Arg.Any<string>(),
+            userId: userId, ct: Arg.Any<CancellationToken>());
+        _syncScheduler.Scheduled.Should().ContainSingle().Which.GroupKey.Should().Be("team@nobodies.team");
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_UserRejectedByGoogle_MarksGoogleEmailRejected()
     {
         var userId = Guid.NewGuid();
