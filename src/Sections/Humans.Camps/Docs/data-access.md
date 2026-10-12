@@ -98,10 +98,9 @@ direct `IMemoryCache`.
 
 No repository. Rate-limited contact relay. Injects `IEmailService`,
 `IEmailMessageFactory`, `IAuditLogService`, `INotificationEmitter`,
-`IMemoryCache`, `ILogger`. **No `IUserService` or `ICampService` injection**
+`IUserServiceRead`, `IMemoryCache`, `ILogger`. **No `ICampService` injection**
 — the controller resolves the camp/lead data and passes display names,
 contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
-No cross-section service-to-service calls within the service itself.
 
 | Cache Key | TTL | Type |
 |-----------|-----|------|

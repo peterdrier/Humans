@@ -28,7 +28,7 @@ public class SectionHelpTests
         var entry = Entry("Camps");
 
         entry.Guide.Should().StartWith("## How Barrios Work");
-        entry.Guide.Should().EndWith("- Barrio leads are notified when their barrio is approved or rejected", "the file's trailing newline is framing, not content");
+        entry.Guide.Should().EndWith("- Humans are notified when they are assigned a role in a barrio", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Barrios Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }
