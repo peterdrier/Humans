@@ -138,7 +138,8 @@ internal sealed class GoogleWorkspaceSyncService(
             "Google email status marked Rejected for the address. Google error: {ErrorMessage}",
             userEmail,
             resource.GoogleId,
-            error!.RawMessage);
+            error!.StatusCode,
+            error.RawMessage);
     }
 
     /// <inheritdoc />

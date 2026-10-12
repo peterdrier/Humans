@@ -186,7 +186,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     [HumansTheory]
     [Xunit.InlineData(400, "The recipient has no Google account", true)]
     [Xunit.InlineData(400, "Precondition check failed for shared drive sharing policy", false)]
-    [Xunit.InlineData(403, "The recipient has no Google account", false)]
+    [Xunit.InlineData(403, "The recipient has no Google account", true)]
     public async Task ReconcileOneAsync_FailedGrant_RejectsOnlyAnExplicitRecipientError(
         int statusCode, string message, bool rejectsAddress)
     {
@@ -212,12 +212,13 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var alice = Guid.NewGuid();
         var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
         StubUsers((alice, "Alice", "alice@example.org"));
+        var attemptedEmailId = _usersById[alice].UserEmails.Single(e => e.IsGoogle).Id;
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(403, "Cannot share a shared drive with non Google accounts.")));
-        _userService.TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>())
+        _userService.TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), attemptedEmailId)
             .Returns(call =>
             {
                 _usersById[alice] = _usersById[alice] with
@@ -225,7 +226,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
                     UserEmails =
                     [
                         new UserEmailInfo(
-                            Guid.NewGuid(), "alice@example.org", IsVerified: true, IsPrimary: false, IsGoogle: true,
+                            attemptedEmailId, "alice@example.org", IsVerified: true, IsPrimary: false, IsGoogle: true,
                             Provider: null, ProviderKey: null, Visibility: null, VerificationSentAt: null,
                             CreatedAt: _now, UpdatedAt: _now, GoogleEmailStatus.Rejected)
                     ]
@@ -237,7 +238,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
-            alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+            alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), attemptedEmailId);
         await _drivePermissions.Received(1)
             .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
         await _googleSyncLog.Received(1).LogAsync(

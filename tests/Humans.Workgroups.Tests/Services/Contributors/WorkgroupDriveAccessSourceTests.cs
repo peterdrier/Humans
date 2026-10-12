@@ -78,7 +78,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync("folder-p", Ct);
 
-        access["folder-p"].Should().NotContainKey(requester);
+        access["folder-p"].Access.Should().NotContainKey(requester);
     }
 
     [HumansFact]
