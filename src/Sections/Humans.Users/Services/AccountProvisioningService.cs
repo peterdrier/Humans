@@ -115,31 +115,47 @@ internal sealed class AccountProvisioningService(
             CreatedAt = now,
         };
 
-        var result = await userManager.CreateAsync(newUser);
-        if (!result.Succeeded)
+        try
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to create account for {email}: {errors}");
+            using (var transaction = new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.Serializable },
+                TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var result = await userManager.CreateAsync(newUser);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to create account for {email}: {errors}");
+                }
+
+                // see nobodies-collective/Humans#687
+                await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
+
+                // Stub Profile invariant; UserService owns UserInfo storage/cache.
+                // Import path seeds no names; the empty stub is filled in during onboarding.
+                await userService.EnsureStubProfileAsync(newUser.Id, ct: ct);
+                transaction.Complete();
+            }
+
+            await auditLogService.LogAsync(
+                AuditAction.ContactCreated,
+                nameof(User), newUser.Id,
+                $"Account pre-created from {source} — {email}",
+                nameof(AccountProvisioningService));
+
+            logger.LogInformation(
+                "Created new account {UserId} for {Email} (source: {Source}, displayName: {DisplayName})",
+                newUser.Id, email, source, resolvedDisplayName);
+
+            return new AccountProvisioningResult(newUser, Created: true);
         }
-
-        // see nobodies-collective/Humans#687
-        await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
-
-        // Stub Profile invariant; UserService owns UserInfo storage/cache.
-        // Import path seeds no names; the empty stub is filled in during onboarding.
-        await userService.EnsureStubProfileAsync(newUser.Id, ct: ct);
-
-        await auditLogService.LogAsync(
-            AuditAction.ContactCreated,
-            nameof(User), newUser.Id,
-            $"Account pre-created from {source} — {email}",
-            nameof(AccountProvisioningService));
-
-        logger.LogInformation(
-            "Created new account {UserId} for {Email} (source: {Source}, displayName: {DisplayName})",
-            newUser.Id, email, source, resolvedDisplayName);
-
-        return new AccountProvisioningResult(newUser, Created: true);
+        finally
+        {
+            // The replacement path's outer transaction refreshes after its disposal.
+            // Ordinary imports finish their own commit/rollback before rebuilding UserInfo.
+            if (affectedUsers is null)
+                await userInfoInvalidator.InvalidateAsync(newUserId, CancellationToken.None);
+        }
     }
 
     public async Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(

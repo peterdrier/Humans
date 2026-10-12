@@ -809,9 +809,62 @@ public class AccountProvisioningServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
+    public async Task ImportCreationFailure_RollsBackUserAndEmail_BeforeRetry(bool profileFailure)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userEmailFake.ThrowOnAddProvisioned = !profileFailure;
+        _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null)
+            .Returns(profileFailure
+                ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
+                : Task.FromResult(true));
+        _invalidator.InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+        _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
+            nameof(AccountProvisioningService), null, null).Returns(_ =>
+            {
+                Transaction.Current.Should().BeNull();
+                _userRepo.All.Should().ContainSingle();
+                _userEmailFake.All.Should().ContainSingle();
+                return Task.CompletedTask;
+            });
+        Func<Task> import = async () => await _service.FindOrCreateUserByEmailAsync(
+            "atomic@example.org", "Imported", ContactSource.MailerLite, ct);
+
+        await import.Should().ThrowAsync<InvalidOperationException>();
+
+        _userRepo.All.Should().BeEmpty();
+        _userEmailFake.All.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _invalidator.Received(1).InvalidateAsync(Arg.Any<Guid>(), CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        _userEmailFake.ThrowOnAddProvisioned = false;
+        _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null).Returns(true);
+
+        var retry = await _service.FindOrCreateUserByEmailAsync("atomic@example.org", "Imported", ContactSource.MailerLite, ct);
+
+        retry.Created.Should().BeTrue();
+        _userRepo.All.Should().ContainSingle().Which.Id.Should().Be(retry.User.Id);
+        _userEmailFake.All.Should().ContainSingle().Which.UserId.Should().Be(retry.User.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
     public async Task ProvisioningRetry_RepairsProfileAfterUserAndEmailWereSaved(bool imported)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+        if (imported)
+        {
+            // A partial account left by an earlier build; new import creation now rolls back.
+            var legacy = new User { Id = Guid.NewGuid(), BurnerName = "Retry Human", ContactSource = ContactSource.TicketTailor };
+            _userRepo.Seed(legacy);
+            _userEmailFake.Seed(new UserEmail
+            {
+                Id = Guid.NewGuid(), UserId = legacy.Id, Email = "retry@example.org", IsVerified = true,
+                IsPrimary = true, CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            });
+        }
         var attempts = 0;
         var profiles = new HashSet<Guid>();
         _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -839,7 +892,7 @@ public class AccountProvisioningServiceTests
 
         profiles.Should().ContainSingle().Which.Should().Be(persistedUser.Id);
         _userRepo.All.Should().ContainSingle();
-        await _userManager.Received(1).CreateAsync(Arg.Any<User>());
+        await _userManager.Received(imported ? 0 : 1).CreateAsync(Arg.Any<User>());
         if (imported)
             await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
                 Arg.Any<string>(), nameof(AccountProvisioningService), null, null);
