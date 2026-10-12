@@ -25,8 +25,11 @@ internal sealed class GovernanceWorkgroupsViewComponent(
     {
         var ct = HttpContext.RequestAborted;
         var register = await workgroups.GetRegisterAsync(ct);
+        // The card is read by everyone on Governance, so a sensitive group shows its register
+        // entry only: no next meeting, no open-for-comment badge.
         var active = register
             .Where(w => w.Status == WorkgroupStatus.Active)
+            .Select(w => w.IsSensitive ? w with { Meetings = [], Documents = [] } : w)
             .OrderBy(w => w.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 

@@ -273,7 +273,7 @@ internal sealed partial class WorkgroupService(
             if (replacementCoordinatorUserId is { } replacementId)
             {
                 promoted = workgroup.Members
-                    .FirstOrDefault(m => m.UserId == replacementId && m.LeftAt is null && m.Id != leaving.Id);
+                    .FirstOrDefault(m => m.UserId == replacementId && m.LeftAt is null && m.IsPending != true && m.Id != leaving.Id);
                 if (promoted is null) return new(Refusal: new(WorkgroupErrorKeys.CoordinatorsMustBeMembers));
                 promoted.Role = WorkgroupMemberRole.Coordinator;
                 changed.Add(promoted);

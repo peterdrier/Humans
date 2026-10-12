@@ -117,6 +117,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateWorkgroupAsync(workgroup, ct);
         // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
+        await ClosePendingRequestsAsync(workgroup, now, ct);
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Withdrawn, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupWithdrawn, workgroup,

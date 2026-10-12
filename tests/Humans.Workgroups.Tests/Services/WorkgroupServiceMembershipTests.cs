@@ -490,6 +490,44 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task Leave_NamingAPendingRequesterAsReplacement_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var result = await NewService().LeaveAsync(workgroup.Id, coordinator, requester, ct: Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
+        (await OpenContext().Members.SingleAsync(m => m.UserId == coordinator, Ct)).LeftAt.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("close")]
+    [InlineData("withdraw")]
+    [InlineData("done")]
+    public async Task EndingOrWithdrawingTheGroup_ClosesItsPendingRequests(string action)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+        var service = NewService();
+
+        var result = action switch
+        {
+            "close" => await service.CloseAsync(workgroup.Id, SeedUser("Secretary"), "Quiet", Ct),
+            "withdraw" => await service.WithdrawAsync(workgroup.Id, SeedUser("Secretary"), "Withdrawn", Ct),
+            _ => await service.MarkDoneAsync(workgroup.Id, coordinator, WorkgroupDormantReason.Delivered, Ct)
+        };
+
+        result.Refusal.Should().BeNull();
+        (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).LeftAt.Should().NotBeNull();
+        (await service.GetByIdAsync(workgroup.Id, Ct))!.PendingMembers().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task SetCoordinators_APendingMember_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();

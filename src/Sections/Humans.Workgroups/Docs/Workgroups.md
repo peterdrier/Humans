@@ -271,12 +271,16 @@ Settings and Register an existing group on first setup or after clearing the que
   are the only ways a person becomes a member (`AdmitAsync`): both need a current coordinator
   or `asAdmin`, and both write `MemberJoined`, audit, notify the person and request a Drive
   sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
-  reason. A plain member gets `NotACoordinator`. `SetCoordinatorsAsync` never promotes a
-  pending row.
+  reason. A plain member gets `NotACoordinator`. Neither `SetCoordinatorsAsync` nor a
+  last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
+  withdrawing the group closes its pending requests (`ClosePendingRequestsAsync`), so
+  nothing waits on a group nobody can decide for.
 - **A sensitive group's content is its members'.** `IsSensitive` hides roster, documents,
   meetings and history from everyone but members and Board/Admin: the page shows the
   register fields and the join button, the Document route answers 404, and
-  `AddCommentAsync` refuses a non-member (`MembersOnly`). The register listing, the join
+  `AddCommentAsync` refuses a non-member (`MembersOnly`). The community calendar skips its
+  public meetings (the members' own feed keeps them) and the Governance card shows its
+  register entry without next meeting or comment badge. The register listing, the join
   request and the status request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
   leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and

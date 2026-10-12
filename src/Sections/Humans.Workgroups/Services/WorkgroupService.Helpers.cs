@@ -518,6 +518,18 @@ internal sealed partial class WorkgroupService
     // ── Shared transitions ────────────────────────────────────────────────
 
     /// <summary>
+    /// A group that stops being Active has nobody left to decide its join requests, so
+    /// the transition closes them: the pending rows get <c>LeftAt</c>, nothing is logged.
+    /// </summary>
+    private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
+    {
+        var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
+        if (pending.Count == 0) return;
+        foreach (var m in pending) m.LeftAt = now;
+        await repository.UpdateMembersAsync(pending, ct);
+    }
+
+    /// <summary>
     /// The one place a group ends, whether a member marked it done or the Secretary closed
     /// it: Dormant with a reason, the log entry, the audit entry, the coordinators told, and
     /// the Drive folder dropped to read-only through the access source.
@@ -538,6 +550,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateWorkgroupAsync(w, ct);
         // The end decision committed; complete its record, notices and access changes.
         ct = CancellationToken.None;
+        await ClosePendingRequestsAsync(w, now, ct);
 
         await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
             Trimmed(reasons) ?? reason.ToString(), ct,
