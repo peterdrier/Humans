@@ -637,6 +637,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.LastName.Should().Be("Lovelace");
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Active);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -646,12 +647,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(userId);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        var actorId = Guid.NewGuid();
+        AuditLog.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            {
+                (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId,
+                    TestContext.Current.CancellationToken)).Should().BeTrue();
+            });
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId);
 
         var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().BeEmpty();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
+        await AuditLog.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null);
+        (await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId))
+            .Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -684,9 +697,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.MergedAt = Clock.GetCurrentInstant();
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -700,9 +714,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.Email = $"deleted-{userId:N}@deleted.local";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

@@ -657,10 +657,11 @@ internal sealed class CachingUserService(
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
     {
         var created = await WithInnerAsync(inner =>
-            inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct));
+            inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct, actorUserId));
         if (created) await RefreshEntryAsync(userId);
         return created;
     }

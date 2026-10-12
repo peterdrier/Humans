@@ -1,13 +1,13 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Controllers;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -42,6 +42,20 @@ public sealed class UserNameSyncServiceTests : IDisposable
     }
 
     public void Dispose() => _dbContext.Dispose();
+
+    [HumansFact]
+    public async Task Profile_confirm_without_actor_refuses_before_backfill()
+    {
+        var users = Substitute.For<IUserServiceInternal>();
+        var controller = new ProfileBackfillAdminController(users,
+            NullLogger<ProfileBackfillAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        (await controller.Run(Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<UnauthorizedResult>();
+        users.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task Confirm_without_actor_refuses_before_backfill()

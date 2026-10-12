@@ -214,7 +214,7 @@ a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
 
-Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import after save). No direct
+Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import and admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)

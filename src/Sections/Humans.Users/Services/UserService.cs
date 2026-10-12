@@ -287,7 +287,8 @@ internal sealed class UserService(
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 
@@ -332,6 +333,9 @@ internal sealed class UserService(
         // FirstName/LastName, so they stay Bare. The repository derives User.State from the
         // row it persists.
         await repo.AddAsync(profile, ct);
+        if (actorUserId.HasValue)
+            await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+                "Created missing profile through admin backfill.", actorUserId.Value);
         InvalidateClaims(userId);
         return true;
     }

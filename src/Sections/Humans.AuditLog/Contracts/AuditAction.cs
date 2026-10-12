@@ -372,4 +372,5 @@ public enum AuditAction
     EmailSendingResumed,
     UserNamesBackfilled,
     ParticipationBackfilled,
+    StubProfileBackfilled,
 }
