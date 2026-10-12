@@ -262,6 +262,55 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
+    public async Task PlainMember_DecidingMembership_IsForbidden()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = SeedUser("Member");
+        await AddMemberAsync(workgroup.Id, member);
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+        var controller = BuildController(member, isBoard: false);
+
+        (await controller.ApproveMember(workgroup.Slug, requester, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.DeclineMember(workgroup.Slug, requester, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.AddMember(workgroup.Slug, SeedUser(), Ct)).Should().BeOfType<ForbidResult>();
+        (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).IsPending.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CoordinatorOrBoard_DecidingMembership_IsAllowed(bool isBoard)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var coordinator = workgroup.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+        var actor = isBoard ? SeedUser("Secretary") : coordinator;
+        var controller = BuildController(actor, isBoard);
+
+        var result = await controller.ApproveMember(workgroup.Slug, requester, Ct);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).IsPending.Should().NotBe(true);
+    }
+
+    [HumansFact]
+    public async Task NonMember_ReadingASensitiveGroupsDocument_IsNotFound()
+    {
+        var workgroup = await SeedWorkgroupAsync(isSensitive: true);
+        var coordinator = workgroup.Members.Single().UserId;
+        var document = await AddDocumentAsync(workgroup.Id, status: WorkgroupDocumentStatus.Published);
+        var outsider = BuildController(SeedUser("Outsider"), isBoard: false);
+        var member = BuildController(coordinator, isBoard: false);
+        var board = BuildController(SeedUser("Secretary"), isBoard: true);
+
+        (await outsider.Document(workgroup.Slug, document.Id, Ct)).Should().BeOfType<NotFoundResult>();
+        (await member.Document(workgroup.Slug, document.Id, Ct)).Should().BeOfType<ViewResult>();
+        (await board.Document(workgroup.Slug, document.Id, Ct)).Should().BeOfType<ViewResult>();
+    }
+
+    [HumansFact]
     public async Task NonMember_RequestingAStatusUpdate_IsAllowed()
     {
         var (controller, workgroup) = await BuildAsync(asMember: false);

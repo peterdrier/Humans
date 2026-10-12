@@ -113,11 +113,20 @@ internal sealed class WorkgroupPageViewModel
 
     public required bool IsCoordinator { get; init; }
 
+    /// <summary>The reader asked to join and no coordinator has decided yet.</summary>
+    public required bool IsPendingMember { get; init; }
+
     /// <summary>BoardOrAdmin: the decisions of §6 and the disposition.</summary>
     public required bool CanAdminister { get; init; }
 
     /// <summary>Member work is frozen unless the group is Active — see the authorization handler.</summary>
     public required bool CanDoMemberWork { get; init; }
+
+    /// <summary>Approve, decline and add members: a coordinator while the group is Active, or Board/Admin.</summary>
+    public bool CanManageMembers => CanAdminister || (IsCoordinator && CanDoMemberWork);
+
+    /// <summary>A sensitive group's roster, documents and history are for members and Board/Admin only.</summary>
+    public bool CanSeeContent => !Workgroup.IsSensitive || IsMember || CanAdminister;
 
     /// <summary>Board/Admin, Colaborador and Asociado see the allocation; Volunteers do not.</summary>
     public required bool CanSeeBudget { get; init; }
@@ -160,6 +169,9 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? DiscordChannelUrl { get; set; }
 
+    /// <summary>Roster, documents and history for members and Board/Admin only.</summary>
+    public bool IsSensitive { get; set; }
+
     /// <summary>Optional second name on the register; the applicant is always the first.</summary>
     public Guid? SecondCoordinatorUserId { get; set; }
 
@@ -173,15 +185,16 @@ internal sealed class WorkgroupFormViewModel
         DeliverableKind = w.DeliverableKind,
         Audience = w.Audience,
         TargetDate = w.TargetDate,
-        DiscordChannelUrl = w.DiscordChannelUrl
+        DiscordChannelUrl = w.DiscordChannelUrl,
+        IsSensitive = w.IsSensitive
     };
 
     public WorkgroupApplication ToApplication() => new(
         Name, Purpose, Deliverable, DeliverableKind, Audience, TargetDate, DiscordChannelUrl,
-        SecondCoordinatorUserId);
+        SecondCoordinatorUserId, IsSensitive);
 
     public WorkgroupRegisterEdit ToEdit() => new(
-        Name, Purpose, Deliverable, DeliverableKind, Audience, TargetDate, DiscordChannelUrl);
+        Name, Purpose, Deliverable, DeliverableKind, Audience, TargetDate, DiscordChannelUrl, IsSensitive);
 }
 
 internal sealed class MeetingFormViewModel

@@ -144,7 +144,7 @@
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Sol·licitud enviada. La Secretaria la revisarà.</value></data>
-  <data name="Workgroups_Joined" xml:space="preserve"><value>T'has unit al grup.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>La teva sol·licitud s'ha enviat a les persones coordinadores.</value></data>
   <data name="Workgroups_Left" xml:space="preserve"><value>Has sortit del grup.</value></data>
   <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Actualització d'estat sol·licitada.</value></data>
   <data name="Workgroups_Saved" xml:space="preserve"><value>Desat.</value></data>
@@ -202,7 +202,7 @@
   <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Segon coordinador (opcional)</value></data>
 
   <!-- Group page -->
-  <data name="Workgroups_Join" xml:space="preserve"><value>Uneix-t'hi</value></data>
+  <data name="Workgroups_Join" xml:space="preserve"><value>Sol·licitar unir-s'hi</value></data>
   <data name="Workgroups_Leave" xml:space="preserve"><value>Surt</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal de Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Carpeta de Drive</value></data>
@@ -330,4 +330,28 @@
     <value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
   </data>
+  <data name="Workgroups_RequestPending" xml:space="preserve"><value>La teva sol·licitud està esperant una persona coordinadora.</value></data>
+  <data name="Workgroups_WithdrawRequest" xml:space="preserve"><value>Retirar la sol·licitud</value></data>
+  <data name="Workgroups_PendingRequests" xml:space="preserve"><value>Sol·licituds d'ingrés</value></data>
+  <data name="Workgroups_Approve" xml:space="preserve"><value>Aprovar</value></data>
+  <data name="Workgroups_Decline" xml:space="preserve"><value>Rebutjar</value></data>
+  <data name="Workgroups_AddMember" xml:space="preserve"><value>Afegir un membre</value></data>
+  <data name="Workgroups_MemberApproved" xml:space="preserve"><value>Sol·licitud aprovada.</value></data>
+  <data name="Workgroups_MemberDeclined" xml:space="preserve"><value>Sol·licitud rebutjada.</value></data>
+  <data name="Workgroups_MemberAdded" xml:space="preserve"><value>Membre afegit.</value></data>
+  <data name="Workgroups_Sensitive" xml:space="preserve"><value>Sensible</value></data>
+  <data name="Workgroups_SensitiveMembersOnly" xml:space="preserve"><value>Aquest grup és sensible: els membres, documents i historial només són visibles per als membres.</value></data>
+  <data name="Workgroups_Field_IsSensitive" xml:space="preserve"><value>Grup sensible</value></data>
+  <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Només els membres i la Junta veuen la llista de membres, els documents i l'historial. El nom i el propòsit es mantenen al registre.</value></data>
+  <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>La teva sol·licitud ja està esperant una persona coordinadora.</value></data>
+  <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>No hi ha cap sol·licitud pendent d'aquesta persona.</value></data>
+  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Només una persona coordinadora pot decidir qui hi entra.</value></data>
+  <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Aquest grup és sensible; només els seus membres poden fer-ho.</value></data>
+  <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Algú ha sol·licitat unir-s'hi</value></data>
+  <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>La teva sol·licitud d'ingrés s'ha aprovat</value></data>
+  <data name="Workgroups_Notice_MembershipDeclined" xml:space="preserve"><value>La teva sol·licitud d'ingrés s'ha rebutjat</value></data>
+  <data name="Workgroups_Notice_MemberAdded" xml:space="preserve"><value>T'han afegit al grup</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Sol·licituds d'ingrés pendents</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} té {1} sol·licitud(s) d'ingrés.</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Revisar les sol·licituds</value></data>
 </root>

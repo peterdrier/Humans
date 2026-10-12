@@ -1,7 +1,6 @@
 using Humans.Base.Constants;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;
@@ -18,7 +17,6 @@ namespace Humans.Workgroups.Services.Contributors;
 /// </remarks>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
-    IUserServiceRead users,
     ITeamServiceRead teams) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
@@ -32,11 +30,11 @@ internal sealed class WorkgroupDriveAccessSource(
             if (workgroup.DriveFolderId is not { Length: > 0 } id)
                 continue;
 
-            // Active: the members are doing the work, so they write. Dormant: the folder is
-            // the association's record of what they did, so it goes read-only.
+            // Active: the members are doing the work, so they write and organize (move, trash).
+            // Dormant: the folder is the association's record of what they did, so it goes read-only.
             var level = workgroup.Status switch
             {
-                WorkgroupStatus.Active => DrivePermissionLevel.Contributor,
+                WorkgroupStatus.Active => DrivePermissionLevel.ContentManager,
                 WorkgroupStatus.Dormant => DrivePermissionLevel.Viewer,
                 _ => DrivePermissionLevel.None
             };
@@ -60,18 +58,13 @@ internal sealed class WorkgroupDriveAccessSource(
     }
 
     /// <summary>
-    /// The root folder is the register's shelf: the Board and every approved Colaborador or
-    /// Asociado may read it, and nobody writes to it but the section's own subfolder calls.
+    /// The root folder is the register's shelf: the Board reads it, and nobody writes to it
+    /// but the section's own subfolder calls. Everyone else reaches only the subfolders of
+    /// the groups they belong to.
     /// </summary>
     private async Task<Dictionary<Guid, DrivePermissionLevel>> RootReadersAsync(CancellationToken ct)
     {
         var readers = new HashSet<Guid>();
-
-        foreach (var user in await users.GetAllUserInfosAsync(ct))
-        {
-            if (user.Profile is { IsApproved: true, MembershipTier: MembershipTier.Colaborador or MembershipTier.Asociado })
-                readers.Add(user.Id);
-        }
 
         if (await teams.GetTeamAsync(SystemTeamIds.Board, ct) is { } board)
         {

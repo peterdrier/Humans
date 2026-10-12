@@ -169,7 +169,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Instant? appliedAt = null,
         Instant? registeredAt = null,
         string? driveFolderId = "group-folder",
-        WorkgroupDormantReason? dormantReason = null)
+        WorkgroupDormantReason? dormantReason = null,
+        bool isSensitive = false)
     {
         var now = Clock.GetCurrentInstant();
         var coordinator = coordinatorUserId ?? SeedUser("Coordinator");
@@ -184,6 +185,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
             Audience = WorkgroupAudience.Board,
             Status = status,
             DormantReason = dormantReason,
+            IsSensitive = isSensitive ? true : null,
             DriveFolderId = status is WorkgroupStatus.Active or WorkgroupStatus.Dormant ? driveFolderId : null,
             AppliedByUserId = coordinator,
             AppliedAt = appliedAt ?? now,
@@ -211,7 +213,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
     }
 
     private protected async Task AddMemberAsync(
-        Guid workgroupId, Guid userId, WorkgroupMemberRole role = WorkgroupMemberRole.Member, Instant? joinedAt = null, Instant? leftAt = null)
+        Guid workgroupId, Guid userId, WorkgroupMemberRole role = WorkgroupMemberRole.Member, Instant? joinedAt = null, Instant? leftAt = null,
+        bool isPending = false)
     {
         Db.Members.Add(new WorkgroupMember
         {
@@ -220,7 +223,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
             UserId = userId,
             Role = role,
             JoinedAt = joinedAt ?? Clock.GetCurrentInstant(),
-            LeftAt = leftAt
+            LeftAt = leftAt,
+            IsPending = isPending ? true : null
         });
         await Db.SaveChangesAsync(Ct);
     }

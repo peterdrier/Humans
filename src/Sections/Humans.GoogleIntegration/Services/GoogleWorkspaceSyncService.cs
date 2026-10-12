@@ -134,7 +134,7 @@ internal sealed class GoogleWorkspaceSyncService(
             userId, GoogleEmailStatus.Rejected, ct, googleEmailId);
 
         logger.LogWarning(
-            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP 400. " +
+            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP {StatusCode}. " +
             "Google email status marked Rejected for the address. Google error: {ErrorMessage}",
             userEmail,
             resource.GoogleId,

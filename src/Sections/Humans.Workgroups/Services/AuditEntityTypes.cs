@@ -12,4 +12,7 @@ internal static class AuditEntityTypes
     public const string WorkgroupLogEntry = "WorkgroupLogEntry";
     public const string WorkgroupMeeting = "WorkgroupMeeting";
     public const string WorkgroupsSettings = "WorkgroupsSettings";
+
+    /// <summary>Related-entity type on membership decisions, so the subject's GDPR export finds the row.</summary>
+    public const string User = "User";
 }

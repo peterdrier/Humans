@@ -24,7 +24,7 @@
                             {
                                 <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
                             }
-                            @if (w.IsUpdateDue(Model.Now))
+                            @if (!w.IsSensitive && w.IsUpdateDue(Model.Now))
                             {
                                 <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
                             }
