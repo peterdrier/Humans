@@ -40,13 +40,16 @@
         {
             <span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>@Localizer["Workgroups_Sensitive"]</span>
         }
-        @if (w.IsOpenForComment(Model.Now))
+        @if (Model.CanSeeContent)
         {
-            <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
-        }
-        @if (w.IsUpdateDue(Model.Now))
-        {
-            <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+            @if (w.IsOpenForComment(Model.Now))
+            {
+                <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+            }
+            @if (w.IsUpdateDue(Model.Now))
+            {
+                <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+            }
         }
     </div>
     <div class="d-flex flex-wrap gap-2">

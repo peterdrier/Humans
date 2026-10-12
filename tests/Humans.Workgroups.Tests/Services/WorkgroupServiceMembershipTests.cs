@@ -354,7 +354,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
             .Should().Be(WorkgroupLogKind.MemberJoined);
         await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
-            Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Any<string>(), actor, requester, "User");
         await Notifications.Received(1).SendAsync(
             Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
             Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
@@ -405,7 +405,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await NewService().GetByIdAsync(workgroup.Id, Ct))!.PendingMembers().Should().BeEmpty();
         (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
-            Arg.Any<string>(), coordinator, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Any<string>(), coordinator, requester, "User");
         await Notifications.Received(1).SendAsync(
             Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
             Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
@@ -443,7 +443,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
             .Should().Be(WorkgroupLogKind.MemberJoined);
         await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), workgroup.Id,
-            Arg.Any<string>(), coordinator, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Any<string>(), coordinator, newcomer, "User");
         await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
     }
 

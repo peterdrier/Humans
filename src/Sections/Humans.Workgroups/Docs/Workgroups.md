@@ -280,8 +280,9 @@ Settings and Register an existing group on first setup or after clearing the que
   register fields and the join button, the Document route answers 404, and
   `AddCommentAsync` refuses a non-member (`MembersOnly`). The community calendar skips its
   public meetings (the members' own feed keeps them) and the Governance card shows its
-  register entry without next meeting or comment badge. The register listing, the join
-  request and the status request are unchanged.
+  register entry without next meeting or comment badge; the register and the page header
+  show its open-for-comment and update-due badges to members only (Board/Admin on the
+  page). The register listing itself, the join request and the status request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
   leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
   leave the group coordinatorless on purpose so the Secretary can appoint someone.
@@ -300,7 +301,9 @@ Settings and Register an existing group on first setup or after clearing the que
   rhythm below. Nothing auto-registers or auto-closes, and nothing tracks whether a group
   has gone quiet: ending a group is the Board's decision on its own reading of the register.
 - Every lifecycle transition writes a system log entry and an `AuditLogEntry`
-  (`relatedEntityId`/`Type` = the workgroup) via `AuditAsync`.
+  (`relatedEntityId`/`Type` = the workgroup) via `AuditAsync`. Membership decisions
+  (approve, decline, add) carry the subject as `relatedEntityId`/`Type = User`, so the
+  person's GDPR export finds the rows that name them.
 - A document's comment window may only be set on a Published document with at least one
   category, and must end before the document is Delivered (`OpenCommentsAsync`). Each
   category has to fit the 100 characters a comment's own `Category` column holds, or the

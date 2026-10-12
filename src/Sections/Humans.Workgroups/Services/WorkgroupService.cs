@@ -182,7 +182,9 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateMembersAsync([pending], ct);
         // The decision committed; finish its audit and notice independently of the browser.
         ct = CancellationToken.None;
-        await AuditAsync(AuditAction.WorkgroupMembershipDeclined, workgroup, $"Declined the join request of {name}", actorUserId);
+        await auditLog.LogAsync(AuditAction.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
+            $"Declined the join request of {name}", actorUserId,
+            relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
         await NotifyAsync([userId], NotificationSource.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
@@ -226,7 +228,11 @@ internal sealed partial class WorkgroupService(
         // Membership has committed; its log, audit and follow-up work must survive a closed tab.
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
-        await AuditAsync(auditAction, workgroup, $"{name} admitted to the group", actorUserId);
+        // Related entity is the person admitted: the audit trail is retained personal data
+        // about them, and their GDPR export selects rows by that column.
+        await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
+            $"{name} admitted to the group", actorUserId,
+            relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
         await NotifyAsync([member.UserId], NotificationSource.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
