@@ -554,20 +554,19 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<int> BackfillParticipationsAsync(
+    public async Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillParticipationsAsync(
         int year,
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default)
     {
         if (entries.Count == 0)
-            return 0;
+            return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .Where(ep => ep.Year == year)
             .ToDictionaryAsync(ep => ep.UserId, ct);
 
-        var count = 0;
         foreach (var (userId, status) in entries)
         {
             if (existing.TryGetValue(userId, out var ep))
@@ -575,7 +574,6 @@ internal sealed partial class UserRepository : IUserRepository
                 // Attended is permanent — leave it alone.
                 if (ep.Status == ParticipationStatus.Attended)
                 {
-                    count++;
                     continue;
                 }
 
@@ -596,12 +594,14 @@ internal sealed partial class UserRepository : IUserRepository
                 ctx.EventParticipations.Add(newEp);
                 existing[userId] = newEp;
             }
-
-            count++;
         }
 
+        var changed = ctx.ChangeTracker.Entries<EventParticipation>()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified)
+            .Select(e => (e.Entity.UserId, e.Entity.Status))
+            .ToList();
         await ctx.SaveChangesAsync(ct);
-        return count;
+        return changed;
     }
 
 }

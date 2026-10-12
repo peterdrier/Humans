@@ -1,4 +1,5 @@
 using Humans.Auth.Contracts;
+using Humans.AuditLog.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -20,7 +21,8 @@ internal sealed class UserService(
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IFileStorage fileStorage,
     IClock clock,
-    ILogger<UserService> logger) : IUserServiceInternal, IUserDataContributor
+    ILogger<UserService> logger,
+    IAuditLogService audit) : IUserServiceInternal, IUserDataContributor
 {
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
@@ -895,9 +897,14 @@ internal sealed class UserService(
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
-        var count = await repo.BackfillParticipationsAsync(year, entries, ct);
+        var changed = await repo.BackfillParticipationsAsync(year, entries, ct);
+        foreach (var (userId, status) in changed)
+            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+                $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
+        var count = changed.Count;
         logger.LogInformation(
             "Backfilled {Count} participation records for year {Year}",
             count, year);

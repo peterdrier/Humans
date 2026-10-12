@@ -214,7 +214,7 @@ a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
 
-Cross-section calls via `IAdminAuthorizationService`. No direct
+Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
@@ -294,7 +294,7 @@ No cache on the service itself.
 ### UserParticipationBackfillService (Scoped)
 
 No repository. Fan-out over `IUserServiceInternal` and `ISettingsService`
-(active event settings) to backfill `EventParticipations`. No direct DB access, no cache.
+(active event settings) to preview valid CSV rows and, only after operator confirmation, backfill `EventParticipations` with the acting admin. No direct DB access, no cache.
 
 ### AccountMergeService (Scoped)
 

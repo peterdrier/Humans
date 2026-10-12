@@ -371,4 +371,5 @@ public enum AuditAction
     EmailSendingPaused,
     EmailSendingResumed,
     UserNamesBackfilled,
+    ParticipationBackfilled,
 }

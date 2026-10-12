@@ -121,7 +121,7 @@ public class AccountProvisioningServiceTests
         public Task<bool> RemoveParticipationAsync(
             Guid userId, int year, ParticipationSource requiredSource, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> BackfillParticipationsAsync(
+        public Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillParticipationsAsync(
             int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
             CancellationToken ct = default) =>
             throw new NotSupportedException();

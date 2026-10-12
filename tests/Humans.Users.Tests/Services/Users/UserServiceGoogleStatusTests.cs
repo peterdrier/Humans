@@ -17,7 +17,7 @@ public sealed class UserServiceGoogleStatusTests : ServiceTestHarness
 
     private UserService Service() => new(_repo, Substitute.For<ICommunicationPreferenceRepository>(),
         AdminAuthorization, Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-        Substitute.For<IFileStorage>(), Clock, NullLogger<UserService>.Instance);
+        Substitute.For<IFileStorage>(), Clock, NullLogger<UserService>.Instance, AuditLog);
 
     [HumansTheory]
     [Xunit.InlineData(GoogleEmailStatus.Unknown, GoogleEmailStatus.Rejected, true)]

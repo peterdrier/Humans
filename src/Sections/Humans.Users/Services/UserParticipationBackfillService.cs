@@ -21,7 +21,9 @@ internal sealed class UserParticipationBackfillService(
     public async Task<ParticipationBackfillResult> BackfillFromCsvAsync(
         int year,
         string? csvData,
-        CancellationToken ct = default)
+        Guid actorUserId,
+        CancellationToken ct = default,
+        bool apply = false)
     {
         if (string.IsNullOrWhiteSpace(csvData))
             return ParticipationBackfillResult.Failure("Please provide CSV data with UserId and Status columns.");
@@ -30,7 +32,14 @@ internal sealed class UserParticipationBackfillService(
         if (entries.Count == 0)
             return ParticipationBackfillResult.Failure("No valid entries found in the CSV data.");
 
-        var count = await userService.BackfillParticipationsAsync(year, entries, ct);
+        if (!apply)
+        {
+            var previewCsv = "UserId,Status\n" + string.Join("\n", entries.Select(e => $"{e.UserId},{e.Status}"));
+            return new ParticipationBackfillResult(true,
+                $"Review {entries.Count} valid participation row(s) for {year} before importing.", entries.Count, previewCsv);
+        }
+
+        var count = await userService.BackfillParticipationsAsync(year, entries, actorUserId, ct);
         return ParticipationBackfillResult.Success(count, year);
     }
 

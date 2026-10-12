@@ -13,6 +13,7 @@ public sealed class UserParticipationBackfillServiceTests
 {
     private readonly IUserServiceInternal _users = Substitute.For<IUserServiceInternal>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
+    private readonly Guid _actorId = Guid.NewGuid();
     private List<(Guid UserId, ParticipationStatus Status)>? _captured;
 
     private UserParticipationBackfillService CreateService()
@@ -20,11 +21,26 @@ public sealed class UserParticipationBackfillServiceTests
         _users.BackfillParticipationsAsync(
                 Arg.Any<int>(),
                 Arg.Do<List<(Guid UserId, ParticipationStatus Status)>>(e => _captured = e),
+                _actorId,
                 Arg.Any<CancellationToken>())
             .Returns(ci => ((List<(Guid UserId, ParticipationStatus Status)>)ci[1]).Count);
 
         return new UserParticipationBackfillService(
             _users, _shifts, new FakeClock(Instant.FromUtc(2026, 6, 11, 0, 0)));
+    }
+
+    [HumansFact]
+    public async Task Preview_ShowsParsedRows_WithoutWriting()
+    {
+        var userId = Guid.NewGuid();
+        var result = await CreateService().BackfillFromCsvAsync(2026,
+            $"UserId,Status\n{userId},Ticketed\ninvalid,Attended\n{userId},99\n",
+            _actorId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.Count.Should().Be(1);
+        result.PreviewCsv.Should().Be($"UserId,Status\n{userId},Ticketed");
+        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -47,7 +63,7 @@ public sealed class UserParticipationBackfillServiceTests
         var b = Guid.NewGuid();
         var csv = $"UserId,Status\n{a},Ticketed\nnot-a-guid,Ticketed\n{b},notastatus\n{a},99\n{b},-1\n{b},NotAttending\n";
 
-        var result = await CreateService().BackfillFromCsvAsync(2026, csv, Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateService().BackfillFromCsvAsync(2026, csv, _actorId, Xunit.TestContext.Current.CancellationToken, apply: true);
 
         result.Succeeded.Should().BeTrue();
         _captured.Should().Equal((a, ParticipationStatus.Ticketed), (b, ParticipationStatus.NotAttending));
@@ -59,7 +75,7 @@ public sealed class UserParticipationBackfillServiceTests
         var a = Guid.NewGuid();
         var csv = $"\"{a}\";\"Ticketed\"\n";
 
-        var result = await CreateService().BackfillFromCsvAsync(2026, csv, Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateService().BackfillFromCsvAsync(2026, csv, _actorId, Xunit.TestContext.Current.CancellationToken, apply: true);
 
         result.Succeeded.Should().BeTrue();
         _captured.Should().Equal((a, ParticipationStatus.Ticketed));
@@ -71,18 +87,18 @@ public sealed class UserParticipationBackfillServiceTests
     public async Task UndefinedNumericStatus_FailsWithoutCallingUserService(int status)
     {
         var result = await CreateService().BackfillFromCsvAsync(
-            2026, $"{Guid.NewGuid()},{status}\n", Xunit.TestContext.Current.CancellationToken);
+            2026, $"{Guid.NewGuid()},{status}\n", _actorId, Xunit.TestContext.Current.CancellationToken, apply: true);
 
         result.Succeeded.Should().BeFalse();
-        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, Arg.Any<CancellationToken>());
+        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task NoValidEntries_FailsWithoutCallingUserService()
     {
-        var result = await CreateService().BackfillFromCsvAsync(2026, "garbage\nmore,garbage\n", Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateService().BackfillFromCsvAsync(2026, "garbage\nmore,garbage\n", _actorId, Xunit.TestContext.Current.CancellationToken, apply: true);
 
         result.Succeeded.Should().BeFalse();
-        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, Arg.Any<CancellationToken>());
+        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, default, Arg.Any<CancellationToken>());
     }
 }

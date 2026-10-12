@@ -25,9 +25,9 @@ internal interface IUserServiceInternal : IUserService
     Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Bulk import historical participation data (admin backfill).
+    /// Bulk import historical participation data after admin confirmation; counts and audits changed records.
     /// </summary>
-    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
+    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization

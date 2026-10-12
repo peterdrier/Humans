@@ -50,7 +50,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
             _userRepository, _userService,
@@ -462,7 +462,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
         Substitute.For<IFileStorage>(),
         Clock,
-        NullLogger<UserService>.Instance);
+        NullLogger<UserService>.Instance, AuditLog);
 
     // --- Helpers ---
 

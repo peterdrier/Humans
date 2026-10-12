@@ -262,9 +262,9 @@ internal partial interface IUserRepository : IRepository
     /// (userId, status) entry: if an existing Attended record exists for the
     /// year, skip it (Attended is permanent); otherwise upsert with
     /// <see cref="ParticipationSource.AdminBackfill"/> and <c>DeclaredAt = null</c>.
-    /// Returns the number of entries processed (including skipped-for-Attended).
+    /// Returns each changed member and final status after save; excludes protected and unchanged rows.
     /// </summary>
-    Task<int> BackfillParticipationsAsync(
+    Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillParticipationsAsync(
         int year,
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);

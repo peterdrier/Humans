@@ -860,9 +860,10 @@ internal sealed class CachingUserService(
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
-        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, ct));
+        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, actorUserId, ct));
         foreach (var userId in entries.Select(e => e.UserId).Distinct())
             await RefreshEventParticipationsAsync(userId, ct);
         return count;
