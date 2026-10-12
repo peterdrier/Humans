@@ -31,7 +31,9 @@ administrative recognition, and every decision is a human's.
 - A **Member** is any signed-in human a coordinator (or Board/Admin) let in: a join is a
   **request** (`IsPending`) until approved, or the coordinator adds the person directly.
 - A **Sensitive** group keeps its roster, documents, meetings and history to its members and
-  Board/Admin. Name, status, purpose and the deliverable sentence stay on the register.
+  Board/Admin. Name, status, purpose, the deliverable sentence and the coordinators stay on
+  the register: the coordinators are the group's public contact (the people the resolution
+  names), and asking to join needs someone to ask.
 - A **Meeting** is a dated session the group owns, optionally listed in the community
   calendar, with minutes filled in afterwards. Everyone with app access can read
   meetings and minutes on the group page; calendar listing does not change that access.
@@ -363,7 +365,8 @@ shortened copy. Full names and notes remain in the register and system log.
   notifies/emails coordinators, requests a Drive sync.
 - Refer/Refuse/Withdraw/Close/Reactivate: system log entry, audit entry, coordinators
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
-- Join: a pending row; coordinators notified (`WorkgroupMembershipRequested`); no log, no sync.
+- Join: a pending row; coordinators notified (`WorkgroupMembershipRequested`, naming nobody —
+  the pending row is the only copy of who asked, and erasure deletes it); no log, no sync.
   Approve/Add: `MemberJoined`, audit (`WorkgroupMembershipApproved` / `WorkgroupMemberAdded`),
   the person notified (`WorkgroupMembershipDecided`), Drive sync requested. Decline: audit
   (`WorkgroupMembershipDeclined`), the person notified. Leave: `MemberLeft`, Drive sync; a

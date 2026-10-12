@@ -137,15 +137,16 @@ internal sealed partial class WorkgroupService(
         if (existing is not null)
             return new(Refusal: new(existing.IsPending == true ? WorkgroupErrorKeys.MembershipPending : WorkgroupErrorKeys.AlreadyAMember));
 
-        var name = await NameOfAsync(userId, ct);
         var now = clock.GetCurrentInstant();
         await repository.AddMemberAsync(
             NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now, isPending: true), ct);
-        // The request has committed; the coordinators' notice must survive a closed tab.
+        // The request has committed; the coordinators' notice must survive a closed tab. It
+        // names nobody: the requester's name lives on the pending row, which erasure deletes,
+        // never in a coordinator's inbox, which it does not reach.
         ct = CancellationToken.None;
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupMembershipRequested,
-            "Workgroups_Notice_MembershipRequested", info, name, ct);
+            "Workgroups_Notice_MembershipRequested", info, body: null, ct);
         return new();
     }
 

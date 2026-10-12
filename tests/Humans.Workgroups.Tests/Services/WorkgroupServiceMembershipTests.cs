@@ -136,7 +136,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("join")]
     [InlineData("leave")]
     [InlineData("handover")]
     [InlineData("coordinators")]
@@ -145,8 +144,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var group = await SeedWorkgroupAsync();
         var coordinator = group.Members.Single().UserId;
         var member = SeedUser("Member");
-        if (!string.Equals(action, "join", StringComparison.Ordinal))
-            await AddMemberAsync(group.Id, member);
+        await AddMemberAsync(group.Id, member);
         var failure = new IOException("required name lookup failed");
         Users.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(failure));
@@ -158,7 +156,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var service = NewService();
         Func<Task> mutate = action switch
         {
-            "join" => () => service.JoinAsync(group.Id, member, Ct),
             "leave" => () => service.LeaveAsync(group.Id, member, null, ct: Ct),
             "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: Ct),
             _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct)
