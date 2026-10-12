@@ -112,6 +112,8 @@ else
     {
         var diff = result.Diffs[i];
         var hasError = diff.ErrorMessage is not null;
+        // A source-only claim (e.g. a Workgroup folder) has no google_resources row to audit or execute against.
+        var isLinked = diff.ResourceId != Guid.Empty;
         var collapseId = $"collapse-{resourceType}-{i}";
         var showPermission = diff.PermissionLevel is not null;
 
@@ -165,12 +167,16 @@ else
                             <span class="text-muted">None</span>
                         }
                     </small>
-                    @if (canViewAudit)
+                    @if (!isLinked)
+                    {
+                        <small class="text-muted font-monospace">@diff.GoogleId</small>
+                    }
+                    @if (canViewAudit && isLinked)
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            href="@Url.Action("Resource", "Google", new { id = diff.ResourceId })">Audit</a>
                     }
-                    @if (canExecuteActions && !diff.IsInSync && !hasError)
+                    @if (canExecuteActions && isLinked && !diff.IsInSync && !hasError)
                     {
                         <button class="btn btn-sm btn-outline-success"
                                 data-action="executeSingle" data-resource-id="@diff.ResourceId"

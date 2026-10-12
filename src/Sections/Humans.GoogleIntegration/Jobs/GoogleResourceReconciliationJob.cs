@@ -51,7 +51,14 @@ public class GoogleResourceReconciliationJob(
         // One Drive pass for Teams and Workgroups, including linked files.
         try
         {
-            await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+            // Per-resource failures come back as diff errors rather than exceptions.
+            var driveResult = await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+            if (driveResult.ErrorCount > 0)
+            {
+                logger.LogError("Google reconciliation phase 'Drive access source reconcile' had {ErrorCount} resource error(s)",
+                    driveResult.ErrorCount);
+                phaseFailures.Add("Drive access source reconcile");
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
