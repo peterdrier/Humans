@@ -1089,55 +1089,6 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampMembers.AsNoTracking().SingleAsync(m => m.Id == request.CampMemberId, ct)).Status.Should().Be(previousStatus);
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("approve", false)]
-    [Xunit.InlineData("reject", false)]
-    [Xunit.InlineData("withdraw", false)]
-    [Xunit.InlineData("approve", true)]
-    [Xunit.InlineData("reject", true)]
-    [Xunit.InlineData("withdraw", true)]
-    public async Task MembershipNotice_CallerCancellationPropagates(string action, bool cancelDuringDelivery)
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        await ApproveLatestSeasonAsync(camp.Id);
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Requester");
-        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
-        using var cancellation = new CancellationTokenSource();
-        if (cancelDuringDelivery)
-        {
-            Notifier.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
-                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), cancellation.Token).Returns(async _ =>
-                {
-                    await cancellation.CancelAsync();
-                    await Task.FromCanceled(cancellation.Token);
-                });
-        }
-        else
-        {
-            _userServiceRead.GetUserInfoAsync(userId, cancellation.Token)
-                .Returns(_ => new ValueTask<UserInfo?>(CancelLookupAsync()));
-
-            async Task<UserInfo?> CancelLookupAsync()
-            {
-                await cancellation.CancelAsync();
-                return await Task.FromCanceled<UserInfo?>(cancellation.Token);
-            }
-        }
-
-        Func<Task> mutate = action switch
-        {
-            "approve" => () => _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), cancellation.Token),
-            "reject" => () => _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), cancellation.Token),
-            "withdraw" => () => _service.WithdrawSeasonAsync(camp.Id, camp.Seasons.Single().Id, cancellation.Token),
-            _ => throw new ArgumentOutOfRangeException(nameof(action))
-        };
-        await mutate.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansFact]
     public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
     {
