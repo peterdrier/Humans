@@ -126,10 +126,11 @@ internal sealed class GoogleWorkspaceSyncService(
         var rawMessage = error?.RawMessage ?? string.Empty;
 
         // Drive returns 400 when the recipient has no Google account on a
-        // domain that supports notification-free sharing. 403 covers caller-
-        // permission failures (not the target's problem) so we don't mark
-        // those.
-        if (statusCode != 400)
+        // domain that supports notification-free sharing, and 403 "Cannot share a
+        // shared drive with non Google accounts" (#1938). Other 403s are caller-
+        // permission failures (not the target's problem); the phrase predicate
+        // below tells them apart.
+        if (statusCode is not (400 or 403))
         {
             return;
         }
@@ -152,10 +153,11 @@ internal sealed class GoogleWorkspaceSyncService(
             ct);
 
         logger.LogWarning(
-            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP 400. " +
+            "Google rejected target email {Email} while granting Drive permission on {GoogleId} - HTTP {StatusCode}. " +
             "Google email status marked Rejected for the address. Google error: {ErrorMessage}",
             userEmail,
             resource.GoogleId,
+            statusCode,
             rawMessage);
     }
 

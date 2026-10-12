@@ -455,7 +455,7 @@ internal sealed class GoogleDriveAccessSyncService(
                     logger.LogDebug("Permission already exists for {Email} on {FolderId}", member.Email, claim.FolderId);
                     break;
                 case DrivePermissionCreateOutcome.Failed:
-                    var error = $"Google Drive add failed for {member.Email} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
+                    var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
                     logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId, error,
@@ -469,6 +469,13 @@ internal sealed class GoogleDriveAccessSyncService(
             }
         }
         return errors;
+    }
+
+    /// <summary>Keeps two characters of the local part, like the log pipeline's email redaction.</summary>
+    private static string MaskEmail(string email)
+    {
+        var at = email.IndexOf('@', StringComparison.Ordinal);
+        return at <= 0 ? "***" : $"{email[..Math.Min(2, at)]}***{email[at..]}";
     }
 
     private async Task<List<string>> ApplyExtraAsync(FolderClaim claim, DrivePlan plan, GoogleSyncSource syncSource, CancellationToken ct)
