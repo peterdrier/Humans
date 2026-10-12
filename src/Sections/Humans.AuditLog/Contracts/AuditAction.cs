@@ -306,6 +306,12 @@ public enum AuditAction
     WorkgroupCommentHidden,
     // An admin set the root Drive folder every group's subfolder is created under.
     WorkgroupsRootFolderUpdated,
+    // A coordinator (or Board/Admin) approved a join request.
+    WorkgroupMembershipApproved,
+    // A coordinator (or Board/Admin) declined a join request.
+    WorkgroupMembershipDeclined,
+    // A coordinator (or Board/Admin) added a person to the group directly.
+    WorkgroupMemberAdded,
 
     // Assembly votes (nobodies-collective/Humans#86): lifecycle and ballot events for
     // Governance's binding Asociado votes. See Docs/features/assembly-votes.md.

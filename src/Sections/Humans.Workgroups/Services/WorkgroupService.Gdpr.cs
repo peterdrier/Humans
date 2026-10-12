@@ -55,6 +55,7 @@ internal sealed partial class WorkgroupService
                 {
                     Workgroup = NameOf(m.WorkgroupId),
                     Role = m.Role.ToString(),
+                    Pending = m.IsPending == true,
                     JoinedAt = m.JoinedAt.ToIso8601(),
                     LeftAt = m.LeftAt.ToIso8601()
                 })

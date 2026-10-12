@@ -1,7 +1,6 @@
 using Humans.Base.Constants;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;
@@ -18,7 +17,6 @@ namespace Humans.Workgroups.Services.Contributors;
 /// </remarks>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
-    IUserServiceRead users,
     ITeamServiceRead teams) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
@@ -59,18 +57,13 @@ internal sealed class WorkgroupDriveAccessSource(
     }
 
     /// <summary>
-    /// The root folder is the register's shelf: the Board and every approved Colaborador or
-    /// Asociado may read it, and nobody writes to it but the section's own subfolder calls.
+    /// The root folder is the register's shelf: the Board reads it, and nobody writes to it
+    /// but the section's own subfolder calls. Everyone else reaches only the subfolders of
+    /// the groups they belong to.
     /// </summary>
     private async Task<Dictionary<Guid, DrivePermissionLevel>> RootReadersAsync(CancellationToken ct)
     {
         var readers = new HashSet<Guid>();
-
-        foreach (var user in await users.GetAllUserInfosAsync(ct))
-        {
-            if (user.Profile is { IsApproved: true, MembershipTier: MembershipTier.Colaborador or MembershipTier.Asociado })
-                readers.Add(user.Id);
-        }
 
         if (await teams.GetTeamAsync(SystemTeamIds.Board, ct) is { } board)
         {

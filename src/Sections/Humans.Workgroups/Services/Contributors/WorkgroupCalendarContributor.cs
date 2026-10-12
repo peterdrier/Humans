@@ -31,8 +31,10 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
     {
         var register = await workgroups.GetRegisterAsync(ct);
 
+        // A sensitive group's meetings are its members' business; the per-user feed above
+        // still carries them for the members themselves.
         return register
-            .Where(w => w.Status == WorkgroupStatus.Active)
+            .Where(w => w.Status == WorkgroupStatus.Active && !w.IsSensitive)
             .SelectMany(w => w.Meetings
                 .Where(m => m.IsPublic && m.StartUtc < to && m.EndUtc > from)
                 .Select(m => ToItem(w, m)))
