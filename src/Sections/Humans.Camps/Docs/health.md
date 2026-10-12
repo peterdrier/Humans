@@ -105,4 +105,4 @@ on every read.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | [2026-08-28-Camps](../../../../docs/health/runs/2026-08-28-Camps.md) | 2026-08-28 | Migration sediment cleared; cross-camp scoping and Rejoin authority queued | [peterdrier/Humans#1561](https://github.com/peterdrier/Humans/pull/1561) |
-| [2026-10-12-Camps](../../../../docs/health/runs/2026-10-12-Camps.md) | 2026-10-12 | Help guide matches the real lifecycle; dead inner ports removed | pending |
+| [2026-10-12-Camps](../../../../docs/health/runs/2026-10-12-Camps.md) | 2026-10-12 | Help guide matches the real lifecycle; dead inner ports removed | [peterdrier/Humans#1968](https://github.com/peterdrier/Humans/pull/1968) |
