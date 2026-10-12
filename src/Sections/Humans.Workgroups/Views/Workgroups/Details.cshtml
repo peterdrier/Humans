@@ -36,6 +36,10 @@
         {
             <span class="badge bg-secondary">@Localizer.EnumDisplay(dr)</span>
         }
+        @if (w.IsSensitive)
+        {
+            <span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>@Localizer["Workgroups_Sensitive"]</span>
+        }
         @if (w.IsOpenForComment(Model.Now))
         {
             <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
@@ -52,7 +56,14 @@
                 <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
             </a>
         }
-        @if (!Model.IsMember)
+        @if (Model.IsPendingMember)
+        {
+            <form method="post" asp-action="Leave" asp-route-slug="@w.Slug">
+                <span class="text-muted small me-2">@Localizer["Workgroups_RequestPending"]</span>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_WithdrawRequest"]</button>
+            </form>
+        }
+        else if (!Model.IsMember)
         {
             <form method="post" asp-action="Join" asp-route-slug="@w.Slug">
                 <button type="submit" class="btn btn-sm btn-primary">
@@ -62,6 +73,11 @@
         }
     </div>
 </div>
+
+@if (!Model.CanSeeContent)
+{
+    <div class="alert alert-secondary"><i class="fa-solid fa-lock me-1"></i>@Localizer["Workgroups_SensitiveMembersOnly"]</div>
+}
 
 @if (w.Status is WorkgroupStatus.Refused or WorkgroupStatus.Withdrawn && !string.IsNullOrWhiteSpace(w.Reasons))
 {
@@ -206,7 +222,7 @@
     </details>
 }
 
-@{ var nextMeeting = w.NextMeeting(Model.Now); }
+@{ var nextMeeting = Model.CanSeeContent ? w.NextMeeting(Model.Now) : null; }
 @if (nextMeeting is not null)
 {
     <div class="card mb-3 border-primary">
@@ -222,6 +238,8 @@
     </div>
 }
 
+@if (Model.CanSeeContent)
+{
 <div class="row g-4">
     <div class="col-lg-4">
         <h2 class="h5">@Localizer["Workgroups_Roster"]</h2>
@@ -250,6 +268,37 @@
                 </li>
             }
         </ul>
+
+        @if (Model.CanManageMembers)
+        {
+            var pending = w.PendingMembers().ToList();
+            @if (pending.Count > 0)
+            {
+                <h3 class="h6">@Localizer["Workgroups_PendingRequests"] <span class="badge bg-warning text-dark">@pending.Count</span></h3>
+                <ul class="list-group mb-3">
+                    @foreach (var p in pending)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                            <vc:human user-id="@p.UserId" layout="AvatarName" size="28" />
+                            <span class="d-flex gap-1">
+                                <form method="post" asp-action="ApproveMember" asp-route-slug="@w.Slug" asp-route-userId="@p.UserId">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">@Localizer["Workgroups_Approve"]</button>
+                                </form>
+                                <form method="post" asp-action="DeclineMember" asp-route-slug="@w.Slug" asp-route-userId="@p.UserId">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Workgroups_Decline"]</button>
+                                </form>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <h3 class="h6">@Localizer["Workgroups_AddMember"]</h3>
+            <form method="post" asp-action="AddMember" asp-route-slug="@w.Slug" class="mb-3">
+                <vc:human-search field-name="userId" scope="Name" placeholder="@Localizer["Workgroups_AddMember"].Value" />
+                <button type="submit" class="btn btn-sm btn-outline-primary mt-2">@SharedLocalizer["Common_Add"]</button>
+            </form>
+        }
 
         @if (Model.IsMember)
         {
@@ -427,3 +476,12 @@
         }
     </div>
 </div>
+}
+else
+{
+    <h3 class="h6">@Localizer["Workgroups_RequestStatus"]</h3>
+    <form method="post" asp-action="RequestStatus" asp-route-slug="@w.Slug" class="mb-3" style="max-width: 480px;">
+        <input type="text" name="question" class="form-control form-control-sm mb-2" maxlength="500" placeholder="@Localizer["Workgroups_RequestStatusPlaceholder"]" />
+        <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_RequestStatus"]</button>
+    </form>
+}

@@ -197,7 +197,7 @@ internal sealed partial class WorkgroupService
         var application = bootstrap.Application;
         ApplyFields(workgroup, application.Name, application.Purpose, application.Deliverable,
             application.DeliverableKind, application.Audience, application.TargetDate,
-            application.DiscordChannelUrl);
+            application.DiscordChannelUrl, application.IsSensitive);
 
         workgroup.Members.Add(NewMember(workgroup.Id, bootstrap.CoordinatorUserId,
             WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));

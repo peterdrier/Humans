@@ -40,7 +40,7 @@ internal sealed partial class WorkgroupService
         w.Members
             .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
             .ThenBy(m => m.JoinedAt)
-            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt))
+            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone as far as anything outside the repository is
         // concerned; the log keeps the history of what was scheduled.
@@ -64,7 +64,8 @@ internal sealed partial class WorkgroupService
             .ToList(),
         w.BudgetAmount,
         w.HoldedAccountNumber,
-        w.HoldedAccountId);
+        w.HoldedAccountId,
+        w.IsSensitive == true);
 
     private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
@@ -117,6 +118,18 @@ internal sealed partial class WorkgroupService
     {
         if (w.Status != WorkgroupStatus.Active)
             return new(WorkgroupErrorKeys.Frozen);
+        return null;
+    }
+
+    /// <summary>Membership decisions are the coordinators' (or the Board's/Admin's), not every member's.</summary>
+    private static WorkgroupRefusal? RequireCoordinator(Workgroup w, Guid actorUserId, bool asAdmin)
+    {
+        if (asAdmin) return null;
+        if (!w.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
+                && m.Role == WorkgroupMemberRole.Coordinator))
+        {
+            return new(WorkgroupErrorKeys.NotACoordinator);
+        }
         return null;
     }
 
@@ -182,7 +195,8 @@ internal sealed partial class WorkgroupService
         WorkgroupDeliverableKind kind,
         WorkgroupAudience audience,
         LocalDate? targetDate,
-        string? discordChannelUrl)
+        string? discordChannelUrl,
+        bool isSensitive)
     {
         w.Name = name.Trim();
         w.Purpose = purpose.Trim();
@@ -191,6 +205,7 @@ internal sealed partial class WorkgroupService
         w.Audience = audience;
         w.TargetDate = targetDate;
         w.DiscordChannelUrl = Trimmed(discordChannelUrl);
+        w.IsSensitive = isSensitive ? true : null;
     }
 
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
@@ -205,13 +220,14 @@ internal sealed partial class WorkgroupService
     }
 
     private static WorkgroupMember NewMember(
-        Guid workgroupId, Guid userId, WorkgroupMemberRole role, Instant now) => new()
+        Guid workgroupId, Guid userId, WorkgroupMemberRole role, Instant now, bool isPending = false) => new()
         {
             Id = Guid.NewGuid(),
             WorkgroupId = workgroupId,
             UserId = userId,
             Role = role,
-            JoinedAt = now
+            JoinedAt = now,
+            IsPending = isPending ? true : null
         };
 
     private static WorkgroupLogEntry SystemEntry(

@@ -36,6 +36,10 @@ else
                             <div class="small text-muted">@Localizer["Workgroups_CoordinatedBy"] @Coordinators(w)</div>
                         </div>
                         <div class="text-end">
+                            @if (w.IsSensitive)
+                            {
+                                <span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>@Localizer["Workgroups_Sensitive"]</span>
+                            }
                             @if (w.IsOpenForComment(Model.Now))
                             {
                                 <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>

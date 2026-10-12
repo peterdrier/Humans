@@ -79,6 +79,9 @@ namespace Humans.Workgroups.Data.Migrations
                     b.Property<int?>("HoldedAccountNumber")
                         .HasColumnType("integer");
 
+                    b.Property<bool?>("IsSensitive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -375,6 +378,9 @@ namespace Humans.Workgroups.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<bool?>("IsPending")
+                        .HasColumnType("boolean");
 
                     b.Property<Instant>("JoinedAt")
                         .HasColumnType("timestamp with time zone");

@@ -25,10 +25,13 @@ administrative recognition, and every decision is a human's.
 - The **deliverable sentence** is "By [TargetDate] we will deliver [Deliverable] to
   [Audience]."
 - A **Coordinator** is one of the one or two people named on the register
-  (`WorkgroupMemberRole.Coordinator`). Register-facing, not permission-facing —
-  every member may do member work.
+  (`WorkgroupMemberRole.Coordinator`). Every member may do member work; the one thing a
+  coordinator holds that a member does not is the membership decision — who joins.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
-- A **Member** is any signed-in human who joined. Joining is immediate (standing approval).
+- A **Member** is any signed-in human a coordinator (or Board/Admin) let in: a join is a
+  **request** (`IsPending`) until approved, or the coordinator adds the person directly.
+- A **Sensitive** group keeps its roster, documents, meetings and history to its members and
+  Board/Admin. Name, status, purpose and the deliverable sentence stay on the register.
 - A **Meeting** is a dated session the group owns, optionally listed in the community
   calendar, with minutes filled in afterwards. Everyone with app access can read
   meetings and minutes on the group page; calendar listing does not change that access.
@@ -64,6 +67,7 @@ administrative recognition, and every decision is a human's.
 | DormantReason | WorkgroupDormantReason? | Null unless Dormant |
 | DriveFolderId | string(100)? | Null until Active |
 | DiscordChannelUrl | string(500)? | |
+| IsSensitive | bool? | Roster, documents, meetings and history for members and Board/Admin only; null reads as false (nullable so the column carries no physical default) |
 | Reasons | string(4000)? | Refusal, withdrawal, or Quiet-close reasons |
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
@@ -82,8 +86,9 @@ Indexes: `Slug`; `Status`; `DriveFolderId` unique filtered non-null (one group p
 | WorkgroupId | Guid | FK, Cascade |
 | UserId | Guid | Bare cross-section reference; indexed, no FK |
 | Role | WorkgroupMemberRole | Member / Coordinator |
-| JoinedAt | Instant | |
-| LeftAt | Instant? | Soft leave; roster shows current members, log keeps history |
+| JoinedAt | Instant | Request time until approval, then the approval time |
+| LeftAt | Instant? | Soft leave; roster shows current members, log keeps history. A declined or withdrawn request is a pending row with `LeftAt` set |
+| IsPending | bool? | True from the join request until a coordinator or Board/Admin approves it. A pending row is not a member anywhere: no member work, no Drive access, no roster slot, not a coordinator candidate. Null reads as false (nullable so the column carries no physical default) |
 
 Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 
@@ -218,7 +223,8 @@ a clear error while unset.
 | `/Workgroups` | Register: Active, Pending (Applied/Referred), Archive |
 | `/Workgroups/Apply` | Clause 1 application form |
 | `/Workgroups/{slug}` | Group page. Slug routes also resolve by the group's id, so a pre-rename link still lands |
-| `/Workgroups/{slug}/Join`, `/Leave`, `/RequestStatus` | Member actions |
+| `/Workgroups/{slug}/Join`, `/Leave`, `/RequestStatus` | Member actions. Join is a request; Leave while pending withdraws it |
+| `/Workgroups/{slug}/Members/{userId}/Approve`, `/Decline`, `/Members/Add` | Membership decisions: a coordinator of an Active group, or Board/Admin |
 | `/Workgroups/{slug}/Edit`, `/Coordinators` | Register fields, coordinator handover |
 | `/Workgroups/{slug}/Meetings/*`, `/Log/*` | Meetings and log entries |
 | `/Workgroups/{slug}/Documents/*`, `/Comments/*` | Documents and comments |
@@ -236,10 +242,10 @@ Settings and Register an existing group on first setup or after clearing the que
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log; join or leave a group; comment during an open window; request a status update; apply to form a group |
-| Workgroup member | Additionally: read Draft documents; edit register fields; create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
-| Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level |
-| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; set the root Drive folder; set the budget and its Holded account |
+| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); request a status update; apply to form a group |
+| Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
+| Coordinator | Everything a member can, plus the membership decision: approve or decline join requests and add people directly. Named on the register; addressee of notifications and join requests; may hand coordination to another member |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
 
 ## Invariants
 
@@ -260,6 +266,18 @@ Settings and Register an existing group on first setup or after clearing the que
 - Registration is administrative recognition only (Board Resolution clause 4). No
   transition happens automatically; every lifecycle step is a `BoardOrAdmin` action
   (`WorkgroupService.Lifecycle`).
+- **Joining is a request; a coordinator decides.** `JoinAsync` writes a pending row and
+  notifies the coordinators; nothing else changes. `ApproveMemberAsync` and `AddMemberAsync`
+  are the only ways a person becomes a member (`AdmitAsync`): both need a current coordinator
+  or `asAdmin`, and both write `MemberJoined`, audit, notify the person and request a Drive
+  sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
+  reason. A plain member gets `NotACoordinator`. `SetCoordinatorsAsync` never promotes a
+  pending row.
+- **A sensitive group's content is its members'.** `IsSensitive` hides roster, documents,
+  meetings and history from everyone but members and Board/Admin: the page shows the
+  register fields and the join button, the Document route answers 404, and
+  `AddCommentAsync` refuses a non-member (`MembersOnly`). The register listing, the join
+  request and the status request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
   leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
   leave the group coordinatorless on purpose so the Secretary can appoint someone.
@@ -311,6 +329,11 @@ Settings and Register an existing group on first setup or after clearing the que
   edit register fields, or reach any document-mutation route.
 - A member **cannot** register, refer, refuse, withdraw, close, reactivate, or record a
   document's disposition — those are `BoardOrAdmin` only.
+- A plain member **cannot** approve, decline or add members — a coordinator or `BoardOrAdmin` can.
+- A pending requester **cannot** do member work, see a sensitive group's content, hold Drive
+  access or be named coordinator; they can only withdraw the request.
+- A non-member **cannot** read a sensitive group's roster, documents, meetings or history,
+  nor comment on its documents; Board/Admin can.
 - Nobody can comment outside an open comment window, or on a Draft document.
 - A Dormant group's members **cannot** perform any member mutation (log, meetings,
   documents, comments, register edits) — only `BoardOrAdmin` actions remain.
@@ -333,8 +356,12 @@ shortened copy. Full names and notes remain in the register and system log.
   notifies/emails coordinators, requests a Drive sync.
 - Refer/Refuse/Withdraw/Close/Reactivate: system log entry, audit entry, coordinators
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
-- Join/Leave: system log entry (`MemberJoined`/`MemberLeft`), Drive sync requested; a
+- Join: a pending row; coordinators notified (`WorkgroupMembershipRequested`); no log, no sync.
+  Approve/Add: `MemberJoined`, audit (`WorkgroupMembershipApproved` / `WorkgroupMemberAdded`),
+  the person notified (`WorkgroupMembershipDecided`), Drive sync requested. Decline: audit
+  (`WorkgroupMembershipDeclined`), the person notified. Leave: `MemberLeft`, Drive sync; a
   forced coordinator handover on last-coordinator leave also writes `CoordinatorChanged`.
+  Withdrawing a pending request writes nothing.
   Names needed for membership/coordinator logs are read before persistence; a failed lookup
   leaves membership unchanged. Handover reuses the promoted person’s name for log and audit.
 - Publish/OpenComments/CloseComments/Deliver: system log entry; Publish and OpenComments
@@ -374,13 +401,13 @@ should end is the Board's decision, taken on the register in front of them.
 ## Cross-Section Dependencies
 
 - **Users**: `IUserServiceRead` — names, `MembershipTier`, approved-profile check.
-- **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges and root Drive readers.
+- **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges and the root Drive readers.
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` (inbound) — Active group
-  folders → Contributor for current members, Dormant → Viewer, root → Board/Asociado/Colaborador
-  readers. Withdrawn folders remain claimed with an empty roster so existing direct
+  folders → Contributor for current members (never a pending request), Dormant → Viewer,
+  root → Board readers only. Withdrawn folders remain claimed with an empty roster so existing direct
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
@@ -399,7 +426,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 - **Export** (`ContributeForUserAsync`): six slices — applications (groups this person
   applied for, which is attribution the register keeps on the group row), memberships (role,
-  dates), log entries, meetings created, documents (created, updated, or with a disposition
+  pending flag, dates), log entries, meetings created, documents (created, updated, or with a disposition
   this person recorded — each labelled), comments (including hidden ones, with disposition
   and response). Every attribution column the erasure nulls is also an export predicate, so
   nothing is erasable but unexportable. All exported instants are UTC ISO-8601 text, and log-entry

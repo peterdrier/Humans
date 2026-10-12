@@ -105,7 +105,7 @@ internal sealed partial class WorkgroupService(
         };
         ApplyFields(workgroup, application.Name, application.Purpose, application.Deliverable,
             application.DeliverableKind, application.Audience, application.TargetDate,
-            application.DiscordChannelUrl);
+            application.DiscordChannelUrl, application.IsSensitive);
 
         // The applicant is a coordinator from the start; the optional second name joins with them.
         workgroup.Members.Add(NewMember(workgroup.Id, actorUserId, WorkgroupMemberRole.Coordinator, now));
@@ -133,16 +133,102 @@ internal sealed partial class WorkgroupService(
         var workgroup = workgroupResult.Value!;
         if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
-        if (workgroup.Members.Any(m => m.UserId == userId && m.LeftAt is null))
-            return new(Refusal: new(WorkgroupErrorKeys.AlreadyAMember));
+        var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
+        if (existing is not null)
+            return new(Refusal: new(existing.IsPending == true ? WorkgroupErrorKeys.MembershipPending : WorkgroupErrorKeys.AlreadyAMember));
 
         var name = await NameOfAsync(userId, ct);
         var now = clock.GetCurrentInstant();
         await repository.AddMemberAsync(
-            NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now), ct);
-        // Membership has committed; its log and follow-up work must survive a closed tab.
+            NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now, isPending: true), ct);
+        // The request has committed; the coordinators' notice must survive a closed tab.
+        ct = CancellationToken.None;
+        var info = ToInfo(workgroup);
+        await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupMembershipRequested,
+            "Workgroups_Notice_MembershipRequested", info, name, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> ApproveMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+    {
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
+
+        var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
+        if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
+
+        return await AdmitAsync(workgroup, pending, actorUserId, AuditAction.WorkgroupMembershipApproved,
+            "Workgroups_Notice_MembershipApproved", ct);
+    }
+
+    public async Task<WorkgroupMutationResult> DeclineMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+    {
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
+
+        var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
+        if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
+
+        var name = await NameOfAsync(userId, ct);
+        pending.LeftAt = clock.GetCurrentInstant();
+        await repository.UpdateMembersAsync([pending], ct);
+        // The decision committed; finish its audit and notice independently of the browser.
+        ct = CancellationToken.None;
+        await AuditAsync(AuditAction.WorkgroupMembershipDeclined, workgroup, $"Declined the join request of {name}", actorUserId);
+        await NotifyAsync([userId], NotificationSource.WorkgroupMembershipDecided,
+            "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> AddMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+    {
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
+        if (await users.GetUserInfoAsync(userId, ct) is null)
+            return new(Refusal: new(WorkgroupErrorKeys.NotFound));
+
+        var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
+        if (existing is { IsPending: not true })
+            return new(Refusal: new(WorkgroupErrorKeys.AlreadyAMember));
+
+        // A pending request from the same person is simply approved by the add.
+        var member = existing ?? NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, clock.GetCurrentInstant(), isPending: true);
+        return await AdmitAsync(workgroup, member, actorUserId, AuditAction.WorkgroupMemberAdded,
+            "Workgroups_Notice_MemberAdded", ct, isNew: existing is null);
+    }
+
+    /// <summary>
+    /// The one place a person becomes a member: the pending row flips, the log and audit
+    /// record who let them in, the person is told, and the Drive folder picks them up.
+    /// </summary>
+    private async Task<WorkgroupMutationResult> AdmitAsync(
+        Workgroup workgroup, WorkgroupMember member, Guid actorUserId, AuditAction auditAction,
+        string noticeKey, CancellationToken ct, bool isNew = false)
+    {
+        var name = await NameOfAsync(member.UserId, ct);
+        var now = clock.GetCurrentInstant();
+        member.IsPending = null;
+        member.JoinedAt = now;
+        if (isNew) await repository.AddMemberAsync(member, ct);
+        else await repository.UpdateMembersAsync([member], ct);
+        // Membership has committed; its log, audit and follow-up work must survive a closed tab.
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
+        await AuditAsync(auditAction, workgroup, $"{name} admitted to the group", actorUserId);
+        await NotifyAsync([member.UserId], NotificationSource.WorkgroupMembershipDecided,
+            noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
         return new();
     }
@@ -166,6 +252,13 @@ internal sealed partial class WorkgroupService(
         var now = clock.GetCurrentInstant();
         var changed = new List<WorkgroupMember> { leaving };
         leaving.LeftAt = now;
+
+        // Withdrawing a request that was never approved: nothing to log, nothing to sync.
+        if (leaving.IsPending == true)
+        {
+            await repository.UpdateMembersAsync(changed, ct);
+            return new();
+        }
 
         var remainingCoordinators = workgroup.Members
             .Where(m => m.LeftAt is null && m.Id != leaving.Id && m.Role == WorkgroupMemberRole.Coordinator)
@@ -268,7 +361,7 @@ internal sealed partial class WorkgroupService(
         }
 
         ApplyFields(workgroup, edit.Name, edit.Purpose, edit.Deliverable, edit.DeliverableKind,
-            edit.Audience, edit.TargetDate, edit.DiscordChannelUrl);
+            edit.Audience, edit.TargetDate, edit.DiscordChannelUrl, edit.IsSensitive);
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
         // The change committed; finish its log or notice independently of the browser.
@@ -302,7 +395,7 @@ internal sealed partial class WorkgroupService(
         if (wanted.Count is < 1 or > 2)
             return new(Refusal: new(WorkgroupErrorKeys.CoordinatorCount));
 
-        var current = workgroup.Members.Where(m => m.LeftAt is null).ToList();
+        var current = workgroup.Members.Where(m => m.LeftAt is null && m.IsPending != true).ToList();
         if (wanted.Exists(id => current.TrueForAll(m => m.UserId != id)))
             return new(Refusal: new(WorkgroupErrorKeys.CoordinatorsMustBeMembers));
 

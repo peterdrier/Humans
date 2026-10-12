@@ -9,6 +9,10 @@ internal static class WorkgroupErrorKeys
     public const string NotFound = "Workgroups_Error_NotFound";
     public const string NotAMember = "Workgroups_Error_NotAMember";
     public const string AlreadyAMember = "Workgroups_Error_AlreadyAMember";
+    public const string MembershipPending = "Workgroups_Error_MembershipPending";
+    public const string NoPendingRequest = "Workgroups_Error_NoPendingRequest";
+    public const string NotACoordinator = "Workgroups_Error_NotACoordinator";
+    public const string MembersOnly = "Workgroups_Error_MembersOnly";
     public const string Frozen = "Workgroups_Error_Frozen";
     public const string NameRequired = "Workgroups_Error_NameRequired";
     public const string PurposeRequired = "Workgroups_Error_PurposeRequired";

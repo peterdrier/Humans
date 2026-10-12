@@ -128,4 +128,10 @@ public enum NotificationSource
 
     /// <summary>The Board recorded its written disposition on a delivered document.</summary>
     WorkgroupDispositionRecorded = 41,
+
+    /// <summary>Someone asked to join a working group; its coordinators decide.</summary>
+    WorkgroupMembershipRequested = 42,
+
+    /// <summary>A join request was approved or declined, or a coordinator added the person directly.</summary>
+    WorkgroupMembershipDecided = 43,
 }
