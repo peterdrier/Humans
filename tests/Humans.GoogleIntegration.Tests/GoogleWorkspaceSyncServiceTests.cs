@@ -1201,6 +1201,50 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // Helpers
     // ==========================================================================
 
+    [HumansTheory]
+    [Xunit.InlineData("parent404")]
+    [Xunit.InlineData("parent503")]
+    [Xunit.InlineData("root503")]
+    [Xunit.InlineData("depth")]
+    [Xunit.InlineData("complete")]
+    public async Task UpdateDriveFolderPathsAsync_OnlyCompleteWalksReplaceStoredNames(string scenario)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var resource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "folder-0");
+        _resourceRepository.GetActiveDriveFoldersAsync(ct).Returns([resource]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync("folder-0", ct).Returns(new DriveFileMetadataResult(
+            new DriveFileMetadata("folder-0", "Child", ["folder-1"], null, null), null));
+        if (string.Equals(scenario, "depth", StringComparison.Ordinal))
+        {
+            for (var depth = 1; depth <= 20; depth++)
+                _drivePermissions.GetFileAsync($"folder-{depth}", ct).Returns(new DriveFileMetadataResult(
+                    new DriveFileMetadata($"folder-{depth}", $"Parent {depth}",
+                        depth == 20 ? [] : [$"folder-{depth + 1}"], null, null), null));
+        }
+        else if (scenario.StartsWith("parent", StringComparison.Ordinal))
+        {
+            _drivePermissions.GetFileAsync("folder-1", ct).Returns(new DriveFileMetadataResult(null,
+                new GoogleClientError(string.Equals(scenario, "parent404", StringComparison.Ordinal) ? 404 : 503, "Parent unavailable")));
+        }
+        else
+        {
+            _drivePermissions.GetFileAsync("folder-1", ct).Returns(new DriveFileMetadataResult(
+                new DriveFileMetadata("folder-1", null, [], "folder-1", null), null));
+            _drivePermissions.GetSharedDriveAsync("folder-1", ct).Returns(string.Equals(scenario, "complete", StringComparison.Ordinal)
+                ? new SharedDriveMetadataResult(new SharedDriveMetadata("folder-1", "Shared Drive"), null)
+                : new SharedDriveMetadataResult(null, new GoogleClientError(503, "Drive unavailable")));
+        }
+
+        var updated = await _syncService.UpdateDriveFolderPathsAsync(ct);
+
+        updated.Should().Be(string.Equals(scenario, "complete", StringComparison.Ordinal) ? 1 : 0);
+        if (string.Equals(scenario, "complete", StringComparison.Ordinal))
+            await _resourceRepository.Received(1).UpdateNameAsync(resource.Id, "Shared Drive / Child", ct);
+        else
+            await _resourceRepository.DidNotReceiveWithAnyArgs().UpdateNameAsync(default, default!, default);
+    }
+
     private static Dictionary<Guid, TeamInfo> ExpectedMemberTeam() => new()
     {
         [TestTeamId] = new TeamInfo(TestTeamId, "Test Team", null, "test-team", true, false,

@@ -861,6 +861,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         var segments = new List<string>();
         var currentId = fileId;
+        var reachedRoot = false;
         const int maxDepth = 20;
 
         for (var depth = 0; depth < maxDepth; depth++)
@@ -873,7 +874,7 @@ internal sealed class GoogleWorkspaceSyncService(
                 {
                     logger.LogWarning("Drive folder {GoogleId} not found", currentId);
                 }
-                break;
+                return null;
             }
 
             var file = fileResult.File;
@@ -883,26 +884,29 @@ internal sealed class GoogleWorkspaceSyncService(
                 && string.Equals(currentId, file.DriveId, StringComparison.Ordinal))
             {
                 var driveResult = await drivePermissions.GetSharedDriveAsync(file.DriveId, cancellationToken);
-                if (driveResult.Drive is not null)
-                {
-                    segments.Add(driveResult.Drive.Name);
-                }
-                else
-                {
-                    segments.Add(file.Name ?? string.Empty);
-                }
+                var driveName = driveResult.Drive?.Name ?? file.Name;
+                if (driveName is null)
+                    return null;
+                segments.Add(driveName);
+                reachedRoot = true;
                 break;
             }
 
-            segments.Add(file.Name ?? string.Empty);
+            if (file.Name is null)
+                return null;
+            segments.Add(file.Name);
 
             if (file.Parents is null || file.Parents.Count == 0)
+            {
+                reachedRoot = true;
                 break;
+            }
 
             currentId = file.Parents[0];
         }
 
-        if (segments.Count == 0)
+        // A failed read or bounded walk must not overwrite a known full path with a suffix.
+        if (!reachedRoot || segments.Count == 0)
             return null;
 
         segments.Reverse();
