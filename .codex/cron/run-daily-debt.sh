@@ -367,9 +367,9 @@ main() {
     if [[ -f "$last_message_file" ]]; then
       run_report="$(cat "$last_message_file")"
       log "recovered run report from $last_message_file for the retried PR"
-      if grep -q '^## Automated gate warning$' "$last_message_file"; then
+      if grep -qE '^## Automated (gate|goal) warning$' "$last_message_file"; then
         retry_draft=true
-        log "recovered report contains a gate warning — reopening as draft"
+        log "recovered report contains an automation warning — reopening as draft"
       fi
     fi
     if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$retry_draft")"; then
@@ -446,16 +446,21 @@ main() {
   local codex_exit=0
   python3 "$WORK_DIR/.codex/cron/run-goal.py" "$prompt_file" "$last_message_file" "$work_deadline" \
     >>"$log_file" 2>&1 || codex_exit=$?
-  if (( codex_exit != 0 )); then
+  commits_made="$(git rev-list --count "$head_before..HEAD")"
+  local goal_blocked=false
+  if (( codex_exit == 2 )); then
+    goal_blocked=true
+    log "Codex goal blocked; validating committed work for a draft PR"
+  elif (( codex_exit != 0 )); then
     exit_reason="codex-failed"
     die "Codex goal failed; preserving local work without publishing"
   fi
-  if (( $(date -u +%s) < work_deadline )); then
+  if [[ "$goal_blocked" == false ]] && (( $(date -u +%s) < work_deadline )); then
     exit_reason="goal-ended-early"
     die "Goal returned before the work deadline"
   fi
   local work_elapsed=$(( $(date -u +%s) - work_started ))
-  log "timed goal completed after $work_elapsed seconds"
+  log "Codex worker stopped after $work_elapsed seconds (goal blocked: $goal_blocked)"
 
   # ---- refuse to gate or push from anywhere but the branch we hand over ----
   # The gate below tests whatever is checked out, but the push names
@@ -492,6 +497,14 @@ main() {
 
   # ---- capture codex's run report -----------------------------------------
   # Saved by the goal client outside WORK_DIR, not part of the tested tree.
+  if [[ "$goal_blocked" == true ]]; then
+    {
+      printf '## Automated goal warning\n\n'
+      printf 'The Codex goal stopped blocked. This draft preserves committed work for review; the goal did not complete and no cumulative agent report was produced.\n\n'
+      printf 'Committed changes (from Git):\n\n'
+      git log --reverse --format='- %h %s' "$head_before..$head_after"
+    } >"$last_message_file"
+  fi
   run_report="$(cat "$last_message_file")"
 
   # Bookkeeping and test-only work are not production debt fixes.
@@ -589,9 +602,12 @@ main() {
   fi
   log "pushed $branch to origin"
 
-  # ---- open the PR, ready for review --------------------------------------
-  if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
+  # ---- open the PR (blocked work stays draft) -----------------------------
+  if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$goal_blocked")"; then
     exit_reason="pushed"
+    if [[ "$goal_blocked" == true ]]; then
+      exit_reason="pushed-draft-goal-blocked"
+    fi
     log "opened PR: $pr_url"
     post_spend_comment "$pr_url" "$gh_repo" "$run_date" "$log_file"
   else
@@ -603,6 +619,9 @@ main() {
   fi
 
   write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+  if [[ "$goal_blocked" == true ]]; then
+    exit 1
+  fi
 }
 
 # Publishes a failed gate as a draft so the follow-up reviewer can repair it.

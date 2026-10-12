@@ -46,7 +46,11 @@ not an agent-written "done" flag. The process stays in dangerous mode
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
-Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
+Blocked goals return a distinct result: the wrapper records the actual commit
+count, checks the branch and clean tree, and runs final build/test gates. Substantive
+committed work is published as a draft with a blocked warning and Git commit list,
+while the service still fails. Other goal failures, missing completion reports,
+and disconnection fail without publishing. Dirty blocked runs never publish.
 
 If the final build or non-integration test gate fails, the wrapper starts short Codex repair passes, capped at
 `GATE_REPAIR_ATTEMPTS` (default `2`) in total across both gates. Each pass gets
@@ -213,7 +217,7 @@ resume. To remove entirely, also delete
 ## What it will and won't do
 
 - Never pushes to `main`. A green run produces a ready-for-review PR; an
-  unrepaired gate failure produces a draft PR for follow-up repair.
+  unrepaired gate failure or blocked goal produces a draft PR for follow-up review.
 - A bounded repair pass may be attempted after a gate failure. If the final
   build or test gate is still red, the runner pushes the committed branch and
   opens a draft PR with the failure warning and log excerpt so the follow-up
