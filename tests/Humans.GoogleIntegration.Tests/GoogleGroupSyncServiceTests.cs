@@ -420,7 +420,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             userId,
             GoogleEmailStatus.Rejected,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansFact]
@@ -454,7 +454,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             userId,
             GoogleEmailStatus.Rejected,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansFact]
@@ -478,7 +478,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain("invalid argument 'roles'");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _userService.DidNotReceiveWithAnyArgs()
             .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
         _syncScheduler.Scheduled.Should().ContainSingle();
@@ -501,7 +501,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain("billing account disabled");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _userService.DidNotReceiveWithAnyArgs()
             .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
         _syncScheduler.Scheduled.Should().ContainSingle();
@@ -840,6 +840,12 @@ public sealed class GoogleGroupSyncServiceTests
                 DisplayName = u.DisplayName,
                 CreatedAt = _clock.GetCurrentInstant()
             };
+            _usersByUserId[u.UserId].UserEmails.Add(new UserEmail
+            {
+                Id = Guid.NewGuid(), UserId = u.UserId, Email = u.Email,
+                IsVerified = true, IsGoogle = true, CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            });
         }
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

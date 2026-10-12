@@ -50,6 +50,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 
 **Acceptance Criteria:**
 - Access granted on join approval
+- Provisioning returns the actual attempted email row and failure classification; transient returned failures stay queued and permanent refusals remain visible as failed events. Vendor results cannot change a newer selected address’s state.
 - Uses member's Google account (OAuth-linked)
 - Appropriate permission level (Editor/Writer)
 - Notification that access was granted

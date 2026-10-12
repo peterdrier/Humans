@@ -182,7 +182,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         diff.ErrorMessage.Should().NotBeNull();
         if (rejectsAddress)
-            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         else
             await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
     }
@@ -762,6 +762,14 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
     private void WireUserLookups((Guid UserId, string Email)[] emails)
     {
+        foreach (var (id, email) in emails)
+            if (_usersById.TryGetValue(id, out var user))
+                _usersById[id] = user with
+                {
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true,
+                        null, null, null, null, _now, _now, GoogleEmailStatus.Unknown)]
+                };
+
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {

@@ -265,8 +265,7 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Effective Google Workspace sync status for this user — the per-address status of the
-    /// address sync actually targets. That target mirrors
-    /// <c>GoogleWorkspaceSyncService.TryGetGoogleEmail</c>: the verified
+    /// address sync actually targets: the verified
     /// <see cref="UserEmailInfo.IsGoogle"/> row, else the verified provider (OAuth) fallback row
     /// (covers ~pre-#687 users with no IsGoogle row). <see cref="GoogleEmailStatus.Unknown"/>
     /// when there is no such address. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c>

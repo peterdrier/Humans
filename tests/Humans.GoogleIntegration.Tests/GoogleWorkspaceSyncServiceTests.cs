@@ -145,7 +145,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _googleSyncOutboxRepository,
             _teamService,
             _userService,
-            _userEmailService,
             _googleGroupSync,
             _auditLogService,
             _googleSyncLog,
@@ -155,6 +154,38 @@ public sealed class GoogleWorkspaceSyncServiceTests
             clock,
             serviceProvider,
             _logger);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddUserToTeamResourcesAsync_SelectionChangesDuringGrant_KeepsAttemptedEmailRow(bool rejectsTarget)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var attempted = MakeUser(TestUserId, "old@example.org");
+        var replacement = MakeUser(TestUserId, "new@example.org");
+        var selected = attempted;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(_ => new ValueTask<UserInfo?>(selected));
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, ct)
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct).Returns(SyncMode.AddAndRemove);
+        var response = rejectsTarget
+            ? new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "No Google account"))
+            : new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, "old@example.org", "writer", ct)
+            .Returns(_ => { selected = replacement; return response; });
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
+
+        selected.Should().BeSameAs(replacement);
+        result.UserId.Should().Be(TestUserId);
+        result.GoogleEmailId.Should().Be(attempted.UserEmails.Single().Id);
+        result.Outcome.Should().Be(rejectsTarget ? GoogleResourceGrantOutcome.Failed : GoogleResourceGrantOutcome.Accepted);
+        if (rejectsTarget)
+            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+                TestUserId, GoogleEmailStatus.Rejected, ct, attempted.UserEmails.Single().Id);
+        await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default, default);
     }
 
     [HumansTheory]
@@ -373,7 +404,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             Xunit.TestContext.Current.CancellationToken,
             GoogleSyncSource.TeamMemberJoined);
 
-        outcome.Should().Be(GoogleResourceGrantOutcome.Deferred);
+        outcome.Outcome.Should().Be(GoogleResourceGrantOutcome.Deferred);
         await _drivePermissions.DidNotReceive()
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -505,7 +536,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             TestUserId,
             GoogleEmailStatus.Rejected,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansTheory]
@@ -546,7 +577,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, Error: null));
         }
 
-        (await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct))
+        (await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct)).Outcome
             .Should().Be(expected);
         if (groupOnly)
         {
@@ -740,7 +771,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansFact]
@@ -802,7 +833,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     // ==========================================================================
@@ -960,6 +991,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // grant/revoke every night.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
+
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) }));
 
         var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
         _resourceRepository

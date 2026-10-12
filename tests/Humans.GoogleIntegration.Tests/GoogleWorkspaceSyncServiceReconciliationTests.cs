@@ -120,7 +120,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService,
-            _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
             AuditLog,
             _syncLog,
@@ -436,6 +435,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
                     .Where(m => call.ArgAt<IReadOnlyCollection<Guid>>(0).Contains(m.UserId))
                     .ToDictionary(m => m.UserId, m => UserInfo.Create(
                         new User { Id = m.UserId, DisplayName = m.DisplayName, Email = m.Email },
-                        [], [], [], null, []))));
+                        [new UserEmail { Id = Guid.NewGuid(), UserId = m.UserId, Email = m.Email!, IsVerified = true, IsGoogle = true }],
+                        [], [], null, []))));
     }
 }

@@ -222,19 +222,17 @@ internal sealed class UserService(
     // --- User writes ---
 
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
     {
-        // Status is per-address (#687): it belongs to the canonical Google email — the address
-        // sync actually targets — not the user. Resolve the SAME target as the sync services
-        // (GoogleWorkspaceSyncService.TryGetGoogleEmail): verified IsGoogle row, else the verified
-        // provider (OAuth) fallback. Stamping the fallback row keeps suppression working for users
-        // with no IsGoogle row (~pre-#687). No such address → nothing to stamp.
+        // Vendor results belong to the row that was attempted, even if the user switched
+        // Google address while the request ran. Legacy callers may still select the current
+        // verified Google/OAuth address by omitting the row id.
         var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
-            ?? emails
-                .Where(e => e.IsVerified && e.Provider != null)
-                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
+        var googleRow = googleEmailId is { } targetId
+            ? emails.FirstOrDefault(e => e.Id == targetId && e.IsVerified)
+            : emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
+                ?? emails.Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         if (googleRow is null)
             return false;
 
