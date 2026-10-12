@@ -282,7 +282,7 @@ Settings and Register an existing group on first setup or after clearing the que
   register fields and the join button, the Document route answers 404, and
   `AddCommentAsync` refuses a non-member (`MembersOnly`). The community calendar skips its
   public meetings (the members' own feed keeps them) and the Governance card shows its
-  register entry without next meeting or comment badge; the register and the page header
+  register entry without next meeting, comment or update-due badge; the register and the page header
   show its open-for-comment and update-due badges to members only (Board/Admin on the
   page). The register listing itself, the join request and the status request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
