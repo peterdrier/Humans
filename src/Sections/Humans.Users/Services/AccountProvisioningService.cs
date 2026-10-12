@@ -88,6 +88,12 @@ internal sealed class AccountProvisioningService(
                     existingUser.ContactSource = source;
                 }
 
+                // User/email may have committed before profile creation failed. Retry the
+                // idempotent final step before reporting a successfully provisioned account.
+                if (await userService.EnsureStubProfileAsync(existingUser.Id, ct: ct))
+                    await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
+                        $"Completed missing profile provisioning from {source}.", nameof(AccountProvisioningService));
+
                 return new AccountProvisioningResult(existingUser, Created: false);
             }
         }
@@ -163,6 +169,10 @@ internal sealed class AccountProvisioningService(
                     User: null);
             }
 
+            if (await userService.EnsureStubProfileAsync(
+                existingUser.Id, burnerName.Trim(), firstName.Trim(), lastName.Trim(), ct))
+                await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
+                    "Completed missing profile after interrupted magic-link signup.", existingUser.Id);
             await userService.RecordLoginAsync(existingUser.Id, ct);
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.ExistingUser,

@@ -806,6 +806,51 @@ public class AccountProvisioningServiceTests
             .AddProvisionedEmailAsync(result.User.Id, "jane@example.com", Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProvisioningRetry_RepairsProfileAfterUserAndEmailWereSaved(bool imported)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var attempts = 0;
+        var profiles = new HashSet<Guid>();
+        _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null).Returns(call =>
+            {
+                if (attempts++ == 0)
+                    return Task.FromException<bool>(new InvalidOperationException("profile save unavailable"));
+                return Task.FromResult(profiles.Add(call.ArgAt<Guid>(0)));
+            });
+        async Task ProvisionAsync()
+        {
+            if (imported)
+                await _service.FindOrCreateUserByEmailAsync("retry@example.org", "Retry Human", ContactSource.TicketTailor, ct);
+            else
+                await _service.CompleteMagicLinkSignupAsync("retry@example.org", "Retry Human", "First", "Last", ct);
+        }
+
+        Func<Task> first = ProvisionAsync;
+        await first.Should().ThrowAsync<InvalidOperationException>();
+        var persistedUser = _userRepo.All.Should().ContainSingle().Which;
+        _userEmailFake.All.Should().ContainSingle().Which.UserId.Should().Be(persistedUser.Id);
+        profiles.Should().BeEmpty();
+
+        await ProvisionAsync();
+
+        profiles.Should().ContainSingle().Which.Should().Be(persistedUser.Id);
+        _userRepo.All.Should().ContainSingle();
+        await _userManager.Received(1).CreateAsync(Arg.Any<User>());
+        if (imported)
+            await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
+                Arg.Any<string>(), nameof(AccountProvisioningService), null, null);
+        else
+            await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
+                Arg.Any<string>(), persistedUser.Id, null, null);
+        await ProvisionAsync();
+        profiles.Should().ContainSingle();
+        _audit.ReceivedCalls().Should().HaveCount(1);
+    }
+
     [HumansFact]
     public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
     {

@@ -263,6 +263,8 @@ Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 
+Import and magic-link retry matches run the idempotent profile ensure before returning the existing account; successful repairs emit `StubProfileBackfilled` without duplicating accounts or overwriting an existing Profile.
+
 Unverified import replacements run deletion and provisioning in one serializable ambient transaction, through existing owned services/repositories. `IUserInfoInvalidator` refreshes all affected users after commit or rollback.
 
 ### AccountDeletionService (Scoped)
