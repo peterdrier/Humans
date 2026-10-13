@@ -205,8 +205,7 @@ public class ExpenseRepositoryTests
             UploadedByUserId = Guid.NewGuid(),
             UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
         };
-        await _sut.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
-        await _sut.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+        await _sut.ReplaceLineAttachmentAsync(report.Id, proofId, proofAttachment, Xunit.TestContext.Current.CancellationToken);
 
         var removed = await _sut.RemoveLineAsync(report.Id, invoiceId, Xunit.TestContext.Current.CancellationToken);
 
@@ -228,8 +227,7 @@ public class ExpenseRepositoryTests
         var old = NewAttachment();
         var lineId = Guid.NewGuid();
         await _sut.AddLineAsync(report.Id, new ExpenseLine { Id = lineId, Description = "receipt", Amount = 1m }, ct);
-        await _sut.AddAttachmentAsync(old, ct);
-        await _sut.SetLineAttachmentAsync(lineId, old.Id, ct);
+        await _sut.ReplaceLineAttachmentAsync(report.Id, lineId, old, ct);
         var replacement = NewAttachment();
 
         (await _sut.ReplaceLineAttachmentAsync(Guid.NewGuid(), lineId, replacement, ct)).Found.Should().BeFalse();
@@ -237,36 +235,11 @@ public class ExpenseRepositoryTests
 
         replaced.Found.Should().BeTrue();
         replaced.Replaced!.Id.Should().Be(old.Id);
-        (await _sut.GetByIdAsync(report.Id, ct))!.Lines.Single().AttachmentId.Should().Be(replacement.Id);
+        var line = (await _sut.GetByIdAsync(report.Id, ct))!.Lines.Single();
+        line.AttachmentId.Should().Be(replacement.Id);
+        line.Attachment.Should().NotBeNull();
         await using var context = await _factory.CreateDbContextAsync(ct);
         (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle(a => a.Id == replacement.Id);
-    }
-
-    [HumansFact]
-    public async Task SetLineAttachmentAsync_LinksAttachment()
-    {
-        var report = MakeReport();
-        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
-        var lineId = Guid.NewGuid();
-        await _sut.AddLineAsync(report.Id,
-            new ExpenseLine { Id = lineId, Description = "x", Amount = 1m }, Xunit.TestContext.Current.CancellationToken);
-
-        var attachId = await _sut.AddAttachmentAsync(new ExpenseAttachment
-        {
-            Id = Guid.NewGuid(),
-            OriginalFileName = "r.pdf",
-            Extension = ".pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 100,
-            UploadedByUserId = Guid.NewGuid(),
-            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
-        }, Xunit.TestContext.Current.CancellationToken);
-
-        await _sut.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
-
-        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
-        loaded!.Lines.First().AttachmentId.Should().Be(attachId);
-        loaded.Lines.First().Attachment.Should().NotBeNull();
     }
 
     [HumansFact]
@@ -276,9 +249,8 @@ public class ExpenseRepositoryTests
         await _sut.AddDraftAsync(r, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddLineAsync(r.Id,
             new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 5m }, Xunit.TestContext.Current.CancellationToken);
-        var attachId = await _sut.AddAttachmentAsync(NewAttachment(), Xunit.TestContext.Current.CancellationToken);
         var line = (await _sut.GetByIdAsync(r.Id, Xunit.TestContext.Current.CancellationToken))!.Lines.First();
-        await _sut.SetLineAttachmentAsync(line.Id, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.ReplaceLineAttachmentAsync(r.Id, line.Id, NewAttachment(), Xunit.TestContext.Current.CancellationToken);
 
         var ok = await _sut.SubmitAsync(r.Id, "Alice", "ES9121000418450200051332",
             Instant.FromUtc(2026, 5, 2, 9, 0), Xunit.TestContext.Current.CancellationToken);
@@ -464,16 +436,14 @@ public class ExpenseRepositoryTests
     [HumansFact]
     public async Task MarkAttachmentPushedAsync_StampsTheUploadTime()
     {
-        var attachmentId = await _sut.AddAttachmentAsync(new ExpenseAttachment
-        {
-            Id = Guid.NewGuid(),
-            OriginalFileName = "receipt.pdf",
-            Extension = ".pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 10,
-            UploadedByUserId = Guid.NewGuid(),
-            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-        }, Xunit.TestContext.Current.CancellationToken);
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var lineId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = lineId, Description = "receipt", Amount = 1m }, Xunit.TestContext.Current.CancellationToken);
+        var attachment = NewAttachment();
+        await _sut.ReplaceLineAttachmentAsync(report.Id, lineId, attachment, Xunit.TestContext.Current.CancellationToken);
+        var attachmentId = attachment.Id;
         var pushedAt = Instant.FromUtc(2026, 5, 6, 9, 0);
 
         await _sut.MarkAttachmentPushedAsync(attachmentId, pushedAt, Xunit.TestContext.Current.CancellationToken);
