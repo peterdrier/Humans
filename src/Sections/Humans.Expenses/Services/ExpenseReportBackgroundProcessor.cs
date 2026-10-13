@@ -73,17 +73,13 @@ internal sealed class ExpenseReportBackgroundProcessor(
                     continue;
                 }
 
-                var submitterName = string.IsNullOrWhiteSpace(report.PayeeName)
-                    ? "Unknown"
-                    : report.PayeeName;
-
                 var now = clock.GetCurrentInstant();
 
                 switch (outboxEvent.EventType)
                 {
                     case HoldedExpenseOutboxEventType.CreateIncomingDoc:
                         await holdedPublisher.PublishAsync(
-                            outboxEvent.Id, report, submitterName, now, ct);
+                            outboxEvent.Id, report, now, ct);
                         break;
 
                     case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
