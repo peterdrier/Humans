@@ -21,10 +21,12 @@ Repository: `IExpenseRepository`.
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
 Cross-section calls via `IFileStorage`, `IBudgetServiceRead`, `ITeamServiceRead`,
-`IUserService`, `IAuditLogService`, `IHoldedClient`,
+`IUserService`, `IUserEmailService`, `IEmailService`, `IAuditLogService`, `IHoldedClient`,
 `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters). Implements `IUserDataContributor`. No
 `IMemoryCache`.
+
+### ExpenseReportBackgroundProcessor (Scoped)
 
 `ExpenseHoldedPublisher` is an internal application service constructed by `ExpenseReportBackgroundProcessor`.
 It uses the same `IExpenseRepository` for contact/document links, pushed-attachment stamps and
