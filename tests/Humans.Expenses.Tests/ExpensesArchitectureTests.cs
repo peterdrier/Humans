@@ -5,7 +5,7 @@ namespace Humans.Expenses.Tests;
 
 /// <summary>
 /// Architecture tests enforcing the section shape for Expenses
-/// (nobodies-collective/Humans#866, G5).
+/// (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
 /// The section project references EF Core because its repository lives in it; "only the

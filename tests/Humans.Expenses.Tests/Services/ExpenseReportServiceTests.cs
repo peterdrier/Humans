@@ -43,7 +43,7 @@ namespace Humans.Expenses.Tests.Services;
 /// <c>UsersDbContext</c> and this test never touched it — only the audit substitute, the clock
 /// and the section-context options below. Inheriting it here would have meant granting a section
 /// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
-/// G5 split exists to draw (nobodies-collective/Humans#866).
+/// section split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
 public sealed class ExpenseReportServiceTests
 {
@@ -116,8 +116,8 @@ public sealed class ExpenseReportServiceTests
         {
             Id = userId,
             DisplayName = profile.BurnerName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
             BurnerName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
@@ -3301,7 +3301,7 @@ public sealed class ExpenseReportServiceTests
     /// <summary>
     /// Stubs the active budget year and one category on <c>IBudgetServiceRead</c>. Builds the
     /// contract DTOs directly: Budget's entities are internal to <c>Humans.Budget</c> since its
-    /// G5 move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
+    /// own-project move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
     /// </summary>
     private (BudgetYearDetail Year, BudgetCategorySnapshot Category) SetupActiveYear()
     {
