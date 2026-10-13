@@ -39,7 +39,10 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
+        var teams = CreateTeamMap();
+        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
+                teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
     }
 
     // ─── Submitter × View ────────────────────────────────────────────────────
