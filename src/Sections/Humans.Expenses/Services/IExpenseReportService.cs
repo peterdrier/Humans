@@ -42,7 +42,8 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     /// one is supplied (validated before the line is created, so a bad upload leaves nothing
     /// half-made). A non-null <paramref name="parentLineId"/> adds a proof row backing that Invoice
     /// line — reviewed with the report but excluded from the total and never pushed to Holded.
-    /// Travel line types are rejected (their creation paths were removed).
+    /// Travel line types are rejected: their amounts are computed, so they go through the
+    /// Mileage/PerDiem add methods.
     /// </summary>
     Task<ExpenseAddLineResult> AddLineWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,

@@ -31,7 +31,6 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
             .HasForeignKey(l => l.ExpenseReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // FK-only refs (no nav)
         b.HasIndex(x => new { x.SubmitterUserId, x.Status });
         b.HasIndex(x => x.Status);
         b.HasIndex(x => x.BudgetCategoryId);

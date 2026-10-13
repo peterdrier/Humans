@@ -13,12 +13,10 @@ internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)
     {
-        // Resource-based (the resource is the ExpenseReportDto). Registered here, the handler's
-        // own section, the same way Camps' CampComplianceAccess registers where
-        // CampComplianceAccessHandler lives — so Backdoor (peterdrier/Humans#1838) can reach the
-        // same View check ExpensesController uses via IAuthorizationService.AuthorizeAsync(User,
-        // report, PolicyNames.ExpenseReportView), without ExpenseReportOperationRequirement
-        // leaving this section.
+        // Resource-based (the resource is the ExpenseReportDto). Registered in the handler's own
+        // section so Backdoor can reach the same View check ExpensesController uses, via
+        // IAuthorizationService.AuthorizeAsync(User, report, PolicyNames.ExpenseReportView),
+        // without ExpenseReportOperationRequirement leaving this section.
         options.AddPolicy(PolicyNames.ExpenseReportView, policy =>
             policy.AddRequirements(new ExpenseReportOperationRequirement(ExpenseReportOperation.View)));
     }

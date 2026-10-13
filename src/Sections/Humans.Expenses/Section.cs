@@ -47,12 +47,8 @@ public sealed class Section : ISection
         services.AddScoped<ExpensesEmails>();
         services.AddScoped<IEmailPreviewContributor, ExpensesEmailPreviews>();
 
-        // The resource-based handler lives here; ExpensesController authorizes against it directly.
-        // Its one named policy, ExpenseReportView (for Backdoor, peterdrier/Humans#1838), also
-        // registers here rather than in the consumer's SectionPolicies (Backdoor's), because the
-        // requirement it wraps stays internal to Expenses and Backdoor already hard-depends on this
-        // section via its project reference and IExpenseReportServiceRead — no risk of a 500 if
-        // Backdoor is ever deactivated on its own.
+        // The resource-based handler; ExpensesController authorizes against it directly, Backdoor
+        // through PolicyNames.ExpenseReportView (SectionPolicies).
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
 
         // The section owns its badge colours rather than Base holding a literal row per section

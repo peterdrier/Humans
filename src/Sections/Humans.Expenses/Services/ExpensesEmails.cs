@@ -15,7 +15,7 @@ namespace Humans.Expenses.Services;
 /// template name and opt-out category) for the single
 /// <see cref="IEmailService.SendAsync"/> path. Copy lives in Expenses' own resx set
 /// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
+/// (memory/architecture/email-templates-live-in-sender.md).
 /// Pure — no I/O, no persistence.
 /// </summary>
 internal sealed class ExpensesEmails(
@@ -26,7 +26,7 @@ internal sealed class ExpensesEmails(
     private readonly EmailSettings _settings = settings.Value;
 
     /// <summary>
-    /// Finance approved the member's report (peterdrier/Humans#1820). <paramref name="payable"/>
+    /// Finance approved the member's report. <paramref name="payable"/>
     /// is what will actually be reimbursed — the receipts total, capped — and
     /// <paramref name="ibanMasked"/> is the payee IBAN snapshotted on the report, already masked:
     /// the raw IBAN never leaves the section.
