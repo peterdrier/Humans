@@ -69,7 +69,7 @@ internal interface IExpenseRepository : IRepository
     Task<bool> WithdrawAsync(
         Guid reportId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> sets the authorized cap; null leaves it as it is.</summary>
+    /// <summary>Writes <paramref name="maxAmount"/> as the authorized cap; null clears it (a blanked form field).</summary>
     Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid actorUserId, decimal? maxAmount,
         NodaTime.Instant endorsedAt, CancellationToken ct = default);
@@ -78,7 +78,7 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap set at endorsement; null leaves it as it is.</summary>
+    /// <summary>Writes <paramref name="maxAmount"/> over any cap set at endorsement; null clears it (a blanked form field).</summary>
     Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId,
         Guid? overrideCategoryId,

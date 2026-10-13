@@ -264,6 +264,67 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
+    public async Task CoordinatorEndorseAsync_WithNoCap_ClearsAnExistingCap()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: ExpenseReportStatus.Submitted);
+        r.MaxAmount = 50m;
+        await Seed(r);
+
+        (await _sut.CoordinatorEndorseAsync(r.Id, Guid.NewGuid(), null, Instant.FromUtc(2026, 5, 3, 12, 0), ct))
+            .Should().BeTrue();
+
+        (await _sut.GetByIdAsync(r.Id, ct))!.MaxAmount.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CoordinatorRejectAsync_ReturnsToDraft_AndLeavesTheCap()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: ExpenseReportStatus.Submitted);
+        r.MaxAmount = 50m;
+        await Seed(r);
+
+        (await _sut.CoordinatorRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
+            .Should().BeTrue();
+
+        var loaded = await _sut.GetByIdAsync(r.Id, ct);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.MaxAmount.Should().Be(50m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task CoordinatorRejectAsync_RefusesAnythingButSubmitted(ExpenseReportStatus status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: status);
+        await Seed(r);
+
+        (await _sut.CoordinatorRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
+            .Should().BeFalse();
+        (await _sut.GetByIdAsync(r.Id, ct))!.Status.Should().Be(status);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task FinanceRejectAsync_RefusesAnythingButSubmittedOrEndorsed(ExpenseReportStatus status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: status);
+        await Seed(r);
+
+        (await _sut.FinanceRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
+            .Should().BeFalse();
+        (await _sut.GetByIdAsync(r.Id, ct))!.Status.Should().Be(status);
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_StampsApproval_AndInsertsOutboxRow()
     {
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
