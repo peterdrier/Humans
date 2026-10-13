@@ -276,9 +276,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved per section invariant.
-        // Draft has no UI Withdraw path (use Delete-while-Draft when that ships) and a direct
-        // POST should not silently succeed; Withdrawn is already terminal.
+        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved. Draft has no
+        // Withdraw path, so a direct POST must not succeed; Withdrawn is terminal.
         if (r.Status is ExpenseReportStatus.Draft
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;

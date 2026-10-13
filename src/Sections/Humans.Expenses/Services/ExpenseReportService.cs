@@ -399,8 +399,8 @@ internal sealed class ExpenseReportService(
 
         try
         {
-            // Travel lines are computed and can no longer be created; this path takes free-text
-            // amounts, so it accepts only the receipt-backed types.
+            // Travel lines are computed; this path takes free-text amounts, so it accepts only
+            // receipt-backed types.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
                 return Reject(new("Expenses_Validation_OnlyReceiptAndInvoiceLines", []));
             // Validate the file before creating anything, so a bad upload leaves no half-made line.

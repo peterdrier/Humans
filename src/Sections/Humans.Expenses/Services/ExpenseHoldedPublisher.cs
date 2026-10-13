@@ -63,8 +63,8 @@ internal sealed class ExpenseHoldedPublisher(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
-        // Mirror the contact id onto the report (keeps the creditor-timeline reads working) before the
-        // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.
+        // Mirror the contact id onto the report (creditor-timeline reads need it) before the
+        // retryable doc-create + attachment steps; the supplier-account number is set in step 5.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
         // Books items[].account directly at doc creation — the account IS the category. Null when
