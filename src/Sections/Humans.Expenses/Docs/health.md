@@ -88,14 +88,14 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
   is pending approval (`Services/ExpenseReportService.cs:882`).
 - **Approved closes the claim.** Approve and finance-reject accept only Submitted or
-  CoordinatorEndorsed (`Data/ExpenseRepository.cs:333`, `Data/ExpenseRepository.cs:365`);
-  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:297`,
-  `Data/ExpenseRepository.cs:315`); the only move out of Approved is Withdrawn
-  (`Data/ExpenseRepository.cs:282`). No payment state is ever stamped on a claim.
+  CoordinatorEndorsed (`Data/ExpenseRepository.cs:313`, `Data/ExpenseRepository.cs:345`);
+  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:277`,
+  `Data/ExpenseRepository.cs:295`); the only move out of Approved is Withdrawn
+  (`Data/ExpenseRepository.cs:262`). No payment state is ever stamped on a claim.
 - **Payable is the only figure payment math uses** — `min(Total, MaxAmount)`
   (`Contracts/ExpenseReportDto.cs:19`).
 - **A decider's form replaces the cap outright**, blank clears it
-  (`Data/ExpenseRepository.cs:299`, `Data/ExpenseRepository.cs:343`); neither reject touches it.
+  (`Data/ExpenseRepository.cs:279`, `Data/ExpenseRepository.cs:323`); neither reject touches it.
 - **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:121`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
@@ -112,7 +112,7 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   the one unmasked write is an IBAN audit row whose actor is not its subject
   (`Services/ExpenseReportService.cs:972`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a
-  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:418`).
+  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:398`).
 
 ## 5. Seams — specified but unbuilt
 
