@@ -190,3 +190,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
 | 2 | 2026-09-26 | Finance admins endorse; approval email failure no longer fails the approval; read interface folded; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
+| 3 | 2026-10-13 | Docs and guide trued to the code; dead attachment link and resx keys gone; coordinator check asked of Teams; four behaviour questions raised | pending |
