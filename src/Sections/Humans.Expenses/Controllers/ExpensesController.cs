@@ -180,7 +180,7 @@ internal sealed class ExpensesController(
                 ? await GetIbanViewAsync(report.SubmitterUserId, HttpContext.RequestAborted)
                 : (HasIban: false, MaskedIban: null);
 
-            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var isFinanceAdmin = await IsFinanceAdminAsync();
             var decisions = await ResolveDecisionsAsync(report);
             // The submitter reads the payment half of the timeline; the finance admin reads the push
             // half and is the only one who can act on a failed push.
@@ -653,7 +653,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var isFinanceAdmin = await IsFinanceAdminAsync();
             var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted);
             var submitterNames = await ResolveSubmitterNamesAsync(reports, HttpContext.RequestAborted);
             return View(new ExpenseReviewViewModel
