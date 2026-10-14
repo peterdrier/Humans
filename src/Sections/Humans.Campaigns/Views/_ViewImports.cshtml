@@ -13,8 +13,7 @@
 @using Humans.Base
 @using Humans.Base.Models
 @using NodaTime
-@* No localizer of either kind: Campaigns' views carry no Localizer[…] call and
-   SharedResource has no Campaign_ key, so the section ships no resource set at all
-   (§15.3b — Finance and Gate are the other two). *@
+@* Views carry no localizer (the admin pages are localization-exempt); the section's
+   resx set holds only the in-app notice copy read by CampaignService. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
