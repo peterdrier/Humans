@@ -1040,16 +1040,19 @@ public sealed class CampaignServiceTests
     [HumansFact]
     public async Task UpdateGrantEmailStatusAsync_updates_only_the_target_grants_delivery_state()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["STATUS-CODE"]);
-        var grant = new CampaignGrant
+        var campaign = await SeedActiveCampaignWithCodesAsync(["STATUS-CODE", "OTHER-CODE"]);
+        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        CampaignGrant NewGrant(string code) => new()
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
-            CampaignCodeId = (await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken)).Id,
-            UserId = SeedUser(displayName: "Recipient").Id,
+            CampaignCodeId = codes.Single(c => string.Equals(c.Code, code, StringComparison.Ordinal)).Id,
+            UserId = SeedUser(displayName: code).Id,
             AssignedAt = Clock.GetCurrentInstant()
         };
-        await CampaignsDb.CampaignGrants.AddAsync(grant, Xunit.TestContext.Current.CancellationToken);
+        var grant = NewGrant("STATUS-CODE");
+        var other = NewGrant("OTHER-CODE");
+        await CampaignsDb.CampaignGrants.AddRangeAsync([grant, other], Xunit.TestContext.Current.CancellationToken);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         Clock.AdvanceHours(1);
 
@@ -1062,6 +1065,10 @@ public sealed class CampaignServiceTests
             Xunit.TestContext.Current.CancellationToken);
         persisted.LatestEmailStatus.Should().Be(EmailOutboxStatus.Sent);
         persisted.LatestEmailAt.Should().Be(Clock.GetCurrentInstant());
+        var untouched = await CampaignsDb.CampaignGrants.SingleAsync(item => item.Id == other.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        untouched.LatestEmailStatus.Should().BeNull();
+        untouched.LatestEmailAt.Should().BeNull();
     }
 
     [HumansFact]
