@@ -114,4 +114,4 @@ none
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-29 | First doctoring: false doc/comment claims fixed, badge + form dedup, cross-assembly test coverage added | peterdrier/Humans#1573 |
-| section-doctor | 2026-10-14 | Vendor code generation reuses the CSV import step; false Wave, subject and email-content docs fixed; allocation-order test added | pending |
+| section-doctor | 2026-10-14 | Vendor code generation reuses the CSV import step; false Wave, subject and email-content docs fixed; allocation-order test added | peterdrier/Humans#1981 |
