@@ -22,7 +22,7 @@ namespace Humans.Campaigns.Services;
 /// <summary>
 /// The Campaigns section's service. Implements the cross-assembly
 /// <see cref="ICampaignService"/> contract; the section's own controller injects this
-/// concrete type for the members that stay inside (design §15 step 5).
+/// concrete type for the members that stay inside.
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
@@ -39,7 +39,6 @@ internal sealed class CampaignService(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(CampaignsResource));
 
-    /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampaignGrants = "CampaignGrants";
 
     public async Task<CampaignCreateResult> CreateAsync(string title, string? description,

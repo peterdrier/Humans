@@ -24,8 +24,7 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
-        // §15 repository pattern (nobodies-collective/Humans#546): Singleton +
-        // IDbContextFactory (§15b) so the repository owns context lifetime.
+        // Singleton + IDbContextFactory so the repository owns context lifetime.
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
         // Campaigns owns its email copy and its gallery samples; Email keeps the mechanics
         // (memory/architecture/email-templates-live-in-sender.md).
@@ -36,7 +35,7 @@ public sealed class Section : ISection
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<ICampaignServiceRead>(sp => sp.GetRequiredService<CampaignService>());
         // Owns the user-scoped campaign_grants table → GDPR export contributor and
-        // account-merge fold participant (design-rules §8a).
+        // account-merge fold participant.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CampaignService>());
 

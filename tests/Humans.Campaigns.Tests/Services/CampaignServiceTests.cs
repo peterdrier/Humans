@@ -28,8 +28,7 @@ namespace Humans.Campaigns.Tests.Services;
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
 /// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
-/// to draw (nobodies-collective/Humans#866). An in-memory people/team registry backs
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — a section-boundary breach. An in-memory people/team registry backs
 /// the cross-section stubs instead.
 /// </summary>
 public sealed class CampaignServiceTests
@@ -1235,8 +1234,7 @@ public sealed class CampaignServiceTests
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             DisplayName = displayName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName only, so the fixture sets it directly.
             BurnerName = displayName,
             PreferredLanguage = preferredLanguage,
             CreatedAt = Clock.GetCurrentInstant()

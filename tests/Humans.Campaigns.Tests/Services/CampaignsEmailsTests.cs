@@ -11,7 +11,7 @@ namespace Humans.Campaigns.Tests.Services;
 /// opt-out category and the campaign ids the outbox row carries — plus the
 /// gallery-coverage gate: every template <see cref="CampaignsEmails"/> can build has a
 /// sample in <see cref="CampaignsEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
+/// Transport (opt-out, unsubscribe, wrapping, enqueue) stays
 /// Email's, covered there.
 /// </summary>
 public sealed class CampaignsEmailsTests
