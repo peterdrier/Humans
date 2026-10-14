@@ -13,6 +13,7 @@ using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
+using Humans.Campaigns.Services.Dtos;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -325,37 +326,20 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task ImportCodesAsync_CreatesCampaignCodeRows_SkipsDuplicates()
+    public async Task ImportCodesAsync_IntoActiveCampaign_AppendsInOrderAndSkipsDuplicates()
     {
-        var campaign = await SeedCampaignAsync();
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var first = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2", "CODE1"], Xunit.TestContext.Current.CancellationToken);
+        var second = await _service.ImportCodesAsync(_actorId, campaign.Id, ["code2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
-        result.Imported.Should().Be(3);
-        result.Skipped.Should().Be(1);
+        first.Should().Be(new CampaignImportResult(true, Imported: 2, Skipped: 1));
+        second.Should().Be(new CampaignImportResult(true, Imported: 1, Skipped: 1));
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        codes.Should().HaveCount(3);
-        codes.Select(c => c.Code).Should().BeEquivalentTo("CODE1", "CODE2", "CODE3");
-    }
-
-    [HumansFact]
-    public async Task ImportCodesAsync_SkipsExistingCodesInCampaign()
-    {
-        var campaign = await SeedCampaignAsync();
-
-        // First import
-        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
-        // Second import with overlap
-        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
-
-        result.Imported.Should().Be(1);
-        result.Skipped.Should().Be(1);
-        var codes = await CampaignsDb.CampaignCodes
-            .Where(c => c.CampaignId == campaign.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        codes.Should().HaveCount(3);
+        codes.OrderBy(c => c.ImportOrder).Select(c => c.Code).Should().Equal("CODE1", "CODE2", "CODE3");
+        codes.Select(c => c.ImportOrder).Should().OnlyHaveUniqueItems();
     }
 
     [HumansFact]
