@@ -387,6 +387,28 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_CodeAlreadyInCampaign_IsSkippedAndNotCounted()
+    {
+        var campaign = await SeedCampaignAsync();
+        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE-A"], Xunit.TestContext.Current.CancellationToken);
+        _ticketDiscountCodes
+            .GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(["CODE-A", "CODE-B"]);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            _actorId,
+            campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.GeneratedCount.Should().Be(1);
+        var codes = await CampaignsDb.CampaignCodes
+            .Where(c => c.CampaignId == campaign.Id)
+            .Select(c => c.Code)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        codes.Should().BeEquivalentTo("CODE-A", "CODE-B");
+    }
+
+    [HumansFact]
     public async Task GenerateAndImportDiscountCodesAsync_NonDraftCampaign_ReturnsNotDraft()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
