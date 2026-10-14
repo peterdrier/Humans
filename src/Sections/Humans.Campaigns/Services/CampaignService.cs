@@ -377,9 +377,6 @@ internal sealed class CampaignService(
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
         CancellationToken ct = default)
     {
-        _ = await repository.FindForMutationAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
-
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
 
         var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
