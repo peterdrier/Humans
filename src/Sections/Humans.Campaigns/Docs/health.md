@@ -50,34 +50,33 @@ The shapes imply what is already there, and nothing more:
 - No caching decorator (admin-only, cold), no background jobs of its own (ticket sync and
   outbox live elsewhere and call in through the contract).
 
-The one structural delta from that shape is the duplicated code-loading step (vendor
-generation re-implements the CSV import body). The rest of the residual weight is prose:
-doc and comment claims that drifted when the contracts leaf folded in and the notice copy
-gained a resx set.
+No structural delta remains: vendor generation now ends in the CSV import step. The rest
+of the residual weight was prose — doc and comment claims that drifted when the contracts
+leaf folded in and the notice copy gained a resx set.
 
 ## Invariants
 
 - Lifecycle is one-way: Draft → Active → Completed. Activate requires Draft and a code
-  (`CampaignService.cs:368`, `:371`); Complete requires Active (`:395`); SendWave requires
-  Active (`:438`); vendor generation requires Draft (`:343`).
+  (`CampaignService.cs:337`, `:340`); Complete requires Active (`:364`); SendWave requires
+  Active (`:404`); vendor generation requires Draft (`:310`).
 - A code is unique within its campaign (`CampaignCodeConfiguration.cs:16`) and granted at most
   once (`CampaignGrantConfiguration.cs:25`).
 - A person holds at most one grant per campaign (`CampaignGrantConfiguration.cs:24`); the merge
-  fold keeps the target's grant on collision (`CampaignRepository.cs:353`).
-- Wave allocation takes free codes in `ImportOrder` (`CampaignRepository.cs:119`).
-- SendWave aborts up front when eligible members outnumber free codes (`CampaignService.cs:457`).
+  fold keeps the target's grant on collision (`CampaignRepository.cs:348`).
+- Wave allocation takes free codes in `ImportOrder` (`CampaignRepository.cs:117`).
+- SendWave aborts up front when eligible members outnumber free codes (`CampaignService.cs:423`).
 - A wave persists and enqueues one grant at a time; an enqueue failure flips only that grant
-  to Failed (`CampaignService.cs:520`), which RetryAllFailed picks up
-  (`CampaignRepository.cs:183`).
+  to Failed (`CampaignService.cs:486`), which RetryAllFailed picks up
+  (`CampaignRepository.cs:181`).
 - Template substitution HTML-encodes `{{Code}}` and `{{Name}}` in the body
   (`CampaignsEmails.cs:24`); the subject substitutes both unencoded (`CampaignsEmails.cs:32`).
 - Campaign-code mail is always-on: `MessageCategory.CampaignCodes` is in the always-on set
-  (`MessageCategory.cs:72`), so the outbox stamps no unsubscribe (`OutboxEmailService.cs:51`).
+  (`MessageCategory.cs:73`), so the outbox stamps no unsubscribe (`OutboxEmailService.cs:51`).
 - Every admin mutation writes an audit entry attributed to the acting admin after its save
-  (`CampaignService.cs:67`, `:169`, `:289`, `:382`, `:401`, `:500`, `:582`, `:691`).
+  (`CampaignService.cs:66`, `:168`, `:288`, `:351`, `:370`, `:466`, `:548`, `:657`).
 - Admin holds every page and mutation except Detail and vendor generation, which are
   `TicketAdminOrAdmin` (`CampaignController.cs:126`, `:179`).
-- Grants are exported per user and hard-deleted on erasure (`CampaignService.cs:773`, `:798`).
+- Grants are exported per user and hard-deleted on erasure (`CampaignService.cs:739`, `:764`).
 
 ## Seams
 
@@ -115,3 +114,4 @@ none
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-29 | First doctoring: false doc/comment claims fixed, badge + form dedup, cross-assembly test coverage added | peterdrier/Humans#1573 |
+| section-doctor | 2026-10-14 | Vendor code generation reuses the CSV import step; false Wave, subject and email-content docs fixed; allocation-order test added | pending |
