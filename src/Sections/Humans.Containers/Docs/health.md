@@ -62,11 +62,11 @@ failure instead of throwing.
   before either gate — `Authorization/ContainerAuthorizationHandler.cs:54`,
   `Authorization/ContainerAuthorizationHandler.cs:25`, `Authorization/ContainerAuthorizationHandler.cs:37`.
 - At most five images per container, counting the legacy column-backed one; removals in the same
-  request free room first — `Services/Service.cs:104`, `Services/Service.cs:350`.
+  request free room first — `Services/Service.cs:104`, `Services/Service.cs:343`.
 - Every image is checked for content type, 10 MB size, a basename of at most 256 characters and
-  an allowed extension before any file or row is written — `Services/Service.cs:353`.
+  an allowed extension before any file or row is written — `Services/Service.cs:349`.
 - The gallery is one uniform list; `Guid.Empty` addresses the legacy image; nothing outside
-  `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist — `Services/Service.cs:454`,
+  `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist — `Services/Service.cs:438`,
   `Services/Service.cs:102`.
 - Every container create/edit POST carries the 55 MB request-size limit, so a legitimate
   multi-image upload reaches the per-image check instead of Kestrel's default 413 —
@@ -74,16 +74,16 @@ failure instead of throwing.
   Planning's two container actions.
 - A placement's GeoJSON is a closed Polygon Feature with finite in-range coordinates and the
   `center_lng` / `center_lat` / `rotation_degrees` properties; anything else is refused before any
-  write or audit — `Services/Service.cs:181`.
-- A placement row survives `Clear` iff it holds notes or an image — `Services/Service.cs:243`.
+  write or audit — `Services/Service.cs:182`.
+- A placement row survives `Clear` iff it holds notes or an image — `Services/Service.cs:241`.
   `Save` upserts geometry and never touches notes or image — `Data/Repository.cs:171`. Annotating
-  requires an existing row — `Services/Service.cs:273`.
+  requires an existing row — `Services/Service.cs:274`.
 - Deleting a container removes its `container_images` rows and every year's placement row in one
   save — `Data/Repository.cs:70` — then its gallery and legacy files — `Services/Service.cs:139`.
   Placement-image files are not deleted (accepted).
 - Every write is audited under the literal entity types `Container` / `ContainerPlacement`,
   related to `Camp` / `Container` — `Services/AuditEntityTypes.cs:22`.
-- Names never contain `<`, `>` or `$` — `Services/Service.cs:347`.
+- Names never contain `<`, `>` or `$` — `Services/Service.cs:340`.
 
 ## 5. Seams
 
@@ -127,3 +127,4 @@ failure instead of throwing.
 |---|---|---|
 | 2026-08-16 | Doc-code alignment (phase gate, `HumansDbContext`), dead `GetPlacementAsync` removed, 5 tests added, clear-placement flow localized, 3 dead resx keys deleted | peterdrier/Humans#1341 |
 | 2026-09-08 | View-model layer collapsed into the DTOs (URL field renamed, dead surface deleted), camp container page fully localized, placement/audit/request-size invariants pinned, section docs and comments realigned; health.md moved to the target-shape format | peterdrier/Humans#1620 |
+| 2026-10-15 | Doc claims realigned with the code (GeoJSON validation owner, placement-image cleanup, full API list), one best-effort file-delete helper, dead `ForCamp` factory removed, content-type and Map Admin Place tests added | pending |
