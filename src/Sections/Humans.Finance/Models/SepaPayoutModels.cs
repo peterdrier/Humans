@@ -6,16 +6,14 @@ namespace Humans.Finance.Models;
 /// <summary>The organisation's side of the transfer — every field configuration-bound.</summary>
 internal sealed record SepaDebtor(string Name, string Iban, string? Bic, string PresenterId);
 
-/// <summary>One recipient. <paramref name="EndToEndId"/> comes from the persisted transfer row, and
-/// <paramref name="SupplierAccountNum"/> is the 400000xx the remittance text is prefixed with so the
-/// treasurer can tie a bank line to a creditor account without opening the file.</summary>
-internal sealed record SepaTransfer(
-    string EndToEndId, string CreditorName, string Iban, decimal Amount, int SupplierAccountNum);
+/// <summary>One recipient. <paramref name="SupplierAccountNum"/> is the 400000xx every id field and
+/// the remittance text are prefixed with, so the treasurer can tie a bank line to a creditor
+/// account without opening the file.</summary>
+internal sealed record SepaTransfer(string CreditorName, string Iban, decimal Amount, int SupplierAccountNum);
 
 /// <summary>Everything the file is built from. Pure data — the builder does no IO.</summary>
 internal sealed record SepaPaymentFileRequest(
     string MsgId,
-    string PmtInfId,
     Instant CreatedAt,
     LocalDate RequestedExecutionDate,
     SepaDebtor Debtor,

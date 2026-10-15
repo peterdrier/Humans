@@ -13,7 +13,7 @@ namespace Humans.Finance.Domain;
 /// </remarks>
 internal sealed class SepaPayoutFile
 {
-    /// <summary>Also the source of <c>MsgId</c> and <c>PmtInfId</c> in the file.</summary>
+    /// <summary>Also the source of <c>MsgId</c> in the file.</summary>
     public Guid Id { get; init; }
 
     public Instant GeneratedAt { get; init; }
