@@ -243,19 +243,23 @@ books only the rest. The sweep never books a line for a whole file.
 ## The file
 
 Root `Document` / `CstmrCdtTrfInitn` in `urn:iso:std:iso:20022:tech:xsd:pain.001.001.09`, UTF-8,
-one `PmtInf`, one `CdtTrfTxInf` per recipient.
+one `PmtInf` per recipient, each holding exactly one `CdtTrfTxInf`. Sabadell ignores `BtchBookg`
+`false` inside a block and booked a three-transfer batch as one bank line, which breaks the
+per-payment matching; banks that ignore the flag still book one debit per `PmtInf`.
 
 - `GrpHdr`: `MsgId`, `CreDtTm`, `NbOfTxs`, `CtrlSum`, `InitgPty` (name + presenter id).
-- `PmtInf`: `PmtInfId`, `PmtMtd` `TRF`, `BtchBookg` `false` (one debit per transfer — Norma 34-14's
-  "indicador de apunte en cuenta" — so each bank line names its own creditor account), `NbOfTxs`, `CtrlSum`, `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
-  (generation date, Europe/Madrid), `Dbtr/Nm`, `DbtrAcct` IBAN, `DbtrAgt` (BIC when configured).
+- `PmtInf` (one per transfer): `PmtInfId`, `PmtMtd` `TRF`, `BtchBookg` `false` (one debit per
+  transfer — Norma 34-14's "indicador de apunte en cuenta" — so each bank line names its own creditor
+  account), `NbOfTxs` `1`, `CtrlSum` (that transfer's amount), `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
+  (generation date, Europe/Madrid), `Dbtr/Nm`, `DbtrAcct` IBAN, `DbtrAgt` (BIC when configured) —
+  the debtor side repeats identically in every block.
 - `CdtTrfTxInf`: `EndToEndId`, `InstdAmt Ccy="EUR"`, `Cdtr/Nm`, `CdtrAcct` IBAN, one
   `RmtInf/Ustrd` — `"<account> - NCA - <creditor name>"`, carrying **this transfer's own** creditor
   account number and the payee's name (`NCA` is the fixed org tag between them) so a bank line ties
   back to an account and a person without opening the file.
 
-Counts and control sums are computed off the transaction elements immediately before serialization,
-so the header can never describe a different set than the one being sent.
+`GrpHdr` `NbOfTxs` and `CtrlSum` stay file-level totals, computed off the blocks immediately before
+serialization, so the header can never describe a different set than the one being sent.
 
 **Deliberately absent**: postal addresses, `CdtrAgt`, `ChrgBr`, and any category-purpose code —
 `SALA` above all, which would route a reimbursement as payroll.
@@ -265,11 +269,12 @@ so the header can never describe a different set than the one being sent.
 | Element | Source | Length |
 |---------|--------|--------|
 | `MsgId` | `"M"` + `SepaPayoutFile.Id` (`N` format) | 33 |
-| `PmtInfId` | `"P"` + `SepaPayoutFile.Id` | 33 |
+| `PmtInfId` | `"P"` + `SepaPayoutFile.Id` + two-digit sequence (`01`…`99`) | 35 |
 | `EndToEndId` | `"E"` + `SepaPayoutTransfer.Id` | 33 |
 
 Row ids are minted before the file is built and never change, so the id the bank quotes always
-resolves to one persisted transfer. Duplicates are refused.
+resolves to one persisted transfer. Duplicates are refused. The sequence fills the 35-character cap
+exactly, so a file holds at most 99 transfers.
 
 ### Character handling
 
@@ -291,7 +296,7 @@ Server-side, all-or-nothing:
 | Amount above the balance | service |
 | Amount below €0.01, more than 2 decimals, or above the cap | builder |
 | IBAN absent, containing non-ASCII account characters or non-digit check characters, or failing its checksum | service / builder |
-| Duplicate or over-long `MsgId` / `PmtInfId` / `EndToEndId` | builder |
+| Duplicate or over-long `MsgId` / `PmtInfId` / `EndToEndId`, or more than 99 transfers | builder |
 | Generated XML fails the XSD | builder |
 
 ## IBAN handling

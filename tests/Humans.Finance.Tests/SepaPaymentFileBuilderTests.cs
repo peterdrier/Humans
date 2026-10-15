@@ -107,22 +107,42 @@ public class SepaPaymentFileBuilderTests
     }
 
     [HumansFact]
-    public void Build_MultipleRecipients_CountsAndControlSumsAgreeAtBothLevels()
+    public void Build_MultipleRecipients_OnePmtInfPerTransfer_SumsAgreeAtBothLevels()
     {
-        var doc = Parse(SepaPaymentFileBuilder.Build(Request(Ana(12.34m), Bo(20m), Ana(0.01m))));
+        // Sabadell ignores BtchBookg=false inside one PmtInf and books the batch as one bank line,
+        // which breaks Holded's per-payment matching. Banks that ignore the flag still book one
+        // debit per PmtInf, so every transfer gets its own block.
+        var request = Request(Ana(12.34m), Bo(20m), Ana(0.01m));
+        var doc = Parse(SepaPaymentFileBuilder.Build(request));
 
         var init = doc.Root!.Element(Ns + "CstmrCdtTrfInitn")!;
-        var transactions = init.Element(Ns + "PmtInf")!.Elements(Ns + "CdtTrfTxInf").ToList();
-        var summed = transactions
-            .Sum(t => decimal.Parse(t.Descendants(Ns + "InstdAmt").Single().Value,
-                CultureInfo.InvariantCulture));
+        var blocks = init.Elements(Ns + "PmtInf").ToList();
 
-        transactions.Should().HaveCount(3);
-        summed.Should().Be(32.35m);
+        blocks.Should().HaveCount(3);
+        blocks.Select(b => b.Element(Ns + "PmtInfId")!.Value).Should().Equal(
+            request.PmtInfId + "01", request.PmtInfId + "02", request.PmtInfId + "03");
+        blocks.Select(b => b.Elements(Ns + "CdtTrfTxInf").Count()).Should().AllBeEquivalentTo(1);
+        blocks.Select(b => b.Element(Ns + "NbOfTxs")!.Value).Should().AllBeEquivalentTo("1");
+        blocks.Select(b => b.Element(Ns + "CtrlSum")!.Value).Should().Equal("12.34", "20.00", "0.01");
+        blocks.Select(b => b.Element(Ns + "CdtTrfTxInf")!.Descendants(Ns + "InstdAmt").Single().Value)
+            .Should().Equal("12.34", "20.00", "0.01");
+        blocks.Select(b => b.Element(Ns + "BtchBookg")!.Value).Should().AllBeEquivalentTo("false");
+        blocks.Select(b => b.Element(Ns + "DbtrAcct")!.Descendants(Ns + "IBAN").Single().Value)
+            .Should().AllBeEquivalentTo(OrgIban);
+        blocks.Select(b => b.Element(Ns + "ReqdExctnDt")!.Element(Ns + "Dt")!.Value)
+            .Should().AllBeEquivalentTo("2026-08-25");
         init.Element(Ns + "GrpHdr")!.Element(Ns + "NbOfTxs")!.Value.Should().Be("3");
         init.Element(Ns + "GrpHdr")!.Element(Ns + "CtrlSum")!.Value.Should().Be("32.35");
-        init.Element(Ns + "PmtInf")!.Element(Ns + "NbOfTxs")!.Value.Should().Be("3");
-        init.Element(Ns + "PmtInf")!.Element(Ns + "CtrlSum")!.Value.Should().Be("32.35");
+    }
+
+    [HumansFact]
+    public void Build_MoreThanNinetyNineTransfers_IsRefused()
+    {
+        // "P" + file id is 33 characters; a two-digit sequence fills the 35-character cap exactly.
+        var act = () => SepaPaymentFileBuilder.Build(
+            Request(Enumerable.Range(0, 100).Select(_ => Ana(1m)).ToArray()));
+
+        act.Should().Throw<SepaPaymentFileException>().WithMessage("*at most 99 transfers*");
     }
 
     [HumansFact]
