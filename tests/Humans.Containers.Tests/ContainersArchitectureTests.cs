@@ -10,9 +10,6 @@ using Xunit;
 
 namespace Humans.Containers.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Containers.
-/// </summary>
 public class ContainersArchitectureTests
 {
     [HumansFact]

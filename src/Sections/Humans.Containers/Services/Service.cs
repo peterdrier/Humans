@@ -357,10 +357,10 @@ internal sealed class Service(
             return new("Containers_Error_ImageType");
         if (image.Length > MaxImageBytes)
             return new("Containers_Error_ImageTooLarge");
-        // Security: extension whitelist prevents image/jpeg + .html from being served as HTML.
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
             return new("Containers_Error_ImageFileNameLength", MaxImageFileNameLength);
+        // Security: extension whitelist prevents image/jpeg + .html from being served as HTML.
         return !AllowedImageExtensions.Contains(Path.GetExtension(fileName))
             ? new("Containers_Error_ImageExtension") : null;
     }
@@ -449,7 +449,7 @@ internal sealed class Service(
     private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
     {
         var gallery = new List<ContainerImageDto>(images.Count + 1);
-        // Pre-nobodies-collective/Humans#797 containers still hold their single image in the containers columns;
+        // Legacy containers still hold their single image in the containers columns;
         // Guid.Empty addresses it so callers see one uniform, removable gallery.
         if (c.ImageStoragePath is not null)
         {
