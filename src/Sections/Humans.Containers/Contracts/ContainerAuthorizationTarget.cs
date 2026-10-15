@@ -11,7 +11,4 @@ public sealed record ContainerAuthorizationTarget(Guid CampId)
 
     public static ContainerAuthorizationTarget For(ContainerDto container, int? year = null) =>
         new(container.CampId) { Year = year };
-
-    public static ContainerAuthorizationTarget ForCamp(Guid campId) =>
-        new(campId);
 }

@@ -148,7 +148,7 @@ public sealed class ContainerAuthorizationHandlerTests
         var context = new AuthorizationHandlerContext(
             [requirement],
             user,
-            ContainerAuthorizationTarget.ForCamp(CampId) with { Year = year });
+            new ContainerAuthorizationTarget(CampId) { Year = year });
 
         await _handler.HandleAsync(context);
         return context.HasSucceeded;
