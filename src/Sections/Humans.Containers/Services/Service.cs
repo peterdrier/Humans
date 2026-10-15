@@ -443,7 +443,7 @@ internal sealed class Service(
         var images = await repo.GetImagesAsync(containers.Select(c => c.Id).ToList(), ct);
         return images
             .GroupBy(i => i.ContainerId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(i => i.SortOrder).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
     }
 
     private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
