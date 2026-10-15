@@ -28,8 +28,6 @@ internal static class SepaPaymentFileBuilder
     private const int MaxIdLength = 35;
     private const int MaxRemittanceLength = 140;
 
-    /// <summary>Each transfer's <c>PmtInfId</c> is the file's id plus a two-digit sequence.</summary>
-    private const int MaxTransfersPerFile = 99;
 
     /// <summary>SEPA caps a party name at 70, well below the schema's own 140.</summary>
     public const int MaxNameLength = 70;
@@ -38,6 +36,15 @@ internal static class SepaPaymentFileBuilder
     /// name — "&lt;account&gt; - NCA - &lt;name&gt;" — so a bank line reads back as the account, the org,
     /// and who was paid without opening the file. Sabadell shows this line to the recipient.</summary>
     private const string RemittanceOrgTag = "NCA";
+
+    /// <summary>"&lt;account&gt;-NCA-&lt;NAME&gt;", carried in <c>PmtInfId</c>, <c>InstrId</c> and
+    /// <c>EndToEndId</c> alike, so whichever one the bank echoes on the debtor statement names the
+    /// creditor account. Uppercase, SEPA subset, name truncated to fit the 35-character cap.</summary>
+    private static string TransferId(SepaTransfer t)
+    {
+        var prefix = $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)}-{RemittanceOrgTag}-";
+        return (prefix + SepaText.Normalize(t.CreditorName, MaxIdLength - prefix.Length)).ToUpperInvariant();
+    }
 
     public static string Build(SepaPaymentFileRequest request)
     {
@@ -55,15 +62,15 @@ internal static class SepaPaymentFileBuilder
         // block and books it as a single bank line, which breaks Holded's per-payment matching.
         // Banks that ignore the flag still book one debit per PmtInf.
         var blocks = request.Transfers
-            .Select((t, i) =>
+            .Select(t =>
             {
                 var debtorAgent = new XElement(ns + "FinInstnId");
                 if (debtorBic is not null)
                     debtorAgent.Add(new XElement(ns + "BICFI", debtorBic));
 
+                var id = TransferId(t);
                 return new XElement(ns + "PmtInf",
-                    new XElement(ns + "PmtInfId",
-                        request.PmtInfId + (i + 1).ToString("00", CultureInfo.InvariantCulture)),
+                    new XElement(ns + "PmtInfId", id),
                     new XElement(ns + "PmtMtd", "TRF"),
                     new XElement(ns + "BtchBookg", "false"),
                     new XElement(ns + "NbOfTxs", "1"),
@@ -76,7 +83,9 @@ internal static class SepaPaymentFileBuilder
                         new XElement(ns + "Id", new XElement(ns + "IBAN", debtorIban))),
                     new XElement(ns + "DbtrAgt", debtorAgent),
                     new XElement(ns + "CdtTrfTxInf",
-                        new XElement(ns + "PmtId", new XElement(ns + "EndToEndId", t.EndToEndId)),
+                        new XElement(ns + "PmtId",
+                            new XElement(ns + "InstrId", id),
+                            new XElement(ns + "EndToEndId", id)),
                         new XElement(ns + "Amt",
                             new XElement(ns + "InstdAmt", new XAttribute("Ccy", "EUR"), Money(t.Amount))),
                         new XElement(ns + "Cdtr",
@@ -136,11 +145,6 @@ internal static class SepaPaymentFileBuilder
             throw new SepaPaymentFileException("Nothing was selected — a SEPA file needs at least one transfer.");
 
         RequireId(request.MsgId, "message id");
-        // Each PmtInf carries the base id plus a two-digit sequence, and the whole thing must fit 35.
-        RequireId(request.PmtInfId + "00", "payment-information id, with its two-digit sequence,");
-        if (request.Transfers.Count > MaxTransfersPerFile)
-            throw new SepaPaymentFileException(
-                $"A SEPA file holds at most {MaxTransfersPerFile} transfers (was {request.Transfers.Count}).");
 
         if (string.IsNullOrWhiteSpace(request.Debtor.Name)
             || string.IsNullOrWhiteSpace(request.Debtor.Iban)
@@ -154,10 +158,11 @@ internal static class SepaPaymentFileBuilder
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var t in request.Transfers)
         {
-            RequireId(t.EndToEndId, "end-to-end id");
-            if (!seen.Add(t.EndToEndId))
+            var id = TransferId(t);
+            RequireId(id, "end-to-end id");
+            if (!seen.Add(id))
                 throw new SepaPaymentFileException(
-                    $"Two transfers share the end-to-end id {t.EndToEndId} — every payment must be uniquely identifiable.");
+                    $"Two transfers share the end-to-end id {id} — every payment must be uniquely identifiable.");
 
             if (!IbanValidator.IsValid(t.Iban))
                 throw new SepaPaymentFileException(

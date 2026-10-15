@@ -29,7 +29,6 @@ public class SepaPaymentFileBuilderTests
         params SepaTransfer[] transfers) =>
         new(
             MsgId: "M" + Guid.NewGuid().ToString("N"),
-            PmtInfId: "P" + Guid.NewGuid().ToString("N"),
             CreatedAt: Now,
             RequestedExecutionDate: new LocalDate(2026, 8, 25),
             Debtor: Org(),
@@ -37,10 +36,10 @@ public class SepaPaymentFileBuilderTests
             Transfers: transfers);
 
     private static SepaTransfer Ana(decimal amount = 12.34m, string? name = null, int account = 40000004) =>
-        new("E" + Guid.NewGuid().ToString("N"), name ?? "Ana Ruiz", AnaIban, amount, account);
+        new(name ?? "Ana Ruiz", AnaIban, amount, account);
 
     private static SepaTransfer Bo(decimal amount = 20m) =>
-        new("E" + Guid.NewGuid().ToString("N"), "Bo Jansen", BoIban, amount, 40000007);
+        new("Bo Jansen", BoIban, amount, 40000007);
 
     private static XDocument Parse(string xml) => XDocument.Parse(xml);
 
@@ -112,7 +111,7 @@ public class SepaPaymentFileBuilderTests
         // Sabadell ignores BtchBookg=false inside one PmtInf and books the batch as one bank line,
         // which breaks Holded's per-payment matching. Banks that ignore the flag still book one
         // debit per PmtInf, so every transfer gets its own block.
-        var request = Request(Ana(12.34m), Bo(20m), Ana(0.01m));
+        var request = Request(Ana(12.34m), Bo(20m), Ana(0.01m, account: 40000009));
         var doc = Parse(SepaPaymentFileBuilder.Build(request));
 
         var init = doc.Root!.Element(Ns + "CstmrCdtTrfInitn")!;
@@ -120,7 +119,7 @@ public class SepaPaymentFileBuilderTests
 
         blocks.Should().HaveCount(3);
         blocks.Select(b => b.Element(Ns + "PmtInfId")!.Value).Should().Equal(
-            request.PmtInfId + "01", request.PmtInfId + "02", request.PmtInfId + "03");
+            "40000004-NCA-ANA RUIZ", "40000007-NCA-BO JANSEN", "40000009-NCA-ANA RUIZ");
         blocks.Select(b => b.Elements(Ns + "CdtTrfTxInf").Count()).Should().AllBeEquivalentTo(1);
         blocks.Select(b => b.Element(Ns + "NbOfTxs")!.Value).Should().AllBeEquivalentTo("1");
         blocks.Select(b => b.Element(Ns + "CtrlSum")!.Value).Should().Equal("12.34", "20.00", "0.01");
@@ -135,14 +134,35 @@ public class SepaPaymentFileBuilderTests
         init.Element(Ns + "GrpHdr")!.Element(Ns + "CtrlSum")!.Value.Should().Be("32.35");
     }
 
-    [HumansFact]
-    public void Build_MoreThanNinetyNineTransfers_IsRefused()
-    {
-        // "P" + file id is 33 characters; a two-digit sequence fills the 35-character cap exactly.
-        var act = () => SepaPaymentFileBuilder.Build(
-            Request(Enumerable.Range(0, 100).Select(_ => Ana(1m)).ToArray()));
+    // ─── Identifiers ────────────────────────────────────────────────────────────
 
-        act.Should().Throw<SepaPaymentFileException>().WithMessage("*at most 99 transfers*");
+    [HumansFact]
+    public void Build_EveryIdCarriesTheAccountOrgTagAndName_WithinThirtyFive()
+    {
+        // The same "<account>-NCA-<NAME>" in PmtInfId, InstrId and EndToEndId, so whichever one
+        // Sabadell echoes on the debtor statement names the creditor account.
+        var doc = Parse(SepaPaymentFileBuilder.Build(Request(
+            Ana(name: "Iñaki Peña-Çelik Søren Bø Longnamesson"), Bo())));
+
+        var blocks = doc.Descendants(Ns + "PmtInf").ToList();
+        var ids = blocks.SelectMany(b => new[]
+        {
+            b.Element(Ns + "PmtInfId")!.Value,
+            b.Descendants(Ns + "InstrId").Single().Value,
+            b.Descendants(Ns + "EndToEndId").Single().Value,
+        }).ToList();
+
+        ids.Should().HaveCount(6).And.AllSatisfy(id =>
+        {
+            id.Should().NotBeNullOrWhiteSpace();
+            id.Length.Should().BeLessThanOrEqualTo(35);
+            id.Should().MatchRegex(@"^[A-Za-z0-9/\-?:().,'+ ]+$");
+            id.Should().Be(id.ToUpperInvariant());
+        });
+        ids.Take(3).Should().AllBeEquivalentTo("40000004-NCA-INAKI PENA-CELIK SOREN");
+        ids.Skip(3).Should().AllBeEquivalentTo("40000007-NCA-BO JANSEN");
+        doc.Descendants(Ns + "Ustrd").First().Value.Should().Be(
+            "40000004 - NCA - Inaki Pena-Celik Soren Bo Longnamesson");
     }
 
     [HumansFact]
@@ -253,8 +273,7 @@ public class SepaPaymentFileBuilderTests
     [HumansFact]
     public void Build_InvalidIban_IsRefusedAndTheMessageMasksIt()
     {
-        var bad = new SepaTransfer("E" + Guid.NewGuid().ToString("N"), "Ana Ruiz",
-            "ES9121000418450200051333", 10m, 40000004);
+        var bad = new SepaTransfer("Ana Ruiz", "ES9121000418450200051333", 10m, 40000004);
 
         var act = () => SepaPaymentFileBuilder.Build(Request(bad));
 
@@ -266,10 +285,10 @@ public class SepaPaymentFileBuilderTests
     [HumansFact]
     public void Build_DuplicateEndToEndId_IsRefused()
     {
-        var id = "E" + Guid.NewGuid().ToString("N");
+        // The id is the account number plus the name, so the same account twice collides.
         var act = () => SepaPaymentFileBuilder.Build(Request(
-            new SepaTransfer(id, "Ana Ruiz", AnaIban, 10m, 40000004),
-            new SepaTransfer(id, "Bo Jansen", BoIban, 11m, 40000007)));
+            new SepaTransfer("Ana Ruiz", AnaIban, 10m, 40000004),
+            new SepaTransfer("Ana Ruiz", BoIban, 11m, 40000004)));
 
         act.Should().Throw<SepaPaymentFileException>().WithMessage("*share the end-to-end id*");
     }

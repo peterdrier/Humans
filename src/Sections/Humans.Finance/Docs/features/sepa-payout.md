@@ -98,7 +98,7 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
 3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
    `owedNow = -Balance` — the account's live total, not a windowed reconstruction.
 4. **What is already posted**, from the ledger entries on the creditor account tagged with this
-   transfer's `EndToEndId` — this is what makes a retry resume instead of double-pay. The window runs
+   transfer's row id — this is what makes a retry resume instead of double-pay. The window runs
    from the day the file was generated (or the bank line, whichever is earlier) to today, with a
    week of slack either end: postings this flow makes are dated the bank line, but a pre-#1185 run
    dated them the **click**, which can be weeks off. The account number is filtered here as well as
@@ -253,7 +253,7 @@ per-payment matching; banks that ignore the flag still book one debit per `PmtIn
   account), `NbOfTxs` `1`, `CtrlSum` (that transfer's amount), `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
   (generation date, Europe/Madrid), `Dbtr/Nm`, `DbtrAcct` IBAN, `DbtrAgt` (BIC when configured) —
   the debtor side repeats identically in every block.
-- `CdtTrfTxInf`: `EndToEndId`, `InstdAmt Ccy="EUR"`, `Cdtr/Nm`, `CdtrAcct` IBAN, one
+- `CdtTrfTxInf`: `InstrId`, `EndToEndId`, `InstdAmt Ccy="EUR"`, `Cdtr/Nm`, `CdtrAcct` IBAN, one
   `RmtInf/Ustrd` — `"<account> - NCA - <creditor name>"`, carrying **this transfer's own** creditor
   account number and the payee's name (`NCA` is the fixed org tag between them) so a bank line ties
   back to an account and a person without opening the file.
@@ -269,12 +269,12 @@ serialization, so the header can never describe a different set than the one bei
 | Element | Source | Length |
 |---------|--------|--------|
 | `MsgId` | `"M"` + `SepaPayoutFile.Id` (`N` format) | 33 |
-| `PmtInfId` | `"P"` + `SepaPayoutFile.Id` + two-digit sequence (`01`…`99`) | 35 |
-| `EndToEndId` | `"E"` + `SepaPayoutTransfer.Id` | 33 |
+| `PmtInfId`, `InstrId`, `EndToEndId` | `"<account>-NCA-<NAME>"` — uppercase, SEPA subset, name truncated to fit | ≤ 35 |
 
-Row ids are minted before the file is built and never change, so the id the bank quotes always
-resolves to one persisted transfer. Duplicates are refused. The sequence fills the 35-character cap
-exactly, so a file holds at most 99 transfers.
+The three transfer-level ids carry the same string so whichever one Sabadell echoes on the debtor
+statement names the creditor account. The account number makes it unique per file (the same account
+twice is refused upstream and by the builder). Holded postings are tagged with the persisted
+transfer row id, which never changes.
 
 ### Character handling
 
@@ -296,7 +296,7 @@ Server-side, all-or-nothing:
 | Amount above the balance | service |
 | Amount below €0.01, more than 2 decimals, or above the cap | builder |
 | IBAN absent, containing non-ASCII account characters or non-digit check characters, or failing its checksum | service / builder |
-| Duplicate or over-long `MsgId` / `PmtInfId` / `EndToEndId`, or more than 99 transfers | builder |
+| Over-long `MsgId`, or two transfers on the same creditor account | builder |
 | Generated XML fails the XSD | builder |
 
 ## IBAN handling
