@@ -127,7 +127,7 @@ internal sealed class Service(
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        await DeleteObsoleteImagesAsync(obsoletePaths, id, "updated");
+        await DeleteFilesAsync(obsoletePaths, id, "an update");
         return new(ToDto(updated, await repo.GetImagesAsync([id], ct)));
     }
 
@@ -151,10 +151,11 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
 
-        await DeleteObsoleteImagesAsync(imagePaths, id, "deleted");
+        await DeleteFilesAsync(imagePaths, id, "its deletion");
     }
 
-    private async Task DeleteObsoleteImagesAsync(IEnumerable<string> paths, Guid containerId, string operation)
+    // Best effort: request cancellation must not strand files, and a failure is logged, not thrown.
+    private async Task DeleteFilesAsync(IEnumerable<string> paths, Guid containerId, string reason, int? year = null)
     {
         foreach (var path in paths.Distinct(StringComparer.Ordinal))
         {
@@ -164,8 +165,8 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was {Operation}",
-                    path, containerId, operation);
+                logger.LogError(ex, "Failed to delete image file {StoragePath} of container {ContainerId} after {Reason}, year {Year}",
+                    path, containerId, reason, year);
             }
         }
     }
@@ -301,15 +302,7 @@ internal sealed class Service(
         if (previousImagePath is not null
             && !string.Equals(previousImagePath, placement.PlacementImageStoragePath, StringComparison.Ordinal))
         {
-            try
-            {
-                await fileStorage.DeleteAsync(previousImagePath, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to delete superseded placement image {StoragePath} for container {ContainerId}, year {Year}",
-                    previousImagePath, containerId, year);
-            }
+            await DeleteFilesAsync([previousImagePath], containerId, "a placement image replacement", year);
         }
 
         return new(ToPlacementDto(placement));
@@ -408,18 +401,7 @@ internal sealed class Service(
         catch
         {
             // No database write has started; only these new files belong to the failed batch.
-            foreach (var row in rows)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(row.StoragePath, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to delete staged image file {StoragePath} after container {ContainerId} upload failed",
-                        row.StoragePath, containerId);
-                }
-            }
+            await DeleteFilesAsync(rows.Select(row => row.StoragePath), containerId, "a failed upload");
             throw;
         }
         return rows;
