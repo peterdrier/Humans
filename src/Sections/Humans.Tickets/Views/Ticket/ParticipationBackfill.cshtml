@@ -22,20 +22,35 @@
             <form asp-action="ParticipationBackfill" method="post">
                 @Html.AntiForgeryToken()
 
-                <div class="mb-3">
-                    <label asp-for="Year" class="form-label">Year</label>
-                    <input asp-for="Year" class="form-control" style="max-width: 200px;" />
-                </div>
+                @if (Model.IsPreview)
+                {
+                    <input asp-for="Year" type="hidden" />
+                    <input asp-for="CsvData" type="hidden" />
+                    <p>Review <strong>@Model.PreviewCount</strong> valid input row(s) for <strong>@Model.Year</strong>.
+                        Only changed records will be counted and audited when you confirm.</p>
+                    <pre class="border rounded p-3">@Model.CsvData</pre>
+                    <button type="submit" name="Confirmed" value="true" class="btn btn-primary"
+                            data-confirm="Import these participation records for @Model.Year?">
+                        <i class="fa-solid fa-upload me-1"></i> Confirm import
+                    </button>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label asp-for="Year" class="form-label">Year</label>
+                        <input asp-for="Year" class="form-control" style="max-width: 200px;" />
+                    </div>
 
-                <div class="mb-3">
-                    <label asp-for="CsvData" class="form-label">CSV Data</label>
-                    <textarea asp-for="CsvData" class="form-control font-monospace" rows="10"
-                              placeholder="UserId,Status&#10;3fa85f64-5717-4562-b3fc-2c963f66afa6,Attended&#10;..."></textarea>
-                </div>
+                    <div class="mb-3">
+                        <label asp-for="CsvData" class="form-label">CSV Data</label>
+                        <textarea asp-for="CsvData" class="form-control font-monospace" rows="10"
+                                  placeholder="UserId,Status&#10;3fa85f64-5717-4562-b3fc-2c963f66afa6,Attended&#10;..."></textarea>
+                    </div>
 
-                <button type="submit" class="btn btn-primary">
-                    <i class="fa-solid fa-upload me-1"></i> Import
-                </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-eye me-1"></i> Review import
+                    </button>
+                }
                 <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
             </form>
         </div>

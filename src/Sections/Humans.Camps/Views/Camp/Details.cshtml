@@ -338,7 +338,7 @@
             </div>
         }
 
-        @* Roles (replaces the legacy Leads card; sourced from CampRoleAssignment) *@
+        @* Roles (sourced from CampRoleAssignment) *@
         <partial name="_CampRolesCard" model="Model" />
 
         @* My membership (authenticated only — never shown to anonymous visitors) *@
@@ -360,7 +360,7 @@
                                 @* Leads are part of the camp by definition — don't prompt them to "request to join". *@
                                 <div class="alert alert-info py-2 mb-0">
                                     <i class="fa-solid fa-user-shield me-1"></i>
-                                    You are a lead for @Model.Membership.OpenSeasonYear.
+                                    @Localizer["Camps_Details_LeadForSeason", membershipYear]
                                 </div>
                             }
                             else

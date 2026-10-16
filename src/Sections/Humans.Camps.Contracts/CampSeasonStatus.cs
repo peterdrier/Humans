@@ -5,7 +5,7 @@ public enum CampSeasonStatus
     Pending = 0,
     Active = 1,
     Full = 2,
-    // Inactive = 3 (removed — use Withdrawn instead)
+    // 3 reserved (retired Inactive); do not reuse
     Rejected = 4,
     Withdrawn = 5
 }

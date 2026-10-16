@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.States;
@@ -36,15 +37,23 @@ public sealed class HangfireSyncSchedulerTests
         _backgroundJobs.DidNotReceiveWithAnyArgs().Create(default(Job)!, default(IState)!);
     }
 
-    [HumansFact]
-    public void GroupScheduler_WithCredentials_EnqueuesReconcileOne()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void GroupScheduler_WithCredentials_PreservesSourceAndSafeToken(bool retry)
     {
         _googleClient.IsConfigured.Returns(true);
-
-        GroupScheduler().Enqueue("team-group@example.org");
+        var scheduler = GroupScheduler();
+        if (retry)
+            scheduler.Schedule("team-group@example.org", TimeSpan.FromMinutes(15), 1, GoogleSyncSource.ManualSync);
+        else
+            scheduler.Enqueue("team-group@example.org", GoogleSyncSource.ManualSync);
 
         _backgroundJobs.Received(1).Create(
-            Arg.Is<Job>(j => j.Method.Name == nameof(IGoogleGroupSync.ReconcileOneAsync)),
+            Arg.Is<Job>(j => string.Equals(j.Method.Name, nameof(IGoogleGroupSync.ReconcileOneAsync), StringComparison.Ordinal)
+                && j.Args.Count == 6 && (CancellationToken)j.Args[2] == CancellationToken.None
+                && (int)j.Args[3] == (retry ? 1 : 0) && (bool)j.Args[4]
+                && (GoogleSyncSource)j.Args[5] == GoogleSyncSource.ManualSync),
             Arg.Any<IState>());
     }
 

@@ -2,8 +2,8 @@ namespace Humans.Expenses.Contracts;
 
 /// <summary>
 /// Read-only cross-section surface for expense reports. Backdoor's finance read API
-/// (peterdrier/Humans#1838) is the first external consumer — everything here is exactly what
-/// <c>IExpenseReportService</c> already exposed internally; nothing new was written to add this.
+/// (peterdrier/Humans#1838) consumes it; it exposes exactly what <c>IExpenseReportService</c>
+/// exposes internally.
 /// </summary>
 public interface IExpenseReportServiceRead
 {

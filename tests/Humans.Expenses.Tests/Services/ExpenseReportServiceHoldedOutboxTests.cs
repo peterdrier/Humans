@@ -316,7 +316,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansFact]
     public async Task CreateIncomingDoc_BooksLinesToTheMappedHoldedAccount()
     {
-        // Tags are dead on the write side (Peter, 2026-08-10) — the doc is booked to the right
+        // Tags are dead on the write side — the doc is booked to the right
         // department directly via items[].account, resolved from the category's active mapping.
         var report = MakeReport() with
         {

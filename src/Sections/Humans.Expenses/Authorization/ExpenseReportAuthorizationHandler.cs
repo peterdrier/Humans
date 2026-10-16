@@ -101,7 +101,6 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
         if (category?.TeamId is null)
             return false;
 
-        var teamsById = await teamService.GetTeamsAsync();
-        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, category.TeamId.Value, userId);
+        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId);
     }
 }

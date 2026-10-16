@@ -62,7 +62,7 @@ public class NotificationRepositoryTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_ReturnsNotFound_ForMissingNotification()
     {
-        var outcome = await _repo.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), _now, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.NotFound.Should().BeTrue();
@@ -76,7 +76,7 @@ public class NotificationRepositoryTests : IDisposable
         var n = CreateNotification(recipient, NotificationClass.Actionable);
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, actor, _now, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, actor, _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.Forbidden.Should().BeTrue();
@@ -89,7 +89,7 @@ public class NotificationRepositoryTests : IDisposable
         var n = CreateNotification(userId, NotificationClass.Actionable);
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeTrue();
         outcome.AffectedUserIds.Should().Contain(userId);
@@ -106,7 +106,7 @@ public class NotificationRepositoryTests : IDisposable
         var n = CreateNotification(userId, NotificationClass.Actionable);
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.DismissAsync(n.Id, userId, _now, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.Forbidden.Should().BeTrue();
@@ -119,7 +119,7 @@ public class NotificationRepositoryTests : IDisposable
         var n = CreateNotification(userId);
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.DismissAsync(n.Id, userId, _now, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeTrue();
         var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);

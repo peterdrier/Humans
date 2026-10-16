@@ -68,6 +68,24 @@ public class CachingUserServiceTests
     };
 
     [HumansFact]
+    public async Task AdminStubProfileCreation_ForwardsAuditActor_AndRefreshesProfile()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var sut = CreateSut();
+        await PrimeAsync(sut, SampleUserInfo(userId) with { Profile = null });
+        _inner.EnsureStubProfileAsync(userId, null, null, null, ct, actorId).Returns(true);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
+
+        (await sut.EnsureStubProfileAsync(userId, ct: ct, actorUserId: actorId)).Should().BeTrue();
+
+        await _inner.Received(1).EnsureStubProfileAsync(userId, null, null, null, ct, actorId);
+        (await sut.GetUserInfoAsync(userId, ct))!.Profile.Should().NotBeNull();
+    }
+
+    [HumansFact]
     public async Task CommittedPreferenceChange_FinishesCacheRefreshAndAuditDespiteRequestCancellation()
     {
         var testCt = Xunit.TestContext.Current.CancellationToken;

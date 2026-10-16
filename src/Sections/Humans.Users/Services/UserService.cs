@@ -1,4 +1,5 @@
 using Humans.Auth.Contracts;
+using Humans.AuditLog.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -20,7 +21,8 @@ internal sealed class UserService(
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IFileStorage fileStorage,
     IClock clock,
-    ILogger<UserService> logger) : IUserServiceInternal, IUserDataContributor
+    ILogger<UserService> logger,
+    IAuditLogService audit) : IUserServiceInternal, IUserDataContributor
 {
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
@@ -222,19 +224,17 @@ internal sealed class UserService(
     // --- User writes ---
 
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
     {
-        // Status is per-address (#687): it belongs to the canonical Google email — the address
-        // sync actually targets — not the user. Resolve the SAME target as the sync services
-        // (GoogleWorkspaceSyncService.TryGetGoogleEmail): verified IsGoogle row, else the verified
-        // provider (OAuth) fallback. Stamping the fallback row keeps suppression working for users
-        // with no IsGoogle row (~pre-#687). No such address → nothing to stamp.
+        // Vendor results belong to the row that was attempted, even if the user switched
+        // Google address while the request ran. Legacy callers may still select the current
+        // verified Google/OAuth address by omitting the row id.
         var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
-            ?? emails
-                .Where(e => e.IsVerified && e.Provider != null)
-                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
+        var googleRow = googleEmailId is { } targetId
+            ? emails.FirstOrDefault(e => e.Id == targetId && e.IsVerified)
+            : emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
+                ?? emails.Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         if (googleRow is null)
             return false;
 
@@ -287,7 +287,8 @@ internal sealed class UserService(
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 
@@ -332,6 +333,9 @@ internal sealed class UserService(
         // FirstName/LastName, so they stay Bare. The repository derives User.State from the
         // row it persists.
         await repo.AddAsync(profile, ct);
+        if (actorUserId.HasValue)
+            await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+                "Created missing profile through admin backfill.", actorUserId.Value);
         InvalidateClaims(userId);
         return true;
     }
@@ -953,9 +957,14 @@ internal sealed class UserService(
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
-        var count = await repo.BackfillParticipationsAsync(year, entries, ct);
+        var changed = await repo.BackfillParticipationsAsync(year, entries, ct);
+        foreach (var (userId, status) in changed)
+            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+                $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
+        var count = changed.Count;
         logger.LogInformation(
             "Backfilled {Count} participation records for year {Year}",
             count, year);

@@ -155,11 +155,13 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **On batch pick-up:** rows in the batch are stamped `PickedUpAt = now` (block window 5 minutes).
 - **On successful delivery:** `Status = Sent`, `SentAt = now`, `PickedUpAt = null`. If `CampaignGrantId` is set, `ICampaignService.UpdateGrantEmailStatusAsync(grantId, Sent, now)` mirrors the status onto the grant — a failure there is logged and swallowed, never re-tallying the already-sent message as `Failed`. The job then sleeps 1 second before processing the next message.
 - **On delivery failure (any thrown exception):** `Status = Failed`, `RetryCount += 1`, `LastError = ex.Message` (bounded to 4000 UTF-16 code units without splitting a Unicode surrogate pair), `NextRetryAt = now + 2^(RetryCount+1) minutes`, `PickedUpAt = null`. If `CampaignGrantId` is set, the grant is mirrored with `Failed` — a failure there is logged and swallowed too, so it cannot abort the rest of the batch. Once `RetryCount >= OutboxMaxRetries`, the processor query stops returning the row.
-- **On admin pause:** `IsEmailSendingPaused = "true"`. (No audit entry is written by the controller today.)
-- **On admin resume:** `IsEmailSendingPaused = "false"`. (No audit entry is written by the controller today.)
-- **On admin retry of failed message:** row reset to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`. (No audit entry today.)
-- **On admin discard:** row is deleted from `email_outbox_messages`.
+- **On admin pause:** `IsEmailSendingPaused = "true"`. The service records the acting admin after the setting save.
+- **On admin resume:** `IsEmailSendingPaused = "false"`. The service records the acting admin after the setting save.
+- **On admin retry of failed message:** row reset to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`. After the save, `EmailOutboxService` records `EmailOutboxRetried` with the acting admin and message ID.
+- **On admin discard:** row is deleted from `email_outbox_messages`, then audited as `EmailOutboxDiscarded`.
 - **`CleanupEmailOutboxJob` (Hangfire recurring, weekly Sunday 03:00 UTC — `0 3 * * 0`):** deletes `Status = Sent` rows whose `SentAt` is older than `OutboxRetentionDays`.
+
+- Admin retry, discard, pause and resume require a parseable actor ID before mutation. The service audits successful writes as `EmailOutboxRetried`, `EmailOutboxDiscarded`, `EmailSendingPaused` or `EmailSendingResumed`; missing messages and failed saves emit no success entry. Audit descriptions contain no recipient address or message content.
 
 ## Cross-Section Dependencies
 
@@ -168,6 +170,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
 - **Onboarding:** `IOnboardingService` sends welcome emails through this section on Volunteer activation.
+- **AuditLog:** `IAuditLogService` records persisted admin outbox controls with the acting admin, without recipient or message content.
 - **Settings:** `ISettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the Settings section owns the table).
 
 ## Architecture

@@ -143,7 +143,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
 
@@ -174,7 +174,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         }
 
         await db.SaveChangesAsync(ct);
-        return ownIssueIds.ToList();
+        return ownIssues.Select(i => i.ScreenshotStoragePath).OfType<string>().ToList();
     }
 
     public async Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(
@@ -188,9 +188,10 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<int> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    public async Task<(int Deleted, IReadOnlyList<string> ScreenshotKeys)> DeleteByIdsAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
     {
-        if (ids.Count == 0) return 0;
+        if (ids.Count == 0) return (0, []);
 
         // Load-then-RemoveRange (matching EmailOutboxRepository.DeleteSentOlderThanAsync)
         // so unit tests using the EF InMemory provider still cover the path.
@@ -201,10 +202,10 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .Where(i => ids.Contains(i.Id))
             .ToListAsync(ct);
 
-        if (toDelete.Count == 0) return 0;
+        if (toDelete.Count == 0) return (0, []);
 
         db.Issues.RemoveRange(toDelete);
         await db.SaveChangesAsync(ct);
-        return toDelete.Count;
+        return (toDelete.Count, toDelete.Select(i => i.ScreenshotStoragePath).OfType<string>().ToList());
     }
 }

@@ -145,8 +145,7 @@ rules:
       Events, Expenses, Feedback, Scanner, Search, Store. Largest backlogs: Users 427 of
       441 (carved at nobodies-collective/Humans#1050 under the pre-rule prefixes),
       Shifts 247 of 349, Teams 172 of 193, Camps 102 of 112. Singular section-name variants
-      are excluded by both detectors: they are resolved by reflection through
-      Localizer.EnumDisplay off the type name, so the prefix is not free to change.
+      (`Camp_` in Camps) count as non-conforming (Peter, 2026-10-16).
       SharedResource is out of scope — it is not a section. Exempt (Peter, 2026-09-14,
       peterdrier/Humans#1682): the Issues section keeps its `Issue_` prefix; both
       detectors skip it.

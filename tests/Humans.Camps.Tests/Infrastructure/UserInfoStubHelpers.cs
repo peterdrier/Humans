@@ -11,8 +11,7 @@ namespace Humans.Camps.Tests.Infrastructure;
 /// Helpers for stubbing the <see cref="IUserServiceRead.GetUserInfosAsync"/> reader on
 /// NSubstitute test doubles, reading from whatever in-memory DB the test
 /// owns. Builds a minimal UserInfo
-/// (the User + its UserEmails) — empty collections for the rest, which
-/// matches what existing legacy stubs covered.
+/// (the User + its UserEmails) — empty collections for the rest.
 /// </summary>
 internal static class UserInfoStubHelpers
 {

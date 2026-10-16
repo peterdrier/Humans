@@ -391,7 +391,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 
 ## Sibling section: Holded
 
-Expenses depends on a thin **`Holded`** section that owns the HTTP client surface and configuration for the Holded API. Expenses is the first consumer; the broader Finance/Holded reconciliation described in `docs/sections/Finance.md` is a future evolution that will extend the same `IHoldedClient` surface (and may add tables of its own — `holded_transactions`, etc.) without breaking Expenses' contract.
+Expenses depends on a thin **`Holded`** section that owns the HTTP client surface and configuration for the Holded API. Expenses is the first consumer; the broader Finance/Holded reconciliation described in `src/Sections/Humans.Finance/Docs/Finance.md` is a future evolution that will extend the same `IHoldedClient` surface (and may add tables of its own — `holded_transactions`, etc.) without breaking Expenses' contract.
 
 **Owning section:** `Holded` (new top-level)
 **Owned tables:** none in v1.
@@ -400,7 +400,7 @@ Expenses depends on a thin **`Holded`** section that owns the HTTP client surfac
 
 In v1, `Holded` ships exactly four methods on `IHoldedClient` — those needed by Expenses: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`. API base URL and auth header are configured from `HOLDED_API_KEY` env var (no `appsettings.json` fallback). Errors are surfaced as a small `HoldedApiException` hierarchy distinguishing transient (retry-eligible) vs permanent (4xx) failures so consumers can choose retry policy.
 
-A separate `docs/sections/Holded.md` invariant doc captures: API key handling, retry semantics, EUR-only assumption, and the explicit out-of-scope statement that v1 has no transaction-pull / sync job (that lives in the future Finance section).
+A separate `src/Sections/Humans.Holded/Docs/Holded.md` invariant doc captures: API key handling, retry semantics, EUR-only assumption, and the explicit out-of-scope statement that v1 has no transaction-pull / sync job (that lives in the future Finance section).
 
 ## Future cleanup (out of v1)
 

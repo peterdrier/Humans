@@ -156,9 +156,9 @@ The shapes imply:
   enqueue and link, and this section depends on them (as `IGoogleGroupMembershipSource`) to
   learn expected membership. The interface lives here so the section never references
   Teams or Camps directly.
-- **`IGoogleGroupSync.ReconcileOneAsync` has a 4-parameter overload only for Hangfire**:
-  the scheduler binds the expression to a signature Hangfire can serialise; callers in
-  code use the 5-parameter one.
+- **Group sync queues the current signature.** Every Hangfire argument is explicit,
+  including `CancellationToken.None` and the original sync trigger. Legacy signature
+  overloads are forbidden by standing policy D13; jobs re-register at startup.
 - **`GoogleSyncOutboxProcessor` carries `[CrossSectionWrite]`** because marking the
   person's Google email valid/rejected is Users' data, written through Users' own
   `TrySetGoogleEmailStatusFromSyncAsync` — a declared, narrow write, not a leak.

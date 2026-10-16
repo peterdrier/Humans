@@ -940,7 +940,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task RequestCampMembershipAsync_FullSeason_StillAcceptsRequest()
     {
-        // Full is informational only (Peter, 2026-08-20 PR #1427 correction) — it tells
+        // Full is informational only — it tells
         // visitors the camp looks full, it does not gate join requests. Humans doesn't
         // yet know everyone actually in the camp.
         await SeedSettingsAsync();
@@ -1569,9 +1569,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task RemoveCampMemberAsync_CascadesRoleAssignments()
     {
-        // Bug fix bundled with issue-490: the section invariants doc says Remove
-        // cascades role assignments, but the code historically did not. Route
-        // through the new TransitionMemberToRemovedAsync helper closes that gap.
+        // Remove cascades role assignments (section invariant) via TransitionMemberToRemovedAsync.
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "remove-cascade" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var memberId = Guid.NewGuid();
@@ -2151,11 +2149,8 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task GetCampsForYearAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
     {
-        // Issue nobodies-collective/Humans#753: the IsLead union into the
-        // active-members list was removed. Active members come only from real
-        // CampMember rows — no synthesis. The camp creator is now a real Active
-        // member (+ Camp Lead role assignment), so they appear via their own row,
-        // not a synthesized one.
+        // Active members come only from real CampMember rows — no synthesis. The camp
+        // creator is a real Active member (+ Camp Lead role assignment) and appears via their own row.
         await SeedSettingsAsync();
         await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         var leadUserId = Guid.NewGuid();
@@ -2438,8 +2433,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         await _service.DeleteCampAsync(camp.Id, ct);
 
-        // The Restrict FK that used to block this delete is gone; the Camps section
-        // now clears the rows through ICityPlanningService instead of orphaning them.
+        // The Camps section clears polygon rows through ICityPlanningService instead of orphaning them.
         await _cityPlanningService.Received(1).DeleteCampPolygonsForSeasonsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(season.Id)),
             Arg.Any<CancellationToken>());

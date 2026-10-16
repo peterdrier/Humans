@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
@@ -37,7 +38,48 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _claimsCacheInvalidator,
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
+    }
+
+    [HumansFact]
+    public async Task ParticipationBackfill_AuditsOnlyCommittedFinalChanges_AndNoOpsOnRepeat()
+    {
+        var userId = Guid.NewGuid();
+        var attendedId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUser(attendedId);
+        Db.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = attendedId,
+            Year = 2025,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync
+        });
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        AuditLog.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            {
+                var saved = await Db.EventParticipations.AsNoTracking().SingleAsync(
+                    e => e.UserId == userId && e.Year == 2025, TestContext.Current.CancellationToken);
+                saved.Status.Should().Be(ParticipationStatus.NoShow);
+            });
+        List<(Guid UserId, ParticipationStatus Status)> entries =
+        [
+            (userId, ParticipationStatus.Ticketed), (userId, ParticipationStatus.NoShow),
+            (attendedId, ParticipationStatus.NotAttending)
+        ];
+
+        (await _service.BackfillParticipationsAsync(2025, entries, actorId, TestContext.Current.CancellationToken))
+            .Should().Be(1);
+        await AuditLog.Received(1).LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+            Arg.Is<string>(description => description.Contains("NoShow", StringComparison.Ordinal)
+                && description.Contains("2025", StringComparison.Ordinal)), actorId, null, null);
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
+        (await _service.BackfillParticipationsAsync(2025, entries, actorId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansTheory]
@@ -598,6 +640,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.LastName.Should().Be("Lovelace");
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Active);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -607,12 +650,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(userId);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        var actorId = Guid.NewGuid();
+        AuditLog.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            {
+                (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId,
+                    TestContext.Current.CancellationToken)).Should().BeTrue();
+            });
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId);
 
         var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().BeEmpty();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
+        await AuditLog.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null);
+        (await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId))
+            .Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -645,9 +700,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.MergedAt = Clock.GetCurrentInstant();
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -661,9 +717,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.Email = $"deleted-{userId:N}@deleted.local";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -767,5 +824,5 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _claimsCacheInvalidator,
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
 }

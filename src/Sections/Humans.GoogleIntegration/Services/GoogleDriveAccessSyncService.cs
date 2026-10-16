@@ -322,13 +322,13 @@ internal sealed class GoogleDriveAccessSyncService(
         CancellationToken ct)
     {
         var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
-            access.Keys.ToList(), userService, userEmailService, ct);
+            access.Keys.ToList(), userService, ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
             if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
                 result[userId] = new DriveExpectedMember(
-                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level);
+                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level, member.GoogleEmailId);
         }
 
         return result;
@@ -341,17 +341,17 @@ internal sealed class GoogleDriveAccessSyncService(
         // Distinct member IDs may carry aliases that Google resolves to one address.
         // Reconcile that address once at the highest level already claimed by a source.
         var byEmail = expectedMembers.Values
-            .GroupBy(member => member.Email, NormalizingEmailComparer.Instance)
+            .GroupBy(member => member.Email, GmailAliasEmailComparer.Instance)
             .ToDictionary(group => group.Key,
                 group => group.OrderByDescending(member => member.Level)
                     .ThenBy(member => member.UserId).First(),
-                NormalizingEmailComparer.Instance);
+                GmailAliasEmailComparer.Instance);
 
-        var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-        var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-        var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        var idByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        var inheritedLevelByEmail = new Dictionary<string, DrivePermissionLevel>(NormalizingEmailComparer.Instance);
+        var allEmails = new HashSet<string>(GmailAliasEmailComparer.Instance);
+        var directEmails = new HashSet<string>(GmailAliasEmailComparer.Instance);
+        var roleByEmail = new Dictionary<string, string>(GmailAliasEmailComparer.Instance);
+        var idByEmail = new Dictionary<string, string>(GmailAliasEmailComparer.Instance);
+        var inheritedLevelByEmail = new Dictionary<string, DrivePermissionLevel>(GmailAliasEmailComparer.Instance);
 
         foreach (var perm in permissions)
         {
@@ -423,7 +423,8 @@ internal sealed class GoogleDriveAccessSyncService(
             members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
         }
 
-        return new DrivePlan(members, idByEmail);
+        return new DrivePlan(members, idByEmail,
+            byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.GoogleEmailId, GmailAliasEmailComparer.Instance));
     }
 
     private async Task<List<string>> ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, CancellationToken ct)
@@ -467,7 +468,8 @@ internal sealed class GoogleDriveAccessSyncService(
                         errorMessage: error, userId: member.UserId, ct: ct);
                     errors.Add(error);
                     if (result.Error is { IsDriveTargetRejection: true } && member.UserId is { } rejectedUserId)
-                        await userService.TrySetGoogleEmailStatusFromSyncAsync(rejectedUserId, GoogleEmailStatus.Rejected, ct);
+                        await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                            rejectedUserId, GoogleEmailStatus.Rejected, ct, plan.GoogleEmailIdsByEmail[member.Email]);
                     break;
             }
         }
@@ -596,7 +598,10 @@ internal sealed class GoogleDriveAccessSyncService(
         public Guid ResourceId => Resources.FirstOrDefault()?.Id ?? Guid.Empty;
     }
 
-    private sealed record DriveExpectedMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, DrivePermissionLevel Level);
+    private sealed record DriveExpectedMember(
+        Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, DrivePermissionLevel Level, Guid GoogleEmailId);
 
-    private sealed record DrivePlan(List<MemberSyncStatus> Members, Dictionary<string, string> PermissionIdByEmail);
+    private sealed record DrivePlan(
+        List<MemberSyncStatus> Members, Dictionary<string, string> PermissionIdByEmail,
+        Dictionary<string, Guid> GoogleEmailIdsByEmail);
 }

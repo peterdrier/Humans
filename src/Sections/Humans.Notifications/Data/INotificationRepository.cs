@@ -42,20 +42,12 @@ internal interface INotificationRepository : IRepository
 
     /// <summary>
     /// Marks the notification resolved (sets <c>ResolvedAt</c> and
-    /// <c>ResolvedByUserId</c>) if it exists, the actor is a recipient, and
-    /// it is not already resolved. Returns the outcome along with the list
+    /// <c>ResolvedByUserId</c>) if it exists, the actor is a recipient, and its class matches the service
+    /// policy. An already resolved matching row succeeds without a write. Returns the outcome along with the list
     /// of recipient user ids for cache invalidation.
     /// </summary>
     Task<NotificationMutationOutcome> ResolveAsync(
-        Guid notificationId, Guid actorUserId, Instant now, CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="ResolveAsync"/> but only succeeds when the
-    /// notification's <c>Class</c> is <see cref="NotificationClass.Informational"/>
-    /// (actionable notifications cannot be dismissed).
-    /// </summary>
-    Task<NotificationMutationOutcome> DismissAsync(
-        Guid notificationId, Guid actorUserId, Instant now, CancellationToken ct = default);
+        Guid notificationId, Guid actorUserId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
     /// <summary>
     /// Marks the recipient row read if the recipient exists and is not
@@ -74,21 +66,12 @@ internal interface INotificationRepository : IRepository
 
     /// <summary>
     /// Bulk-resolves the subset of <paramref name="notificationIds"/> that
-    /// are Actionable, unresolved, and include the user as a recipient.
+    /// match the service-selected class, are unresolved, and include the user as a recipient.
     /// Returns the recipient user ids affected across all updated
     /// notifications for cache invalidation.
     /// </summary>
     Task<IReadOnlyList<Guid>> BulkResolveAsync(
-        IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, CancellationToken ct = default);
-
-    /// <summary>
-    /// Bulk-dismisses the subset of <paramref name="notificationIds"/> that
-    /// are Informational, unresolved, and include the user as a recipient.
-    /// Returns the recipient user ids affected across all updated
-    /// notifications for cache invalidation.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> BulkDismissAsync(
-        IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, CancellationToken ct = default);
+        IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
     /// <summary>
     /// Click-through: marks the recipient row read if needed and returns

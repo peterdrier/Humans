@@ -86,10 +86,14 @@ internal sealed class ExpenseReportService(
             var status = await holdedFinance.GetCreditorStatusAsync(
                 report.HoldedSupplierAccountNum, ct);
 
-            var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
-            // Withdrawal does not undo a Holded booking. Count the actual documents regardless of
-            // report status; RegisteredAmount excludes lines that have not been pushed yet.
-            memberRegisteredTotal = memberReports.Sum(RegisteredAmount);
+            // The creditor contact covers every id the human has held, so the total does too.
+            var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+            foreach (var id in submitter?.AllUserIds ?? [report.SubmitterUserId])
+            {
+                // Withdrawal does not undo a Holded booking. Count the actual documents regardless of
+                // report status; RegisteredAmount excludes lines that have not been pushed yet.
+                memberRegisteredTotal += (await repo.GetForSubmitterAsync(id, ct)).Sum(RegisteredAmount);
+            }
 
             owed = status?.OwedToMember ?? 0m;
             totalPaid = status?.TotalPaid ?? 0m;
@@ -202,15 +206,20 @@ internal sealed class ExpenseReportService(
     private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
         Guid coordinatorUserId, CancellationToken ct)
     {
-        var teamIds = await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId, ct);
-        if (teamIds.Count == 0) return [];
-
         var year = await budgetService.GetActiveYearAsync();
         if (year is null) return [];
 
-        return year.Groups
-            .SelectMany(g => g.Categories)
-            .Where(c => c.TeamId is { } teamId && teamIds.Contains(teamId))
+        // The same rule that grants endorse: whoever can sign a claim off sees it.
+        var categories = year.Groups.SelectMany(g => g.Categories).Where(c => c.TeamId.HasValue).ToList();
+        var coordinatedTeamIds = new HashSet<Guid>();
+        foreach (var teamId in categories.Select(c => c.TeamId!.Value).Distinct())
+        {
+            if (await teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId, ct))
+                coordinatedTeamIds.Add(teamId);
+        }
+
+        return categories
+            .Where(c => coordinatedTeamIds.Contains(c.TeamId!.Value))
             .Select(c => c.Id)
             .ToList();
     }
@@ -386,8 +395,8 @@ internal sealed class ExpenseReportService(
 
         try
         {
-            // Travel lines are computed and can no longer be created; this path takes free-text
-            // amounts, so it accepts only the receipt-backed types.
+            // Travel lines are computed; this path takes free-text amounts, so it accepts only
+            // receipt-backed types.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
                 return Reject(new("Expenses_Validation_OnlyReceiptAndInvoiceLines", []));
             // Validate the file before creating anything, so a bad upload leaves no half-made line.
@@ -1312,11 +1321,26 @@ internal sealed class ExpenseReportService(
             AuditAction.IbanReveal,
         };
 
-        var auditEntries = await auditLogService.GetFilteredEntriesAsync(
+        var auditEntries = (await auditLogService.GetFilteredEntriesAsync(
             userId: userId,
             actions: expenseActions,
             limit: 10_000,
-            ct: ct);
+            ct: ct)).ToList();
+
+        // Decisions others took on the member's claims name the claim, not the member.
+        foreach (var report in allReports)
+        {
+            auditEntries.AddRange(await auditLogService.GetFilteredEntriesAsync(
+                entityType: AuditEntityTypes.Report,
+                entityId: report.Id,
+                actions: expenseActions,
+                limit: 10_000,
+                ct: ct));
+        }
+        auditEntries = auditEntries
+            .DistinctBy(e => e.Id)
+            .OrderByDescending(e => e.OccurredAt)
+            .ToList();
 
         var shapedReports = allReports
             .OrderBy(r => r.CreatedAt)
@@ -1328,8 +1352,12 @@ internal sealed class ExpenseReportService(
                 r.PayeeName,
                 PayeeIban = IbanFormatter.Mask(r.PayeeIban),
                 r.Total,
+                r.MaxAmount,
                 SubmittedAt = r.SubmittedAt?.ToIso8601(),
+                CoordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
                 ApprovedAt = r.ApprovedAt?.ToIso8601(),
+                r.LastRejectionReason,
+                LastRejectedAt = r.LastRejectedAt?.ToIso8601(),
                 CreatedAt = r.CreatedAt.ToIso8601(),
                 Lines = r.Lines.Select(l => new
                 {

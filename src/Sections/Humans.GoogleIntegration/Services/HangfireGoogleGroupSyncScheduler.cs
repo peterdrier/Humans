@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 
@@ -8,10 +9,7 @@ internal sealed class HangfireGoogleGroupSyncScheduler(
     IGoogleDriveActivityClient googleClient,
     ILogger<HangfireGoogleGroupSyncScheduler> logger) : IGoogleGroupSyncScheduler
 {
-    // Both call sites bind explicitly to the 4-param ReconcileOneAsync overload
-    // so the MethodInfo Hangfire serializes stays stable across changes to the
-    // 5-param overload's signature. See IGoogleGroupSync.ReconcileOneAsync.
-    public void Enqueue(string groupKey)
+    public void Enqueue(string groupKey, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         if (!googleClient.IsConfigured)
         {
@@ -22,10 +20,10 @@ internal sealed class HangfireGoogleGroupSyncScheduler(
         }
 
         backgroundJobs.Enqueue<IGoogleGroupSync>(
-            sync => sync.ReconcileOneAsync(groupKey, SyncAction.Execute, CancellationToken.None, 0));
+            sync => sync.ReconcileOneAsync(groupKey, SyncAction.Execute, CancellationToken.None, 0, true, syncSource));
     }
 
-    public void Schedule(string groupKey, TimeSpan delay, int retryAttempt)
+    public void Schedule(string groupKey, TimeSpan delay, int retryAttempt, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         if (!googleClient.IsConfigured)
         {
@@ -36,7 +34,7 @@ internal sealed class HangfireGoogleGroupSyncScheduler(
         }
 
         backgroundJobs.Schedule<IGoogleGroupSync>(
-            sync => sync.ReconcileOneAsync(groupKey, SyncAction.Execute, CancellationToken.None, retryAttempt),
+            sync => sync.ReconcileOneAsync(groupKey, SyncAction.Execute, CancellationToken.None, retryAttempt, true, syncSource),
             delay);
     }
 }

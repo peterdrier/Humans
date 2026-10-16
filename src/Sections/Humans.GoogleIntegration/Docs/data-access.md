@@ -31,7 +31,7 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleSyncOutboxEvents | R/W |
 
 Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
-`ITeamService`, `IUserEmailService`, `ISyncSettingsService`,
+`ITeamServiceRead`, `ISyncSettingsService`,
 `IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
 `IGoogleGroupProvisioningClient`, `IGoogleGroupSync`, `IGoogleDriveSync`,
 and `IGoogleDriveAccessSource` (source-owned grant levels). No cache.

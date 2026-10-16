@@ -11,7 +11,6 @@ public sealed record ExpenseAttachmentDownload(
 /// Round-trip timeline for a single report: the submitter-facing payment half, derived from the
 /// cached Holded creditor ledger, plus the finance-admin-facing push half, derived from the report's
 /// outbox event. The push half answers "did this one reach Holded?"
-/// (nobodies-collective/Humans#1045).
 /// </summary>
 public sealed record ExpenseHoldedTimeline
 {

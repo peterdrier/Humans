@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="8" fill="#3d2b1f"/>
+  <g stroke="#c9a96e" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Circle frame -->
+    <circle cx="32" cy="32" r="26" stroke-width="0.8" opacity="0.3"/>
+    <!-- Square frame -->
+    <rect x="8" y="8" width="48" height="48" stroke-width="0.5" opacity="0.18"/>
+
+    <!-- Primary figure (contoured) -->
+    <!-- Head -->
+    <path d="M 29.5 13 Q 29 10 30.5 9 Q 32 8.5 33.5 9 Q 35 10 34.5 13
+             Q 34.5 15 33.5 16.5 Q 32.5 17 32 17 Q 31.5 17 30.5 16.5 Q 29.5 15 29.5 13 Z"
+          stroke-width="0.9" fill="#c9a96e" fill-opacity="0.04"/>
+
+    <!-- Neck -->
+    <line x1="31" y1="17" x2="31" y2="19" stroke-width="0.5"/>
+    <line x1="33" y1="17" x2="33" y2="19" stroke-width="0.5"/>
+
+    <!-- Torso (contoured) -->
+    <path d="M 31 19 Q 28 19.5 26 21 Q 25 23 25.5 27
+             Q 26 31 27 35 Q 28.5 38 30 39.5 Q 32 40.5 34 39.5
+             Q 35.5 38 37 35 Q 38 31 38.5 27
+             Q 39 23 38 21 Q 36 19.5 33 19 Z"
+          stroke-width="0.8" fill="#c9a96e" fill-opacity="0.03"/>
+
+    <!-- Left arm (contoured) -->
+    <path d="M 26 20.5 Q 21 21.5 16 23 Q 12 24 9 25
+             L 8.5 27 Q 12 26 16 25.5 Q 21 24 25.5 23 Z"
+          stroke-width="0.6" fill="#c9a96e" fill-opacity="0.03"/>
+    <!-- Left hand fingers -->
+    <g stroke-width="0.45" opacity="0.8">
+      <path d="M 9 25 L 6 24"/>
+      <path d="M 8.5 25.5 L 5 25.5"/>
+      <path d="M 8.5 26.5 L 5.5 27"/>
+      <path d="M 8.5 27 L 6.5 28"/>
+    </g>
+
+    <!-- Right arm (contoured) -->
+    <path d="M 38 20.5 Q 43 21.5 48 23 Q 52 24 55 25
+             L 55.5 27 Q 52 26 48 25.5 Q 43 24 38.5 23 Z"
+          stroke-width="0.6" fill="#c9a96e" fill-opacity="0.03"/>
+    <!-- Right hand fingers -->
+    <g stroke-width="0.45" opacity="0.8">
+      <path d="M 55 25 L 58 24"/>
+      <path d="M 55.5 25.5 L 59 25.5"/>
+      <path d="M 55.5 26.5 L 58.5 27"/>
+      <path d="M 55.5 27 L 57.5 28"/>
+    </g>
+
+    <!-- Left leg (contoured) -->
+    <path d="M 29.5 39 Q 29 44 28.5 49 Q 28 53 28 57
+             L 30.5 57 Q 30.5 53 31 49 Q 31.5 44 32 39 Z"
+          stroke-width="0.55" fill="#c9a96e" fill-opacity="0.03"/>
+    <!-- Left foot -->
+    <path d="M 28 57 L 25 58 Q 24 57.5 24.5 57" stroke-width="0.5"/>
+
+    <!-- Right leg (contoured) -->
+    <path d="M 34.5 39 Q 35 44 35.5 49 Q 36 53 36 57
+             L 33.5 57 Q 33.5 53 33 49 Q 32.5 44 32 39 Z"
+          stroke-width="0.55" fill="#c9a96e" fill-opacity="0.03"/>
+    <!-- Right foot -->
+    <path d="M 36 57 L 39 58 Q 40 57.5 39.5 57" stroke-width="0.5"/>
+
+    <!-- Anatomy hints -->
+    <g stroke-width="0.3" opacity="0.2">
+      <path d="M 29 25 Q 31 27 32 26"/>
+      <path d="M 35 25 Q 33 27 32 26"/>
+      <line x1="32" y1="20" x2="32" y2="36"/>
+    </g>
+
+    <!-- Secondary pose (spread, faint) -->
+    <g opacity="0.3">
+      <!-- Arms raised (contoured) -->
+      <path d="M 26 20.5 Q 21 15 16 10 Q 14 7 12 5
+               L 11 6.5 Q 13 8.5 15 11.5 Q 20 16.5 25.5 22 Z"
+            stroke-width="0.5" fill="#c9a96e" fill-opacity="0.03"/>
+      <path d="M 38 20.5 Q 43 15 48 10 Q 50 7 52 5
+               L 53 6.5 Q 51 8.5 49 11.5 Q 44 16.5 38.5 22 Z"
+            stroke-width="0.5" fill="#c9a96e" fill-opacity="0.03"/>
+      <!-- Legs spread (contoured) -->
+      <path d="M 30 39 Q 26 46 21 52 Q 18 56 15 58
+               L 14 56.5 Q 17 54 20 50 Q 25 44 29 39 Z"
+            stroke-width="0.5" fill="#c9a96e" fill-opacity="0.03"/>
+      <path d="M 34 39 Q 38 46 43 52 Q 46 56 49 58
+               L 50 56.5 Q 47 54 44 50 Q 39 44 35 39 Z"
+            stroke-width="0.5" fill="#c9a96e" fill-opacity="0.03"/>
+    </g>
+
+    <!-- Navel dot -->
+    <circle cx="32" cy="33" r="0.5" fill="#c9a96e" fill-opacity="0.2" stroke="none"/>
+
+    <!-- Knee hints -->
+    <circle cx="29" cy="49" r="0.8" stroke-width="0.25" opacity="0.2"/>
+    <circle cx="35" cy="49" r="0.8" stroke-width="0.25" opacity="0.2"/>
+  </g>
+</svg>

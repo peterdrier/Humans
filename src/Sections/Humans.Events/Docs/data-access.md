@@ -55,13 +55,13 @@ Cross-section calls via `ISettingsService` (active event settings),
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, ApprovedEventView>` (`Event.ApprovedEventView`) | Per-Entity | yes | yes | yes (per-slice, inline after delegated write; via `IEventViewInvalidator`) |
+| `TrackedCache<Guid, ApprovedEventView>` (`Event.ApprovedEventView`) | Per-Entity | yes | yes | yes (per-slice, inline after delegated write) |
 | Flat `EventCategoryView` list | Static | yes | yes | yes |
 | Flat `EventVenueView` list | Static | yes | yes | yes |
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
 Implements `IEventService` (which extends the cross-section read surface
-`IEventServiceRead`), `IEventViewInvalidator`, `IEventSettingsChangeListener`, `IUserDataContributor`
+`IEventServiceRead`), `IEventSettingsChangeListener`, `IUserDataContributor`
 (delegates to the inner service, then refreshes the affected cache slice —
 erasure edits a cached row's Host name),
 `IHostedService` (`StartAsync` warms all four projections).

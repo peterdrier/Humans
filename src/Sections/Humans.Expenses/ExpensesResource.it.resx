@@ -242,9 +242,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Chi presenta il rendiconto deve avere un IBAN nel proprio profilo.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Chi presenta il rendiconto deve avere nome e cognome nel proprio profilo.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossibile inviare il rendiconto. Potrebbe non essere più una bozza.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Invio non riuscito</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Solo chi presenta il rendiconto può ritirarlo.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ritiro non riuscito</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo chi presenta il rendiconto può modificarlo.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Questo rendiconto non può essere modificato quando è nello stato {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Nota spese</value></data>

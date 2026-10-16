@@ -242,9 +242,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La persona que presenta l'informe ha de tenir un IBAN al seu perfil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La persona que presenta l'informe ha de tenir el nom i els cognoms al seu perfil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>No s'ha pogut enviar l'informe. Potser ja no és un esborrany.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Ha fallat l'enviament</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Només qui presenta l'informe el pot retirar.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ha fallat la retirada</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Només qui presenta l'informe el pot editar.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Aquest informe no es pot editar quan és en estat {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Informe de despeses</value></data>

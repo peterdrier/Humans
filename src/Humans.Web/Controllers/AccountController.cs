@@ -30,6 +30,19 @@ public class AccountController(
     public IActionResult Login(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
+
+        // Link previews: chat crawlers land here anonymously, so the Open Graph tags describe
+        // the area the shared link points at instead of "Sign In" — see LoginLinkPreview.
+        var segment = LoginLinkPreview.SegmentFor(returnUrl);
+        ViewData["OgTitle"] = segment is null
+            ? localizer["Nav_Brand"].Value
+            : $"{localizer[$"LinkPreview_{segment}_Title"].Value} - {localizer["Nav_Brand"].Value}";
+        if (segment is not null)
+        {
+            ViewData["OgDescription"] = localizer[$"LinkPreview_{segment}_Description"].Value;
+            ViewData["OgPath"] = returnUrl;
+        }
+
         return View();
     }
 

@@ -131,9 +131,7 @@ public sealed class CampRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetActiveLeadUserIdsAsync_ReturnsDistinctActiveLeadUsers()
     {
-        // Post-Camp-Lead-retirement (issue nobodies-collective/Humans#753):
-        // GetActiveLeadUserIdsAsync now reads from CampRoleAssignment where
-        // SpecialRole == Lead, not the legacy camp_leads table.
+        // GetActiveLeadUserIdsAsync reads CampRoleAssignment where SpecialRole == Lead.
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
         var camp1 = await SeedCampAsync("camp-1");
@@ -194,28 +192,6 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Pending);
 
         (await _repo.HasApprovedSeasonAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
-    }
-
-    // ==========================================================================
-    // Camp.HasPublicSeasonForYear predicate (caller-side filter on GetAllCampsForYearAsync)
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetAllCampsForYearAsync_WithHasPublicSeasonFilter_ReturnsActiveAndFull()
-    {
-        var activeCamp = await SeedCampAsync("active");
-        await SeedSeasonAsync(activeCamp.Id, 2026, CampSeasonStatus.Active);
-
-        var fullCamp = await SeedCampAsync("full");
-        await SeedSeasonAsync(fullCamp.Id, 2026, CampSeasonStatus.Full);
-
-        var pendingCamp = await SeedCampAsync("pending");
-        await SeedSeasonAsync(pendingCamp.Id, 2026, CampSeasonStatus.Pending);
-
-        var result = await _repo.GetAllCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
-
-        result.Where(c => c.HasPublicSeasonForYear(2026)).Select(c => c.Slug)
-            .Should().BeEquivalentTo("active", "full");
     }
 
     // ==========================================================================

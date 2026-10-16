@@ -43,7 +43,8 @@ internal sealed class BudgetService(
                     group.SortOrder,
                     group.IsRestricted,
                     group.IsDepartmentGroup))
-                .ToList());
+                .ToList(),
+            year.VendorEventId);
 
     public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id)
     {
@@ -66,7 +67,8 @@ internal sealed class BudgetService(
             year.IsDeleted,
             year.Groups
                 .Select(ToGroupDetail)
-                .ToList());
+                .ToList(),
+            year.VendorEventId);
 
     private static BudgetGroupDetail ToGroupDetail(BudgetGroup group) =>
         new(
@@ -173,11 +175,12 @@ internal sealed class BudgetService(
             yearId, status);
     }
 
-    public async Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId)
+    public async Task UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.UpdateYearAsync(yearId, year, name, actorUserId, now);
+        var ok = await repository.UpdateYearAsync(
+            yearId, year, name, string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim(), actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget year {yearId} not found");
     }

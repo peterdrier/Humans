@@ -51,7 +51,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
             _userRepository, _userService,
@@ -292,7 +292,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
@@ -324,7 +324,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
@@ -580,7 +580,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
         Substitute.For<IFileStorage>(),
         Clock,
-        NullLogger<UserService>.Instance);
+        NullLogger<UserService>.Instance, AuditLog);
 
     // --- Helpers ---
 

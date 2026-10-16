@@ -26,6 +26,9 @@ internal sealed class ProfileBackfillAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Run(CancellationToken ct = default)
     {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
         var missing = await GetUsersMissingProfileAsync(ct);
         if (missing.Count == 0)
         {
@@ -36,7 +39,7 @@ internal sealed class ProfileBackfillAdminController(
         foreach (var row in missing)
         {
             // Idempotent — UserService takes a per-userId lock around the get/add pair.
-            await userService.EnsureStubProfileAsync(row.UserId, ct: ct);
+            await userService.EnsureStubProfileAsync(row.UserId, ct: ct, actorUserId: actorId.Value);
         }
 
         logger.LogInformation(

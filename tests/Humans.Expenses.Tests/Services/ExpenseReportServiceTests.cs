@@ -43,7 +43,7 @@ namespace Humans.Expenses.Tests.Services;
 /// <c>UsersDbContext</c> and this test never touched it — only the audit substitute, the clock
 /// and the section-context options below. Inheriting it here would have meant granting a section
 /// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
-/// G5 split exists to draw (nobodies-collective/Humans#866).
+/// section split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
 public sealed class ExpenseReportServiceTests
 {
@@ -123,8 +123,8 @@ public sealed class ExpenseReportServiceTests
         {
             Id = userId,
             DisplayName = profile.BurnerName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
             BurnerName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
@@ -1016,8 +1016,7 @@ public sealed class ExpenseReportServiceTests
 
         // Seed attachment directly through repo
         var attach = MakeAttachment(submitter);
-        await _expenseRepo.AddAttachmentAsync(attach, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attach.Id, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, attach, Xunit.TestContext.Current.CancellationToken);
 
         await _sut.RemoveAttachmentFromLineAsync(id, submitter, false, lineId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1057,8 +1056,7 @@ public sealed class ExpenseReportServiceTests
         var id = await service.CreateDraftAsync(actor, actor, CategoryAccountNumber, null, ct);
         var lineId = (await service.AddLineWithResultAsync(id, actor, false, "Item", 10m, ct: ct)).LineId!.Value;
         var attachment = MakeAttachment(actor);
-        await repo.AddAttachmentAsync(attachment, ct);
-        await repo.SetLineAttachmentAsync(lineId, attachment.Id, ct);
+        await repo.ReplaceLineAttachmentAsync(id, lineId, attachment, ct);
         interceptor.Armed = true;
 
         var result = await service.RemoveAttachmentFromLineAsync(id, actor, false, lineId, request.Token);
@@ -1260,8 +1258,7 @@ public sealed class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(
             id, member, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var attachment = MakeAttachment(member);
-        await _expenseRepo.AddAttachmentAsync(attachment, ct);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachment.Id, ct);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, attachment, ct);
         _userService.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(
                 new IOException("member lookup unavailable"))));
@@ -1326,8 +1323,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, ct);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var previous = MakeAttachment(submitter);
-        await _expenseRepo.AddAttachmentAsync(previous, ct);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, previous.Id, ct);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previous, ct);
         var previousKey = ExpenseReportService.AttachmentKey(previous.Id, previous.Extension);
         _fileStorage.DeleteAsync(previousKey, CancellationToken.None).Returns(async _ =>
         {
@@ -1360,8 +1356,7 @@ public sealed class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var previous = MakeAttachment(submitter);
         previous.HoldedUploadedAt = Clock.GetCurrentInstant();
-        await _expenseRepo.AddAttachmentAsync(previous, ct);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, previous.Id, ct);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previous, ct);
         var interceptor = new FailAfterCommit();
         var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions)
             .AddInterceptors(interceptor).Options;
@@ -1397,8 +1392,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var previousAttachment = MakeAttachment(submitter);
-        await _expenseRepo.AddAttachmentAsync(previousAttachment, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, previousAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previousAttachment, Xunit.TestContext.Current.CancellationToken);
         string? replacementKey = null;
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -1473,8 +1467,7 @@ public sealed class ExpenseReportServiceTests
         var proofId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         var proofAttachment = MakeAttachment(submitter);
-        await _expenseRepo.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, proofId, proofAttachment, Xunit.TestContext.Current.CancellationToken);
 
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>()).Returns(
@@ -1532,8 +1525,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var invoiceId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var invoiceFile = MakeAttachment(submitter);
-        await _expenseRepo.AddAttachmentAsync(invoiceFile, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(invoiceId, invoiceFile.Id, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, invoiceId, invoiceFile, Xunit.TestContext.Current.CancellationToken);
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Proof, no file", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
@@ -1552,8 +1544,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
@@ -1601,8 +1592,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
         // Profile with no IBAN
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
@@ -1620,8 +1610,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
 
         (await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -1642,8 +1631,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
@@ -1756,8 +1744,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await sut.AddLineWithResultAsync(id, submitter, false, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
         // A dependency throwing plain InvalidOperationException for a genuine runtime fault —
         // NOT the service's own ExpenseValidationException — must still log at Error with the
@@ -1802,10 +1789,7 @@ public sealed class ExpenseReportServiceTests
         {
             var lineId = (await sut.AddLineWithResultAsync(id, submitter, false, "Item", 50m,
                 ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-            var attachmentId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter),
-                Xunit.TestContext.Current.CancellationToken);
-            await _expenseRepo.SetLineAttachmentAsync(lineId, attachmentId,
-                Xunit.TestContext.Current.CancellationToken);
+            await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
             _userService.GetUserInfoAsync(submitter, cancellation.Token).Throws(_ =>
             {
                 if (callerCancelled) cancellation.Cancel();
@@ -2177,8 +2161,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(admin), Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(admin), Xunit.TestContext.Current.CancellationToken);
 
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
         SetupUserAndProfile(admin, "Ada Admin", "ES7100302053091234567895");
@@ -2445,8 +2428,8 @@ public sealed class ExpenseReportServiceTests
         var (year, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var submitter = Guid.NewGuid();
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinator, Arg.Any<CancellationToken>())
-            .Returns([category.TeamId!.Value]);
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinator, Arg.Any<CancellationToken>())
+            .Returns(true);
         var inBudget = Guid.NewGuid();
         await SeedReportWithStatus(inBudget, submitter, category.Id, year.Id, ExpenseReportStatus.Submitted);
         var outsideBudget = await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
@@ -3011,8 +2994,8 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
-            Arg.Any<CancellationToken>()).Returns([category.TeamId!.Value]);
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns(true);
 
         var queue = await _sut.GetReviewQueueAsync(coordinatorUserId, isFinanceAdmin: false,
             Xunit.TestContext.Current.CancellationToken);
@@ -3033,9 +3016,6 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(memberUserId,
-            Arg.Any<CancellationToken>()).Returns([]);
-
         var queue = await _sut.GetReviewQueueAsync(memberUserId, isFinanceAdmin: false,
             Xunit.TestContext.Current.CancellationToken);
 
@@ -3045,8 +3025,7 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
     {
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>()).Returns([]);
+        SetupActiveYear();
 
         var result = await _sut.GetCoordinatorQueueAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
@@ -3073,8 +3052,8 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
-            Arg.Any<CancellationToken>()).Returns([teamId]);
+        _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await _sut.GetCoordinatorQueueAsync(coordinatorUserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -3106,6 +3085,37 @@ public sealed class ExpenseReportServiceTests
         timeline.RegisteredInHolded.Should().BeTrue();
         timeline.OwedToMember.Should().Be(200m);
         timeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsEveryMergedId()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        SetupActiveYear();
+        SetupUserAndProfile(sourceId, "Alice Old", "ES9121000418450200051332");
+        SetupUserAndProfile(survivorId, "Alice Tester", "ES9121000418450200051332");
+        var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId);
+        var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId);
+        foreach (var (reportId, docId) in new[] { (survivorReportId, "doc-1"), (sourceReportId, "doc-2") })
+        {
+            await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, ct);
+            var lineId = (await _sut.GetAsync(reportId, ct))!.Lines[0].Id;
+            await _expenseRepo.SetLineHoldedDocIdAsync(lineId, docId, FakeNow, ct);
+        }
+        var survivor = await _userService.GetUserInfoAsync(survivorId, ct);
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(survivor! with { MergedUserIds = [sourceId] });
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(survivorReportId, ct);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, ct);
+
+        timeline!.MemberRegisteredTotal.Should().Be(100m);
+        timeline.OtherAmount.Should().Be(100m);
     }
 
     [HumansTheory]
@@ -3460,7 +3470,7 @@ public sealed class ExpenseReportServiceTests
     /// <summary>
     /// Stubs the active budget year and one category on <c>IBudgetServiceRead</c>. Builds the
     /// contract DTOs directly: Budget's entities are internal to <c>Humans.Budget</c> since its
-    /// G5 move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
+    /// own-project move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
     /// </summary>
     private (BudgetYearDetail Year, BudgetCategorySnapshot Category) SetupActiveYear()
     {

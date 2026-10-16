@@ -108,7 +108,7 @@ public sealed class BudgetServiceTests
         };
         var controller = new BudgetAdminController(budget, _teamService,
             new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
-            tickets, Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
+            Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
             NullLogger<BudgetAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -692,7 +692,7 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", null, Guid.NewGuid());
 
         await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var auditEntries = await ctx2.BudgetAuditLogs
@@ -701,6 +701,31 @@ public sealed class BudgetServiceTests
 
         auditEntries.Should().ContainSingle(a => a.FieldName == nameof(BudgetYear.Name));
         auditEntries.Should().NotContain(a => a.FieldName == nameof(BudgetYear.Year));
+    }
+
+    [HumansFact]
+    public async Task UpdateYearAsync_persists_vendor_event_id_and_audits_the_change()
+    {
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget 2026", " event-2026 ", Guid.NewGuid());
+
+        var detail = await _service.GetYearByIdAsync(_yearId);
+        detail!.VendorEventId.Should().Be("event-2026");
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await ctx2.BudgetAuditLogs.CountAsync(
+            a => a.BudgetYearId == _yearId && a.FieldName == nameof(BudgetYear.VendorEventId),
+            TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // ─── DeleteYearAsync refuses active ─────────────────────────────────────
@@ -836,6 +861,73 @@ public sealed class BudgetServiceTests
         actualFees.Should().OnlyContain(li => li.Amount == 0m);
         (await ctx.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == _yearId
             && a.Description.StartsWith("Ticketing sync:"), ct)).Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_zeroes_weeks_absent_from_next_sync()
+    {
+        var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        // All of the week's orders were refunded: it no longer appears in the input, which now
+        // holds only a later week.
+        var laterWeek = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 1, 50m, 0m, 0m);
+        await _service.SyncTicketingActualsAsync(_yearId, [laterWeek], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actuals = await ctx.BudgetLineItems
+            .Where(li => (li.BudgetCategoryId == revenueCatId || li.BudgetCategoryId == feesCatId)
+                && !li.Description.StartsWith("Projected: ")
+                && li.ExpectedDate == new LocalDate(2026, 3, 2))
+            .ToListAsync(ct);
+        actuals.Should().HaveCount(3, because: "rows are zeroed, not deleted");
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_dropped_zero_amount_week_resets_ticket_count_notes()
+    {
+        var (_, _, revenueCatId, _) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        // Fully-discounted week: 3 tickets, 0 revenue.
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var revenueRows = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && !li.Description.StartsWith("Projected: ")
+                && li.ExpectedDate == new LocalDate(2026, 3, 2))
+            .ToListAsync(ct);
+        revenueRows.Should().ContainSingle().Which.Notes.Should().Be("0 tickets");
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_all_refunded_empty_input_zeroes_stored_weeks()
+    {
+        var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        // Every order of the week was refunded: empty input zeroes the stored week.
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actuals = await ctx.BudgetLineItems
+            .Where(li => (li.BudgetCategoryId == revenueCatId || li.BudgetCategoryId == feesCatId)
+                && !li.Description.StartsWith("Projected: "))
+            .ToListAsync(ct);
+        actuals.Should().HaveCount(3);
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
     }
 
     [HumansFact]
@@ -1330,7 +1422,7 @@ public sealed class BudgetServiceTests
             "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
             "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
             "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
-            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", actor, now, ct),
+            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", null, actor, now, ct),
             "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)

@@ -57,6 +57,7 @@ public sealed class IssuesServiceTests
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
     private readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
+    private readonly InMemoryFileStorage FileStorage = new();
 
     /// <summary>
     /// The published section list (nobodies-collective/Humans#1509). A substitute: the service
@@ -138,7 +139,7 @@ public sealed class IssuesServiceTests
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
 
@@ -1048,7 +1049,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _issuesBadge, Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var result = field switch
@@ -1851,6 +1852,149 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
+    // Screenshots — stored through IFileStorage, served behind the issue's reach check
+    // ==========================================================================
+
+    private static IFormFile PngUpload(byte[] bytes)
+    {
+        var upload = Substitute.For<IFormFile>();
+        upload.Length.Returns(bytes.Length);
+        upload.ContentType.Returns("image/png");
+        upload.FileName.Returns("shot.png");
+        upload.OpenReadStream().Returns(_ => new MemoryStream(bytes));
+        return upload;
+    }
+
+    [HumansFact]
+    public async Task SubmitIssueAsync_saves_the_screenshot_through_file_storage()
+    {
+        var reporter = SeedUser();
+        byte[] bytes = [9, 8, 7];
+
+        var issue = await _service.SubmitIssueAsync(
+            reporter.Id, IssueCategory.Bug, "T", "D",
+            section: null, pageUrl: null, userAgent: null, additionalContext: null,
+            screenshot: PngUpload(bytes), ct: Ct);
+
+        issue.ScreenshotStoragePath.Should().StartWith($"uploads/issues/{issue.Id}/").And.EndWith(".png");
+        issue.ScreenshotContentType.Should().Be("image/png");
+        FileStorage.Files[issue.ScreenshotStoragePath!].Should().Equal(bytes);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_deletes_the_screenshot_through_file_storage_and_keeps_others()
+    {
+        var aliceId = Guid.NewGuid();
+        var bobId = Guid.NewGuid();
+        SeedUser(aliceId, "Alice").Email = "a@a.com";
+        SeedUser(bobId, "Bob").Email = "b@b.com";
+        await Db.SaveChangesAsync(Ct);
+        var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's");
+        var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
+        var aliceKey = $"uploads/issues/{aliceIssue}/a.png";
+        var bobKey = $"uploads/issues/{bobIssue}/b.png";
+        FileStorage.Files[aliceKey] = [1];
+        FileStorage.Files[bobKey] = [2];
+        (await _issuesDb.Issues.FirstAsync(i => i.Id == aliceIssue, Ct)).ScreenshotStoragePath = aliceKey;
+        (await _issuesDb.Issues.FirstAsync(i => i.Id == bobIssue, Ct)).ScreenshotStoragePath = bobKey;
+        await _issuesDb.SaveChangesAsync(Ct);
+
+        await _service.EraseForUserAsync(aliceId, Ct);
+
+        FileStorage.Files.Should().NotContainKey(aliceKey);
+        FileStorage.Files.Should().ContainKey(bobKey);
+    }
+
+    private async Task<Guid> SeedIssueWithScreenshotAsync(
+        Guid reporterId, string? section, string contentType, byte[] bytes)
+    {
+        var id = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "With screenshot", section);
+        var key = $"uploads/issues/{id}/shot.png";
+        FileStorage.Files[key] = bytes;
+        var row = await _issuesDb.Issues.FirstAsync(i => i.Id == id, Ct);
+        row.ScreenshotStoragePath = key;
+        row.ScreenshotContentType = contentType;
+        await _issuesDb.SaveChangesAsync(Ct);
+        return id;
+    }
+
+    [HumansFact]
+    public async Task GetScreenshotAsync_serves_the_reporter_and_a_section_handler()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "r@r.com";
+        await Db.SaveChangesAsync(Ct);
+        byte[] bytes = [1, 2, 3];
+        var issueId = await SeedIssueWithScreenshotAsync(reporterId, "Tickets", "image/png", bytes);
+
+        foreach (var viewer in new[] { new IssueViewer(reporterId, []), Handler(), Admin })
+        {
+            var shot = await _service.GetScreenshotAsync(issueId, viewer, Ct);
+
+            shot.Should().NotBeNull();
+            shot.Content.Should().Equal(bytes);
+            shot.ContentType.Should().Be("image/png");
+        }
+    }
+
+    [HumansFact]
+    public async Task GetScreenshotAsync_hides_the_screenshot_from_a_stranger_and_answers_missing_alike()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "r@r.com";
+        await Db.SaveChangesAsync(Ct);
+        var issueId = await SeedIssueWithScreenshotAsync(reporterId, "Tickets", "image/png", [1]);
+        var noScreenshot = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Plain", "Tickets");
+
+        (await _service.GetScreenshotAsync(issueId, Stranger(), Ct)).Should().BeNull();
+        (await _service.GetScreenshotAsync(noScreenshot, Admin, Ct)).Should().BeNull();
+        (await _service.GetScreenshotAsync(Guid.NewGuid(), Admin, Ct)).Should().BeNull();
+    }
+
+    private IssuesController ScreenshotController(Guid userId)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        return new IssuesController(_service, Substitute.For<IAuthorizationService>(), _userService,
+            Domain.TestIssueQueues.Shipped(), services.GetRequiredService<IStringLocalizer<IssuesResource>>(),
+            NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+                }
+            }
+        };
+    }
+
+    [HumansFact]
+    public async Task Screenshot_action_returns_the_file_with_its_content_type_to_the_reporter()
+    {
+        var reporter = SeedUser();
+        byte[] bytes = [5, 6, 7];
+        var issueId = await SeedIssueWithScreenshotAsync(reporter.Id, "Tickets", "image/webp", bytes);
+
+        var result = await ScreenshotController(reporter.Id).Screenshot(issueId);
+
+        var file = result.Should().BeOfType<FileContentResult>().Subject;
+        file.ContentType.Should().Be("image/webp");
+        file.FileContents.Should().Equal(bytes);
+    }
+
+    [HumansFact]
+    public async Task Screenshot_action_returns_404_to_someone_who_may_not_see_the_issue()
+    {
+        var reporter = SeedUser();
+        var stranger = SeedUser();
+        var issueId = await SeedIssueWithScreenshotAsync(reporter.Id, "Tickets", "image/png", [1]);
+
+        (await ScreenshotController(stranger.Id).Screenshot(issueId)).Should().BeOfType<NotFoundResult>();
+        (await ScreenshotController(stranger.Id).Screenshot(Guid.NewGuid())).Should().BeOfType<NotFoundResult>();
+    }
+
+    // ==========================================================================
     // PurgeExpiredAsync — 6-month retention sweep used by CleanupIssuesJob
     // ==========================================================================
 
@@ -1859,26 +2003,30 @@ public sealed class IssuesServiceTests
     [InlineData(true)]
     public async Task ScreenshotCleanupFailure_AfterCommittedErasure_DoesNotReverseSuccess(bool gdprErasure)
     {
+        const string key = "uploads/issues/cleanup/shot.png";
         var issueId = await SeedIssueWithResolvedAtAsync(
-            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200));
+            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
         var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
-        var key = $"uploads/issues/{issueId}";
         var rowRemovedAtCleanup = false;
         CancellationToken? cleanupToken = null;
-        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>(), true).Returns(async call =>
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(async call =>
         {
             rowRemovedAtCleanup = !await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct);
             cleanupToken = call.ArgAt<CancellationToken>(1);
             throw new IOException("Screenshot storage unavailable");
         });
+        var service = new IssuesApplicationService(
+            _repository, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
-        if (gdprErasure) await _service.EraseForUserAsync(reporterId, Ct);
-        else (await _service.PurgeExpiredAsync(Ct)).Should().Be(1);
+        if (gdprErasure) await service.EraseForUserAsync(reporterId, Ct);
+        else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
 
         (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
         rowRemovedAtCleanup.Should().BeTrue();
         cleanupToken.Should().Be(CancellationToken.None);
-        await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None, true);
+        await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
     }
 
     [HumansFact]
@@ -1931,46 +2079,34 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeExpiredAsync_DeletesScreenshotDirectory()
+    public async Task PurgeExpiredAsync_DeletesScreenshotThroughFileStorage()
     {
         var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
-
         var issueId = Guid.NewGuid();
-        var screenshotDir = Path.Combine(
-            Path.GetTempPath(), "wwwroot", "uploads", "issues", issueId.ToString());
-        Directory.CreateDirectory(screenshotDir);
-        var screenshotFile = Path.Combine(screenshotDir, "shot.png");
-        await File.WriteAllBytesAsync(screenshotFile, [1, 2, 3], Xunit.TestContext.Current.CancellationToken);
+        var key = $"uploads/issues/{issueId}/shot.png";
+        FileStorage.Files[key] = [1, 2, 3];
 
-        try
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
+        _issuesDb.Issues.Add(new Issue
         {
-            var reporterId = Guid.NewGuid();
-            SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
-            _issuesDb.Issues.Add(new Issue
-            {
-                Id = issueId,
-                ReporterUserId = reporterId,
-                Category = IssueCategory.Bug,
-                Title = "Has screenshot",
-                Description = "...",
-                Status = IssueStatus.Resolved,
-                CreatedAt = oldResolved,
-                UpdatedAt = oldResolved,
-                ResolvedAt = oldResolved,
-                ScreenshotStoragePath = $"uploads/issues/{issueId}/shot.png"
-            });
-            await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            Id = issueId,
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Has screenshot",
+            Description = "...",
+            Status = IssueStatus.Resolved,
+            CreatedAt = oldResolved,
+            UpdatedAt = oldResolved,
+            ResolvedAt = oldResolved,
+            ScreenshotStoragePath = key
+        });
+        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-            var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
 
-            deleted.Should().Be(1);
-            Directory.Exists(screenshotDir).Should().BeFalse();
-        }
-        finally
-        {
-            if (Directory.Exists(screenshotDir))
-                Directory.Delete(screenshotDir, recursive: true);
-        }
+        deleted.Should().Be(1);
+        FileStorage.Files.Should().NotContainKey(key);
     }
 
     [HumansFact]

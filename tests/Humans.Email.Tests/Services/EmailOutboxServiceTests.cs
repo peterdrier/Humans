@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
@@ -17,12 +18,92 @@ public sealed class EmailOutboxServiceTests
     private readonly Instant _now = Instant.FromUtc(2026, 5, 10, 12, 0);
     private readonly IEmailOutboxRepository _repo = Substitute.For<IEmailOutboxRepository>();
     private readonly ISettingsService _settingsStore = Substitute.For<ISettingsService>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly Guid _actorId = Guid.NewGuid();
     private readonly EmailOutboxService _service;
 
     public EmailOutboxServiceTests()
     {
         _service = new EmailOutboxService(
-            _repo, _settingsStore, Options.Create(new EmailSettings()), new FakeClock(_now));
+            _repo, _settingsStore, Options.Create(new EmailSettings()), new FakeClock(_now), _audit);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MessageMutation_AuditsOnlyAfterSuccessfulSave(bool discard)
+    {
+        var id = Guid.NewGuid();
+        var committed = false;
+        if (discard)
+            _repo.DiscardAsync(id, Arg.Any<CancellationToken>()).Returns(_ =>
+            {
+                committed = true;
+                return "recipient@example.org";
+            });
+        else
+            _repo.RetryAsync(id, Arg.Any<CancellationToken>()).Returns(_ =>
+            {
+                committed = true;
+                return "recipient@example.org";
+            });
+        var action = discard ? AuditAction.EmailOutboxDiscarded : AuditAction.EmailOutboxRetried;
+        _audit.LogAsync(action, nameof(EmailOutboxMessage), id, Arg.Any<string>(), _actorId, null, null)
+            .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
+
+        if (discard)
+            await _service.DiscardMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken);
+        else
+            await _service.RetryMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(action, nameof(EmailOutboxMessage), id,
+            Arg.Is<string>(description => !description.Contains("recipient@example.org", StringComparison.Ordinal)),
+            _actorId, null, null);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PauseMutation_AuditsAfterSettingSave(bool paused)
+    {
+        var committed = false;
+        _settingsStore.SetValueAsync(SettingKeys.IsEmailSendingPaused, paused ? "true" : "false",
+            Arg.Any<CancellationToken>()).Returns(_ => { committed = true; return Task.CompletedTask; });
+        var action = paused ? AuditAction.EmailSendingPaused : AuditAction.EmailSendingResumed;
+        _audit.LogAsync(action, "EmailSending", Guid.Empty, Arg.Any<string>(), _actorId, null, null)
+            .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
+
+        await _service.SetEmailPausedAsync(paused, _actorId, Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(action, "EmailSending", Guid.Empty,
+            Arg.Any<string>(), _actorId, null, null);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MessageMutation_MissingOrFailedSave_DoesNotAudit(bool discard)
+    {
+        var id = Guid.NewGuid();
+        _repo.RetryAsync(id, Arg.Any<CancellationToken>()).Returns((string?)null);
+        _repo.DiscardAsync(id, Arg.Any<CancellationToken>()).Returns((string?)null);
+        if (discard)
+            (await _service.DiscardMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        else
+            (await _service.RetryMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
+
+        if (discard)
+            _repo.DiscardAsync(id, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<string?>(new InvalidOperationException("save failed")));
+        else
+            _repo.RetryAsync(id, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<string?>(new InvalidOperationException("save failed")));
+        Func<Task> mutate = () => discard
+            ? _service.DiscardMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken)
+            : _service.RetryMessageAsync(id, _actorId, Xunit.TestContext.Current.CancellationToken);
+        await mutate.Should().ThrowAsync<InvalidOperationException>();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -70,7 +151,7 @@ public sealed class EmailOutboxServiceTests
     [HumansFact]
     public async Task SetEmailPausedAsync_WritesSetting()
     {
-        await _service.SetEmailPausedAsync(true, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetEmailPausedAsync(true, _actorId, Xunit.TestContext.Current.CancellationToken);
 
         await _settingsStore.Received(1).SetValueAsync(
             SettingKeys.IsEmailSendingPaused,

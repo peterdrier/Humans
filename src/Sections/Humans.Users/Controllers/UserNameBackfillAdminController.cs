@@ -26,7 +26,10 @@ internal sealed class UserNameBackfillAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Run(CancellationToken ct = default)
     {
-        var synced = await nameSyncService.SyncAllAsync(ct);
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        var synced = await nameSyncService.SyncAllAsync(actorId.Value, ct);
         if (synced == 0)
         {
             SetSuccess("Every human already carries their names on the User row — nothing to do.");

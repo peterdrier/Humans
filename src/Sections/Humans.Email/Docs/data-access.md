@@ -23,7 +23,7 @@ pause flag).
 
 `IsEmailPausedAsync` / `SetEmailPausedAsync` read/write the
 `IsEmailSendingPaused` key through `ISettingsService`. Cross-section
-calls via `ISettingsService`, plus `IClock`. No `IMemoryCache`.
+calls via `ISettingsService` and `IAuditLogService` (admin retry, discard, pause and resume after save), plus `IClock`. No `IMemoryCache`.
 
 ### EmailOutboxProcessor (Scoped)
 

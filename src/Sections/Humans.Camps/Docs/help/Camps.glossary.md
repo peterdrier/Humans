@@ -4,9 +4,10 @@
 |------|-----------|
 | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
 | **Barrio** | A themed village or space at an event. |
-| **Barrio Lead** | The human who registered the barrio and manages it. |
+| **Barrio Lead** | A human holding the barrio's Camp Lead role; registering a barrio assigns it. |
 | **CampAdmin** | A system role that can approve, reject, and manage all barrios. |
-| **Draft** | A barrio registration that is still being prepared. |
-| **Submitted** | A barrio registration awaiting admin review. |
-| **Approved** | A barrio that has been confirmed for the event. |
-| **Rejected** | A barrio that has been declined by an admin. |
+| **Pending** | A barrio season awaiting admin review. |
+| **Active** | A barrio season that has been approved for the event. |
+| **Full** | An Active season a lead marked as full; informational only. |
+| **Rejected** | A barrio season that has been declined by an admin. |
+| **Withdrawn** | A barrio season a lead withdrew. |

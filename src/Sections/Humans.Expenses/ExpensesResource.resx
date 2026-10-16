@@ -255,9 +255,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Submitter must have an IBAN set on their profile.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Submitter must have first and last name set on their profile.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Could not submit the report. It may no longer be a draft.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Submission failed</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Only the submitter can withdraw.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Withdrawal failed</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Only the submitter can edit this report.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>This report cannot be edited when it is in status {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Expense Report</value></data>

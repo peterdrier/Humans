@@ -177,15 +177,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         return attachments;
     }
 
-    public async Task<Guid> AddAttachmentAsync(
-        ExpenseAttachment attachment, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.ExpenseAttachments.Add(attachment);
-        await ctx.SaveChangesAsync(ct);
-        return attachment.Id;
-    }
-
     public async Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
         Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default)
     {
@@ -212,16 +203,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             ctx.ExpenseAttachments.Remove(replaced);
         await ctx.SaveChangesAsync(ct);
         return (true, replaced);
-    }
-
-    public async Task SetLineAttachmentAsync(
-        Guid lineId, Guid? attachmentId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var line = await ctx.ExpenseLines.FirstOrDefaultAsync(l => l.Id == lineId, ct);
-        if (line is null) return;
-        line.AttachmentId = attachmentId;
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)
@@ -278,9 +259,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved per section invariant.
-        // Draft has no UI Withdraw path (use Delete-while-Draft when that ships) and a direct
-        // POST should not silently succeed; Withdrawn is already terminal.
+        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved. Draft has no
+        // Withdraw path, so a direct POST must not succeed; Withdrawn is terminal.
         if (r.Status is ExpenseReportStatus.Draft
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;

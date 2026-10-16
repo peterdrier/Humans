@@ -109,7 +109,7 @@ def commit(turn):
         ledger.write_text(ledger.read_text().replace("  - id: CENTRAL-2\\n", ""))
         subprocess.run(["git", "add", str(ledger)], check=True, stdout=sys.stderr)
     subprocess.run(["git", "commit", "-qm", "Fix " + str(turn)], check=True, stdout=sys.stderr)
-    if scenario == "dirty":
+    if scenario in ("dirty", "blocked-dirty"):
         path.write_text("unfinished")
 
 for line in sys.stdin:
@@ -191,7 +191,7 @@ for line in sys.stdin:
     commit(2)
     if not scenario.startswith("early-"):
         (root / "clock").write_text(str(int((root / "clock").read_text()) + 91))
-    emit("thread/goal/updated", {"goal": {"status": "blocked" if scenario == "blocked" else "complete"}})
+    emit("thread/goal/updated", {"goal": {"status": "blocked" if scenario.startswith("blocked") else "complete"}})
     if scenario != "missing-report":
         emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 2"}})
     if scenario == "early-deadline-race":
@@ -331,8 +331,33 @@ for line in sys.stdin:
         self.assertEqual(published, [])
         self.assertFalse(any(x[0] == "dotnet" for x in calls))
 
+    def test_blocked_goal_validates_commits_and_publishes_a_failed_draft(self):
+        result, calls, published = self.run_scenario("blocked")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(published), 1)
+        self.assertIn("--draft", published[0])
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
+        self.assertIn("exit_reason=pushed-draft-goal-blocked commits=2 build=pass test=pass", result.stdout)
+        body = (self.root / "pr-body").read_text()
+        self.assertIn("The Codex goal stopped blocked", body)
+        self.assertIn("Fix 1", body)
+        self.assertIn("Fix 2", body)
+        self.assertNotIn("Cumulative fixes: 2", body)
+        self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
+
+    def test_blocked_publication_retry_preserves_draft_warning(self):
+        result, _, _ = self.run_scenario("blocked")
+        self.assertNotEqual(result.returncode, 0)
+        # The fake GitHub list returns no PR: exercise pushed-branch recovery.
+        result, calls, published = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 2)
+        self.assertTrue(all("--draft" in pr for pr in published))
+        self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 1)
+        self.assertIn("## Automated goal warning", (self.root / "pr-body").read_text())
+
     def test_failures_never_publish(self):
-        for scenario in ("codex-failure", "missing-report", "blocked", "dirty", "build-failure", "test-failure"):
+        for scenario in ("codex-failure", "missing-report", "blocked-dirty", "dirty", "build-failure", "test-failure"):
             with self.subTest(scenario=scenario):
                 # Each scenario needs a fresh clone and log history.
                 if scenario != "codex-failure":
@@ -347,6 +372,10 @@ for line in sys.stdin:
                     self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
                 else:
                     self.assertEqual(published, [])
+                if scenario == "codex-failure":
+                    self.assertIn("exit_reason=codex-failed commits=1", result.stdout)
+                if scenario == "blocked-dirty":
+                    self.assertIn("exit_reason=dirty-tree-after-codex commits=2", result.stdout)
 
 
 if __name__ == "__main__":

@@ -244,6 +244,10 @@ namespace Humans.Budget.Data.Migrations
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("VendorEventId")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("Year")
                         .IsRequired()
                         .HasMaxLength(50)

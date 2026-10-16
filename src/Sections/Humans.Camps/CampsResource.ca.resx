@@ -293,6 +293,7 @@
   <data name="Camps_Details_Next" xml:space="preserve"><value>Següent</value></data>
   <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Veure la pàgina de la temporada {0}</value></data>
   <data name="Camps_Details_MyMembership" xml:space="preserve"><value>La meva pertinença</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>Ets responsable el {0}.</value></data>
   <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Això no t’incorpora al campament. Uneix-t’hi primer mitjançant el procés del mateix campament i després informa Humans per accedir als rols del campament, les assignacions d’Entrada Anticipada i les notificacions.</value></data>
   <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Aquest campament indica que està complet per al {0} — encara pots sol·licitar unir-t’hi.</value></data>
   <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Sol·licitar unir-m’hi per al {0}</value></data>

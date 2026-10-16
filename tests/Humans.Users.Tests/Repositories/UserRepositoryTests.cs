@@ -406,7 +406,13 @@ public sealed class UserRepositoryTests : IDisposable
 
         var count = await _repo.BackfillParticipationsAsync(2025, entries, Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(3);
+        count.Should().BeEquivalentTo(new[]
+        {
+            (userNewId, ParticipationStatus.Ticketed),
+            (userExistingId, ParticipationStatus.Ticketed)
+        });
+        (await _repo.BackfillParticipationsAsync(2025, entries, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
 
         var records = await _dbContext.EventParticipations.AsNoTracking()
             .Where(ep => ep.Year == 2025)

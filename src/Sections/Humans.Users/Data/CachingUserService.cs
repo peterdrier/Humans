@@ -615,10 +615,10 @@ internal sealed class CachingUserService(
     // Writes — delegate to inner, then refresh the affected entry.
 
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
     {
         var result = await WithInnerAsync(inner =>
-            inner.TrySetGoogleEmailStatusFromSyncAsync(userId, status, ct));
+            inner.TrySetGoogleEmailStatusFromSyncAsync(userId, status, ct, googleEmailId));
         if (result) await RefreshEntryAsync(userId);
         return result;
     }
@@ -657,10 +657,11 @@ internal sealed class CachingUserService(
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
     {
         var created = await WithInnerAsync(inner =>
-            inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct));
+            inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct, actorUserId));
         if (created) await RefreshEntryAsync(userId);
         return created;
     }
@@ -860,9 +861,10 @@ internal sealed class CachingUserService(
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
-        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, ct));
+        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, actorUserId, ct));
         foreach (var userId in entries.Select(e => e.UserId).Distinct())
             await RefreshEventParticipationsAsync(userId, ct);
         return count;

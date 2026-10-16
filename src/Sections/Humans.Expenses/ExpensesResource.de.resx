@@ -242,9 +242,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Die einreichende Person muss eine IBAN im Profil hinterlegt haben.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Die einreichende Person muss Vor- und Nachnamen im Profil angegeben haben.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Der Bericht konnte nicht abgesendet werden. Möglicherweise ist er kein Entwurf mehr.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Einreichung fehlgeschlagen</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn zurückziehen.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Zurückziehen fehlgeschlagen</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn bearbeiten.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Dieser Bericht kann im Status {0} nicht bearbeitet werden.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Ausgabenbericht</value></data>

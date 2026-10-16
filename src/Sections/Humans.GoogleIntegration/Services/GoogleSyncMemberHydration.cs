@@ -10,53 +10,45 @@ internal static class GoogleSyncMemberHydration
     public static async Task<Dictionary<Guid, GoogleSyncMember>> LoadAsync(
         IReadOnlyCollection<Guid> userIds,
         IUserServiceRead userService,
-        IUserEmailService userEmailService,
         CancellationToken ct)
     {
         if (userIds.Count == 0)
             return [];
 
         var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
 
         var result = new Dictionary<Guid, GoogleSyncMember>();
         foreach (var userId in userIds)
         {
             if (!users.TryGetValue(userId, out var user))
                 continue;
-            // A claim on a merged-away id resolves to its survivor, but the email rows below are
-            // the claimed id's own; skip rather than pair the survivor with an archived address.
+            // A merged-away claim must not be reinterpreted as a survivor's membership.
             if (user.Id != userId)
                 continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
-                continue;
-            if (user.IsSuspended)
+            if (!CanReceiveAccess(user))
                 continue;
 
-            var emails = emailsByUserId.TryGetValue(userId, out var list)
-                ? list
-                : [];
-
-            var email = emails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? emails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (email is null)
+            // The address and its status come from the same immutable user snapshot.
+            var target = SelectTargetEmail(user);
+            if (target is null)
                 continue;
 
             // Both Google APIs reject Gmail "+tag" grants and report the canonical
             // form. Other domains retain their exact address (#945).
             result[user.Id] = new GoogleSyncMember(
-                user.Id, EmailNormalization.CanonicalizeGmail(email), user.BurnerName, user.ProfilePictureUrl);
+                user.Id, EmailNormalization.CanonicalizeGmail(target.Email), user.BurnerName, user.ProfilePictureUrl, target.Id);
         }
 
         return result;
     }
+
+    internal static bool CanReceiveAccess(UserInfo user) =>
+        !user.IsSuspended && !user.IsDeletionPending && user.GoogleEmailStatus != GoogleEmailStatus.Rejected;
+
+    internal static UserEmailInfo? SelectTargetEmail(UserInfo user) =>
+        user.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
+        ?? user.UserEmails.Where(e => e.IsVerified && e.Provider != null)
+            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
 }
 
-internal sealed record GoogleSyncMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl);
+internal sealed record GoogleSyncMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, Guid GoogleEmailId);

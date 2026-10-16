@@ -25,9 +25,9 @@ internal interface IUserServiceInternal : IUserService
     Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Bulk import historical participation data (admin backfill).
+    /// Bulk import historical participation data after admin confirmation; counts and audits changed records.
     /// </summary>
-    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
+    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization
@@ -67,13 +67,15 @@ internal interface IUserServiceInternal : IUserService
     /// the member's burner and legal names (the magic-link signup path); import/OAuth
     /// callers omit them, and the stub instead inherits BurnerName from the User row
     /// (already seeded at account creation) so it survives the #1097 Profile->User mirror.
+    /// An admin actor records a successful repair audit after the save.
     /// </summary>
     Task<bool> EnsureStubProfileAsync(
         Guid userId,
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        Guid? actorUserId = null);
 
     /// <summary>
     /// Saves the profile fields projected into UserInfo and updates the user's

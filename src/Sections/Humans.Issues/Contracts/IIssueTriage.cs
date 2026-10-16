@@ -38,6 +38,12 @@ public interface IIssueTriage : IApplicationService
     Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default);
 
     /// <summary>
+    /// The issue's screenshot, or <c>null</c> when the issue is missing, out of the viewer's reach
+    /// (the same test as <see cref="GetIssueByIdAsync"/>), has no screenshot, or its file is gone.
+    /// </summary>
+    Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default);
+
+    /// <summary>
     /// Throws <see cref="InvalidOperationException"/> when the issue is gone or
     /// <paramref name="viewer"/> may not see it — again indistinguishable.
     /// </summary>
@@ -159,3 +165,6 @@ public sealed record IssueMutationResult(bool Succeeded, bool NotFound, string? 
 
 /// <summary>A posted comment, an explicit missing outcome, or no comment when resolution failed.</summary>
 public sealed record IssueCommentResult(IssueCommentInfo? Comment, bool NotFound = false);
+
+/// <summary>A stored screenshot's bytes and the content type validated at upload.</summary>
+public sealed record IssueScreenshot(byte[] Content, string ContentType);
