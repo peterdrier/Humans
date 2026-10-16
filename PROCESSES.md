@@ -84,6 +84,17 @@ How to use the skills and agents in this project. Ordered by typical workflow.
 /maintenance run overdue   # execute overdue calendar items
 ```
 
+## Brand: `/redraw-logo`
+
+**When:** Every 2-3 months, when a new first-class model ships.
+
+**What it does:** Redraws the Vitruvian Man mark against the standing brief (`src/Humans.Web/wwwroot/img/logo.md`), derives every icon from the master, archives the previous round under `docs/brand/logo-history/`, wires it in and opens the PR.
+
+```
+/redraw-logo            # label the archive after the running model
+/redraw-logo opus-5.5   # explicit label
+```
+
 ## Feedback: `/triage`
 
 **When:** Regularly, to check for user-reported issues.

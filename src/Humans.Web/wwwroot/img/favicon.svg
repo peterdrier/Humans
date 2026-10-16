@@ -1,28 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Nobodies">
-  <rect width="240" height="240" fill="#3d2b1f"/>
-  <g transform="translate(0,4)">
-    <g fill="none" stroke="#c9a96e" stroke-width="4.5" stroke-linecap="round">
-      <circle cx="120" cy="116" r="100"/>
-      <rect x="32" y="36" width="176" height="176"/>
-    </g>
-    <g fill="none" stroke="#c9a96e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-      <g id="vmlimb">
-        <line x1="138" y1="86" x2="202" y2="84"/>
-        <line x1="138" y1="86" x2="176" y2="35"/>
-        <line x1="132" y1="144" x2="132" y2="209"/>
-        <line x1="122" y1="150" x2="179" y2="189"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 284 284" role="img" aria-label="Nobodies">
+  <rect x="-22" y="-22" width="284" height="284" fill="#3d2b1f"/>
+  <defs>
+    <g id="arm">
+      <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M-6,-8.5 C4,-9.5 14,-7.5 30,-6 C38,-7.4 48,-6 56,-4.4 C60,-5.4 64,-5.6 67,-5.2 L67,5.2 C64,5.6 60,5.4 56,4.4 C48,6 38,7.4 30,6 C14,7.5 4,9.5 -6,8.5 Z"/>
+      <g stroke="#c9a96e" stroke-width="3.2" stroke-linecap="round" fill="none">
+        <path d="M66,-4.4 C69,-5.2 72,-5.8 74,-6.4"/>
+        <path d="M66.5,-1.6 C69.5,-2 72.5,-2.3 75.5,-2.4"/>
+        <path d="M66.5,1.4 C69.5,1.6 72.5,1.8 75.2,2"/>
+        <path d="M66,4.4 C69,4.8 71.5,5.4 73.6,6"/>
+        <path d="M59,-5 C61,-6.6 63.5,-8.4 65,-10"/>
       </g>
-      <use href="#vmlimb" transform="translate(240,0) scale(-1,1)"/>
     </g>
-    <g fill="#c9a96e" stroke="none">
-      <path d="M120,70 L140,84 L130,118 L135,144 L120,151 L105,144 L110,118 L100,84 Z"/>
-      <rect x="114" y="58" width="12" height="16" rx="5"/>
-      <circle cx="120" cy="48" r="14"/>
-      <circle cx="206" cy="84" r="7"/><circle cx="34" cy="84" r="7"/>
-      <circle cx="177" cy="33" r="7"/><circle cx="63" cy="33" r="7"/>
-      <ellipse cx="132" cy="210" rx="8" ry="5"/><ellipse cx="108" cy="210" rx="8" ry="5"/>
-      <ellipse cx="183" cy="191" rx="8" ry="6" transform="rotate(35 183 191)"/>
-      <ellipse cx="57" cy="191" rx="8" ry="6" transform="rotate(-35 57 191)"/>
+    <g id="leg">
+      <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M-8,0 C-8,-7 8,-7 8,0 C8,14 6.5,30 5.5,47 C7.6,56 7.6,70 4.8,88 L4.2,93 C8,94.2 15,95 22.5,96.5 C24.5,97 24.5,99 21,99 L-5,99 C-6.5,98 -5.5,96 -4.5,93 L-4.8,88 C-7.6,70 -7,56 -5.5,47 C-6.5,30 -8,14 -8,0 Z"/>
     </g>
+    <g id="torsoR">
+      <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M118,64 L125.5,64 C126.5,70 126.5,75 125.5,79 C134,79 143,80 147,84 C150,88 149,94 144,98 C140,106 136,112 134,120 C133,128 133.5,134 136,140 C140,146 138,154 131,157 C126,158 120,157 118,157 Z"/>
+    </g>
+  </defs>
+  <g fill="none" stroke="#c9a96e" stroke-width="5.5" stroke-linejoin="round">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
   </g>
+  <use href="#leg" transform="translate(130,141)"/>
+  <use href="#leg" transform="translate(110,141) scale(-1,1)"/>
+  <use href="#leg" transform="translate(131,142) rotate(-25) scale(0.96)"/>
+  <use href="#leg" transform="translate(109,142) scale(-1,1) rotate(-25) scale(0.96)"/>
+  <use href="#torsoR"/>
+  <use href="#torsoR" transform="translate(240,0) scale(-1,1)"/>
+  <use href="#arm" transform="translate(143,86)"/>
+  <use href="#arm" transform="translate(97,86) scale(-1,1)"/>
+  <use href="#arm" transform="translate(148,80) rotate(-22)"/>
+  <use href="#arm" transform="translate(92,80) scale(-1,1) rotate(-22)"/>
+  <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M120,42 C131,42 136,50 136,60 C136.5,66 137,72 136,77 C135,80 132,80 130,78 C127,76 124,78 120,78 C116,78 113,76 110,78 C108,80 105,80 104,77 C103,72 103.5,66 104,60 C104,50 109,42 120,42 Z"/>
 </svg>

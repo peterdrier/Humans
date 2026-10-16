@@ -1,98 +1,180 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="15 11 210 210" role="img" aria-label="Vitruvian Man">
-  <!-- ===== CONSTRUCTION (faint gold) ===== -->
-  <!-- tier A: axes, diagonals, proportion circle, compass arc (>~80px) -->
-  <g fill="none" stroke="#c9a96e" stroke-width="1.4" opacity="0.16" stroke-linecap="round">
-    <line x1="120" y1="20" x2="120" y2="212"/>
-    <line x1="24" y1="116" x2="216" y2="116"/>
-    <circle cx="120" cy="116" r="74" stroke-dasharray="2.5 3"/>
-    <line x1="120" y1="22" x2="40" y2="116"/>
-    <line x1="120" y1="22" x2="200" y2="116"/>
-    <line x1="40" y1="116" x2="120" y2="210"/>
-    <line x1="200" y1="116" x2="120" y2="210"/>
-    <path d="M64,116 A56,56 0 0 1 176,116"/>
-  </g>
-  <!-- tier B: measurement ticks + corner flourishes (>~120px) -->
-  <g fill="none" stroke="#c9a96e" stroke-width="1" opacity="0.12" stroke-linecap="round">
-    <g id="ticksLR">
-      <line x1="29" y1="36" x2="35" y2="36"/><line x1="29" y1="80" x2="35" y2="80"/>
-      <line x1="29" y1="116" x2="35" y2="116"/><line x1="29" y1="152" x2="35" y2="152"/>
-      <line x1="29" y1="188" x2="35" y2="188"/><line x1="29" y1="212" x2="35" y2="212"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!--
+    Nobodies mark: Leonardo's Vitruvian Man, gold on aged ink.
+    Geometry is Leonardo's: height = square side (194); circle centred on the navel with
+    r = 0.618 x height (120), so the square rests on the circle's bottom and its top cuts the circle.
+    One drawing, every size: solid gold base survives 16-38px; ink etch tiers (t1 2.0 / t2 1.4 / t3 0.9
+    units) anti-alias away below ~64 / ~96 / ~150px; faint construction only shows large.
+    Key points (viewBox units): circle c=(120,120) r=120; square x=23 y=46 side=194; head top y=46,
+    chin 70, navel (120,120), groin (120,143); shoulder joints (143,86) horizontal / (148,80) raised
+    (rotate -22, fingertips on the circle); hip joints (130,141) standing / (131,142) spread
+    (rotate -25, scale 0.96, soles on the circle). Right half drawn, mirrored via translate(240,0) scale(-1,1).
+    Brief + regeneration: img/logo.md; process: .claude/skills/redraw-logo.
+  -->
+  <defs>
+    <!-- ARM: origin at shoulder joint, pointing +x, fingertips at x~75. Fill + etch together so draw
+         order gives occlusion between the two arm poses. -->
+    <g id="arm">
+      <path fill="#c9a96e" d="M-6,-8.5 C4,-9.5 14,-7.5 30,-6 C38,-7.4 48,-6 56,-4.4 C60,-5.4 64,-5.6 67,-5.2 L67,5.2 C64,5.6 60,5.4 56,4.4 C48,6 38,7.4 30,6 C14,7.5 4,9.5 -6,8.5 Z"/>
+      <g stroke="#c9a96e" stroke-width="2.3" stroke-linecap="round" fill="none">
+        <path d="M66,-4.4 C69,-5.2 72,-5.8 74,-6.4"/>
+        <path d="M66.5,-1.6 C69.5,-2 72.5,-2.3 75.5,-2.4"/>
+        <path d="M66.5,1.4 C69.5,1.6 72.5,1.8 75.2,2"/>
+        <path d="M66,4.4 C69,4.8 71.5,5.4 73.6,6"/>
+        <path d="M59,-5 C61,-6.6 63.5,-8.4 65,-10"/>
+      </g>
+      <!-- t1: lower contour (reads as the pose separation where arms overlap) + deltoid -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round" opacity="0.72">
+        <path d="M-4,7.2 C6,8 16,6.2 30,4.6 C40,5.4 48,4 55,2.8"/>
+        <path d="M1,-8 C8,-5 9,2 4,6.5"/>
+      </g>
+      <!-- t2: biceps, elbow, forearm -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.6">
+        <path d="M10,-4.2 C17,-6 24,-5.6 29,-3.6"/>
+        <path d="M28,0.5 C30,-1 32,-1.5 34,-0.5"/>
+        <path d="M34,-3 C41,-5 48,-4 55,-2.6"/>
+        <path d="M36,3.5 C42,2.4 48,2 54,1.4"/>
+      </g>
+      <!-- t3: wrist, knuckles, tendons, hatching -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.5">
+        <path d="M56.5,-3.8 C57.5,-1.2 57.5,1.2 56.5,3.8"/>
+        <path d="M66,-4.8 C66.6,-1.6 66.6,1.6 66,4.8"/>
+        <path d="M60,-2.4 L65.5,-3.4"/><path d="M60.5,0 L66,-0.2"/><path d="M60,2.4 L65.5,3"/>
+        <path d="M12,6 L13.5,3.6"/><path d="M16,6 L17.5,3.8"/><path d="M20,5.8 L21.5,3.8"/><path d="M24,5.6 L25.5,3.8"/>
+        <path d="M40,5 L41.2,3"/><path d="M44,4.6 L45.2,2.8"/><path d="M48,4.2 L49.2,2.6"/>
+      </g>
     </g>
-    <use href="#ticksLR" transform="translate(240,0) scale(-1,1)"/>
-    <g id="corner"><path d="M22,32 L22,20 L34,20"/><circle cx="22" cy="20" r="1.3"/></g>
+    <!-- LEG: origin at hip joint, pointing +y, sole at y~99, toes toward +x -->
+    <g id="leg">
+      <path fill="#c9a96e" d="M-8,0 C-8,-7 8,-7 8,0 C8,14 6.5,30 5.5,47 C7.6,56 7.6,70 4.8,88 L4.2,93 C8,94.2 15,95 22.5,96.5 C24.5,97 24.5,99 21,99 L-5,99 C-6.5,98 -5.5,96 -4.5,93 L-4.8,88 C-7.6,70 -7,56 -5.5,47 C-6.5,30 -8,14 -8,0 Z"/>
+      <!-- t1: inner contour (pose separation), kneecap -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round" opacity="0.72">
+        <path d="M-6.4,-2 C-6.6,8 -6.2,16 -5.6,24"/>
+        <path d="M-3,48.5 C-1.5,46 1.5,46 3.2,48.5"/>
+      </g>
+      <!-- t2: quadriceps, calf, shin -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.6">
+        <path d="M-2.5,2 C-1.2,18 0.6,32 2.2,44"/>
+        <path d="M3,53 C5.6,62 5,74 2.6,86"/>
+        <path d="M-3.4,53 C-4,66 -3.6,78 -2.8,88"/>
+        <path d="M-5,-2 C-2,4 1,8 4,8"/>
+      </g>
+      <!-- t3: toes, ankle, hatching -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.5">
+        <path d="M14,95.2 L14.5,98.6"/><path d="M17,95.6 L17.4,98.6"/><path d="M20,96 L20.3,98.6"/>
+        <path d="M2.4,89.5 C3.6,90 3.6,92 2.4,92.4"/>
+        <path d="M-6,10 L-4.4,12.5"/><path d="M-6,16 L-4.4,18.5"/><path d="M-6,22 L-4.6,24.5"/><path d="M-5.8,28 L-4.4,30.5"/>
+        <path d="M-4.8,60 L-3.4,62.4"/><path d="M-4.6,66 L-3.2,68.4"/><path d="M-4.4,72 L-3,74.4"/>
+      </g>
+    </g>
+    <!-- TORSO right half (mirrored about x=120), extends past centre so halves overlap -->
+    <g id="torsoR">
+      <path fill="#c9a96e" d="M118,64 L125.5,64 C126.5,70 126.5,75 125.5,79 C134,79 143,80 147,84 C150,88 149,94 144,98 C140,106 136,112 134,120 C133,128 133.5,134 136,140 C140,146 138,154 131,157 C126,158 120,157 118,157 Z"/>
+      <!-- t1: clavicle, pectoral, iliac crest -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round" opacity="0.72">
+        <path d="M121.5,82 C128,80.5 136,81.5 142.5,85"/>
+        <path d="M121.5,100.5 C128,102.5 136,101 141.5,96"/>
+        <path d="M127,151 C131,146 135,144 138.5,145"/>
+      </g>
+      <!-- t2: sternocleidomastoid, abs, obliques, serratus, nipple -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.6">
+        <path d="M122,70 C123.5,74 124.5,77 125,79"/>
+        <path d="M121.5,108.5 C125,107.5 128.5,108.5 130.5,110.5"/>
+        <path d="M121.5,117 C125,116 128.5,117 130,119"/>
+        <path d="M121.5,126 C124.5,125 127.5,126 129,128"/>
+        <path d="M133.6,118 C132.2,126 132.6,134 134.4,140"/>
+        <path d="M139,101 L142.5,104"/><path d="M137.4,106 L140.6,109"/><path d="M135.8,111 L138.8,114"/>
+        <circle cx="132.5" cy="95.5" r="1" fill="#3d2b1f" stroke="none"/>
+      </g>
+      <!-- t3: hatching along the flank and under the pectoral -->
+      <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.5">
+        <path d="M139.5,112 L142,114"/><path d="M138.5,116 L141,118"/><path d="M137.5,120 L140,122"/><path d="M137,124 L139.5,126"/><path d="M137,128 L139.5,130"/><path d="M137.2,132 L139.7,134"/>
+        <path d="M130,103 L132.5,104.4"/><path d="M134,102 L136.5,103.4"/><path d="M138,100.5 L140.5,101.8"/>
+        <path d="M127,135 L129.5,137"/><path d="M127.5,139 L130,141"/><path d="M128.5,143 L131,145"/>
+      </g>
+    </g>
+  </defs>
+
+  <!-- ===== CONSTRUCTION (faint gold; enriches large sizes, vanishes small) ===== -->
+  <g fill="none" stroke="#c9a96e" stroke-width="1.2" opacity="0.16" stroke-linecap="round">
+    <line x1="120" y1="2" x2="120" y2="238"/>
+    <line x1="2" y1="120" x2="238" y2="120"/>
+    <circle cx="120" cy="143" r="97" stroke-dasharray="2.5 3"/>
+    <line x1="23" y1="46" x2="217" y2="240"/>
+    <line x1="217" y1="46" x2="23" y2="240"/>
+    <path d="M52,143 A68,68 0 0 1 188,143"/>
+  </g>
+  <g fill="none" stroke="#c9a96e" stroke-width="0.9" opacity="0.13" stroke-linecap="round">
+    <g id="ticks">
+      <line x1="25" y1="70" x2="31" y2="70"/><line x1="25" y1="94" x2="31" y2="94"/>
+      <line x1="25" y1="118" x2="31" y2="118"/><line x1="25" y1="143" x2="31" y2="143"/>
+      <line x1="25" y1="167" x2="31" y2="167"/><line x1="25" y1="191" x2="31" y2="191"/>
+      <line x1="25" y1="215" x2="31" y2="215"/>
+    </g>
+    <use href="#ticks" transform="translate(240,0) scale(-1,1)"/>
+    <g id="corner"><path d="M23,60 L23,46 L37,46"/><circle cx="23" cy="46" r="1.2"/></g>
     <use href="#corner" transform="translate(240,0) scale(-1,1)"/>
-    <use href="#corner" transform="translate(0,232) scale(1,-1)"/>
-    <use href="#corner" transform="translate(240,232) scale(-1,-1)"/>
+    <use href="#corner" transform="translate(0,286) scale(1,-1)"/>
+    <use href="#corner" transform="translate(240,286) scale(-1,-1)"/>
   </g>
+
   <!-- ===== FRAME ===== -->
-  <g fill="none" stroke="#c9a96e" stroke-width="4.5" stroke-linecap="round">
-    <circle cx="120" cy="116" r="100"/>
-    <rect x="32" y="36" width="176" height="176"/>
+  <g fill="none" stroke="#c9a96e" stroke-width="4" stroke-linejoin="round">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
   </g>
-  <!-- ===== LIMBS (bold capsules) ===== -->
-  <g fill="none" stroke="#c9a96e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-    <g id="vmlimb">
-      <line x1="138" y1="86" x2="202" y2="84"/>
-      <line x1="138" y1="86" x2="176" y2="35"/>
-      <line x1="132" y1="144" x2="132" y2="209"/>
-      <line x1="122" y1="150" x2="179" y2="189"/>
-    </g>
-    <use href="#vmlimb" transform="translate(240,0) scale(-1,1)"/>
+
+  <!-- ===== FIGURE (back to front: standing legs, spread legs, torso, horizontal arms, raised arms, head) ===== -->
+  <use href="#leg" transform="translate(130,141)"/>
+  <use href="#leg" transform="translate(110,141) scale(-1,1)"/>
+  <use href="#leg" transform="translate(131,142) rotate(-25) scale(0.96)"/>
+  <use href="#leg" transform="translate(109,142) scale(-1,1) rotate(-25) scale(0.96)"/>
+  <use href="#torsoR"/>
+  <use href="#torsoR" transform="translate(240,0) scale(-1,1)"/>
+  <!-- centre-line torso etch (not mirrored) -->
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+    <path d="M120,86 L120,116" stroke-width="2" opacity="0.72"/>
+    <path d="M120,124 L120,146" stroke-width="1.4" opacity="0.6"/>
+    <path d="M127,156 L120,149 L113,156" stroke-width="2" opacity="0.72"/>
+    <circle cx="120" cy="120" r="1.5" fill="#3d2b1f" stroke="none" opacity="0.72"/>
   </g>
-  <!-- ===== SOLID BODY ===== -->
-  <g fill="#c9a96e" stroke="none">
-    <path d="M120,70 L140,84 L130,118 L135,144 L120,151 L105,144 L110,118 L100,84 Z"/>
-    <rect x="114" y="58" width="12" height="16" rx="5"/>
-    <circle cx="120" cy="48" r="14"/>
-    <circle cx="206" cy="84" r="7"/><circle cx="34" cy="84" r="7"/>
-    <circle cx="177" cy="33" r="7"/><circle cx="63" cy="33" r="7"/>
-    <ellipse cx="132" cy="210" rx="8" ry="5"/><ellipse cx="108" cy="210" rx="8" ry="5"/>
-    <ellipse cx="183" cy="191" rx="8" ry="6" transform="rotate(35 183 191)"/>
-    <ellipse cx="57" cy="191" rx="8" ry="6" transform="rotate(-35 57 191)"/>
+  <use href="#arm" transform="translate(143,86)"/>
+  <use href="#arm" transform="translate(97,86) scale(-1,1)"/>
+  <use href="#arm" transform="translate(148,80) rotate(-22)"/>
+  <use href="#arm" transform="translate(92,80) scale(-1,1) rotate(-22)"/>
+
+  <!-- head: hair mass + face -->
+  <path fill="#c9a96e" d="M120,42 C131,42 136,50 136,60 C136.5,66 137,72 136,77 C135,80 132,80 130,78 C127,76 124,78 120,78 C116,78 113,76 110,78 C108,80 105,80 104,77 C103,72 103.5,66 104,60 C104,50 109,42 120,42 Z"/>
+  <!-- t1: hairline + jaw -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round" opacity="0.72">
+    <path d="M111,60 C112,67 116,70.5 120,71 C124,70.5 128,67 129,60"/>
   </g>
-  <!-- ===== ETCH TIER 1 — structural + main contour (>~64px) ===== -->
-  <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
-    <path d="M120,96 L120,130"/>                  <!-- sternum / linea alba -->
-    <path d="M108,97 Q120,105 132,97"/>           <!-- pectoral -->
-    <circle cx="120" cy="116" r="2.2"/>            <!-- navel -->
-    <g id="etch1R">
-      <path d="M120,88 L137,85"/>                  <!-- clavicle -->
-      <path d="M148,82 L195,82"/>                  <!-- arm contour -->
-      <path d="M146,77 L172,43"/>                  <!-- raised-arm contour -->
-      <path d="M140,82 L158,66"/>                  <!-- arm separation -->
-      <path d="M129,176 Q132.5,179 136,176"/>     <!-- knee -->
-      <path d="M127,153 L145,170"/>                <!-- leg separation -->
-    </g>
-    <use href="#etch1R" transform="translate(240,0) scale(-1,1)"/>
+  <!-- t2: hair curls -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.6">
+    <path d="M111,56 C112.5,52 114,50 116.5,48.5 C119,47.5 121,47.5 123.5,48.5 C126,50 127.5,52 129,56"/>
+    <path d="M108,56 C106,62 109,67 107.5,72.5"/>
+    <path d="M106,64 C104.5,69 106,74 105.5,77"/>
+    <path d="M134,64 C135.5,69 134,74 134.5,77"/>
+    <path d="M111,70 C109.5,73 110.5,75.5 113,76"/>
+    <path d="M113,47 C110,50 109,54 109.5,57"/>
+    <path d="M120,44.5 C116,45 113,46.5 112,49"/>
+    <path d="M120,44.5 C124,45 127,46.5 128,49"/>
+    <path d="M127,47 C130,50 131,54 130.5,57"/>
+    <path d="M132,56 C134,62 131,67 132.5,72.5"/>
+    <path d="M129,70 C130.5,73 129.5,75.5 127,76"/>
   </g>
-  <!-- ===== ETCH TIER 2 — finer anatomy + hair (>~96px) ===== -->
-  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
-    <path d="M111,41 Q114,37 117,40"/><path d="M118,39 Q121,36 124,39"/><path d="M124,41 Q127,38 129,42"/>
-    <path d="M120,38 L120,45"/>
-    <path d="M114,50 Q120,48.8 126,50"/>
-    <path d="M114,112 L126,112"/><path d="M115,122 L125,122"/>
-    <g id="etch2R">
-      <path d="M111,101 Q116,104 120,104"/>         <!-- rib -->
-      <path d="M107,108 Q110,115 113,121"/>         <!-- oblique -->
-      <path d="M138,80 Q143,82 146,86"/>            <!-- deltoid -->
-      <path d="M170,80 L173,86"/>                   <!-- elbow -->
-      <path d="M154,55 L160,60"/>                   <!-- raised elbow -->
-    </g>
-    <use href="#etch2R" transform="translate(240,0) scale(-1,1)"/>
-  </g>
-  <!-- ===== ETCH TIER 3 — very fine: fingers, toes, face, hatch (>~150px) ===== -->
-  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.4">
-    <path d="M116.5,52.3 L118.8,52.3"/><path d="M121.2,52.3 L123.5,52.3"/>
-    <path d="M120,52.5 L120,56 M118.6,56 Q120,56.6 121.4,56"/>
-    <g id="etch3R">
-      <path d="M205,81 L214,79"/><path d="M206,84 L216,84"/><path d="M206,86 L215,89"/><path d="M205,88 L212,92"/>
-      <path d="M204,87 L207,93"/>
-      <path d="M176,32 L181,26"/><path d="M178,32 L184,29"/><path d="M179,34 L185,34"/><path d="M179,36 L184,40"/>
-      <path d="M127,213 L127,209"/><path d="M131,214 L131,209"/><path d="M135,213 L135,209"/>
-      <path d="M186,194 L190,197"/><path d="M183,196 L186,199"/>
-      <path d="M168,85 L170,89"/><path d="M174,84 L176,88"/>
-      <path d="M129,162 L131,168"/>
-    </g>
-    <use href="#etch3R" transform="translate(240,0) scale(-1,1)"/>
+  <!-- t3: face -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.55">
+    <path d="M113.4,56.4 C115.6,55 118,55.4 119.2,56.8"/>
+    <path d="M120.8,56.8 C122,55.4 124.4,55 126.6,56.4"/>
+    <path d="M114.4,59.2 C115.8,57.8 118,57.8 119.2,59.2 C118,60.2 115.8,60.2 114.4,59.2 Z"/>
+    <path d="M120.8,59.2 C122,57.8 124.2,57.8 125.6,59.2 C124.2,60.2 122,60.2 120.8,59.2 Z"/>
+    <circle cx="116.8" cy="59.1" r="0.6" fill="#3d2b1f" stroke="none"/>
+    <circle cx="123.2" cy="59.1" r="0.6" fill="#3d2b1f" stroke="none"/>
+    <path d="M119.8,58.2 C119.2,61 118.6,63.4 118.8,64.6 C119.6,65.3 120.8,65.3 121.6,64.6"/>
+    <path d="M117.4,67.6 C119,67.4 121,67.4 122.6,67.6"/>
+    <path d="M118,69.4 C119.2,69.9 120.8,69.9 122,69.4"/>
+    <path d="M110.6,58.6 C109.4,59.6 109.8,62 111,62.6"/>
+    <path d="M129.4,58.6 C130.6,59.6 130.2,62 129,62.6"/>
   </g>
 </svg>

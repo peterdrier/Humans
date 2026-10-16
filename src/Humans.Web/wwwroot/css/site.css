@@ -1487,6 +1487,24 @@ a:hover {
     background: var(--h-sepia-light);
 }
 
+/* --- About: the mark at full size, on its own aged-ink disc (the transparent
+   master washes out on parchment, so it gets the same tile the icons bake in) --- */
+.about-mark {
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    background: var(--h-aged-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.about-mark img {
+    width: 82%;
+    height: auto;
+}
+
 /* --- Home (unauthenticated landing page) --- */
 .home-hero {
     padding: 3.5rem 1rem 2.5rem;
