@@ -1,45 +1,28 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces;
+using Humans.Base;
 using Humans.Web.Services;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Humans.Web.Tests.Services;
 
 /// <summary>
-/// <see cref="LoginLinkPreview"/> maps a login ReturnUrl to the nav label of the section that
-/// owns it, so a shared deep link previews as that section rather than "Sign In".
+/// <see cref="LoginLinkPreview"/> maps a login ReturnUrl to the area that owns it, so a shared
+/// deep link previews as that area rather than "Sign In".
 /// </summary>
 public class LoginLinkPreviewTests
 {
-    private static readonly MemberNavItem[] Nav =
-    [
-        new("Nav_Shifts", Controller: "Shifts", Action: "Index"),
-        new("Nav_Teams", Controller: "Team", Action: "Index"),
-        new("Nav_More", Children:
-        [
-            new("Nav_Votes", Controller: "GovernanceVotes", Action: "Index"),
-            new("divider", Divider: true),
-            new("Nav_Guide", RawHref: "/Guide"),
-        ]),
-    ];
-
-    private static string? UrlFor(string controller, string action) => controller switch
-    {
-        "Shifts" => "/Shifts",
-        "Team" => "/Teams",
-        "GovernanceVotes" => "/Governance/Votes",
-        _ => null,
-    };
-
     [HumansTheory]
-    [InlineData("/Shifts", "Nav_Shifts")]
-    [InlineData("/shifts/42?tab=mine", "Nav_Shifts")]
-    [InlineData("/Teams/gate#roster", "Nav_Teams")]
-    [InlineData("/Governance/Votes/7", "Nav_Votes")]
-    [InlineData("/Guide/consents", "Nav_Guide")]
-    public void NamesTheSectionWhoseNavLinkSharesTheFirstSegment(string returnUrl, string expected)
+    [InlineData("/Shifts", "Shifts")]
+    [InlineData("/shifts/42?tab=mine", "Shifts")]
+    [InlineData("/Teams/gate#roster", "Teams")]
+    [InlineData("/Finance/Transactions", "Finance")]
+    [InlineData("/budget", "Budget")]
+    public void ResolvesTheFirstSegmentToItsCanonicalArea(string returnUrl, string expected)
     {
-        LoginLinkPreview.SectionLabelFor(returnUrl, Nav, UrlFor).Should().Be(expected);
+        LoginLinkPreview.SegmentFor(returnUrl).Should().Be(expected);
     }
 
     [HumansTheory]
@@ -52,6 +35,20 @@ public class LoginLinkPreviewTests
     [InlineData("https://evil.example/Shifts")]
     public void ReturnsNullForUnknownOrNonLocalTargets(string? returnUrl)
     {
-        LoginLinkPreview.SectionLabelFor(returnUrl, Nav, UrlFor).Should().BeNull();
+        LoginLinkPreview.SegmentFor(returnUrl).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void EverySegmentHasTitleAndDescriptionText()
+    {
+        var factory = new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
+        var localizer = new StringLocalizer<SharedResource>(factory);
+
+        foreach (var segment in LoginLinkPreview.Segments)
+        {
+            localizer[$"LinkPreview_{segment}_Title"].ResourceNotFound.Should().BeFalse(segment);
+            localizer[$"LinkPreview_{segment}_Description"].ResourceNotFound.Should().BeFalse(segment);
+        }
     }
 }

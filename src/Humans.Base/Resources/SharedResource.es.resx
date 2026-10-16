@@ -164,8 +164,173 @@
   <data name="Login_Description" xml:space="preserve">
     <value>Inicia sesión para acceder a Humans.</value>
   </data>
-  <data name="Login_PreviewDescription" xml:space="preserve">
-    <value>Inicia sesión para abrir {0} en Humans.</value>
+  <data name="LinkPreview_About_Title" xml:space="preserve">
+    <value>Acerca de</value>
+  </data>
+  <data name="LinkPreview_About_Description" xml:space="preserve">
+    <value>Qué es Humans y quién lo construye.</value>
+  </data>
+  <data name="LinkPreview_Barrios_Title" xml:space="preserve">
+    <value>Barrios</value>
+  </data>
+  <data name="LinkPreview_Barrios_Description" xml:space="preserve">
+    <value>Barrios y ubicación de campamentos de Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Budget_Title" xml:space="preserve">
+    <value>Presupuesto</value>
+  </data>
+  <data name="LinkPreview_Budget_Description" xml:space="preserve">
+    <value>De dónde viene el dinero de la asociación y a dónde va.</value>
+  </data>
+  <data name="LinkPreview_Calendar_Title" xml:space="preserve">
+    <value>Calendario</value>
+  </data>
+  <data name="LinkPreview_Calendar_Description" xml:space="preserve">
+    <value>Próximas fechas y eventos de Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Camps_Title" xml:space="preserve">
+    <value>Campamentos</value>
+  </data>
+  <data name="LinkPreview_Camps_Description" xml:space="preserve">
+    <value>Registro y ubicación de campamentos.</value>
+  </data>
+  <data name="LinkPreview_Cantina_Title" xml:space="preserve">
+    <value>Cantina</value>
+  </data>
+  <data name="LinkPreview_Cantina_Description" xml:space="preserve">
+    <value>La cantina de Nobodies.</value>
+  </data>
+  <data name="LinkPreview_CityPlanning_Title" xml:space="preserve">
+    <value>Planificación de la ciudad</value>
+  </data>
+  <data name="LinkPreview_CityPlanning_Description" xml:space="preserve">
+    <value>El plano de la ciudad y la ubicación.</value>
+  </data>
+  <data name="LinkPreview_Events_Title" xml:space="preserve">
+    <value>Eventos</value>
+  </data>
+  <data name="LinkPreview_Events_Description" xml:space="preserve">
+    <value>Eventos de Nobodies: qué hay y quién va.</value>
+  </data>
+  <data name="LinkPreview_Expenses_Title" xml:space="preserve">
+    <value>Gastos</value>
+  </data>
+  <data name="LinkPreview_Expenses_Description" xml:space="preserve">
+    <value>Solicitudes de gastos y reembolsos.</value>
+  </data>
+  <data name="LinkPreview_Feedback_Title" xml:space="preserve">
+    <value>Comentarios</value>
+  </data>
+  <data name="LinkPreview_Feedback_Description" xml:space="preserve">
+    <value>Envía comentarios sobre Humans.</value>
+  </data>
+  <data name="LinkPreview_Finance_Title" xml:space="preserve">
+    <value>Finanzas</value>
+  </data>
+  <data name="LinkPreview_Finance_Description" xml:space="preserve">
+    <value>Las cuentas y transacciones de la asociación.</value>
+  </data>
+  <data name="LinkPreview_Gate_Title" xml:space="preserve">
+    <value>Puerta</value>
+  </data>
+  <data name="LinkPreview_Gate_Description" xml:space="preserve">
+    <value>Registro de llegadas en la puerta.</value>
+  </data>
+  <data name="LinkPreview_Governance_Title" xml:space="preserve">
+    <value>Gobernanza</value>
+  </data>
+  <data name="LinkPreview_Governance_Description" xml:space="preserve">
+    <value>Solicitudes, votaciones de la Junta y de la asamblea.</value>
+  </data>
+  <data name="LinkPreview_Guide_Title" xml:space="preserve">
+    <value>Guía</value>
+  </data>
+  <data name="LinkPreview_Guide_Description" xml:space="preserve">
+    <value>Cómo funciona Humans, paso a paso.</value>
+  </data>
+  <data name="LinkPreview_Issues_Title" xml:space="preserve">
+    <value>Incidencias</value>
+  </data>
+  <data name="LinkPreview_Issues_Description" xml:space="preserve">
+    <value>Informa y sigue problemas de Humans.</value>
+  </data>
+  <data name="LinkPreview_Legal_Title" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="LinkPreview_Legal_Description" xml:space="preserve">
+    <value>Estatutos, políticas y documentos legales.</value>
+  </data>
+  <data name="LinkPreview_Notifications_Title" xml:space="preserve">
+    <value>Notificaciones</value>
+  </data>
+  <data name="LinkPreview_Notifications_Description" xml:space="preserve">
+    <value>Tus notificaciones de Humans.</value>
+  </data>
+  <data name="LinkPreview_Profile_Title" xml:space="preserve">
+    <value>Perfil</value>
+  </data>
+  <data name="LinkPreview_Profile_Description" xml:space="preserve">
+    <value>Un perfil de miembro en Humans.</value>
+  </data>
+  <data name="LinkPreview_Rideshare_Title" xml:space="preserve">
+    <value>Compartir coche</value>
+  </data>
+  <data name="LinkPreview_Rideshare_Description" xml:space="preserve">
+    <value>Comparte viaje hacia y desde el evento.</value>
+  </data>
+  <data name="LinkPreview_Search_Title" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="LinkPreview_Search_Description" xml:space="preserve">
+    <value>Encuentra miembros, equipos y más.</value>
+  </data>
+  <data name="LinkPreview_Settings_Title" xml:space="preserve">
+    <value>Ajustes</value>
+  </data>
+  <data name="LinkPreview_Settings_Description" xml:space="preserve">
+    <value>Tus ajustes de Humans.</value>
+  </data>
+  <data name="LinkPreview_Shifts_Title" xml:space="preserve">
+    <value>Turnos</value>
+  </data>
+  <data name="LinkPreview_Shifts_Description" xml:space="preserve">
+    <value>Turnos de voluntariado: apúntate y mira quién está.</value>
+  </data>
+  <data name="LinkPreview_Store_Title" xml:space="preserve">
+    <value>Tienda</value>
+  </data>
+  <data name="LinkPreview_Store_Description" xml:space="preserve">
+    <value>La tienda de Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Survey_Title" xml:space="preserve">
+    <value>Encuesta</value>
+  </data>
+  <data name="LinkPreview_Survey_Description" xml:space="preserve">
+    <value>Una encuesta o votación de Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Teams_Title" xml:space="preserve">
+    <value>Equipos</value>
+  </data>
+  <data name="LinkPreview_Teams_Description" xml:space="preserve">
+    <value>Equipos y sus listas de miembros.</value>
+  </data>
+  <data name="LinkPreview_Tickets_Title" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="LinkPreview_Tickets_Description" xml:space="preserve">
+    <value>Tus entradas y la venta de entradas.</value>
+  </data>
+  <data name="LinkPreview_Tour_Title" xml:space="preserve">
+    <value>Recorrido</value>
+  </data>
+  <data name="LinkPreview_Tour_Description" xml:space="preserve">
+    <value>Un recorrido guiado por Humans.</value>
+  </data>
+  <data name="LinkPreview_Workgroups_Title" xml:space="preserve">
+    <value>Grupos de trabajo</value>
+  </data>
+  <data name="LinkPreview_Workgroups_Description" xml:space="preserve">
+    <value>Grupos de trabajo y sus miembros.</value>
   </data>
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Iniciar sesión con Google</value>

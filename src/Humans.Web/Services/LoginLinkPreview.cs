@@ -1,65 +1,40 @@
-using Humans.Base.Interfaces;
-
 namespace Humans.Web.Services;
 
 /// <summary>
-/// Names the section a login-redirect target belongs to, so the login page's link preview
-/// (Open Graph tags) can say "Shifts" instead of "Sign In" when a deep link is shared into a
-/// chat app. Chat crawlers fetch anonymously, land on <c>/Account/Login?ReturnUrl=…</c>, and
-/// read whatever that page's head says — this is the only place they ever reach.
+/// Names the area a login-redirect target belongs to, so the login page's link preview
+/// (Open Graph tags) can describe the shared deep link instead of saying "Sign In". Chat
+/// crawlers fetch anonymously, land on <c>/Account/Login?ReturnUrl=…</c>, and read whatever
+/// that page's head says — this is the only page they ever reach.
 /// </summary>
 /// <remarks>
-/// Matches the first path segment of <c>ReturnUrl</c> against the first segment of each
-/// member-nav link's URL (<see cref="ISectionNav"/> contributions, children included), so the
-/// mapping tracks the nav instead of a hand-kept list. Only local URLs match; nothing about
-/// the target beyond its section ever reaches the preview.
+/// The first path segment of <c>ReturnUrl</c> is matched (case-insensitively) against
+/// <see cref="Segments"/>; each entry has a <c>LinkPreview_{Segment}_Title</c> and
+/// <c>LinkPreview_{Segment}_Description</c> key in SharedResource. Adding a top-level route
+/// means adding it here plus the two keys in all six cultures. Only local URLs match; nothing
+/// about the target beyond its area ever reaches the preview.
 /// </remarks>
 public static class LoginLinkPreview
 {
+    /// <summary>Top-level route segments with preview text, in canonical casing.</summary>
+    public static readonly IReadOnlyList<string> Segments =
+    [
+        "About", "Barrios", "Budget", "Calendar", "Camps", "Cantina", "CityPlanning", "Events",
+        "Expenses", "Feedback", "Finance", "Gate", "Governance", "Guide", "Issues", "Legal",
+        "Notifications", "Profile", "Rideshare", "Search", "Settings", "Shifts", "Store",
+        "Survey", "Teams", "Tickets", "Tour", "Workgroups"
+    ];
+
     /// <summary>
-    /// The SharedResource label key of the nav item whose section owns <paramref name="returnUrl"/>,
-    /// or <c>null</c> when the URL is not local or no nav link shares its first segment.
+    /// The canonical segment that owns <paramref name="returnUrl"/>, or <c>null</c> when the
+    /// URL is not local or its first segment has no preview text.
     /// </summary>
-    /// <param name="returnUrl">The login redirect target, as received.</param>
-    /// <param name="items">The member-nav contributions to match against.</param>
-    /// <param name="urlFor">Resolves a nav item's (controller, action) to its path.</param>
-    public static string? SectionLabelFor(
-        string? returnUrl,
-        IEnumerable<MemberNavItem> items,
-        Func<string, string, string?> urlFor)
+    public static string? SegmentFor(string? returnUrl)
     {
         var target = FirstSegment(returnUrl);
         if (target is null)
             return null;
 
-        foreach (var item in Flatten(items))
-        {
-            if (item.Divider)
-                continue;
-
-            var href = item.RawHref
-                ?? (item.Controller is not null && item.Action is not null
-                    ? urlFor(item.Controller, item.Action)
-                    : null);
-
-            if (string.Equals(FirstSegment(href), target, StringComparison.OrdinalIgnoreCase))
-                return item.Label;
-        }
-
-        return null;
-    }
-
-    private static IEnumerable<MemberNavItem> Flatten(IEnumerable<MemberNavItem> items)
-    {
-        foreach (var item in items)
-        {
-            yield return item;
-            if (item.Children is { Count: > 0 })
-            {
-                foreach (var child in item.Children)
-                    yield return child;
-            }
-        }
+        return Segments.FirstOrDefault(s => string.Equals(s, target, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>First path segment of a local URL (<c>/Shifts/42</c> → <c>Shifts</c>); null otherwise.</summary>

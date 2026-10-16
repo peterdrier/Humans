@@ -7,7 +7,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
-using Humans.Base.Interfaces;
 using Humans.Base;
 using Humans.Web.Services;
 using Humans.Users.Contracts;
@@ -25,23 +24,22 @@ public class AccountController(
     IAccountProvisioningService accountProvisioningService,
     GateLoginThrottle gateThrottle,
     LoginMethodCounter loginMethods,
-    IStringLocalizer<SharedResource> localizer,
-    IEnumerable<ISectionNav> sectionNav) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
 
-        // Link previews: chat crawlers land here anonymously, so the Open Graph tags name the
-        // section the shared link points at instead of "Sign In" — see LoginLinkPreview.
-        var label = LoginLinkPreview.SectionLabelFor(
-            returnUrl, sectionNav.SelectMany(n => n.Items()), (controller, action) => Url.Action(action, controller));
-        if (label is not null)
+        // Link previews: chat crawlers land here anonymously, so the Open Graph tags describe
+        // the area the shared link points at instead of "Sign In" — see LoginLinkPreview.
+        var segment = LoginLinkPreview.SegmentFor(returnUrl);
+        ViewData["OgTitle"] = segment is null
+            ? localizer["Nav_Brand"].Value
+            : $"{localizer[$"LinkPreview_{segment}_Title"].Value} - {localizer["Nav_Brand"].Value}";
+        if (segment is not null)
         {
-            var section = localizer[label].Value;
-            ViewData["OgTitle"] = $"{section} - {localizer["Nav_Brand"].Value}";
-            ViewData["OgDescription"] = localizer["Login_PreviewDescription", section].Value;
+            ViewData["OgDescription"] = localizer[$"LinkPreview_{segment}_Description"].Value;
             ViewData["OgPath"] = returnUrl;
         }
 
