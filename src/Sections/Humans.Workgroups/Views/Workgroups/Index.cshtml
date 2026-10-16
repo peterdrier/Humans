@@ -36,13 +36,20 @@ else
                             <div class="small text-muted">@Localizer["Workgroups_CoordinatedBy"] @Coordinators(w)</div>
                         </div>
                         <div class="text-end">
-                            @if (w.IsOpenForComment(Model.Now))
+                            @if (w.IsSensitive)
                             {
-                                <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                                <span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>@Localizer["Workgroups_Sensitive"]</span>
                             }
-                            @if (w.IsUpdateDue(Model.Now))
+                            @if (!w.IsSensitive || w.IsMember(Model.CurrentUserId))
                             {
-                                <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+                                @if (w.IsOpenForComment(Model.Now))
+                                {
+                                    <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                                }
+                                @if (w.IsUpdateDue(Model.Now))
+                                {
+                                    <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+                                }
                             }
                         </div>
                     </div>

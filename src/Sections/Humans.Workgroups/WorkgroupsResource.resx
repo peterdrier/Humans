@@ -144,7 +144,7 @@
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Application submitted. The Secretary will review it.</value></data>
-  <data name="Workgroups_Joined" xml:space="preserve"><value>You joined the group.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>Your request to join was sent to the coordinators.</value></data>
   <data name="Workgroups_Left" xml:space="preserve"><value>You left the group.</value></data>
   <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Status update requested.</value></data>
   <data name="Workgroups_Saved" xml:space="preserve"><value>Saved.</value></data>
@@ -202,7 +202,7 @@
   <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Second coordinator (optional)</value></data>
 
   <!-- Group page -->
-  <data name="Workgroups_Join" xml:space="preserve"><value>Join</value></data>
+  <data name="Workgroups_Join" xml:space="preserve"><value>Request to join</value></data>
   <data name="Workgroups_Leave" xml:space="preserve"><value>Leave</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord channel</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive folder</value></data>
@@ -327,4 +327,28 @@
   <data name="Workgroups_Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Board disposition recorded: {0}</value><comment>{0} = working group name</comment></data>
   <data name="Workgroups_Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Board Disposition Recorded&lt;/h2&gt;{0}&lt;p&gt;The Board has recorded its disposition for &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;View working group&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = working group name, {2} = disposition and note, {3} = working group URL</comment></data>
   <data name="Workgroups_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
+  <data name="Workgroups_RequestPending" xml:space="preserve"><value>Your request to join is waiting for a coordinator.</value></data>
+  <data name="Workgroups_WithdrawRequest" xml:space="preserve"><value>Withdraw request</value></data>
+  <data name="Workgroups_PendingRequests" xml:space="preserve"><value>Join requests</value></data>
+  <data name="Workgroups_Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="Workgroups_Decline" xml:space="preserve"><value>Decline</value></data>
+  <data name="Workgroups_AddMember" xml:space="preserve"><value>Add a member</value></data>
+  <data name="Workgroups_MemberApproved" xml:space="preserve"><value>The request was approved.</value></data>
+  <data name="Workgroups_MemberDeclined" xml:space="preserve"><value>The request was declined.</value></data>
+  <data name="Workgroups_MemberAdded" xml:space="preserve"><value>The member was added.</value></data>
+  <data name="Workgroups_Sensitive" xml:space="preserve"><value>Sensitive</value></data>
+  <data name="Workgroups_SensitiveMembersOnly" xml:space="preserve"><value>This group is sensitive: its members, documents and history are visible to members only.</value></data>
+  <data name="Workgroups_Field_IsSensitive" xml:space="preserve"><value>Sensitive group</value></data>
+  <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Only members and the Board see the roster, documents and history. The name and purpose stay on the register.</value></data>
+  <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Your request to join is already waiting for a coordinator.</value></data>
+  <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>There is no pending request from that person.</value></data>
+  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Only a coordinator can decide who joins.</value></data>
+  <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>This group is sensitive; only its members can do that.</value></data>
+  <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Someone asked to join</value></data>
+  <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Your request to join was approved</value></data>
+  <data name="Workgroups_Notice_MembershipDeclined" xml:space="preserve"><value>Your request to join was declined</value></data>
+  <data name="Workgroups_Notice_MemberAdded" xml:space="preserve"><value>You were added to the group</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Join requests waiting</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} has {1} request(s) to join.</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Review requests</value></data>
 </root>

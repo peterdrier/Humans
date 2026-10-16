@@ -21,7 +21,7 @@ namespace Humans.Issues.Services;
 
 /// <summary>
 /// <see cref="IIssuesService"/> impl. Data via <see cref="IIssuesRepository"/>; cross-section reads via user/email/role services;
-/// audit after save (design-rules §7a); notifications and emails dispatched at the end.
+/// audit after save; notifications and emails dispatched at the end.
 /// </summary>
 internal sealed class IssuesService(
     IIssuesRepository repo,
@@ -93,7 +93,7 @@ internal sealed class IssuesService(
 
         if (trimmed.Length > MaxSectionLength)
         {
-            throw new IssueRuleException(
+            throw new InvalidOperationException(
                 $"Section must be {MaxSectionLength} characters or fewer.");
         }
 
@@ -511,18 +511,12 @@ internal sealed class IssuesService(
         return issue.Id;
     }
 
-    public async Task<IssueMutationResult> UpdateStatusAsync(
+    public Task<IssueMutationResult> UpdateStatusAsync(
         Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "UpdateStatus", "Failed to update status.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
             if (!Enum.IsDefined(newStatus))
             {
                 logger.LogWarning("Issue {IssueId} status update rejected: undefined status {Status}", issueId, newStatus);
@@ -563,27 +557,15 @@ internal sealed class IssuesService(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateStatus on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update status.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> UpdateAssigneeAsync(
+    public Task<IssueMutationResult> UpdateAssigneeAsync(
         Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "UpdateAssignee", "Failed to update assignee.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (issue.AssigneeUserId == newAssigneeUserId) return IssueMutationResult.Success();
 
             var oldAssigneeId = issue.AssigneeUserId;
@@ -621,29 +603,17 @@ internal sealed class IssuesService(
             }
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateAssignee on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update assignee.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> UpdateSectionAsync(
+    public Task<IssueMutationResult> UpdateSectionAsync(
         Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        // Authorized against the section the issue is in, not the one it is going to — the
+        // same test the browser applies, where a handler routes an issue out of their queue.
+        return MutateAsync(issueId, viewer, "UpdateSection", "Failed to update section.", async issue =>
         {
-            // Authorized against the section the issue is in, not the one it is going to — the
-            // same test the browser applies, where a handler routes an issue out of their queue.
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during UpdateSection", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (newSection?.Trim().Length > MaxSectionLength)
             {
                 logger.LogWarning("Issue {IssueId} section update rejected: section exceeds {MaxLength} characters", issueId, MaxSectionLength);
@@ -677,27 +647,15 @@ internal sealed class IssuesService(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
 
             return IssueMutationResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to apply UpdateSection on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to update section.");
-        }
+        }, ct);
     }
 
-    public async Task<IssueMutationResult> SetGitHubIssueNumberAsync(
+    public Task<IssueMutationResult> SetGitHubIssueNumberAsync(
         Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        try
+        return MutateAsync(issueId, viewer, "SetGitHubIssueNumber", "Failed to link GitHub issue.", async issue =>
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
-            if (issue is null)
-            {
-                logger.LogWarning("Issue {IssueId} not found during SetGitHubIssueNumber", issueId);
-                return IssueMutationResult.Missing("Issue not found.");
-            }
-
             if (issue.GitHubIssueNumber == githubIssueNumber) return IssueMutationResult.Success();
 
             issue.GitHubIssueNumber = githubIssueNumber;
@@ -709,11 +667,32 @@ internal sealed class IssuesService(
                 $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
 
             return IssueMutationResult.Success();
+        }, ct);
+    }
+
+    /// <summary>
+    /// The one mutation pipeline: find the issue as a handler, apply the change, and turn a
+    /// failure into a result. Out of reach and gone both answer Missing.
+    /// </summary>
+    private async Task<IssueMutationResult> MutateAsync(
+        Guid issueId, IssueViewer viewer, string operation, string failure,
+        Func<Issue, Task<IssueMutationResult>> apply, CancellationToken ct)
+    {
+        try
+        {
+            var issue = await FindHandleableAsync(issueId, viewer, ct);
+            if (issue is null)
+            {
+                logger.LogWarning("Issue {IssueId} not found during {Operation:l}", issueId, operation);
+                return IssueMutationResult.Missing("Issue not found.");
+            }
+
+            return await apply(issue);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Failed to apply SetGitHubIssueNumber on issue {IssueId}", issueId);
-            return IssueMutationResult.Failed("Failed to link GitHub issue.");
+            logger.LogError(ex, "Failed to apply {Operation:l} on issue {IssueId}", operation, issueId);
+            return IssueMutationResult.Failed(failure);
         }
     }
 
@@ -893,14 +872,9 @@ internal sealed class IssuesService(
 
         if (senderIsReporter)
         {
-            // Reporter commented → notify section role-holders + assignee.
-            foreach (var role in routing.RolesFor(issue.Section))
-            {
-                foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
-                {
-                    if (id != comment.SenderUserId) recipients.Add(id);
-                }
-            }
+            // Reporter commented → notify the queue's handlers + assignee.
+            recipients.UnionWith(await QueueHandlerIdsAsync(issue.Section, ct));
+            if (comment.SenderUserId is { } senderId) recipients.Remove(senderId);
             if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
                 recipients.Add(aid);
         }
@@ -998,23 +972,24 @@ internal sealed class IssuesService(
         }
     }
 
+    /// <summary>
+    /// Whoever handles the queue: its owning roles' holders, or Admins when no role owns it.
+    /// </summary>
+    private async Task<HashSet<Guid>> QueueHandlerIdsAsync(string? section, CancellationToken ct)
+    {
+        var queueRoles = routing.RolesFor(section);
+        IEnumerable<string> notified = queueRoles.Count > 0 ? queueRoles : [RoleNames.Admin];
+        var ids = new HashSet<Guid>();
+        foreach (var role in notified)
+            ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+        return ids;
+    }
+
     private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
     {
-        // Fan out to Admins + section role-holders (US-28.4); exclude self-filer.
-        var recipients = new HashSet<Guid>();
-
-        foreach (var id in await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
-        {
-            if (id != issue.ReporterUserId) recipients.Add(id);
-        }
-
-        foreach (var role in routing.RolesFor(issue.Section))
-        {
-            foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
-            {
-                if (id != issue.ReporterUserId) recipients.Add(id);
-            }
-        }
+        // Fan out to the queue's handlers; exclude self-filer.
+        var recipients = await QueueHandlerIdsAsync(issue.Section, ct);
+        recipients.Remove(issue.ReporterUserId);
 
         if (recipients.Count == 0) return;
 
@@ -1073,7 +1048,6 @@ internal sealed class IssuesService(
     private async Task DispatchAssignedNotificationAsync(
         Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
     {
-        // Self-assign → no notification.
         if (newAssigneeUserId == actorUserId) return;
 
         try
@@ -1141,13 +1115,5 @@ internal sealed class IssuesService(
                 logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
             }
         }
-    }
-
-
-    private sealed class IssueRuleException : InvalidOperationException
-    {
-        public IssueRuleException() { }
-        public IssueRuleException(string message) : base(message) { }
-        public IssueRuleException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

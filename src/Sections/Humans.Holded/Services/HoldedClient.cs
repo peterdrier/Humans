@@ -599,7 +599,8 @@ internal sealed class HoldedClient : IHoldedClient
     }
 
     public async Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
-        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
+        IReadOnlySet<string>? skipUnreadableDateIds = null)
     {
         const int pageSafetyCap = 50; // far above a small nonprofit's line volume for a 90-day window
         // end_date is exclusive on the live API — send to+1, same rule as ListLedgerEntriesAsync.
@@ -627,13 +628,25 @@ internal sealed class HoldedClient : IHoldedClient
                     // peterdrier/Humans#1861) cannot be placed in the from/to window. Leaving it out is
                     // safe only if it can never be a SEPA candidate: Finance's rival checks count every
                     // pending outgoing line, so dropping one of those would hide a rival and let an
-                    // ambiguous booking through. Those still fail the page; the rest are skipped.
+                    // ambiguous booking through. Those still fail the page, unless the caller named
+                    // the line as one it has already surfaced and accepts losing as a rival
+                    // (peterdrier/Humans#1946); the rest are skipped.
                     if (ReadRequiredDecimalV2(Prop(n, "amount"), "amount") < 0m
                         && string.Equals(ReadRequiredString(Prop(n, "status"), "status"), "pending",
                             StringComparison.OrdinalIgnoreCase))
-                        throw new HoldedPermanentException(
-                            $"Holded bank movement '{Prop(n, "id")?.GetValue<string>()}' in account "
-                            + $"{treasuryAccountId} is a pending outgoing line with no readable date.", ex);
+                    {
+                        var id = Prop(n, "id")?.GetValue<string>();
+                        if (id is null || skipUnreadableDateIds?.Contains(id) != true)
+                            throw new HoldedPermanentException(
+                                $"Holded bank movement '{id}' in account "
+                                + $"{treasuryAccountId} is a pending outgoing line with no readable date.",
+                                ex, id);
+                        _logger.LogWarning(
+                            "Skipping Holded bank movement {MovementId} in account {AccountId}: a pending "
+                            + "outgoing line with no readable date, skipped at the caller's request.",
+                            id, treasuryAccountId);
+                        continue;
+                    }
                     if (skipped == 0)
                         _logger.LogWarning("Unreadable Holded bank movement date; skipping the line.");
                     skipped++;

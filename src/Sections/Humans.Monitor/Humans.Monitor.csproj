@@ -1,9 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
+  <ItemGroup>
+    <!-- MonitorController: the framework reference is not transitive through Humans.Base,
+         so every controller-owning section declares its own. No views, so not Sdk.Razor. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Microsoft.NET.Sdk.Web adds this to ImplicitUsings; Microsoft.NET.Sdk does not. -->
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Monitor.Tests" />
@@ -12,22 +18,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
-    <Using Include="Microsoft.Extensions.Logging" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!--
       No Humans.Infrastructure reference: Monitor owns no tables, so there is no DbContext, no
-      repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1).
+      repository and no AddSectionDbContext call.
 
-      Monitor is the *consumer* end of every edge it has: no section references it, and the
-      Shell's reference is the discovery one every section gets.
-      That is what makes Monitor -> GoogleIntegration + AuditLog legal where
-      AuditLog -> GoogleIntegration is not: AuditLog is a horizontal (peters-hard-rules.md),
-      and Monitor is not.
+      Monitor is the consumer end of every edge it has: no section references it, and the
+      Shell's reference is the discovery one every section gets. Humans.GoogleIntegration is
+      referenced whole because its contracts are a Contracts/ folder, not a separate project.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
@@ -39,9 +36,8 @@
   <ItemGroup>
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything the controller needs
-      arrives through the framework reference Sdk.Razor already adds. No EF Core either — the
-      section owns no tables.
+      the build with NU1010 under Central Package Management. No EF Core either — the section
+      owns no tables.
 
       Hangfire.Core is here for [DisableConcurrentExecution] on DriveActivityMonitorJob.
     -->
@@ -50,7 +46,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

@@ -144,7 +144,7 @@
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Richiesta inviata. Il Segretario la esaminerà.</value></data>
-  <data name="Workgroups_Joined" xml:space="preserve"><value>Sei entrato nel gruppo.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>La tua richiesta è stata inviata ai coordinatori.</value></data>
   <data name="Workgroups_Left" xml:space="preserve"><value>Hai lasciato il gruppo.</value></data>
   <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Aggiornamento di stato richiesto.</value></data>
   <data name="Workgroups_Saved" xml:space="preserve"><value>Salvato.</value></data>
@@ -202,7 +202,7 @@
   <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Secondo coordinatore (opzionale)</value></data>
 
   <!-- Group page -->
-  <data name="Workgroups_Join" xml:space="preserve"><value>Entra</value></data>
+  <data name="Workgroups_Join" xml:space="preserve"><value>Richiedi di entrare</value></data>
   <data name="Workgroups_Leave" xml:space="preserve"><value>Esci</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canale Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Cartella Drive</value></data>
@@ -330,4 +330,28 @@
     <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
   </data>
+  <data name="Workgroups_RequestPending" xml:space="preserve"><value>La tua richiesta è in attesa di un coordinatore.</value></data>
+  <data name="Workgroups_WithdrawRequest" xml:space="preserve"><value>Ritira la richiesta</value></data>
+  <data name="Workgroups_PendingRequests" xml:space="preserve"><value>Richieste di ingresso</value></data>
+  <data name="Workgroups_Approve" xml:space="preserve"><value>Approva</value></data>
+  <data name="Workgroups_Decline" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="Workgroups_AddMember" xml:space="preserve"><value>Aggiungi un membro</value></data>
+  <data name="Workgroups_MemberApproved" xml:space="preserve"><value>Richiesta approvata.</value></data>
+  <data name="Workgroups_MemberDeclined" xml:space="preserve"><value>Richiesta rifiutata.</value></data>
+  <data name="Workgroups_MemberAdded" xml:space="preserve"><value>Membro aggiunto.</value></data>
+  <data name="Workgroups_Sensitive" xml:space="preserve"><value>Sensibile</value></data>
+  <data name="Workgroups_SensitiveMembersOnly" xml:space="preserve"><value>Questo gruppo è sensibile: membri, documenti e cronologia sono visibili solo ai membri.</value></data>
+  <data name="Workgroups_Field_IsSensitive" xml:space="preserve"><value>Gruppo sensibile</value></data>
+  <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Solo i membri e il Consiglio vedono elenco membri, documenti e cronologia. Nome e scopo restano nel registro.</value></data>
+  <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>La tua richiesta è già in attesa di un coordinatore.</value></data>
+  <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>Non c'è nessuna richiesta in sospeso da quella persona.</value></data>
+  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Solo un coordinatore decide chi entra.</value></data>
+  <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Questo gruppo è sensibile; solo i suoi membri possono farlo.</value></data>
+  <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Qualcuno ha chiesto di entrare</value></data>
+  <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>La tua richiesta di ingresso è stata approvata</value></data>
+  <data name="Workgroups_Notice_MembershipDeclined" xml:space="preserve"><value>La tua richiesta di ingresso è stata rifiutata</value></data>
+  <data name="Workgroups_Notice_MemberAdded" xml:space="preserve"><value>Sei stato aggiunto al gruppo</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Richieste di ingresso in attesa</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} ha {1} richiesta/e di ingresso.</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Esamina le richieste</value></data>
 </root>

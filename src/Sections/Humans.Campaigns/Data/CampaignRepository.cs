@@ -7,9 +7,7 @@ using Humans.Base.Enums;
 namespace Humans.Campaigns.Data;
 
 /// <summary>
-/// EF-backed implementation of <see cref="ICampaignRepository"/>. The only
-/// non-test file that touches <c>DbContext.Campaigns</c>,
-/// <c>DbContext.CampaignCodes</c>, or <c>DbContext.CampaignGrants</c>.
+/// EF-backed implementation of <see cref="ICampaignRepository"/>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>CampaignsDbContext</c> remains Scoped.
 /// </summary>
@@ -331,7 +329,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        _ = updatedAt; // CampaignGrant has no UpdatedAt; arg kept for signature parity.
+        _ = updatedAt;
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 

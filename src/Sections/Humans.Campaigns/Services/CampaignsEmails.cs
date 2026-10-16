@@ -9,9 +9,9 @@ namespace Humans.Campaigns.Services;
 /// Campaigns' own email templates: one method per template, each returning a ready
 /// <see cref="EmailMessage"/> (content plus the routing policy Campaigns chooses —
 /// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Campaigns has no resx set: the subject
+/// <see cref="IEmailService.SendAsync"/> path. The subject
 /// and markdown body are the campaign's own copy, carried on the request
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
+/// (memory/architecture/email-templates-live-in-sender.md).
 /// Pure — no I/O, no persistence.
 /// </summary>
 internal sealed class CampaignsEmails

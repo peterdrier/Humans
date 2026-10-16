@@ -32,10 +32,8 @@ public class DriveActivityMonitorArchitectureTests
         referencedTypes
             .Should().NotContain(
                 ns => ns.StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "the Application-layer service must not see any Google SDK types — they belong behind IGoogleDriveActivityClient");
+                because: "the scan service must not see any Google SDK types — they belong behind IGoogleDriveActivityClient");
     }
-
-    // ── IGoogleDriveActivityClient ───────────────────────────────────────────
 
     [HumansFact]
     public void IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf()
@@ -43,7 +41,7 @@ public class DriveActivityMonitorArchitectureTests
         // Public in the Contracts/ folder, not internal like GoogleIntegration's other
         // connectors, because Monitor consumes it across an assembly boundary. The compiler
         // does not catch a move out of Contracts/: Monitor references Humans.GoogleIntegration
-        // whole, for the <vc:google-sync-log> tag helper.
+        // whole, since its contracts are a folder of that project rather than their own.
         typeof(IGoogleDriveActivityClient).Namespace
             .Should().Be("Humans.GoogleIntegration.Contracts",
                 because: "Monitor consumes this connector across an assembly boundary, so it must be public surface in GoogleIntegration's Contracts/ folder");
@@ -52,8 +50,8 @@ public class DriveActivityMonitorArchitectureTests
     [HumansFact]
     public void IGoogleDriveActivityClient_HasNoGoogleSdkTypesInSignatures()
     {
-        // Parameters and return types must be BCL or GoogleIntegration.Contracts types —
-        // never Google.Apis.*. Enforces the "shape-neutral" contract.
+        // Parameters and return types must be BCL or Humans.GoogleIntegration.Contracts types,
+        // never Google.Apis.*.
         var methods = typeof(IGoogleDriveActivityClient).GetMethods();
 
         foreach (var method in methods)

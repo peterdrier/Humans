@@ -5,7 +5,7 @@ namespace Humans.Issues.Contracts;
 /// </summary>
 /// <remarks>
 /// In <c>Contracts/</c> rather than the section's internal <c>Domain/</c> because
-/// <c>Humans.Agent</c>'s <c>route_to_issue</c> proposal names it (design §15 step 5).
+/// <c>Humans.Agent</c>'s <c>route_to_issue</c> proposal names it.
 /// Persisted with <c>HasConversion&lt;string&gt;()</c>, so the member names are data and
 /// <c>Humans.Issues.Tests.Enums.EnumStringStabilityTests</c> pins them.
 /// </remarks>

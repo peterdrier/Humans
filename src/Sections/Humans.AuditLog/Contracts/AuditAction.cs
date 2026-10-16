@@ -242,6 +242,10 @@ public enum AuditAction
     // One per transfer booked into Holded from /Finance/Sepa (nobodies-collective/Humans#1141).
     // Same entity type as the generation entry; the IBAN in the description is always masked.
     SepaPayoutTransferBooked,
+    // The SEPA sweep stopped failing closed on one Sabadell line that stayed pending outgoing with no
+    // readable date for several runs in a row, and now books the rest of the feed without it
+    // (peterdrier/Humans#1946). Written once, by Finance, when the line crosses the threshold.
+    SepaBankLineSkipped,
 
     // City Planning settings writes. These decide who may move barrios and containers on the
     // site map and what the published ground truth is, and every one of them is an organiser
@@ -306,6 +310,12 @@ public enum AuditAction
     WorkgroupCommentHidden,
     // An admin set the root Drive folder every group's subfolder is created under.
     WorkgroupsRootFolderUpdated,
+    // A coordinator (or Board/Admin) approved a join request.
+    WorkgroupMembershipApproved,
+    // A coordinator (or Board/Admin) declined a join request.
+    WorkgroupMembershipDeclined,
+    // A coordinator (or Board/Admin) added a person to the group directly.
+    WorkgroupMemberAdded,
 
     // Assembly votes (nobodies-collective/Humans#86): lifecycle and ballot events for
     // Governance's binding Asociado votes. See Docs/features/assembly-votes.md.

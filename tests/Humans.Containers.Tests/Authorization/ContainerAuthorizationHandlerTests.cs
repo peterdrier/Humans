@@ -121,6 +121,29 @@ public sealed class ContainerAuthorizationHandlerTests
     }
 
     [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Place_MapAdmin_AllowedWhilePlacementIsClosed(bool campAdmin)
+    {
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), Arg.Any<int?>())
+            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        var user = campAdmin
+            ? new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.CampAdmin)
+            ], "TestAuth"))
+            : CreateUserWithId(LeadUserId);
+        _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>())
+            .Returns(!campAdmin);
+
+        var result = await EvaluateAsync(user, ContainerOperationRequirement.Place, 2027);
+
+        result.Should().BeTrue();
+        await _campService.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(true, true, true)]
     [InlineData(false, true, false)]
     [InlineData(true, false, false)]
@@ -148,7 +171,7 @@ public sealed class ContainerAuthorizationHandlerTests
         var context = new AuthorizationHandlerContext(
             [requirement],
             user,
-            ContainerAuthorizationTarget.ForCamp(CampId) with { Year = year });
+            new ContainerAuthorizationTarget(CampId) { Year = year });
 
         await _handler.HandleAsync(context);
         return context.HasSucceeded;

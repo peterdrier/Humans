@@ -28,6 +28,7 @@ internal static class SepaPaymentFileBuilder
     private const int MaxIdLength = 35;
     private const int MaxRemittanceLength = 140;
 
+
     /// <summary>SEPA caps a party name at 70, well below the schema's own 140.</summary>
     public const int MaxNameLength = 70;
 
@@ -36,35 +37,73 @@ internal static class SepaPaymentFileBuilder
     /// and who was paid without opening the file. Sabadell shows this line to the recipient.</summary>
     private const string RemittanceOrgTag = "NCA";
 
+    /// <summary>"&lt;account&gt;-NCA-&lt;NAME&gt;", carried in <c>PmtInfId</c>, <c>InstrId</c> and
+    /// <c>EndToEndId</c> alike, so whichever one the bank echoes on the debtor statement names the
+    /// creditor account. Uppercase, SEPA subset, name truncated to fit the 35-character cap.</summary>
+    private static string TransferId(SepaTransfer t)
+    {
+        var prefix = $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)}-{RemittanceOrgTag}-";
+        return (prefix + SepaText.Normalize(t.CreditorName, MaxIdLength - prefix.Length)).ToUpperInvariant();
+    }
+
     public static string Build(SepaPaymentFileRequest request)
     {
         Validate(request);
 
         var ns = XNamespace.Get(Namespace);
-        var transactions = request.Transfers
-            .Select(t => new XElement(ns + "CdtTrfTxInf",
-                new XElement(ns + "PmtId", new XElement(ns + "EndToEndId", t.EndToEndId)),
-                new XElement(ns + "Amt",
-                    new XElement(ns + "InstdAmt", new XAttribute("Ccy", "EUR"), Money(t.Amount))),
-                new XElement(ns + "Cdtr",
-                    new XElement(ns + "Nm", SepaText.Normalize(t.CreditorName, MaxNameLength))),
-                new XElement(ns + "CdtrAcct",
-                    new XElement(ns + "Id", new XElement(ns + "IBAN", IbanValidator.Normalize(t.Iban)))),
-                new XElement(ns + "RmtInf",
-                    new XElement(ns + "Ustrd",
-                        SepaText.Normalize(
-                            $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)} - {RemittanceOrgTag} - {t.CreditorName}",
-                            MaxRemittanceLength)))))
+        var debtorName = SepaText.Normalize(request.Debtor.Name, MaxNameLength);
+        var debtorIban = IbanValidator.Normalize(request.Debtor.Iban);
+        var executionDate = request.RequestedExecutionDate.ToInvariantDate();
+        var debtorBic = string.IsNullOrWhiteSpace(request.Debtor.Bic)
+            ? null
+            : request.Debtor.Bic.Trim().ToUpperInvariant();
+
+        // One PmtInf per transfer, not one for the batch: Sabadell ignores BtchBookg=false inside a
+        // block and books it as a single bank line, which breaks Holded's per-payment matching.
+        // Banks that ignore the flag still book one debit per PmtInf.
+        var blocks = request.Transfers
+            .Select(t =>
+            {
+                var debtorAgent = new XElement(ns + "FinInstnId");
+                if (debtorBic is not null)
+                    debtorAgent.Add(new XElement(ns + "BICFI", debtorBic));
+
+                var id = TransferId(t);
+                return new XElement(ns + "PmtInf",
+                    new XElement(ns + "PmtInfId", id),
+                    new XElement(ns + "PmtMtd", "TRF"),
+                    new XElement(ns + "BtchBookg", "false"),
+                    new XElement(ns + "NbOfTxs", "1"),
+                    new XElement(ns + "CtrlSum", Money(t.Amount)),
+                    new XElement(ns + "PmtTpInf",
+                        new XElement(ns + "SvcLvl", new XElement(ns + "Cd", "SEPA"))),
+                    new XElement(ns + "ReqdExctnDt", new XElement(ns + "Dt", executionDate)),
+                    new XElement(ns + "Dbtr", new XElement(ns + "Nm", debtorName)),
+                    new XElement(ns + "DbtrAcct",
+                        new XElement(ns + "Id", new XElement(ns + "IBAN", debtorIban))),
+                    new XElement(ns + "DbtrAgt", debtorAgent),
+                    new XElement(ns + "CdtTrfTxInf",
+                        new XElement(ns + "PmtId",
+                            new XElement(ns + "InstrId", id),
+                            new XElement(ns + "EndToEndId", id)),
+                        new XElement(ns + "Amt",
+                            new XElement(ns + "InstdAmt", new XAttribute("Ccy", "EUR"), Money(t.Amount))),
+                        new XElement(ns + "Cdtr",
+                            new XElement(ns + "Nm", SepaText.Normalize(t.CreditorName, MaxNameLength))),
+                        new XElement(ns + "CdtrAcct",
+                            new XElement(ns + "Id", new XElement(ns + "IBAN", IbanValidator.Normalize(t.Iban)))),
+                        new XElement(ns + "RmtInf",
+                            new XElement(ns + "Ustrd",
+                                SepaText.Normalize(
+                                    $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)} - {RemittanceOrgTag} - {t.CreditorName}",
+                                    MaxRemittanceLength)))));
+            })
             .ToList();
 
-        // Counted and summed off the transaction elements that were just built, not off the request,
-        // so the header can never describe a different set than the one being serialized.
-        var count = transactions.Count.ToString(CultureInfo.InvariantCulture);
+        // Counted and summed off the blocks that were just built, not off the request, so the header
+        // can never describe a different set than the one being serialized.
+        var count = blocks.Count.ToString(CultureInfo.InvariantCulture);
         var controlSum = Money(request.Transfers.Sum(t => t.Amount));
-
-        var debtorAgent = new XElement(ns + "FinInstnId");
-        if (!string.IsNullOrWhiteSpace(request.Debtor.Bic))
-            debtorAgent.Add(new XElement(ns + "BICFI", request.Debtor.Bic.Trim().ToUpperInvariant()));
 
         var document = new XDocument(
             new XDeclaration("1.0", "UTF-8", null),
@@ -78,30 +117,12 @@ internal static class SepaPaymentFileBuilder
                         new XElement(ns + "NbOfTxs", count),
                         new XElement(ns + "CtrlSum", controlSum),
                         new XElement(ns + "InitgPty",
-                            new XElement(ns + "Nm", SepaText.Normalize(request.Debtor.Name, MaxNameLength)),
+                            new XElement(ns + "Nm", debtorName),
                             new XElement(ns + "Id",
                                 new XElement(ns + "OrgId",
                                     new XElement(ns + "Othr",
                                         new XElement(ns + "Id", request.Debtor.PresenterId.Trim())))))),
-                    new XElement(ns + "PmtInf",
-                        new XElement(ns + "PmtInfId", request.PmtInfId),
-                        new XElement(ns + "PmtMtd", "TRF"),
-                        // One debit per transfer, not one for the batch: each bank line then names
-                        // its own creditor account and the sweep can book it unattended.
-                        new XElement(ns + "BtchBookg", "false"),
-                        new XElement(ns + "NbOfTxs", count),
-                        new XElement(ns + "CtrlSum", controlSum),
-                        new XElement(ns + "PmtTpInf",
-                            new XElement(ns + "SvcLvl", new XElement(ns + "Cd", "SEPA"))),
-                        new XElement(ns + "ReqdExctnDt",
-                            new XElement(ns + "Dt", request.RequestedExecutionDate.ToInvariantDate())),
-                        new XElement(ns + "Dbtr",
-                            new XElement(ns + "Nm", SepaText.Normalize(request.Debtor.Name, MaxNameLength))),
-                        new XElement(ns + "DbtrAcct",
-                            new XElement(ns + "Id",
-                                new XElement(ns + "IBAN", IbanValidator.Normalize(request.Debtor.Iban)))),
-                        new XElement(ns + "DbtrAgt", debtorAgent),
-                        transactions))));
+                    blocks)));
 
         var xml = Serialize(document);
         SepaSchema.Validate(xml);
@@ -124,7 +145,6 @@ internal static class SepaPaymentFileBuilder
             throw new SepaPaymentFileException("Nothing was selected — a SEPA file needs at least one transfer.");
 
         RequireId(request.MsgId, "message id");
-        RequireId(request.PmtInfId, "payment-information id");
 
         if (string.IsNullOrWhiteSpace(request.Debtor.Name)
             || string.IsNullOrWhiteSpace(request.Debtor.Iban)
@@ -138,10 +158,11 @@ internal static class SepaPaymentFileBuilder
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var t in request.Transfers)
         {
-            RequireId(t.EndToEndId, "end-to-end id");
-            if (!seen.Add(t.EndToEndId))
+            var id = TransferId(t);
+            RequireId(id, "end-to-end id");
+            if (!seen.Add(id))
                 throw new SepaPaymentFileException(
-                    $"Two transfers share the end-to-end id {t.EndToEndId} — every payment must be uniquely identifiable.");
+                    $"Two transfers share the end-to-end id {id} — every payment must be uniquely identifiable.");
 
             if (!IbanValidator.IsValid(t.Iban))
                 throw new SepaPaymentFileException(

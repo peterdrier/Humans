@@ -22,7 +22,7 @@ namespace Humans.Campaigns.Services;
 /// <summary>
 /// The Campaigns section's service. Implements the cross-assembly
 /// <see cref="ICampaignService"/> contract; the section's own controller injects this
-/// concrete type for the members that stay inside (design §15 step 5).
+/// concrete type for the members that stay inside.
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
@@ -39,7 +39,6 @@ internal sealed class CampaignService(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(CampaignsResource));
 
-    /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampaignGrants = "CampaignGrants";
 
     public async Task<CampaignCreateResult> CreateAsync(string title, string? description,
@@ -295,38 +294,6 @@ internal sealed class CampaignService(
         return new CampaignImportResult(true, imported, skipped);
     }
 
-    private async Task ImportGeneratedCodesAsync(Guid actorUserId, Guid campaignId, IReadOnlyList<string> codes,
-        CancellationToken ct = default)
-    {
-        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
-
-        var now = clock.GetCurrentInstant();
-        var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
-        var newCodes = new List<CampaignCode>(codes.Count);
-
-        foreach (var code in codes)
-        {
-            maxOrder++;
-            newCodes.Add(new CampaignCode
-            {
-                Id = Guid.NewGuid(),
-                CampaignId = campaignId,
-                Code = code,
-                ImportOrder = maxOrder,
-                ImportedAt = now
-            });
-        }
-
-        await repository.AddCampaignCodesAsync(newCodes, ct);
-        await audit.LogAsync(AuditAction.CampaignCodesImported, "Campaign", campaignId,
-            $"Imported {newCodes.Count} codes.", actorUserId);
-
-        logger.LogInformation(
-            "Campaign {CampaignId}: imported {Count} vendor-generated codes",
-            campaignId, codes.Count);
-    }
-
     [ExternalWrite]
     public async Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
         Guid actorUserId,
@@ -354,9 +321,11 @@ internal sealed class CampaignService(
         // only door to ticketing.
         var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
         var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
-        await ImportGeneratedCodesAsync(actorUserId, campaignId, codes, ct);
+        var imported = await ImportCodesAsync(actorUserId, campaignId, codes, ct);
 
-        return new CampaignGenerateCodesResult(true, GeneratedCount: codes.Count);
+        return imported.Success
+            ? new CampaignGenerateCodesResult(true, GeneratedCount: imported.Imported)
+            : new CampaignGenerateCodesResult(false, imported.ErrorKey);
     }
 
     public async Task<CampaignUpdateResult> ActivateAsync(Guid actorUserId, Guid campaignId, CancellationToken ct = default)
@@ -408,9 +377,6 @@ internal sealed class CampaignService(
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
         CancellationToken ct = default)
     {
-        _ = await repository.FindForMutationAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
-
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
 
         var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);

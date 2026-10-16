@@ -1164,11 +1164,8 @@ internal sealed class Service(
         }
 
         var now = clock.GetCurrentInstant();
-        // Ids are minted before the file is built and never change: the persisted row is what the
-        // bank's EndToEndId points back at.
         var request = new SepaPaymentFileRequest(
             MsgId: "M" + fileId.ToString("N"),
-            PmtInfId: "P" + fileId.ToString("N"),
             CreatedAt: now,
             RequestedExecutionDate: now.InZone(MadridZone).Date,
             Debtor: new SepaDebtor(
@@ -1176,8 +1173,7 @@ internal sealed class Service(
                 sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
             MaxAmountPerTransfer: maxPerTransfer,
             Transfers: transfers
-                .Select(t => new SepaTransfer(
-                    "E" + t.Id.ToString("N"), t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
+                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
                 .ToList());
 
         string xml;
@@ -1277,6 +1273,10 @@ internal sealed class Service(
     /// <summary>The job name the sweep's audit entries carry in place of a human actor.</summary>
     private const string SepaBookingJobName = "sepa-bank-booking";
 
+    /// <summary>The audit entity type of a Holded bank line the sweep skipped; the line has no Guid,
+    /// so its movement id rides in the description.</summary>
+    private const string SepaBankLineEntityType = "SepaBankLine";
+
     /// <summary>Below half a cent is zero at two decimal places.</summary>
     private const decimal CentEpsilon = 0.005m;
 
@@ -1285,6 +1285,18 @@ internal sealed class Service(
     /// one transfer both read "not booked" and both post the whole amount.</summary>
     private static readonly SemaphoreSlim BookingGate = new(1, 1);
 
+    /// <summary>How many consecutive sweep runs may fail closed on the same pending outgoing line with
+    /// no readable date before the sweep skips that line and books the rest (peterdrier/Humans#1946).
+    /// The sweep runs every two hours, so the feed stays blocked about six hours before a stuck line
+    /// stops costing finance automation its whole feed.</summary>
+    private const int StuckLineSkipAfterRuns = 3;
+
+    /// <summary>Consecutive sweep runs each stuck line has failed, by Holded movement id, kept in
+    /// the process-wide memory cache under <see cref="CacheKeys.SepaStuckBankLines"/> because the
+    /// service is scoped and the count must outlive one run. In memory because the sweep is one
+    /// Hangfire job on one server — a restart only restarts the count, which keeps failing closed a
+    /// little longer, the safe direction. A line absent from a run drops out, so a line that resolves,
+    /// or a different stuck line, starts from one.</summary>
     /// <summary>The slack on either end of the tagged-lines window. The window itself spans the
     /// file's generation day to today — a posting this flow made is dated the bank line, but one a
     /// pre-#1185 run made is dated the click.</summary>
@@ -1517,7 +1529,7 @@ internal sealed class Service(
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
         {
-            movements = await ReadBankFeedAsync(from, ct);
+            movements = await ReadSweepFeedAsync(from, ct);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -1579,6 +1591,58 @@ internal sealed class Service(
                     matches[0].TransferId, m.Id);
             }
         }
+    }
+
+    /// <summary>The sweep's feed read. A pending outgoing line with no readable date fails the read
+    /// closed — it could be a SEPA rival (peterdrier/Humans#1861) — so the first
+    /// <see cref="StuckLineSkipAfterRuns"/> − 1 runs on one such line book nothing. On the run that
+    /// reaches the threshold the line is skipped, the rest of the feed is read, and one audit entry
+    /// says so; later runs skip it with a warning each time until it reads again.</summary>
+    private async Task<IReadOnlyList<HoldedBankMovementDto>> ReadSweepFeedAsync(
+        LocalDate from, CancellationToken ct)
+    {
+        var previous = cache.Get<Dictionary<string, int>>(CacheKeys.SepaStuckBankLines) ?? [];
+        var thisRun = new Dictionary<string, int>(StringComparer.Ordinal);
+        var skip = new HashSet<string>(StringComparer.Ordinal);
+        while (true)
+        {
+            try
+            {
+                var movements = await ReadBankFeedAsync(from, ct, skip);
+                RememberStuckLines(thisRun);
+                return movements;
+            }
+            catch (HoldedPermanentException ex) when (ex.BankMovementId is { } id && !skip.Contains(id))
+            {
+                var runs = previous.GetValueOrDefault(id) + 1;
+                thisRun[id] = runs;
+                if (runs < StuckLineSkipAfterRuns)
+                {
+                    RememberStuckLines(thisRun);
+                    throw;
+                }
+
+                skip.Add(id);
+                RememberStuckLines(thisRun);
+                logger.LogWarning(
+                    "SEPA sweep: skipping Sabadell line {MovementId}, pending outgoing with no readable date "
+                    + "for {Runs} consecutive runs; the rest of the feed is booked without it.", id, runs);
+                if (runs == StuckLineSkipAfterRuns)
+                    await audit.LogAsync(
+                        AuditAction.SepaBankLineSkipped, SepaBankLineEntityType, Guid.Empty,
+                        $"The SEPA sweep skipped Sabadell line {id}: it has been pending outgoing with no "
+                        + $"readable date for {runs} consecutive runs, and blocked every booking until now. "
+                        + "The rest of the feed books without it, so it can no longer count as a rival of a "
+                        + "transfer's amount — fix or reconcile it in Holded.",
+                        SepaBookingJobName);
+            }
+        }
+    }
+
+    private void RememberStuckLines(Dictionary<string, int> runs)
+    {
+        if (runs.Count == 0) cache.Remove(CacheKeys.SepaStuckBankLines);
+        else cache.Set(CacheKeys.SepaStuckBankLines, runs);
     }
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
@@ -1787,8 +1851,8 @@ internal sealed class Service(
         if (batch is null && PairingRefusal(movement, feed, allRows) is { } pairing)
             return new SepaBookingResult(false, pairing);
 
-        // The file's EndToEndId, on every posting, so a Holded line traces back to one transfer —
-        // and so a retry can sum what a crashed run already posted.
+        // The transfer row id, on every posting, so a Holded line traces back to one transfer — and
+        // so a retry can sum what a crashed run already posted.
         var tag = "SEPA payout E" + transfer.Id.ToString("N");
 
         // ── Steps 3 and 4: the live creditor balance, and what this transfer already posted.
@@ -2161,7 +2225,7 @@ internal sealed class Service(
         try
         {
             var after = await client.ListBankMovementsAsync(
-                sepa.Value.TreasuryAccountId, movementDate, movementDate, ct);
+                sepa.Value.TreasuryAccountId, movementDate, movementDate, ct, SkippedStuckLineIds());
             line = after.FirstOrDefault(m => string.Equals(m.Id, movementId, StringComparison.Ordinal));
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -2187,9 +2251,22 @@ internal sealed class Service(
     /// payable day, so every line <see cref="UnbookedMatches"/> could accept is on it.</summary>
     private LocalDate FeedFrom() => Today().PlusDays(-FeedWindowDays - GenerationSlackDays);
 
+    /// <summary>Reads the feed, skipping the lines the sweep has given up on
+    /// (<see cref="SkippedStuckLineIds"/>) unless the caller — the sweep's own counting read — names
+    /// the set itself.</summary>
     private Task<IReadOnlyList<HoldedBankMovementDto>> ReadBankFeedAsync(
-        LocalDate from, CancellationToken ct) =>
-        client.ListBankMovementsAsync(sepa.Value.TreasuryAccountId, from, Today(), ct);
+        LocalDate from, CancellationToken ct, IReadOnlySet<string>? skipUnreadableDateIds = null) =>
+        client.ListBankMovementsAsync(
+            sepa.Value.TreasuryAccountId, from, Today(), ct,
+            skipUnreadableDateIds ?? SkippedStuckLineIds());
+
+    /// <summary>The stuck lines that have failed <see cref="StuckLineSkipAfterRuns"/> runs in a row.
+    /// Every other read of the feed — the booking's own re-read, the page, the post-reconcile check —
+    /// skips them too, or the booking the sweep just unblocked would fail on the same line.</summary>
+    private HashSet<string> SkippedStuckLineIds() =>
+        cache.Get<Dictionary<string, int>>(CacheKeys.SepaStuckBankLines)?
+            .Where(kv => kv.Value >= StuckLineSkipAfterRuns).Select(kv => kv.Key)
+            .ToHashSet(StringComparer.Ordinal) ?? [];
 
     /// <summary>An outgoing line Holded has not started reconciling — the only kind that can still
     /// be a SEPA payout waiting to be booked. <c>partial</c> counts as started: somebody has already

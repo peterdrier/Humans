@@ -14,8 +14,7 @@ namespace Humans.Campaigns.Data;
 internal interface ICampaignRepository : IRepository
 {
     /// <summary>
-    /// Loads a campaign with its codes and grants for display. Tracked;
-    /// mutate only via <see cref="UpdateCampaignAsync"/>.
+    /// Loads a campaign with its codes and grants for display. Read-only.
     /// </summary>
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
@@ -187,7 +186,7 @@ internal sealed record CampaignCodeTrackingSummaryRow(
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
-/// The owning service stitches recipient display names via <c>IUserService</c>
+/// The owning service stitches recipient display names via <c>IUserServiceRead</c>
 /// so no cross-domain navigation is read at the repository layer.
 /// </summary>
 internal sealed record CampaignCodeTrackingGrantRow(

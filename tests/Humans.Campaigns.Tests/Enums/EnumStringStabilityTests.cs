@@ -6,9 +6,7 @@ namespace Humans.Campaigns.Tests.Enums;
 /// <summary>
 /// Campaigns' string-stored-enum guard. Lives here rather than the central
 /// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> because <see cref="CampaignStatus"/>
-/// is internal to <c>Humans.Campaigns</c> after the section's G5 move
-/// (nobodies-collective/Humans#866), so the central project cannot name it
-/// (nobodies-collective/Humans#1025).
+/// is internal to <c>Humans.Campaigns</c>, so the central project cannot name it.
 /// </summary>
 /// <remarks>
 /// Persisted with <c>HasConversion&lt;string&gt;()</c> / <c>HasMaxLength(20)</c>: renaming a

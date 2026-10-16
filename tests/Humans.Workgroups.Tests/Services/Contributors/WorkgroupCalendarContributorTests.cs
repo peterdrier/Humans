@@ -95,6 +95,21 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task PublicItems_ExcludeMeetingsOfSensitiveGroups_MembersStillGetThem()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, isSensitive: true);
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        await AddMeetingAsync(workgroup.Id, now.Plus(Duration.FromDays(1)), isPublic: true);
+
+        var publicItems = await NewContributor().GetPublicItemsForWindowAsync(now, now.Plus(Duration.FromDays(7)), Ct);
+        var memberItems = await NewContributor().GetCalendarItemsForUserAsync(member, Ct);
+
+        publicItems.Should().BeEmpty();
+        memberItems.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task PublicItems_ExcludeASoftDeletedMeeting()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);

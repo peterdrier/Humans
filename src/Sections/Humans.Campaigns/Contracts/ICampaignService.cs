@@ -35,7 +35,7 @@ public sealed record CampaignGrantSummary(
 /// <remarks>
 /// The section's own controller takes the internal <c>CampaignService</c>
 /// directly, so campaign/code CRUD, activation, wave sending, resend and
-/// retry are not public at all (design §15 step 5).
+/// retry are not public at all.
 /// </remarks>
 public interface ICampaignService : ICampaignServiceRead, IApplicationService
 {
@@ -54,7 +54,7 @@ public interface ICampaignService : ICampaignServiceRead, IApplicationService
     /// (<c>LatestEmailStatus</c>) and timestamp (<c>LatestEmailAt</c>).
     /// Returns <c>true</c> if the grant was found and updated. Used by the
     /// email outbox processor so the job can record Sent/Failed without
-    /// touching <c>campaign_grants</c> directly (design-rules §2c).
+    /// touching <c>campaign_grants</c> directly.
     /// </summary>
     Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,

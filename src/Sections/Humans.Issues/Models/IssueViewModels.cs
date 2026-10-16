@@ -50,14 +50,12 @@ internal sealed class SubmitIssueViewModel
 }
 
 /// <summary>
-/// Quick-filter "view" pill for the Issues index page. Mutually exclusive
-/// with itself (only one is active at a time). Keeps the URL clean and lets
-/// "Open" mean "everything not closed" instead of the literal Open enum value.
+/// Quick-filter pill on the Issues index; "Open" means not closed, not the Open status.
 /// </summary>
 internal enum IssueViewMode
 {
     All,
-    Open,    // Statuses ∈ {Triage, Open, InProgress} — matches the nav-badge "actionable" set
+    Open,    // Non-terminal: Triage, Open, InProgress — wider than the nav badge
     Mine,    // ReporterUserId = current user
     Closed   // Statuses ∈ {Resolved, WontFix, Duplicate}
 }
@@ -82,7 +80,6 @@ internal sealed class IssuePageViewModel
     /// <summary>Reporter dropdown (Admin only — non-admins only see their own queue).</summary>
     public List<ReporterDropdownItem> Reporters { get; set; } = [];
 
-    /// <summary>All category enum values.</summary>
     public IssueCategory[] CategoryValues => Enum.GetValues<IssueCategory>();
 
     public int OpenCount { get; set; }
@@ -140,8 +137,6 @@ internal sealed class IssueDetailViewModel
 
     /// <summary>
     /// Active humans the handler can assign this issue to. Empty for non-handlers.
-    /// Reuses <see cref="AssigneeOption"/> from <c>Humans.Base.Models</c> so the
-    /// shape stays consistent across triage UIs.
     /// </summary>
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];
 }

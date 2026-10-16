@@ -3,9 +3,11 @@
   src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs
   src/Sections/Humans.Monitor/Section.cs
   src/Sections/Humans.Monitor/Controllers/MonitorController.cs
-  src/Sections/Humans.GoogleIntegration/Services/Workspace/TeamResourceGoogleClient.cs
+  src/Sections/Humans.GoogleIntegration/Services/Workspace/GoogleDriveActivityClient.cs
+  src/Sections/Humans.AuditLog/SectionAdminNav.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
+  src/Sections/Humans.AuditLog/Views/AuditLog/_Content.cshtml
   src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
 -->
 <!-- freshness:flag-on-change
@@ -54,18 +56,18 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
-- Accessible from Board dashboard
+- Reached from the admin sidebar (`src/Sections/Humans.AuditLog/SectionAdminNav.cs`)
 
 ## Architecture
 
 ### Ownership
 
-- `AuditAction.AnomalousPermissionDetected` enum value (stored as string, no migration needed) — `Humans.AuditLog.Contracts`
+- `AuditAction.AnomalousPermissionDetected` enum value (stored as string, no migration needed) — the AuditLog section's `Contracts/` folder
 - `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Contracts/` and `Services/`
 - `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
 - `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
 - `MonitorController.CheckDriveActivity` action (`POST /Monitor/CheckDriveActivity`) - manual trigger — `src/Sections/Humans.Monitor/Controllers/`
-- `Views/AuditLog/Index.cshtml` view — `src/Sections/Humans.AuditLog/Views/AuditLog/`
+- `Views/AuditLog/Index.cshtml` view, with `_Content.cshtml` as the partial carrying the form, filter buttons, badge and banner — `src/Sections/Humans.AuditLog/Views/AuditLog/`
 
 ### Service Registration
 
@@ -108,7 +110,7 @@ The Drive Activity API identifies actors as:
 
 ### Service Account Email Extraction
 
-Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The GoogleIntegration connector delegates key parsing to `TeamResourceGoogleClient`, which reads `client_email` and `client_id`. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
+Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The GoogleIntegration connector (`GoogleDriveActivityClient`) reads `client_email` and `client_id` from the service-account key itself. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
 
 ## Data Model
 
@@ -141,7 +143,7 @@ Time-window dedup: each run queries only activity since the last successful run'
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `AuditLog` | GET | View paginated audit log with optional `action` filter |
+| `AuditLog` | GET | View paginated audit log with optional `filter` |
 | `Monitor/CheckDriveActivity` | POST | Trigger manual Drive activity check |
 
 ### Filter Options
@@ -163,9 +165,9 @@ Time-window dedup: each run queries only activity since the last successful run'
 
 ## Limitations
 
-- **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are detected by the existing drift detection in `PreviewSyncAllAsync`.
+- **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are reconciled by GoogleIntegration's group sync, not by this monitor.
 - **Lookback marker:** Each run covers activity since the last successful run (`DriveActivityMonitor:LastRunAt`); the 24-hour window applies only before a marker exists. Activity from before the first successful run may be missed.
-- **Actor identification:** The Drive Activity API may not always provide the actor's email (e.g., for external users). In such cases, the actor is logged as "unknown".
+- **Actor identification:** The Drive Activity API may not always provide the actor's email (e.g., for external users). In such cases, the actor is logged as "unknown actor".
 
 ## Related Features
 

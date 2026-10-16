@@ -30,6 +30,20 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         var localizer = services.GetRequiredService<IStringLocalizer<WorkgroupsResource>>();
         var entries = new List<ThingsToDoEntry>();
 
+        foreach (var workgroup in coordinated.Where(w => w.PendingMembers().Any()))
+        {
+            entries.Add(new ThingsToDoEntry($"workgroup-requests-{workgroup.Id}",
+                localizer["Workgroups_Todo_MembershipRequests_Title"].Value,
+                "fa-solid fa-user-plus",
+                RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 40)
+            {
+                Description = string.Format(CultureInfo.CurrentCulture,
+                    localizer["Workgroups_Todo_MembershipRequests_Description"].Value,
+                    workgroup.Name, workgroup.PendingMembers().Count()),
+                ActionText = localizer["Workgroups_Todo_MembershipRequests_Action"].Value,
+            });
+        }
+
         foreach (var workgroup in coordinated.Where(w => w.IsUpdateDue(now)))
         {
             entries.Add(new ThingsToDoEntry($"workgroup-update-{workgroup.Id}",

@@ -55,10 +55,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
         if (!string.IsNullOrWhiteSpace(f.SearchText))
         {
-            // ILike, not Contains: Contains renders a case-sensitive match on Postgres, so
-            // "ticket" missed every issue titled "Ticket". Escape the term first — ILike reads
-            // '%' and '_' as wildcards, and a search for "100%" or "ABC_1" is a literal one.
-            // Same shape as Shifts' rota search.
+            // ILike, not Contains: Contains is case-sensitive on Postgres. Escape first so % and _ match literally.
             var term = "%" + EscapeLikePattern(f.SearchText) + "%";
             q = q.Where(i => EF.Functions.ILike(i.Title, term, "\\")
                           || EF.Functions.ILike(i.Description, term, "\\"));
@@ -132,7 +129,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .Select(g => new { UserId = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        // DisplayName left blank — service stitches via IUserService.
+        // DisplayName left blank — the service stitches it.
         return rows.Select(r => new DistinctReporterRow(r.UserId, string.Empty, r.Count)).ToList();
     }
 

@@ -117,6 +117,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateWorkgroupAsync(workgroup, ct);
         // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
+        await ClosePendingRequestsAsync(workgroup, now, ct);
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Withdrawn, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupWithdrawn, workgroup,
@@ -164,7 +165,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(AuditAction.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        // Active again: the source claims Contributor for the current members once more.
+        // Active again: the source claims ContentManager for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
@@ -197,7 +198,7 @@ internal sealed partial class WorkgroupService
         var application = bootstrap.Application;
         ApplyFields(workgroup, application.Name, application.Purpose, application.Deliverable,
             application.DeliverableKind, application.Audience, application.TargetDate,
-            application.DiscordChannelUrl);
+            application.DiscordChannelUrl, application.IsSensitive);
 
         workgroup.Members.Add(NewMember(workgroup.Id, bootstrap.CoordinatorUserId,
             WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));

@@ -34,7 +34,8 @@ internal sealed record WorkgroupInfo(
     IReadOnlyList<WorkgroupDocumentInfo> Documents,
     decimal? BudgetAmount,
     int? HoldedAccountNumber,
-    string? HoldedAccountId)
+    string? HoldedAccountId,
+    bool IsSensitive = false)
 {
     public bool HasBudget => BudgetAmount is not null;
 }
@@ -45,12 +46,14 @@ internal sealed record WorkgroupInfo(
 /// <param name="Role">The member’s role in the working group.</param>
 /// <param name="JoinedAt">When the membership began.</param>
 /// <param name="LeftAt">Null while the person is a current member.</param>
+/// <param name="IsPending">True while the join request awaits a coordinator's approval.</param>
 internal sealed record WorkgroupMemberInfo(
     Guid Id,
     Guid UserId,
     WorkgroupMemberRole Role,
     Instant JoinedAt,
-    Instant? LeftAt);
+    Instant? LeftAt,
+    bool IsPending = false);
 
 internal sealed record WorkgroupMeetingInfo(
     Guid Id,
@@ -126,7 +129,8 @@ internal sealed record WorkgroupApplication(
     WorkgroupAudience Audience,
     LocalDate? TargetDate,
     string? DiscordChannelUrl,
-    Guid? SecondCoordinatorUserId);
+    Guid? SecondCoordinatorUserId,
+    bool IsSensitive = false);
 
 /// <summary>The register fields any member may edit. Changing the deliverable sentence writes ScopeChanged.</summary>
 internal sealed record WorkgroupRegisterEdit(
@@ -136,7 +140,8 @@ internal sealed record WorkgroupRegisterEdit(
     WorkgroupDeliverableKind DeliverableKind,
     WorkgroupAudience Audience,
     LocalDate? TargetDate,
-    string? DiscordChannelUrl);
+    string? DiscordChannelUrl,
+    bool IsSensitive = false);
 
 internal sealed record WorkgroupMeetingSave(
     string Title,

@@ -1014,7 +1014,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.TeamEarlyEntryGrants
             .AsNoTracking()
             .Include(g => g.Team)
-            .Where(g => g.Team.EarlyEntryEnabled)
+            .Where(g => g.Team.EarlyEntryEnabled && g.Team.IsActive)
             .ToListAsync(ct);
     }
 

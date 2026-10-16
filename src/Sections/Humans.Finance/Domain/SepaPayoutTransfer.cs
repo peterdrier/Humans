@@ -3,12 +3,11 @@ using NodaTime;
 namespace Humans.Finance.Domain;
 
 /// <summary>
-/// One credit transfer inside a generated payout file. The row id is what the file's
-/// <c>EndToEndId</c> is derived from, so it is the handle the bank and Holded share.
+/// One credit transfer inside a generated payout file. The row id tags every Holded posting the
+/// booking makes, so a retry can see what was already posted.
 /// </summary>
 internal sealed class SepaPayoutTransfer
 {
-    /// <summary>Also the source of this transfer's <c>EndToEndId</c>; never changes.</summary>
     public Guid Id { get; init; }
 
     public Guid FileId { get; init; }
