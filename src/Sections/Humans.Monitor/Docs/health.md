@@ -48,22 +48,22 @@ No `Data/`, no repository, no views, no resource set.
 
 - A permission change initiated by the service account, matched by email or by
   `people/{client_id}`, is never an anomaly
-  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:158`).
+  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:155`).
 - The last-run marker advances only when no resource query failed and the connector is
-  configured (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:179`).
+  configured (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:176`).
 - Anomalies are audited on every run, whether or not the marker moved
-  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:116`).
+  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:113`).
 - When no resource could be queried, the scan throws after auditing what it found; a
   `DriveActivityResourceNotFoundException` counts as a successful query
-  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:127`).
+  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:124`).
 - The job records `failure` and rethrows on that throw, `success` otherwise
   (`src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs:45`).
 - The manual action never surfaces an exception: it logs, sets an error banner and redirects
   (`src/Sections/Humans.Monitor/Controllers/MonitorController.cs:38`).
 - An absent or unparseable marker falls back to a 24-hour lookback
-  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:52`).
+  (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:49`).
 - A Google provider key claimed by two humans resolves to the raw `people/{id}`, never to
-  either human (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:465`).
+  either human (`src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs:450`).
 - `POST /Monitor/CheckDriveActivity` requires `BoardOrAdmin`
   (`src/Sections/Humans.Monitor/Controllers/MonitorController.cs:21`).
 
@@ -109,4 +109,4 @@ None.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-02 | First doctoring: docs and comments still described the pre-carve-out world and a renamed Settings interface; people-id resolution moved into one nested resolver; three untested invariants pinned | peterdrier/Humans#1582 |
-| section-doctor | 2026-10-16 | pending | pending |
+| section-doctor | 2026-10-16 | Monitor builds as a plain controller section now its views are gone; its docs stop contradicting its csproj and the code; a mid-stream outage is pinned | pending |
