@@ -5,8 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Campaigns.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Campaigns
-/// (nobodies-collective/Humans#866, G5).
+/// Architecture tests enforcing the section shape for Campaigns.
 /// </summary>
 /// <remarks>
 /// No EF-reference assertion here: the section assembly holds the repository and

@@ -13,6 +13,7 @@ using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
+using Humans.Campaigns.Services.Dtos;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -28,8 +29,7 @@ namespace Humans.Campaigns.Tests.Services;
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
 /// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
-/// to draw (nobodies-collective/Humans#866). An in-memory people/team registry backs
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — a section-boundary breach. An in-memory people/team registry backs
 /// the cross-section stubs instead.
 /// </summary>
 public sealed class CampaignServiceTests
@@ -326,37 +326,20 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task ImportCodesAsync_CreatesCampaignCodeRows_SkipsDuplicates()
+    public async Task ImportCodesAsync_IntoActiveCampaign_AppendsInOrderAndSkipsDuplicates()
     {
-        var campaign = await SeedCampaignAsync();
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var first = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2", "CODE1"], Xunit.TestContext.Current.CancellationToken);
+        var second = await _service.ImportCodesAsync(_actorId, campaign.Id, ["code2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
-        result.Imported.Should().Be(3);
-        result.Skipped.Should().Be(1);
+        first.Should().Be(new CampaignImportResult(true, Imported: 2, Skipped: 1));
+        second.Should().Be(new CampaignImportResult(true, Imported: 1, Skipped: 1));
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        codes.Should().HaveCount(3);
-        codes.Select(c => c.Code).Should().BeEquivalentTo("CODE1", "CODE2", "CODE3");
-    }
-
-    [HumansFact]
-    public async Task ImportCodesAsync_SkipsExistingCodesInCampaign()
-    {
-        var campaign = await SeedCampaignAsync();
-
-        // First import
-        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
-        // Second import with overlap
-        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
-
-        result.Imported.Should().Be(1);
-        result.Skipped.Should().Be(1);
-        var codes = await CampaignsDb.CampaignCodes
-            .Where(c => c.CampaignId == campaign.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        codes.Should().HaveCount(3);
+        codes.OrderBy(c => c.ImportOrder).Select(c => c.Code).Should().Equal("CODE1", "CODE2", "CODE3");
+        codes.Select(c => c.ImportOrder).Should().OnlyHaveUniqueItems();
     }
 
     [HumansFact]
@@ -379,6 +362,28 @@ public sealed class CampaignServiceTests
                 r.Kind == TicketDiscountKind.Fixed &&
                 r.Value == 10m),
             Arg.Any<CancellationToken>());
+        var codes = await CampaignsDb.CampaignCodes
+            .Where(c => c.CampaignId == campaign.Id)
+            .Select(c => c.Code)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        codes.Should().BeEquivalentTo("CODE-A", "CODE-B");
+    }
+
+    [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_CodeAlreadyInCampaign_IsSkippedAndNotCounted()
+    {
+        var campaign = await SeedCampaignAsync();
+        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE-A"], Xunit.TestContext.Current.CancellationToken);
+        _ticketDiscountCodes
+            .GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(["CODE-A", "CODE-B"]);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            _actorId,
+            campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.GeneratedCount.Should().Be(1);
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .Select(c => c.Code)
@@ -1035,16 +1040,19 @@ public sealed class CampaignServiceTests
     [HumansFact]
     public async Task UpdateGrantEmailStatusAsync_updates_only_the_target_grants_delivery_state()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["STATUS-CODE"]);
-        var grant = new CampaignGrant
+        var campaign = await SeedActiveCampaignWithCodesAsync(["STATUS-CODE", "OTHER-CODE"]);
+        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        CampaignGrant NewGrant(string code) => new()
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
-            CampaignCodeId = (await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken)).Id,
-            UserId = SeedUser(displayName: "Recipient").Id,
+            CampaignCodeId = codes.Single(c => string.Equals(c.Code, code, StringComparison.Ordinal)).Id,
+            UserId = SeedUser(displayName: code).Id,
             AssignedAt = Clock.GetCurrentInstant()
         };
-        await CampaignsDb.CampaignGrants.AddAsync(grant, Xunit.TestContext.Current.CancellationToken);
+        var grant = NewGrant("STATUS-CODE");
+        var other = NewGrant("OTHER-CODE");
+        await CampaignsDb.CampaignGrants.AddRangeAsync([grant, other], Xunit.TestContext.Current.CancellationToken);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         Clock.AdvanceHours(1);
 
@@ -1057,6 +1065,10 @@ public sealed class CampaignServiceTests
             Xunit.TestContext.Current.CancellationToken);
         persisted.LatestEmailStatus.Should().Be(EmailOutboxStatus.Sent);
         persisted.LatestEmailAt.Should().Be(Clock.GetCurrentInstant());
+        var untouched = await CampaignsDb.CampaignGrants.SingleAsync(item => item.Id == other.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        untouched.LatestEmailStatus.Should().BeNull();
+        untouched.LatestEmailAt.Should().BeNull();
     }
 
     [HumansFact]
@@ -1213,8 +1225,7 @@ public sealed class CampaignServiceTests
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             DisplayName = displayName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName only, so the fixture sets it directly.
             BurnerName = displayName,
             PreferredLanguage = preferredLanguage,
             CreatedAt = Clock.GetCurrentInstant()

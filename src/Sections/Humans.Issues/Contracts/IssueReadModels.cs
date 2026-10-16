@@ -34,7 +34,7 @@ public sealed record IssueListFilter(
 /// <summary>
 /// Single-issue projection for the detail view, the machine API get, and resource-based
 /// authorization. Display names are resolved by the consumer via
-/// <c>IUserService</c> from the user-id fields; the thread is fetched
+/// <c>IUserServiceRead</c> from the user-id fields; the thread is fetched
 /// separately via <c>GetThreadAsync</c>.
 /// </summary>
 public sealed record IssueDetail(

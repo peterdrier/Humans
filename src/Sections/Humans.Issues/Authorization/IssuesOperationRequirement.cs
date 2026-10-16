@@ -3,12 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Issues.Authorization;
 
 /// <summary>
-/// Resource-based authorization requirement for issue operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, issue, requirement)
-/// where the resource is an Issue and the operation is one of:
-/// <list type="bullet">
-///   <item><description><see cref="Handle"/> — mutate status / assignee / section / GitHub link, or comment as a non-reporter.</description></item>
-/// </list>
+/// The requirement for handling an issue: mutate status / assignee / section / GitHub link, or comment as a non-reporter.
 /// </summary>
 internal sealed class IssuesOperationRequirement : IAuthorizationRequirement
 {

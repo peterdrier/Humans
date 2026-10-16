@@ -28,9 +28,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// from Shell. One authorized GET and one unauthorized GET is what proves those halves meet.
 /// </para>
 /// <para>
-/// The three Google-sync pages this file used to cover — <c>CheckDriveActivity</c>,
-/// <c>Resource/{id}</c> and <c>Human/{id}</c> — now live in <c>Humans.Monitor</c> and are
-/// covered by <c>MonitorPageRenderTests</c>.
+/// <c>Resource/{id}</c> and <c>Human/{id}</c> are GoogleIntegration's pages, covered by
+/// <c>MonitorPageRenderTests</c>; <c>CheckDriveActivity</c> is <c>Humans.Monitor</c>'s.
 /// </para>
 /// </remarks>
 public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)

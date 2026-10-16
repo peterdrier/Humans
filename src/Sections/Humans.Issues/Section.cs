@@ -28,12 +28,11 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
-        // §15 repository pattern: Singleton + IDbContextFactory (§15b) so the
-        // repository owns context lifetime.
+        // Singleton + IDbContextFactory so the repository owns context lifetime.
         services.AddSingleton<IIssuesRepository, IssuesRepository>();
 
         // The queue routing table, assembled from what every section declared through
-        // IIssueQueueOwner — Issues names no section (PR peterdrier/Humans#1762).
+        // IIssueQueueOwner — Issues names no section.
         services.AddSingleton<IssueSectionRouting>();
         // Issues owns its email copy and its gallery samples; Email keeps the mechanics
         // (memory/architecture/email-templates-live-in-sender.md).
@@ -44,8 +43,7 @@ public sealed class Section : ISection
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
-        // Owns the user-scoped issues / issue_comments tables → GDPR export contributor
-        // (design-rules §8a).
+        // Owns the user-scoped issues / issue_comments tables → GDPR export contributor.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesBadgeCacheInvalidator, IssuesBadgeCacheInvalidator>();
 

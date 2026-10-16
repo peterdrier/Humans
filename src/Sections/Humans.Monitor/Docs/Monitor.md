@@ -1,6 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/**
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
+  src/Sections/Humans.AuditLog/Views/AuditLog/_Content.cshtml
+  src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
   Monitor's reference set is its whole reason to exist — review the dependency list when any ProjectReference is added.
@@ -21,7 +23,7 @@ pages and data.
   `DriveActivityMonitor:LastRunAt` through `ISettingsService`; an incomplete or stubbed scan
   does not.
 
-## Actors / Roles
+## Actors & Roles
 
 | Route | Policy |
 |---|---|
@@ -39,14 +41,17 @@ pages and data.
 - When every resource query fails, the service throws so Hangfire records a failed run.
 - The manual controller action catches that exception, logs it, shows an error banner, and
   redirects to the filtered Audit Log page.
-- A Volunteer reaching the manual route is redirected to `AccessDeniedPath`.
+
+## Negative Access Rules
+
+- A Volunteer **cannot** run the scan: `POST /Monitor/CheckDriveActivity` redirects them to `AccessDeniedPath` (policy at `Controllers/MonitorController.cs:21`, path set at `src/Humans.Web/Program.cs:163`).
 
 ## Triggers
 
 - `DriveActivityMonitorJob` runs hourly.
 - `POST /Monitor/CheckDriveActivity` runs the same scan from the Audit Log toolbar.
 
-## Cross-section dependencies
+## Cross-Section Dependencies
 
 | Section | Through |
 |---|---|
@@ -56,4 +61,18 @@ pages and data.
 | Users | `IUserServiceRead` |
 
 Google sync history is shown at `/Google/Resource/{id}` and `/Google/Human/{id}` by
-GoogleIntegration. Monitor has no implementation-project reference to that section.
+GoogleIntegration. Monitor's project references `Humans.GoogleIntegration` whole, because that
+section's contracts are a `Contracts/` folder of its project; the call-site rule still limits
+Monitor to the interfaces listed above.
+
+## Architecture
+
+**Owning services:** `DriveActivityMonitorService`
+**Owned tables:** None — orchestrator over `IGoogleDriveActivityClient`, `ITeamResourceServiceRead`, `ISettingsService`, `IUserServiceRead`, `IAuditLogService`.
+**Status:** (A) Migrated — table-less, no repository or cache.
+
+### Cross-section read interface
+
+| Read interface | Methods | Notes |
+|---|---:|---|
+| `IDriveActivityMonitorService` | — | not cross-section-consumed |

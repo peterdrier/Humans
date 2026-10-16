@@ -69,10 +69,7 @@ internal sealed class IssueSectionRouting
         return roleSet.Contains(RoleNames.Admin) || RolesFor(section).Any(roleSet.Contains);
     }
 
-    /// <summary>
-    /// Returns the set of section strings whose role list contains any of
-    /// <paramref name="userRoles"/>. Used for queue filtering.
-    /// </summary>
+    /// <summary>Sections whose owning roles include any of <paramref name="userRoles"/>; the queue filter.</summary>
     public IReadOnlySet<string> SectionsForRoles(IEnumerable<string> userRoles)
     {
         var roleSet = userRoles.ToHashSet(StringComparer.Ordinal);

@@ -58,6 +58,12 @@
                 <span asp-validation-for="DiscordChannelUrl" class="text-danger"></span>
             </div>
 
+            <div class="form-check mb-3">
+                <input asp-for="IsSensitive" class="form-check-input" />
+                <label asp-for="IsSensitive" class="form-check-label">@Localizer["Workgroups_Field_IsSensitive"]</label>
+                <div class="form-text">@Localizer["Workgroups_Field_IsSensitiveHelp"]</div>
+            </div>
+
             <div class="mb-3">
                 <label asp-for="SecondCoordinatorUserId" class="form-label">@Localizer["Workgroups_Field_SecondCoordinator"]</label>
                 <vc:human-search field-name="SecondCoordinatorUserId" selected-user-id="Model.SecondCoordinatorUserId" scope="Name" placeholder="@Localizer["Workgroups_Field_SecondCoordinator"].Value" />

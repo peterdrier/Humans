@@ -169,7 +169,40 @@ public class HoldedClientTreasuryTests
             "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
             Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<HoldedPermanentException>();
+        (await act.Should().ThrowAsync<HoldedPermanentException>())
+            .Which.BankMovementId.Should().Be("m1");
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsSkipped_WhenTheCallerNamesIt()
+    {
+        // A line stuck for days blocked every SEPA booking (peterdrier/Humans#1946); once Finance has
+        // surfaced it, it asks for that one id to be skipped. Another undated pending line still fails.
+        var json = """
+        {"items":[
+          {"id":"m1","account":"tr-1","date":"","amount":"-20.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"},
+          {"id":"m3","account":"tr-1","date":"","amount":"-5.00","status":"pending"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var logger = new CapturingLogger<HoldedClient>();
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)), logger);
+        var from = new LocalDate(2026, 8, 1);
+        var to = new LocalDate(2026, 8, 31);
+
+        var blocked = async () => await client.ListBankMovementsAsync(
+            "tr-1", from, to, Xunit.TestContext.Current.CancellationToken,
+            new HashSet<string>(StringComparer.Ordinal) { "m1" });
+        (await blocked.Should().ThrowAsync<HoldedPermanentException>())
+            .Which.BankMovementId.Should().Be("m3");
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", from, to, Xunit.TestContext.Current.CancellationToken,
+            new HashSet<string>(StringComparer.Ordinal) { "m1", "m3" });
+
+        movements.Select(m => m.Id).Should().Equal("m2");
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("Skipping Holded bank movement m1"));
     }
 
     [HumansFact]

@@ -2865,7 +2865,7 @@ public class HoldedFinanceServiceTests
         string? description = "40000004 - NCA - ANA RUIZ", string status = "pending")
     {
         _client.ListBankMovementsAsync(
-                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(new List<HoldedBankMovementDto>
             {
                 new()
