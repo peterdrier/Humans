@@ -448,7 +448,8 @@ internal sealed class UserService(
             await repo.AddAsync(profile, ct);
         }
 
-        var previousPictureContentType = profile.ProfilePictureContentType;
+        var previousPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
 
         profile.BurnerName = command.BurnerName;
         profile.FirstName = command.FirstName;
@@ -496,42 +497,94 @@ internal sealed class UserService(
             profile.DateOfBirth = null;
         }
 
+        // Every upload lands on a fresh key, so the previous bytes survive until the editor deletes
+        // them after this save commits.
         var pictureMutation = command.PictureMutation;
+        string? newPictureKey = null;
         if (pictureMutation == UserProfilePictureMutation.Set
             && profilePictureData is not null && command.ProfilePictureContentType is not null)
         {
             try
             {
-                await fileStorage.SaveAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(profile.Id, command.ProfilePictureContentType),
-                    profilePictureData, ct);
+                newPictureKey = ProfilePictureKeys.NewVersioned(profile.Id, command.ProfilePictureContentType);
+                await fileStorage.SaveAsync(newPictureKey, profilePictureData, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex,
                     "Failed to write profile picture for {ProfileId}; preserving the previous picture metadata",
                     profile.Id);
+                newPictureKey = null;
                 pictureMutation = UserProfilePictureMutation.None;
             }
         }
 
-        profile.ProfilePictureContentType = pictureMutation switch
+        switch (pictureMutation)
         {
-            UserProfilePictureMutation.Remove => null,
-            UserProfilePictureMutation.Set => command.ProfilePictureContentType,
-            _ => profile.ProfilePictureContentType,
-        };
+            case UserProfilePictureMutation.Remove:
+                profile.ProfilePictureContentType = null;
+                profile.ProfilePictureStorageKey = null;
+                break;
+            case UserProfilePictureMutation.Set:
+                profile.ProfilePictureContentType = command.ProfilePictureContentType;
+                profile.ProfilePictureStorageKey = newPictureKey;
+                break;
+        }
 
         // Bare->Active promotion happens in the repository, which re-derives User.State from the
         // saved names and carries any existing suspension forward.
-        await repo.UpdateAsync(profile, ct);
+        try
+        {
+            await repo.UpdateAsync(profile, ct);
+        }
+        catch when (newPictureKey is not null)
+        {
+            await DeleteUnreferencedPictureAsync(profile.Id, newPictureKey);
+            throw;
+        }
+
+        // Delete the superseded file before the fallible post-commit steps below, so a throw there
+        // cannot orphan it (the old key is no longer in the DB).
+        var currentPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
+        if (previousPictureKey is not null
+            && !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
+        {
+            await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
+        }
+
         await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
 
-        return new UserProfileSaveResult(
-            profile.Id,
-            previousPictureContentType,
-            profile.ProfilePictureContentType);
+        return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+    }
+
+    private async Task DeleteSupersededPictureAsync(Guid profileId, string key)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
+                profileId);
+        }
+    }
+
+    // The metadata save failed, so the freshly written file is unreferenced; the previous picture is untouched.
+    private async Task DeleteUnreferencedPictureAsync(Guid profileId, string key)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete unreferenced profile picture for {ProfileId} after a failed save", profileId);
+        }
     }
 
     public async Task SaveDietaryMedicalAsync(
@@ -575,7 +628,10 @@ internal sealed class UserService(
         return new UserProfileAnonymizeResult(
             anonymized,
             profile?.Id,
-            profile?.ProfilePictureContentType);
+            profile is null
+                ? null
+                : ProfilePictureKeys.Resolve(
+                    profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
     }
 
     public async Task<bool> SaveProfileVolunteerHistoryAsync(
@@ -1119,12 +1175,11 @@ internal sealed class UserService(
         var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
         if (profileAnonymization.Anonymized &&
             profileAnonymization.ProfileId is { } profileId &&
-            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
+            profileAnonymization.PreviousProfilePictureKey is { } pictureKey)
         {
             try
             {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType), ct);
+                await fileStorage.DeleteAsync(pictureKey, ct);
             }
             catch (Exception ex)
             {

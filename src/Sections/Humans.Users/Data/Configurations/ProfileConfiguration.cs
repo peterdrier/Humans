@@ -96,6 +96,9 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.ProfilePictureContentType)
             .HasMaxLength(100);
 
+        builder.Property(p => p.ProfilePictureStorageKey)
+            .HasMaxLength(300);
+
         builder.Property(p => p.CreatedAt)
             .IsRequired();
 

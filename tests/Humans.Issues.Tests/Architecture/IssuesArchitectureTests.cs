@@ -10,11 +10,9 @@ using Humans.Issues.Contracts;
 namespace Humans.Issues.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Issues
-/// section. Issues is a per-section queue triaged by handlers; no caching
-/// decorator sits in front of the service — the service goes directly through
-/// <see cref="IIssuesRepository"/> and invalidates the nav-badge cache via
-/// <see cref="INavBadgeCacheInvalidator"/> after successful writes.
+/// Constructor-dependency checks for <see cref="IssuesService"/>. They prove a
+/// dependency is wired, not that it is used; which mutations invalidate which
+/// cache is pinned in IssuesServiceTests.
 /// </summary>
 public class IssuesArchitectureTests
 {
@@ -27,7 +25,7 @@ public class IssuesArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
-            because: "IssuesService owns the per-user actionable-count cache surfaced by IssuesUserMenuViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
+            because: "IssuesService evicts the per-user actionable counts through this invalidator (memory/code/viewcomponent-no-cache.md)");
     }
 
     [HumansFact]
@@ -37,7 +35,7 @@ public class IssuesArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
-            because: "IssuesService invalidates the nav-badge count cache after writes that can change it (submit / status change / comment post / section change) — the dependency proves the wire is in place");
+            because: "IssuesService invalidates the nav-badge count through this invalidator");
     }
 
     [HumansFact]
@@ -47,11 +45,11 @@ public class IssuesArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserServiceRead),
-            because: "Issues resolves reporter / assignee / resolver / comment-sender display names via IUserServiceRead instead of taking the write-capable user service or using cross-domain .Include() chains");
+            because: "Issues reads user display names through the read-only user interface");
         paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "Issues resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
+            because: "Issues reads the reporter's notification email through the Users section");
         paramTypes.Should().Contain(typeof(IRoleAssignmentServiceRead),
-            because: "Issues fans out comment notifications to section role-holders via IRoleAssignmentServiceRead.GetActiveUserIdsInRoleAsync — no direct query on the role_assignments table");
+            because: "Issues reads section role-holders through the read-only role interface");
     }
 
     [HumansFact]

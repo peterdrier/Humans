@@ -10,7 +10,8 @@ internal sealed class ExpensesIndexViewModel
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public bool HasActiveYear { get; init; }
     public bool HasIban { get; init; }
-    public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
+    /// <summary>Report id → the account (or legacy category) it books to, for display.</summary>
+    public IReadOnlyDictionary<Guid, string> BookingLabels { get; init; } =
         new Dictionary<Guid, string>();
 
     /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.
@@ -39,10 +40,12 @@ internal sealed class ExpensesIndexViewModel
 
 internal sealed class ExpenseNewViewModel
 {
-    public IReadOnlyList<BudgetCategoryOption> Categories { get; set; } = [];
+    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
 
-    [Required(ErrorMessage = "Validation_Required")]
-    public Guid BudgetCategoryId { get; set; }
+    /// <summary>The Holded expense account the report books to. Its budget category, when it has
+    /// one, is derived by the service; the form never names a category directly.</summary>
+    [Range(1, int.MaxValue, ErrorMessage = "Validation_Required")]
+    public int HoldedAccountNumber { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
@@ -55,23 +58,20 @@ internal sealed class ExpenseNewViewModel
 internal sealed class ExpenseEditViewModel
 {
     public ExpenseReportDto? Report { get; set; }
-    public IReadOnlyList<BudgetCategoryOption> Categories { get; set; } = [];
+    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
 
-    public Guid BudgetCategoryId { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Validation_Required")]
+    public int HoldedAccountNumber { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 }
 
-internal sealed record BudgetCategoryOption(Guid Id, string GroupName, string CategoryName)
-{
-    public string DisplayName => $"{GroupName} / {CategoryName}";
-}
-
 internal sealed class ExpenseDetailViewModel
 {
     public required ExpenseReportDto Report { get; init; }
-    public required string CategoryDisplayName { get; init; }
+    /// <summary>The account (or, on a report that predates accounts, the category) it books to.</summary>
+    public required string BookingLabel { get; init; }
     public bool CanEdit { get; init; }
     public bool CanSubmit { get; init; }
     public bool CanWithdraw { get; init; }
@@ -125,8 +125,8 @@ internal sealed class ExpenseDetailViewModel
     /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
     public bool CanCoordinatorReject { get; init; }
 
-    /// <summary>Budget categories offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
-    public IReadOnlyList<BudgetCategoryOption> Categories { get; init; } = [];
+    /// <summary>Accounts offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
+    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; init; } = [];
 }
 
 internal sealed class ExpenseLineNewViewModel
@@ -191,7 +191,8 @@ internal sealed class ExpenseReviewViewModel
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
     /// <summary>Budget category id → department. Department-group categories are one per team, so
     /// the category name is the department; other groups show as "Group / Category".</summary>
-    public required IReadOnlyDictionary<Guid, string> DepartmentNames { get; init; }
+    /// <summary>Report id → the account (or legacy category) it books to, for display.</summary>
+    public required IReadOnlyDictionary<Guid, string> BookingLabels { get; init; }
     /// <summary>Reports whose Holded push was written off and need a finance admin to look at them.
     /// Empty hides the banner and the Holded column.</summary>
     public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
@@ -203,8 +204,8 @@ internal sealed class ExpenseReviewViewModel
 
 internal sealed class ApproveInputModel
 {
-    /// <summary>Optional category override applied at approval time.</summary>
-    public Guid? OverrideCategoryId { get; set; }
+    /// <summary>Optional account override applied at approval time; rebooks the report.</summary>
+    public int? OverrideAccountNumber { get; set; }
 
     /// <summary>Optional payout cap; overrides whatever the coordinator authorized at endorsement.</summary>
     [Range(0.01, 1_000_000)]

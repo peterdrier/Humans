@@ -12,15 +12,15 @@ internal sealed class ProfileService(IUserRepository userRepository,
         Guid profileId, CancellationToken ct = default)
     {
         // GDPR gate: content-type column is the source of truth — don't serve from disk if cleared.
-        var dbContentType = await userRepository.GetProfilePictureContentTypeAsync(profileId, ct);
-        if (string.IsNullOrEmpty(dbContentType))
+        var location = await userRepository.GetProfilePictureLocationAsync(profileId, ct);
+        if (location is not { } picture || string.IsNullOrEmpty(picture.ContentType))
         {
             return null;
         }
 
-        var key = ProfilePictureStorageKeys.ProfilePictureKey(profileId, dbContentType);
+        var key = ProfilePictureKeys.Resolve(profileId, picture.ContentType, picture.StorageKey)!;
         var fsBytes = await fileStorage.TryReadAsync(key, ct);
-        return fsBytes is not null ? (fsBytes, dbContentType) : null;
+        return fsBytes is not null ? (fsBytes, picture.ContentType) : null;
     }
 
     public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
@@ -36,9 +36,9 @@ internal sealed class ProfileService(IUserRepository userRepository,
 
         var onFs = 0;
         var dbOnly = new List<ProfilePictureMigrationRow>();
-        foreach (var (profileId, userId, burnerName, contentType, updatedAt) in rows)
+        foreach (var (profileId, userId, burnerName, contentType, storageKey, updatedAt) in rows)
         {
-            var key = ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType);
+            var key = ProfilePictureKeys.Resolve(profileId, contentType, storageKey)!;
             var bytes = await fileStorage.TryReadAsync(key, ct);
             if (bytes is not null)
             {

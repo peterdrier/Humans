@@ -26,6 +26,7 @@ public class ExpensesIndexViewModelTests
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = Guid.NewGuid(),
+        HoldedAccountNumber = 0,
         BudgetCategoryId = Guid.NewGuid(),
         BudgetYearId = Guid.NewGuid(),
         Status = ExpenseReportStatus.Approved,

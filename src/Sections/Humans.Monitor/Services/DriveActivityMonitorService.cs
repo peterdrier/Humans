@@ -9,9 +9,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Services;
 
-/// <summary>
-/// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
-/// </summary>
 [CrossSectionWrite("Monitor stamps its own last-run marker into the Settings key/value store.")]
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
@@ -102,8 +99,8 @@ internal sealed class DriveActivityMonitorService(
                 resources.Count);
         }
 
-        // Marker first, then audit: anomalies must surface even on a run that holds the
-        // marker back.
+        // Marker first, then audit: IAuditLogService wants audit after the business save, and it
+        // swallows its own write failures. Audit runs whether or not the marker moved.
         var newMarker = ResolveNewMarker(hadFailures, now, filterTime);
         if (newMarker is not null)
         {
@@ -222,11 +219,6 @@ internal sealed class DriveActivityMonitorService(
     private static bool IsInitiatedByServiceAccount(
         DriveActivityEvent activity, string serviceAccountEmail, string? serviceAccountClientId)
     {
-        if (activity.Actors.Count == 0)
-        {
-            return false;
-        }
-
         foreach (var actor in activity.Actors)
         {
             if (actor.KnownUserPersonName is null)
@@ -234,7 +226,6 @@ internal sealed class DriveActivityMonitorService(
                 continue;
             }
 
-            // The personName field may contain the SA email directly
             if (string.Equals(actor.KnownUserPersonName, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -257,11 +248,6 @@ internal sealed class DriveActivityMonitorService(
         PersonNameResolver resolver,
         CancellationToken cancellationToken)
     {
-        if (activity.Actors.Count == 0)
-        {
-            return null;
-        }
-
         foreach (var actor in activity.Actors)
         {
             if (actor.KnownUserPersonName is not null)
@@ -370,7 +356,6 @@ internal sealed class DriveActivityMonitorService(
         {
             if (!personName.StartsWith("people/", StringComparison.Ordinal))
             {
-                // Already an email address
                 return personName;
             }
 

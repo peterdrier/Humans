@@ -109,10 +109,14 @@ public interface IHoldedClient
 
     /// <summary>Lists a treasury account's bank movements over a date window, newest-first order not
     /// guaranteed. Cursor-paginated internally. The window is also applied client-side, so the contract
-    /// holds whether or not Holded honours the date query parameters.</summary>
+    /// holds whether or not Holded honours the date query parameters. A pending outgoing line with no
+    /// readable date fails the read closed (<c>HoldedPermanentException.BankMovementId</c> names it)
+    /// unless its id is in <paramref name="skipUnreadableDateIds"/>, in which case it is skipped and
+    /// logged (peterdrier/Humans#1946).</summary>
     /// REASON: nothing in the client can read the bank feed; #1185 makes the bank line the trigger.
     Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
-        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
+        IReadOnlySet<string>? skipUnreadableDateIds = null);
 
     /// <summary>Reconciles one bank movement against the documents that settle it. Split reconciliation
     /// (several documents on one line) is supported. Throws <c>HoldedPermanentException</c> when Holded

@@ -127,7 +127,7 @@ internal sealed class Service(
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        await DeleteObsoleteImagesAsync(obsoletePaths, id, "updated");
+        await DeleteFilesAsync(obsoletePaths, id, "an update");
         return new(ToDto(updated, await repo.GetImagesAsync([id], ct)));
     }
 
@@ -151,10 +151,11 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
 
-        await DeleteObsoleteImagesAsync(imagePaths, id, "deleted");
+        await DeleteFilesAsync(imagePaths, id, "its deletion");
     }
 
-    private async Task DeleteObsoleteImagesAsync(IEnumerable<string> paths, Guid containerId, string operation)
+    // Best effort: request cancellation must not strand files, and a failure is logged, not thrown.
+    private async Task DeleteFilesAsync(IEnumerable<string> paths, Guid containerId, string reason, int? year = null)
     {
         foreach (var path in paths.Distinct(StringComparer.Ordinal))
         {
@@ -164,8 +165,8 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was {Operation}",
-                    path, containerId, operation);
+                logger.LogError(ex, "Failed to delete image file {StoragePath} of container {ContainerId} after {Reason}, year {Year}",
+                    path, containerId, reason, year);
             }
         }
     }
@@ -301,15 +302,7 @@ internal sealed class Service(
         if (previousImagePath is not null
             && !string.Equals(previousImagePath, placement.PlacementImageStoragePath, StringComparison.Ordinal))
         {
-            try
-            {
-                await fileStorage.DeleteAsync(previousImagePath, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to delete superseded placement image {StoragePath} for container {ContainerId}, year {Year}",
-                    previousImagePath, containerId, year);
-            }
+            await DeleteFilesAsync([previousImagePath], containerId, "a placement image replacement", year);
         }
 
         return new(ToPlacementDto(placement));
@@ -357,10 +350,10 @@ internal sealed class Service(
             return new("Containers_Error_ImageType");
         if (image.Length > MaxImageBytes)
             return new("Containers_Error_ImageTooLarge");
-        // Security: extension whitelist prevents image/jpeg + .html from being served as HTML.
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
             return new("Containers_Error_ImageFileNameLength", MaxImageFileNameLength);
+        // Security: extension whitelist prevents image/jpeg + .html from being served as HTML.
         return !AllowedImageExtensions.Contains(Path.GetExtension(fileName))
             ? new("Containers_Error_ImageExtension") : null;
     }
@@ -408,18 +401,7 @@ internal sealed class Service(
         catch
         {
             // No database write has started; only these new files belong to the failed batch.
-            foreach (var row in rows)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(row.StoragePath, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to delete staged image file {StoragePath} after container {ContainerId} upload failed",
-                        row.StoragePath, containerId);
-                }
-            }
+            await DeleteFilesAsync(rows.Select(row => row.StoragePath), containerId, "a failed upload");
             throw;
         }
         return rows;
@@ -443,13 +425,13 @@ internal sealed class Service(
         var images = await repo.GetImagesAsync(containers.Select(c => c.Id).ToList(), ct);
         return images
             .GroupBy(i => i.ContainerId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(i => i.SortOrder).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
     }
 
     private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
     {
         var gallery = new List<ContainerImageDto>(images.Count + 1);
-        // Pre-nobodies-collective/Humans#797 containers still hold their single image in the containers columns;
+        // Legacy containers still hold their single image in the containers columns;
         // Guid.Empty addresses it so callers see one uniform, removable gallery.
         if (c.ImageStoragePath is not null)
         {

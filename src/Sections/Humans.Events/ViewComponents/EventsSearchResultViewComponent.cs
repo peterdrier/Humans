@@ -7,7 +7,7 @@ namespace Humans.Events.ViewComponents;
 /// One event-search result row, keyed by event id
 /// (nobodies-collective/Humans#1062). Callers hold the id their own search
 /// produced; Events owns what an event row looks like and the Browse link it
-/// points at. Replaces the projection <c>SearchService</c> used to build.
+/// points at.
 /// </summary>
 /// <remarks>
 /// Public because Razor's compile-time discovery filters on public — an internal

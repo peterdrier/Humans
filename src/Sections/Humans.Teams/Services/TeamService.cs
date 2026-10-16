@@ -457,6 +457,7 @@ internal sealed class TeamService(
         team.Name = name;
         team.Description = description;
         team.RequiresApproval = requiresApproval;
+        var activeChanged = team.IsActive != isActive;
         team.IsActive = isActive;
         team.ParentTeamId = parentTeamId;
         team.GoogleGroupPrefix = googleGroupPrefix;
@@ -476,7 +477,7 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
-        var earlyEntryChanged = false;
+        var earlyEntryChanged = activeChanged;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
@@ -677,7 +678,16 @@ internal sealed class TeamService(
 
         var now = clock.GetCurrentInstant();
 
-        var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        IReadOnlyList<Guid> closedUsers;
+        try
+        {
+            closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        }
+        finally
+        {
+            // Inactive teams grant no Early Entry; evict even on uncertain completion.
+            earlyEntryInvalidator.InvalidateAll();
+        }
         foreach (var userId in closedUsers)
         {
             await auditLogService.LogAsync(

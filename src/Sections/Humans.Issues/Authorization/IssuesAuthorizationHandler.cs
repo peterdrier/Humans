@@ -6,11 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Issues.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for issue operations.
-/// Evaluates whether a user can handle (mutate / non-reporter-comment) a specific Issue
-/// based on Admin membership or holding any role mapped to the issue's <c>Section</c>
-/// via <see cref="IssueSectionRouting"/>.
-///
 /// The rule itself is <see cref="IssueSectionRouting.CanHandle"/>, which the service also
 /// enforces on every per-item read and mutation. This handler is the browser's copy of the
 /// same answer, used to shape the page (which controls render, whether a comment may resolve)

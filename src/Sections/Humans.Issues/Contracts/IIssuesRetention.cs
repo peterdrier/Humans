@@ -3,8 +3,7 @@ namespace Humans.Issues.Contracts;
 /// <summary>
 /// The retention rule <c>CleanupIssuesJob</c> drives. One method, returning the number of
 /// issue rows removed, so the job stays a scheduler shim and the "6 months after terminal"
-/// policy lives inside the section — the same carve as Agent's
-/// <c>IAgentConversationRetention</c> (design §15 step 6b).
+/// policy lives inside the section.
 /// </summary>
 public interface IIssuesRetention
 {

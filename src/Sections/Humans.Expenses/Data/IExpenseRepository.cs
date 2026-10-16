@@ -82,10 +82,11 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap set at endorsement; null leaves it as it is.</summary>
+    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap set at endorsement; null leaves it as it is.
+    /// A non-null <paramref name="overrideBooking"/> rebooks the report (account, category and year together).</summary>
     Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId,
-        Guid? overrideCategoryId,
+        ExpenseBooking? overrideBooking,
         decimal? maxAmount,
         NodaTime.Instant approvedAt,
         Guid outboxEventId,

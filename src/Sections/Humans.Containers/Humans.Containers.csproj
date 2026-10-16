@@ -39,7 +39,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

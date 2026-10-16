@@ -108,4 +108,18 @@ internal sealed record ResolvedGroup(string NumericId, string NormalizedEmail, s
 /// </summary>
 /// <param name="StatusCode">The HTTP status returned by Google, or <c>0</c> for transport errors.</param>
 /// <param name="RawMessage">The underlying error message, safe to log.</param>
-internal sealed record GoogleClientError(int StatusCode, string? RawMessage);
+internal sealed record GoogleClientError(int StatusCode, string? RawMessage)
+{
+    /// <summary>
+    /// Drive-specific target rejection; sharing-policy errors are not user rejection. 400 for
+    /// no-Google-account on notification-free domains, 403 "Cannot share a shared drive with non
+    /// Google accounts" (#1938); other 403s are caller-permission failures and fail the phrase test.
+    /// </summary>
+    public bool IsDriveTargetRejection => StatusCode is 400 or 403 && RawMessage is { } message
+        && (message.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("non google account", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("no google account", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase));
+}

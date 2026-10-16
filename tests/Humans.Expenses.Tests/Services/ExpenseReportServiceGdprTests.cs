@@ -94,6 +94,7 @@ public class ExpenseReportServiceGdprTests
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = submitterId,
+        HoldedAccountNumber = 0,
         BudgetCategoryId = Guid.NewGuid(),
         BudgetYearId = Guid.NewGuid(),
         Status = ExpenseReportStatus.Approved,

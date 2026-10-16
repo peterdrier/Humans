@@ -8,8 +8,7 @@ namespace Humans.Containers.Services;
 /// These are <b>persisted strings</b>, matched by exact equality when the audit log is
 /// read back (<c>IAuditLogService</c> filters on <c>e.EntityType == entityType</c>), so
 /// they are a data contract with every row already in the database — not a view of the
-/// current CLR type names. Same rule and same reason as Store's
-/// <c>Humans.Store.Services.AuditEntityTypes</c>.
+/// current CLR type names.
 /// </para>
 /// <para>
 /// <c>Camp</c> cannot be expressed as <c>nameof</c> here at all: the entity belongs to
