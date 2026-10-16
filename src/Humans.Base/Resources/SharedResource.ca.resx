@@ -164,6 +164,9 @@
   <data name="Login_Description" xml:space="preserve">
     <value>Inicia la sessió per accedir a Humans.</value>
   </data>
+  <data name="Login_PreviewDescription" xml:space="preserve">
+    <value>Inicia la sessió per obrir {0} a Humans.</value>
+  </data>
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Inicia la sessió amb Google</value>
   </data>

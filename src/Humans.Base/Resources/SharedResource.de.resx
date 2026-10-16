@@ -164,6 +164,9 @@
   <data name="Login_Description" xml:space="preserve">
     <value>Melden Sie sich an, um auf Humans zuzugreifen.</value>
   </data>
+  <data name="Login_PreviewDescription" xml:space="preserve">
+    <value>Melden Sie sich an, um {0} in Humans zu öffnen.</value>
+  </data>
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Mit Google anmelden</value>
   </data>

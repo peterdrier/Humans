@@ -92,7 +92,8 @@ public class AccountControllerOAuthReconcileTests
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),
             _loginMethods,
-            _localizer);
+            _localizer,
+            []);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
         _controller.Url.Content(Arg.Any<string>()).Returns(ci => ci.Arg<string>());
