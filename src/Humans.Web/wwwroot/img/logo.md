@@ -74,11 +74,16 @@ Wiring in `_Layout.cshtml` + `_AdminLayout.cshtml` `<head>`: `rel="icon"` → `f
 `.about-mark`.
 
 ## History
-Every round archives the outgoing master + favicon under `docs/brand/logo-history/<yyyy-mm>-<model>/`
-and adds a line here.
-- **2026-06 · Opus 4.8** — first self-simplifying mark. Replaced an over-faint full-anatomy
-  `logo.svg` (washed out below ~64px). Stick-figure anatomy, square and circle concentric.
-- **2026-10 · Fable 5.1** — faithful Leonardo geometry (square rests on the circle, navel-centred).
+Every round archives the outgoing master + favicon under `docs/brand/logo-history/<yyyy-mm>-<model>/`,
+regenerates `docs/brand/logo-history/history.png` (`history.py`, every round side by side) and adds a
+line here: `**<yyyy-mm> · <Model>, <effort level>**`. Level was not recorded before 2026-10.
+- **2026-02 · Opus 4.6, level unrecorded** — the original, drawn with the Da Vinci rebrand (commit
+  `08ca5f70f`). Hand-coded full-anatomy study, thin and faint, separate `favicon.svg`; square and
+  circle concentric. Washed out below ~64px. `favicon.ico` packed from it in 2026-04 (PR #161).
+- **2026-06 · Opus 4.8 (1M), level unrecorded** — first self-simplifying mark (PR #1007). Stick-figure
+  anatomy in bold capsules plus etch tiers, square and circle concentric; brown-tile favicon
+  restored after the transparent one washed out in the tab; apple-touch PNGs added (PR #1006).
+- **2026-10 · Fable 5.1, default effort** — faithful Leonardo geometry (square rests on the circle, navel-centred).
   Real anatomy: eight-head proportions, deltoids/biceps/pectorals/abs/quads/calves etched, hands with
   fingers and thumb, feet with toes, face and shoulder-length hair. Process made repeatable:
   `/redraw-logo` skill + `derive.py` generate every icon from the master; previous round archived.

@@ -1,7 +1,7 @@
 ---
 name: redraw-logo
 description: "Redraw the Nobodies Vitruvian Man mark with the current model, derive every icon asset from it, archive the previous round, wire it into the site, open the PR. Peter runs this every 2-3 months when a new first-class model ships, to watch the brand evolve. Triggers: 'redraw the logo', 'logo round', 'give the logo a go', '/redraw-logo'."
-argument-hint: "[model label for the history folder, e.g. opus-5.5]"
+argument-hint: "[model label for the history folder, e.g. opus-5.5] [effort level, e.g. high]"
 ---
 
 # Redraw the logo
@@ -10,8 +10,9 @@ One round of the brand's model-by-model evolution. The brief is `src/Humans.Web/
 — read it first and in full; it holds the constraints, the self-simplifying design, and the history.
 This skill is the procedure around it.
 
-`$ARGUMENTS`: the model label for the archive folder (`<yyyy-mm>-<label>`). If empty, use the model
-you are, lowercased (`fable-5.1`).
+`$ARGUMENTS`: the model label for the archive folder (`<yyyy-mm>-<label>`) and the effort level the
+session runs at. If empty, use the model you are, lowercased (`fable-5.1`), and ask Peter for the level
+before step 5 — it goes in the History line and is not recoverable afterwards.
 
 ## 0. Branch
 Feature branch off `origin/main` (`logo/<yyyy-mm>-<label>`). Cloud sessions work in the repo root;
@@ -57,9 +58,11 @@ fix the script, not the SVG.
   migrations.
 
 ## 5. Record and ship
-- `logo.md` → History: one line, `**<yyyy-mm> · <Model>**`, what changed, what to beat next time.
-- Commit the master, derived assets, archive, docs; push; open the PR against `origin/main` with the
-  review sheet pasted in the body (rendered images, not code) and the previous round beside it.
+- `logo.md` → History: one line, `**<yyyy-mm> · <Model>, <level>**`, what changed, what to beat next time.
+- `python3 .claude/skills/redraw-logo/history.py` regenerates `docs/brand/logo-history/history.png`
+  (every round side by side); look at it, it goes in the PR body.
+- Commit the master, derived assets, archive, `history.png`, docs; push; open the PR against
+  `origin/main` with `history.png` in the body (rendered images, not code).
 - Hand off to the steward (`pd:steward`) or stop, per `steward-thin-session`.
 
 ## Don'ts

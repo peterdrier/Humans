@@ -1,0 +1,520 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background construction: faint grid/proportion lines -->
+  <g stroke="#c9a96e" opacity="0.07" stroke-width="1.5">
+    <line x1="100" y1="0" x2="100" y2="200"/>
+    <line x1="0" y1="100" x2="200" y2="100"/>
+    <line x1="0" y1="66.7" x2="200" y2="66.7"/>
+    <line x1="0" y1="133.3" x2="200" y2="133.3"/>
+    <line x1="66.7" y1="0" x2="66.7" y2="200"/>
+    <line x1="133.3" y1="0" x2="133.3" y2="200"/>
+  </g>
+
+  <!-- Square frame -->
+  <rect x="18" y="18" width="164" height="164" stroke="#c9a96e" stroke-width="3" opacity="0.18"/>
+
+  <!-- Circle frame -->
+  <circle cx="100" cy="100" r="88" stroke="#c9a96e" stroke-width="3.5" opacity="0.25"/>
+
+  <!-- Inner construction circle (navel center) -->
+  <circle cx="100" cy="106" r="74" stroke="#c9a96e" stroke-width="1.75" opacity="0.1" stroke-dasharray="2.5 2"/>
+
+  <!-- Compass construction -->
+  <path d="M 100 106 L 100 32" stroke="#c9a96e" stroke-width="1.25" opacity="0.08"/>
+  <path d="M 60 106 A 40 40 0 0 1 140 106" stroke="#c9a96e" stroke-width="1.25" opacity="0.06" fill="none"/>
+
+  <!-- Diagonal proportion lines -->
+  <g stroke="#c9a96e" stroke-width="1" opacity="0.05">
+    <line x1="100" y1="32" x2="18" y2="100"/>
+    <line x1="100" y1="32" x2="182" y2="100"/>
+    <line x1="18" y1="100" x2="100" y2="182"/>
+    <line x1="182" y1="100" x2="100" y2="182"/>
+  </g>
+
+  <!-- ======================================================= -->
+  <!-- SECONDARY POSE: Arms raised, Legs spread (lighter) -->
+  <!-- ======================================================= -->
+  <g stroke="#c9a96e" fill="#c9a96e" opacity="0.3">
+    <!-- Left arm raised (contoured with body width) -->
+    <path d="M 79 55 Q 70 45 61 36 Q 54 28 45 21
+             L 43 23
+             Q 52 30 59 38 Q 68 47 77 58 Z"
+          fill-opacity="0.04" stroke-width="2.75" stroke-linecap="round"/>
+    <!-- Left hand raised -->
+    <g stroke-width="2" fill="none">
+      <path d="M 45 21 L 39 15"/>
+      <path d="M 44 21.5 L 37 17"/>
+      <path d="M 43.5 22.5 L 36 19"/>
+      <path d="M 43 23 L 37 21"/>
+    </g>
+
+    <!-- Right arm raised (contoured) -->
+    <path d="M 121 55 Q 130 45 139 36 Q 146 28 155 21
+             L 157 23
+             Q 148 30 141 38 Q 132 47 123 58 Z"
+          fill-opacity="0.04" stroke-width="2.75" stroke-linecap="round"/>
+    <!-- Right hand raised -->
+    <g stroke-width="2" fill="none">
+      <path d="M 155 21 L 161 15"/>
+      <path d="M 156 21.5 L 163 17"/>
+      <path d="M 156.5 22.5 L 164 19"/>
+      <path d="M 157 23 L 163 21"/>
+    </g>
+
+    <!-- Left leg spread (contoured) -->
+    <path d="M 93 111 Q 84 128 73 147 Q 66 160 55 175
+             L 52 173
+             Q 63 158 70 145 Q 81 126 90 111 Z"
+          fill-opacity="0.04" stroke-width="2.75" stroke-linecap="round"/>
+    <!-- Left foot spread -->
+    <path d="M 55 175 L 47 177 L 43 176" fill="none" stroke-width="2.25"/>
+
+    <!-- Right leg spread (contoured) -->
+    <path d="M 107 111 Q 116 128 127 147 Q 134 160 145 175
+             L 148 173
+             Q 137 158 130 145 Q 119 126 110 111 Z"
+          fill-opacity="0.04" stroke-width="2.75" stroke-linecap="round"/>
+    <!-- Right foot spread -->
+    <path d="M 145 175 L 153 177 L 157 176" fill="none" stroke-width="2.25"/>
+  </g>
+
+  <!-- ======================================================= -->
+  <!-- PRIMARY FIGURE: Arms horizontal, Legs together -->
+  <!-- ======================================================= -->
+
+  <!-- HEAD -->
+  <g stroke="#c9a96e" fill="#c9a96e">
+    <!-- Skull contour with jawline -->
+    <path d="M 92 35 Q 91.5 29 94 26 Q 97 24 100 23.5 Q 103 24 106 26
+             Q 108.5 29 108 35 Q 108 39 107 42
+             Q 106 45.5 104 47.5 Q 102 49 100 49
+             Q 98 49 96 47.5 Q 94 45.5 93 42 Q 92 39 92 35 Z"
+          fill-opacity="0.04" stroke-width="4" stroke-opacity="0.8"/>
+
+    <!-- Hair - curly Da Vinci style -->
+    <g stroke-width="1.9" fill="none" opacity="0.45">
+      <path d="M 92 34 Q 90 31 90.5 28 Q 92 25 95 25"/>
+      <path d="M 94 31 Q 93 28 94.5 25.5 Q 97 23.5 100 24"/>
+      <path d="M 98 30 Q 99 27 101 25 Q 103.5 23.5 106 25"/>
+      <path d="M 102 30 Q 104 27 107 27 Q 109 28 108.5 31"/>
+      <path d="M 106 34 Q 109 31 110 33 Q 109.5 35 107.5 36"/>
+      <path d="M 91 37 Q 89 35 89.5 32 Q 90 30 91 29"/>
+      <path d="M 93 27 Q 94 25 96 24"/>
+      <path d="M 104 26 Q 106.5 25.5 108 27"/>
+    </g>
+
+    <!-- Facial features -->
+    <g stroke-width="1.9" fill="none" opacity="0.55">
+      <!-- Eye sockets -->
+      <path d="M 94 37 Q 96.5 36.2 99 37" stroke-width="1.5" opacity="0.3"/>
+      <path d="M 101 37 Q 103.5 36.2 106 37" stroke-width="1.5" opacity="0.3"/>
+      <!-- Eyes -->
+      <ellipse cx="96.5" cy="38.2" rx="2.2" ry="0.9"/>
+      <ellipse cx="103.5" cy="38.2" rx="2.2" ry="0.9"/>
+      <!-- Irises -->
+      <circle cx="96.5" cy="38.2" r="0.6" fill="#c9a96e" fill-opacity="0.25" stroke="none"/>
+      <circle cx="103.5" cy="38.2" r="0.6" fill="#c9a96e" fill-opacity="0.25" stroke="none"/>
+      <!-- Eyebrows -->
+      <path d="M 93.5 36 Q 96.5 34.8 99 36" stroke-width="1.75"/>
+      <path d="M 101 36 Q 103.5 34.8 106.5 36" stroke-width="1.75"/>
+      <!-- Nose bridge to tip -->
+      <path d="M 100 37 L 99.5 41 Q 98.5 43 99 43.8 Q 100 44.5 101 43.8 Q 101.5 43 100.5 41 Z"
+            stroke-width="1.5"/>
+      <!-- Nostrils -->
+      <path d="M 98.5 43.5 Q 98 44 98.5 44.2" stroke-width="1.25"/>
+      <path d="M 101.5 43.5 Q 102 44 101.5 44.2" stroke-width="1.25"/>
+      <!-- Mouth -->
+      <path d="M 97.5 46 Q 100 47 102.5 46" stroke-width="1.75"/>
+      <path d="M 98 46.3 Q 100 46.8 102 46.3" stroke-width="1" opacity="0.3"/>
+      <!-- Chin -->
+      <path d="M 98 48 Q 100 49 102 48" stroke-width="1" opacity="0.25"/>
+      <!-- Ear left -->
+      <path d="M 92 36 Q 90 37.5 90 39.5 Q 90.5 41 92 41.5" stroke-width="1.5" opacity="0.4"/>
+      <!-- Ear right -->
+      <path d="M 108 36 Q 110 37.5 110 39.5 Q 109.5 41 108 41.5" stroke-width="1.5" opacity="0.4"/>
+    </g>
+  </g>
+
+  <!-- NECK (contoured) -->
+  <g stroke="#c9a96e" fill="#c9a96e">
+    <path d="M 96 49 Q 95.5 51 95 53 Q 95 54 96 55.5
+             M 104 49 Q 104.5 51 105 53 Q 105 54 104 55.5"
+          fill="none" stroke-width="3.25" opacity="0.7"/>
+    <!-- Sternocleidomastoid hint -->
+    <path d="M 96.5 49.5 Q 94 52 93 55" fill="none" stroke-width="1.25" opacity="0.2"/>
+    <path d="M 103.5 49.5 Q 106 52 107 55" fill="none" stroke-width="1.25" opacity="0.2"/>
+    <!-- Adam's apple -->
+    <path d="M 99 51 Q 100 50 101 51" fill="none" stroke-width="1" opacity="0.2"/>
+  </g>
+
+  <!-- TORSO (full anatomical contour) -->
+  <g stroke="#c9a96e" fill="#c9a96e">
+    <!-- Main torso outline -->
+    <path d="M 96 55.5 Q 93 55.5 89 56.5 Q 85 57.5 82 59.5
+             Q 79 62 79.5 65 Q 80 70 81 76
+             Q 82 82 83 88 Q 84 94 86 100
+             Q 87 104 89 108 Q 92 112 95 114
+             Q 97.5 115.5 100 115.5 Q 102.5 115.5 105 114
+             Q 108 112 111 108 Q 113 104 114 100
+             Q 116 94 117 88 Q 118 82 119 76
+             Q 120 70 120.5 65 Q 121 62 118 59.5
+             Q 115 57.5 111 56.5 Q 107 55.5 104 55.5 Z"
+          fill-opacity="0.035" stroke-width="3.75" stroke-opacity="0.7"/>
+
+    <!-- Internal anatomy -->
+    <g stroke-width="1.5" fill="none" opacity="0.3">
+      <!-- Clavicles -->
+      <path d="M 97 56 Q 92 57 86 59"/>
+      <path d="M 103 56 Q 108 57 114 59"/>
+      <!-- Trapezius hint -->
+      <path d="M 96 50 Q 90 53 85 58" stroke-width="1" opacity="0.15"/>
+      <path d="M 104 50 Q 110 53 115 58" stroke-width="1" opacity="0.15"/>
+    </g>
+    <g stroke-width="1.5" fill="none" opacity="0.3">
+      <!-- Pectoral left -->
+      <path d="M 86 62 Q 89 67 94 68 Q 97 68 100 66"/>
+      <!-- Pectoral right -->
+      <path d="M 114 62 Q 111 67 106 68 Q 103 68 100 66"/>
+      <!-- Nipples -->
+      <circle cx="92" cy="67" r="0.6" opacity="0.5"/>
+      <circle cx="108" cy="67" r="0.6" opacity="0.5"/>
+      <!-- Sternum -->
+      <path d="M 100 57 L 100 72"/>
+      <!-- Linea alba -->
+      <path d="M 100 72 L 100 108" stroke-width="1.25"/>
+    </g>
+    <g stroke-width="1.25" fill="none" opacity="0.2">
+      <!-- Rib suggestions -->
+      <path d="M 93 72 Q 96 74 100 74.5"/>
+      <path d="M 107 72 Q 104 74 100 74.5"/>
+      <path d="M 92 76 Q 95 78 100 78.5"/>
+      <path d="M 108 76 Q 105 78 100 78.5"/>
+      <path d="M 91.5 80 Q 95 81.5 100 82"/>
+      <path d="M 108.5 80 Q 105 81.5 100 82"/>
+      <!-- Rectus abdominis divisions -->
+      <path d="M 95 84 L 105 84"/>
+      <path d="M 94.5 89 L 105.5 89"/>
+      <path d="M 95 94 L 105 94"/>
+      <path d="M 96 99 L 104 99"/>
+      <!-- External obliques -->
+      <path d="M 84 78 Q 87 84 90 90" opacity="0.6"/>
+      <path d="M 116 78 Q 113 84 110 90" opacity="0.6"/>
+    </g>
+    <!-- Navel -->
+    <circle cx="100" cy="100" r="1.4" stroke-width="2" fill="none" opacity="0.45"/>
+    <circle cx="100" cy="100.3" r="0.4" fill="#c9a96e" fill-opacity="0.15" stroke="none"/>
+    <!-- Iliac crests and hip structure -->
+    <g stroke-width="1.25" fill="none" opacity="0.25">
+      <path d="M 88 105 Q 91 101 94 98"/>
+      <path d="M 112 105 Q 109 101 106 98"/>
+      <path d="M 93 108 Q 97 113 100 114"/>
+      <path d="M 107 108 Q 103 113 100 114"/>
+      <!-- Inguinal crease -->
+      <path d="M 90 108 Q 94 112 96 114" opacity="0.4"/>
+      <path d="M 110 108 Q 106 112 104 114" opacity="0.4"/>
+    </g>
+  </g>
+
+  <!-- LEFT ARM (horizontal, contoured) -->
+  <g stroke="#c9a96e" fill="#c9a96e" stroke-linecap="round">
+    <!-- Deltoid -->
+    <path d="M 83 58.5 Q 79 57.5 76 59 Q 73.5 61 74 65 Q 77 63 82 62 Z"
+          fill-opacity="0.035" stroke-width="3.25" stroke-opacity="0.65"/>
+    <!-- Upper arm (bicep/tricep contour) -->
+    <path d="M 76 59 Q 68 60.5 60 63 Q 55 64.5 54 65.5
+             L 53 69
+             Q 55 68.5 60 67 Q 68 65 75 63.5 Z"
+          fill-opacity="0.03" stroke-width="3" stroke-opacity="0.6"/>
+    <!-- Forearm -->
+    <path d="M 54 65.5 Q 46 67 38 69 Q 33 70 31 70.5
+             L 30 73.5
+             Q 33 73 38 72 Q 46 70.5 53 69 Z"
+          fill-opacity="0.03" stroke-width="2.75" stroke-opacity="0.55"/>
+    <!-- Muscle detail -->
+    <g stroke-width="1.25" fill="none" opacity="0.2">
+      <path d="M 74 60 Q 70 59 66 61"/>
+      <path d="M 73 63.5 Q 69 65 65 64.5"/>
+      <path d="M 52 66 Q 48 65.5 44 67"/>
+      <path d="M 51 69 Q 47 69.5 43 68.5"/>
+    </g>
+    <!-- Elbow -->
+    <circle cx="54" cy="67" r="1.2" fill="none" stroke-width="1.25" opacity="0.2"/>
+
+    <!-- Left hand (detailed open palm) -->
+    <g stroke-width="2.25" fill="none" opacity="0.75">
+      <path d="M 31 70.5 L 28 70 Q 26 70.5 25 71.5 L 26 73.5 L 30 73.5" stroke-width="2"/>
+      <!-- Thumb -->
+      <path d="M 30 72 Q 28.5 74.5 27 76 Q 26 77 25.5 76.5"/>
+      <!-- Index -->
+      <path d="M 28 70 L 23 68.5 Q 21 68 19 68.5"/>
+      <path d="M 27.5 70.5 L 22.5 69 Q 20.5 68.5 18.5 69"/>
+      <!-- Middle -->
+      <path d="M 26.5 71 L 21 70.5 Q 19 70.5 17 71"/>
+      <path d="M 26 71.5 L 20.5 71 Q 18.5 71 16.5 71.5"/>
+      <!-- Ring -->
+      <path d="M 26 72 L 21 72.5 Q 19 73 18 73.5"/>
+      <path d="M 25.5 72.5 L 20.5 73 Q 18.5 73.5 17.5 74"/>
+      <!-- Pinky -->
+      <path d="M 26 73 L 22 74 Q 20.5 74.5 20 75"/>
+      <path d="M 25.5 73.5 L 21.5 74.5 Q 20 75 19.5 75.5"/>
+      <!-- Knuckle creases -->
+      <g stroke-width="0.75" opacity="0.35">
+        <path d="M 23.5 68.5 L 23 69"/>
+        <path d="M 21.5 70.5 L 21 71"/>
+        <path d="M 21.5 72.5 L 21 73"/>
+        <path d="M 22.5 74 L 22 74.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- RIGHT ARM (horizontal, contoured) -->
+  <g stroke="#c9a96e" fill="#c9a96e" stroke-linecap="round">
+    <!-- Deltoid -->
+    <path d="M 117 58.5 Q 121 57.5 124 59 Q 126.5 61 126 65 Q 123 63 118 62 Z"
+          fill-opacity="0.035" stroke-width="3.25" stroke-opacity="0.65"/>
+    <!-- Upper arm -->
+    <path d="M 124 59 Q 132 60.5 140 63 Q 145 64.5 146 65.5
+             L 147 69
+             Q 145 68.5 140 67 Q 132 65 125 63.5 Z"
+          fill-opacity="0.03" stroke-width="3" stroke-opacity="0.6"/>
+    <!-- Forearm -->
+    <path d="M 146 65.5 Q 154 67 162 69 Q 167 70 169 70.5
+             L 170 73.5
+             Q 167 73 162 72 Q 154 70.5 147 69 Z"
+          fill-opacity="0.03" stroke-width="2.75" stroke-opacity="0.55"/>
+    <!-- Muscle detail -->
+    <g stroke-width="1.25" fill="none" opacity="0.2">
+      <path d="M 126 60 Q 130 59 134 61"/>
+      <path d="M 127 63.5 Q 131 65 135 64.5"/>
+      <path d="M 148 66 Q 152 65.5 156 67"/>
+      <path d="M 149 69 Q 153 69.5 157 68.5"/>
+    </g>
+    <!-- Elbow -->
+    <circle cx="146" cy="67" r="1.2" fill="none" stroke-width="1.25" opacity="0.2"/>
+
+    <!-- Right hand (detailed) -->
+    <g stroke-width="2.25" fill="none" opacity="0.75">
+      <path d="M 169 70.5 L 172 70 Q 174 70.5 175 71.5 L 174 73.5 L 170 73.5" stroke-width="2"/>
+      <!-- Thumb -->
+      <path d="M 170 72 Q 171.5 74.5 173 76 Q 174 77 174.5 76.5"/>
+      <!-- Index -->
+      <path d="M 172 70 L 177 68.5 Q 179 68 181 68.5"/>
+      <path d="M 172.5 70.5 L 177.5 69 Q 179.5 68.5 181.5 69"/>
+      <!-- Middle -->
+      <path d="M 173.5 71 L 179 70.5 Q 181 70.5 183 71"/>
+      <path d="M 174 71.5 L 179.5 71 Q 181.5 71 183.5 71.5"/>
+      <!-- Ring -->
+      <path d="M 174 72 L 179 72.5 Q 181 73 182 73.5"/>
+      <path d="M 174.5 72.5 L 179.5 73 Q 181.5 73.5 182.5 74"/>
+      <!-- Pinky -->
+      <path d="M 174 73 L 178 74 Q 179.5 74.5 180 75"/>
+      <path d="M 174.5 73.5 L 178.5 74.5 Q 180 75 180.5 75.5"/>
+      <!-- Knuckle creases -->
+      <g stroke-width="0.75" opacity="0.35">
+        <path d="M 176.5 68.5 L 177 69"/>
+        <path d="M 178.5 70.5 L 179 71"/>
+        <path d="M 178.5 72.5 L 179 73"/>
+        <path d="M 177.5 74 L 178 74.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- LEFT LEG (together, contoured) -->
+  <g stroke="#c9a96e" fill="#c9a96e" stroke-linecap="round">
+    <!-- Thigh -->
+    <path d="M 92 113 Q 90 120 89 128 Q 88 136 87.5 144 Q 87 148 87.5 150
+             L 93 150
+             Q 93.5 148 93.5 144 Q 94 136 95 128 Q 96 120 98 113 Z"
+          fill-opacity="0.03" stroke-width="3" stroke-opacity="0.6"/>
+    <!-- Calf -->
+    <path d="M 87.5 150 Q 86.5 156 86.5 162 Q 87 168 87.5 174 Q 88 177 88.5 178
+             L 92.5 178
+             Q 92 177 92 174 Q 92 168 92.5 162 Q 93 156 93 150 Z"
+          fill-opacity="0.03" stroke-width="2.75" stroke-opacity="0.55"/>
+    <!-- Muscle details -->
+    <g stroke-width="1.25" fill="none" opacity="0.2">
+      <!-- Vastus medialis -->
+      <path d="M 96 118 Q 94 122 93.5 126"/>
+      <!-- Sartorius -->
+      <path d="M 93 116 Q 91 122 90 130"/>
+      <!-- Patella -->
+      <ellipse cx="90" cy="149" rx="2" ry="2.5" stroke-width="1.25" opacity="0.3"/>
+      <!-- Tibialis -->
+      <path d="M 89 153 Q 88 158 87.5 162"/>
+      <!-- Gastrocnemius (calf) -->
+      <path d="M 87 152 Q 85.5 158 86 164" opacity="0.3"/>
+      <!-- Shin -->
+      <path d="M 90 153 Q 90 162 89.5 170" opacity="0.15"/>
+    </g>
+    <!-- Ankle bones -->
+    <circle cx="88" cy="176" r="1" fill="none" stroke-width="1.25" opacity="0.25"/>
+    <circle cx="92" cy="176" r="0.8" fill="none" stroke-width="1" opacity="0.2"/>
+
+    <!-- Left foot -->
+    <g stroke-width="2.25" fill="none" opacity="0.65">
+      <path d="M 88.5 178 Q 86 179 83 180 Q 80 181 78 180 Q 77 179 78 178"/>
+      <!-- Arch -->
+      <path d="M 88 178 Q 85 179.5 82 179" stroke-width="1" opacity="0.3"/>
+      <!-- Toes -->
+      <g stroke-width="1" opacity="0.4">
+        <path d="M 78 179 Q 77 178.5 77.5 178"/>
+        <path d="M 79 180 Q 78 179.5 78.5 179"/>
+        <path d="M 80 180.5 Q 79.5 180 80 179.5"/>
+        <path d="M 81.5 180.5 Q 81 180.2 81.5 179.8"/>
+        <path d="M 83 180.2 Q 82.5 180 83 179.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- RIGHT LEG (together, contoured) -->
+  <g stroke="#c9a96e" fill="#c9a96e" stroke-linecap="round">
+    <!-- Thigh -->
+    <path d="M 108 113 Q 110 120 111 128 Q 112 136 112.5 144 Q 113 148 112.5 150
+             L 107 150
+             Q 106.5 148 106.5 144 Q 106 136 105 128 Q 104 120 102 113 Z"
+          fill-opacity="0.03" stroke-width="3" stroke-opacity="0.6"/>
+    <!-- Calf -->
+    <path d="M 112.5 150 Q 113.5 156 113.5 162 Q 113 168 112.5 174 Q 112 177 111.5 178
+             L 107.5 178
+             Q 108 177 108 174 Q 108 168 107.5 162 Q 107 156 107 150 Z"
+          fill-opacity="0.03" stroke-width="2.75" stroke-opacity="0.55"/>
+    <!-- Muscle details -->
+    <g stroke-width="1.25" fill="none" opacity="0.2">
+      <path d="M 104 118 Q 106 122 106.5 126"/>
+      <path d="M 107 116 Q 109 122 110 130"/>
+      <ellipse cx="110" cy="149" rx="2" ry="2.5" stroke-width="1.25" opacity="0.3"/>
+      <path d="M 111 153 Q 112 158 112.5 162"/>
+      <path d="M 113 152 Q 114.5 158 114 164" opacity="0.3"/>
+      <path d="M 110 153 Q 110 162 110.5 170" opacity="0.15"/>
+    </g>
+    <!-- Ankle bones -->
+    <circle cx="112" cy="176" r="1" fill="none" stroke-width="1.25" opacity="0.25"/>
+    <circle cx="108" cy="176" r="0.8" fill="none" stroke-width="1" opacity="0.2"/>
+
+    <!-- Right foot -->
+    <g stroke-width="2.25" fill="none" opacity="0.65">
+      <path d="M 111.5 178 Q 114 179 117 180 Q 120 181 122 180 Q 123 179 122 178"/>
+      <path d="M 112 178 Q 115 179.5 118 179" stroke-width="1" opacity="0.3"/>
+      <g stroke-width="1" opacity="0.4">
+        <path d="M 122 179 Q 123 178.5 122.5 178"/>
+        <path d="M 121 180 Q 122 179.5 121.5 179"/>
+        <path d="M 120 180.5 Q 120.5 180 120 179.5"/>
+        <path d="M 118.5 180.5 Q 119 180.2 118.5 179.8"/>
+        <path d="M 117 180.2 Q 117.5 180 117 179.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- CROSSHATCHING (Da Vinci style shading) -->
+  <g stroke="#c9a96e" stroke-width="1.1" opacity="0.1">
+    <!-- Chest hatching -->
+    <line x1="92" y1="62" x2="95" y2="72"/>
+    <line x1="94" y1="62" x2="97" y2="72"/>
+    <line x1="96" y1="62" x2="99" y2="72"/>
+    <line x1="98" y1="62" x2="101" y2="72"/>
+    <line x1="100" y1="62" x2="103" y2="72"/>
+    <line x1="102" y1="62" x2="105" y2="72"/>
+    <line x1="104" y1="62" x2="107" y2="72"/>
+    <line x1="106" y1="63" x2="92" y2="69"/>
+    <line x1="106" y1="66" x2="92" y2="72"/>
+
+    <!-- Abdomen hatching -->
+    <line x1="93" y1="82" x2="95" y2="92"/>
+    <line x1="95" y1="82" x2="97" y2="92"/>
+    <line x1="97" y1="82" x2="99" y2="92"/>
+    <line x1="99" y1="82" x2="101" y2="92"/>
+    <line x1="101" y1="82" x2="103" y2="92"/>
+    <line x1="103" y1="82" x2="105" y2="92"/>
+    <line x1="105" y1="82" x2="107" y2="92"/>
+    <line x1="106" y1="83" x2="93" y2="89"/>
+    <line x1="106" y1="87" x2="93" y2="93"/>
+
+    <!-- Hip/lower abdomen hatching -->
+    <line x1="94" y1="102" x2="96" y2="112"/>
+    <line x1="96" y1="102" x2="98" y2="112"/>
+    <line x1="98" y1="102" x2="100" y2="112"/>
+    <line x1="100" y1="102" x2="102" y2="112"/>
+    <line x1="102" y1="102" x2="104" y2="112"/>
+    <line x1="104" y1="102" x2="106" y2="112"/>
+
+    <!-- Left arm hatching -->
+    <line x1="72" y1="60.5" x2="74" y2="64.5"/>
+    <line x1="68" y1="61.5" x2="70" y2="65.5"/>
+    <line x1="64" y1="62.5" x2="66" y2="66.5"/>
+    <line x1="60" y1="63.5" x2="62" y2="67.5"/>
+    <line x1="48" y1="66" x2="50" y2="70"/>
+    <line x1="44" y1="67" x2="46" y2="71"/>
+    <line x1="40" y1="68" x2="42" y2="72"/>
+
+    <!-- Right arm hatching -->
+    <line x1="128" y1="60.5" x2="126" y2="64.5"/>
+    <line x1="132" y1="61.5" x2="130" y2="65.5"/>
+    <line x1="136" y1="62.5" x2="134" y2="66.5"/>
+    <line x1="140" y1="63.5" x2="138" y2="67.5"/>
+    <line x1="152" y1="66" x2="150" y2="70"/>
+    <line x1="156" y1="67" x2="154" y2="71"/>
+    <line x1="160" y1="68" x2="158" y2="72"/>
+
+    <!-- Left thigh hatching -->
+    <line x1="91" y1="116" x2="90" y2="126"/>
+    <line x1="92.5" y1="116" x2="91.5" y2="126"/>
+    <line x1="90" y1="130" x2="89" y2="140"/>
+    <line x1="91.5" y1="130" x2="90.5" y2="140"/>
+
+    <!-- Right thigh hatching -->
+    <line x1="109" y1="116" x2="110" y2="126"/>
+    <line x1="107.5" y1="116" x2="108.5" y2="126"/>
+    <line x1="110" y1="130" x2="111" y2="140"/>
+    <line x1="108.5" y1="130" x2="109.5" y2="140"/>
+
+    <!-- Left calf hatching -->
+    <line x1="88" y1="155" x2="87.5" y2="165"/>
+    <line x1="89.5" y1="155" x2="89" y2="165"/>
+
+    <!-- Right calf hatching -->
+    <line x1="112" y1="155" x2="112.5" y2="165"/>
+    <line x1="110.5" y1="155" x2="111" y2="165"/>
+  </g>
+
+  <!-- PROPORTION TICK MARKS (Da Vinci measurement style) -->
+  <g stroke="#c9a96e" stroke-width="1.75" opacity="0.12">
+    <!-- Left edge ticks at anatomical landmarks -->
+    <line x1="14" y1="23.5" x2="18" y2="23.5"/>
+    <line x1="14" y1="49" x2="18" y2="49"/>
+    <line x1="14" y1="55" x2="18" y2="55"/>
+    <line x1="14" y1="67" x2="18" y2="67"/>
+    <line x1="14" y1="100" x2="18" y2="100"/>
+    <line x1="14" y1="112" x2="18" y2="112"/>
+    <line x1="14" y1="150" x2="18" y2="150"/>
+    <line x1="14" y1="178" x2="18" y2="178"/>
+    <!-- Right edge ticks -->
+    <line x1="182" y1="23.5" x2="186" y2="23.5"/>
+    <line x1="182" y1="100" x2="186" y2="100"/>
+    <line x1="182" y1="178" x2="186" y2="178"/>
+    <!-- Bottom edge ticks -->
+    <line x1="43" y1="183" x2="43" y2="186"/>
+    <line x1="78" y1="183" x2="78" y2="186"/>
+    <line x1="100" y1="183" x2="100" y2="186"/>
+    <line x1="122" y1="183" x2="122" y2="186"/>
+    <line x1="157" y1="183" x2="157" y2="186"/>
+    <!-- Top edge ticks -->
+    <line x1="43" y1="14" x2="43" y2="17"/>
+    <line x1="100" y1="14" x2="100" y2="17"/>
+    <line x1="157" y1="14" x2="157" y2="17"/>
+    <!-- Connecting dashed lines -->
+    <line x1="16" y1="23.5" x2="16" y2="178" stroke-dasharray="1 3"/>
+    <line x1="184" y1="23.5" x2="184" y2="178" stroke-dasharray="1 3"/>
+    <line x1="43" y1="185" x2="157" y2="185" stroke-dasharray="1 3"/>
+  </g>
+
+  <!-- CORNER FLOURISHES -->
+  <g stroke="#c9a96e" stroke-width="2.25" opacity="0.11" fill="none">
+    <path d="M 5 5 L 5 20 M 5 5 L 20 5"/>
+    <path d="M 195 5 L 195 20 M 195 5 L 180 5"/>
+    <path d="M 5 195 L 5 180 M 5 195 L 20 195"/>
+    <path d="M 195 195 L 195 180 M 195 195 L 180 195"/>
+    <circle cx="5" cy="5" r="1.5" stroke-width="1.5"/>
+    <circle cx="195" cy="5" r="1.5" stroke-width="1.5"/>
+    <circle cx="5" cy="195" r="1.5" stroke-width="1.5"/>
+    <circle cx="195" cy="195" r="1.5" stroke-width="1.5"/>
+  </g>
+</svg>
