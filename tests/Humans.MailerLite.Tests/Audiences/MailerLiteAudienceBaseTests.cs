@@ -58,7 +58,6 @@ public class MailerLiteAudienceBaseTests
         var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
-        await users.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     private static FakeAudience NewAudience(HashSet<Guid> raw, List<UserInfo> infos)

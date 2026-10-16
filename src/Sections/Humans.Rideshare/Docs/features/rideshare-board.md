@@ -31,7 +31,7 @@ humans look at the map and reach out.
 **Acceptance Criteria:**
 - Offer form captures direction, place + coarse coordinates (pre-filled from profile, overridable), optional waypoints, dates/duration, vehicle type, seats offered, luggage capacity, cost-sharing expectation, and free-text notes
 - On create, the route is geocoded and computed once through the year's destination and stored; a paired inverse-direction offer is auto-seeded (same driver/vehicle/seats/luggage/cost, waypoints reversed) and the two are linked for display
-- On an edit that changes the member point, waypoints, or direction, the route is recomputed
+- On an edit that changes the member point, waypoints, or direction, or of an offer saved without a route, the route is recomputed
 - Only the driver can edit or cancel their own offer; a cancelled offer cannot be edited
 - A null routing result never blocks the save — the offer still saves, with no drawn route
 
@@ -66,7 +66,7 @@ humans look at the map and reach out.
 **Acceptance Criteria:**
 - Expressing interest always anchors to a trip; answering a request's pin sets the request as the interest's origin pointer, seats defaulting to the request's party size
 - Interest cannot be expressed on your own trip, on a non-`Active` trip, without enough remaining seats, or as a duplicate `Pending` interest on the same trip+request pair
-- The posting owner sees a `Pending` interest and can accept or decline; the trip's driver can also withdraw on behalf of a no-longer-relevant match, as can the interest's author
+- The posting owner sees a `Pending` interest and can accept or decline; the posting owner can also withdraw a no-longer-relevant match, as can the interest's author
 - Accept requires the trip still has enough remaining seats; it notifies the author and drains capacity
 - Decline requires no reason, stores none, and notifies the author with neutral language only
 - Create, accept and decline each fire a notification (best-effort; a failure never blocks the interest action); withdraw is silent, per the design spec's notification list

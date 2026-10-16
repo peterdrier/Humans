@@ -153,7 +153,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Publish_AnEmptyBody_Throws()
+    public async Task Publish_AnEmptyBody_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -161,12 +161,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().PublishDocumentAsync(document.Id, member, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.BodyRequired);
     }
 
     [HumansFact]
-    public async Task Publish_AlreadyPublished_Throws()
+    public async Task Publish_AlreadyPublished_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -174,13 +174,13 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().PublishDocumentAsync(document.Id, member, Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── Comment window ────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task OpenComments_OnADraft_Throws()
+    public async Task OpenComments_OnADraft_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -190,12 +190,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().OpenCommentsAsync(
             document.Id, member, new WorkgroupCommentWindow(now, now.Plus(Duration.FromDays(1)), ["Scope"]), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotPublished);
     }
 
     [HumansFact]
-    public async Task OpenComments_WithNoCategories_Throws()
+    public async Task OpenComments_WithNoCategories_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -205,12 +205,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().OpenCommentsAsync(
             document.Id, member, new WorkgroupCommentWindow(now, now.Plus(Duration.FromDays(1)), []), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CategoriesRequired);
     }
 
     [HumansFact]
-    public async Task OpenComments_WithACategoryLongerThanItsColumn_Throws()
+    public async Task OpenComments_WithACategoryLongerThanItsColumn_ReturnsARefusal()
     {
         // The window would open, then every comment filed under that category would fail to
         // persist against the 100-character Category column.
@@ -223,12 +223,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             document.Id, member,
             new WorkgroupCommentWindow(now, now.Plus(Duration.FromDays(1)), [new string('c', 101)]), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CategoryTooLong);
     }
 
     [HumansFact]
-    public async Task OpenComments_ClosingBeforeItOpens_Throws()
+    public async Task OpenComments_ClosingBeforeItOpens_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -238,7 +238,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().OpenCommentsAsync(
             document.Id, member, new WorkgroupCommentWindow(now, now, ["Scope"]), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.WindowInvalid);
     }
 
@@ -274,12 +274,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().UpdateDocumentAsync(
             document.Id, member, new WorkgroupDocumentSave("New title", WorkgroupDocumentKind.Deliverable, "Edited"), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.DocumentFrozen);
     }
 
     [HumansFact]
-    public async Task Deliver_ADraft_Throws()
+    public async Task Deliver_ADraft_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -287,12 +287,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().DeliverDocumentAsync(document.Id, member, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotPublished);
     }
 
     [HumansFact]
-    public async Task Deliver_WhileTheCommentWindowIsStillOpen_Throws()
+    public async Task Deliver_WhileTheCommentWindowIsStillOpen_ReturnsARefusal()
     {
         // "A comment window ... must end before Delivered" (design §7): delivering mid-window
         // would freeze the body and cut a promised public comment period short.
@@ -305,7 +305,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().DeliverDocumentAsync(document.Id, member, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CommentsStillOpen);
     }
 
@@ -329,7 +329,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     // ── Disposition only on Delivered ────────────────────────────────────
 
     [HumansFact]
-    public async Task RecordDisposition_OnAPublishedButNotDeliveredDocument_Throws()
+    public async Task RecordDisposition_OnAPublishedButNotDeliveredDocument_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body");
@@ -337,7 +337,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().RecordDispositionAsync(
             document.Id, SeedUser(), WorkgroupDisposition.Accepted, "Great work", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotDelivered);
     }
 
@@ -358,7 +358,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RecordDisposition_WithoutANote_Throws()
+    public async Task RecordDisposition_WithoutANote_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var document = await AddDocumentAsync(
@@ -367,14 +367,14 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         var act = () => NewService().RecordDispositionAsync(
             document.Id, SeedUser(), WorkgroupDisposition.Accepted, " ", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.ReasonsRequired);
     }
 
     // ── Comments: category and window gating ─────────────────────────────
 
     [HumansFact]
-    public async Task AddComment_UnknownCategory_Throws()
+    public async Task AddComment_UnknownCategory_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var now = Clock.GetCurrentInstant();
@@ -384,14 +384,14 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().AddCommentAsync(document.Id, SeedUser(), "Not-a-category", "Body", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.UnknownCategory);
     }
 
     [HumansTheory]
     [InlineData(-2, -1)] // window already closed
     [InlineData(1, 2)]   // window not open yet
-    public async Task AddComment_OutsideTheWindow_Throws(int openOffsetDays, int closeOffsetDays)
+    public async Task AddComment_OutsideTheWindow_ReturnsARefusal(int openOffsetDays, int closeOffsetDays)
     {
         var workgroup = await SeedWorkgroupAsync();
         var now = Clock.GetCurrentInstant();
@@ -402,7 +402,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         var act = () => NewService().AddCommentAsync(document.Id, SeedUser(), "Scope", "Body", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CommentsClosed);
     }
 
@@ -415,7 +415,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             workgroup.Id, WorkgroupDocumentStatus.Published, categories: ["Scope"],
             opensAt: now.Minus(Duration.FromHours(1)), closesAt: now.Plus(Duration.FromDays(1)));
 
-        var id = await NewService().AddCommentAsync(document.Id, SeedUser(), "Scope", "Looks good", Ct);
+        var id = (await NewService().AddCommentAsync(document.Id, SeedUser(), "Scope", "Looks good", Ct)).Value;
 
         await using var ctx = OpenContext();
         (await ctx.Comments.SingleAsync(c => c.Id == id, Ct)).Disposition

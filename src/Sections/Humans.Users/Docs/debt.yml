@@ -2,12 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 12
-inbox:
-  - added: 2026-08-24
-    id: USERS-1
-    what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:77 has no resource anywhere and renders the raw key. Plan (prescribed by memory/code/localization-admin-exempt.md, which forbids new keys on admin pages): replace the SharedLocalizer call with the literal 'Sort by'; no public surface."
-    review: light
-  - added: 2026-09-06
-    id: USERS-4
-    what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero production call sites — the user-search-overhaul follow-up that would use them was never built; only PersonSearchMatcher's includeLegal branch and two tests (PersonSearchMatcherTests, SearchServiceTests) reference them (/section-doctor on Users 2026-09-06). Plan: delete both members, the includeLegal branch and the two test references; removing unused members shrinks surface, nothing to approve."
-    review: light
+inbox: []

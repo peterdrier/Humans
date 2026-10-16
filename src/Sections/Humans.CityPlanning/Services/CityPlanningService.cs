@@ -325,11 +325,11 @@ internal sealed class CityPlanningService(
     // --- Settings ---
 
     public async Task<CityPlanningSettingsDto> GetSettingsAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int? year = null)
     {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var settingsYear = year ?? (await campService.GetSettingsAsync(cancellationToken)).PublicYear;
         var settings = await repo.GetOrCreateSettingsAsync(
-            campSettings.PublicYear, clock.GetCurrentInstant(), cancellationToken);
+            settingsYear, clock.GetCurrentInstant(), cancellationToken);
         return ToDto(settings);
     }
 

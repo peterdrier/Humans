@@ -27,6 +27,13 @@ public class CalendarServiceAuditTests
     private readonly ICalendarRepository _repo = Substitute.For<ICalendarRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
+    public CalendarServiceAuditTests()
+    {
+        _repo.UpsertExceptionAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(), Arg.Any<Instant>(),
+            Arg.Any<Action<CalendarEventException>>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>())
+            .Returns((string?)null);
+    }
+
     private CalendarService CreateSut() => new(
         _repo,
         new FakeClock(Now),

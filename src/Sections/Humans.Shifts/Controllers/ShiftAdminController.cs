@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -26,7 +27,8 @@ internal sealed class ShiftAdminController(
     ShiftAdminPageBuilder pageBuilder,
     ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     IRotaCoordinatorMessageService rotaMessenger,
-    ILogger<ShiftAdminController> logger) : HumansTeamControllerBase(userService, teamService, authorizationService)
+    ILogger<ShiftAdminController> logger,
+    IStringLocalizer<ShiftsResource> localizer) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamServiceRead _teamService = teamService;
 
@@ -515,16 +517,14 @@ internal sealed class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        try
+        var result = await shiftMgmt.DeleteRotaAsync(rotaId);
+        if (result.ErrorKey is { } errorKey)
         {
-            await shiftMgmt.DeleteRotaAsync(rotaId);
-            SetSuccess("Rota deleted.");
+            logger.LogWarning("Rejected deletion of {rotaId} in team {Slug}: {ErrorKey}", rotaId, slug, errorKey);
+            SetError(localizer[errorKey, result.ConfirmedSignups].Value);
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to delete rota {RotaId} in team {Slug}: {Reason}", rotaId, slug, ex.Message);
-            SetError(ex.Message);
-        }
+        else
+            SetSuccess(localizer["Shifts_Delete_RotaSuccess"].Value);
 
         return RedirectToAction(nameof(Index), new { slug });
     }
@@ -539,16 +539,14 @@ internal sealed class ShiftAdminController(
         var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
 
-        try
+        var result = await shiftMgmt.DeleteShiftAsync(shiftId);
+        if (result.ErrorKey is { } errorKey)
         {
-            await shiftMgmt.DeleteShiftAsync(shiftId);
-            SetSuccess("Shift deleted.");
+            logger.LogWarning("Rejected deletion of {shiftId} in team {Slug}: {ErrorKey}", shiftId, slug, errorKey);
+            SetError(localizer[errorKey, result.ConfirmedSignups].Value);
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Rejected shift delete for shift {ShiftId} in team {Slug}: {Reason}", shiftId, slug, ex.Message);
-            SetError(ex.Message);
-        }
+        else
+            SetSuccess(localizer["Shifts_Delete_ShiftSuccess"].Value);
 
         return RedirectToAction(nameof(Index), new { slug });
     }
@@ -560,15 +558,15 @@ internal sealed class ShiftAdminController(
         var (teamError, user, _) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        try
+        var result = await signupService.BailRangeAsync(signupBlockId, user.Id, reason);
+        if (result.ErrorKey is { } errorKey)
         {
-            await signupService.BailRangeAsync(signupBlockId, user.Id, reason);
-            SetSuccess("Range bail completed.");
+            logger.LogWarning("Rejected signup block bail {SignupBlockId} in team {Slug} for user {UserId}: {Reason}", signupBlockId, slug, user.Id, errorKey);
+            SetError(localizer[errorKey].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to bail signup block {SignupBlockId} in team {Slug}: {Reason}", signupBlockId, slug, ex.Message);
-            SetError(ex.Message);
+            SetSuccess("Range bail completed.");
         }
 
         return RedirectToAction(nameof(Index), new { slug });

@@ -10,12 +10,13 @@ public interface INotificationAutoResolve
 {
     /// <summary>
     /// Resolves all unresolved notifications of a given source type for a user.
+    /// When sourceKey is provided, only that source entity is resolved.
     /// Used for auto-resolving notifications when the underlying condition is fixed
     /// (e.g., resolving AccessSuspended notifications when consents are completed).
     /// </summary>
     Task ResolveBySourceAsync(
         Guid userId, NotificationSource source,
-        CancellationToken ct = default);
+        CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>
     /// Resolves all unresolved notifications matching a source + source-entity key,

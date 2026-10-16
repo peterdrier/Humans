@@ -1,4 +1,10 @@
 using Humans.Base.Extensions;
+using Humans.Base.Constants;
+using Humans.Tickets.Controllers;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -178,8 +184,8 @@ public sealed class TicketTransferServiceTests
         TicketTransferRowDto row;
         if (afterWrite)
         {
-            row = await _service.CreateRequestAsync(
-                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId, Xunit.TestContext.Current.CancellationToken);
+            row = (await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId, Xunit.TestContext.Current.CancellationToken)).Transfer!;
             await _transferRepo.Received(1).AddAsync(
                 Arg.Is<TicketTransferRequest>(r => r.Id == row.Id && r.Status == TicketTransferStatus.Pending),
                 Arg.Any<CancellationToken>());
@@ -235,45 +241,52 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenReceiverIsSender()
+    public async Task CreateRequest_Refuses_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _senderId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_InvalidSelection");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenNotOwner()
+    public async Task CreateRequest_Refuses_WhenNotOwner()
     {
         StubAttendee(TicketAttendeeStatus.Valid, Guid.NewGuid());
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_NotCurrentHolder");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenNotValid()
+    public async Task CreateRequest_Refuses_WhenNotValid()
     {
         StubAttendee(TicketAttendeeStatus.Void, _senderId);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("TicketTransfer_NotTransferable");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenCheckedIn()
+    public async Task CreateRequest_Refuses_WhenCheckedIn()
     {
         // Status stays Valid after a gate scan (nobodies-collective/Humans#736);
         // the CheckedInAt guard must still block the transfer of a used ticket.
         StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("TicketTransfer_CheckedIn");
+        (await act()).RefusalKey.Should().Be("TicketTransfer_CheckedIn");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenDuplicatePending()
+    public async Task CreateRequest_Refuses_WhenDuplicatePending()
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
@@ -281,7 +294,9 @@ public sealed class TicketTransferServiceTests
 
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("TicketTransfer_AlreadyPending");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ── CancelAsync ─────────────────────────────────────────────────────────────
@@ -300,17 +315,19 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task Cancel_Throws_WhenNotSender()
+    public async Task Cancel_Refuses_WhenNotSender()
     {
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
         var act = () => _service.CancelAsync(req.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_OnlySenderCanCancel");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Cancel_Throws_WhenVoidAlreadyCommitted()
+    public async Task Cancel_Refuses_WhenVoidAlreadyCommitted()
     {
         var req = MakePending(Guid.NewGuid());
         req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
@@ -318,7 +335,9 @@ public sealed class TicketTransferServiceTests
 
         // The original ticket is already voided — the Sender must not cancel it away.
         var act = () => _service.CancelAsync(req.Id, _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_CancelFailed");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         req.Status.Should().Be(TicketTransferStatus.Pending);
     }
 
@@ -464,9 +483,10 @@ public sealed class TicketTransferServiceTests
         _vendor.VoidIssuedTicketAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new TicketVendorWriteException("sold out", TicketVendorFailureKind.Validation));
 
-        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         req.Status.Should().Be(TicketTransferStatus.Pending);
         req.VendorResult.Should().Be(TicketTransferVendorResult.Failed);
         // Audited under the dedicated auto-failed action, NOT TicketTransferApproved.
@@ -493,9 +513,10 @@ public sealed class TicketTransferServiceTests
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new TicketVendorWriteException("boom", TicketVendorFailureKind.Transient));
 
-        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         req.Status.Should().Be(TicketTransferStatus.Pending);
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage.Should().Contain("hold_123");
@@ -526,10 +547,11 @@ public sealed class TicketTransferServiceTests
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new TaskCanceledException("timeout"));
 
-        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
-        // Surfaces as the actionable InvalidOperationException, not the raw TaskCanceledException.
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        // Surfaces as an actionable operator refusal, retaining partial-state recovery.
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage.Should().Contain("hold_123");
         req.VendorHoldId.Should().Be("hold_123");
@@ -628,9 +650,10 @@ public sealed class TicketTransferServiceTests
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new TicketVendorWriteException("still down", TicketVendorFailureKind.Transient));
 
-        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         req.Status.Should().Be(TicketTransferStatus.Pending);
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorHoldId.Should().Be("hold_123"); // retained so it can be retried again
@@ -645,8 +668,9 @@ public sealed class TicketTransferServiceTests
         var req = MakePending(Guid.NewGuid()); // VendorResult NotAttempted
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         await _vendor.DidNotReceive().IssueTicketAsync(
             Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
@@ -659,8 +683,9 @@ public sealed class TicketTransferServiceTests
         req.VendorHoldId = null;
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         await _vendor.DidNotReceive().IssueTicketAsync(
             Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
@@ -675,9 +700,10 @@ public sealed class TicketTransferServiceTests
         req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         await _vendor.DidNotReceive().VoidIssuedTicketAsync(
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed); // not overwritten
@@ -704,8 +730,9 @@ public sealed class TicketTransferServiceTests
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new TicketVendorWriteException(vendorError, TicketVendorFailureKind.Validation));
 
-        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
 
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
@@ -720,8 +747,9 @@ public sealed class TicketTransferServiceTests
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => _service.RejectAsync(req.Id, _adminId, "   ", Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.RejectAsync(req.Id, _adminId, "   ", Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
     }
 
     [HumansFact]
@@ -752,8 +780,9 @@ public sealed class TicketTransferServiceTests
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
         // Already voided at the vendor — admin can't reject it away; must finish + mark successful.
-        var act = () => _service.RejectAsync(req.Id, _adminId, "no longer needed", Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.RejectAsync(req.Id, _adminId, "no longer needed", Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().NotBeNull();
         req.Status.Should().Be(TicketTransferStatus.Pending);
     }
 
@@ -781,7 +810,7 @@ public sealed class TicketTransferServiceTests
         var first = _service.ProcessTransferAsync(req.Id, _adminId, null, CancellationToken.None);
         await enteredVendor.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
         var otherService = CreateService();
-        Task second = action switch
+        Task<TicketTransferMutationResult> second = action switch
         {
             "process" => otherService.ProcessTransferAsync(req.Id, _adminId, null, CancellationToken.None),
             "approve" => otherService.ApproveAsync(req.Id, _adminId, null, CancellationToken.None),
@@ -800,10 +829,16 @@ public sealed class TicketTransferServiceTests
             await first;
         }
 
-        var decideAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
-        await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage(
-            string.Equals(action, "cancel", StringComparison.Ordinal)
-                ? "Tickets_TicketTransfer_OnlyPendingCanBeCancelled" : "Only Pending transfers*");
+        if (string.Equals(action, "cancel", StringComparison.Ordinal))
+        {
+            var result = await (Task<TicketTransferMutationResult>)second;
+            result.RefusalKey.Should().Be("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
+        }
+        else
+        {
+            var decideAgain = await second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+            decideAgain.OperatorRefusal.Should().StartWith("Only Pending transfers");
+        }
         req.Status.Should().Be(TicketTransferStatus.Approved);
         await _vendor.Received(1).VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>());
         await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
@@ -841,14 +876,76 @@ public sealed class TicketTransferServiceTests
             await first;
         }
 
-        var retryAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
-        await retryAgain.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Retry is only available for a part-processed transfer*");
+        var retryAgain = await second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        retryAgain.OperatorRefusal.Should().StartWith("Retry is only available for a part-processed transfer");
         req.Status.Should().Be(TicketTransferStatus.Approved);
         await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData("process", "guard")]
+    [Xunit.InlineData("retry", "guard")]
+    [Xunit.InlineData("marksuccessful", "guard")]
+    [Xunit.InlineData("cancel", "guard")]
+    [Xunit.InlineData("process", "lookup")]
+    [Xunit.InlineData("retry", "lookup")]
+    [Xunit.InlineData("marksuccessful", "lookup")]
+    [Xunit.InlineData("cancel", "lookup")]
+    [Xunit.InlineData("process", "save")]
+    [Xunit.InlineData("retry", "save")]
+    [Xunit.InlineData("marksuccessful", "save")]
+    [Xunit.InlineData("cancel", "save")]
+    public async Task AdminDecision_DistinguishesOwnerRefusalFromPersistenceFailure(string action, string stage)
+    {
+        var req = MakePending(Guid.NewGuid());
+        if (string.Equals(action, "retry", StringComparison.Ordinal))
+        {
+            req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            req.VendorHoldId = "hold_123";
+        }
+        if (string.Equals(stage, "guard", StringComparison.Ordinal)) req.Status = TicketTransferStatus.Approved;
+        var failure = new InvalidOperationException("Private transfer persistence diagnostic");
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        if (string.Equals(stage, "lookup", StringComparison.Ordinal))
+            _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException<TicketTransferRequest?>(failure));
+        if (string.Equals(stage, "save", StringComparison.Ordinal))
+            _transferRepo.UpdateAsync(req, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+        _userService.GetUserInfoAsync(_adminId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(MakeUser(_adminId, "Admin"), null));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _adminId.ToString())], "test"))
+        };
+        var controller = new TicketTransferAdminController(_service, Substitute.For<ITicketService>(), _userService)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        if (string.Equals(stage, "guard", StringComparison.Ordinal))
+        {
+            var result = await controller.Decide(req.Id, action, "Reason", Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Detail");
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>()
+                .Which.Should().NotContain("Private");
+            await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() =>
+                controller.Decide(req.Id, action, "Reason", Xunit.TestContext.Current.CancellationToken));
+            thrown.Should().BeSameAs(failure);
+            controller.TempData.Should().BeEmpty();
+        }
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
 
     private TicketTransferService CreateService() =>
         new(

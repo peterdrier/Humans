@@ -43,7 +43,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
 
     /// <summary>GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None. <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.</summary>
-    private async Task AddUserToDriveAsync(
+    private async Task<GoogleResourceGrantOutcome> AddUserToDriveAsync(
         GoogleResource resource,
         string userEmail,
         Guid? userId,
@@ -55,7 +55,7 @@ internal sealed class GoogleWorkspaceSyncService(
         if (mode == SyncMode.None)
         {
             logger.LogDebug("Skipping AddUserToDrive — GoogleDrive sync mode is None");
-            return;
+            return GoogleResourceGrantOutcome.Deferred;
         }
 
         var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
@@ -80,11 +80,11 @@ internal sealed class GoogleWorkspaceSyncService(
                     nameof(GoogleWorkspaceSyncService),
                     userEmail, apiRole, syncSource, success: true,
                     userId: userId, ct: cancellationToken);
-                break;
+                return GoogleResourceGrantOutcome.Accepted;
 
             case DrivePermissionCreateOutcome.AlreadyExists:
                 logger.LogDebug("Permission already exists for {Email} on {GoogleId}", userEmail, resource.GoogleId);
-                break;
+                return GoogleResourceGrantOutcome.Accepted;
 
             case DrivePermissionCreateOutcome.Failed:
                 logger.LogWarning(
@@ -104,8 +104,9 @@ internal sealed class GoogleWorkspaceSyncService(
                     errorMessage: result.Error?.RawMessage,
                     userId: userId, ct: cancellationToken);
                 await HandleDriveAddFailureAsync(resource, userEmail, result.Error, cancellationToken);
-                break;
+                return GoogleResourceGrantOutcome.Failed;
         }
+        throw new InvalidOperationException($"Unknown Drive permission outcome {result.Outcome}");
     }
 
     /// <summary>
@@ -248,7 +249,7 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
-    public async Task AddUserToTeamResourcesAsync(
+    public async Task<GoogleResourceGrantOutcome> AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default,
@@ -290,13 +291,13 @@ internal sealed class GoogleWorkspaceSyncService(
                     "Skipped Google provisioning for {UserId} on team {TeamId}: user exists but has no verified email",
                     userId, teamId);
             }
-            return;
+            return GoogleResourceGrantOutcome.Failed;
         }
 
         if (user!.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — GoogleEmailStatus is Rejected", userId);
-            return;
+            return GoogleResourceGrantOutcome.Failed;
         }
 
         // From here on the id is the resolved human's, as the email above already is: the
@@ -307,6 +308,7 @@ internal sealed class GoogleWorkspaceSyncService(
         var team = await teamService.GetTeamAsync(teamId, cancellationToken);
         var resources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
 
+        var outcomes = new List<GoogleResourceGrantOutcome>();
         foreach (var resource in resources)
         {
             if (resource.ResourceType == GoogleResourceType.Group)
@@ -318,7 +320,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
             var level = await ResolvePermissionLevelForUserAsync(
                 resource.GoogleId, userId, cancellationToken);
-            await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken);
+            outcomes.Add(await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken));
         }
 
         // Subteam member rollup: also add to parent department resources.
@@ -336,9 +338,14 @@ internal sealed class GoogleWorkspaceSyncService(
 
                 var level = await ResolvePermissionLevelForUserAsync(
                     resource.GoogleId, userId, cancellationToken);
-                await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken);
+                outcomes.Add(await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken));
             }
         }
+        return outcomes.Contains(GoogleResourceGrantOutcome.Failed)
+            ? GoogleResourceGrantOutcome.Failed
+            : outcomes.Contains(GoogleResourceGrantOutcome.Accepted)
+                ? GoogleResourceGrantOutcome.Accepted
+                : GoogleResourceGrantOutcome.Deferred;
     }
 
     private async Task RequestGoogleGroupSyncAsync(

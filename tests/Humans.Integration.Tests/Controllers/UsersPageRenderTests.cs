@@ -72,7 +72,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         "SendMessage_", "Unsub_", "AccountStatus_", "AccountDeletion_",
         "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
         "AdminAddRole_", "AdminRoles_", "Enum_",
-        "Dashboard_", "Common_", "Nav_",
+        "Dashboard_", "Governance_", "Common_", "Nav_",
     ];
 
     /// <summary>The Users pages that are not <c>Profile/Me</c>. No fixture — each has a no-data branch that still renders its own chrome.</summary>

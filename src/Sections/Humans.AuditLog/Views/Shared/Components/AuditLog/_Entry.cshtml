@@ -1,3 +1,4 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<AuditLogResource> Localizer
 @model Humans.AuditLog.Contracts.AuditEvent
 
 @{
@@ -17,14 +18,12 @@
         }
         else
         {
-            <span class="text-muted">System</span>
+            <span class="text-muted">@Localizer["AuditLog_System"]</span>
         }
 
-        @* No visible subject → selfVerb if defined, else strip trailing preposition. *@
+        @* Use a separate translated form when the subject is suppressed. *@
         var noVisibleSubject = actorIsSubject || !Model.SubjectUserId.HasValue;
-        var displayVerb = noVisibleSubject && render.SelfVerb != null ? render.SelfVerb
-                        : noVisibleSubject ? render.TrimmedVerb
-                        : render.Verb;
+        var displayVerb = Model.Action.ToLocalizedAuditVerb(noVisibleSubject, Localizer);
         <span>@displayVerb</span>
 
         @if (Model.SubjectUserId.HasValue && !actorIsSubject)
@@ -34,7 +33,7 @@
 
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
-            <span class="text-muted">in</span>
+            <span class="text-muted">@Localizer["AuditLog_InTeam"]</span>
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
         }
 
@@ -53,10 +52,10 @@
         }
         else
         {
-            <span class="text-muted">System</span>
+            <span class="text-muted">@Localizer["AuditLog_System"]</span>
         }
         <span class="text-muted">·</span>
-        <span>@Model.Action.ToString()</span>
+        <span>@Model.Action.ToAuditBadgeLabel(Localizer)</span>
         @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
             <span class="text-muted">·</span>
@@ -64,7 +63,7 @@
         }
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
-            <span class="text-muted">in</span>
+            <span class="text-muted">@Localizer["AuditLog_InTeam"]</span>
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
         }
         @if (!string.IsNullOrWhiteSpace(Model.Description))

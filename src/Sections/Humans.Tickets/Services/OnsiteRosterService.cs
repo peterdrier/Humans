@@ -16,13 +16,13 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
     private readonly IUserServiceRead _users;
     private readonly ICampServiceRead _camps;
     private readonly ITeamServiceRead _teams;
-    private readonly IRoleAssignmentService _roles;
+    private readonly IRoleAssignmentServiceRead _roles;
 
     public OnsiteRosterService(
         IUserServiceRead users,
         ICampServiceRead camps,
         ITeamServiceRead teams,
-        IRoleAssignmentService roles)
+        IRoleAssignmentServiceRead roles)
     {
         _users = users;
         _camps = camps;

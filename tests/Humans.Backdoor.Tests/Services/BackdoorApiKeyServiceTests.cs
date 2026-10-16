@@ -39,8 +39,10 @@ public class BackdoorApiKeyServiceTests
     private void MakeEligible(
         Guid userId, bool admin = true, bool board = false, UserState state = UserState.Active)
     {
-        _roles.IsUserAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(admin);
-        _roles.IsUserBoardMemberAsync(userId, Arg.Any<CancellationToken>()).Returns(board);
+        List<RoleAssignmentSnapshot> assignments = [];
+        if (admin) assignments.Add(new RoleAssignmentSnapshot("Admin", null));
+        if (board) assignments.Add(new RoleAssignmentSnapshot("Board", null));
+        _roles.GetActiveForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(assignments);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = userId, State = state, PreferredLanguage = "en" },
@@ -268,7 +270,14 @@ public class BackdoorApiKeyServiceTests
 
         _repository.FindActiveByHashAsync(stored!.KeyHash, Arg.Any<CancellationToken>()).Returns(stored);
 
-        (await _sut.ResolveOwnerAsync(plaintext)).Should().Be(_owner);
+        _roles.ClearReceivedCalls();
+        var resolved = await _sut.ResolveOwnerAsync(plaintext);
+
+        resolved!.UserId.Should().Be(_owner);
+        resolved.Roles.Select(r => r.RoleName).Should().Equal("Admin");
+        await _roles.Received(1).GetActiveForUserAsync(_owner, Arg.Any<CancellationToken>());
+        await _roles.DidNotReceiveWithAnyArgs().IsUserAdminAsync(default, default);
+        await _roles.DidNotReceiveWithAnyArgs().IsUserBoardMemberAsync(default, default);
         await _repository.Received(1).TouchAsync(stored.Id, Now, Arg.Any<CancellationToken>());
     }
 

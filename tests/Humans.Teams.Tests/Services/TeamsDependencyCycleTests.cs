@@ -57,7 +57,7 @@ public sealed class TeamsDependencyCycleTests
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
         // own constructor shape is pinned by that section's AuthArchitectureTests. The
         // subject here is the Teams chain.
-        services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
+        services.AddScoped<IRoleAssignmentServiceRead>(_ => Substitute.For<IRoleAssignmentServiceRead>());
 
         // Shifts is another section; its concrete service and repository are internal to
         // Humans.Shifts and its own graph is pinned by that section's own tests.

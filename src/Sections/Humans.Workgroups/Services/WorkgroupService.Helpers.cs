@@ -95,72 +95,81 @@ internal sealed partial class WorkgroupService
 
     // ── Guards ────────────────────────────────────────────────────────────
 
-    private async Task<Workgroup> RequireAsync(Guid workgroupId, CancellationToken ct) =>
-        await repository.GetWorkgroupAsync(workgroupId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
-
-    /// <summary>
-    /// A soft-deleted meeting is gone as far as member work goes. The row stays so the roster's
-    /// history holds, not so a replayed POST can edit it or delete it twice — and since both of
-    /// those now audit, a second pass would put an event in the trail that never happened.
-    /// </summary>
-    private async Task<WorkgroupMeeting> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct) =>
-        await repository.GetMeetingAsync(meetingId, ct) is { DeletedAt: null } meeting
-            ? meeting
-            : throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
-
-    /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
-    private static void RequireAcceptsMemberWork(Workgroup w)
+    private async Task<WorkgroupMutationResult<Workgroup>> RequireAsync(Guid workgroupId, CancellationToken ct)
     {
-        if (w.Status != WorkgroupStatus.Active)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.Frozen);
+        var workgroup = await repository.GetWorkgroupAsync(workgroupId, ct);
+        return workgroup is null
+            ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
+            : new(workgroup);
     }
 
-    private static void RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
+    /// <summary>Soft-deleted meetings cannot be edited or deleted again.</summary>
+    private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
+    {
+        var meeting = await repository.GetMeetingAsync(meetingId, ct);
+        return meeting is { DeletedAt: null }
+            ? new(meeting)
+            : new(Refusal: new(WorkgroupErrorKeys.NotFound));
+    }
+
+    /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
+    private static WorkgroupRefusal? RequireAcceptsMemberWork(Workgroup w)
+    {
+        if (w.Status != WorkgroupStatus.Active)
+            return new(WorkgroupErrorKeys.Frozen);
+        return null;
+    }
+
+    private static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
     {
         if (!allowed.Contains(w.Status))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.WrongStatus);
+            return new(WorkgroupErrorKeys.WrongStatus);
+        return null;
     }
 
     /// <summary>The four kinds a human writes; everything else is the section's own record.</summary>
-    private static void RequireMemberKind(WorkgroupLogKind kind)
+    private static WorkgroupRefusal? RequireMemberKind(WorkgroupLogKind kind)
     {
         if (kind is not (WorkgroupLogKind.Update or WorkgroupLogKind.Disclosure
             or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note))
         {
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.SystemLogEntry);
+            return new(WorkgroupErrorKeys.SystemLogEntry);
         }
+        return null;
     }
 
-    private static void RequireReasons(string? reasons)
+    private static WorkgroupRefusal? RequireReasons(string? reasons)
     {
         if (string.IsNullOrWhiteSpace(reasons))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.ReasonsRequired);
+            return new(WorkgroupErrorKeys.ReasonsRequired);
         if (reasons.Trim().Length > 4000)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 4000);
+            return new(WorkgroupErrorKeys.TextTooLong, 4000);
+        return null;
     }
 
-    private static void ValidateApplication(WorkgroupApplication application) =>
+    private static WorkgroupRefusal? ValidateApplication(WorkgroupApplication application) =>
         ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable);
 
-    private static void ValidateRegisterFields(string name, string purpose, string deliverable)
+    private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
+            return new(WorkgroupErrorKeys.NameRequired);
         if (string.IsNullOrWhiteSpace(purpose))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.PurposeRequired);
+            return new(WorkgroupErrorKeys.PurposeRequired);
         if (string.IsNullOrWhiteSpace(deliverable))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.DeliverableRequired);
+            return new(WorkgroupErrorKeys.DeliverableRequired);
+        return null;
     }
 
-    private static void ValidateMeeting(WorkgroupMeetingSave save)
+    private static WorkgroupRefusal? ValidateMeeting(WorkgroupMeetingSave save)
     {
         if (string.IsNullOrWhiteSpace(save.Title))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
+            return new(WorkgroupErrorKeys.NameRequired);
         if (save.EndUtc <= save.StartUtc)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.WindowInvalid);
+            return new(WorkgroupErrorKeys.WindowInvalid);
         if (save.LocationUrl?.Trim().Length > 2000)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 2000);
+            return new(WorkgroupErrorKeys.TextTooLong, 2000);
+        return null;
     }
 
     // ── Field application ─────────────────────────────────────────────────
@@ -239,11 +248,11 @@ internal sealed partial class WorkgroupService
     /// (<c>/Workgroups/Apply</c>, <c>/Workgroups/Admin</c>) are taken by routes, so a group
     /// called "Apply" gets <c>apply-2</c> rather than shadowing the form.
     /// </summary>
-    private async Task<string> ReserveSlugAsync(string name, Guid? exceptId, CancellationToken ct)
+    private async Task<WorkgroupMutationResult<string>> ReserveSlugAsync(string name, Guid? exceptId, CancellationToken ct)
     {
         var baseSlug = SlugHelper.GenerateSlug(name);
         if (string.IsNullOrEmpty(baseSlug))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
 
         // Name allows 200 characters, Slug's column holds 100, and the suffix loop below can
         // add up to "-100" — so trim here rather than let a long name fail on insert.
@@ -256,12 +265,12 @@ internal sealed partial class WorkgroupService
             if (!ReservedSlugs.Contains(candidate, StringComparer.Ordinal)
                 && !await repository.SlugTakenAsync(candidate, exceptId, ct))
             {
-                return candidate;
+                return new(candidate);
             }
 
             // A hundred groups sharing one name is a data problem, not a naming problem.
             if (suffix > 100)
-                throw new WorkgroupRuleException(WorkgroupErrorKeys.NameTaken);
+                return new(Refusal: new(WorkgroupErrorKeys.NameTaken));
 
             candidate = $"{baseSlug}-{suffix}";
         }

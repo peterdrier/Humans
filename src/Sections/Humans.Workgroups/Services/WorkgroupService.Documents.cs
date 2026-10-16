@@ -20,14 +20,16 @@ internal sealed partial class WorkgroupService
 
     // ── Documents ─────────────────────────────────────────────────────────
 
-    public async Task<Guid> CreateDocumentAsync(
+    public async Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroup = await RequireAsync(workgroupId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (string.IsNullOrWhiteSpace(save.Title))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
 
         var now = clock.GetCurrentInstant();
         var document = new WorkgroupDocument
@@ -44,20 +46,22 @@ internal sealed partial class WorkgroupService
             UpdatedAt = now
         };
         await repository.AddDocumentAsync(document, ct);
-        return document.Id;
+        return new(document.Id);
     }
 
-    public async Task UpdateDocumentAsync(
+    public async Task<WorkgroupMutationResult> UpdateDocumentAsync(
         Guid documentId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (string.IsNullOrWhiteSpace(save.Title))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
         // Delivered is the association's copy of what it received; the body stops moving.
         if (document.Status == WorkgroupDocumentStatus.Delivered)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.DocumentFrozen);
+            return new(Refusal: new(WorkgroupErrorKeys.DocumentFrozen));
 
         document.Title = save.Title.Trim();
         document.Kind = save.Kind;
@@ -65,16 +69,19 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateDocumentAsync(document, ct);
+        return new();
     }
 
-    public async Task PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkgroupMutationResult> PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Draft)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.WrongStatus);
+            return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
         if (string.IsNullOrWhiteSpace(document.Body))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
 
         var now = clock.GetCurrentInstant();
         document.Status = WorkgroupDocumentStatus.Published;
@@ -90,17 +97,20 @@ internal sealed partial class WorkgroupService
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_DocumentPublished", info, document.Title, ct);
+        return new();
     }
 
-    public async Task OpenCommentsAsync(
+    public async Task<WorkgroupMutationResult> OpenCommentsAsync(
         Guid documentId, Guid actorUserId, WorkgroupCommentWindow window, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(window);
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         // A draft has nothing to comment on and a delivered document is past comment.
         if (document.Status != WorkgroupDocumentStatus.Published)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NotPublished);
+            return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
         var categories = window.Categories
             .Select(c => c?.Trim() ?? string.Empty)
@@ -108,13 +118,13 @@ internal sealed partial class WorkgroupService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (categories.Count == 0)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.CategoriesRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.CategoriesRequired));
         // Comments carry their category in a 100-character column, so a longer one here would
         // open a window whose own comments could never be saved.
         if (categories.Any(c => c.Length > MaxCommentCategoryLength))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.CategoryTooLong);
+            return new(Refusal: new(WorkgroupErrorKeys.CategoryTooLong));
         if (window.ClosesAt <= window.OpensAt)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.WindowInvalid);
+            return new(Refusal: new(WorkgroupErrorKeys.WindowInvalid));
 
         var now = clock.GetCurrentInstant();
         document.CommentCategories = categories;
@@ -132,14 +142,17 @@ internal sealed partial class WorkgroupService
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_CommentPeriodOpened", info, document.Title, ct);
+        return new();
     }
 
-    public async Task CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkgroupMutationResult> CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.CommentsOpenAt is null)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.WrongStatus);
+            return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
 
         var now = clock.GetCurrentInstant();
         // Closing early is just moving the end of the window to now; the comments stay.
@@ -152,21 +165,24 @@ internal sealed partial class WorkgroupService
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodClosed, now,
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
+        return new();
     }
 
-    public async Task DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkgroupMutationResult> DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Published)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.NotPublished);
+            return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
         var now = clock.GetCurrentInstant();
         // "A comment window ... must end before Delivered" (design §7). Delivering mid-window
         // would freeze the body and cut short a comment period the group promised publicly —
         // Close the window first, which is one click and leaves the comments in place.
         if (document.CommentsCloseAt is { } closes && closes > now)
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.CommentsStillOpen);
+            return new(Refusal: new(WorkgroupErrorKeys.CommentsStillOpen));
 
         document.Status = WorkgroupDocumentStatus.Delivered;
         document.DeliveredAt = now;
@@ -184,30 +200,33 @@ internal sealed partial class WorkgroupService
             $"Delivered for a decision: {document.Title}", info,
             $"{workgroup.Name} delivered {document.Title} to the {workgroup.Audience}.", ct);
         await EmailBoardAsync(WorkgroupNoticeKind.Delivered, info, document.Title, ct);
+        return new();
     }
 
     // ── Comments ──────────────────────────────────────────────────────────
 
-    public async Task<Guid> AddCommentAsync(
+    public async Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default)
     {
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
         var now = clock.GetCurrentInstant();
 
         // Dormant freezes every member mutation, comments included (design §5) — Close and
         // Withdraw leave an open window alone, so the group's status has to be checked here.
-        RequireAcceptsMemberWork(workgroup);
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         // Beyond that the window is the only gate: any signed-in human may comment while it is
         // open, whatever the group's own membership says.
         if (!ToInfo(document).IsOpenForComment(now))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.CommentsClosed);
+            return new(Refusal: new(WorkgroupErrorKeys.CommentsClosed));
 
         var matched = document.CommentCategories
-            .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase))
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.UnknownCategory);
+            .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (matched is null) return new(Refusal: new(WorkgroupErrorKeys.UnknownCategory));
         if (string.IsNullOrWhiteSpace(body))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
 
         var comment = new WorkgroupDocumentComment
         {
@@ -220,22 +239,24 @@ internal sealed partial class WorkgroupService
             CreatedAt = now
         };
         await repository.AddCommentAsync(comment, ct);
-        return comment.Id;
+        return new(comment.Id);
     }
 
-    public async Task RespondToCommentAsync(
+    public async Task<WorkgroupMutationResult> RespondToCommentAsync(
         Guid commentId,
         Guid actorUserId,
         WorkgroupCommentDisposition disposition,
         string? response,
         CancellationToken ct = default)
     {
-        var comment = await repository.GetCommentAsync(commentId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
-        var workgroup = await RequireAsync(comment.Document.WorkgroupId, ct);
+        var comment = await repository.GetCommentAsync(commentId, ct);
+        if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
+        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
         // Responding is the answering half of the resolution's "show what you heard"; it
         // stays open after the window closes, but not after the group ends.
-        RequireAcceptsMemberWork(workgroup);
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
@@ -249,9 +270,10 @@ internal sealed partial class WorkgroupService
             await NotifyAsync([author], NotificationSource.WorkgroupDocumentActivity,
                 "Workgroups_CommentAnswered", info, $"{comment.Document.Title}: {Trimmed(response)}", ct);
         }
+        return new();
     }
 
-    public async Task RespondToCategoryAsync(
+    public async Task<WorkgroupMutationResult> RespondToCategoryAsync(
         Guid documentId,
         Guid actorUserId,
         string category,
@@ -259,12 +281,14 @@ internal sealed partial class WorkgroupService
         string? response,
         CancellationToken ct = default)
     {
-        var (workgroup, document) = await RequireDocumentAsync(documentId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var documentResult = await RequireDocumentAsync(documentId, ct);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var matched = document.CommentCategories
-            .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase))
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.UnknownCategory);
+            .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (matched is null) return new(Refusal: new(WorkgroupErrorKeys.UnknownCategory));
 
         // Only still-Pending comments: a comment already answered individually keeps its
         // own answer rather than being overwritten by the bulk pass.
@@ -274,7 +298,7 @@ internal sealed partial class WorkgroupService
                 && string.Equals(c.Category, matched, StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (pending.Count == 0)
-            return;
+            return new();
 
         var now = clock.GetCurrentInstant();
         foreach (var comment in pending)
@@ -287,18 +311,21 @@ internal sealed partial class WorkgroupService
         var authors = pending.Select(c => c.AuthorUserId).OfType<Guid>().Distinct().ToList();
         await NotifyAsync(authors, NotificationSource.WorkgroupDocumentActivity,
             "Workgroups_CommentAnswered", info, $"{document.Title}: {Trimmed(response)}", ct);
+        return new();
     }
 
-    public async Task HideCommentAsync(
+    public async Task<WorkgroupMutationResult> HideCommentAsync(
         Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(reason))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.HideReasonRequired);
+            return new(Refusal: new(WorkgroupErrorKeys.HideReasonRequired));
 
-        var comment = await repository.GetCommentAsync(commentId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
-        var workgroup = await RequireAsync(comment.Document.WorkgroupId, ct);
-        RequireAcceptsMemberWork(workgroup);
+        var comment = await repository.GetCommentAsync(commentId, ct);
+        if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
+        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         comment.HiddenAt = clock.GetCurrentInstant();
         comment.HiddenByUserId = actorUserId;
@@ -310,6 +337,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(AuditAction.WorkgroupCommentHidden, workgroup,
             $"Hid a comment on {comment.Document.Title}: {reason.Trim()}", actorUserId,
             AuditEntityTypes.WorkgroupComment, comment.Id);
+        return new();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -327,12 +355,14 @@ internal sealed partial class WorkgroupService
         comment.RespondedAt = now;
     }
 
-    private async Task<(Workgroup Workgroup, WorkgroupDocument Document)> RequireDocumentAsync(
+    private async Task<WorkgroupMutationResult<(Workgroup Workgroup, WorkgroupDocument Document)>> RequireDocumentAsync(
         Guid documentId, CancellationToken ct)
     {
-        var document = await repository.GetDocumentAsync(documentId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
+        var document = await repository.GetDocumentAsync(documentId, ct);
+        if (document is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
         var workgroup = await RequireAsync(document.WorkgroupId, ct);
-        return (workgroup, document);
+        return workgroup.Refusal is { } refusal
+            ? new(Refusal: refusal)
+            : new((workgroup.Value!, document));
     }
 }

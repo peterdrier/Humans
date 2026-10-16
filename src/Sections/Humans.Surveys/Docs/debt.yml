@@ -2,12 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-10-04
-    id: SURVEYS-3
-    what: "SurveyService.SendInvitesAsync stamps SentAt before email preparation/enqueue; a synchronous failure marks Failed but subsequent sends exclude that recipient through GetInvitedUserIdsAsync, contradicting the documented retry behavior. Moving the stamp alone permits duplicate mail after an uncertain enqueue or post-enqueue status-save failure. Found during the daily debt sweep. Decision (Peter 2026-10-06): at-least-once. Plan: set SentAt only after the outbox accepts the email; a rare duplicate invite is acceptable. Surveys.md already states failures are retried."
-    review: panel
-  - added: 2026-10-05
-    id: SURVEYS-4
-    what: "SurveyAdminController.ExportCsv/ExportJson disclose ordinary identified response exports without an audit entry (data-exports-are-audited). SurveyService.GetResponseExportAsync also serves the Backdoor analysis API (BackdoorSurveysController) and takes no actor. Found during the nightly debt sweep. Plan: add a required actorUserId parameter to ISurveyAnalysisRead.GetResponseExportAsync and audit the export there; SurveyAdminController passes the signed-in admin and BackdoorSurveysController the API key's owner. Tightened signature on an existing method, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

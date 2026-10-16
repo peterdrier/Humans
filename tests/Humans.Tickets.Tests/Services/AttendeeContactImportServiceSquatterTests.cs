@@ -1,3 +1,4 @@
+using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.Tickets.Services.Dtos;
 using NSubstitute;
@@ -9,8 +10,10 @@ namespace Humans.Tickets.Tests.Services;
 
 public class AttendeeContactImportServiceSquatterTests
 {
-    [HumansFact]
-    public async Task Squatter_UnverifiedRowDeletedBeforeNewUserCreated_NewUserNotAttachedToSquatter()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Squatter_ReplacementAttachesOnlyAfterOwnerOperationSucceeds(bool fails)
     {
         var harness = new ApplyHarness();
         var attendeeId = Guid.NewGuid();
@@ -28,9 +31,10 @@ public class AttendeeContactImportServiceSquatterTests
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
-        harness.Provisioning.FindOrCreateUserByEmailAsync(
-                "victim@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(new User { Id = newVictimUserId }, Created: true));
+        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+            squatterUserId, squatterRowId, "victim@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+        if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
+        else replacement.Returns(new AccountProvisioningResult(new User { Id = newVictimUserId }, Created: true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(
@@ -39,22 +43,15 @@ public class AttendeeContactImportServiceSquatterTests
                     null, squatterRowId, squatterUserId, null)
         ], 1);
 
-        await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        // 1. Squatter row deleted.
-        await harness.UserEmails.Received(1)
-            .DeleteEmailAsync(squatterUserId, squatterRowId, Arg.Any<CancellationToken>());
-
-        // 2. New user created — NOT attached to squatter.
-        attendee.MatchedUserId.Should().Be(newVictimUserId);
+        attendee.MatchedUserId.Should().Be(fails ? null : newVictimUserId);
+        result.Errors.Should().Be(fails ? 1 : 0);
+        result.UsersCreated.Should().Be(fails ? 0 : 1);
+        result.UnverifiedRowsDeletedAndUserCreated.Should().Be(fails ? 0 : 1);
         attendee.MatchedUserId.Should().NotBe(squatterUserId);
-
-        // 3. Delete happened before create.
-        Received.InOrder(() =>
-        {
-            _ = harness.UserEmails.DeleteEmailAsync(squatterUserId, squatterRowId, Arg.Any<CancellationToken>());
-            _ = harness.Provisioning.FindOrCreateUserByEmailAsync(
-                "victim@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>());
-        });
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+            squatterUserId, squatterRowId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
     }
 }

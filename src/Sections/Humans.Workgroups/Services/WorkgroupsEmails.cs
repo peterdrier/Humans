@@ -97,7 +97,7 @@ internal sealed class WorkgroupsEmails(
             };
 
             return new EmailMessage(request.RecipientEmail, request.RecipientName, subject, body,
-                templateName, MessageCategory.Governance);
+                templateName, MessageCategory.Governance, Culture: CultureInfo.CurrentUICulture.Name);
         }
     }
 

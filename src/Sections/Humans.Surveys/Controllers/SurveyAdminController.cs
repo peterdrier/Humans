@@ -571,7 +571,8 @@ internal sealed class SurveyAdminController(
         var auth = await AuthorizeViewResultsAsync(id, ct);
         if (auth is not null) return auth;
 
-        var export = await surveyService.GetResponseExportAsync(id, ct);
+        if (GetCurrentUserId() is not { } actorUserId) return Unauthorized();
+        var export = await surveyService.GetResponseExportAsync(id, actorUserId, ct);
         if (export is null) return NotFound();
 
         var bytes = SurveyCsvExportBuilder.Build(export);
@@ -584,7 +585,8 @@ internal sealed class SurveyAdminController(
         var auth = await AuthorizeViewResultsAsync(id, ct);
         if (auth is not null) return auth;
 
-        var export = await surveyService.GetResponseExportAsync(id, ct);
+        if (GetCurrentUserId() is not { } actorUserId) return Unauthorized();
+        var export = await surveyService.GetResponseExportAsync(id, actorUserId, ct);
         if (export is null) return NotFound();
 
         return File(SurveyJsonExportBuilder.Build(export), "application/json", $"survey-{id}.json");

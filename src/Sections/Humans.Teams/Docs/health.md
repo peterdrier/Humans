@@ -101,9 +101,8 @@ The shapes imply:
 
 ## 5. Seams
 
-- **`IRoleAssignmentServiceRead` / `ITeamResourceServiceRead`** do not exist yet; the
-  reconciler's read-only cross-section calls stay on full interfaces until Auth and
-  GoogleIntegration split (ledger 2026-08-14).
+- **`IRoleAssignmentServiceRead` / `ITeamResourceServiceRead`** carry the reconciler's
+  read-only cross-section calls; mutations stay on each owner's full interface.
 - **Cross-camp / sub-team shift management** (guide: "the system is being updated to
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by
   `GetUserCoordinatedTeamIdsAsync`.

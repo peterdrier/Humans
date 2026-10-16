@@ -26,6 +26,12 @@ Cross-section calls via `IFileStorage`, `IBudgetServiceRead`, `ITeamServiceRead`
 expense submitters). Implements `IUserDataContributor`. No
 `IMemoryCache`.
 
+`ExpenseHoldedPublisher` is an internal application service constructed by the report service.
+It uses the same `IExpenseRepository` for contact/document links, pushed-attachment stamps and
+outbox completion; Finance owns creditor identity and Holded owns the vendor API. It reads users
+through `IUserServiceRead`. Selection, retry/backoff, permanent-failure audit and the configured-key
+gate remain in `ExpenseReportService`.
+
 Expense lines can be travel reimbursements (mileage / per-diem; an
 `ExpenseLineType` column on `ExpenseLines` — same table, no new DbSet).
 `PerDiemKind` is a service-side argument, not a persisted column: the rate

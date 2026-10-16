@@ -16,7 +16,7 @@
 
 - **Scanner** is a section for in-browser tools that read the device camera and look up ticket information.
 - **`/Scanner/Barcode`**: client-only barcode decode tool. Decodes QR codes and CODE128 barcodes via the browser's `BarcodeDetector` API, falling back to `@zxing/browser` via CDN. No server round-trip — decoded values are displayed in-page only.
-- **`/Scanner/Tickets`**: server-backed ticket lookup. Accepts a barcode via camera scan **or manual text entry**, calls `ITicketServiceRead.GetTicketOrdersAsync`, matches an attendee of a current-event order by barcode, and renders a ticket card via `<vc:ticket-stub>`. When the ticket is matched to a Human (`MatchedUserId` set), the card also shows door context: Early Entry date and sources, this event's check-in timestamp, pending consent documents (empty = all signed), and a time-sorted "provides" list (shift commitments + events this person is offering). Read-only — never marks check-in or mutates any state.
+- **`/Scanner/Tickets`**: server-backed ticket lookup. Accepts a barcode via camera scan **or manual text entry**, calls `ITicketServiceRead.FindCurrentEventAttendeeByBarcodeAsync`, matches an attendee of a current-event order by barcode, and renders a ticket card via `<vc:ticket-stub>`. When the ticket is matched to a Human (`MatchedUserId` set), the card also shows door context: Early Entry date and sources, this event's check-in timestamp, pending consent documents (empty = all signed), and a time-sorted "provides" list (shift commitments + events this person is offering). Read-only — never marks check-in or mutates any state.
 - **Not a check-in tool.** The ticket card displays attendee information only; nothing writes to `EventParticipation`, ticket state, or any other server-side record.
 - **No owned tables.** Scanner owns no database tables, DTOs, or repositories.
 
@@ -65,7 +65,7 @@
 
 Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`IIssueQueueOwner`), `Humans.Events`, `Humans.Consent`, `Humans.Settings` (burn settings), `Humans.Users.Contracts`, `Humans.Tickets.Contracts`, `Humans.Tickets` (section project as well — the `<vc:ticket-stub>` tag helper is generated from the component type, which lives there), `Humans.EarlyEntry`, and `Humans.Calendar`. A section whose contracts are a `Contracts/` folder is referenced as its section project.
 
-- **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync` (read-only) and `<vc:ticket-stub>`. The barcode tool has no runtime Tickets coupling — it is gated behind `ScannerAccess` because its use case is reading TicketTailor ticket stubs.
+- **Tickets**: `ITicketServiceRead.FindCurrentEventAttendeeByBarcodeAsync` (read-only) and `<vc:ticket-stub>`. The barcode tool has no runtime Tickets coupling — it is gated behind `ScannerAccess` because its use case is reading TicketTailor ticket stubs.
 - **EarlyEntry**: `IEarlyEntryService.GetForUserAsync` — earliest entry date and grant-source list for the matched Human.
 - **Consent**: `IConsentServiceRead.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).

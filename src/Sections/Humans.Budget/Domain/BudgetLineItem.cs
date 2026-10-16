@@ -21,7 +21,7 @@ internal sealed class BudgetLineItem
     public LocalDate? ExpectedDate { get; set; }
 
     /// <summary>
-    /// VAT rate percentage (0, 10, or 21). Default: 0 (no VAT).
+    /// VAT rate percentage, 0–21. Default: 0 (no VAT).
     /// </summary>
     public int VatRate { get; set; }
 

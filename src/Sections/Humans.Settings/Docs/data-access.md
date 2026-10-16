@@ -59,7 +59,7 @@ on demand, the first time a rota or knob edit needs one.
 Otherwise thin over the repository — entity↔DTO mapping, no cache. Key/value
 consumers today: `EmailOutboxService` (`IsEmailSendingPaused`),
 `DriveActivityMonitorService` (`DriveActivityMonitor:LastRunAt`) and
-`WorkgroupService` (`Workgroups:RootDriveFolderId`, read *and* written);
+`WorkgroupService` (`Workgroups:RootDriveFolderId`, legacy read fallback only);
 well-known keys live in `SettingKeys` (`Humans.Settings.Contracts`).
 
 **Every section reads the calendar from `settings_event`.** Repointed off the

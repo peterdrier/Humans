@@ -42,17 +42,12 @@ internal sealed class ScannerController(
         if (code.Length == 0)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, null, null, null, null, null));
 
-        // Only this event's tickets: an older barcode reads as not found.
-        var orders = await tickets.GetTicketOrdersAsync(ct);
-        var hit = orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
+        var hit = await tickets.FindCurrentEventAttendeeByBarcodeAsync(code, ct);
 
         if (hit is null)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, code, null, null, null, null));
 
-        UserEarlyEntry? ee = null;
+        EarlyEntryRosterRow? ee = null;
         Instant? checkedInAt = null;
         IReadOnlyList<string>? pendingConsents = null;
         IReadOnlyList<CalendarFeedItem>? provideItems = null;

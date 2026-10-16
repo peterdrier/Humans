@@ -39,14 +39,15 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a user to all Google resources associated with a team.
+    /// Adds a user to all Google resources associated with a team. Only an accepted
+    /// Drive grant validates the address; queued group work and disabled sync are deferred.
     /// </summary>
     /// <param name="teamId">The team ID.</param>
     /// <param name="userId">The user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
     [ExternalWrite]
-    Task AddUserToTeamResourcesAsync(
+    Task<GoogleResourceGrantOutcome> AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default,
@@ -163,4 +164,15 @@ public sealed record GroupSettingsRemediationResult(bool Succeeded, string? Erro
     public static GroupSettingsRemediationResult Success() => new(true, null);
 
     public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
+}
+
+/// <summary>Whether team provisioning actually established acceptance of the Google address.</summary>
+public enum GoogleResourceGrantOutcome
+{
+    /// <summary>No immediate vendor acceptance: no resources, disabled Drive sync or queued group work.</summary>
+    Deferred,
+    /// <summary>Google accepted at least one Drive grant and none failed.</summary>
+    Accepted,
+    /// <summary>A grant failed or the user has no eligible address.</summary>
+    Failed
 }

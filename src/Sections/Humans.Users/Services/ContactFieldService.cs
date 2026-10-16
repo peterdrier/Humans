@@ -16,7 +16,7 @@ internal sealed class ContactFieldService(
     IUserRepository userRepository,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
     ILogger<ContactFieldService> logger,

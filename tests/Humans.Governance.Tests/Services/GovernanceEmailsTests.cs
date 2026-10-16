@@ -1,3 +1,4 @@
+using Xunit;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -22,19 +23,27 @@ public sealed class GovernanceEmailsTests
 
     private static GovernanceEmails Create() => TestGovernanceEmails.Create();
 
-    [HumansFact]
-    public void ApplicationDecisions_StampGovernanceCategory()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void ApplicationDecisions_StampGovernanceCategory(string culture)
     {
         var emails = Create();
 
-        var approved = emails.ApplicationApproved("a@x.com", "Alice", MembershipTier.Colaborador, "en");
+        var approved = emails.ApplicationApproved("a@x.com", "Alice", MembershipTier.Colaborador, culture);
+        approved.Culture.Should().Be(culture);
         approved.RecipientEmail.Should().Be("a@x.com");
         approved.RecipientName.Should().Be("Alice");
         approved.TemplateName.Should().Be("application_approved");
         approved.Category.Should().Be(MessageCategory.Governance);
         approved.ReplyTo.Should().BeNull();
 
-        var rejected = emails.ApplicationRejected("a@x.com", "Alice", MembershipTier.Asociado, "No", "en");
+        var rejected = emails.ApplicationRejected("a@x.com", "Alice", MembershipTier.Asociado, "No", culture);
+        rejected.Culture.Should().Be(culture);
         rejected.TemplateName.Should().Be("application_rejected");
         rejected.Category.Should().Be(MessageCategory.Governance);
     }

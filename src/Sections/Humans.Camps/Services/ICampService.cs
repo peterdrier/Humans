@@ -1,15 +1,16 @@
 using Humans.Base.Enums;
 using NodaTime;
+using Humans.EarlyEntry.Contracts;
 
 namespace Humans.Camps.Services;
 
 /// <summary>
 /// Service for managing camps and camp-season state.
 /// </summary>
-internal interface ICampService : ICampServiceRead, IApplicationService
+internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyEntryProvider
 {
     // Registration
-    Task<Camp> CreateCampAsync(
+    Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId,
         string name,
         string contactEmail,
@@ -24,28 +25,31 @@ internal interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
+    /// <summary>The live active-event year, falling back to the clock year before an event exists.</summary>
+    Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default);
+
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,
         CancellationToken cancellationToken = default);
 
     // Season management
-    Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
-    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default);
+    Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
+    /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task<CampUpdateResult> UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default);
     Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
     Task RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
-    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task WithdrawSeasonAsync(Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default);
+    /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task<CampUpdateResult> WithdrawSeasonAsync(Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default);
     /// <summary>CampAdmin-only verb (unscoped by design — the dashboard is cross-camp).</summary>
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     /// <summary>
     /// Camp lead or CampAdmin sets a season's status directly (currently used to toggle
     /// Full on/off). Informational only — does not gate join requests or anything else.
-    /// Throws if the season does not belong to <paramref name="scopedCampId"/>, matching the
+    /// Returns a refusal if the season does not belong to <paramref name="scopedCampId"/>, matching the
     /// scoping pattern used by ApproveCampMemberAsync/RejectCampMemberAsync/RemoveCampMemberAsync.
     /// </summary>
-    Task SetSeasonStatusAsync(
+    Task<CampUpdateResult> SetSeasonStatusAsync(
         Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default);
     // Camp updates
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, CancellationToken cancellationToken = default);
@@ -53,13 +57,13 @@ internal interface ICampService : ICampServiceRead, IApplicationService
 
     // Historical names
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
-    /// <summary>Throws if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
+    /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
-    /// <summary>Throws if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task DeleteImageAsync(Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default);
+    /// <summary>Returns a refusal if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
     // Settings (CampAdmin)
@@ -68,8 +72,8 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
 
     // Name change (handles historical name logging)
-    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default);
+    /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task<CampUpdateResult> ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Camp membership per season (issue nobodies-collective#488)
@@ -79,18 +83,18 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
-    Task ApproveCampMemberAsync(
+    /// <summary>Returns a refusal if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
+    Task<CampMembershipMutationResult> ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
-    Task RejectCampMemberAsync(
+    /// <summary>Returns a refusal if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
+    Task<CampMembershipMutationResult> RejectCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
-    Task RemoveCampMemberAsync(
+    /// <summary>Returns a refusal if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
+    Task<CampMembershipMutationResult> RemoveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default);
 
@@ -109,8 +113,8 @@ internal interface ICampService : ICampServiceRead, IApplicationService
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Throws a CampsResource key if the row is missing, belongs to another user, or is not Pending.</summary>
-    Task WithdrawCampMembershipRequestAsync(
+    /// <summary>Returns a CampsResource refusal key if the row is missing, belongs to another user, or is not Pending.</summary>
+    Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns a CampsResource error key if the row is missing, belongs to another user, or is not Active.</summary>
@@ -175,7 +179,7 @@ internal sealed record CampUpdateInput(
     string SeasonName,
     CampSeasonData SeasonData);
 
-internal sealed record CampUpdateResult(bool Succeeded, string? ErrorMessage)
+internal sealed record CampUpdateResult(bool Succeeded, string? ErrorKey)
 {
     public static CampUpdateResult Success() => new(true, null);
 
@@ -278,3 +282,5 @@ internal sealed record CampPlacementSummary(
     string? SoundZone,
     string Status,
     string? ElectricalGrid);
+
+internal sealed record CampWriteResult<T>(T? Value, string? ErrorKey = null) where T : class;

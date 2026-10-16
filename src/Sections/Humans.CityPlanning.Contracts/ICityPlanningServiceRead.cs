@@ -13,9 +13,9 @@ public interface ICityPlanningServiceRead
 {
     /// <summary>
     /// Gets the per-year City Planning settings (creates the row on demand for
-    /// the current PublicYear).
+    /// the requested year, or current PublicYear when omitted).
     /// </summary>
-    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default, int? year = null);
 
     /// <summary>
     /// Gets the registration-info markdown keyed to the highest open season

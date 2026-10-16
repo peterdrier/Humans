@@ -11,7 +11,7 @@ namespace Humans.Governance.Tests.Domain;
 // Humans.Application.* namespace, so the bare name `Application` would resolve
 // to that namespace instead of the entity. The alias must sit inside the
 // namespace declaration to win the lookup.
-using Application = Humans.Governance.Domain.Application;
+using MemberApplication = Humans.Governance.Domain.Application;
 
 public class ApplicationTests
 {
@@ -20,7 +20,7 @@ public class ApplicationTests
     [HumansFact]
     public void NewApplication_ShouldHaveSubmittedStatus()
     {
-        var application = new Application
+        var application = new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = Guid.NewGuid(),
@@ -90,7 +90,7 @@ public class ApplicationTests
     [HumansFact]
     public void ApplicationWithNoTierSet_LandsOnVolunteer_WhichValidateTierRejects()
     {
-        var application = new Application
+        var application = new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = Guid.NewGuid(),
@@ -128,9 +128,9 @@ public class ApplicationTests
         act.Should().NotThrow();
     }
 
-    private Application CreateSubmittedApplication()
+    private MemberApplication CreateSubmittedApplication()
     {
-        return new Application
+        return new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = Guid.NewGuid(),

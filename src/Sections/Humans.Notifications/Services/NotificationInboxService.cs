@@ -165,9 +165,9 @@ internal sealed class NotificationInboxService(
 
     public async Task ResolveBySourceAsync(
         Guid userId, NotificationSource source,
-        CancellationToken ct = default)
+        CancellationToken ct = default, string? sourceKey = null)
     {
-        var updated = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct);
+        var updated = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
         if (updated)
             InvalidateBadgeCaches([userId]);
     }
@@ -213,9 +213,11 @@ internal sealed class NotificationInboxService(
         var resolved = await repo.DeleteResolvedOlderThanAsync(now - ResolvedRetentionPeriod, ct);
         var stale = await repo.DeleteUnresolvedInformationalOlderThanAsync(
             now - InformationalRetentionPeriod, ct);
+        InvalidateBadgeCaches(stale.AffectedUserIds);
         var retired = await repo.DeleteUnresolvedBySourcesAsync(RetiredSources, ct);
+        InvalidateBadgeCaches(retired.AffectedUserIds);
 
-        return (resolved, stale, retired);
+        return (resolved, stale.Deleted, retired.Deleted);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

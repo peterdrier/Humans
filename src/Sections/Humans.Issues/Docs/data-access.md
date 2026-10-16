@@ -22,7 +22,7 @@ Repository: `IIssuesRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`IRoleAssignmentService`, `IEmailService`,
+`IRoleAssignmentServiceRead`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
 `ISectionCatalog`, `IHostEnvironment`. Routes through `IssueSectionRouting`

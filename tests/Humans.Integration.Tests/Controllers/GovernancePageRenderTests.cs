@@ -98,9 +98,9 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
     /// <summary>Every prefix the carve took into <c>GovernanceResource</c>.</summary>
     private static readonly string[] CarvedPrefixes =
     [
-        "Governance_", "GovernanceCreate_", "GovernanceApplication_", "BoardVoting_",
-        "ApplicationDetail_", "AdminAppDetail_", "AdminApplicationDetail_", "AdminApplications_",
-        "MyApplications_"
+        "Governance_", "Governance_Create_", "Governance_Application_", "Governance_BoardVoting_",
+        "Governance_ApplicationDetail_", "Governance_AdminAppDetail_", "Governance_AdminApplicationDetail_", "Governance_AdminApplications_",
+        "Governance_MyApplications_"
     ];
 
     private static void AssertRenderedCleanly(string html, string what)
@@ -145,7 +145,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         list.StatusCode.Should().Be(HttpStatusCode.OK);
         var listHtml = await list.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(listHtml, "GET /Governance/Applications");
-        listHtml.Should().Contain("My Applications");                 // MyApplications_Title
+        listHtml.Should().Contain("My Applications");                 // Governance_MyApplications_Title
         listHtml.Should().NotContain("ApplicationStatus_",
             "the ApplicationStatus_* keys stayed shared and must still resolve");
 
@@ -153,7 +153,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         detail.StatusCode.Should().Be(HttpStatusCode.OK);
         var detailHtml = await detail.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(detailHtml, "GET /Governance/Applications/Details/{id}");
-        detailHtml.Should().Contain("Application Information");       // ApplicationDetail_ApplicationInfo
+        detailHtml.Should().Contain("Application Information");       // Governance_ApplicationDetail_ApplicationInfo
         detailHtml.Should().Contain(SeededMotivation);
         // _ApplicationResponseSections and _ApplicationHistory moved into the section and are
         // now resolved by name; a partial that fails to resolve throws, one that resolves
@@ -175,7 +175,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         var html = await response.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(html, "GET /Governance/Applications/Create");
 
-        html.Should().Contain("New Application");   // GovernanceCreate_NewApplication (carved)
+        html.Should().Contain("New Application");   // Governance_Create_NewApplication (carved)
         // The tier radios and the Asociado question labels are Profile*/Application_* keys the
         // carve deliberately left in SharedResource; they bind SharedLocalizer in the section.
         html.Should().NotContain("ProfileEdit_");
@@ -195,7 +195,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         list.StatusCode.Should().Be(HttpStatusCode.OK);
         var listHtml = await list.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(listHtml, "GET /Governance/Applications/Admin");
-        listHtml.Should().Contain("Asociado Applications");   // AdminApplications_Title
+        listHtml.Should().Contain("Asociado Applications");   // Governance_AdminApplications_Title
         // _ApplicationsListContent moved in from Shell's Views/Shared and is now reached by
         // name across application parts rather than by ~/Views/Shared/ path.
         listHtml.Should().Contain("Applicant");               // AdminApp_Applicant, in the partial
@@ -206,7 +206,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         detail.StatusCode.Should().Be(HttpStatusCode.OK);
         var detailHtml = await detail.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(detailHtml, "GET /Governance/Applications/Admin/{id}");
-        detailHtml.Should().Contain("Review Application");    // AdminApplicationDetail_Title
+        detailHtml.Should().Contain("Review Application");    // Governance_AdminApplicationDetail_Title
         detailHtml.Should().Contain(SeededMotivation);
     }
 
@@ -222,13 +222,13 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         dashboard.StatusCode.Should().Be(HttpStatusCode.OK);
         var dashboardHtml = await dashboard.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(dashboardHtml, "GET /Governance/BoardVoting");
-        dashboardHtml.Should().Contain("Board Voting Dashboard");   // BoardVoting_Title
+        dashboardHtml.Should().Contain("Board Voting Dashboard");   // Governance_BoardVoting_Title
 
         var detail = await Client.GetAsync($"/Governance/BoardVoting/{applicationId}", ct);
         detail.StatusCode.Should().Be(HttpStatusCode.OK);
         var detailHtml = await detail.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(detailHtml, "GET /Governance/BoardVoting/{id}");
-        detailHtml.Should().Contain("Votes So Far");                // BoardVoting_VotesSoFar
+        detailHtml.Should().Contain("Votes So Far");                // Governance_BoardVoting_VotesSoFar
         // <vc:profile-card> became Component.InvokeAsync("ProfileCard", …) because the
         // component stays in Shell; the enum argument moved to Humans.UI so the section can
         // name it. An unresolvable invocation throws, so reaching this assertion is the proof.

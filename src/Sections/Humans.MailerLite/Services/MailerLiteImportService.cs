@@ -236,9 +236,8 @@ internal sealed class MailerLiteImportService(
 
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
-                            if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
-                                await userEmails.DeleteEmailAsync(uid, emailId, ct);
-                            var (provUser, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
+                            var (provUser, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                                d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
                             var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);

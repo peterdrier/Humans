@@ -22,7 +22,7 @@ Repository: `INotificationRepository`.
 |-----------|-----|------|-------|------------|
 | `NotificationBadge:{userId}` | 2 min | | | yes (on dispatch) |
 
-Cross-section calls via `INotificationEmitter`, `IRoleAssignmentService`,
+Cross-section calls via `INotificationEmitter`, `IRoleAssignmentServiceRead`,
 `ICommunicationPreferenceService`, `IClock`. Implements `IUserMerge`.
 
 ### NotificationEmitter (Scoped)

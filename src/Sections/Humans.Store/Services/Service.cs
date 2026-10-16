@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
@@ -30,6 +28,8 @@ internal sealed class Service(
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IStoreAccountingRead
 {
+    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
+
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
 
@@ -143,8 +143,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var year = await GetCurrentEventYearAsync();
-            catalog = (await GetActiveCatalogAsync(year, ct))
+            catalog = (await GetActiveCatalogAsync(order.Year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
         }
@@ -177,9 +176,14 @@ internal sealed class Service(
         return p is null ? null : MapProduct(p);
     }
 
-    public async Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+        {
+            logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
+            return CatalogSaveResult.Failure(null, refusal);
+        }
 
         var now = clock.GetCurrentInstant();
         var product = new Product
@@ -202,15 +206,18 @@ internal sealed class Service(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
-        return product.Id;
+        return CatalogSaveResult.Success(created: true);
     }
 
-    public async Task UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateProductDraft(draft);
+        var refusal = GetProductDraftRefusal(draft);
+        if (refusal is not null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
 
-        var product = await repo.GetProductByIdAsync(draft.Id, ct)
-            ?? throw new StoreRuleException($"Product {draft.Id} not found");
+        var product = await repo.GetProductByIdAsync(draft.Id, ct);
+        if (product is null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, $"Product {draft.Id} not found");
 
         var oldPrice = product.UnitPriceEur;
 
@@ -237,6 +244,7 @@ internal sealed class Service(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
                 $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
                 actorUserId);
+        return AdminMutationResult.Success;
     }
 
     public async Task<CatalogSaveResult> SaveProductWithResultAsync(
@@ -263,23 +271,12 @@ internal sealed class Service(
         try
         {
             if (request.Id is null)
-            {
-                await CreateProductAsync(dto, actorUserId, ct);
-                return CatalogSaveResult.Success(created: true);
-            }
+                return await CreateProductAsync(dto, actorUserId, ct);
 
-            await UpdateProductAsync(dto, actorUserId, ct);
-            return CatalogSaveResult.Success(created: false);
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
-            return CatalogSaveResult.Failure(null, ex.Message);
+            var result = await UpdateProductAsync(dto, actorUserId, ct);
+            return result.Succeeded
+                ? CatalogSaveResult.Success(created: false)
+                : CatalogSaveResult.Failure(null, result.Refusal!);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -288,10 +285,11 @@ internal sealed class Service(
         }
     }
 
-    public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
     {
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null)
+            return RefuseCatalogMutation(productId, actorUserId, $"Product {productId} not found");
 
         product.IsActive = false;
         product.UpdatedAt = clock.GetCurrentInstant();
@@ -301,20 +299,29 @@ internal sealed class Service(
             AuditAction.StoreProductDeactivated, AuditEntityTypes.Product, productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
-    private static void ValidateProductDraft(ProductDto draft)
+    private AdminMutationResult RefuseCatalogMutation(Guid productId, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store catalog mutation rejected for product {ProductId}, actor {ActorId}: {Reason}",
+            productId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
+    }
+
+    private static string? GetProductDraftRefusal(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
-            throw new StoreValidationException("Product name is required", nameof(draft));
+            return "Product name is required";
         if (draft.UnitPriceEur < 0m)
-            throw new StoreValidationException("Unit price cannot be negative", nameof(draft));
+            return "Unit price cannot be negative";
         if (draft.VatRatePercent < 0m)
-            throw new StoreValidationException("VAT rate cannot be negative", nameof(draft));
+            return "VAT rate cannot be negative";
         if (draft.DepositAmountEur is < 0m)
-            throw new StoreValidationException("Deposit cannot be negative", nameof(draft));
+            return "Deposit cannot be negative";
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
-            throw new StoreValidationException("Holded revenue account must be an 8-digit chart number", nameof(draft));
+            return "Holded revenue account must be an 8-digit chart number";
+        return null;
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
@@ -430,17 +437,18 @@ internal sealed class Service(
         return true;
     }
 
-    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
-            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
+        if (season is null)
+            return RefuseCreation("Store_CampSeasonMissing", "camp season", campSeasonId, actorUserId);
 
         // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
         // already belongs to season.Year — except a legacy row still at Year = 0, which an
         // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
+            return RefuseCreation("Store_CampOrderExists", "camp season", campSeasonId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -458,30 +466,30 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for camp season {campSeasonId}",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
     }
 
-    public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
         // An issued order is referenced by its store_invoices row under a restrictive foreign key,
         // and a paid one reads zero-balance — without this the delete would reach EF and blow up.
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
         // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
         // any payment row, whatever its status, is a money record that must outlive the order.
         if (order.Payments.Count > 0)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
 
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
-            throw new InvalidOperationException(
+            return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
 
         await repo.DeleteOrderAsync(orderId, ct);
@@ -489,20 +497,22 @@ internal sealed class Service(
             AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             $"Deleted store order {orderId}",
             actorUserId);
+        return AdminMutationResult.Success;
     }
 
-    public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<MutationResult> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
-        var team = await teamService.GetTeamAsync(teamId, ct)
-            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        var team = await teamService.GetTeamAsync(teamId, ct);
+        if (team is null)
+            return RefuseCreation("Store_TeamMissing", "team", teamId, actorUserId);
         if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
+            return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
         var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
-            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
+            return RefuseCreation("Store_TeamOrderExists", "team", teamId, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -520,26 +530,39 @@ internal sealed class Service(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
-        return order.Id;
+        return new MutationResult(true, null, order.Id);
     }
 
-    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
+    private MutationResult RefuseCreation(string errorKey, string counterpartyType, Guid counterpartyId, Guid actorUserId)
+    {
+        logger.LogWarning("Store order creation rejected for {CounterpartyType} {CounterpartyId}, actor {ActorUserId}: {ErrorKey}",
+            counterpartyType, counterpartyId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
+    }
+
+    public async Task<MutationResult> AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new StoreValidationException("Qty must be positive", nameof(qty));
+            return RefuseMutation("Store_QuantityPositive", orderId, actorUserId);
 
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
         if (order.State != OrderState.Open)
-            throw new StoreRuleException("Cannot add lines to an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId);
 
-        var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new StoreRuleException($"Product {productId} not found");
+        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
+        if (order.Year == 0)
+            return RefuseMutation("Store_OrderYearUnresolved", orderId, actorUserId);
+
+        var product = await repo.GetProductByIdAsync(productId, ct);
+        if (product is null) return RefuseMutation("Store_ProductMissing", orderId, actorUserId);
 
         if (!product.IsActive)
-            throw new StoreRuleException(
-                $"Product '{product.Name}' has been deactivated and is no longer orderable");
+            return RefuseMutation("Store_ProductInactive", orderId, actorUserId);
+
+        if (product.Year != order.Year)
+            return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -560,54 +583,25 @@ internal sealed class Service(
         };
         await repo.AddLineAsync(line, ct);
 
-        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
-
         await audit.LogAsync(
             AuditAction.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}"
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
+
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> AddLineWithResultAsync(
-        Guid orderId,
-        Guid productId,
-        int qty,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            await AddLineAsync(orderId, productId, qty, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreValidationException ex)
-        {
-            logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to add line to Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
-    }
-
-    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new StoreRuleException($"Line {lineId} not found");
+        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct);
+        if (ctx is null) return RefuseMutation("Store_LineMissing", orderId, actorUserId, lineId);
 
         if (ctx.OrderId != orderId)
-            throw new StoreRuleException($"Line {lineId} does not belong to order {orderId}");
+            return RefuseMutation("Store_LineWrongOrder", orderId, actorUserId, lineId);
 
         if (ctx.OrderState != OrderState.Open)
-            throw new StoreRuleException("Cannot remove lines from an issued order");
+            return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -620,37 +614,16 @@ internal sealed class Service(
             $"Removed line {lineId} from order {ctx.OrderId}"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> RemoveLineWithResultAsync(
-        Guid orderId,
-        Guid lineId,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<MutationResult> UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        try
-        {
-            await RemoveLineAsync(orderId, lineId, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to remove Store line {LineId}", lineId);
-            return new MutationResult(false, null);
-        }
-    }
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return RefuseMutation("Store_OrderMissing", orderId, actorUserId);
 
-    public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new StoreRuleException($"Order {orderId} not found");
-
-        EnsureBillable(order);
+        if (order.TeamId is not null)
+            return RefuseMutation("Store_NonBillableText", orderId, actorUserId);
 
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
@@ -664,29 +637,14 @@ internal sealed class Service(
             AuditAction.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
             $"Updated counterparty on order {orderId}",
             actorUserId);
+        return MutationResult.Success;
     }
 
-    public async Task<MutationResult> UpdateCounterpartyWithResultAsync(
-        Guid orderId,
-        OrderCounterpartyInput input,
-        Guid actorUserId,
-        CancellationToken ct = default)
+    private MutationResult RefuseMutation(string errorKey, Guid orderId, Guid actorUserId, Guid? lineId = null)
     {
-        try
-        {
-            await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
-            return MutationResult.Success;
-        }
-        catch (StoreRuleException ex)
-        {
-            logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to update counterparty on Store order {OrderId}", orderId);
-            return new MutationResult(false, null);
-        }
+        logger.LogWarning("Store mutation rejected for order {OrderId}, line {LineId}, actor {ActorUserId}: {ErrorKey}",
+            orderId, lineId, actorUserId, errorKey);
+        return MutationResult.Failure(errorKey);
     }
 
     private async Task<LocalDate> TodayInEventZoneAsync()
@@ -699,37 +657,39 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    public async Task<int> GetCurrentEventYearAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
-    }
+    public Task<int> GetCurrentEventYearAsync() => orderReader.GetCurrentEventYearAsync();
 
     [ExternalWrite]
-    public Task<string> CreateStripeCheckoutSessionAsync(
+    public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,
         string returnUrl,
         CancellationToken ct = default)
     {
+        string? errorKey = null;
+        decimal? maximumAmount = null;
         if (order.CounterpartyType == OrderCounterpartyType.Team)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            errorKey = "Store_NonBillableText";
+        else if (!stripeService.IsStoreCheckoutConfigured)
+            errorKey = "Store_CheckoutUnconfigured";
+        else if (amountEur <= 0)
+            errorKey = "Store_PaymentPositive";
+        else if (amountEur > order.BalanceEur)
+        {
+            errorKey = "Store_PaymentAboveBalance";
+            maximumAmount = order.BalanceEur;
+        }
+        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
+            errorKey = "Store_PaymentPending";
 
-        if (!stripeService.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
-
-        if (amountEur <= 0)
-            throw new InvalidOperationException("Payment amount must be greater than zero.");
-
-        if (amountEur > order.BalanceEur)
-            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
-
-        if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
+        if (errorKey is not null)
+        {
+            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
+            return new CheckoutSessionResult(null, errorKey, maximumAmount);
+        }
 
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
-
-        return stripeService.CreateCheckoutSessionAsync(
+        var sessionUrl = await stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
             amountEur: amountEur,
             successUrl: returnUrl,
@@ -737,6 +697,7 @@ internal sealed class Service(
             customerEmail: order.CounterpartyEmail,
             lineItemDescription: description,
             ct: ct);
+        return new CheckoutSessionResult(sessionUrl, null);
     }
 
     public async Task RecordStripePaymentAsync(
@@ -792,7 +753,7 @@ internal sealed class Service(
     /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
     /// overpaid — but deposit returns can never add up to more than the order's deposits.
     /// </summary>
-    public async Task RecordAdminPaymentAsync(
+    public async Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
         PaymentMethod method,
         decimal amountEur,
@@ -802,16 +763,16 @@ internal sealed class Service(
         CancellationToken ct = default)
     {
         if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
-            throw new InvalidOperationException($"Only deposit returns and refunds can be recorded by hand, not {method}.");
+            return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
-            throw new InvalidOperationException("Amount must be greater than zero.");
+            return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
         if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
-            throw new InvalidOperationException("A refund needs a reference (e.g. the Stripe refund id).");
+            return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
 
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
 
         if (method == PaymentMethod.DepositReturn)
         {
@@ -821,7 +782,7 @@ internal sealed class Service(
                 .Sum(p => p.AmountEur);
             var remaining = depositTotal - alreadyReturned;
             if (amountEur > remaining)
-                throw new InvalidOperationException(
+                return RefuseAdminMutation(orderId, actorUserId,
                     $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
                     + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
         }
@@ -846,6 +807,7 @@ internal sealed class Service(
             $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
                 + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     /// <summary>
@@ -854,13 +816,13 @@ internal sealed class Service(
     /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
     /// it follows by itself.
     /// </summary>
-    public async Task DeletePaymentAsync(
+    public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException("Order not found.");
-        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId)
-            ?? throw new InvalidOperationException("Payment not found on this order.");
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
+        if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
 
         await repo.DeletePaymentAsync(paymentId, ct);
         await audit.LogAsync(
@@ -869,6 +831,7 @@ internal sealed class Service(
                 + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
                 + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
             actorUserId, orderId, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -1157,366 +1120,25 @@ internal sealed class Service(
             existing.OrderId, AuditEntityTypes.Order);
     }
 
-    /// <summary>
-    /// Issues the camp order's consolidated Holded sales document and freezes the order.
-    ///
-    /// Pipeline: freeze the line snapshots at today's catalog price (#816) → resolve each
-    /// product's revenue account → build the lines (goods at the product's VAT rate, deposits
-    /// tax-0 to the fianzas liability account) → create the document and <b>approve</b> it (a
-    /// draft books nothing) → write <c>store_invoices</c> with both payloads and flip the order
-    /// to <see cref="OrderState.InvoiceIssued"/> in one save.
-    ///
-    /// Document kind: a full <i>factura</i> when counterparty details are on file, a
-    /// <i>factura simplificada</i> (sales receipt) otherwise. Above
-    /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
-    /// so a counterparty-less order that large is refused rather than downgraded.
-    ///
-    /// Only issuable at a zero balance: a camp that still owes, or is owed, settles first.
-    ///
-    /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> throws
-    /// without calling Holded, and — because a document approved by an attempt that then failed
-    /// locally leaves no trace here — Holded is searched for a document already tagged with this
-    /// order before anything is created. A match is adopted, never re-issued: a second approved
-    /// factura is a real legal document, correctable only by a factura rectificativa. A recovered
-    /// document is checked against the order's current totals first (divergence refuses loudly)
-    /// and approved if the earlier attempt died between create and approve.
-    /// </summary>
+    /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
-    public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-        EnsureBillable(order);
-
-        // Idempotency guard — deliberately before any Holded call, so a double-submit cannot
-        // create a second document.
-        if (order.IssuedInvoiceId is not null || order.State != OrderState.Open)
-            throw new InvalidOperationException("This order has already been invoiced.");
-
-        if (order.Lines.Count == 0)
-            throw new InvalidOperationException("Cannot invoice an order with no lines.");
-
-        if (!holdedClient.IsConfigured)
-            throw new InvalidOperationException(
-                "Holded is not configured in this environment, so no invoice can be issued.");
-
-        // Freeze seam (#816): rewrite each snapshot from the live catalog before issuing, so the
-        // document and the order agree forever after. BalanceCalculator already computed the
-        // effective prices for an Open order — reuse them rather than re-deriving.
-        var totals = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct));
-        if (totals.BalanceEur != 0m)
-            throw new InvalidOperationException(
-                $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).");
-        var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
-        foreach (var line in order.Lines)
-        {
-            var t = totalsByLine[line.Id];
-            line.UnitPriceSnapshot = t.EffectiveUnitPrice;
-            line.VatRateSnapshot = t.EffectiveVatRate;
-            line.DepositAmountSnapshot = t.EffectiveDeposit;
-        }
-
-        // The local guard above cannot see a document approved by an attempt that then failed
-        // before its save, so ask Holded before creating anything. Read-only, and it runs ahead of
-        // the line-account resolution so that a catalog edited in between cannot block the
-        // reconciliation of a document that already exists.
-        var tag = OrderDocumentTag(order.Id);
-        if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
-        {
-            var (adoptedKind, adoptedDoc) = alreadyIssued;
-            // Before anything is written, and before the order is frozen against it: the order
-            // stayed Open, so it could have been edited or repriced since that document was
-            // created. Divergence is a human's problem, not something to reconcile silently.
-            EnsureRecoveredDocumentMatches(order, adoptedDoc, totals);
-            if (adoptedDoc.IsDraft == true)
-            {
-                // Creation succeeded and approval did not. A draft books no revenue and carries no
-                // sequential number, so freezing the order against it would leave the order
-                // invoiced with no legal invoice behind it — finish the issuance instead.
-                await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
-                adoptedDoc = await holdedClient.GetSalesDocumentAsync(
-                    adoptedKind, adoptedDoc.Id, CancellationToken.None);
-            }
-            await CommitInvoiceAsync(
-                order, adoptedDoc,
-                JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
-                actorUserId,
-                $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
-                + $"(EUR {adoptedDoc.Total:0.00}), already issued for order {order.Id} by an earlier "
-                + "attempt that failed before saving — no second document was created",
-                ct);
-            return;
-        }
-
-        var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
-        if (totalDue <= 0m)
-            throw new InvalidOperationException("Cannot invoice an order with a zero total.");
-
-        var products = (await repo.GetProductsByIdsAsync(
-                order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
-            .ToDictionary(p => p.Id);
-
-        var documentLines = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
-
-        // A receipt carries no counterparty, so it is only lawful below the simplified-invoice
-        // threshold. Above it the details are mandatory — refuse rather than silently issue the
-        // wrong document type.
-        var counterparty = ResolveInvoiceCounterparty(order);
-        var kind = counterparty is null
-            ? HoldedSalesDocumentKind.SalesReceipt
-            : HoldedSalesDocumentKind.Invoice;
-        if (counterparty is null && totalDue > options.Value.SimplifiedInvoiceThresholdEur)
-            throw new InvalidOperationException(
-                $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
-                + "name, address and tax id (or passport number) first.");
-
-        var displayName = await ResolveCounterpartyDisplayNameAsync(order, ct);
-        string? contactId = null;
-        if (counterparty is not null)
-        {
-            // Not the request token: everything from here on writes to Holded, and a half-created
-            // contact/document has no local compensation (memory/architecture/cancellation-token-propagation.md).
-            contactId = await holdedClient.UpsertContactAsync(
-                new HoldedContactInput
-                {
-                    Name = counterparty.Name,
-                    Type = "client",
-                    TaxCode = counterparty.TaxId,
-                    Address = counterparty.Address,
-                    CountryCode = counterparty.CountryCode,
-                    Email = counterparty.Email,
-                },
-                CancellationToken.None);
-        }
-
-        var input = new HoldedSalesDocumentInput
-        {
-            ContactId = contactId,
-            ContactName = counterparty?.Name ?? displayName,
-            Date = clock.GetCurrentInstant(),
-            Description = $"Nobodies Collective store — {displayName}",
-            Notes = $"Humans store order {order.Id}",
-            Tags = [tag],
-            Lines = documentLines,
-        };
-
-        var docId = await holdedClient.CreateSalesDocumentAsync(kind, input, CancellationToken.None);
-        // A draft books no revenue, so approval is part of issuance, not a later step.
-        await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
-        var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
-
-        await CommitInvoiceAsync(
-            order, document,
-            JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
-            actorUserId,
-            $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
-            + $"for EUR {totalDue:0.00} on order {order.Id}",
-            ct);
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null)
+            return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        if (order.TeamId is not null)
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
+        return await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
+            .IssueAsync(order, actorUserId, ct);
     }
 
-    /// <summary>
-    /// Refuses adoption when the recovered document no longer describes this order. The order stays
-    /// <c>Open</c> after a failed attempt, so its lines can be edited and its catalog prices can
-    /// move before the retry — adopting on the tag alone would freeze the order against a document
-    /// that says something else, permanently. Correcting an issued document is a factura
-    /// rectificativa, which is a human decision, so this fails loudly rather than choosing a side.
-    /// </summary>
-    private static void EnsureRecoveredDocumentMatches(
-        Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
+    private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
     {
-        // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
-        var expectedSubtotal = decimal.Round(totals.LinesSubtotalEur + totals.DepositTotalEur, 2);
-        var expectedTax = decimal.Round(totals.VatTotalEur, 2);
-        var expectedTotal = decimal.Round(expectedSubtotal + expectedTax, 2);
-        if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
-            && decimal.Round(document.Tax, 2) == expectedTax
-            && decimal.Round(document.Total, 2) == expectedTotal)
-            return;
-
-        var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
-        throw new InvalidOperationException(
-            $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
-            + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
-            + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
-            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. The order was changed after that "
-            + "document was created. Resolve it by hand — correcting an issued document is a factura "
-            + "rectificativa, and no second document will be issued in the meantime.");
+        logger.LogWarning("Store admin mutation rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
+            orderId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
     }
-
-    /// <summary>The tag every store sales document carries. Holded's list endpoints return
-    /// <c>tags</c> but not <c>notes</c>, so this — not the human-readable note beside it — is what
-    /// makes a document findable by the order it was issued for.</summary>
-    private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
-
-    private static string DocumentKindName(HoldedSalesDocumentKind kind) =>
-        kind == HoldedSalesDocumentKind.Invoice ? "factura" : "factura simplificada";
-
-    /// <summary>
-    /// The sales document a previous attempt already created for this order, or null. Both kinds
-    /// are searched in full: the counterparty details decide the kind and can be filled in between
-    /// two attempts, so the earlier document may be of the other kind — and adopting it is still
-    /// right, because what must not happen is a second approved document. When several match, an
-    /// already-approved one wins over a draft: approving the draft beside it would book the revenue
-    /// twice and hand out a second legal number.
-    /// </summary>
-    private async Task<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)?>
-        FindAlreadyIssuedDocumentAsync(string tag, CancellationToken ct)
-    {
-        var found = new List<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)>();
-        foreach (var kind in new[] { HoldedSalesDocumentKind.Invoice, HoldedSalesDocumentKind.SalesReceipt })
-        {
-            foreach (var id in await holdedClient.FindSalesDocumentIdsByTagAsync(kind, tag, ct))
-                found.Add((kind, await holdedClient.GetSalesDocumentAsync(kind, id, ct)));
-        }
-        if (found.Count == 0) return null;
-        if (found.Count > 1)
-            // The duplicate this guard exists to prevent has already happened — only a factura
-            // rectificativa clears it. Adopting one still stops a third being issued.
-            logger.LogWarning(
-                "Holded holds {Count} documents tagged {Tag}: {Ids}. Adopting an approved one if there is any.",
-                found.Count, tag, string.Join(", ", found.Select(f => $"{f.Kind}:{f.Document.Id}")));
-
-        var approved = found.FirstOrDefault(f => f.Document.IsDraft != true);
-        return approved.Document is not null ? approved : found[0];
-    }
-
-    /// <summary>Writes the <c>store_invoices</c> row and the frozen order in one save, then audits.
-    /// Shared by first issuance and by adoption of an already-issued document — the two differ only
-    /// in the request payload they can honestly record and in what the audit line says.</summary>
-    private async Task CommitInvoiceAsync(
-        Order order,
-        HoldedSalesDocumentDto document,
-        string requestPayload,
-        Guid actorUserId,
-        string auditDetail,
-        CancellationToken ct)
-    {
-        var invoice = new Invoice
-        {
-            Id = Guid.NewGuid(),
-            OrderId = order.Id,
-            HoldedDocId = document.Id,
-            HoldedDocNumber = document.DocNumber,
-            IssuedAt = clock.GetCurrentInstant(),
-            IssuedByUserId = actorUserId,
-            RequestPayload = requestPayload,
-            ResponsePayload = document.RawJson,
-        };
-
-        order.State = OrderState.InvoiceIssued;
-        order.IssuedInvoiceId = invoice.Id;
-        order.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveIssuedInvoiceAsync(invoice, order, ct);
-
-        await audit.LogAsync(
-            AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
-            auditDetail, actorUserId,
-            order.Id, AuditEntityTypes.Order);
-    }
-
-    /// <summary>
-    /// One document line per order line, plus a separate VAT-free line for each line that carries
-    /// a deposit. Refundable deposits are a liability, not income, so they post tax-0 to the
-    /// configured fianzas account instead of the item's revenue account.
-    /// </summary>
-    private async Task<IReadOnlyList<HoldedSalesDocumentLineInput>> BuildInvoiceLinesAsync(
-        Order order,
-        IReadOnlyDictionary<Guid, BalanceCalculator.LineTotals> totalsByLine,
-        IReadOnlyDictionary<Guid, Product> products,
-        CancellationToken ct)
-    {
-        var missingAccount = order.Lines
-            .Select(l => products.GetValueOrDefault(l.ProductId))
-            .Where(p => p?.HoldedRevenueAccountNum is null)
-            .Select(p => p?.Name ?? "(unknown product)")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        if (missingAccount.Count > 0)
-            throw new InvalidOperationException(
-                "These catalog items have no Holded revenue account yet: "
-                + string.Join(", ", missingAccount)
-                + ". Set it on /Store/Admin/Catalog before issuing.");
-
-        var needsDepositAccount = order.Lines.Any(l => totalsByLine[l.Id].DepositEur > 0m);
-        var depositAccountNum = options.Value.DepositLiabilityAccountNum;
-        if (needsDepositAccount && depositAccountNum is null)
-            throw new InvalidOperationException(
-                "This order carries refundable deposits but no deposit liability account is "
-                + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
-                + "must not be booked to a revenue account.");
-
-        // Holded's items[].account is the chart account's *id*, not its 8-digit number, so the
-        // numbers StoreAdmin holds are resolved against the live chart on every issue — a fresh
-        // read also picks up an account Acountax created minutes ago.
-        var wanted = order.Lines
-            .Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value)
-            .Concat(needsDepositAccount ? [depositAccountNum!.Value] : Array.Empty<int>())
-            .ToHashSet();
-        var accountIdsByNum = (await holdedClient.ListAccountingAccountsAsync(ct))
-            .Where(a => wanted.Contains(a.Number))
-            .ToDictionary(a => a.Number, a => a.Id);
-
-        var unknown = wanted.Where(n => !accountIdsByNum.ContainsKey(n)).ToList();
-        if (unknown.Count > 0)
-            throw new InvalidOperationException(
-                "These accounts do not exist in Holded's chart of accounts: "
-                + string.Join(", ", unknown.OrderBy(n => n))
-                + ". Ask Acountax to create them, then re-issue.");
-
-        var lines = new List<HoldedSalesDocumentLineInput>();
-        foreach (var line in order.Lines)
-        {
-            var product = products[line.ProductId];
-            var t = totalsByLine[line.Id];
-            lines.Add(new HoldedSalesDocumentLineInput
-            {
-                Name = product.Name,
-                Units = line.Qty,
-                Price = t.EffectiveUnitPrice,
-                Taxes = [SalesTaxKey(t.EffectiveVatRate)],
-                AccountId = accountIdsByNum[product.HoldedRevenueAccountNum!.Value],
-            });
-
-            if (t.EffectiveDeposit is not { } depositPerUnit || depositPerUnit <= 0m) continue;
-            lines.Add(new HoldedSalesDocumentLineInput
-            {
-                Name = $"{product.Name} — refundable deposit",
-                Units = line.Qty,
-                Price = depositPerUnit,
-                Taxes = [SalesTaxKey(0m)],
-                AccountId = accountIdsByNum[depositAccountNum!.Value],
-            });
-        }
-        return lines;
-    }
-
-    /// <summary>
-    /// Holded's sales tax key for a VAT rate: 21 → <c>s_iva_21</c>, 7.5 → <c>s_iva_75</c>,
-    /// 0 → <c>s_iva_0</c> (the decimal separator is dropped, not rounded away).
-    /// </summary>
-    private static string SalesTaxKey(decimal vatRatePercent) =>
-        "s_iva_" + vatRatePercent.ToString("0.##", CultureInfo.InvariantCulture).Replace(".", "", StringComparison.Ordinal);
-
-    /// <summary>
-    /// The identified counterparty a full factura needs, or null when the order does not carry
-    /// enough to identify one. Spanish law wants name + address + a tax id; a foreign camp's
-    /// home-country tax id or passport number stands in for a NIF, so the field is only ever
-    /// checked for presence.
-    /// </summary>
-    private static InvoiceCounterparty? ResolveInvoiceCounterparty(Order order) =>
-        string.IsNullOrWhiteSpace(order.CounterpartyName)
-        || string.IsNullOrWhiteSpace(order.CounterpartyAddress)
-        || string.IsNullOrWhiteSpace(order.CounterpartyVatId)
-            ? null
-            : new InvoiceCounterparty(
-                order.CounterpartyName.Trim(),
-                order.CounterpartyVatId.Trim(),
-                order.CounterpartyAddress.Trim(),
-                order.CounterpartyCountryCode?.Trim(),
-                order.CounterpartyEmail?.Trim());
-
-    private sealed record InvoiceCounterparty(
-        string Name, string TaxId, string Address, string? CountryCode, string? Email);
 
     /// <summary>
     /// What every year-wide view needs before it can price an order: the year's camp seasons
@@ -1791,23 +1413,8 @@ internal sealed class Service(
         IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
         (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);
 
-    /// <summary>
-    /// Loads the current catalog price components (incl. deactivated products) for the active
-    /// event's year, keyed by product id, so Open orders reprice to the live price. The org runs
-    /// one event year, so a single catalog year drives repricing rather than each order's
-    /// <c>Year</c> — which is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c>
-    /// reprice correctly.
-    /// </summary>
-    private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        CancellationToken ct)
-    {
-        var catalogYear = await GetCurrentEventYearAsync();
-        var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
-        foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
-            prices[product.Id] = new BalanceCalculator.ProductPrice(
-                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
-        return prices;
-    }
+    private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
+        CancellationToken ct) => orderReader.LoadCurrentPricesAsync(ct);
 
     private async Task<OrderDto> MapOrderAsync(
         Order o,
@@ -1856,41 +1463,7 @@ internal sealed class Service(
             o.CreatedAt);
     }
 
-    private async Task<string> ResolveCounterpartyDisplayNameAsync(Order o, CancellationToken ct)
-    {
-        if (o.TeamId is { } tid)
-        {
-            var team = await teamService.GetTeamAsync(tid, ct);
-            return team?.Name ?? "(unknown team)";
-        }
-        if (o.CampSeasonId is { } sid)
-        {
-            var season = await campService.GetCampSeasonByIdAsync(sid, ct);
-            return season?.Name ?? "(unknown camp)";
-        }
-        return "(unknown)";
-    }
+    private Task<string> ResolveCounterpartyDisplayNameAsync(Order order, CancellationToken ct) =>
+        orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
 
-    private static void EnsureBillable(Order order)
-    {
-        if (order.TeamId is not null)
-            throw new StoreRuleException("Team orders are non-billable.");
-    }
-
-    private sealed class StoreRuleException : InvalidOperationException
-    {
-        public StoreRuleException() { }
-        public StoreRuleException(string message) : base(message) { }
-        public StoreRuleException(string message, Exception innerException) : base(message, innerException) { }
-    }
-
-    private sealed class StoreValidationException : ArgumentException
-    {
-        public StoreValidationException() { }
-        public StoreValidationException(string message) : base(message) { }
-        public StoreValidationException(string message, Exception innerException) : base(message, innerException) { }
-        public StoreValidationException(string message, string paramName) : base(message, paramName) { }
-        public StoreValidationException(string message, string paramName, Exception innerException)
-            : base(message, paramName, innerException) { }
-    }
 }

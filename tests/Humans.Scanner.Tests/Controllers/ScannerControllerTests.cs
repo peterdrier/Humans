@@ -53,24 +53,9 @@ public class ScannerControllerTests
 
     private static ITicketServiceRead TicketsWithAttendee(TicketAttendeeInfo attendee, bool isCurrentEvent = true)
     {
-        var order = new TicketOrderInfo(
-            Id: Guid.NewGuid(),
-            VendorOrderId: "ord-1",
-            BuyerName: "Buyer",
-            BuyerEmail: "buyer@example.com",
-            TotalAmount: 10m,
-            Currency: "EUR",
-            DiscountCode: null,
-            PaymentStatus: TicketPaymentStatus.Paid,
-            VendorEventId: "evt-1",
-            PurchasedAt: Instant.FromUtc(2026, 6, 1, 12, 0),
-            MatchedUserId: null,
-            IsCurrentEvent: isCurrentEvent,
-            Attendees: new[] { attendee });
-
         var tickets = Substitute.For<ITicketServiceRead>();
-        tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
-            .Returns(new[] { order });
+        tickets.FindCurrentEventAttendeeByBarcodeAsync(attendee.Barcode, Arg.Any<CancellationToken>())
+            .Returns(isCurrentEvent ? attendee : null);
         return tickets;
     }
 
@@ -273,7 +258,7 @@ public class ScannerControllerTests
 
         var earlyEntry = Substitute.For<IEarlyEntryService>();
         earlyEntry.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserEarlyEntry(new LocalDate(2026, 6, 15), ["Teams: Gate"]));
+            .Returns(new EarlyEntryRosterRow(userId, new LocalDate(2026, 6, 15), ["Teams: Gate"], false));
 
         var consents = Substitute.For<IConsentServiceRead>();
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())

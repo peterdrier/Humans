@@ -71,7 +71,7 @@ public class ExpenseReportServiceGdprTests
             _holdedFinance,
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()), _localizer);
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(

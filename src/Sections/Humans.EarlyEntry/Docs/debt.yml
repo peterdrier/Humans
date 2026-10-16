@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-10-06
-    id: EARLYENTRY-1
-    what: "Contracts/IEarlyEntryService.cs carries UserEarlyEntry, a second record for one person's collapse that is the roster row less UserId and HasMultiple. Peter ruled on 2026-09-14 (finding 11, /section-doctor on EarlyEntry 2026-09-05) to fold it into the roster-row shape with HasMultiple kept; it is a public contract change across Gate, Scanner and Tickets, so it lands on its own."
-    review: panel
+inbox: []

@@ -34,3 +34,9 @@ internal sealed record BulkImportResult(
     /// <summary>True when validation failed and no events were persisted.</summary>
     public bool HasErrors => Errors.Count > 0;
 }
+
+/// <summary>CSV parsing returns no importable rows when any header or cell is invalid.</summary>
+internal sealed record BulkCsvParseResult(IReadOnlyList<BulkCsvRow> Rows, IReadOnlyList<BulkCsvParseError> Errors);
+
+/// <summary>Owner-defined parse refusal, localized by the upload controller.</summary>
+internal sealed record BulkCsvParseError(string Key, params object[] Args);

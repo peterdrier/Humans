@@ -14,17 +14,17 @@
             @if (canManage)
             {
                 <a href="@Url.Action("Roles", "TeamAdmin", new { slug = ViewData["Slug"] })"
-                   class="btn btn-sm btn-outline-primary">@Localizer["TeamDetail_ManageRoles"]</a>
+                   class="btn btn-sm btn-outline-primary">@Localizer["Teams_TeamDetail_ManageRoles"]</a>
             }
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>@Localizer["Roster_ColRole"]</th>
-                        <th>@Localizer["Roster_ColSlot"]</th>
-                        <th>@Localizer["Roster_ColPriority"]</th>
-                        <th>@Localizer["Roster_ColAssignedTo"]</th>
+                        <th>@Localizer["Teams_Roster_ColRole"]</th>
+                        <th>@Localizer["Teams_Roster_ColSlot"]</th>
+                        <th>@Localizer["Teams_Roster_ColPriority"]</th>
+                        <th>@Localizer["Teams_Roster_ColAssignedTo"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -68,7 +68,7 @@
                                     }
                                     else
                                     {
-                                        <span class="text-muted fst-italic">@Localizer["Roster_SlotOpen"]</span>
+                                        <span class="text-muted fst-italic">@Localizer["Teams_Roster_SlotOpen"]</span>
                                     }
                                 </td>
                             </tr>

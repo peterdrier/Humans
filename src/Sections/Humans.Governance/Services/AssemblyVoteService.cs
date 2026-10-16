@@ -28,7 +28,7 @@ namespace Humans.Governance.Services;
 internal sealed class AssemblyVoteService(
     IAssemblyVoteRepository repository,
     IApplicationRepository applications,
-    IRoleAssignmentService roleAssignments,
+    IRoleAssignmentServiceRead roleAssignments,
     ITeamServiceRead teams,
     IUserServiceRead users,
     IUserEmailService userEmails,
@@ -271,6 +271,11 @@ internal sealed class AssemblyVoteService(
                 ? $"Cast a ballot on assembly vote {voteId} (revision {ballot.Revision})."
                 : $"Changed their ballot on assembly vote {voteId} (revision {ballot.Revision}).",
             userId);
+
+        await AfterTransitionAsync(
+            "resolving the voter's open-vote notification", voteId,
+            token => notificationResolve.ResolveBySourceAsync(
+                userId, NotificationSource.AssemblyVoteOpened, token, sourceKey: voteId.ToString()));
 
         return BallotSubmissionOutcome.Recorded;
     }

@@ -1,3 +1,4 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<AuditLogResource> Localizer
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @model Humans.AuditLog.ViewComponents.AuditLogComponentViewModel
@@ -11,7 +12,7 @@
         Func<AuditEvent, IHtmlContent> actorCell = @<text>
             @if (!item.ActorUserId.HasValue)
             {
-                <span class="badge bg-info">System</span>
+                <span class="badge bg-info">@Localizer["AuditLog_System"]</span>
             }
             else
             {
@@ -19,7 +20,7 @@
             }
         </text>;
         Func<AuditEvent, IHtmlContent> actionCell =
-            @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel()</span></text>;
+            @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel(Localizer)</span></text>;
         Func<AuditEvent, IHtmlContent> subjectCell = @<text>
             @if (item.SubjectUserId.HasValue)
             {

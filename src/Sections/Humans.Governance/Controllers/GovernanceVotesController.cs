@@ -71,7 +71,7 @@ internal sealed class GovernanceVotesController(
         if (model.Choice == AssemblyBallotChoice.Ranked && !ModelState.IsValid)
         {
             logger.LogWarning("Rejected malformed ballot form for vote {VoteId} by {UserId}", voteId, userId);
-            SetError(localizer["Votes_BallotInvalid"].Value);
+            SetError(localizer["Governance_Votes_BallotInvalid"].Value);
             return await RedisplayBallotAsync(voteId, userId, model, ct);
         }
 
@@ -79,14 +79,14 @@ internal sealed class GovernanceVotesController(
         // to keys would hide it from the service's duplicate-key check.
         if (model.HasDuplicateRanks())
         {
-            SetError(localizer["Votes_BallotDuplicateRanks"].Value);
+            SetError(localizer["Governance_Votes_BallotDuplicateRanks"].Value);
             return await RedisplayBallotAsync(voteId, userId, model, ct);
         }
 
         // No choice posted at all is an empty ballot, not an affirmative one.
         if (model.Choice is not { } choice)
         {
-            SetError(localizer["Votes_BallotInvalid"].Value);
+            SetError(localizer["Governance_Votes_BallotInvalid"].Value);
             return RedirectToAction(nameof(Details), new { voteId });
         }
 
@@ -95,7 +95,7 @@ internal sealed class GovernanceVotesController(
         switch (outcome)
         {
             case BallotSubmissionOutcome.Recorded:
-                SetSuccess(localizer["Votes_BallotRecorded"].Value);
+                SetSuccess(localizer["Governance_Votes_BallotRecorded"].Value);
                 return RedirectToAction(nameof(Details), new { voteId });
 
             case BallotSubmissionOutcome.NotFound:
@@ -105,12 +105,12 @@ internal sealed class GovernanceVotesController(
                 return Forbid();
 
             case BallotSubmissionOutcome.VoteNotOpen:
-                SetError(localizer["Votes_BallotVoteNotOpen"].Value);
+                SetError(localizer["Governance_Votes_BallotVoteNotOpen"].Value);
                 return RedirectToAction(nameof(Details), new { voteId });
 
             case BallotSubmissionOutcome.InvalidBallot:
             default:
-                SetError(localizer["Votes_BallotInvalid"].Value);
+                SetError(localizer["Governance_Votes_BallotInvalid"].Value);
                 return RedirectToAction(nameof(Details), new { voteId });
         }
     }
@@ -231,15 +231,15 @@ internal sealed class GovernanceVotesController(
 
         return HumansCsv.WriteBytes(csv =>
         {
-            csv.WriteRow(Text("Votes_CsvVoteLabel"), results.Vote.Title);
-            csv.WriteRow(Text("Votes_MethodLabel"), Text("Votes_Method_" + results.Result.Method));
+            csv.WriteRow(Text("Governance_Votes_CsvVoteLabel"), results.Vote.Title);
+            csv.WriteRow(Text("Governance_Votes_MethodLabel"), Text("Governance_Votes_Method_" + results.Result.Method));
             csv.NextRecord();
 
-            WriteAudienceCsv(csv, Text("Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
+            WriteAudienceCsv(csv, Text("Governance_Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
             if (results.Result.Indicative is { } indicative)
             {
                 csv.NextRecord();
-                WriteAudienceCsv(csv, Text("Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
+                WriteAudienceCsv(csv, Text("Governance_Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
             }
         });
     }
@@ -253,13 +253,13 @@ internal sealed class GovernanceVotesController(
     {
         csv.WriteRow(
             rosterLabel, audience.RosterSize,
-            Text("Votes_BallotsCastLabel"), audience.BallotsCast,
-            Text("Votes_VerdictLabel"), Text("Votes_Verdict_" + audience.Verdict));
+            Text("Governance_Votes_BallotsCastLabel"), audience.BallotsCast,
+            Text("Governance_Votes_VerdictLabel"), Text("Governance_Votes_Verdict_" + audience.Verdict));
 
         if (audience.YesNo is { } yesNo)
         {
             csv.WriteRow(
-                Text("Votes_Choice_Yes"), Text("Votes_Choice_No"), Text("Votes_Choice_Abstain"));
+                Text("Governance_Votes_Choice_Yes"), Text("Governance_Votes_Choice_No"), Text("Governance_Votes_Choice_Abstain"));
             csv.WriteRow(yesNo.Yes, yesNo.No, yesNo.Abstain);
             return;
         }
@@ -267,11 +267,11 @@ internal sealed class GovernanceVotesController(
         if (audience.Rounds is null) return;
 
         csv.WriteRow([
-            Text("Votes_RoundColumnHeader"),
+            Text("Governance_Votes_RoundColumnHeader"),
             .. optionKeys.Select(optionLabel),
-            Text("Votes_ExhaustedLabel"),
-            Text("Votes_EliminatedHeader"),
-            Text("Votes_WinnerHeader")]);
+            Text("Governance_Votes_ExhaustedLabel"),
+            Text("Governance_Votes_EliminatedHeader"),
+            Text("Governance_Votes_WinnerHeader")]);
         foreach (var round in audience.Rounds)
         {
             // Blank, not zero, for an option already eliminated: a round counts only the

@@ -20,7 +20,7 @@
         }
         else
         {
-            <span class="badge bg-success">@Localizer["AdminTeams_Open"]</span>
+            <span class="badge bg-success">@Localizer["Teams_AdminTeams_Open"]</span>
         }
     </td>
     <td>@Model.MemberCount</td>
@@ -83,7 +83,7 @@
         }
         else
         {
-            <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
+            <span class="badge bg-secondary">@Localizer["Teams_AdminTeams_Inactive"]</span>
         }
         @if (Model.IsHidden)
         {
@@ -100,14 +100,14 @@
                 {
                     <form asp-action="DeleteTeam" asp-route-id="@Model.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["AdminTeams_DeactivateConfirm"].Value">@Localizer["AdminTeams_Deactivate"]</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_AdminTeams_DeactivateConfirm"].Value">@Localizer["Teams_AdminTeams_Deactivate"]</button>
                     </form>
                 }
             </div>
         }
         else
         {
-            <span class="text-muted">@Localizer["AdminTeams_SystemManaged"]</span>
+            <span class="text-muted">@Localizer["Teams_AdminTeams_SystemManaged"]</span>
         }
     </td>
 </tr>

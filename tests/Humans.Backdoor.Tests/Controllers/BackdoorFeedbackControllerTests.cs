@@ -33,6 +33,12 @@ public class BackdoorFeedbackControllerTests
 
     public BackdoorFeedbackControllerTests()
     {
+        _feedback.UpdateStatusAsync(Arg.Any<Guid>(), Arg.Any<FeedbackStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(FeedbackMutationResult.Success);
+        _feedback.UpdateAssignmentAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(FeedbackMutationResult.Success);
+        _feedback.SetGitHubIssueNumberAsync(Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(FeedbackMutationResult.Success);
         _sut = new BackdoorFeedbackController(
             _feedback, _users, NullLogger<BackdoorFeedbackController>.Instance)
         {
@@ -89,9 +95,9 @@ public class BackdoorFeedbackControllerTests
     {
         var id = Guid.NewGuid();
         _feedback.PostMessageAsync(id, KeyOwnerId, "Looking into it", Arg.Any<CancellationToken>())
-            .Returns(new FeedbackMessageInfo(
+            .Returns(new FeedbackMutationResult(true, Message: new FeedbackMessageInfo(
                 Guid.NewGuid(), id, KeyOwnerId, "Admin", "Looking into it",
-                Instant.FromUtc(2026, 9, 3, 10, 0)));
+                Instant.FromUtc(2026, 9, 3, 10, 0))));
 
         var result = await _sut.PostMessage(id, new PostFeedbackMessageModel { Content = "Looking into it" });
 
@@ -172,7 +178,7 @@ public class BackdoorFeedbackControllerTests
     {
         var id = Guid.NewGuid();
         _feedback.PostMessageAsync(id, KeyOwnerId, "hello", Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<FeedbackMessageInfo>(new InvalidOperationException("gone")));
+            .Returns(FeedbackMutationResult.Missing);
 
         var result = await _sut.PostMessage(id, new PostFeedbackMessageModel { Content = "hello" });
 
@@ -184,7 +190,7 @@ public class BackdoorFeedbackControllerTests
     {
         var id = Guid.NewGuid();
         _feedback.UpdateStatusAsync(id, FeedbackStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException($"Feedback report {id} not found")));
+            .Returns(FeedbackMutationResult.Missing);
 
         var result = await _sut.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved });
 
@@ -200,12 +206,40 @@ public class BackdoorFeedbackControllerTests
     {
         var id = Guid.NewGuid();
         _feedback.UpdateStatusAsync(id, FeedbackStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("Already resolved")));
+            .Returns(new FeedbackMutationResult(true, Rejection: "Already resolved"));
 
         var result = await _sut.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved });
 
         var body = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
         body.Value.Should().BeEquivalentTo(new { error = "Already resolved" });
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("message")]
+    [Xunit.InlineData("status")]
+    [Xunit.InlineData("assignment")]
+    [Xunit.InlineData("github")]
+    public async Task DependencyInvalidOperation_Remains500EvenWhenMessageContainsNotFound(string action)
+    {
+        var id = Guid.NewGuid();
+        var failure = Task.FromException<FeedbackMutationResult>(
+            new InvalidOperationException("Provider not found; database unavailable"));
+        _feedback.PostMessageAsync(id, KeyOwnerId, "hello", Arg.Any<CancellationToken>()).Returns(failure);
+        _feedback.UpdateStatusAsync(id, FeedbackStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>()).Returns(failure);
+        _feedback.UpdateAssignmentAsync(id, null, null, KeyOwnerId, Arg.Any<CancellationToken>()).Returns(failure);
+        _feedback.SetGitHubIssueNumberAsync(id, 12, KeyOwnerId, Arg.Any<CancellationToken>()).Returns(failure);
+
+        var result = action switch
+        {
+            "message" => await _sut.PostMessage(id, new PostFeedbackMessageModel { Content = "hello" }),
+            "status" => await _sut.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved }),
+            "assignment" => await _sut.UpdateAssignment(id, new UpdateFeedbackAssignmentModel()),
+            _ => await _sut.SetGitHubIssue(id, new SetFeedbackGitHubIssueModel { IssueNumber = 12 })
+        };
+
+        var error = result.Should().BeOfType<ObjectResult>().Subject;
+        error.StatusCode.Should().Be(500);
+        System.Text.Json.JsonSerializer.Serialize(error.Value).Should().NotContain("Provider not found");
     }
 
     // ==========================================================================

@@ -40,7 +40,7 @@ public sealed class ServicePlacementTests
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
             _auditLog,
-            Clock, ServiceImageTests.Localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
     }
 
     private static ContainerImageUpload Sketch(string name = "sketch.jpg") =>
@@ -80,7 +80,7 @@ public sealed class ServicePlacementTests
         var container = await SeedContainerAsync();
         Clock.AdvanceSeconds(60);
 
-        var result = await _sut.SavePlacementAsync(container.Id, Year, GeoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _sut.SavePlacementAsync(container.Id, Year, GeoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         result.LocationGeoJson.Should().Be(GeoJson);
         result.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
@@ -101,7 +101,9 @@ public sealed class ServicePlacementTests
 
         var act = () => _sut.SavePlacementAsync(container.Id, Year, "{}", ActorUserId, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(expected);
+        var refusal = await act();
+        refusal.ErrorKey.Should().Be("Containers_Error_InvalidPlacementGeoJson");
+        ServiceImageTests.Localizer[refusal.ErrorKey!].Value.Should().Be(expected);
         (await _sut.GetPlacementsByYearAsync(Year, TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
@@ -140,7 +142,7 @@ public sealed class ServicePlacementTests
 
         var act = () => _sut.SavePlacementAsync(container.Id, Year, invalid, ActorUserId, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Invalid container placement GeoJSON.");
+        (await act()).ErrorKey.Should().Be("Containers_Error_InvalidPlacementGeoJson");
         (await GetPlacementAsync(container.Id)).Should().BeEquivalentTo(before);
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.ContainerPlacementSaved, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
@@ -180,7 +182,7 @@ public sealed class ServicePlacementTests
         await _sut.UpdatePlacementNotesAsync(container.Id, Year, "by the gate", Sketch(), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
         var moved = GeoJson.Replace("-0.137", "-0.138", StringComparison.Ordinal);
 
-        var result = await _sut.SavePlacementAsync(container.Id, Year, moved, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _sut.SavePlacementAsync(container.Id, Year, moved, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         result.LocationGeoJson.Should().Be(moved);
         result.PlacementNotes.Should().Be("by the gate");
@@ -195,8 +197,7 @@ public sealed class ServicePlacementTests
 
         var act = async () => await _sut.UpdatePlacementNotesAsync(container.Id, Year, "notes", image: null, removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Placement not found.*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_PlacementNotFound");
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -207,7 +208,7 @@ public sealed class ServicePlacementTests
     {
         var container = await SeedPlacedContainerAsync();
 
-        var result = await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         result.PlacementImageUrl.Should().StartWith($"/uploads/containers/{container.Id}/").And.EndWith(".jpg");
         result.PlacementImageFileName.Should().Be("sketch.jpg");
@@ -220,9 +221,9 @@ public sealed class ServicePlacementTests
     public async Task UpdatePlacementNotesAsync_ReplacingTheImageDeletesTheOldFile()
     {
         var container = await SeedPlacedContainerAsync();
-        var first = await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch("first.jpg"), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var first = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch("first.jpg"), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
-        var second = await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch("second.jpg"), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var second = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch("second.jpg"), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         second.PlacementImageUrl.Should().NotBe(first.PlacementImageUrl);
         second.PlacementImageFileName.Should().Be("second.jpg");
@@ -233,7 +234,7 @@ public sealed class ServicePlacementTests
     public async Task UpdatePlacementNotesAsync_FailedReplacementSavePreservesTheOldImage()
     {
         var container = await SeedPlacedContainerAsync();
-        var first = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "original notes", Sketch(), false, ActorUserId, TestContext.Current.CancellationToken);
+        var first = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "original notes", Sketch(), false, ActorUserId, TestContext.Current.CancellationToken)).Value!;
         _fileStorage.ClearReceivedCalls();
         _auditLog.ClearReceivedCalls();
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -257,13 +258,13 @@ public sealed class ServicePlacementTests
     public async Task UpdatePlacementNotesAsync_CleanupFailureDoesNotUndoCommittedMetadata(bool removeImage)
     {
         var container = await SeedPlacedContainerAsync();
-        var first = await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), false, ActorUserId, TestContext.Current.CancellationToken);
+        var first = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), false, ActorUserId, TestContext.Current.CancellationToken)).Value!;
         _auditLog.ClearReceivedCalls();
         _fileStorage.DeleteAsync(first.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("File locked"));
 
-        var result = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "updated notes",
-            removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, TestContext.Current.CancellationToken);
+        var result = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "updated notes",
+            removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, TestContext.Current.CancellationToken)).Value!;
 
         result.PlacementNotes.Should().Be("updated notes");
         if (removeImage)
@@ -294,7 +295,7 @@ public sealed class ServicePlacementTests
         repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Database write failed"));
         var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog,
-            Clock, ServiceImageTests.Localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         var act = () => service.UpdatePlacementNotesAsync(id, Year, "notes",
             removeImage ? null : Sketch(), removeImage, ActorUserId, TestContext.Current.CancellationToken);
@@ -310,9 +311,9 @@ public sealed class ServicePlacementTests
     public async Task UpdatePlacementNotesAsync_RemoveImageDeletesTheFileAndClearsTheColumns()
     {
         var container = await SeedPlacedContainerAsync();
-        var withImage = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "keep me", Sketch(), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var withImage = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "keep me", Sketch(), removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
-        var result = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "keep me", image: null, removeImage: true, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "keep me", image: null, removeImage: true, ActorUserId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         result.PlacementImageUrl.Should().BeNull();
         result.PlacementImageFileName.Should().BeNull();
@@ -328,8 +329,7 @@ public sealed class ServicePlacementTests
 
         var act = async () => await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, tooBig, removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*under 10 MB*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageTooLarge");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 

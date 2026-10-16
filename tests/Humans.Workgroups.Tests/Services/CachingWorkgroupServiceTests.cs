@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Workgroups.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,14 +62,18 @@ public sealed class CachingWorkgroupServiceTests
         await _inner.Received(2).GetRegisterAsync(Ct);
     }
 
-    [HumansFact]
-    public async Task Join_ClearsTheRegisterCache()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Join_ForwardsTheResultAndClearsTheRegisterCache(bool refused)
     {
         var workgroupId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var expected = new WorkgroupMutationResult(refused ? new(WorkgroupErrorKeys.AlreadyAMember) : null);
+        _inner.JoinAsync(workgroupId, userId, Ct).Returns(expected);
         await _service.GetRegisterAsync(Ct);
 
-        await _service.JoinAsync(workgroupId, userId, Ct);
+        (await _service.JoinAsync(workgroupId, userId, Ct)).Should().BeSameAs(expected);
         await _service.GetRegisterAsync(Ct);
 
         await _inner.Received(1).JoinAsync(workgroupId, userId, Arg.Any<CancellationToken>());
@@ -79,7 +84,7 @@ public sealed class CachingWorkgroupServiceTests
     public async Task Join_WhenInnerThrows_StillClearsTheRegisterCache()
     {
         _inner.JoinAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("write failed")));
+            .Returns(Task.FromException<WorkgroupMutationResult>(new InvalidOperationException("write failed")));
         await _service.GetRegisterAsync(Ct);
 
         var act = () => _service.JoinAsync(Guid.NewGuid(), Guid.NewGuid(), Ct);

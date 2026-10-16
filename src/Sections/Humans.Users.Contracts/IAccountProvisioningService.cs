@@ -23,6 +23,15 @@ public interface IAccountProvisioningService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Replaces the planned unverified, unlinked email row and provisions its verified
+    /// contact account atomically. Refuses stale plans; provisioning failures preserve
+    /// the original row. Retains the ordinary email-deletion guards.
+    /// </summary>
+    Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+        Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Completes a magic-link signup after the Auth section has verified the
     /// signup token. Idempotently signs in the existing verified-email owner
     /// on double submit, otherwise creates User + verified UserEmail + a stub

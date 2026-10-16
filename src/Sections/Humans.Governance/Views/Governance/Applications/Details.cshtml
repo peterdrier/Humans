@@ -1,12 +1,12 @@
 @model Humans.Governance.Models.ApplicationDetailViewModel
 @{
-    ViewData["Title"] = Localizer["ApplicationDetail_Title"].Value;
+    ViewData["Title"] = Localizer["Governance_ApplicationDetail_Title"].Value;
 }
 
 <nav aria-label="@Localizer["Governance_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["ApplicationDetail_Details"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Governance_ApplicationDetail_Details"]</li>
     </ol>
 </nav>
 
@@ -14,12 +14,12 @@
 <div class="row">
     <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>@Localizer["ApplicationDetail_Title"]</h1>
+            <h1>@Localizer["Governance_ApplicationDetail_Title"]</h1>
             <span class="badge fs-5 @EnumBadgeMap.For(Model.Status)">@SharedLocalizer["ApplicationStatus_" + Model.Status.ToString()]</span>
         </div>
 
         <div class="card mb-4">
-            <div class="card-header">@Localizer["ApplicationDetail_ApplicationInfo"]</div>
+            <div class="card-header">@Localizer["Governance_ApplicationDetail_ApplicationInfo"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
@@ -27,7 +27,7 @@
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
-                        <dt class="col-sm-3">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
+                        <dt class="col-sm-3">@Localizer["Governance_ApplicationDetail_ReviewStarted"]</dt>
                         <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToDate()</dd>
                     }
 
@@ -39,7 +39,7 @@
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))
                     {
-                        <dt class="col-sm-3">@Localizer["ApplicationDetail_ReviewedBy"]</dt>
+                        <dt class="col-sm-3">@Localizer["Governance_ApplicationDetail_ReviewedBy"]</dt>
                         <dd class="col-sm-9">@Model.ReviewerName</dd>
                     }
                 </dl>
@@ -48,18 +48,18 @@
 
         <partial name="_ApplicationResponseSections"
                  model="Model"
-                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["ApplicationDetail_YourMotivation"].Value }' />
+                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["Governance_ApplicationDetail_YourMotivation"].Value }' />
 
         @if (Model.CanWithdraw)
         {
             <div class="card border-warning mb-4">
                 <div class="card-body">
-                    <h5 class="card-title">@Localizer["ApplicationDetail_WithdrawTitle"]</h5>
-                    <p class="card-text text-muted">@Localizer["ApplicationDetail_WithdrawDescription"]</p>
+                    <h5 class="card-title">@Localizer["Governance_ApplicationDetail_WithdrawTitle"]</h5>
+                    <p class="card-text text-muted">@Localizer["Governance_ApplicationDetail_WithdrawDescription"]</p>
                     <form asp-action="Withdraw" asp-route-id="@Model.Id" method="post"
-                          data-confirm="@Localizer["ApplicationDetail_WithdrawConfirm"].Value">
+                          data-confirm="@Localizer["Governance_ApplicationDetail_WithdrawConfirm"].Value">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-warning">@Localizer["ApplicationDetail_WithdrawButton"]</button>
+                        <button type="submit" class="btn btn-outline-warning">@Localizer["Governance_ApplicationDetail_WithdrawButton"]</button>
                     </form>
                 </div>
             </div>
@@ -72,7 +72,7 @@
         </div>
 
         <div class="mt-3">
-            <a asp-action="Index" class="btn btn-outline-secondary w-100">@Localizer["ApplicationDetail_BackToApplications"]</a>
+            <a asp-action="Index" class="btn btn-outline-secondary w-100">@Localizer["Governance_ApplicationDetail_BackToApplications"]</a>
         </div>
     </div>
 </div>

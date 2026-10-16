@@ -218,13 +218,8 @@ internal sealed class AttendeeContactImportService(
                 return;
 
             case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
-                if (decision.UnverifiedRowUserId is Guid uid &&
-                    decision.UnverifiedEmailIdToDelete is Guid eid)
-                {
-                    await userEmails.DeleteEmailAsync(uid, eid, ct);
-                }
-
-                var replacement = await provisioning.FindOrCreateUserByEmailAsync(
+                var replacement = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                    decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
                     decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
                 AttachResolvedAttendees(resolved, replacement.User.Id, state);
                 if (replacement.Created) state.Created++;

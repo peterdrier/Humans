@@ -101,7 +101,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             var redisplayed = result.Should().BeOfType<ViewResult>().Which.Model
                 .Should().BeOfType<AssemblyVoteDetailViewModel>().Which;
             redisplayed.SelectedChoice.Should().Be(AssemblyBallotChoice.Ranked);
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Votes_BallotInvalid");
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Governance_Votes_BallotInvalid");
             (await _fx.Db.AssemblyBallotHistories.CountAsync(ct)).Should().Be(historyBefore);
             _fx.Audit.ReceivedCalls().Should().BeEmpty();
         }
@@ -135,6 +135,25 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .FirstAsync(b => b.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
         ballot.Revision.Should().Be(1);
         ballot.Choice.Should().Be(AssemblyBallotChoice.Yes);
+        await _fx.NotificationResolve.Received(1).ResolveBySourceAsync(
+            userId, NotificationSource.AssemblyVoteOpened, CancellationToken.None, vote.Id.ToString());
+    }
+
+    [HumansFact]
+    public async Task CastBallotAsync_NotificationFailure_DoesNotLoseRecordedBallot()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var userId = Guid.NewGuid();
+        await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+        _fx.NotificationResolve.ResolveBySourceAsync(userId, NotificationSource.AssemblyVoteOpened,
+                Arg.Any<CancellationToken>(), vote.Id.ToString())
+            .Returns(Task.FromException(new InvalidOperationException("inbox unavailable")));
+
+        var outcome = await _fx.Service.CastBallotAsync(
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(BallotSubmissionOutcome.Recorded);
+        (await _fx.Db.AssemblyBallots.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -147,6 +166,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Xunit.TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.NotOnRoster);
+        await _fx.NotificationResolve.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default, default, default);
         (await _fx.Db.AssemblyBallots.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 

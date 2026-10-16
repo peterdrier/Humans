@@ -1,13 +1,13 @@
 @model Humans.Governance.Models.AdminApplicationDetailViewModel
 @{
-    ViewData["Title"] = Localizer["AdminApplicationDetail_Title"].Value;
+    ViewData["Title"] = Localizer["Governance_AdminApplicationDetail_Title"].Value;
 }
 
 
 <div class="row">
     <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>@Localizer["AdminAppDetail_ApplicationReview"]</h1>
+            <h1>@Localizer["Governance_AdminAppDetail_ApplicationReview"]</h1>
             <span class="badge fs-5 @EnumBadgeMap.For(Model.Status)">@SharedLocalizer["ApplicationStatus_" + Model.Status.ToString()]</span>
         </div>
 
@@ -29,12 +29,12 @@
 
         <partial name="_ApplicationResponseSections"
                  model="Model"
-                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["AdminAppDetail_Motivation"].Value }' />
+                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["Governance_AdminAppDetail_Motivation"].Value }' />
     </div>
 
     <div class="col-md-4">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["ApplicationDetail_ApplicationInfo"]</div>
+            <div class="card-header">@Localizer["Governance_ApplicationDetail_ApplicationInfo"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-5">@Localizer["Governance_Submitted"]</dt>
@@ -42,19 +42,19 @@
 
                     @if (!string.IsNullOrEmpty(Model.Language))
                     {
-                        <dt class="col-5">@Localizer["AdminAppDetail_Language"]</dt>
+                        <dt class="col-5">@Localizer["Governance_AdminAppDetail_Language"]</dt>
                         <dd class="col-7">@Model.Language.ToDisplayLanguageName()</dd>
                     }
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
-                        <dt class="col-5">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
+                        <dt class="col-5">@Localizer["Governance_ApplicationDetail_ReviewStarted"]</dt>
                         <dd class="col-7">@Model.ReviewStartedAt.ToDate()</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))
                     {
-                        <dt class="col-5">@Localizer["AdminAppDetail_Reviewer"]</dt>
+                        <dt class="col-5">@Localizer["Governance_AdminAppDetail_Reviewer"]</dt>
                         <dd class="col-7">@Model.ReviewerName</dd>
                     }
                 </dl>
@@ -67,7 +67,7 @@
                 <div class="card-body text-center">
                     <a asp-controller="GovernanceBoardVoting" asp-action="BoardVotingDetail" asp-route-applicationId="@Model.Id"
                        class="btn btn-primary w-100">
-                        <i class="fa-solid fa-gavel me-1"></i> @Localizer["BoardVoting_Title"] <i class="fa-solid fa-lock auth-lock-icon"></i>
+                        <i class="fa-solid fa-gavel me-1"></i> @Localizer["Governance_BoardVoting_Title"] <i class="fa-solid fa-lock auth-lock-icon"></i>
                     </a>
                 </div>
             </div>

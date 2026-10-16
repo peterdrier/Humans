@@ -10,8 +10,7 @@ namespace Humans.Issues.Services;
 /// cleanup job) and <see cref="IIssueTriage"/> (the Backdoor machine API) have taken their
 /// members into <c>Contracts/</c>.
 /// Everything declared here has no consumer outside Issues — the screenshot-carrying submit
-/// the in-app reporter uses, the result-returning mutation overloads its own controller
-/// prefers, the viewer-scoped badge count, and the index page's reporter filter.
+/// the in-app reporter uses, the viewer-scoped badge count, and the index page's reporter filter.
 /// </summary>
 internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssueTriage
 {
@@ -36,39 +35,8 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// The four result-returning mutation overloads the section's own controller prefers.
-    /// Each is the <see cref="IIssueTriage"/> method with its exceptions folded into a result,
-    /// viewer included — the scoping rule is the service's either way, so the browser cannot
-    /// reach past it by taking this door.
-    /// </summary>
-    Task<IssueMutationResult> UpdateStatusWithResultAsync(
-        Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
-        CancellationToken ct = default);
-
-    Task<IssueMutationResult> UpdateAssigneeWithResultAsync(
-        Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
-        CancellationToken ct = default);
-
-    Task<IssueMutationResult> UpdateSectionWithResultAsync(
-        Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
-        CancellationToken ct = default);
-
-    Task<IssueMutationResult> SetGitHubIssueNumberWithResultAsync(
-        Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
-        CancellationToken ct = default);
-
     Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default);
 }
 
 /// <summary>A distinct reporter and how many issues they filed — the index page's filter list.</summary>
 internal sealed record DistinctReporterRow(Guid UserId, string DisplayName, int Count);
-
-internal sealed record IssueMutationResult(bool Succeeded, bool NotFound, string? ErrorMessage)
-{
-    public static IssueMutationResult Success() => new(true, false, null);
-
-    public static IssueMutationResult Missing(string message) => new(false, true, message);
-
-    public static IssueMutationResult Failed(string message) => new(false, false, message);
-}

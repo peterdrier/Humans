@@ -15,8 +15,7 @@ namespace Humans.Store.Controllers;
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
-    IUserServiceRead userService,
-    ILogger<StoreAdminController> logger) : HumansControllerBase(userService)
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
     private const decimal SpanishStandardVatRatePercent = 21m;
 
@@ -190,16 +189,11 @@ internal sealed class StoreAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        try
-        {
-            await storeService.DeactivateProductAsync(id, user.Id, ct);
+        var result = await storeService.DeactivateProductAsync(id, user.Id, ct);
+        if (result.Succeeded)
             SetSuccess("Product deactivated.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Store catalog deactivate rejected: {Reason}", ex.Message);
-            SetError(ex.Message);
-        }
+        else
+            SetError(result.Refusal!);
         return RedirectToAction(nameof(Catalog));
     }
 }

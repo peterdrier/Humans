@@ -7,6 +7,7 @@ and its two collaborators. **DbContext:** `AuthDbContext`, internal to the
 section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.
 
+`IRoleAssignmentServiceRead` aliases the same singleton as the full interface.
 The inner `IRoleAssignmentService` is wrapped by
 `Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).

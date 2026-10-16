@@ -533,6 +533,9 @@ public class CalendarServiceValidationTests
             RecurrenceRule = "FREQ=DAILY",
             RecurrenceTimezone = "UTC",
         });
+        repo.UpsertExceptionAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(), Arg.Any<Instant>(),
+            Arg.Any<Action<Humans.Calendar.Domain.CalendarEventException>>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>())
+            .Returns((string?)null);
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
                 Arg.Any<AuditAction>(),
@@ -605,6 +608,43 @@ public class CalendarServiceValidationTests
         result.ValidationMemberName.Should().BeNull();
         result.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
         await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task OccurrenceWrites_PropagateDependencyFaultsWithoutRefusalOrAudit(bool cancel, bool lookup)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var ev = new Humans.Calendar.Domain.CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            StartUtc = Instant.FromUtc(2026, 6, 1, 10, 0),
+            RecurrenceRule = "FREQ=DAILY",
+            RecurrenceTimezone = "UTC"
+        };
+        var failure = new InvalidOperationException("Private occurrence persistence diagnostic");
+        repo.GetEventByIdAsync(ev.Id, Arg.Any<CancellationToken>()).Returns(lookup
+            ? Task.FromException<Humans.Calendar.Domain.CalendarEvent?>(failure)
+            : Task.FromResult<Humans.Calendar.Domain.CalendarEvent?>(ev));
+        repo.UpsertExceptionAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(), Arg.Any<Instant>(),
+            Arg.Any<Action<Humans.Calendar.Domain.CalendarEventException>>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>())
+            .Returns(Task.FromException<string?>(failure));
+        var audit = Substitute.For<IAuditLogService>();
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = BuildService(repo, audit, logger);
+        Func<Task> act = cancel
+            ? () => service.CancelOccurrenceAsync(ev.Id, ev.StartUtc, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : () => service.OverrideOccurrenceAsync(ev.Id, ev.StartUtc,
+                new OverrideOccurrenceDto(null, null, "Changed", null, null, null), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(act);
+
+        thrown.Should().BeSameAs(failure);
+        audit.ReceivedCalls().Should().BeEmpty();
+        logger.ReceivedCalls().Should().BeEmpty();
     }
 
     private static CalendarService BuildService(ICalendarRepository repo)

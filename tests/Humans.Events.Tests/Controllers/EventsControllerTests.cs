@@ -355,6 +355,7 @@ public class EventsControllerTests
     [Xunit.InlineData("format")]
     [Xunit.InlineData("quote")]
     [Xunit.InlineData("io")]
+    [Xunit.InlineData("dependency-format")]
     [Xunit.InlineData("caller-cancel")]
     [Xunit.InlineData("dependency-cancel")]
     public async Task BulkUpload_SeparatesInputErrorsFromUnexpectedFailures(string failureKind)
@@ -387,6 +388,8 @@ public class EventsControllerTests
             failure = new OperationCanceledException("Upload storage cancelled");
         else if (string.Equals(failureKind, "io", StringComparison.Ordinal))
             failure = new IOException("Upload stream unavailable");
+        else if (string.Equals(failureKind, "dependency-format", StringComparison.Ordinal))
+            failure = new FormatException("Secret upload diagnostics");
         if (failure is not null) file.OpenReadStream().Returns<Stream>(_ => throw failure);
         else
         {

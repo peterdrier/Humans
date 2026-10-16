@@ -49,4 +49,8 @@ public sealed record ApprovedEventView(
     public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone) =>
         EventRecurrenceDays.GetOccurrenceInstants(
             StartAt, IsRecurring, RecurrenceDays, gateOpeningDate, timeZone);
+
+    internal IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate? gateOpeningDate, DateTimeZone? timeZone) =>
+        EventRecurrenceDays.GetOccurrenceInstants(
+            StartAt, IsRecurring, RecurrenceDays, gateOpeningDate, timeZone);
 }

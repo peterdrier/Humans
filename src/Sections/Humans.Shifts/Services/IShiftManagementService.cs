@@ -83,9 +83,9 @@ internal interface IShiftManagementService
     Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input);
 
     /// <summary>
-    /// Deletes a rota. Throws if child shifts have confirmed signups.
+    /// Deletes a rota; returns a resource-key refusal for missing rotas or confirmed signups.
     /// </summary>
-    Task DeleteRotaAsync(Guid rotaId);
+    Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId);
 
     /// <summary>
     /// Gets a rota by primary key with shifts included.
@@ -143,9 +143,9 @@ internal interface IShiftManagementService
     Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input);
 
     /// <summary>
-    /// Deletes a shift. Throws if confirmed signups exist; cancels pending signups.
+    /// Deletes a shift and pending signups; returns a resource-key refusal for missing shifts or confirmed signups.
     /// </summary>
-    Task DeleteShiftAsync(Guid shiftId);
+    Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId);
 
     /// <summary>
     /// Gets a shift by primary key.
@@ -321,3 +321,5 @@ internal sealed record RotaMoveResult(bool Succeeded, string Message, string? Re
     internal static RotaMoveResult Success(string message, string redirectSlug) => new(true, message, redirectSlug);
     internal static RotaMoveResult Failure(string message) => new(false, message);
 }
+
+internal sealed record ShiftDeletionResult(string? ErrorKey = null, int ConfirmedSignups = 0);

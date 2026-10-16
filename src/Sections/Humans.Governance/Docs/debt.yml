@@ -3,19 +3,3 @@
 version: 1
 next_id: 12
 inbox:
-  - added: 2026-09-02
-    id: GOV-3
-    what: "Assert-the-mock tests in Humans.Governance.Tests: the GetRequiredTeamIdsForUserAsync Colaborador cases and the HasActiveRolesAsync pair assert the substitute's own configured return; the filtering tests and the user-scoping test duplicate repository coverage at the service layer (finding 19, /section-doctor on Governance 2026-09-02)."
-    review: panel
-  - added: 2026-09-02
-    id: GOV-5
-    what: "DataAnnotations validation on the Create form (Models/ApplicationViewModels.cs [Required]/[StringLength]) is unlocalized in every supported culture. AddDataAnnotationsLocalization binds DataAnnotationLocalizerProvider to SharedResource, which carries neither the message templates ('The {0} field is required.') nor any display name for these fields, so both fall back to the attribute's English. ApplicationDecisionService already returns localized ErrorKeys for the same rules (MotivationRequired et al.) but ModelState.IsValid short-circuits before SubmitAsync runs, so the localized path is unreachable for the empty case (finding 27, /section-doctor on Governance 2026-09-02). Plan: drop the DataAnnotations the service already enforces so its localized ErrorKeys run, and move any rule only the attributes enforce (the 50-2000 and 1000/2000 length limits) into ApplicationDecisionService with Governance resx keys in all six cultures; view model and internal service only, no shared or public surface."
-    review: panel
-  - added: 2026-09-18
-    id: GOV-9
-    what: "Most GovernanceResource keys carry no Governance_ prefix, and the Votes_* keys the assembly-votes lane added are new debt of the same kind (resource-key-prefix) (/section-doctor on Governance 2026-09-18). Plan: rename the keys to the Governance_ prefix across all six cultures and every call site in one PR; resource keys are section-internal, no public surface."
-    review: panel
-  - added: 2026-09-18
-    id: GOV-10
-    what: "Humans.Governance.Tests aliases the Application entity as MemberApplication in some files and as Application in others, so a grep for either name misses call sites in the other half — the alias exists to dodge the Humans.Application.* namespace collision (/section-doctor on Governance 2026-09-18)."
-    review: light

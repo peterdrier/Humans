@@ -29,9 +29,9 @@ public class CachingEarlyEntryServiceTests
     {
         var (sut, inner) = CreateSut();
         var userId = Guid.NewGuid();
-        var entry = new UserEarlyEntry(new LocalDate(2026, 7, 1), ["Camp: Flags"]);
+        var entry = new EarlyEntryRosterRow(userId, new LocalDate(2026, 7, 1), ["Camp: Flags"], false);
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-             .Returns(Task.FromResult<UserEarlyEntry?>(entry));
+             .Returns(Task.FromResult<EarlyEntryRosterRow?>(entry));
 
         var first = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var second = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -48,7 +48,7 @@ public class CachingEarlyEntryServiceTests
         var (sut, inner) = CreateSut();
         var userId = Guid.NewGuid();
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+             .Returns(Task.FromResult<EarlyEntryRosterRow?>(null));
 
         var first = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var second = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -69,10 +69,10 @@ public class CachingEarlyEntryServiceTests
         var (sut, inner) = CreateSut();
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
-        var grant = new UserEarlyEntry(new LocalDate(2026, 7, 1), ["Camp: Flags"]);
+        var grant = new EarlyEntryRosterRow(userId, new LocalDate(2026, 7, 1), ["Camp: Flags"], false);
         var old = wasGranted ? grant : null;
         var current = wasGranted ? null : grant;
-        var pending = new TaskCompletionSource<UserEarlyEntry?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<EarlyEntryRosterRow?>(TaskCreationOptions.RunContinuationsAsynchronously);
         inner.GetForUserAsync(userId, ct).Returns(pending.Task, Task.FromResult(current));
         var read = sut.GetForUserAsync(userId, ct);
 
@@ -93,7 +93,7 @@ public class CachingEarlyEntryServiceTests
         var (sut, inner) = CreateSut();
         var userId = Guid.NewGuid();
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+             .Returns(Task.FromResult<EarlyEntryRosterRow?>(null));
 
         _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         ((IEventSettingsChangeListener)sut).EventSettingsChanged(Guid.NewGuid());
@@ -108,7 +108,7 @@ public class CachingEarlyEntryServiceTests
         var (sut, inner) = CreateSut();
         var userId = Guid.NewGuid();
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+             .Returns(Task.FromResult<EarlyEntryRosterRow?>(null));
 
         _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         sut.InvalidateUser(userId);
@@ -124,7 +124,7 @@ public class CachingEarlyEntryServiceTests
         var alice = Guid.NewGuid();
         var bob = Guid.NewGuid();
         inner.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+             .Returns(Task.FromResult<EarlyEntryRosterRow?>(null));
 
         _ = await sut.GetForUserAsync(alice, Xunit.TestContext.Current.CancellationToken);
         _ = await sut.GetForUserAsync(bob, Xunit.TestContext.Current.CancellationToken);

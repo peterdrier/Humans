@@ -71,12 +71,12 @@ internal interface ITicketService : ITicketServiceRead, IApplicationService
     /// <summary>
     /// Get all attendees for CSV export, ordered by name.
     /// </summary>
-    Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync();
+    Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId);
 
     /// <summary>
     /// Get all orders for CSV export, ordered by purchase date descending.
     /// </summary>
-    Task<List<OrderExportRow>> GetOrderExportDataAsync();
+    Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId);
 
     /// <summary>
     /// One row per donation on a paid order (VIP amount above the threshold, separate checkout

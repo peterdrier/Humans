@@ -59,7 +59,7 @@ All **profile information** searchable; **board/admin and private info excluded*
   ContactFields, publicly-exposed emails (public).
 - `LegalName` *(new)* — FirstName/LastName; admin/coordinator only.
 - `Admin` — all verified emails + non-public ContactFields; admin/board only.
-- `PublicAll = Name | Bio`, `ManageAll = Name | Bio | LegalName`, `AdminAll = … | Admin`.
+- `PublicAll = Name | Bio`, `AdminAll = Name | Bio | LegalName | Admin`. The unused coordinator-picker alias was removed; future callers compose the existing flags.
 
 `PersonSearchMatcher` (`src/Sections/Humans.Users/Services/PersonSearchMatcher.cs`) — a pure,
 unit-tested matcher over the cached `UserInfo` read-model. Accent-/case-fold (`Fold`: lowercase +
@@ -69,7 +69,7 @@ per-record matching to it.
 
 ## Done in this PR
 
-- `PersonSearchFields`: `LegalName` + `ManageAll`; `AdminAll` includes `LegalName`.
+- `PersonSearchFields`: `LegalName`; the admin list uses `AdminAll`, which includes `LegalName`.
 - `PersonSearchMatcher` + 23 unit tests (resolved-name fallback, accents, tokens, legal-name
   gating, bio/CV/public-contact, public-vs-admin email, board/private/health negatives, rejected
   exclusion).
@@ -81,10 +81,10 @@ per-record matching to it.
 
 Per-window scope flip so admin/coordinator windows match **legal name** (defect 2):
 
-- `TeamAdminController.SearchUsers` / `SearchMembersForRole` → `ManageAll`; collapse the role-picker
+- `TeamAdminController.SearchUsers` / `SearchMembersForRole` → `Name | Bio | LegalName`; collapse the role-picker
   hybrid (existing members by DisplayName+Email, candidates by BurnerName) onto the matcher.
-- `Shift{Admin,Dashboard}Controller.SearchVolunteers` → `ManageAll` (confirm each is lead/admin-gated).
-- `ProfileApiController.Search`: add a role-checked `scope=manage` → `ManageAll`; point the
+- `Shift{Admin,Dashboard}Controller.SearchVolunteers` → `Name | Bio | LegalName` (confirm each is lead/admin-gated).
+- `ProfileApiController.Search`: add a role-checked `scope=manage` → `Name | Bio | LegalName`; point the
   add-to-team / add-to-barrio / early-entry views at it.
 - Web controller tests asserting public endpoints never receive legal-name/admin scope.
 

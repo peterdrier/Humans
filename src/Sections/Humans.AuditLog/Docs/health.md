@@ -82,8 +82,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 - **No caching decorator** — writes scatter across most sections, reads are admin-only and
   index-filtered; a section cache buys nothing (§15 Option A).
-- **No resource set** — the two pages are admin-only English; `SectionTypesTakeNoStringLocalizer`
-  pins it so adding copy forces carving a resource set first.
+- **Admin pages stay English** — member-facing entry renderers use `AuditLogResource`; the two
+  admin-only pages add no localization keys.
 - **Predicate-pushed reads, not load-into-RAM** — `audit_log` is the one unbounded, ever-growing
   table, written from most sections; the section keeps `Where`-at-the-DB query methods as a sanctioned
   exception to `no-linq-at-db-layer`.

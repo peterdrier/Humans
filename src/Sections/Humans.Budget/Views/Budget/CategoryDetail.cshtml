@@ -148,7 +148,6 @@
                                     </button>
                                     <form asp-action="DeleteLineItem" asp-route-id="@item.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
-                                        <input type="hidden" name="budgetCategoryId" value="@category.Id" />
                                         <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="@Localizer["Budget_DeleteLineItemConfirm"]">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
@@ -162,7 +161,6 @@
                                 <td colspan="7" class="bg-light">
                                     <form asp-action="UpdateLineItem" asp-route-id="@item.Id" method="post" class="row g-2 p-2 align-items-end">
                                         @Html.AntiForgeryToken()
-                                        <input type="hidden" name="budgetCategoryId" value="@category.Id" />
                                         <div class="col-md-2">
                                             <label class="form-label form-label-sm">@Localizer["Budget_Description"]</label>
                                             <input type="text" name="description" class="form-control form-control-sm" value="@item.Description" required />

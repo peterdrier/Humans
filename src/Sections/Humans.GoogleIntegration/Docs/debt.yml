@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-10-04
-    id: GOOGLE-4
-    what: "GoogleSyncOutboxProcessor infers GoogleEmailStatus.Valid from AddUserToTeamResourcesAsync returning plus activeResources.Count > 0. GoogleWorkspaceSyncService can return without a vendor call when Drive mode is None, and group-only resources enqueue deferred group sync rather than accepting the address. Drive failures can also be logged and returned. This contradicts the successful-Google-acceptance invariant and can turn Unknown into a green Valid badge without verification. Found during the daily sweep. Plan: IGoogleSyncService.AddUserToTeamResourcesAsync returns a result record (Accepted / Deferred / Failed, from the actual Drive and group outcomes) instead of Task; the processor marks Valid only on Accepted, and SystemTeamSyncJob (Teams, the one other caller) ignores the result. Tightened signature on an existing method, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

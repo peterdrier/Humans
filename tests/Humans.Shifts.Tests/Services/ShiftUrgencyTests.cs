@@ -27,7 +27,7 @@ public class ShiftUrgencyTests
     {
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .Build();
 
         _service = new ShiftManagementService(
@@ -38,7 +38,8 @@ public class ShiftUrgencyTests
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
-            new FakeClock(TestNow));
+            new FakeClock(TestNow),
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static EventSettingsInfo MakeCalendar(

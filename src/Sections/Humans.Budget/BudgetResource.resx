@@ -146,4 +146,9 @@
   <data name="Budget_VatCredit" xml:space="preserve"><value>VAT Credit</value></data>
   <data name="Budget_BackToBudget" xml:space="preserve"><value>Back to Budget</value></data>
   <data name="Budget_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Budget_YearStatus_Draft" xml:space="preserve"><value>Draft</value></data>
+  <data name="Budget_YearStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Budget_YearStatus_Closed" xml:space="preserve"><value>Closed</value></data>
+  <data name="Budget_ExpenditureType_CapEx" xml:space="preserve"><value>Capital expenditure</value></data>
+  <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Operating expenditure</value></data>
 </root>

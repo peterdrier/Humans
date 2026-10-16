@@ -95,7 +95,7 @@ public class GateServiceTests
 
         _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((UserEarlyEntry?)null);
+            .Returns((EarlyEntryRosterRow?)null);
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
@@ -373,7 +373,7 @@ public class GateServiceTests
         // Holds a *later-day* Early Entry grant (tomorrow) — the distinguishing too-early sub-case.
         var tomorrow = Clock.GetCurrentInstant().InUtc().Date.PlusDays(1);
         _earlyEntry.GetForUserAsync(GuestId, Arg.Any<CancellationToken>())
-            .Returns(new UserEarlyEntry(tomorrow, new[] { "Crew" }));
+            .Returns(new EarlyEntryRosterRow(GuestId, tomorrow, new[] { "Crew" }, false));
 
         var r = await _svc.EvaluateAsync(Barcode);
 
@@ -424,7 +424,7 @@ public class GateServiceTests
         await _svc.SaveSettingsAsync(new GateSettingsDto(
             Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
         _earlyEntry.GetForUserAsync(GuestId, Arg.Any<CancellationToken>())
-            .Returns(new UserEarlyEntry(Clock.GetCurrentInstant().InUtc().Date, new[] { "Build crew" }));
+            .Returns(new EarlyEntryRosterRow(GuestId, Clock.GetCurrentInstant().InUtc().Date, new[] { "Build crew" }, false));
 
         (await Record(idConfirmed: true))
             .Verdict.Should().Be(GateVerdict.AdmittedEarly);

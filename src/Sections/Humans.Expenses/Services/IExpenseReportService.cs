@@ -71,7 +71,7 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     /// Authorizes: actor may edit the report + editable status + line belongs to report.
     /// Idempotent — no-op if the line has no attachment.
     /// </summary>
-    Task RemoveAttachmentFromLineAsync(
+    Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, CancellationToken ct = default);
 
@@ -132,16 +132,22 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default);
 }
 
-internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
+internal sealed record ExpenseMutationResult(bool Succeeded, ExpenseError? Error)
 {
     public static ExpenseMutationResult Success { get; } = new(true, null);
 
-    public static ExpenseMutationResult Failure(string message) => new(false, message);
+    public static ExpenseMutationResult Failure(string resourceKey, params object[] arguments) =>
+        new(false, new ExpenseError(resourceKey, arguments));
+
+    public static ExpenseMutationResult OperatorFailure(string message) => new(false, new ExpenseError(null, [], message));
 }
 
 /// <summary>Line-add outcome; <see cref="LineId"/> is set on success so the caller can redirect
 /// into the new line's flow (an invoice line continues to its proofs page).</summary>
-internal sealed record ExpenseAddLineResult(bool Succeeded, string? ErrorMessage, Guid? LineId);
+internal sealed record ExpenseAddLineResult(bool Succeeded, ExpenseError? Error, Guid? LineId);
+
+/// <summary>A member resource key with format arguments, or feedback for an operator-only action.</summary>
+internal sealed record ExpenseError(string? ResourceKey, object[] Arguments, string? OperatorMessage = null);
 
 /// <summary>An uploaded file passed through to the service untouched.</summary>
 internal sealed record ExpenseFileUpload(string FileName, string ContentType, Stream Content);

@@ -100,9 +100,9 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         string fullTitle;
         if (string.Equals(action, "apply", StringComparison.Ordinal))
         {
-            id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+            id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
                 name, "Purpose", "Report", WorkgroupDeliverableKind.Report,
-                WorkgroupAudience.Board, null, null, null), Ct);
+                WorkgroupAudience.Board, null, null, null), Ct)).Value;
             fullTitle = $"Working group applied: {name}";
         }
         else
@@ -167,7 +167,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Refused))]
     [InlineData(nameof(WorkgroupStatus.Withdrawn))]
     [InlineData(nameof(WorkgroupStatus.Dormant))]
-    public async Task Register_FromAnyOtherStatus_Throws(string fromName)
+    public async Task Register_FromAnyOtherStatus_ReturnsARefusal(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -175,7 +175,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.WrongStatus);
     }
 
@@ -197,7 +197,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Referred))]
     [InlineData(nameof(WorkgroupStatus.Active))]
     [InlineData(nameof(WorkgroupStatus.Dormant))]
-    public async Task Refer_FromAnyOtherStatus_Throws(string fromName)
+    public async Task Refer_FromAnyOtherStatus_ReturnsARefusal(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -205,7 +205,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().ReferAsync(workgroup.Id, SeedUser(), null, Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── Refuse: Applied/Referred, reasons required ──────────────────────────
@@ -244,24 +244,24 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task Refuse_WithoutReasons_Throws(string? reasons)
+    public async Task Refuse_WithoutReasons_ReturnsARefusal(string? reasons)
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
 
         var act = () => NewService().RefuseAsync(workgroup.Id, SeedUser(), reasons!, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.ReasonsRequired);
     }
 
     [HumansFact]
-    public async Task Refuse_FromActive_Throws()
+    public async Task Refuse_FromActive_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
 
         var act = () => NewService().RefuseAsync(workgroup.Id, SeedUser(), "reasons", Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── Withdraw: Active/Dormant, reasons required ──────────────────────────
@@ -285,13 +285,13 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Withdraw_WithoutReasons_Throws()
+    public async Task Withdraw_WithoutReasons_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
 
         var act = () => NewService().WithdrawAsync(workgroup.Id, SeedUser(), " ", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.ReasonsRequired);
     }
 
@@ -299,7 +299,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Applied))]
     [InlineData(nameof(WorkgroupStatus.Referred))]
     [InlineData(nameof(WorkgroupStatus.Refused))]
-    public async Task Withdraw_FromAnyOtherStatus_Throws(string fromName)
+    public async Task Withdraw_FromAnyOtherStatus_ReturnsARefusal(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -307,7 +307,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().WithdrawAsync(workgroup.Id, SeedUser(), "reasons", Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── Close: Active only, reasons required, always Quiet ──────────────────
@@ -326,13 +326,13 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Close_WithoutReasons_Throws()
+    public async Task Close_WithoutReasons_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
 
         var act = () => NewService().CloseAsync(workgroup.Id, SeedUser(), "", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.ReasonsRequired);
     }
 
@@ -340,7 +340,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Applied))]
     [InlineData(nameof(WorkgroupStatus.Dormant))]
     [InlineData(nameof(WorkgroupStatus.Withdrawn))]
-    public async Task Close_FromAnyOtherStatus_Throws(string fromName)
+    public async Task Close_FromAnyOtherStatus_ReturnsARefusal(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -348,7 +348,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().CloseAsync(workgroup.Id, SeedUser(), "reasons", Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── Reactivate: Dormant only ─────────────────────────────────────────────
@@ -372,7 +372,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Active))]
     [InlineData(nameof(WorkgroupStatus.Applied))]
     [InlineData(nameof(WorkgroupStatus.Withdrawn))]
-    public async Task Reactivate_FromAnyOtherStatus_Throws(string fromName)
+    public async Task Reactivate_FromAnyOtherStatus_ReturnsARefusal(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -380,7 +380,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().ReactivateAsync(workgroup.Id, SeedUser(), Ct);
 
-        await act.Should().ThrowAsync<WorkgroupRuleException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     // ── MarkDone: members only, Quiet never allowed ──────────────────────────
@@ -404,19 +404,19 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task MarkDone_WithQuietReason_Throws()
+    public async Task MarkDone_WithQuietReason_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var member = workgroup.Members.Single().UserId;
 
         var act = () => NewService().MarkDoneAsync(workgroup.Id, member, WorkgroupDormantReason.Quiet, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.DoneReasonInvalid);
     }
 
     [HumansFact]
-    public async Task MarkDone_WithACommentWindowStillOpen_Throws()
+    public async Task MarkDone_WithACommentWindowStillOpen_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var member = workgroup.Members.Single().UserId;
@@ -430,7 +430,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().MarkDoneAsync(workgroup.Id, member, WorkgroupDormantReason.Delivered, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CommentsStillOpen);
     }
 
@@ -448,7 +448,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             new WorkgroupLogEntrySave(WorkgroupLogKind.Update, Clock.GetCurrentInstant().InUtc().Date, null, "Body"),
             Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
@@ -465,7 +465,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             new WorkgroupMeetingSave("Meeting", now, now.Plus(NodaTime.Duration.FromHours(1)), null, null, false, null),
             Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
@@ -479,7 +479,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var act = () => NewService().CreateDocumentAsync(
             workgroup.Id, member, new WorkgroupDocumentSave("Title", WorkgroupDocumentKind.Deliverable, "Body"), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
@@ -496,7 +496,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
                 WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, null),
             Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
@@ -512,7 +512,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var act = () => NewService().RespondToCommentAsync(
             comment.Id, member, WorkgroupCommentDisposition.Accepted, "Thanks", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
@@ -557,7 +557,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var commenter = SeedUser("A member of the public");
         var act = () => NewService().AddCommentAsync(document.Id, commenter, "Scope", "Still allowed?", Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Base.ViewComponents;
 
@@ -8,8 +9,11 @@ public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 public enum HumanLink { None, Public, Admin }
 
-/// <summary>Renders a member’s name and picture; its read honors browser cancellation.</summary>
-public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
+/// <summary>Renders a member’s name and picture, localizing missing names; its read honors browser cancellation.</summary>
+public class HumanViewComponent(
+    IUserServiceRead userService,
+    IUrlHelperFactory urlHelperFactory,
+    IStringLocalizer<SharedResource> localizer) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
@@ -43,7 +47,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
 
         if (string.IsNullOrEmpty(displayName))
         {
-            displayName = "Unknown";
+            displayName = localizer["Common_Unknown"];
         }
 
         string? href = null;

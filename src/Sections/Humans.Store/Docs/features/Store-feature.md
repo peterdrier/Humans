@@ -40,6 +40,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
+- Editable order pages use the catalog for `Order.Year`. `AddLineAsync` resolves a legacy zero year through the existing audited camp-season repair before the line write, and refuses an unresolved year or a product whose year differs from the order, using localized feedback.
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
 - Remove-line form posts to `/Store/Order/{id}/RemoveLine` and is gated identically to AddLine on order state and product deadline.
 - Counterparty fields (name, VAT id, address, country code, email) are editable while the order is `Open`; `FinanceAdmin` can edit them in any state.
@@ -187,3 +188,15 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
 - [`Camps.md`](../../../Humans.Camps/Docs/Camps.md) — `CampSeason` is the order's owning aggregate
 - [`ticket-vendor-integration.md`](../../../Humans.Tickets/Docs/features/ticket-vendor-integration.md) — sibling Stripe integration; same RAK + dashboard-only-refunds discipline
+
+- Line and billing-details refusals are returned as resource keys and localized by the member controller. Dependency failures are not interpreted as refusals or exposed as exception-message feedback.
+
+- Checkout business refusals use localized resource keys and amounts. Actual Stripe faults retain Error diagnostics and show only generic localized checkout failure feedback.
+
+- Duplicate or ineligible camp/department order creation returns localized feedback instead of throwing; successful creation still redirects to the created order.
+
+- Invoice issuance distinguishes typed operator refusals from dependency faults; an external InvalidOperationException cannot be surfaced as an expected refusal.
+
+- Manual payment and deletion feedback distinguishes typed operator refusals from persistence faults; expected refusals do not write money records or audits.
+
+Catalog validation and missing-product refusals are typed operator outcomes. Actual deactivation persistence/audit faults propagate; the catalog save form keeps generic failure feedback and private Error diagnostics.

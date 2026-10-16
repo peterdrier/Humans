@@ -46,7 +46,7 @@ registered keyed under `CachingTicketQueryService.InnerServiceKey`
 The decorator is the registered
 `ITicketService`, the budgeted cross-section `ITicketServiceRead`, and the
 `ITicketCacheInvalidator`. External sections inject `ITicketServiceRead`
-(two-method surface: `GetTicketOrdersAsync` + `GetUserTicketHoldingsAsync`)
+(`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync` and shared current-event barcode lookup)
 rather than the full `ITicketService`. Tickets caching is entirely
 `TrackedCache`-based: an orders slice (`Tickets.Orders`, warmed on startup)
 and a user-holdings slice (`Tickets.UserHoldings`, lazy with a 5-minute
@@ -212,7 +212,7 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `IUserServiceRead`, `ICampServiceRead`, `ITeamServiceRead`,
-`IRoleAssignmentService` (the controller resolves the active year via
+`IRoleAssignmentServiceRead` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 

@@ -17,5 +17,5 @@ internal interface IEmailBodyComposer
     /// opt-outable categories, will be communicated as List-Unsubscribe by
     /// the transport layer.
     /// </summary>
-    (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null);
+    (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null, string? culture = null);
 }

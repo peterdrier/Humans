@@ -2,17 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-08-31
-    id: CMPGN-1
-    what: "CampaignService admin mutations and sends (CreateAsync/UpdateAsync/ActivateAsync/CompleteAsync, ImportCodesAsync, SendWaveAsync, ResendToGrantAsync, RetryAllFailedAsync) write no audit-log entries, and grant/outbox rows carry no actor — the Board cannot see which admin did what. AGENTS.md 'Hit every surface: Audit trail' requires them; surfaced by Codex review on peterdrier/Humans#1573. Plan: add CampaignCreated, CampaignUpdated, CampaignActivated, CampaignCompleted, CampaignCodesImported, CampaignWaveSent, CampaignGrantResent to AuditAction and write audit entries from the campaign admin actions; pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-10-03
-    id: CMPGN-3
-    what: "CampaignService.SendWaveAsync sends ordinary recipients hardcoded English CampaignReceived notification titles and bodies regardless of PreferredLanguage. Found during the daily production debt sweep. Plan: add Campaigns' first resource marker (CampaignsResource at the section root, not Contracts) and resx in all six cultures, and render the notification under the recipient's culture; resource markers are not public surface (D2), pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-10-04
-    id: CMPGN-4
-    what: "CampaignService.SendWaveAsync sends a CampaignReceived notice saying to check email even when enqueue failed and the grant is marked Failed. Grants remain available under My Codes in /Profile/Me, so notification wording/action should describe that persisted grant rather than promise email delivery. Found during the daily sweep. Plan: once CMPGN-3's resource set exists, reword the notice to point at My Codes in all six cultures; no public surface."
-    review: panel
-    root: CMPGN-3
+inbox: []

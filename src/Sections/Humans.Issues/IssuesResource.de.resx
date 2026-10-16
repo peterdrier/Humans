@@ -297,4 +297,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Neuer Vorgang eingereicht: {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Ihnen wurde ein Vorgang zugewiesen: {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>Vorgang anzeigen</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>Der Bereich darf höchstens {0} Zeichen lang sein.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>Der Bereich einer geschlossenen Meldung kann nicht geändert werden.</value>
+  </data>
 </root>

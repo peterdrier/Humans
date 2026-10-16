@@ -96,11 +96,6 @@ internal sealed class TicketingBudgetService(
         return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
 
-    public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
-    {
-        return budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
-    }
-
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
     private static LocalDate GetIsoMonday(LocalDate date)
     {

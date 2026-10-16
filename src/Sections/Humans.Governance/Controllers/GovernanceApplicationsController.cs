@@ -103,25 +103,13 @@ internal sealed class GovernanceApplicationsController(
         try
         {
             var result = await applicationDecisionService.SubmitAsync(
-                user.Id, model.MembershipTier, model.Motivation,
+                user.Id, model.MembershipTier, model.Motivation ?? string.Empty,
                 model.AdditionalInfo, model.SignificantContribution, model.RoleUnderstanding,
                 CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
             if (!result.Success)
             {
-                if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                    SetError(sharedLocalizer["Application_AlreadyPending"].Value);
-                else if (string.Equals(result.ErrorKey, "InvalidTier", StringComparison.Ordinal))
-                    ModelState.AddModelError(nameof(model.MembershipTier), sharedLocalizer["Application_InvalidTier"].Value);
-                else if (string.Equals(result.ErrorKey, "MotivationRequired", StringComparison.Ordinal))
-                    ModelState.AddModelError(nameof(model.Motivation),
-                        sharedLocalizer["Profile_MotivationRequired"].Value);
-                else if (string.Equals(result.ErrorKey, "SignificantContributionRequired", StringComparison.Ordinal))
-                    ModelState.AddModelError(nameof(model.SignificantContribution),
-                        sharedLocalizer["Application_SignificantContributionRequired"].Value);
-                else if (string.Equals(result.ErrorKey, "RoleUnderstandingRequired", StringComparison.Ordinal))
-                    ModelState.AddModelError(nameof(model.RoleUnderstanding),
-                        sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
+                SetSubmissionError(result.ErrorKey);
 
                 if (!ModelState.IsValid)
                     return View("~/Views/Governance/Applications/Create.cshtml", model);
@@ -138,6 +126,30 @@ internal sealed class GovernanceApplicationsController(
             SetError(sharedLocalizer["Application_SubmitError"].Value);
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    private void SetSubmissionError(string? errorKey)
+    {
+        if (string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal))
+        {
+            SetError(sharedLocalizer["Application_AlreadyPending"].Value);
+            return;
+        }
+
+        (string? Field, string? ResourceKey) fieldError = errorKey switch
+        {
+            "InvalidTier" => (nameof(ApplicationCreateViewModel.MembershipTier), "Application_InvalidTier"),
+            "MotivationRequired" => (nameof(ApplicationCreateViewModel.Motivation), "Profile_MotivationRequired"),
+            "SignificantContributionRequired" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionRequired"),
+            "RoleUnderstandingRequired" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingRequired"),
+            "MotivationLength" => (nameof(ApplicationCreateViewModel.Motivation), "Application_MotivationLength"),
+            "AdditionalInfoTooLong" => (nameof(ApplicationCreateViewModel.AdditionalInfo), "Application_AdditionalInfoTooLong"),
+            "SignificantContributionTooLong" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionTooLong"),
+            "RoleUnderstandingTooLong" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingTooLong"),
+            _ => (null, null)
+        };
+        if (fieldError.Field is not null)
+            ModelState.AddModelError(fieldError.Field, sharedLocalizer[fieldError.ResourceKey!].Value);
     }
 
     [HttpGet("Details/{id:guid}")]

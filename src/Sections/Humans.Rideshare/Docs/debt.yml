@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 3
-inbox:
-  - added: 2026-10-04
-    id: RIDE-2
-    what: "RideshareRuleException carries a RideshareResource key and format args (Key => Message, Args), and RideshareController/RideshareAdminController render localizer[ex.Key, ex.Args]. Exceptions are never localized (no-localized-exception-messages). Peter, debt review of peterdrier/Humans#1903. Plan: the rule-checking service methods return a result record carrying the refusal key and args, the controllers localize it, and RideshareRuleException is deleted; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

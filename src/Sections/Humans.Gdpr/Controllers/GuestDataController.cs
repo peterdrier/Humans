@@ -24,13 +24,6 @@ internal sealed class GuestDataController(
     ILogger<GuestDataController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private static readonly System.Text.Json.JsonSerializerOptions ExportJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-    };
-
     [HttpGet("Guest/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
@@ -43,9 +36,7 @@ internal sealed class GuestDataController(
         {
             var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
 
-            var payload = BuildExportPayload(export);
-            var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var bytes = GdprExportSerializer.Serialize(export);
             var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
@@ -60,20 +51,5 @@ internal sealed class GuestDataController(
             SetError(localizer["Error_TryAgainLater"].Value);
             return RedirectToAction("Index", "Guest");
         }
-    }
-
-    private static Dictionary<string, object?> BuildExportPayload(GdprExport export)
-    {
-        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ExportedAt"] = export.ExportedAt,
-            ["UserId"] = export.UserId,
-            ["MergedFromUserIds"] = export.MergedFromUserIds
-        };
-        foreach (var (section, data) in export.Sections)
-        {
-            payload[section] = data;
-        }
-        return payload;
     }
 }

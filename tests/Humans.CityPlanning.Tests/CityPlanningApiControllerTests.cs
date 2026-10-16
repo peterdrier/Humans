@@ -109,7 +109,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
             new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
         _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException(error));
+            .Returns(new ContainerMutationResult<ContainerPlacementDto>(null, "Containers_Error_InvalidPlacementGeoJson"));
 
         var result = await CreateController().SaveContainerPlacement(
             id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
@@ -117,8 +117,10 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(error);
     }
 
-    [HumansFact]
-    public async Task SaveContainerPlacement_DoesNotConvertUnexpectedFailuresIntoValidationErrors()
+    [HumansTheory]
+    [InlineData("Database unavailable")]
+    [InlineData("Invalid container placement GeoJSON.")]
+    public async Task SaveContainerPlacement_DoesNotConvertUnexpectedFailuresIntoValidationErrors(string diagnostic)
     {
         _authorization = Substitute.For<IAuthorizationService>();
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -127,12 +129,69 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
             new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
         _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+            .ThrowsAsync(new InvalidOperationException(diagnostic));
 
         var act = () => CreateController().SaveContainerPlacement(
             id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database unavailable");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(diagnostic);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlacementNotes_FormatsOnlyOwnerRefusals(bool dependencyFailure)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        _containersLocalizer = services.GetRequiredService<IStringLocalizer<ContainersResource>>();
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var id = Guid.NewGuid();
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        var operation = _containers.UpdatePlacementNotesAsync(id, 2026, null, null, false, _userId, Arg.Any<CancellationToken>());
+        if (dependencyFailure)
+            operation.ThrowsAsync(new InvalidOperationException("Private database diagnostic"));
+        else
+            operation.Returns(new ContainerMutationResult<ContainerPlacementDto>(null, "Containers_Error_PlacementNotFound"));
+
+        var act = () => CreateController().UpdateContainerPlacementNotes(
+            id, 2026, new UpdateContainerPlacementNotesRequest(), TestContext.Current.CancellationToken);
+
+        if (dependencyFailure)
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private database diagnostic");
+        else
+            (await act()).Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should()
+                .Be(_containersLocalizer["Containers_Error_PlacementNotFound"].Value);
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task ContainerPlacementMutations_AuthorizeRouteYearAndDoNotWriteWhenDenied(int operation)
+    {
+        var id = Guid.NewGuid();
+        const int year = 2025;
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call => call.ArgAt<object>(1) is ContainerAuthorizationTarget { Year: year }
+                ? AuthorizationResult.Failed() : AuthorizationResult.Success());
+        var controller = CreateController();
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = operation switch
+        {
+            0 => await controller.SaveContainerPlacement(id, year, new SaveContainerPlacementRequest("{}"), ct),
+            1 => await controller.UpdateContainerPlacementNotes(id, year, new UpdateContainerPlacementNotesRequest(), ct),
+            _ => await controller.ClearContainerPlacement(id, year, ct),
+        };
+
+        result.Should().BeOfType<ForbidResult>();
+        _containers.ReceivedCalls().Should().ContainSingle();
     }
 
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";

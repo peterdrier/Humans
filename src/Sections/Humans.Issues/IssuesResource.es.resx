@@ -297,4 +297,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Se presentó un asunto nuevo: {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Se te asignó un asunto: {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>Ver asunto</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>La sección debe tener {0} caracteres o menos.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>No se puede cambiar la sección de una incidencia cerrada.</value>
+  </data>
 </root>

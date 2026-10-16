@@ -1,7 +1,7 @@
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// The resource keys <see cref="WorkgroupRuleException"/> throws. Named constants
+/// The resource keys carried by <see cref="WorkgroupRefusal"/>. Named constants
 /// rather than literals so a renamed key is a build error, not a raw key on the page.
 /// </summary>
 internal static class WorkgroupErrorKeys

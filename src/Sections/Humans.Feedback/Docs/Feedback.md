@@ -122,7 +122,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - Every feedback report is linked to the human who submitted it.
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.
-- The index controller orders reporter dropdown names alphabetically; the service returns names and counts without display ordering.
+- The index controller resolves reporter labels from `UserInfo.BurnerName`, orders them alphabetically and builds native select options with counts and the selected filter. The service returns reporter ids and counts only; no reporter name is copied into a view-model identity field.
 - Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
 - Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
@@ -140,6 +140,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 ## Triggers
 
 - When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, a localized in-app `NotificationSource.FeedbackResponse` notification is also dispatched in the reporter's supported saved language. Both email and notice fall back to English for blank, invalid or unsupported preferences.
+- Triage mutations return explicit missing/refused/success results. Only a missing result becomes 404; dependency exceptions retain the normal logged error path. Undefined statuses are refused without persistence or audit.
 - When a message is posted, a status changes, or GDPR erasure deletes reports, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator` after persistence. Erasure invalidates before screenshot cleanup.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 

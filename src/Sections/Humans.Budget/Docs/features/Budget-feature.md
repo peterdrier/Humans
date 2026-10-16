@@ -48,7 +48,7 @@ Nobodies Collective runs one major event per year (2026: "Elsewhere", historical
 | Role | Creates/Edits | Sees | Key Need |
 |------|--------------|------|----------|
 | FinanceAdmin/Admin | Total budget, all allocations, overhead, invoices | Everything | Solvency confidence, single source of truth |
-| Board | Approve total budget | Everything incl. salaries/overhead | Governance oversight |
+| Board | Approve total budget | Public summary; restricted groups and salaries stay with FinanceAdmin/Admin | Governance oversight |
 | Dept. Coordinators | Their dept. line items | All department budgets, own % spent | Own their allocation, see peer context |
 | General members | Nothing | Public summary (pie charts, speedometers) | Trust, transparency |
 | Accountant | Nothing (external) | N/A — uses Stripe/Holded/bank directly | — |
@@ -57,7 +57,7 @@ Nobodies Collective runs one major event per year (2026: "Elsewhere", historical
 
 | Tier | Content | Audience |
 |------|---------|----------|
-| Full | All groups + overhead + salaries + cashflow | Board, Admin/FinanceAdmin |
+| Full | All groups + overhead + salaries + cashflow | Admin/FinanceAdmin |
 | Coordinator | All department budgets + own % spent, no overhead/salaries | Department Coordinators |
 | Public | Aggregated summary, metaphors ("X of your ticket goes to...") | All members |
 
@@ -252,9 +252,9 @@ Outbound invoices to members/barrios:
   - Upsert logic: existing auto-generated items updated on re-sync, not duplicated
   - (VAT is not stored as its own line item — settlement math lives in the cash-flow
     computation; no donation handling or quarter-boundary splitting exists in the sync)
-- **Projections** via `TicketingBudgetService.GetProjectionsAsync`:
+- **Projections** via `IBudgetService.GetTicketingProjectionEntriesAsync`:
   - Virtual (non-persisted) weekly entries for future weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday)
-  - Recalculates from latest actuals: remaining tickets / remaining days = projected daily rate
+  - Each week projects `DailySalesRate` × days (plus the initial burst in the first week); the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
     formula), while the Stripe/TicketTailor fee line items carry the fixed 21% fee VAT rate
 - **Budget totals** exclude `IsCashflowOnly` line items from income/expense/profit/charts

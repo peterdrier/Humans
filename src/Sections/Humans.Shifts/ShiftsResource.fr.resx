@@ -1256,4 +1256,13 @@
   <data name="ShiftSignups_Title" xml:space="preserve"><value>Inscriptions aux créneaux</value></data>
   <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmés</value></data>
   <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} autres</value></data>
+  <data name="Shifts_Delete_ConfirmedSignups" xml:space="preserve">
+    <value>Suppression impossible : {0} personnes ont des inscriptions confirmées. Annulez-les ou réaffectez-les d’abord.</value>
+  </data>
+  <data name="Shifts_Delete_RotaSuccess" xml:space="preserve">
+    <value>Planning supprimé.</value>
+  </data>
+  <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
+    <value>Créneau supprimé.</value>
+  </data>
 </root>

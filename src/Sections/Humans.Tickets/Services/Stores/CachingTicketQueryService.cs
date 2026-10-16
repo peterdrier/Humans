@@ -45,6 +45,13 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
         return _orders.AsReadOnlyDictionary.Values.ToList();
     }
 
+    public async Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
+        string? barcode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode)) return null;
+        return TicketQueryService.FindCurrentEventAttendeeByBarcode(await GetTicketOrdersAsync(ct), barcode);
+    }
+
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -93,11 +100,11 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
         WithInner(inner => inner.GetWhoHasntBoughtAsync(
             search, filterTeam, filterTier, filterTicketStatus, page, pageSize));
 
-    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync() =>
-        WithInner(inner => inner.GetAttendeeExportDataAsync());
+    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId) =>
+        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId));
 
-    public Task<List<OrderExportRow>> GetOrderExportDataAsync() =>
-        WithInner(inner => inner.GetOrderExportDataAsync());
+    public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId) =>
+        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId));
 
     public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId) =>
         WithInner(inner => inner.GetDonationExportDataAsync(actorUserId));

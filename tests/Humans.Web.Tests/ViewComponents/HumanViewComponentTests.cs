@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using System.Text.Encodings.Web;
 using Humans.Base.ViewComponents;
+using Humans.Base;
+using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Domain;
@@ -100,7 +102,8 @@ public class HumanViewComponentTests
         var httpContext = new DefaultHttpContext { RequestServices = app.Services };
         httpContext.SetEndpoint(new Endpoint(null, EndpointMetadataCollection.Empty, "test"));
 
-        var sut = new HumanViewComponent(userService, app.Services.GetRequiredService<IUrlHelperFactory>())
+        var sut = new HumanViewComponent(userService, app.Services.GetRequiredService<IUrlHelperFactory>(),
+            app.Services.GetRequiredService<IStringLocalizer<SharedResource>>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -118,6 +121,7 @@ public class HumanViewComponentTests
     private static WebApplication BuildUsersRoutedApp()
     {
         var builder = WebApplication.CreateBuilder();
+        builder.Services.AddLocalization();
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(ProfileViewController).Assembly)
             .ConfigureApplicationPartManager(apm =>

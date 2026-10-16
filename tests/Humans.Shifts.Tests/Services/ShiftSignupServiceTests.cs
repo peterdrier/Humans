@@ -54,7 +54,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With<ITeamServiceRead>(_teamService)
-            .With(_roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
             .With<ITicketServiceRead>()
             .With(_users)
             .With<ICampServiceRead>()
@@ -70,7 +70,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
@@ -1308,7 +1309,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         earlyEntry.When(x => x.InvalidateUser(userId)).Do(_ => cachedConfirmed = null);
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService).With<ITeamServiceRead>(_teamService)
-            .With(_roleAssignmentService).With(_users).Build();
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,
@@ -1355,8 +1356,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         if (range)
         {
-            var action = () => _service.BailRangeAsync(signup.SignupBlockId.Value, actor);
-            await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("translated rejection");
+            var result = await _service.BailRangeAsync(signup.SignupBlockId.Value, actor);
+            result.ErrorKey.Should().Be(key);
         }
         else
         {
@@ -1366,6 +1367,32 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         (await ShiftsDb.ShiftSignups.FindAsync([signup.Id], TestContext.Current.CancellationToken))!
             .Status.Should().Be(SignupStatus.Confirmed);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task BailRange_MissingCalendarReturnsAKeyWithoutMutatingSignups()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        signup.SignupBlockId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var settings = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_teamService).With<ITeamServiceRead>(_teamService)
+            .With<IRoleAssignmentServiceRead>(_roleAssignmentService).With(_users).Build();
+        var service = new ShiftSignupService(
+            _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
+            AuditLog, Notifier, AdminAuthorization, _viewInvalidator, Substitute.For<IEarlyEntryInvalidator>(),
+            serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        var result = await service.BailRangeAsync(signup.SignupBlockId.Value, userId);
+
+        result.ErrorKey.Should().Be("Shifts_EventCalendarNotConfigured");
+        signup.Status.Should().Be(SignupStatus.Confirmed);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         Notifier.ReceivedCalls().Should().BeEmpty();
     }

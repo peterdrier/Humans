@@ -24,20 +24,20 @@ public interface IFeedbackTriage : IApplicationService
 
     Task<FeedbackReportInfo?> GetFeedbackByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>Posts an admin reply. Throws <see cref="InvalidOperationException"/> when the report is gone.</summary>
-    Task<FeedbackMessageInfo> PostMessageAsync(
+    /// <summary>Posts an admin reply, returning an explicit missing-report result when it is gone.</summary>
+    Task<FeedbackMutationResult> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default);
 
-    Task UpdateStatusAsync(
+    Task<FeedbackMutationResult> UpdateStatusAsync(
         Guid id, FeedbackStatus status, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task UpdateAssignmentAsync(
+    Task<FeedbackMutationResult> UpdateAssignmentAsync(
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task SetGitHubIssueNumberAsync(
+    Task<FeedbackMutationResult> SetGitHubIssueNumberAsync(
         Guid id, int? issueNumber, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 }

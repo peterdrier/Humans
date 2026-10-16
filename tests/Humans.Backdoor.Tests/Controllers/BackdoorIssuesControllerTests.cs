@@ -342,8 +342,8 @@ public class BackdoorIssuesControllerTests
         // invariant, derived from senderUserId — the controller only attributes.
         var issueId = Guid.NewGuid();
         _issues.PostCommentAsync(issueId, Arg.Any<IssueViewer>(), KeyOwnerId, "From the triage agent", false, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new IssueCommentInfo(
-                Guid.NewGuid(), "From the triage agent", Instant.FromUtc(2026, 4, 29, 12, 0))));
+            .Returns(Task.FromResult(new IssueCommentResult(new IssueCommentInfo(
+                Guid.NewGuid(), "From the triage agent", Instant.FromUtc(2026, 4, 29, 12, 0)))));
 
         var result = await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "From the triage agent" });
 
@@ -361,8 +361,7 @@ public class BackdoorIssuesControllerTests
     {
         var issueId = Guid.NewGuid();
         _issues.PostCommentAsync(issueId, Arg.Any<IssueViewer>(), KeyOwnerId, "Hello?", false, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IssueCommentInfo>(
-                new InvalidOperationException($"Issue {issueId} not found")));
+            .Returns(Task.FromResult(new IssueCommentResult(null, NotFound: true)));
 
         var result = await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "Hello?" });
 
@@ -374,7 +373,7 @@ public class BackdoorIssuesControllerTests
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
+            .Returns(IssueMutationResult.Success());
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 
@@ -384,11 +383,11 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task UpdateStatus_returns_NotFound_when_service_throws_invalid_op()
+    public async Task UpdateStatus_returns_NotFound_when_service_reports_missing()
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("not found")));
+            .Returns(Task.FromResult(IssueMutationResult.Missing("Issue not found.")));
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 
@@ -403,12 +402,59 @@ public class BackdoorIssuesControllerTests
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("Cannot reopen a closed issue")));
+            .Returns(Task.FromResult(IssueMutationResult.Refused("Cannot reopen a closed issue")));
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 
         var body = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
         body.Value.Should().BeEquivalentTo(new { error = "Cannot reopen a closed issue" });
+    }
+
+    [HumansTheory]
+    [InlineData("comment")]
+    [InlineData("status")]
+    [InlineData("assignee")]
+    [InlineData("section")]
+    [InlineData("github")]
+    public async Task Mutation_dependency_diagnostics_are_500_without_leaking_messages(string field)
+    {
+        var id = Guid.NewGuid();
+        var failure = new InvalidOperationException("Persistence property not found: private diagnostic");
+        _issues.PostCommentAsync(id, Arg.Any<IssueViewer>(), KeyOwnerId, "Body", false, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IssueCommentResult>(failure));
+        _issues.UpdateStatusAsync(id, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IssueMutationResult>(failure));
+        _issues.UpdateAssigneeAsync(id, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IssueMutationResult>(failure));
+        _issues.UpdateSectionAsync(id, Arg.Any<IssueViewer>(), Arg.Any<string?>(), KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IssueMutationResult>(failure));
+        _issues.SetGitHubIssueNumberAsync(id, Arg.Any<IssueViewer>(), Arg.Any<int?>(), KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IssueMutationResult>(failure));
+
+        var result = field switch
+        {
+            "comment" => await _sut.PostComment(id, new PostIssueCommentModel { Content = "Body" }),
+            "status" => await _sut.UpdateStatus(id, new UpdateIssueStatusModel { Status = IssueStatus.Resolved }),
+            "assignee" => await _sut.UpdateAssignee(id, new UpdateIssueAssigneeModel()),
+            "section" => await _sut.UpdateSection(id, new UpdateIssueSectionModel()),
+            _ => await _sut.SetGitHubIssue(id, new SetIssueGitHubIssueModel())
+        };
+
+        var response = result.Should().BeOfType<ObjectResult>().Subject;
+        response.StatusCode.Should().Be(500);
+        JsonSerializer.Serialize(response.Value).Should().NotContain(failure.Message);
+    }
+
+    [HumansFact]
+    public async Task A_logged_service_failure_returns_500_instead_of_a_rule_refusal()
+    {
+        var id = Guid.NewGuid();
+        _issues.UpdateStatusAsync(id, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(IssueMutationResult.Failed("Failed to update status."));
+
+        var result = await _sut.UpdateStatus(id, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
+
+        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
     }
 
     // ==========================================================================
@@ -476,8 +522,8 @@ public class BackdoorIssuesControllerTests
         _issues.PostCommentAsync(
                 issueId, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new IssueCommentInfo(
-                Guid.NewGuid(), "Body", Instant.FromUtc(2026, 4, 29, 12, 0))));
+            .Returns(Task.FromResult(new IssueCommentResult(new IssueCommentInfo(
+                Guid.NewGuid(), "Body", Instant.FromUtc(2026, 4, 29, 12, 0)))));
 
         await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "Body" });
 
@@ -510,7 +556,7 @@ public class BackdoorIssuesControllerTests
         _issues.UpdateStatusAsync(
                 issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException($"Issue {issueId} not found")));
+            .Returns(Task.FromResult(IssueMutationResult.Missing("Issue not found.")));
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 

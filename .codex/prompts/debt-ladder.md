@@ -187,19 +187,7 @@ find src/Sections/*/Views -name '*.cshtml' -print0 \
 Cross-check each hit's controller/view against the exempt route list before
 picking it.
 
-**Seed:**
-- `Humans.Teams` — `Views/Team/EditTeam.cshtml` (route `/Teams/{id}/Edit`,
-  not exempt despite its elevated policy) has zero `Localizer[` calls;
-  several literal strings ("Custom Slug", "Sensitive team", etc.).
-- `Humans.Budget` — `Views/Budget/Index.cshtml` and `CategoryDetail.cshtml`
-  have zero `Localizer[` calls; `Summary.cshtml` has one residual literal
-  ("Expenses" button label) among otherwise-localized content.
-- `Humans.Events` — `Views/Events/IndividualEventForm.cshtml` has zero
-  `Localizer[` calls; `BarrioEventForm.cshtml` has exactly one, rest literal;
-  `EventsCard/Default.cshtml` has 2 hardcoded strings beside localized ones.
-- `Humans.Users` — `ProfileController`'s `DeclareNotAttending`/
-  `UndoNotAttending`/related methods pass literal English to
-  `SetSuccess`/`SetError` instead of `UsersResource` keys.
+**Seed check (2026-10-10):** The former Teams edit, Budget views, Events forms/card and Users attendance seeds are already localized. Teams edit is also operator-exempt by its actual policy. Re-run Finds for current gaps, including enum labels and refusal feedback.
 
 **Drained when:** both grep commands return nothing outside the exempt list.
 
@@ -251,15 +239,7 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
   | grep -i "dead\|duplicate\|unused\|zero call sites\|no caller"
 ```
 
-**Seed:**
-- `Humans.Tickets` — `CachingTicketQueryService` defines `WithInner` twice
-  (outer class + nested `UserHoldingsCache`), same name and shape.
-- `Humans.Shifts` — `ShiftBrowseQueryFlags.PriorityOnly` is read once, set
-  nowhere — confirmed dead flag.
-- `Humans.Email` — `reportLink` is a dead parameter end-to-end in the
-  feedback-reply email (resx uses `{0}`–`{2}`, renderer passes an unused `{3}`).
-- Central `inbox:` — `Login_Hello` resx key named in no view/controller/tag
-  helper across any culture file.
+**Seed check (2026-10-10):** The former duplicate ticket cache helper, PriorityOnly flag, reportLink parameter and Login_Hello key seeds no longer exist. Re-run Finds for current production duplication.
 
 **Drained when:** the grep above returns nothing with `review: light`.
 
@@ -309,13 +289,7 @@ grep -rn "TODO\|HACK" --include=*.cs --include=*.cshtml src/Sections/Humans.Cale
 (plus a periodic full-`src/` sweep to catch new ones elsewhere — read each
 hit; most are legitimate notes-to-self, not fixable debt.)
 
-**Seed:**
-- `Humans.Calendar/Contracts/CalendarFeedItem.cs:32` — hardcoded production
-  base URL for feed deep links. Move to configuration.
-- `Humans.Calendar/Controllers/CalendarController.cs:425` — hardcoded "all
-  volunteers in Spain" org default. Derive from settings/profile instead.
-- `Humans.Tickets/Views/Shared/Components/TicketStub/Default.cshtml:9` —
-  event label from a constant instead of the active event.
+**Seed check (2026-10-10):** The former Calendar URL/organization-default and ticket-stub event-label seeds are fixed. Feed links use configured public base URLs and the ticket stub reads active event settings. Re-run Finds for new compromises.
 
 **Drained when:** the seed items are closed and the current sweep
 finds no new genuine compromise (a debug-screen "pending caching" comment

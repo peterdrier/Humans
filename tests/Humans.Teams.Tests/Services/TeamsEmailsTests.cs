@@ -1,3 +1,4 @@
+using Xunit;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -19,13 +20,20 @@ public sealed class TeamsEmailsTests
 {
     private static TeamsEmails Create() => TestTeamsEmails.Create();
 
-    [HumansFact]
-    public void AddedToTeam_StampsTeamUpdates()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void AddedToTeam_StampsTeamUpdates(string culture)
     {
-        var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], "en");
+        var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], culture);
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
+        msg.Culture.Should().Be(culture);
         msg.TemplateName.Should().Be("added_to_team");
         msg.Category.Should().Be(MessageCategory.TeamUpdates);
         msg.ReplyTo.Should().BeNull();

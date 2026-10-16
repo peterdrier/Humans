@@ -297,4 +297,10 @@
   <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Nouveau sujet signalé : {0}</value></data>
   <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Un sujet vous a été attribué : {0}</value></data>
   <data name="Issue_Notice_Open" xml:space="preserve"><value>Voir le sujet</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>La section doit contenir au maximum {0} caractères.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>La section d’un signalement clos ne peut pas être modifiée.</value>
+  </data>
 </root>

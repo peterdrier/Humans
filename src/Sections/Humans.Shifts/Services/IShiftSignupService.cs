@@ -42,7 +42,7 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
 
     Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason);
 
-    Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
+    Task<BailRangeResult> BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
@@ -112,3 +112,6 @@ internal sealed record OrphanSignupSnapshot(
     Guid? ReviewedByUserId,
     Guid? EnrolledByUserId,
     Guid? SignupBlockId);
+
+/// <summary>Range-bail refusal key; null indicates success, including an already-empty block.</summary>
+internal sealed record BailRangeResult(string? ErrorKey = null);

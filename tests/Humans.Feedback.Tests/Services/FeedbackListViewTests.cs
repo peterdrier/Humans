@@ -65,6 +65,20 @@ public class FeedbackListViewTests
         html.Should().NotContain("&#xFFFD;");
     }
 
+    [HumansFact]
+    public async Task ReporterOptions_render_encoded_labels_and_preserve_selection()
+    {
+        var id = Guid.NewGuid().ToString();
+        var html = await RenderAsync("Index", new FeedbackPageViewModel
+        {
+            Reporters = [new SelectListItem("Alice & Bob (2)", id, selected: true)]
+        });
+
+        html.Should().Contain($"value=\"{id}\"");
+        html.Should().Contain("Alice &amp; Bob (2)");
+        html.Should().Contain("selected=\"selected\"");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

@@ -404,6 +404,21 @@ namespace Humans.Workgroups.Data.Migrations
                     b.ToTable("workgroup_members", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Workgroups.Domain.WorkgroupsSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RootDriveFolderId")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("workgroups_settings", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Workgroups.Domain.WorkgroupDocument", b =>
                 {
                     b.HasOne("Humans.Workgroups.Domain.Workgroup", "Workgroup")

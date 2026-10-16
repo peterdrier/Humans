@@ -41,7 +41,7 @@ because of what. The section owns no data — it fans out over every contributin
 - A **roster row** (`EarlyEntryRosterRow`) is one human's grants collapsed: earliest date, the
   distinct source labels, and `HasMultiple` when more than one source grants them EE — the flag
   the roster uses to surface reallocatable slots.
-- **User EE** (`UserEarlyEntry`) is the same collapse for one human, or `null` when they hold none.
+- **User EE** uses the same `EarlyEntryRosterRow` as the roster, including `UserId` and `HasMultiple`, or `null` when the human holds none.
 
 ## Data Model
 

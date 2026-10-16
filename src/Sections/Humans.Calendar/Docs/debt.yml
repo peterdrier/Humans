@@ -3,8 +3,3 @@
 version: 1
 next_id: 9
 inbox:
-  - added: 2026-09-19
-    id: CAL-4
-    what: "Occurrence order is derived in the organisation's zone, not the viewer's: CalendarOccurrenceExpander.OrderForDisplay orders by the Europe/Madrid date, and each day-per-row view re-groups and re-sorts by start instant in the viewer's zone. Not user-visible today because every consumer re-derives it; fixing it properly means passing the viewer zone the routes already resolve into the window read (finding 17, /section-doctor on Calendar 2026-09-19; narrowed by finding 3, 2026-10-04)."
-    status: partial
-    review: panel

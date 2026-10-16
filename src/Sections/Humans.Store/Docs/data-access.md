@@ -50,7 +50,7 @@ Legacy `StoreOrders.Year = 0` rows are reviewed and repaired through
 Store-owned candidates; the service resolves each cross-section season through
 `ICampServiceRead`, updates only resolvable rows, and audits every confirmed repair.
 
-`IssueInvoiceAsync` is the section's only outbound write: it reprices the order's line
+`IssueInvoiceAsync` delegates to internal `StoreInvoiceIssuer` (an `IApplicationService`, using the same Store repository). `StoreOrderReader` shares live pricing and counterparty name reads with the main service. Issuance is the section's only outbound Holded write: it reprices the order's line
 snapshots from the live catalog, builds one Holded line per order line (plus a tax-0 line
 per deposit), creates **and approves** the document, then writes `StoreInvoices` and the
 frozen `StoreOrders` row in a single `SaveIssuedInvoiceAsync` — one `SaveChanges`, because

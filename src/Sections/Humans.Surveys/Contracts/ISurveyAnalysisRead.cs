@@ -26,7 +26,8 @@ public interface ISurveyAnalysisRead : IApplicationService
 
     /// <summary>Raw per-response export, or null. Ordinary surveys order by submission time;
     /// Asociado votes order by response id and suppress identity and timestamps.</summary>
-    Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default);
+    /// <remarks>Records the actor and response count in the audit log before returning an available export.</remarks>
+    Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Per-question aggregates plus the participation funnel, or null.</summary>
     Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default);

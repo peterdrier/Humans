@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 9
-inbox:
-  - added: 2026-10-04
-    id: EMAIL-8
-    what: "BrandedEmailTemplate.Wrap hardcodes the unsubscribe footer in English for every recipient. OutboxEmailService composes the wrap after the sending section has restored its CultureScope; EmailMessage carries rendered content but no culture, so translating by the caller's ambient culture would be wrong. Preserve opt-out, preview and no-persistence paths. Found during the daily debt sweep. Plan: add an optional Culture scalar to the existing EmailMessage record, set by senders from the recipient's PreferredLanguage, and render the footer from Email's resx in that culture (English when null). Scalar on an existing DTO, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
+inbox: []

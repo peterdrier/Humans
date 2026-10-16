@@ -182,7 +182,7 @@ Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`
 1. Recurrence rule is expanded in the event's configured timezone using `Ical.Net`
 2. Each occurrence start/end is calculated in that timezone, respecting DST transitions
 3. Occurrences are stored/queried in UTC (`StartUtc`, `EndUtc`)
-4. Rendering converts back with `NodaTime`, server-side, into the viewer's zone (`CalendarController.GetViewerZone`): the browser-reported session timezone when it is a valid IANA id, otherwise the org default `Europe/Madrid`. The zone is labelled on the page.
+4. Window reads use the viewer zone for all-day date bounds and mixed-source display ordering. Rendering converts back with `NodaTime`, server-side, into the viewer's zone (`CalendarController.GetViewerZone`): the browser-reported session timezone when it is a valid IANA id, otherwise the org default `Europe/Madrid`. The zone is labelled on the page.
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
 

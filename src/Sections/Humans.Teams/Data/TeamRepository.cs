@@ -201,11 +201,28 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return rows.Select(r => (r.Id, r.ParentTeamId!.Value)).ToList();
     }
 
-    public async Task UpdateTeamAsync(Team team, CancellationToken ct = default)
+    public async Task<TeamUpdateConflict> UpdateTeamAsync(Team team, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Teams.Update(team);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return TeamUpdateConflict.None;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug" or "IX_teams_GoogleGroupPrefix"
+        })
+        {
+            return ((Npgsql.PostgresException)ex.InnerException).ConstraintName switch
+            {
+                "IX_teams_Slug" => TeamUpdateConflict.SlugTaken,
+                "IX_teams_CustomSlug" => TeamUpdateConflict.CustomSlugTaken,
+                _ => TeamUpdateConflict.GroupPrefixTaken
+            };
+        }
     }
 
     public async Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
@@ -235,7 +252,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return true;
     }
 
-    public async Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var team = await db.Teams.FindAsync([teamId], ct)
@@ -252,7 +269,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         team.UpdatedAt = now;
 
         await db.SaveChangesAsync(ct);
-        return activeMembers.Count;
+        return activeMembers.Select(m => m.UserId).Distinct().ToList();
     }
 
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
@@ -498,7 +515,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
             .Where(d => d.Team.IsActive && d.Team.SystemTeamType == SystemTeamType.None)
-            .OrderBy(d => d.Team.Name).ThenBy(d => d.SortOrder).ThenBy(d => d.Name)
             .AsNoTracking()
             .ToListAsync(ct);
     }

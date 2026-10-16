@@ -131,8 +131,10 @@ System entries never change.
 
 Member log bodies are limited to 16000 characters and lifecycle reasons to 4000.
 Forms advertise these bounds and the service rejects overflow before writing any state.
-Validation failures re-render the submitted form; admin lifecycle reasons remain in the
-failed item's queue form, while successful decisions redirect back to the queue.
+Validation failures re-render the submitted form; admin lifecycle decisions (refuse, refer,
+withdraw, close, reactivate, coordinator override) are made from the group's Details page
+(Board/Admin actions panel) and redirect back to it, flashing any rule failure. Register
+alone stays on the queue.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
@@ -202,8 +204,11 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-No section table. `SettingKeys.WorkgroupsRootDriveFolderId` (`Humans.Settings.Contracts`)
-via `ISettingsService`, set at `/Workgroups/Admin/Settings`. Registration is refused with
+`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
+through the Workgroups repository and audits the actor. Until that first save,
+reads fall back to the legacy Settings key; reads never backfill or mutate it.
+New section state is never written to the shared store. Registration is refused with
 a clear error while unset.
 
 ## Routing
@@ -219,7 +224,7 @@ a clear error while unset.
 | `/Workgroups/{slug}/Documents/*`, `/Comments/*` | Documents and comments |
 | `/Workgroups/{slug}/Done` | Member ends the group: Dormant/Delivered or Dormant/Abandoned |
 | `/Workgroups/{slug}/Surveys/Link` | Attach an authored survey |
-| `/Workgroups/Admin/*` | Secretary/Board queue and decisions; `BoardOrAdmin`, localization-exempt |
+| `/Workgroups/Admin/*` | Secretary/Board overview queue and decision POSTs; `BoardOrAdmin`, localization-exempt. The queue is read-only except Register and Record disposition; the other decisions are forms on the group's Details page (the hardcoded-English Board/Admin panel, like Budget) that post here with the group's slug |
 | `/Workgroups/Admin/{id}/Budget` | Set, change or clear the budget; `BoardOrAdmin` |
 
 See `authorization.md` for the auth policy per route.
@@ -238,13 +243,15 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
+
 - The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then persists the binding, system log and audit. Amount-only saves retain cancellation until their save succeeds, then finish the log and audit independently.
 
 - Joining, leaving and changing coordinators keep preparation and the membership save cancellable. Once membership commits, system logs, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and comment replies follow the same boundary: their save remains cancellable, then system logs and notices finish independently. Referral, refusal, withdrawal, reactivation, member/Secretary endings and Board disposition use this boundary too, including their audits and account activation changes. Register edits finish their scope-change log after saving; recorded status requests finish their coordinator notice.
 
-- Member and admin action and form rule rejections remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only section rule exceptions become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
+- Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
 
 - Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
 
@@ -376,7 +383,7 @@ should end is the Board's decision, taken on the register in front of them.
   readers. Withdrawn folders remain claimed with an empty roster so existing direct
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
-- **Settings**: `ISettingsService` — the root Drive folder id.
+- **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
@@ -412,7 +419,7 @@ should end is the Board's decision, taken on the register in front of them.
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
@@ -441,7 +448,7 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
-  `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
+  `IRoleAssignmentServiceRead`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

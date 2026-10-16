@@ -83,6 +83,8 @@ public class EarlyEntryServiceTests
         roster[0].HasMultiple.Should().BeFalse();
         mine.Should().NotBeNull();
         mine.Sources.Should().Equal("Camp: Flags");
+        mine.UserId.Should().Be(userId);
+        mine.HasMultiple.Should().BeFalse();
     }
 
     [HumansFact]
@@ -116,6 +118,8 @@ public class EarlyEntryServiceTests
 
         var found = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         found.Should().NotBeNull();
+        found.UserId.Should().Be(userId);
+        found.HasMultiple.Should().BeTrue();
         found.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
         found.Sources.Should().Equal("Camp: Flags", "Shift: Power");
 

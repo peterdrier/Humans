@@ -146,4 +146,9 @@
   <data name="Budget_VatCredit" xml:space="preserve"><value>IVA a compensar</value></data>
   <data name="Budget_BackToBudget" xml:space="preserve"><value>Torna al pressupost</value></data>
   <data name="Budget_BreadcrumbNavigation" xml:space="preserve"><value>Fil d'Ariadna</value></data>
+  <data name="Budget_YearStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
+  <data name="Budget_YearStatus_Active" xml:space="preserve"><value>Actiu</value></data>
+  <data name="Budget_YearStatus_Closed" xml:space="preserve"><value>Tancat</value></data>
+  <data name="Budget_ExpenditureType_CapEx" xml:space="preserve"><value>Despeses de capital</value></data>
+  <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Despeses operatives</value></data>
 </root>

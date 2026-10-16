@@ -30,6 +30,37 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyAdminControllerTests
 {
     [HumansTheory]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    public async Task Export_PassesActorOnlyAfterResultsAuthorization(bool json, bool authorized)
+    {
+        var actor = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, ct).Returns(new SurveyDetail(
+            surveyId, SurveyStatus.Closed, Editable("Mine"), authorized ? actor : Guid.NewGuid()));
+        surveys.GetResponseExportAsync(surveyId, actor, ct)
+            .Returns(new SurveyResponseExport(surveyId, "Mine", "en", [], []));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: actor);
+
+        var result = json ? await sut.ExportJson(surveyId, ct) : await sut.ExportCsv(surveyId, ct);
+
+        if (authorized)
+        {
+            result.Should().BeOfType<FileContentResult>();
+            await surveys.Received(1).GetResponseExportAsync(surveyId, actor, ct);
+        }
+        else
+        {
+            result.Should().BeOfType<ForbidResult>();
+            await surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default, default);
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Save_reports_localized_success_to_an_ordinary_author(bool existing)

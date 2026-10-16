@@ -101,7 +101,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(codes);
     }
 
-    // The gate's check-in mirror is a no-op: there is no vendor to call.
     public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
         Task.CompletedTask;
 
@@ -312,7 +311,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
 
     private static int DeterministicHash(string value)
     {
-        // Simple deterministic hash for shuffling — not crypto
+        // Stable across processes, unlike string.GetHashCode; not crypto.
         var hash = 17;
         foreach (var c in value)
             hash = (hash * 31) + c;

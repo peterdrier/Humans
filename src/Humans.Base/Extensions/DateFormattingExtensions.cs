@@ -6,6 +6,9 @@ namespace Humans.Base.Extensions;
 
 public static class DateFormattingExtensions
 {
+    /// <summary>Strict UTC timestamp format supplied by the MailerLite API.</summary>
+    public const string MailerLiteTimestampPattern = "yyyy-MM-dd HH:mm:ss";
+
     public static string ToInvariantDate(this LocalDate value) =>
         value.ToString("yyyy-MM-dd", null);
 

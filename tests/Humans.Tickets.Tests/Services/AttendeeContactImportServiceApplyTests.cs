@@ -113,7 +113,7 @@ public class AttendeeContactImportServiceApplyTests
     }
 
     [HumansFact]
-    public async Task Apply_DeleteUnverifiedThenCreate_DeletesSquatterRowFirst()
+    public async Task Apply_DeleteUnverifiedThenCreate_UsesAtomicOwnerReplacement()
     {
         var harness = new ApplyHarness();
         var attendeeId = Guid.NewGuid();
@@ -130,8 +130,8 @@ public class AttendeeContactImportServiceApplyTests
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
-        harness.Provisioning.FindOrCreateUserByEmailAsync(
-                "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                squatterId, squatterEmailId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
 
         var plan = new AttendeeImportPlan([
@@ -151,12 +151,9 @@ public class AttendeeContactImportServiceApplyTests
         result.UsersCreated.Should().Be(1);
         attendee.MatchedUserId.Should().Be(newUserId);
 
-        Received.InOrder(() =>
-        {
-            _ = harness.UserEmails.DeleteEmailAsync(squatterId, squatterEmailId, Arg.Any<CancellationToken>());
-            _ = harness.Provisioning.FindOrCreateUserByEmailAsync(
-                "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
-        });
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+            squatterId, squatterEmailId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
     }
 
     [HumansFact]

@@ -18,21 +18,24 @@ namespace Humans.Governance.Contracts;
 public interface IApplicationDecisionService : IApplicationServiceRead, IApplicationService
 {
     /// <summary>
-    /// The tier-application field rules, evaluated without touching storage: a non-Volunteer
-    /// tier needs a motivation, and Asociado additionally needs a significant contribution and
-    /// a role understanding. <see cref="SubmitAsync"/> runs this first, so the two can't drift.
+    /// The tier-application field rules, evaluated without touching storage: a Colaborador or Asociado
+    /// tier needs a 50–2000-character motivation, and Asociado additionally needs a significant
+    /// contribution and a role understanding (each at most 2000 characters). Additional info
+    /// is optional and limited to 1000 characters. <see cref="SubmitAsync"/> runs this first, so the two can't drift.
     /// <para>
     /// Exposed separately so a caller that must decide <em>before</em> writing anything — the
     /// profile edit form, which validates the whole submit up front so a bad post can't
     /// half-save — gets the same answer the submit would give. Returns the same
     /// <c>ErrorKey</c>s (<c>InvalidTier</c>, <c>MotivationRequired</c>,
-    /// <c>SignificantContributionRequired</c>, <c>RoleUnderstandingRequired</c>) for callers
+    /// <c>SignificantContributionRequired</c>, <c>RoleUnderstandingRequired</c>,
+    /// <c>MotivationLength</c>, <c>AdditionalInfoTooLong</c>,
+    /// <c>SignificantContributionTooLong</c>, <c>RoleUnderstandingTooLong</c>) for callers
     /// to map onto their own localized, field-targeted messages.
     /// </para>
     /// </summary>
     ApplicationDecisionResult ValidateSubmission(
         MembershipTier tier, string? motivation,
-        string? significantContribution, string? roleUnderstanding);
+        string? significantContribution, string? roleUnderstanding, string? additionalInfo = null);
 
     Task<ApplicationDecisionResult> SubmitAsync(
         Guid userId, MembershipTier tier, string motivation,

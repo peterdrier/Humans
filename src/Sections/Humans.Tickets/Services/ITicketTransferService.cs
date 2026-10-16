@@ -28,15 +28,17 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// <summary>
     /// Create a Pending TicketTransferRequest and email the Sender + the ticket
     /// team. Validates: Sender owns the attendee, attendee is Valid, Receiver is
-    /// not the Sender, no existing Pending transfer for the attendee.
+    /// not the Sender, no existing Pending transfer for the attendee. Returns a
+    /// resource-key refusal for known rule failures; dependency exceptions propagate.
     /// </summary>
-    Task<TicketTransferRowDto> CreateRequestAsync(
+    Task<TicketTransferMutationResult> CreateRequestAsync(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Cancel a Pending request. Only the original Sender may cancel.
+    /// Cancel a Pending request. Only the original Sender may cancel. Returns a
+    /// resource-key refusal for known rule failures; dependency exceptions propagate.
     /// </summary>
-    Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
+    Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Mark a Pending request transferred ("transfer successful") WITHOUT calling the
@@ -45,7 +47,7 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// audits, and emails the Sender + Receiver. The next ticket sync reconciles the local
     /// attendee rows.
     /// </summary>
-    Task<TicketTransferRowDto> ApproveAsync(
+    Task<TicketTransferMutationResult> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
@@ -55,26 +57,26 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
     /// </summary>
     [ExternalWrite]
-    Task<TicketTransferRowDto> ProcessTransferAsync(
+    Task<TicketTransferMutationResult> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
     /// Retry the reissue of a part-processed transfer (a Pending request whose
     /// <see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/> recorded a
     /// hold id): issues the replacement from that held seat, writes the new attendee row and marks
-    /// it transferred. One-click recovery — no manual TicketTailor step. Throws when the request is
+    /// it transferred. One-click recovery — no manual TicketTailor step. Returns an operator refusal when the request is
     /// not in that state or has no recorded hold id; on a repeated failure the request stays Pending
     /// with the hold retained so it can be retried again.
     /// </summary>
     [ExternalWrite]
-    Task<TicketTransferRowDto> RetryReissueAsync(
+    Task<TicketTransferMutationResult> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
     /// Cancel a Pending request with a required reason. Records the decision,
     /// audits, and emails the Sender + Receiver with the reason.
     /// </summary>
-    Task<TicketTransferRowDto> RejectAsync(
+    Task<TicketTransferMutationResult> RejectAsync(
         Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
@@ -89,4 +91,12 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// </summary>
     Task<TicketTransferDetailDto?> GetDetailAsync(
         Guid transferRequestId, CancellationToken ct = default);
+}
+
+/// <summary>A transfer outcome; member refusals carry resource keys and operator refusals carry safe reasons.</summary>
+internal sealed record TicketTransferMutationResult(TicketTransferRowDto? Transfer, string? RefusalKey, string? OperatorRefusal = null)
+{
+    public bool Succeeded => RefusalKey is null && OperatorRefusal is null;
+
+    public static TicketTransferMutationResult Refused(string key) => new(null, key);
 }

@@ -31,7 +31,7 @@ pages and data.
 
 - Monitor owns no tables, repository, migrations, resource set, or views.
 - `DriveActivityMonitorService` calls other sections only through
-  `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
+  `IGoogleDriveActivityClient`, `ITeamResourceServiceRead`, `ISettingsService`,
   `IUserServiceRead`, and `IAuditLogService`.
 - A service-account change, matched by email or `people/{client_id}`, is never anomalous.
 - The last-run marker advances only when every resource was queried and the connector is
@@ -50,7 +50,7 @@ pages and data.
 
 | Section | Through |
 |---|---|
-| GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService` |
+| GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceServiceRead` |
 | AuditLog | `IAuditLogService` |
 | Settings | `ISettingsService` |
 | Users | `IUserServiceRead` |

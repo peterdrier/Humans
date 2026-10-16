@@ -24,7 +24,7 @@ internal sealed record WorkgroupUserRows(
     IReadOnlyList<WorkgroupDocumentComment> Comments);
 
 /// <summary>
-/// Data-access interface for the Workgroups section. Owns the six <c>workgroup*</c>
+/// Data-access interface for the Workgroups section. Owns the register and settings <c>workgroup*</c>
 /// tables and is the only caller of <c>WorkgroupsDbContext</c>. Implementation uses
 /// <c>IDbContextFactory&lt;WorkgroupsDbContext&gt;</c> so the repository can be
 /// registered Singleton — every method opens its own short-lived context; reads are
@@ -33,6 +33,9 @@ internal sealed record WorkgroupUserRows(
 /// </summary>
 internal interface IWorkgroupRepository : IRepository
 {
+    Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default);
+    Task SetRootDriveFolderIdAsync(string folderId, CancellationToken ct = default);
+
     // ── Register graph ────────────────────────────────────────────────────
 
     /// <summary>The whole register, detached, with every child collection loaded.</summary>

@@ -171,7 +171,7 @@ keep in step by hand. Derive it from the call sites, not from here.
 | out | Users | `IUserServiceRead` (platform base-controller dependency, reached through Base) |
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
-| in | Workgroups | `ISettingsService` (`Workgroups:RootDriveFolderId`) |
+| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes |
 | out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: EarlyEntry's cache (`InvalidateAll`, id ignored), Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and evicts that event's coordinator-dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`), and Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |

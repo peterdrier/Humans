@@ -69,7 +69,11 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
         var updated = await campaignService.UpdateAsync(
+            currentUser.Id,
             id,
             title,
             description,
@@ -138,6 +142,9 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [RequestSizeLimit(1 * 1024 * 1024)] // Code CSV is read into memory before duplicate filtering.
     public async Task<IActionResult> ImportCodes(Guid id, IFormFile? file)
     {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
         if (file is null || file.Length == 0)
         {
             SetError("Please select a CSV file.");
@@ -158,7 +165,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await campaignService.ImportCodesAsync(id, codes);
+        var result = await campaignService.ImportCodesAsync(currentUser.Id, id, codes);
         if (!result.Success) return NotFound();
 
         SetSuccess(result.Skipped > 0
@@ -172,7 +179,11 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
         var result = await campaignService.GenerateAndImportDiscountCodesAsync(
+            currentUser.Id,
             id, count, discountType, discountValue);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
             return NotFound();
@@ -194,7 +205,10 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Activate(Guid id)
     {
-        var result = await campaignService.ActivateAsync(id);
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await campaignService.ActivateAsync(currentUser.Id, id);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
             return NotFound();
 
@@ -213,7 +227,10 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Complete(Guid id)
     {
-        var result = await campaignService.CompleteAsync(id);
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await campaignService.CompleteAsync(currentUser.Id, id);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
             return NotFound();
 
@@ -252,7 +269,10 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
-        var result = await campaignService.SendWaveAsync(id, teamId);
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await campaignService.SendWaveAsync(currentUser.Id, id, teamId);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
             return NotFound();
 
@@ -271,10 +291,13 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Resend(Guid grantId)
     {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
         var campaignId = await campaignService.GetCampaignIdForGrantAsync(grantId);
         if (!campaignId.HasValue) return NotFound();
 
-        await campaignService.ResendToGrantAsync(grantId);
+        await campaignService.ResendToGrantAsync(currentUser.Id, grantId);
         SetSuccess("Resend queued.");
         return RedirectToAction(nameof(Detail), new { id = campaignId.Value });
     }
@@ -284,7 +307,10 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> RetryAllFailed(Guid id)
     {
-        await campaignService.RetryAllFailedAsync(id);
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        await campaignService.RetryAllFailedAsync(currentUser.Id, id);
         SetSuccess("Retrying all failed sends.");
         return RedirectToAction(nameof(Detail), new { id });
     }

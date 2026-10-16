@@ -74,7 +74,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         return (ev.OwningTeamId, ev.Title);
     }
 
-    public async Task UpsertExceptionAsync(
+    public async Task<string?> UpsertExceptionAsync(
         Guid eventId,
         Instant? originalOccurrenceStartUtc,
         Guid createdByUserId,
@@ -126,10 +126,11 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         var errors = existing.Validate();
         if (errors.Count > 0)
         {
-            throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
+            return "Exception is invalid: " + string.Join("; ", errors);
         }
 
         await ctx.SaveChangesAsync(ct);
+        return null;
     }
 
     public async Task<Guid?> GetFeedTokenAsync(Guid userId, CancellationToken ct = default)

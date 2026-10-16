@@ -57,7 +57,7 @@ internal sealed class EventsApiController(
             var campName = ResolveCampNameById(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
-            foreach (var occurrenceStart in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+            foreach (var occurrenceStart in e.GetOccurrenceInstants(gateOpeningDate, tz))
             {
                 var eventDayOffset = ComputeDayOffset(occurrenceStart, gateOpeningDate, tz);
                 if (day.HasValue && eventDayOffset != day.Value) continue;
@@ -224,9 +224,7 @@ internal sealed class EventsApiController(
 
             // One entry per favourited occurrence (day-specific favourites
             // expand to that single occurrence) — mirrors the schedule page.
-            IReadOnlyList<Instant> occurrences = gateOpeningDate.HasValue && tz != null
-                ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz, f.DayOffset)
-                : [e.StartAt];
+            IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, tz, f.DayOffset);
 
             return occurrences.Select(start =>
                 (start, dto: BuildEventDto(e, start, ComputeDayOffset(start, gateOpeningDate, tz), campName, submitterName)));

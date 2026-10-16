@@ -227,7 +227,7 @@ Comments are grouped by category on the document page. A member responds per com
 
 ### Settings
 
-No section table. The Workgroups root folder id is one key, `SettingKeys.WorkgroupsRootDriveFolderId` (`Humans.Settings.Contracts`), read and written through `ISettingsService.GetValueAsync` / `SetValueAsync` like Email, GoogleIntegration and Monitor do. Set on `/Workgroups/Admin/Settings`. Registration is refused with a clear message while unset.
+`workgroups_settings` owns the root folder id, read and written through the Workgroups repository. `/Workgroups/Admin/Settings` saves it and audits the actor. Until the admin saves section-owned state, reads fall back to the existing `SettingKeys.WorkgroupsRootDriveFolderId` value through Settings; there is no data backfill. Registration is refused with a clear message while unset.
 
 ## 8. Calendar fan-out
 

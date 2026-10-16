@@ -55,7 +55,7 @@ internal sealed class TeamsEmails(
     {
         using (new CultureScope(culture, logger))
         {
-            return build();
+            return build() with { Culture = CultureInfo.CurrentUICulture.Name };
         }
     }
 }

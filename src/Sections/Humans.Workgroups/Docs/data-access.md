@@ -7,8 +7,8 @@ Folder: `src/Sections/Humans.Workgroups/Services/` (namespace `Humans.Workgroups
 migrations under `Data/Migrations/`. `WorkgroupRepository`
 (`src/Sections/Humans.Workgroups/Data/WorkgroupRepository.cs`, `internal`) injects
 `IDbContextFactory<WorkgroupsDbContext>` directly, one context per call, `AsNoTracking`
-on reads. Owns all six tables: `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`.
+on reads. Owns its seven tables: `workgroups`, `workgroup_members`, `workgroup_meetings`,
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`.
 
 Every cross-section reference (`AppliedByUserId`, `UserId`, `CreatedByUserId`,
 `AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`, `DispositionByUserId`,
@@ -35,9 +35,10 @@ Repository: `IWorkgroupRepository`.
 | workgroup_log_entries | R/W |
 | workgroup_documents | R/W |
 | workgroup_document_comments | R/W |
+| workgroups_settings | R/W |
 
-Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`,
-`ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`, `INotificationService`,
+Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentServiceRead`,
+`ITeamServiceRead`, `ISettingsService` (legacy root read only), `IGoogleSyncService`, `INotificationService`,
 `IEmailService`, the section's own `WorkgroupsEmails` builder, `IAuditLogService`,
 `ISurveyAnalysisRead`,
 `IClock` (NodaTime). The

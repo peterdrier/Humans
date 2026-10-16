@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Domain;
 using Humans.Base.Models;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Humans.Feedback.Models;
 
@@ -12,7 +13,7 @@ internal sealed class FeedbackPageViewModel
     public FeedbackStatus? StatusFilter { get; set; }
     public FeedbackCategory? CategoryFilter { get; set; }
     public Guid? ReporterFilter { get; set; }
-    public List<ReporterDropdownItem> Reporters { get; set; } = [];
+    public List<SelectListItem> Reporters { get; set; } = [];
     public Guid? AssignedToFilter { get; set; }
     public Guid? TeamFilter { get; set; }
     public bool UnassignedFilter { get; set; }

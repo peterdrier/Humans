@@ -336,4 +336,6 @@
   <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>No s’ha trobat la imatge.</value></data>
   <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Aquesta imatge no pertany a aquest campament.</value></data>
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Missatge nou per a {0} - revisa el teu correu</value></data>
+  <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Aquesta temporada no pertany a aquest barri.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Només es pot retirar una temporada pendent o activa.</value></data>
 </root>

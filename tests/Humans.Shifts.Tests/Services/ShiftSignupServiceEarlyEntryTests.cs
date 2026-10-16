@@ -38,7 +38,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With<ITeamServiceRead>(teamService)
-            .With(roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -51,7 +51,8 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var users = Substitute.For<IUserServiceRead>();

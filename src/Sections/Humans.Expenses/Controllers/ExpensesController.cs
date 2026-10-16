@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
@@ -275,9 +276,9 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        SetError(result.ErrorMessage is null
+        SetError(GetErrorMessage(result.Error) is null
             ? localizer["Expenses_Flash_ReportUpdateFailed"]
-            : $"{localizer["Expenses_Flash_ReportUpdateFailed"]} {result.ErrorMessage}");
+            : $"{localizer["Expenses_Flash_ReportUpdateFailed"]} {GetErrorMessage(result.Error)}");
         await PopulateEditModelAsync(model, report);
         return View(model);
     }
@@ -332,9 +333,9 @@ internal sealed class ExpensesController(
 
         if (!result.Succeeded)
         {
-            SetError(result.ErrorMessage is null
+            SetError(GetErrorMessage(result.Error) is null
                 ? localizer["Expenses_Flash_AddLineFailed"]
-                : $"{localizer["Expenses_Flash_AddLineFailed"]} {result.ErrorMessage}");
+                : $"{localizer["Expenses_Flash_AddLineFailed"]} {GetErrorMessage(result.Error)}");
             return BackToForm();
         }
 
@@ -464,16 +465,8 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
 
-        try
-        {
-            await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
-            SetSuccess(localizer["Expenses_Flash_AttachmentRemoved"]);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
-            SetError(localizer["Expenses_Flash_RemoveAttachmentFailed"]);
-        }
+        var result = await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
+        SetMutationResult(result, localizer["Expenses_Flash_AttachmentRemoved"], localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
 
@@ -884,13 +877,23 @@ internal sealed class ExpensesController(
             .ToList();
     }
 
+    private string? GetErrorMessage(ExpenseError? error)
+    {
+        if (error is null) return null;
+        if (error.OperatorMessage is not null) return error.OperatorMessage;
+        var arguments = error.Arguments.Select(argument => argument is ExpenseReportStatus status
+            ? localizer.EnumDisplay(status)
+            : argument).ToArray();
+        return localizer[error.ResourceKey!, arguments].Value;
+    }
+
     private void SetMutationResult(
         ExpenseMutationResult result, string successMessage, string fallbackErrorMessage)
     {
         if (result.Succeeded)
             SetSuccess(successMessage);
         else
-            SetError(result.ErrorMessage ?? fallbackErrorMessage);
+            SetError(GetErrorMessage(result.Error) ?? fallbackErrorMessage);
     }
 
     private void SetMutationResultWithDetails(
@@ -899,7 +902,7 @@ internal sealed class ExpensesController(
         if (result.Succeeded)
             SetSuccess(successMessage);
         else
-            SetError(result.ErrorMessage is null ? errorPrefix : $"{errorPrefix}: {result.ErrorMessage}");
+            SetError(GetErrorMessage(result.Error) is null ? errorPrefix : $"{errorPrefix}: {GetErrorMessage(result.Error)}");
     }
 
     private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default)

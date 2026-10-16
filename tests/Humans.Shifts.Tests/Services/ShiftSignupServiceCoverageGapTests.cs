@@ -48,7 +48,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With<ITeamServiceRead>(_teamService)
-            .With(roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -60,7 +60,8 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var signupRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _service = new ShiftSignupService(

@@ -1,10 +1,10 @@
 @model List<Humans.Governance.Models.ApplicationHistoryViewModel>
 
-<div class="card-header">@Localizer["ApplicationDetail_History"]</div>
+<div class="card-header">@Localizer["Governance_ApplicationDetail_History"]</div>
 <div class="card-body">
     @if (Model.Count == 0)
     {
-        <p class="text-muted mb-0">@Localizer["ApplicationDetail_NoHistory"]</p>
+        <p class="text-muted mb-0">@Localizer["Governance_ApplicationDetail_NoHistory"]</p>
     }
     else
     {
@@ -16,7 +16,7 @@
                         <strong>@SharedLocalizer["ApplicationStatus_" + entry.Status.ToString()]</strong>
             <small class="text-muted">@entry.ChangedAt.ToDate()</small>
                     </div>
-                    <small class="text-muted">@Localizer["ApplicationDetail_By"] @entry.ChangedBy</small>
+                    <small class="text-muted">@Localizer["Governance_ApplicationDetail_By"] @entry.ChangedBy</small>
                     @if (!string.IsNullOrEmpty(entry.Notes))
                     {
                         <p class="mt-1 mb-0 small">@entry.Notes</p>

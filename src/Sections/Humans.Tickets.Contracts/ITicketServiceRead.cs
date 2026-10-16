@@ -23,6 +23,13 @@ public interface ITicketServiceRead
     Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Resolves a trimmed, case-sensitive barcode within the current event only.
+    /// Blank or unknown codes return null; ticket status does not restrict this read.
+    /// </summary>
+    Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
+        string? barcode, CancellationToken ct = default);
+
+    /// <summary>
     /// Snapshot of a user's ticket holdings: count of orders where they're the
     /// buyer, plus the attendee names of every ticket where they are the
     /// current owner.

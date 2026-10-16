@@ -1,7 +1,7 @@
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Rate-limits magic-link signup sends and tracks single-use consumption of
+/// Rate-limits magic-link login and signup sends and tracks single-use consumption of
 /// sign-in tokens. Backed by <c>IMemoryCache</c>. Kept behind an interface so
 /// <see cref="MagicLinkService"/> does not couple directly to the memory-cache
 /// abstraction for cross-cutting auth state. Section-internal: only
@@ -28,6 +28,12 @@ internal interface IMagicLinkRateLimiter
     /// on the send side.
     /// </summary>
     void ReleaseTokenReservation(string token);
+
+    /// <summary>Reserves the per-user login-send cooldown before preparing an email.</summary>
+    Task<bool> TryReserveUserSendAsync(Guid userId, TimeSpan cooldown);
+
+    /// <summary>Releases a login-send reservation when preparation or sending failed.</summary>
+    void ReleaseUserSendReservation(Guid userId);
 
     /// <summary>
     /// Attempts to reserve a signup-send for the given email. Returns false

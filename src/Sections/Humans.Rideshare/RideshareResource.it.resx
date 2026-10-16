@@ -194,6 +194,7 @@
   <data name="Rideshare_NoticeSeat" xml:space="preserve"><value>1 posto</value></data>
   <data name="Rideshare_NoticeSeats" xml:space="preserve"><value>{0} posti</value></data>
   <data name="Rideshare_NoticeAccepted" xml:space="preserve"><value>Sei dentro: viaggio con {0}</value></data>
+  <data name="Rideshare_NoticeOfferAccepted" xml:space="preserve"><value>{0} ha accettato la tua offerta di passaggio</value></data>
   <data name="Rideshare_NoticeUpdate" xml:space="preserve"><value>Aggiornamento viaggio</value></data>
   <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} non ha potuto offrire un posto questa volta.</value></data>
   <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} ha scelto un altro viaggio questa volta.</value></data>

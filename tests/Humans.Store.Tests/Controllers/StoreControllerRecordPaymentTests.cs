@@ -245,4 +245,32 @@ public sealed class StoreControllerRecordPaymentTests
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.DidNotReceive().DeletePaymentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
+    [HumansTheory]
+    [InlineData("record")]
+    [InlineData("payment-delete")]
+    [InlineData("order-delete")]
+    public async Task Controller_does_not_turn_repository_faults_into_operator_refusal_feedback(string operation)
+    {
+        var controller = BuildController(RoleNames.Admin);
+        var failure = new InvalidOperationException("Private persistence diagnostic");
+        var payment = new Payment { Id = Guid.NewGuid(), OrderId = _order.Id };
+        if (string.Equals(operation, "payment-delete", StringComparison.Ordinal)) _order.Payments.Add(payment);
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.DeletePaymentAsync(payment.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.DeleteOrderAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        Func<Task> action = async () =>
+        {
+            _ = operation switch
+            {
+                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null,
+                    TestContext.Current.CancellationToken),
+                "payment-delete" => await controller.DeletePayment(_order.Id, payment.Id, TestContext.Current.CancellationToken),
+                _ => await controller.Delete(_order.Id, TestContext.Current.CancellationToken)
+            };
+        };
+        (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
+        controller.TempData["ErrorMessage"].Should().BeNull();
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
 }

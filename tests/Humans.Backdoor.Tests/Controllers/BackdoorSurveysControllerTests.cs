@@ -21,8 +21,22 @@ public class BackdoorSurveysControllerTests
     private readonly ISurveyAnalysisRead _surveys = Substitute.For<ISurveyAnalysisRead>();
     private readonly BackdoorSurveysController _sut;
 
-    public BackdoorSurveysControllerTests() =>
-        _sut = new BackdoorSurveysController(_surveys, Substitute.For<IUserServiceRead>());
+    private readonly Guid _actor = Guid.NewGuid();
+
+    public BackdoorSurveysControllerTests()
+    {
+        _sut = new BackdoorSurveysController(_surveys, Substitute.For<IUserServiceRead>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, _actor.ToString())], "key"))
+                }
+            }
+        };
+    }
 
     private static SurveyExportQuestion Choice(Guid id, string prompt, params (string Value, string Label)[] opts) =>
         new(id, prompt, SurveyQuestionType.MultiChoice, [.. opts.Select(o => new SurveyExportOption(o.Value, o.Label))]);
@@ -107,18 +121,30 @@ public class BackdoorSurveysControllerTests
     public async Task Responses_returns_NotFound_for_missing_survey()
     {
         var id = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyResponseExport?)null);
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyResponseExport?)null);
 
         var result = await _sut.Responses(id, null, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
+        await _surveys.Received(1).GetResponseExportAsync(id, _actor, Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
+    public async Task Responses_without_actor_does_not_read_export()
+    {
+        _sut.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+
+        var result = await _sut.Responses(Guid.NewGuid(), null, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<UnauthorizedResult>();
+        await _surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default, default);
     }
 
     [HumansFact]
     public async Task Responses_filters_by_anonymity()
     {
         var id = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en", [],
             [
                 Row(ResponseAnonymity.Identified, Submitted, Guid.NewGuid(), "Sparkle"),
@@ -138,7 +164,7 @@ public class BackdoorSurveysControllerTests
     {
         var id = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en", [],
             [
                 Row(ResponseAnonymity.Identified, Submitted, userId, "Sparkle"),
@@ -156,7 +182,7 @@ public class BackdoorSurveysControllerTests
     public async Task Responses_filters_by_since_instant()
     {
         var id = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en", [],
             [
                 Row(ResponseAnonymity.Anonymous, Instant.FromUtc(2026, 1, 1, 0, 0), null, null),
@@ -173,7 +199,7 @@ public class BackdoorSurveysControllerTests
     public async Task Responses_rejects_malformed_since()
     {
         var id = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>())
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyResponseExport(id, "T", "en", [], []));
 
         var result = await _sut.Responses(id, null, "not-a-date", 100, null, null, Xunit.TestContext.Current.CancellationToken);
@@ -185,7 +211,7 @@ public class BackdoorSurveysControllerTests
     public async Task Responses_pages_with_cursor()
     {
         var id = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en", [],
             [.. Enumerable.Range(0, 3).Select(_ => Row(ResponseAnonymity.Anonymous, Submitted, null, null))]));
 
@@ -208,7 +234,7 @@ public class BackdoorSurveysControllerTests
     {
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en",
             [Choice(questionId, "Pick", ("a", "Apple"), ("b", "Banana"))],
             [Row(ResponseAnonymity.Anonymous, Submitted, null, null,
@@ -227,7 +253,7 @@ public class BackdoorSurveysControllerTests
     {
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
-        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
+        _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
             id, "T", "en",
             [
                 new SurveyExportQuestion(

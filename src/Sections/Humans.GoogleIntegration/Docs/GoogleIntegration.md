@@ -53,7 +53,7 @@ The rows written before the split are still on `audit_log`. **`/Google/Admin/Syn
 
 ### Google resource entities
 
-`GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.
+`GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table. Cross-section readers use `ITeamResourceServiceRead`; both interfaces resolve to the same scoped service, and mutations remain on the full interface.
 
 ### External-API surfaces
 
@@ -142,7 +142,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - `EmailProvisioningService.ProvisionNobodiesEmailAsync` refuses an archived id: a merge-resolved-forward id (lookup returns the survivor, whose `Id` differs) or a GDPR/legacy tombstone (`UserInfo.IsActive` false) is rejected before any Workspace call (peterdrier/Humans#1707).
 - Each Google email **address** carries a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`) on its `UserEmail` row (#687) — the status belongs to the address Google rejected, not the human. When Google permanently rejects the canonical address (HTTP 400/403/404), that address is set to `Rejected` and new outbox events are not enqueued for the human. Because the status lives on the address, selecting a different Google email (a fresh `Unknown` row) resets sync naturally and fresh events are enqueued.
 - The Google outbox drain is marked `[ExternalWrite]`, matching its Workspace mutations; its Hangfire entry receives a literal `CancellationToken.None`.
-- Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A resource/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
+- Team provisioning returns `Accepted` only after Google creates or confirms an existing Drive grant and no grant fails. Disabled Drive sync, no resources and queued group reconciliation return `Deferred`; failed grants or ineligible addresses return `Failed`. Only `Accepted` lets the outbox mark the address Valid; resource existence alone is never verification.
+- Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A dispatch/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
 - Outbox retry and permanent-failure error text keeps at most 4000 UTF-16 code units, without splitting a Unicode surrogate pair. Retry counts and failure transitions are independent of truncation.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
 - Without Google credentials, the outbox job reports `skipped` and the processor leaves every event pending without dispatching stubs or changing `GoogleEmailStatus`. The nightly reconciliation job likewise reports `skipped` without running a phase, the hourly Teams system-team sync skips its Google Group reconcile step, and the scoped Hangfire schedulers log and enqueue nothing, so no reconciler ever writes sync-log rows against the in-memory stubs. `IGoogleDriveActivityClient.IsConfigured` is the one credential signal for all of them.
@@ -209,7 +210,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 - **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + two top-N reads (by resource, by user ids), capped at 200 rows each. Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
 - **`IGoogleResourceRepository`** — narrow writes to the sibling-owned `google_resources` table (Teams section §8 owner). Used by `GoogleWorkspaceSyncService` for reconciliation-loop atomic writes. All broader reads/writes route through `ITeamResourceService`.
 
-> `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).
+> `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceServiceRead`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).
 
 ### Connector clients
 

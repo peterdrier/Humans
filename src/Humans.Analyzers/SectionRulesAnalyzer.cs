@@ -25,6 +25,8 @@ namespace Humans.Analyzers;
 /// the repository.</description></item>
 /// <item><term>HUM0032</term><description>Cross-section injection takes the read
 /// interface unless the class is marked [CrossSectionWrite].</description></item>
+/// <item><term>HUM0037</term><description>Contracts cannot use EF infrastructure
+/// or IQueryable.</description></item>
 /// </list>
 ///
 /// The first two are about a section's shape and self-gate on its entry point. The rest
@@ -42,6 +44,7 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
         TableOwnershipRule.Rule,
         CachingDecoratorRule.Rule,
         CrossSectionReadRule.Rule,
+        ContractPersistenceRule.Rule,
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -58,6 +61,7 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
         TableOwnershipRule.Register(context);
         CachingDecoratorRule.Register(context);
         CrossSectionReadRule.Register(context);
+        ContractPersistenceRule.Register(context);
 
         if (!AssemblyScope.IsSection(context.Compilation.Assembly))
             return;

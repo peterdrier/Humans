@@ -523,7 +523,7 @@
 
                                     <div class="mb-3">
                                         <label asp-for="ApplicationMotivation" class="form-label">@Localizer["Profile_Motivation"]</label>
-                                        <textarea asp-for="ApplicationMotivation" class="form-control" rows="4" placeholder="@Localizer["ProfileEdit_MotivationPlaceholder"].Value"></textarea>
+                                        <textarea asp-for="ApplicationMotivation" minlength="50" class="form-control" rows="4" placeholder="@Localizer["ProfileEdit_MotivationPlaceholder"].Value"></textarea>
                                         <span asp-validation-for="ApplicationMotivation" class="text-danger"></span>
                                         <div class="form-text">@Localizer["ProfileEdit_MotivationHelp"]</div>
                                     </div>

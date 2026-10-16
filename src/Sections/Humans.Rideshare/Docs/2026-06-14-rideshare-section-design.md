@@ -1,7 +1,7 @@
 # Rideshare — Section Design
 
 **Date:** 2026-06-14
-**Status:** Implemented — see `src/Sections/Humans.Rideshare/Docs/Rideshare.md` for the invariants of record.
+**Status:** Implemented — see `src/Sections/Humans.Rideshare/Docs/Rideshare.md` for the invariants of record. Paths, projects and collaborators named in §13–14 predate the section split; `Rideshare.md` carries the current shape.
 **Author:** Peter (dictated), drafted via brainstorming dialogue.
 
 > **Naming.** Called **Rideshare**, not "carpool": the vehicle might not be a car (van, camper, etc.), and for this European community the BlaBlaCar-style "ridesharing" framing — long-distance, one-off, cost-shared trips between people travelling anyway — is the natural mental model. The commercial Uber/Lyft connotation of "rideshare" in American English is explicitly **not** what this is; the non-goals (§3) fence that off.

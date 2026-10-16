@@ -119,7 +119,7 @@ internal sealed class ShiftsEmails(
     {
         using (new CultureScope(culture, logger))
         {
-            return build();
+            return build() with { Culture = CultureInfo.CurrentUICulture.Name };
         }
     }
 }

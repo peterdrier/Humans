@@ -3,20 +3,6 @@
 version: 1
 next_id: 12
 inbox:
-  - added: 2026-08-24
-    id: EVENTS-1
-    what: "The occurrence expansion itself is shared (EventRecurrenceDays.GetOccurrenceInstants, which Domain/Event.cs, Services/Dtos/EventInfo.cs and Contracts/ApprovedEventView.cs delegate to), but the null-guard around it (gate date and zone known ? e.GetOccurrenceInstants(gate, tz) : [e.StartAt]) is still written out at every call site — EventsApiController, EventsExportController, EventsController's Schedule, EventOccurrenceExpander and the Services/Service.cs calendar feed. Found by /section-doctor on Events 2026-08-24; narrowed 2026-10-07 after the mirror was folded. Plan: an internal overload in Humans.Events that owns the null-guard for the in-section call sites; ApprovedEventView's public method keeps its signature. Internal, not public surface per debt-sweep-standing-policy D2, list in PR."
-    status: partial
-    review: panel
-  - added: 2026-08-24
-    id: EVENTS-2
-    what: "EventService (Services/Service.cs) is still over the section's maxClassLoc of 740. Row validation (EventBulkImportValidator) and the template (EventBulkUploadTemplateBuilder) are already extracted; BulkImportAsync's apply loop — change detection, recurrence round-trip, create-or-update — still lives on the service. Found by /section-doctor on Events 2026-08-24; narrowed 2026-10-07. Plan: move the apply loop into an internal class in this section (EventBulkImporter) beside the validator; pre-approved per debt-sweep-standing-policy, list in PR."
-    status: partial
-    review: panel
-  - added: 2026-10-04
-    id: EVENTS-8
-    what: "BulkEventCsvParser.Parse embeds translated header/row errors in FormatException.Message; EventsController bulk upload logs and displays that message. This violates no-localized-exception-messages. Preserve all-row translated feedback. Found during the daily production sweep. Plan: Parse returns a result record (rows plus a list of error keys with row/column args) that the controller localizes; developer diagnostics stay in logs. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-07
     id: EVENTS-9
     what: "No test refuses a submission outside [SubmissionOpenAt, SubmissionCloseAt]: the individual, barrio and bulk-upload gates (Controllers/EventsController.cs:145, :546, :720) run only with an open window in EventsControllerTests. Found by /section-doctor on Events 2026-10-07 (Tests thread). Plan: one controller test per gate with the clock past SubmissionCloseAt, asserting no service write."

@@ -1256,4 +1256,13 @@
   <data name="ShiftSignups_Title" xml:space="preserve"><value>Iscrizioni ai turni</value></data>
   <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confermati</value></data>
   <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} altri</value></data>
+  <data name="Shifts_Delete_ConfirmedSignups" xml:space="preserve">
+    <value>Impossibile eliminare: {0} persone hanno iscrizioni confermate. Annullale o riassegnale prima.</value>
+  </data>
+  <data name="Shifts_Delete_RotaSuccess" xml:space="preserve">
+    <value>Programma dei turni eliminato.</value>
+  </data>
+  <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
+    <value>Turno eliminato.</value>
+  </data>
 </root>

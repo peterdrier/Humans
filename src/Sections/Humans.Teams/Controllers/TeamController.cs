@@ -1,3 +1,4 @@
+using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Controllers;
@@ -25,7 +26,7 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserServiceRead userService,
-    ITeamResourceService teamResourceService,
+    ITeamResourceServiceRead teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IConfiguration configuration,
@@ -289,21 +290,32 @@ internal sealed class TeamController(
     {
         var roster = await teamService.GetRosterAsync(priority, status, period, ct);
 
-        var slots = roster.Select(slot => new RosterSlotViewModel
-        {
-            TeamName = slot.TeamName,
-            TeamSlug = slot.TeamSlug,
-            RoleName = slot.RoleName,
-            RoleDescription = slot.RoleDescription,
-            RoleDefinitionId = slot.RoleDefinitionId,
-            SlotNumber = slot.SlotNumber,
-            Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
-            PriorityBadgeClass = slot.PriorityBadgeClass,
-            Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
-            IsFilled = slot.IsFilled,
-            AssignedUserId = slot.AssignedUserId,
-            AssignedUserName = slot.AssignedUserName
-        }).ToList();
+        var slots = roster
+            .OrderBy(slot => slot.Priority switch
+            {
+                nameof(SlotPriority.Critical) => 0,
+                nameof(SlotPriority.Important) => 1,
+                nameof(SlotPriority.NiceToHave) => 2,
+                _ => 3
+            })
+            .ThenBy(slot => slot.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.RoleName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.SlotNumber)
+            .Select(slot => new RosterSlotViewModel
+            {
+                TeamName = slot.TeamName,
+                TeamSlug = slot.TeamSlug,
+                RoleName = slot.RoleName,
+                RoleDescription = slot.RoleDescription,
+                RoleDefinitionId = slot.RoleDefinitionId,
+                SlotNumber = slot.SlotNumber,
+                Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
+                PriorityBadgeClass = slot.PriorityBadgeClass,
+                Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
+                IsFilled = slot.IsFilled,
+                AssignedUserId = slot.AssignedUserId,
+                AssignedUserName = slot.AssignedUserName
+            }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
     }
@@ -366,7 +378,17 @@ internal sealed class TeamController(
         var viewModel = new MyTeamsViewModel
         {
             Memberships = membershipVMs,
-            PendingRequests = []
+            PendingRequests = (await teamService.GetPendingRequestsForUserAsync(user.Id, ct))
+                .Select(request => new TeamJoinRequestSummaryViewModel
+                {
+                    Id = request.Id,
+                    TeamId = request.TeamId,
+                    TeamName = request.TeamName ?? string.Empty,
+                    TeamSlug = request.TeamSlug ?? string.Empty,
+                    Status = request.Status,
+                    StatusBadgeClass = "bg-warning text-dark",
+                    RequestedAt = request.RequestedAt.ToDateTimeUtc()
+                }).ToList()
         };
 
         return View(viewModel);
@@ -390,7 +412,7 @@ internal sealed class TeamController(
 
         if (team.IsSystemTeam)
         {
-            SetError(localizer["Team_CannotJoinSystem"].Value);
+            SetError(localizer["Teams_Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -403,14 +425,14 @@ internal sealed class TeamController(
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
-            SetError(localizer["Team_AlreadyMember"].Value);
+            SetError(localizer["Teams_Team_AlreadyMember"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
         var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id, ct);
         if (pendingRequest is not null)
         {
-            SetError(localizer["Team_AlreadyPendingRequest"].Value);
+            SetError(localizer["Teams_Team_AlreadyPendingRequest"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -453,7 +475,7 @@ internal sealed class TeamController(
 
         if (team.IsSystemTeam)
         {
-            SetError(localizer["Team_CannotJoinSystem"].Value);
+            SetError(localizer["Teams_Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -469,8 +491,8 @@ internal sealed class TeamController(
         {
             var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
             SetSuccess(outcome == TeamJoinOutcome.RequestSubmitted
-                ? localizer["Team_JoinRequestSubmitted"].Value
-                : localizer["Team_Joined"].Value);
+                ? localizer["Teams_Team_JoinRequestSubmitted"].Value
+                : localizer["Teams_Team_Joined"].Value);
 
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -501,7 +523,7 @@ internal sealed class TeamController(
         try
         {
             await teamService.LeaveTeamAsync(team.Id, user.Id);
-            SetSuccess(localizer["Team_Left"].Value);
+            SetSuccess(localizer["Teams_Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -525,7 +547,7 @@ internal sealed class TeamController(
         try
         {
             await teamService.WithdrawJoinRequestAsync(id, user.Id);
-            SetSuccess(localizer["Team_RequestWithdrawn"].Value);
+            SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -693,47 +715,36 @@ internal sealed class TeamController(
             return View(model);
         }
 
-        try
+        // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
+        // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
+        // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
+        var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+        bool? isSensitive = isAdmin ? model.IsSensitive : null;
+        var result = await teamService.UpdateTeamWithGoogleGroupAsync(
+            id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
+            model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
+            model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
+        if (!result.Succeeded)
         {
-            // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
-            // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
-            // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
-            var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
-            bool? isSensitive = isAdmin ? model.IsSensitive : null;
-            var result = await teamService.UpdateTeamWithGoogleGroupAsync(
-                id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
-                model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
-                model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
+            var (field, reason) = result.Conflict switch
+            {
+                TeamUpdateConflict.SlugTaken => ("Name", "This team URL is already in use by another team."),
+                TeamUpdateConflict.CustomSlugTaken => ("CustomSlug", "This custom slug is already in use by another team."),
+                TeamUpdateConflict.GroupPrefixTaken => ("GoogleGroupPrefix", "This Google Group prefix is already in use by another team."),
+                _ => ("", result.ErrorMessage!)
+            };
+            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, reason);
+            ModelState.AddModelError(field, reason);
+            await PopulateEligibleParentsAsync(model, id);
+            return View(model);
+        }
+        var currentUser = await GetCurrentUserInfoAsync();
+        logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
-            SetSuccess(sharedLocalizer["Admin_TeamUpdated"].Value);
-            if (result.GroupWarning is not null)
-                SetError(result.GroupWarning);
-            return RedirectToAction(nameof(Summary));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, ex.Message);
-            ModelState.AddModelError("", ex.Message);
-            await PopulateEligibleParentsAsync(model, id);
-            return View(model);
-        }
-        catch (DbUpdateException ex)
-        {
-            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
-            var message = ex.InnerException?.Message ?? "";
-            if (message.Contains("CustomSlug", StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError("CustomSlug", "This custom slug is already in use by another team.");
-            }
-            else
-            {
-                ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            }
-            await PopulateEligibleParentsAsync(model, id);
-            return View(model);
-        }
+        SetSuccess(sharedLocalizer["Admin_TeamUpdated"].Value);
+        if (result.GroupWarning is not null)
+            SetError(result.GroupWarning);
+        return RedirectToAction(nameof(Summary));
     }
 
     [HttpPost("{id:guid}/Delete")]
@@ -741,11 +752,16 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
+
         try
         {
-            await teamService.DeleteTeamAsync(id);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
+            await teamService.DeleteTeamAsync(id, currentUser!.Id);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
 
             SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
         }

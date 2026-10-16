@@ -41,7 +41,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .With<IUserService>()
             .Build();
 
@@ -55,7 +55,8 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock);
+            Clock,
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     [HumansFact]

@@ -1,32 +1,32 @@
 @model Humans.Teams.Models.TeamResourcesViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["TeamAdminResources_Title"].Value, Model.TeamName);
+    ViewData["Title"] = string.Format(Localizer["Teams_TeamAdminResources_Title"].Value, Model.TeamName);
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["TeamAdmin_Resources"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_TeamAdmin_Resources"]</li>
     </ol>
 </nav>
 
-<h1>@Localizer["TeamAdmin_ManageResources"]</h1>
-<p class="text-muted">@Localizer["MyTeams_Team"]: @Model.TeamName</p>
+<h1>@Localizer["Teams_TeamAdmin_ManageResources"]</h1>
+<p class="text-muted">@Localizer["Teams_MyTeams_Team"]: @Model.TeamName</p>
 
 
 <div class="card mb-4">
-    <div class="card-header">@Localizer["TeamAdmin_ServiceAccountTitle"]</div>
+    <div class="card-header">@Localizer["Teams_TeamAdmin_ServiceAccountTitle"]</div>
     <div class="card-body">
-        <p class="mb-2">@Localizer["TeamAdmin_ShareWithServiceAccount"]</p>
+        <p class="mb-2">@Localizer["Teams_TeamAdmin_ShareWithServiceAccount"]</p>
         <div class="input-group mb-3" style="max-width: 600px;">
             <input type="text" class="form-control" value="@Model.ServiceAccountEmail" readonly id="serviceAccountEmail">
-            <button class="btn btn-outline-secondary" type="button" id="copyServiceAccountBtn">@Localizer["TeamAdmin_Copy"]</button>
+            <button class="btn btn-outline-secondary" type="button" id="copyServiceAccountBtn">@Localizer["Teams_TeamAdmin_Copy"]</button>
         </div>
         <ul class="mb-0 text-muted small">
-            <li><strong>@Localizer["TeamAdmin_DriveFolders"]:</strong> @Localizer["TeamAdmin_DriveFoldersHelp"]</li>
+            <li><strong>@Localizer["Teams_TeamAdmin_DriveFolders"]:</strong> @Localizer["Teams_TeamAdmin_DriveFoldersHelp"]</li>
             <li><strong>Drive Files:</strong> Share the file's parent Shared Drive with the service account as Contributor.</li>
-            <li><strong>@Localizer["TeamAdmin_GoogleGroups"]:</strong> @Localizer["TeamAdmin_GoogleGroupsHelp"]</li>
+            <li><strong>@Localizer["Teams_TeamAdmin_GoogleGroups"]:</strong> @Localizer["Teams_TeamAdmin_GoogleGroupsHelp"]</li>
         </ul>
     </div>
 </div>
@@ -34,18 +34,18 @@
 @if (Model.Resources.Any())
 {
     <div class="card mb-4">
-        <div class="card-header">@Localizer["TeamAdmin_LinkedResources"]</div>
+        <div class="card-header">@Localizer["Teams_TeamAdmin_LinkedResources"]</div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>@Localizer["AdminTeams_Name"]</th>
-                        <th>@Localizer["AdminTeams_Type"]</th>
+                        <th>@Localizer["Teams_AdminTeams_Name"]</th>
+                        <th>@Localizer["Teams_AdminTeams_Type"]</th>
                         <th>Permission</th>
                         <th>Restrict Inheritance</th>
-                        <th>@Localizer["TeamAdmin_LastSynced"]</th>
+                        <th>@Localizer["Teams_TeamAdmin_LastSynced"]</th>
                         <th>@SharedLocalizer["Common_Status"]</th>
-                        <th>@Localizer["MyTeams_Actions"]</th>
+                        <th>@Localizer["Teams_MyTeams_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -175,7 +175,7 @@
 else
 {
     <div class="alert alert-info mb-4">
-        @Localizer["TeamAdmin_NoResources"]
+        @Localizer["Teams_TeamAdmin_NoResources"]
     </div>
 }
 
@@ -207,8 +207,8 @@ else
 </div>
 
 <div class="mt-3">
-    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
-    <a asp-action="Members" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ManageMembers"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["Teams_TeamAdmin_BackToTeam"]</a>
+    <a asp-action="Members" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">@Localizer["Teams_TeamAdmin_ManageMembers"]</a>
 </div>
 
 <script>

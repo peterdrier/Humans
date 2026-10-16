@@ -653,6 +653,9 @@
   <data name="Nav_Rideshare" xml:space="preserve">
     <value>Mitfahren</value>
   </data>
+  <data name="Nav_Budget" xml:space="preserve">
+    <value>Budget</value>
+  </data>
   <data name="Validation_PhoneE164" xml:space="preserve">
     <value>{0} muss mit + und Ländervorwahl beginnen (z.B. +34 612 345 678)</value>
   </data>
@@ -1303,4 +1306,8 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp-Leitungen</value></data>
+  <data name="Application_MotivationLength" xml:space="preserve"><value>Die Motivation muss zwischen 50 und 2000 Zeichen enthalten.</value></data>
+  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Zusätzliche Informationen dürfen höchstens 1000 Zeichen enthalten.</value></data>
+  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Der wesentliche Beitrag darf höchstens 2000 Zeichen enthalten.</value></data>
+  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Die Erläuterung des Rollenverständnisses darf höchstens 2000 Zeichen enthalten.</value></data>
 </root>

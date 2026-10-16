@@ -20,7 +20,6 @@ namespace Humans.GoogleIntegration.Services;
 [CrossSectionWrite("Outbox processing writes Google email status back to the user.")]
 internal sealed class GoogleSyncOutboxProcessor(
     IGoogleSyncOutboxRepository outboxRepository,
-    IGoogleResourceRepository resourceRepository,
     IUserService userService,
     ITeamServiceRead teamService,
     IGoogleSyncService googleSyncService,
@@ -85,13 +84,14 @@ internal sealed class GoogleSyncOutboxProcessor(
         {
             try
             {
+                var grantOutcome = GoogleResourceGrantOutcome.Deferred;
                 switch (outboxEvent.EventType)
                 {
                     case GoogleSyncOutboxEventTypes.AddUserToTeamResources:
                         var syncSource = IsManualResync(outboxEvent.DeduplicationKey)
                             ? GoogleSyncSource.ManualSync
                             : GoogleSyncSource.TeamMemberJoined;
-                        await googleSyncService.AddUserToTeamResourcesAsync(
+                        grantOutcome = await googleSyncService.AddUserToTeamResourcesAsync(
                             outboxEvent.TeamId,
                             outboxEvent.UserId,
                             cancellationToken,
@@ -109,18 +109,11 @@ internal sealed class GoogleSyncOutboxProcessor(
                         throw new InvalidOperationException($"Unknown outbox event type '{outboxEvent.EventType}'.");
                 }
 
-                // Only mark user as Valid when the event actually touched Google APIs
-                // (AddUserToTeamResources with linked resources). RemoveUserFromTeamResources
-                // is a no-op, and Add with zero resources doesn't validate the email.
-                if (string.Equals(outboxEvent.EventType, GoogleSyncOutboxEventTypes.AddUserToTeamResources, StringComparison.Ordinal))
+                // Linked resources and queued group sync do not prove vendor acceptance.
+                if (grantOutcome == GoogleResourceGrantOutcome.Accepted)
                 {
-                    var activeResources = await resourceRepository
-                        .GetActiveByTeamIdAsync(outboxEvent.TeamId, cancellationToken);
-                    if (activeResources.Count > 0)
-                    {
-                        await userService.TrySetGoogleEmailStatusFromSyncAsync(
-                            ResolvedUserId(outboxEvent.UserId), GoogleEmailStatus.Valid, cancellationToken);
-                    }
+                    await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                        ResolvedUserId(outboxEvent.UserId), GoogleEmailStatus.Valid, cancellationToken);
                 }
 
                 // Finish the status tail before closing the event: its failure

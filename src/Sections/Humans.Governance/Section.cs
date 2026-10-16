@@ -49,7 +49,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<AssemblyVoteLapseJob>();
 
         // Query adapter breaks the circular DI graph between MembershipCalculator and
-        // ITeamServiceRead / IRoleAssignmentService, both of which reach ISystemTeamSync —
+        // ITeamServiceRead / IRoleAssignmentServiceRead, both of which reach ISystemTeamSync —
         // RoleAssignmentService injects it, TeamService resolves it lazily through
         // IServiceProvider for this same reason — and whose implementation injects
         // IMembershipCalculatorRead back. Only MembershipCalculator depends on the adapter.

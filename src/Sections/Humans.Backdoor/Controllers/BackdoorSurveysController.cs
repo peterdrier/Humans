@@ -98,7 +98,8 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
         [FromQuery] string? format = null,
         CancellationToken ct = default)
     {
-        var export = await surveys.GetResponseExportAsync(id, ct);
+        if (GetCurrentUserId() is not { } actorUserId) return Unauthorized();
+        var export = await surveys.GetResponseExportAsync(id, actorUserId, ct);
         if (export is null) return NotFound();
 
         Instant? sinceInstant = null;

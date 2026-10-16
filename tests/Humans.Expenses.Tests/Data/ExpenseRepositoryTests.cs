@@ -220,6 +220,29 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
+    public async Task ReplaceLineAttachmentAsync_ChangesLinkAndMetadataTogether_AndScopesToReport()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, ct);
+        var old = NewAttachment();
+        var lineId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id, new ExpenseLine { Id = lineId, Description = "receipt", Amount = 1m }, ct);
+        await _sut.AddAttachmentAsync(old, ct);
+        await _sut.SetLineAttachmentAsync(lineId, old.Id, ct);
+        var replacement = NewAttachment();
+
+        (await _sut.ReplaceLineAttachmentAsync(Guid.NewGuid(), lineId, replacement, ct)).Found.Should().BeFalse();
+        var replaced = await _sut.ReplaceLineAttachmentAsync(report.Id, lineId, replacement, ct);
+
+        replaced.Found.Should().BeTrue();
+        replaced.Replaced!.Id.Should().Be(old.Id);
+        (await _sut.GetByIdAsync(report.Id, ct))!.Lines.Single().AttachmentId.Should().Be(replacement.Id);
+        await using var context = await _factory.CreateDbContextAsync(ct);
+        (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle(a => a.Id == replacement.Id);
+    }
+
+    [HumansFact]
     public async Task SetLineAttachmentAsync_LinksAttachment()
     {
         var report = MakeReport();

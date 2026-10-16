@@ -124,7 +124,7 @@ public class AuditEventTests
     }
 
     [HumansFact]
-    public void RenderStructured_ReturnsVerbAndTrimmedVerb()
+    public void RenderStructured_ReturnsVerb()
     {
         var ev = MakeEvent(
             action: AuditAction.ShiftSignupCreated,
@@ -136,8 +136,6 @@ public class AuditEventTests
         var render = ev.RenderStructured();
 
         render.Verb.Should().Be("created signup for");
-        render.SelfVerb.Should().Be("signed up for");
-        render.TrimmedVerb.Should().Be("created signup");
         render.ShouldRenderDescriptionTail.Should().BeFalse(); // Description is empty
     }
 

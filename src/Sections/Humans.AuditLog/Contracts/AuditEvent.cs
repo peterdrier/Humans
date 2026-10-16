@@ -98,14 +98,11 @@ public sealed record AuditEvent(
     public AuditEventRender RenderStructured()
     {
         var verb = AuditEventTextualizer.GetActionVerb(Action);
-        var selfVerb = verb is null ? null : AuditEventTextualizer.GetActionSelfVerb(Action);
         var renderTail = !string.IsNullOrWhiteSpace(Description)
             && AuditEventTextualizer.ShouldRenderDescriptionTail(Action);
         return new AuditEventRender(
             Verb: verb,
-            SelfVerb: selfVerb,
-            ShouldRenderDescriptionTail: renderTail,
-            TrimmedVerb: verb is null ? null : AuditEventTextualizer.TrimDanglingPreposition(verb));
+            ShouldRenderDescriptionTail: renderTail);
     }
 
     private static string FormatDate(Instant occurredAt) =>
@@ -115,6 +112,4 @@ public sealed record AuditEvent(
 /// <summary>Structured render bundle from <see cref="AuditEvent.RenderStructured"/>.</summary>
 public sealed record AuditEventRender(
     string? Verb,
-    string? SelfVerb,
-    bool ShouldRenderDescriptionTail,
-    string? TrimmedVerb);
+    bool ShouldRenderDescriptionTail);

@@ -46,9 +46,15 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid lineId, CancellationToken ct = default);
     Task<Guid> AddAttachmentAsync(
         ExpenseAttachment attachment, CancellationToken ct = default);
-    Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Atomically replaces (or clears) a report line's attachment and removes superseded metadata.
+    /// Returns whether the line exists and its removed attachment for post-commit file cleanup.</summary>
+    Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
+        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default);
     Task SetLineAttachmentAsync(
         Guid lineId, Guid? attachmentId, CancellationToken ct = default);
+    /// <summary>Unlinks a report's line and deletes its attachment metadata in one save; returns the removed row for post-commit file cleanup.</summary>
+    Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default);
+
 
     /// <summary>
     /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be

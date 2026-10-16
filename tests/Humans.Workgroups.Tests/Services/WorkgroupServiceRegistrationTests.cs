@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Constants;
@@ -29,17 +30,19 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
+                call.ArgAt<string>(0).Should().Be("section-owned-root");
                 call.Arg<CancellationToken>().CanBeCanceled.Should().BeFalse();
                 request.Cancel();
                 return "created-folder";
             });
 
         var service = NewService();
+        await service.SetRootDriveFolderIdAsync("section-owned-root", actor, Ct);
         var id = group.Id;
         if (existing)
-            id = await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
+            id = (await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
                 new WorkgroupApplication("Existing", "Purpose", "Report", WorkgroupDeliverableKind.Report,
-                    WorkgroupAudience.Board, null, null, null), actor, Clock.GetCurrentInstant()), request.Token);
+                    WorkgroupAudience.Board, null, null, null), actor, Clock.GetCurrentInstant()), request.Token)).Value;
         else
             await service.RegisterAsync(id, actor, request.Token);
 
@@ -61,7 +64,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.DriveFolderCreationFailed);
 
         await using var ctx = OpenContext();
@@ -72,14 +75,14 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Register_WhenTheRootFolderIsUnset_ThrowsAndLeavesTheGroupApplied()
+    public async Task Register_WhenTheRootFolderIsUnset_RefusesAndLeavesTheGroupApplied()
     {
         RootFolderId = null;
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.RootFolderNotConfigured);
 
         await using var ctx = OpenContext();
@@ -91,21 +94,52 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetRootDriveFolderId_Blank_Throws()
+    public async Task SetRootDriveFolderId_Blank_ReturnsARefusal()
     {
         var act = () => NewService().SetRootDriveFolderIdAsync(" ", SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.RootFolderNotConfigured);
     }
 
     [HumansFact]
-    public async Task SetRootDriveFolderId_Valid_PersistsThroughSettings()
+    public async Task RootDriveFolder_PreservesLegacyValueUntilAdminSavesSectionOwnedSetting()
     {
-        await NewService().SetRootDriveFolderIdAsync("new-root", SeedUser(), Ct);
+        var actor = SeedUser();
+        var service = NewService();
+        (await service.GetRootDriveFolderIdAsync(Ct)).Should().Be(RootFolderId);
+        (await Db.Settings.CountAsync(Ct)).Should().Be(0, "reads must not backfill state");
+        Settings.ClearReceivedCalls();
 
-        await Settings.Received(1).SetValueAsync(
-            SettingKeys.WorkgroupsRootDriveFolderId, "new-root", Arg.Any<CancellationToken>());
+        await service.SetRootDriveFolderIdAsync(" new-root ", actor, Ct);
+        RootFolderId = "stale-legacy-root";
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("new-root");
+        await service.SetRootDriveFolderIdAsync("another-root", actor, Ct);
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("another-root");
+        (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("another-root");
+        Settings.ReceivedCalls().Should().BeEmpty("saved section state must not read or write the legacy key");
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
+            AuditEntityTypes.WorkgroupsSettings, Guid.Empty, "Root Drive folder set to new-root", actor);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA")]
+    [Xunit.InlineData("https://drive.google.com/drive/u/1/folders/0AFLHTK5u0wymUk9PVA?usp=sharing")]
+    [Xunit.InlineData("https://drive.google.com/open?id=0AFLHTK5u0wymUk9PVA")]
+    [Xunit.InlineData(" 0AFLHTK5u0wymUk9PVA ")]
+    public async Task SetRootDriveFolderId_PastedUrl_StoresBareId(string input)
+    {
+        await NewService().SetRootDriveFolderIdAsync(input, SeedUser(), Ct);
+
+        (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("0AFLHTK5u0wymUk9PVA");
+    }
+
+    [HumansFact]
+    public async Task GetRootDriveFolderId_StoredUrl_ReturnsBareId()
+    {
+        RootFolderId = "https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA";
+
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("0AFLHTK5u0wymUk9PVA");
     }
 
     [HumansTheory]
@@ -128,9 +162,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
 
-        var id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+        var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
             "New group", "Purpose", "A report", WorkgroupDeliverableKind.Report,
-            WorkgroupAudience.Board, null, null, null), Ct);
+            WorkgroupAudience.Board, null, null, null), Ct)).Value;
 
         await using var ctx = OpenContext();
         (await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct)).Status.Should().Be(WorkgroupStatus.Applied);
@@ -161,7 +195,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             coordinator, Clock.GetCurrentInstant(),
             new WorkgroupBudgetSave(1200m, null));
 
-        var id = await NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
+        var id = (await NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct)).Value;
 
         await using var ctx = OpenContext();
         var w = await ctx.Workgroups.SingleAsync(x => x.Id == id, Ct);
@@ -182,7 +216,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.BudgetAccountFailed);
         await using var ctx = OpenContext();
         (await ctx.Workgroups.AnyAsync(Ct)).Should().BeFalse();
@@ -194,10 +228,10 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     {
         var name = new string('a', 200);
 
-        var id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+        var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
             name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
             WorkgroupAudience.Board, TargetDate: null, DiscordChannelUrl: null,
-            SecondCoordinatorUserId: null), Ct);
+            SecondCoordinatorUserId: null), Ct)).Value;
 
         await using var ctx = OpenContext();
         var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);

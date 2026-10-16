@@ -596,6 +596,34 @@ public class MembershipCalculatorTests
         result.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(-1, false, true, true, true)]
+    [Xunit.InlineData(0, false, true, true, true)]
+    [Xunit.InlineData(29, false, true, true, false)]
+    [Xunit.InlineData(30, false, true, true, false)]
+    [Xunit.InlineData(31, false, true, false, false)]
+    [Xunit.InlineData(1, true, true, false, false)]
+    [Xunit.InlineData(1, false, false, false, false)]
+    public async Task StatusAudience_HorizonIncludesOnlyUnsignedActiveUsersDueWithinWindow(
+        int daysUntilDeadline, bool signed, bool active, bool remind, bool suspend)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        if (active) SeedActiveRoleInList(userId);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 40,
+            effectiveFrom: _clock.GetCurrentInstant() + Duration.FromDays(daysUntilDeadline - 40));
+        if (signed) SeedConsent(userId, versionId);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var reminders = await _service.GetUsersRequiringStatusUpdateAsync(ct, Duration.FromDays(30));
+        var suspensions = await _service.GetUsersRequiringStatusUpdateAsync(ct);
+        var expired = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], ct);
+
+        reminders.Contains(userId).Should().Be(remind);
+        suspensions.Contains(userId).Should().Be(suspend);
+        expired.Contains(userId).Should().Be(!signed && daysUntilDeadline <= 0);
+    }
+
     // --- GetUsersWithAllRequiredConsentsAsync tests ---
 
     [HumansFact]

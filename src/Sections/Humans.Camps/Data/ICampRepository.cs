@@ -302,6 +302,9 @@ internal partial interface ICampRepository : IRepository
     Task<CampMember?> GetMemberForOwnMutationAsync(
         Guid campMemberId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>All of a user's memberships, across years and statuses, with camp/season loaded for GDPR export.</summary>
+    Task<IReadOnlyList<CampMember>> GetAllMembershipsForUserAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Persists a previously-loaded membership with its scalar mutations applied.
     /// </summary>

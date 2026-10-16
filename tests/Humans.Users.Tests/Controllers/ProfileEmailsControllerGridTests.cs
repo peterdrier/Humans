@@ -199,6 +199,52 @@ public class ProfileEmailsControllerGridTests
         arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
     }
 
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task VerifyEmail_LocalizesTypedInvalidLink(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+        var controller = new ProfileEmailsController(
+            _userService, _userManager, _emailService, _emailMessages, _userEmailService,
+            _auditLogService, _logger, localizer, Substitute.For<ITicketServiceRead>(),
+            _authorizationService, _signInManager, Options.Create(new GoogleWorkspaceOptions()));
+        var row = Guid.NewGuid();
+        _userEmailService.VerifyEmailAsync(_userId, row, "token")
+            .Returns(new VerifyEmailResult(string.Empty, false, "Profile_InvalidVerificationLink"));
+
+        var result = await controller.VerifyEmail(_userId, row, "token");
+
+        result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("VerifyEmailResult");
+        controller.ViewData["Success"].Should().Be(false);
+        controller.ViewData["Message"].Should().Be(localizer["Profile_InvalidVerificationLink"].Value);
+        controller.ViewData["Message"].Should().NotBe("Profile_InvalidVerificationLink");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task VerifyEmail_PropagatesDependenciesInsteadOfInvalidLinkFeedback(bool validationException)
+    {
+        var row = Guid.NewGuid();
+        Exception failure = validationException
+            ? new ValidationException("Private dependency validation diagnostic")
+            : new InvalidOperationException("Private dependency operation diagnostic");
+        _userEmailService.VerifyEmailAsync(_userId, row, "token").Returns(Task.FromException<VerifyEmailResult>(failure));
+
+        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => _controller.VerifyEmail(_userId, row, "token"));
+
+        thrown.Should().BeSameAs(failure);
+        _controller.ViewData.ContainsKey("Message").Should().BeFalse();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task SetPrimary_UnexpectedDependencyFailure_Propagates()
     {

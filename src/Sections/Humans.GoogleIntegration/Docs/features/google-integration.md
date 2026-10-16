@@ -605,7 +605,7 @@ record `ManualSync`; membership add events record `TeamMemberJoined`.
 
 **Transient failures (all other errors including 429, 5xx):** Retried up to 10 times with exponential backoff. When the retry budget is exhausted (dead-lettered), the event is marked `FailedPermanently` and surfaces via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page with Retry.
 
-`GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
+`GoogleEmailStatus` is set to `Valid` only when `AddUserToTeamResourcesAsync` returns `Accepted`: Google created or confirmed an existing Drive grant and no grant failed. No linked resources, disabled Drive sync and deferred group reconciliation do not validate the address; failed grants do not either. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
 
 ### Resource-Level Retry Strategy
 ```

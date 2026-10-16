@@ -403,18 +403,18 @@ internal sealed class CalendarService(
         }
     }
 
-    public async Task CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
+    public async Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
             apply: x => x.IsCancelled = true,
             auditAction: AuditAction.CalendarOccurrenceCancelled,
             auditDescription: $"Cancelled occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
             ct, originalDate);
     }
 
-    public async Task OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
+    public async Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
             apply: x =>
             {
                 x.IsCancelled = false;
@@ -429,27 +429,29 @@ internal sealed class CalendarService(
             },
             auditAction: AuditAction.CalendarOccurrenceOverridden,
             auditDescription: $"Overrode occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
-            ct, originalDate);
+            ct, originalDate, dto);
     }
 
-    private async Task UpsertExceptionAsync(
+    private async Task<bool> UpsertExceptionAsync(
         Guid eventId, Instant? originalUtc, Guid userId,
         Action<CalendarEventException> apply,
         AuditAction auditAction, string auditDescription,
-        CancellationToken ct, LocalDate? originalDate)
+        CancellationToken ct, LocalDate? originalDate, OverrideOccurrenceDto? overrideDto = null)
     {
         var now = clock.GetCurrentInstant();
-        var ev = await repo.GetEventByIdAsync(eventId, ct)
-            ?? throw new InvalidOperationException("Calendar event not found.");
+        var ev = await repo.GetEventByIdAsync(eventId, ct);
+        if (ev is null) return Refuse("Calendar event not found.");
         var info = CalendarOccurrenceExpander.ToInfo(ev);
         if (string.IsNullOrWhiteSpace(info.RecurrenceRule) ||
             (info.IsAllDay ? originalDate is null || originalUtc is not null : originalUtc is null || originalDate is not null))
-            throw new InvalidOperationException("The occurrence identity must match the series' date or time type.");
+            return Refuse("The occurrence identity must match the series' date or time type.");
+        var refusal = GetOverrideRefusal(info, originalUtc, originalDate, overrideDto);
+        if (refusal is not null) return Refuse(refusal);
         var legacyStart = originalDate is null ? null : ev.Exceptions.FirstOrDefault(x =>
             x.OriginalOccurrenceDate is null && x.OriginalOccurrenceStartUtc is { } old &&
             old.InZone(DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"]).Date == originalDate)?.OriginalOccurrenceStartUtc;
 
-        await repo.UpsertExceptionAsync(
+        var repositoryRefusal = await repo.UpsertExceptionAsync(
             eventId,
             originalUtc ?? legacyStart,
             createdByUserId: userId,
@@ -465,33 +467,9 @@ internal sealed class CalendarService(
                     x.OverrideEndUtc = null;
                 }
                 apply(x);
-                if (x.IsCancelled) return;
-                if (info.IsAllDay)
-                {
-                    if (x.OverrideStartUtc is not null || x.OverrideEndUtc is not null)
-                        throw new InvalidOperationException("An all-day occurrence cannot have a time.");
-                    var start = x.OverrideStartDate ?? originalDate!.Value;
-                    LocalDate end;
-                    try
-                    {
-                        end = x.OverrideEndDateExclusive ?? start.PlusDays(
-                            NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
-                    }
-                    catch (OverflowException ex)
-                    {
-                        throw new InvalidOperationException("An all-day occurrence requires a representable date range.", ex);
-                    }
-                    if (end <= start) throw new InvalidOperationException("An all-day occurrence requires a non-empty date range.");
-                }
-                else
-                {
-                    if (x.OverrideStartDate is not null || x.OverrideEndDateExclusive is not null)
-                        throw new InvalidOperationException("A timed occurrence cannot have all-day dates.");
-                    if (x.OverrideEndUtc is { } end && end < (x.OverrideStartUtc ?? originalUtc!.Value))
-                        throw new InvalidOperationException("An occurrence cannot end before it starts.");
-                }
             },
             ct: ct, originalDate: originalDate);
+        if (repositoryRefusal is not null) return Refuse(repositoryRefusal);
 
         // Audit best-effort: exception upsert already committed (see CreateEventAsync).
         try
@@ -507,5 +485,45 @@ internal sealed class CalendarService(
                 "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}. Exception upsert was committed; reconcile audit trail manually.",
                 auditAction, eventId, userId);
         }
+        return true;
+
+        bool Refuse(string reason)
+        {
+            logger.LogWarning("Calendar occurrence mutation rejected for event {EventId}, actor {UserId}: {Reason}",
+                eventId, userId, reason);
+            return false;
+        }
     }
+
+    private static string? GetOverrideRefusal(
+        CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate, OverrideOccurrenceDto? dto)
+    {
+        if (dto is null) return null; // Cancellation preserves the existing override.
+        if (info.IsAllDay)
+        {
+            if (dto.OverrideStartUtc is not null || dto.OverrideEndUtc is not null)
+                return "An all-day occurrence cannot have a time.";
+            var start = dto.OverrideStartDate ?? originalDate!.Value;
+            LocalDate end;
+            try
+            {
+                end = dto.OverrideEndDateExclusive ?? start.PlusDays(
+                    NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+            }
+            catch (OverflowException)
+            {
+                return "An all-day occurrence requires a representable date range.";
+            }
+            if (end <= start) return "An all-day occurrence requires a non-empty date range.";
+        }
+        else
+        {
+            if (dto.OverrideStartDate is not null || dto.OverrideEndDateExclusive is not null)
+                return "A timed occurrence cannot have all-day dates.";
+            if (dto.OverrideEndUtc is { } end && end < (dto.OverrideStartUtc ?? originalUtc!.Value))
+                return "An occurrence cannot end before it starts.";
+        }
+        return null;
+    }
+
 }

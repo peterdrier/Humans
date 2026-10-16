@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Base.Diagnostics;
+using Humans.Tickets.Contracts;
 using NodaTime;
 
 namespace Humans.TicketTailor.Tests.Services;
@@ -13,11 +14,9 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("GetCheckInsAsync")]
     public async Task PaginatedRead_TimesEachPageSeparately_NotTheWholeLoop(string operation)
     {
-        // nobodies-collective/Humans#946: HttpClient.Timeout applies per request and the timing extension's Error
-        // threshold is calibrated for one request — timing the whole paginated loop instead
-        // falsely trips Error on a long multi-page sync. A timing scope recorded once per
-        // page (not once for the whole call) is the fix; verify it via the shared registry,
-        // since forcing the real 30s+ elapsed time this threshold judges isn't practical here.
+        // nobodies-collective/Humans#946: HttpClient.Timeout and the timing extension's Error
+        // threshold are both per request, so each page gets its own timing scope. Asserted via
+        // the shared registry; forcing the real 30s+ elapsed time isn't practical here.
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
@@ -38,7 +37,8 @@ public class TicketTailorServiceTests
         switch (operation)
         {
             case "GetOrdersAsync":
-                await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+                (await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken))
+                    .Should().HaveCount(2);
                 break;
             case "GetIssuedTicketsAsync":
                 await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
@@ -87,55 +87,30 @@ public class TicketTailorServiceTests
         orders[0].DiscountCode.Should().Be("NOBO25");
     }
 
-    [HumansFact]
-    public async Task GetOrdersAsync_HandlesPagination()
-    {
-        var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new
-        {
-            data = new[]
-            {
-                new
-                {
-                    id = "ord_001",
-                    buyer_details = new { first_name = "A", last_name = "B", email = "a@b.com", name = "A B" },
-                    total = 100, currency = new { code = "eur", base_multiplier = 100 },
-                    voucher_code = (string?)null, status = "completed", created_at = 1716811200L
-                }
-            },
-            links = new { next = "has_more" }
-        });
-        handler.EnqueueResponse(HttpStatusCode.OK, new
-        {
-            data = new[]
-            {
-                new
-                {
-                    id = "ord_002",
-                    buyer_details = new { first_name = "C", last_name = "D", email = "c@d.com", name = "C D" },
-                    total = 200, currency = new { code = "eur", base_multiplier = 100 },
-                    voucher_code = (string?)null, status = "completed", created_at = 1716811200L
-                }
-            },
-            links = new { next = (string?)null }
-        });
-
-        var service = TicketTailorTestHost.CreateService(handler);
-        var orders = await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
-
-        orders.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetOrdersAsync_ThrowsOnApiError()
+    [HumansTheory]
+    [Xunit.InlineData("GetOrdersAsync")]
+    [Xunit.InlineData("GetIssuedTicketsAsync")]
+    [Xunit.InlineData("GetCheckInsAsync")]
+    [Xunit.InlineData("GetEventSummaryAsync")]
+    [Xunit.InlineData("GenerateDiscountCodesAsync")]
+    public async Task NonWriteMethods_ThrowRawHttpRequestExceptionOnApiError(string operation)
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.Unauthorized, new { error = "Invalid API key" });
 
         var service = TicketTailorTestHost.CreateService(handler);
-        var act = () => service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> act = operation switch
+        {
+            "GetOrdersAsync" => () => service.GetOrdersAsync(null, "ev_test", ct),
+            "GetIssuedTicketsAsync" => () => service.GetIssuedTicketsAsync(null, "ev_test", ct),
+            "GetCheckInsAsync" => () => service.GetCheckInsAsync(null, "ev_test", ct),
+            "GetEventSummaryAsync" => () => service.GetEventSummaryAsync("ev_test", ct),
+            _ => () => service.GenerateDiscountCodesAsync(
+                new DiscountCodeSpec(Count: 1, DiscountType: DiscountType.Percentage, DiscountValue: 25m, ExpiresAt: null), ct),
+        };
 
-        await act.Should().ThrowAsync<HttpRequestException>();
+        await act.Should().ThrowExactlyAsync<HttpRequestException>();
     }
 
     [HumansFact]

@@ -22,7 +22,8 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
         string? plainTextBody,
         string? replyTo = null,
         IDictionary<string, string>? extraHeaders = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool redact = false, string? templateName = null)
     {
         try
         {
@@ -79,11 +80,17 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
 
-            logger.LogInformation("Email sent to {Recipient}: {Subject}", recipientEmail, subject);
+            if (redact)
+                logger.LogInformation("Email sent: {TemplateName}", templateName);
+            else
+                logger.LogInformation("Email sent to {Recipient}: {Subject}", recipientEmail, subject);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send email to {Recipient}: {Subject}", recipientEmail, subject);
+            if (redact)
+                logger.LogError("Failed to send email {TemplateName}: {ExceptionType}", templateName, ex.GetType().Name);
+            else
+                logger.LogError(ex, "Failed to send email to {Recipient}: {Subject}", recipientEmail, subject);
             throw;
         }
     }

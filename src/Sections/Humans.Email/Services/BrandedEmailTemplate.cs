@@ -1,10 +1,15 @@
 using System.Net;
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 
 namespace Humans.Email.Services;
 
 internal static class BrandedEmailTemplate
 {
-    public static string Wrap(string content, string baseUrl, string environmentName, string? unsubscribeUrl = null)
+    private static readonly ResourceManager Resources = new(typeof(EmailResource));
+
+    public static string Wrap(string content, string baseUrl, string environmentName, string? unsubscribeUrl = null, string? culture = null)
     {
         content = EmailInlineStyler.Apply(content);
 
@@ -12,8 +17,11 @@ internal static class BrandedEmailTemplate
         var envLabel = string.Equals(environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
             ? "QA"
             : environmentName.ToUpperInvariant();
+        var language = culture?.Split('-')[0].ToLowerInvariant();
+        var recipientCulture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode);
+        var unsubscribeLabel = Resources.GetString("Email_UnsubscribeFooter", recipientCulture)!;
         var unsubscribeFooter = unsubscribeUrl is not null
-            ? $"""<p style="font-size: 11px; color: #8b7355; margin: 8px 0 0 0;"><a href="{WebUtility.HtmlEncode(unsubscribeUrl)}" style="color: #8b7355;">Unsubscribe from these emails</a></p>"""
+            ? $"""<p style="font-size: 11px; color: #8b7355; margin: 8px 0 0 0;"><a href="{WebUtility.HtmlEncode(unsubscribeUrl)}" style="color: #8b7355;">{WebUtility.HtmlEncode(unsubscribeLabel)}</a></p>"""
             : "";
 
         var envBanner = isProduction

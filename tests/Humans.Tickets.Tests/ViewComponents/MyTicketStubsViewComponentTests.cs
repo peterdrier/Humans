@@ -47,7 +47,7 @@ public class MyTicketStubsViewComponentTests
         _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(1, [Row(pending: true, transferId: transferId)]));
         _earlyEntry.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserEarlyEntry(ee, ["Camp: Flaming Lotus"]));
+            .Returns(new EarlyEntryRosterRow(userId, ee, ["Camp: Flaming Lotus"], false));
 
         var result = await BuildSut().InvokeAsync(userId);
 

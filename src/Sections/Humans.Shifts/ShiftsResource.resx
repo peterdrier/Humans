@@ -470,4 +470,13 @@
   <data name="ShiftSignups_Title" xml:space="preserve"><value>Shift Signups</value></data>
   <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmed</value></data>
   <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} more</value></data>
+  <data name="Shifts_Delete_ConfirmedSignups" xml:space="preserve">
+    <value>Cannot delete: {0} humans have confirmed signups. Bail or reassign them first.</value>
+  </data>
+  <data name="Shifts_Delete_RotaSuccess" xml:space="preserve">
+    <value>Rota deleted.</value>
+  </data>
+  <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
+    <value>Shift deleted.</value>
+  </data>
 </root>

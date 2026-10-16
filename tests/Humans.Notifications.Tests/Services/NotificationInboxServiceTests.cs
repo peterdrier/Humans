@@ -81,6 +81,53 @@ public class NotificationInboxServiceTests : IDisposable
         return notification;
     }
 
+    [HumansFact]
+    public async Task PurgeExpiredAsync_InvalidatesAllRecipientsOfStaleAndRetiredNotifications()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var otherUserId = Guid.NewGuid();
+        var stale = await CreateNotification();
+        _clock.Advance(Duration.FromDays(40));
+        var retired = await CreateNotification(NotificationClass.Actionable, NotificationSource.ApplicationSubmitted);
+        await CreateNotification(); // Fresh informational notification survives.
+        foreach (var notification in new[] { stale, retired })
+        {
+            notification.Recipients.Add(new NotificationRecipient
+            {
+                NotificationId = notification.Id,
+                UserId = otherUserId,
+            });
+        }
+        await _dbContext.SaveChangesAsync(ct);
+
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((1, 2));
+        (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((1, 1));
+
+        (await _service.PurgeExpiredAsync(ct)).Should().Be((0, 1, 1));
+
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
+        (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((0, 0));
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_InvalidatesCommittedDeletionBeforeLaterFailure()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var repo = Substitute.For<INotificationRepository>();
+        repo.DeleteUnresolvedInformationalOlderThanAsync(Arg.Any<Instant>(), ct)
+            .Returns((1, (IReadOnlyList<Guid>)new[] { _userId }));
+        repo.DeleteUnresolvedBySourcesAsync(Arg.Any<IReadOnlyList<NotificationSource>>(), ct)
+            .Returns<Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)>>(_ =>
+                throw new InvalidOperationException("Retention storage failed."));
+        _cache.Set(CacheKeys.NotificationBadgeCounts(_userId), (0, 1));
+        var service = new NotificationInboxService(repo, _userService, _clock, _cache);
+
+        await ((Func<Task>)(async () => await service.PurgeExpiredAsync(ct)))
+            .Should().ThrowAsync<InvalidOperationException>();
+
+        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(_userId), out _).Should().BeFalse();
+    }
+
     // --- ResolveAsync ---
 
     [HumansFact]

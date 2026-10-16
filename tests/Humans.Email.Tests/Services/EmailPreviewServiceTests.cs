@@ -1,3 +1,4 @@
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
@@ -38,43 +39,58 @@ public sealed class EmailPreviewServiceTests
 
         action.Should().Throw<InvalidOperationException>()
             .WithMessage("*recipient-specific send policy*");
-        composer.DidNotReceive().Compose(Arg.Any<string>(), Arg.Any<string?>());
+        composer.DidNotReceive().Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
     public void RenderMarkdown_always_on_category_has_no_unsubscribe_placeholder()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
-        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
         var sut = new EmailPreviewService(composer);
 
         var preview = sut.RenderMarkdown("Subject", "**Hello**", MessageCategory.System);
 
         preview.Should().Be(new RenderedEmailPreview(string.Empty, "Subject", "<html>Branded</html>"));
-        composer.Received(1).Compose(Arg.Is<string>(h => h.Contains("<strong>Hello</strong>")), null);
+        composer.Received(1).Compose(Arg.Is<string>(h => h.Contains("<strong>Hello</strong>")), null, CultureInfo.CurrentUICulture.Name);
     }
 
     [HumansFact]
     public void RenderMarkdown_opt_outable_category_gets_placeholder_unsubscribe_footer()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
-        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
         var sut = new EmailPreviewService(composer);
 
         sut.RenderMarkdown("Subject", "Hi", MessageCategory.FacilitatedMessages);
 
-        composer.Received(1).Compose(Arg.Any<string>(), "#");
+        composer.Received(1).Compose(Arg.Any<string>(), "#", CultureInfo.CurrentUICulture.Name);
     }
 
     [HumansFact]
     public void RenderMarkdown_no_category_has_no_unsubscribe_placeholder()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
-        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
         var sut = new EmailPreviewService(composer);
 
         sut.RenderMarkdown("Subject", "Hi", null);
 
-        composer.Received(1).Compose(Arg.Any<string>(), null);
+        composer.Received(1).Compose(Arg.Any<string>(), null, CultureInfo.CurrentUICulture.Name);
     }
+    [HumansFact]
+    public void RenderMarkdown_UsesTheCallersCultureForThePlaceholderFooter()
+    {
+        using var culture = new Humans.Base.Extensions.CultureScope("es");
+        var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
+        environment.EnvironmentName.Returns("Production");
+        var composer = new BrandedEmailBodyComposer(
+            Microsoft.Extensions.Options.Options.Create(new Humans.Base.Configuration.EmailSettings()), environment);
+
+        var preview = new EmailPreviewService(composer).RenderMarkdown("Subject", "Hi", MessageCategory.Governance);
+
+        preview.HtmlBody.Should().Contain("Dejar de recibir estos correos");
+        preview.HtmlBody.Should().Contain("href=\"#\"");
+    }
+
 }

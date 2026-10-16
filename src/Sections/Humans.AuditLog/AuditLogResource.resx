@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Enum_AuditAction_TeamMemberAdded" xml:space="preserve"><value>Team member added</value></data>
+  <data name="Enum_AuditAction_TeamMemberRemoved" xml:space="preserve"><value>Team member removed</value></data>
+  <data name="Enum_AuditAction_MemberSuspended" xml:space="preserve"><value>Member suspended</value></data>
+  <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Member unsuspended</value></data>
+  <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account anonymized</value></data>
+  <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Role assigned</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Role ended</value></data>
+  <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Volunteer approved</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google resource access granted</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Google resource access revoked</value></data>
+  <data name="Enum_AuditAction_GoogleResourceProvisioned" xml:space="preserve"><value>Google resource provisioned</value></data>
+  <data name="Enum_AuditAction_TeamJoinedDirectly" xml:space="preserve"><value>Team joined directly</value></data>
+  <data name="Enum_AuditAction_TeamLeft" xml:space="preserve"><value>Team left</value></data>
+  <data name="Enum_AuditAction_TeamJoinRequestApproved" xml:space="preserve"><value>Team join request approved</value></data>
+  <data name="Enum_AuditAction_TeamJoinRequestRejected" xml:space="preserve"><value>Team join request rejected</value></data>
+  <data name="Enum_AuditAction_TeamMemberRoleChanged" xml:space="preserve"><value>Team member role changed</value></data>
+  <data name="Enum_AuditAction_AnomalousPermissionDetected" xml:space="preserve"><value>Anomalous permission detected</value></data>
+  <data name="Enum_AuditAction_MembershipsRevokedOnDeletionRequest" xml:space="preserve"><value>Memberships revoked on deletion request</value></data>
+  <data name="Enum_AuditAction_ConsentCheckCleared" xml:space="preserve"><value>Consent check cleared</value></data>
+  <data name="Enum_AuditAction_ConsentCheckFlagged" xml:space="preserve"><value>Consent check flagged</value></data>
+  <data name="Enum_AuditAction_SignupRejected" xml:space="preserve"><value>Signup rejected</value></data>
+  <data name="Enum_AuditAction_TierApplicationApproved" xml:space="preserve"><value>Tier application approved</value></data>
+  <data name="Enum_AuditAction_TierApplicationRejected" xml:space="preserve"><value>Tier application rejected</value></data>
+  <data name="Enum_AuditAction_TierDowngraded" xml:space="preserve"><value>Tier downgraded</value></data>
+  <data name="Enum_AuditAction_TierTermExpiryCorrected" xml:space="preserve"><value>Tier term expiry corrected</value></data>
+  <data name="Enum_AuditAction_GoogleResourceDeactivated" xml:space="preserve"><value>Google resource deactivated</value></data>
+  <data name="Enum_AuditAction_FacilitatedMessageSent" xml:space="preserve"><value>Facilitated message sent</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionCreated" xml:space="preserve"><value>Team role definition created</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionUpdated" xml:space="preserve"><value>Team role definition updated</value></data>
+  <data name="Enum_AuditAction_TeamRoleDefinitionDeleted" xml:space="preserve"><value>Team role definition deleted</value></data>
+  <data name="Enum_AuditAction_TeamRoleAssigned" xml:space="preserve"><value>Team role assigned</value></data>
+  <data name="Enum_AuditAction_TeamRoleUnassigned" xml:space="preserve"><value>Team role unassigned</value></data>
+  <data name="Enum_AuditAction_CampCreated" xml:space="preserve"><value>Camp created</value></data>
+  <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Camp updated</value></data>
+  <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Camp deleted</value></data>
+  <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Camp season created</value></data>
+  <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Camp season approved</value></data>
+  <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Camp season rejected</value></data>
+  <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Camp season withdrawn</value></data>
+  <data name="Enum_AuditAction_CampSeasonStatusChanged" xml:space="preserve"><value>Camp season status changed</value></data>
+  <data name="Enum_AuditAction_CampNameChanged" xml:space="preserve"><value>Camp name changed</value></data>
+  <data name="Enum_AuditAction_CampLeadAdded" xml:space="preserve"><value>Camp lead added</value></data>
+  <data name="Enum_AuditAction_CampLeadRemoved" xml:space="preserve"><value>Camp lead removed</value></data>
+  <data name="Enum_AuditAction_CampPrimaryLeadTransferred" xml:space="preserve"><value>Camp primary lead transferred</value></data>
+  <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>Camp image uploaded</value></data>
+  <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>Camp image deleted</value></data>
+  <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Shift signup confirmed</value></data>
+  <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Shift signup refused</value></data>
+  <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Shift signup assigned by coordinator</value></data>
+  <data name="Enum_AuditAction_ShiftSignupBailed" xml:space="preserve"><value>Shift signup bailed</value></data>
+  <data name="Enum_AuditAction_ShiftSignupNoShow" xml:space="preserve"><value>Shift signup no show</value></data>
+  <data name="Enum_AuditAction_ShiftSignupCancelled" xml:space="preserve"><value>Shift signup cancelled</value></data>
+  <data name="Enum_AuditAction_TeamPageContentUpdated" xml:space="preserve"><value>Team page content updated</value></data>
+  <data name="Enum_AuditAction_FeedbackResponseSent" xml:space="preserve"><value>Feedback response sent</value></data>
+  <data name="Enum_AuditAction_FeedbackStatusChanged" xml:space="preserve"><value>Feedback status changed</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountProvisioned" xml:space="preserve"><value>Workspace account provisioned</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountSuspended" xml:space="preserve"><value>Workspace account suspended</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountReactivated" xml:space="preserve"><value>Workspace account reactivated</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountPasswordReset" xml:space="preserve"><value>Workspace account password reset</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountLinked" xml:space="preserve"><value>Workspace account linked</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>Workspace account backup codes generated</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountBackupCodesInvalidated" xml:space="preserve"><value>Workspace account backup codes invalidated</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountResetBlockedFor2Sv" xml:space="preserve"><value>Workspace account reset blocked by two-step verification</value></data>
+  <data name="Enum_AuditAction_AccountMergeRequested" xml:space="preserve"><value>Account merge requested</value></data>
+  <data name="Enum_AuditAction_AccountMergeAccepted" xml:space="preserve"><value>Account merge accepted</value></data>
+  <data name="Enum_AuditAction_AccountMergeRejected" xml:space="preserve"><value>Account merge rejected</value></data>
+  <data name="Enum_AuditAction_GoogleResourceSettingsRemediated" xml:space="preserve"><value>Google resource settings remediated</value></data>
+  <data name="Enum_AuditAction_CommunicationPreferenceChanged" xml:space="preserve"><value>Communication preference changed</value></data>
+  <data name="Enum_AuditAction_ContactCreated" xml:space="preserve"><value>Contact created</value></data>
+  <data name="Enum_AuditAction_RotaMovedToTeam" xml:space="preserve"><value>Rota moved to team</value></data>
+  <data name="Enum_AuditAction_GoogleResourceInheritanceDriftCorrected" xml:space="preserve"><value>Google resource inheritance drift corrected</value></data>
+  <data name="Enum_AuditAction_FeedbackAssignmentChanged" xml:space="preserve"><value>Feedback assignment changed</value></data>
+  <data name="Enum_AuditAction_GoogleEmailRenamed" xml:space="preserve"><value>Google email renamed</value></data>
+  <data name="Enum_AuditAction_CalendarEventCreated" xml:space="preserve"><value>Calendar event created</value></data>
+  <data name="Enum_AuditAction_CalendarEventUpdated" xml:space="preserve"><value>Calendar event updated</value></data>
+  <data name="Enum_AuditAction_CalendarEventDeleted" xml:space="preserve"><value>Calendar event deleted</value></data>
+  <data name="Enum_AuditAction_CalendarOccurrenceCancelled" xml:space="preserve"><value>Calendar occurrence cancelled</value></data>
+  <data name="Enum_AuditAction_CalendarOccurrenceOverridden" xml:space="preserve"><value>Calendar occurrence overridden</value></data>
+  <data name="Enum_AuditAction_CampMemberRequested" xml:space="preserve"><value>Camp member requested</value></data>
+  <data name="Enum_AuditAction_CampMemberApproved" xml:space="preserve"><value>Camp member approved</value></data>
+  <data name="Enum_AuditAction_CampMemberRejected" xml:space="preserve"><value>Camp member rejected</value></data>
+  <data name="Enum_AuditAction_CampMemberWithdrawn" xml:space="preserve"><value>Camp member withdrawn</value></data>
+  <data name="Enum_AuditAction_CampMemberLeft" xml:space="preserve"><value>Camp member left</value></data>
+  <data name="Enum_AuditAction_CampMemberRemoved" xml:space="preserve"><value>Camp member removed</value></data>
+  <data name="Enum_AuditAction_CampMemberAddedByLead" xml:space="preserve"><value>Camp member added by lead</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionCreated" xml:space="preserve"><value>Camp role definition created</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionUpdated" xml:space="preserve"><value>Camp role definition updated</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionDeactivated" xml:space="preserve"><value>Camp role definition deactivated</value></data>
+  <data name="Enum_AuditAction_CampRoleDefinitionReactivated" xml:space="preserve"><value>Camp role definition reactivated</value></data>
+  <data name="Enum_AuditAction_CampRoleAssigned" xml:space="preserve"><value>Camp role assigned</value></data>
+  <data name="Enum_AuditAction_CampRoleUnassigned" xml:space="preserve"><value>Camp role unassigned</value></data>
+  <data name="Enum_AuditAction_IssueStatusChanged" xml:space="preserve"><value>Issue status changed</value></data>
+  <data name="Enum_AuditAction_IssueAssigneeChanged" xml:space="preserve"><value>Issue assignee changed</value></data>
+  <data name="Enum_AuditAction_IssueSectionChanged" xml:space="preserve"><value>Issue section changed</value></data>
+  <data name="Enum_AuditAction_IssueGitHubLinked" xml:space="preserve"><value>Issue GitHub linked</value></data>
+  <data name="Enum_AuditAction_AccountPurged" xml:space="preserve"><value>Account purged</value></data>
+  <data name="Enum_AuditAction_UserEmailProviderBackfilled" xml:space="preserve"><value>User email provider backfilled</value></data>
+  <data name="Enum_AuditAction_UserEmailGoogleSet" xml:space="preserve"><value>User email google set</value></data>
+  <data name="Enum_AuditAction_UserEmailGoogleCleared" xml:space="preserve"><value>User email google cleared</value></data>
+  <data name="Enum_AuditAction_UserEmailLinked" xml:space="preserve"><value>User email linked</value></data>
+  <data name="Enum_AuditAction_UserEmailUnlinked" xml:space="preserve"><value>User email unlinked</value></data>
+  <data name="Enum_AuditAction_UserEmailPrimarySet" xml:space="preserve"><value>User email primary set</value></data>
+  <data name="Enum_AuditAction_UserEmailPrimaryCleared" xml:space="preserve"><value>User email primary cleared</value></data>
+  <data name="Enum_AuditAction_UserEmailDeleted" xml:space="preserve"><value>User email deleted</value></data>
+  <data name="Enum_AuditAction_UserEmailVisibilityChanged" xml:space="preserve"><value>User email visibility changed</value></data>
+  <data name="Enum_AuditAction_UserEmailAdded" xml:space="preserve"><value>User email added</value></data>
+  <data name="Enum_AuditAction_UserEmailManuallyVerified" xml:space="preserve"><value>User email manually verified</value></data>
+  <data name="Enum_AuditAction_ShiftSignupCreated" xml:space="preserve"><value>Shift signup created</value></data>
+  <data name="Enum_AuditAction_ShiftSignupReassigned" xml:space="preserve"><value>Shift signup reassigned</value></data>
+  <data name="Enum_AuditAction_StoreOrderCreated" xml:space="preserve"><value>Store order created</value></data>
+  <data name="Enum_AuditAction_StoreOrderDeleted" xml:space="preserve"><value>Store order deleted</value></data>
+  <data name="Enum_AuditAction_StoreLineAdded" xml:space="preserve"><value>Store line added</value></data>
+  <data name="Enum_AuditAction_StoreLineRemoved" xml:space="preserve"><value>Store line removed</value></data>
+  <data name="Enum_AuditAction_StoreCounterpartyEdited" xml:space="preserve"><value>Store counterparty edited</value></data>
+  <data name="Enum_AuditAction_StoreProductCreated" xml:space="preserve"><value>Store product created</value></data>
+  <data name="Enum_AuditAction_StoreProductUpdated" xml:space="preserve"><value>Store product updated</value></data>
+  <data name="Enum_AuditAction_StoreProductPriceChanged" xml:space="preserve"><value>Store product price changed</value></data>
+  <data name="Enum_AuditAction_StoreProductDeactivated" xml:space="preserve"><value>Store product deactivated</value></data>
+  <data name="Enum_AuditAction_StoreInvoiceIssued" xml:space="preserve"><value>Store invoice issued</value></data>
+  <data name="Enum_AuditAction_StorePaymentRecorded" xml:space="preserve"><value>Store payment recorded</value></data>
+  <data name="Enum_AuditAction_StorePaymentSettled" xml:space="preserve"><value>Store payment settled</value></data>
+  <data name="Enum_AuditAction_StorePaymentFailed" xml:space="preserve"><value>Store payment failed</value></data>
+  <data name="Enum_AuditAction_StorePaymentExpired" xml:space="preserve"><value>Store payment expired</value></data>
+  <data name="Enum_AuditAction_StorePaymentDeleted" xml:space="preserve"><value>Store payment deleted</value></data>
+  <data name="Enum_AuditAction_TicketTransferRequested" xml:space="preserve"><value>Ticket transfer requested</value></data>
+  <data name="Enum_AuditAction_TicketTransferApproved" xml:space="preserve"><value>Ticket transfer approved</value></data>
+  <data name="Enum_AuditAction_TicketTransferRejected" xml:space="preserve"><value>Ticket transfer rejected</value></data>
+  <data name="Enum_AuditAction_TicketTransferCancelled" xml:space="preserve"><value>Ticket transfer cancelled</value></data>
+  <data name="Enum_AuditAction_TicketTransferAutoFailed" xml:space="preserve"><value>Ticket transfer auto failed</value></data>
+  <data name="Enum_AuditAction_OrphanUserEmailDeleted" xml:space="preserve"><value>Orphan user email deleted</value></data>
+  <data name="Enum_AuditAction_GhostExternalLoginsDeleted" xml:space="preserve"><value>Ghost external logins deleted</value></data>
+  <data name="Enum_AuditAction_LegacyIdentityEmailBackfilled" xml:space="preserve"><value>Legacy identity email backfilled</value></data>
+  <data name="Enum_AuditAction_CampEarlyEntryGranted" xml:space="preserve"><value>Camp early entry granted</value></data>
+  <data name="Enum_AuditAction_CampEarlyEntryRevoked" xml:space="preserve"><value>Camp early entry revoked</value></data>
+  <data name="Enum_AuditAction_CampSeasonEeSlotCountChanged" xml:space="preserve"><value>Camp season Early Entry slot count changed</value></data>
+  <data name="Enum_AuditAction_CampSettingsEeStartDateChanged" xml:space="preserve"><value>Camp settings Early Entry start date changed</value></data>
+  <data name="Enum_AuditAction_ExpenseSubmit" xml:space="preserve"><value>Expense submitted</value></data>
+  <data name="Enum_AuditAction_ExpenseEndorse" xml:space="preserve"><value>Expense endorsed</value></data>
+  <data name="Enum_AuditAction_ExpenseCoordinatorReject" xml:space="preserve"><value>Expense coordinator reject</value></data>
+  <data name="Enum_AuditAction_ExpenseApprove" xml:space="preserve"><value>Expense approved</value></data>
+  <data name="Enum_AuditAction_ExpenseReject" xml:space="preserve"><value>Expense rejected</value></data>
+  <data name="Enum_AuditAction_ExpenseWithdraw" xml:space="preserve"><value>Expense withdrawn</value></data>
+  <data name="Enum_AuditAction_ExpenseCategoryOverride" xml:space="preserve"><value>Expense category overridden</value></data>
+  <data name="Enum_AuditAction_ExpenseSepaSent" xml:space="preserve"><value>Expense SEPA sent</value></data>
+  <data name="Enum_AuditAction_ExpenseSepaReopened" xml:space="preserve"><value>Expense SEPA reopened</value></data>
+  <data name="Enum_AuditAction_ExpensePaid" xml:space="preserve"><value>Expense paid</value></data>
+  <data name="Enum_AuditAction_IbanSet" xml:space="preserve"><value>IBAN set</value></data>
+  <data name="Enum_AuditAction_IbanRemove" xml:space="preserve"><value>IBAN removed</value></data>
+  <data name="Enum_AuditAction_IbanReveal" xml:space="preserve"><value>IBAN revealed</value></data>
+  <data name="Enum_AuditAction_ExpenseAttachmentUploaded" xml:space="preserve"><value>Expense attachment uploaded</value></data>
+  <data name="Enum_AuditAction_ExpenseAttachmentRemoved" xml:space="preserve"><value>Expense attachment removed</value></data>
+  <data name="Enum_AuditAction_VolunteerCampSetupSet" xml:space="preserve"><value>Volunteer camp setup set</value></data>
+  <data name="Enum_AuditAction_VolunteerCampSetupCleared" xml:space="preserve"><value>Volunteer camp setup cleared</value></data>
+  <data name="Enum_AuditAction_VolunteerDayBlocked" xml:space="preserve"><value>Volunteer day blocked</value></data>
+  <data name="Enum_AuditAction_VolunteerDayUnblocked" xml:space="preserve"><value>Volunteer day unblocked</value></data>
+  <data name="Enum_AuditAction_VolunteerOwnBlockedDaysSaved" xml:space="preserve"><value>Volunteer own blocked days saved</value></data>
+  <data name="Enum_AuditAction_VolunteerDayOffMarked" xml:space="preserve"><value>Volunteer day off marked</value></data>
+  <data name="Enum_AuditAction_VolunteerDayOffCleared" xml:space="preserve"><value>Volunteer day off cleared</value></data>
+  <data name="Enum_AuditAction_OAuthRenameCollision" xml:space="preserve"><value>O auth rename collision</value></data>
+  <data name="Enum_AuditAction_OAuthRenameCollisionBlocked" xml:space="preserve"><value>O auth rename collision blocked</value></data>
+  <data name="Enum_AuditAction_UserEmailDisplacedByOAuthRename" xml:space="preserve"><value>User email displaced by o auth rename</value></data>
+  <data name="Enum_AuditAction_MailerLiteReconciliationCompleted" xml:space="preserve"><value>Mailer lite reconciliation completed</value></data>
+  <data name="Enum_AuditAction_MailerLiteAudienceSyncCompleted" xml:space="preserve"><value>Mailer lite audience sync completed</value></data>
+  <data name="Enum_AuditAction_GoogleSyncRetryScheduled" xml:space="preserve"><value>Google sync retry scheduled</value></data>
+  <data name="Enum_AuditAction_TicketContactsImported" xml:space="preserve"><value>Ticket contacts imported</value></data>
+  <data name="Enum_AuditAction_TicketDonationsExported" xml:space="preserve"><value>Ticket donations exported</value></data>
+  <data name="Enum_AuditAction_ContainerCreated" xml:space="preserve"><value>Container created</value></data>
+  <data name="Enum_AuditAction_ContainerUpdated" xml:space="preserve"><value>Container updated</value></data>
+  <data name="Enum_AuditAction_ContainerDeleted" xml:space="preserve"><value>Container deleted</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementSaved" xml:space="preserve"><value>Container placement saved</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementCleared" xml:space="preserve"><value>Container placement cleared</value></data>
+  <data name="Enum_AuditAction_ContainerPlacementNotesUpdated" xml:space="preserve"><value>Container placement notes updated</value></data>
+  <data name="Enum_AuditAction_CoordinatorRotaMessageSent" xml:space="preserve"><value>Coordinator rota message sent</value></data>
+  <data name="Enum_AuditAction_CoordinatorTeamRotasMessageSent" xml:space="preserve"><value>Coordinator team rotas message sent</value></data>
+  <data name="Enum_AuditAction_VolunteerAvailabilitySet" xml:space="preserve"><value>Volunteer availability set</value></data>
+  <data name="Enum_AuditAction_VolunteerAvailabilityCleared" xml:space="preserve"><value>Volunteer availability cleared</value></data>
+  <data name="Enum_AuditAction_EarlyEntryGranted" xml:space="preserve"><value>Early entry granted</value></data>
+  <data name="Enum_AuditAction_EarlyEntryUpdated" xml:space="preserve"><value>Early entry updated</value></data>
+  <data name="Enum_AuditAction_EarlyEntryRevoked" xml:space="preserve"><value>Early entry revoked</value></data>
+  <data name="Enum_AuditAction_StorePaymentsReconciled" xml:space="preserve"><value>Store payments reconciled</value></data>
+  <data name="Enum_AuditAction_GateTerminalPasswordSet" xml:space="preserve"><value>Gate terminal password set</value></data>
+  <data name="Enum_AuditAction_GateStaffPinSet" xml:space="preserve"><value>Gate staff pin set</value></data>
+  <data name="Enum_AuditAction_GateStaffPinReset" xml:space="preserve"><value>Gate staff pin reset</value></data>
+  <data name="Enum_AuditAction_SurveyCreated" xml:space="preserve"><value>Survey created</value></data>
+  <data name="Enum_AuditAction_SurveyUpdated" xml:space="preserve"><value>Survey updated</value></data>
+  <data name="Enum_AuditAction_SurveyOpened" xml:space="preserve"><value>Survey opened</value></data>
+  <data name="Enum_AuditAction_SurveyClosed" xml:space="preserve"><value>Survey closed</value></data>
+  <data name="Enum_AuditAction_SurveyInvitesSent" xml:space="preserve"><value>Survey invites sent</value></data>
+  <data name="Enum_AuditAction_SurveyReminderSent" xml:space="preserve"><value>Survey reminder sent</value></data>
+  <data name="Enum_AuditAction_SurveySubmittedForApproval" xml:space="preserve"><value>Survey submitted for approval</value></data>
+  <data name="Enum_AuditAction_SurveyApproved" xml:space="preserve"><value>Survey approved</value></data>
+  <data name="Enum_AuditAction_SurveyRejected" xml:space="preserve"><value>Survey rejected</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedPushed" xml:space="preserve"><value>Expense holded pushed</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedFailed" xml:space="preserve"><value>Expense holded failed</value></data>
+  <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Expense holded requeued</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Holded expense account created</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Holded expense account linked</value></data>
+  <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Holded expense account active changed</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Backdoor API key issued</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Backdoor API key revoked</value></data>
+  <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Feedback GitHub linked</value></data>
+  <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Issue created</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>SEPA payout transfer</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>SEPA payout transfer booked</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>City planning placement opened</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>City planning placement closed</value></data>
+  <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>City planning container placement opened</value></data>
+  <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>City planning container placement closed</value></data>
+  <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>City planning limit zone updated</value></data>
+  <data name="Enum_AuditAction_CityPlanningLimitZoneDeleted" xml:space="preserve"><value>City planning limit zone deleted</value></data>
+  <data name="Enum_AuditAction_CityPlanningOfficialZonesUpdated" xml:space="preserve"><value>City planning official zones updated</value></data>
+  <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>City planning official zones deleted</value></data>
+  <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Expense created on behalf</value></data>
+  <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Expense edited on behalf</value></data>
+  <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>Expense payee IBAN updated</value></data>
+  <data name="Enum_AuditAction_RideshareSettingsUpdated" xml:space="preserve"><value>Rideshare settings updated</value></data>
+  <data name="Enum_AuditAction_WorkgroupRegistered" xml:space="preserve"><value>Workgroup registered</value></data>
+  <data name="Enum_AuditAction_WorkgroupReferred" xml:space="preserve"><value>Workgroup referred</value></data>
+  <data name="Enum_AuditAction_WorkgroupRefused" xml:space="preserve"><value>Workgroup refused</value></data>
+  <data name="Enum_AuditAction_WorkgroupWithdrawn" xml:space="preserve"><value>Workgroup withdrawn</value></data>
+  <data name="Enum_AuditAction_WorkgroupClosed" xml:space="preserve"><value>Workgroup closed</value></data>
+  <data name="Enum_AuditAction_WorkgroupReactivated" xml:space="preserve"><value>Workgroup reactivated</value></data>
+  <data name="Enum_AuditAction_WorkgroupCoordinatorsChanged" xml:space="preserve"><value>Workgroup coordinators changed</value></data>
+  <data name="Enum_AuditAction_WorkgroupDispositionRecorded" xml:space="preserve"><value>Workgroup disposition recorded</value></data>
+  <data name="Enum_AuditAction_WorkgroupRegisteredExisting" xml:space="preserve"><value>Workgroup registered existing</value></data>
+  <data name="Enum_AuditAction_WorkgroupBudgetSet" xml:space="preserve"><value>Workgroup budget set</value></data>
+  <data name="Enum_AuditAction_WorkgroupDormancyFlagged" xml:space="preserve"><value>Workgroup dormancy flagged</value></data>
+  <data name="Enum_AuditAction_WorkgroupCloseCandidateFlagged" xml:space="preserve"><value>Workgroup close candidate flagged</value></data>
+  <data name="Enum_AuditAction_WorkgroupApplicationOverdue" xml:space="preserve"><value>Workgroup application overdue</value></data>
+  <data name="Enum_AuditAction_WorkgroupUpdateDueNotified" xml:space="preserve"><value>Workgroup update due notified</value></data>
+  <data name="Enum_AuditAction_WorkgroupLogEntryDeleted" xml:space="preserve"><value>Workgroup log entry deleted</value></data>
+  <data name="Enum_AuditAction_WorkgroupLogEntryUpdated" xml:space="preserve"><value>Workgroup log entry updated</value></data>
+  <data name="Enum_AuditAction_WorkgroupMeetingUpdated" xml:space="preserve"><value>Workgroup meeting updated</value></data>
+  <data name="Enum_AuditAction_WorkgroupMeetingDeleted" xml:space="preserve"><value>Workgroup meeting deleted</value></data>
+  <data name="Enum_AuditAction_WorkgroupCommentHidden" xml:space="preserve"><value>Workgroup comment hidden</value></data>
+  <data name="Enum_AuditAction_WorkgroupsRootFolderUpdated" xml:space="preserve"><value>Workgroups root folder updated</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteOpened" xml:space="preserve"><value>Assembly vote opened</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteStopped" xml:space="preserve"><value>Assembly vote stopped</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteExtended" xml:space="preserve"><value>Assembly vote extended</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteCancelled" xml:space="preserve"><value>Assembly vote cancelled</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteClosed" xml:space="preserve"><value>Assembly vote closed</value></data>
+  <data name="Enum_AuditAction_AssemblyVotePeeked" xml:space="preserve"><value>Assembly vote peeked</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotCast" xml:space="preserve"><value>Assembly ballot cast</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotChanged" xml:space="preserve"><value>Assembly ballot changed</value></data>
+  <data name="Enum_AuditAction_AssemblyBallotsViewed" xml:space="preserve"><value>Assembly ballots viewed</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteRosterMerged" xml:space="preserve"><value>Assembly vote roster merged</value></data>
+  <data name="Enum_AuditAction_AssemblyVoteRemindersSent" xml:space="preserve"><value>Assembly vote reminders sent</value></data>
+  <data name="Enum_AuditAction_DuplicateAccountFlagged" xml:space="preserve"><value>Duplicate account flagged</value></data>
+  <data name="Enum_AuditAction_WorkgroupDormancyCleared" xml:space="preserve"><value>Workgroup dormancy cleared</value></data>
+  <data name="Enum_AuditAction_StoreOrderYearBackfilled" xml:space="preserve"><value>Store order year backfilled</value></data>
+  <data name="Enum_AuditAction_EventSettingsUpdated" xml:space="preserve"><value>Event settings updated</value></data>
+  <data name="Enum_AuditAction_EmailDailySendCountsBackfilled" xml:space="preserve"><value>Email daily send counts backfilled</value></data>
+  <data name="Enum_AuditAction_EmailComposerSelfTestSent" xml:space="preserve"><value>Email composer self test sent</value></data>
+  <data name="Enum_AuditAction_StorePaymentMethodBackfilled" xml:space="preserve"><value>Store payment method backfilled</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorBound" xml:space="preserve"><value>Holded creditor bound</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorUnbound" xml:space="preserve"><value>Holded creditor unbound</value></data>
+  <data name="Enum_AuditAction_HoldedCategoryAccountProvisioned" xml:space="preserve"><value>Holded category account provisioned</value></data>
+  <data name="Enum_AuditAction_CampaignCreated" xml:space="preserve"><value>Campaign created</value></data>
+  <data name="Enum_AuditAction_CampaignUpdated" xml:space="preserve"><value>Campaign updated</value></data>
+  <data name="Enum_AuditAction_CampaignActivated" xml:space="preserve"><value>Campaign activated</value></data>
+  <data name="Enum_AuditAction_CampaignCompleted" xml:space="preserve"><value>Campaign completed</value></data>
+  <data name="Enum_AuditAction_CampaignCodesImported" xml:space="preserve"><value>Campaign codes imported</value></data>
+  <data name="Enum_AuditAction_CampaignWaveSent" xml:space="preserve"><value>Campaign wave sent</value></data>
+  <data name="Enum_AuditAction_CampaignGrantResent" xml:space="preserve"><value>Campaign grant resent</value></data>
+  <data name="Enum_AuditAction_TicketAttendeesExported" xml:space="preserve"><value>Ticket attendees exported</value></data>
+  <data name="Enum_AuditAction_TicketOrdersExported" xml:space="preserve"><value>Ticket orders exported</value></data>
+  <data name="AuditLog_System" xml:space="preserve"><value>System</value></data>
+  <data name="AuditLog_InTeam" xml:space="preserve"><value>in</value></data>
+  <data name="AuditLog_Anomaly" xml:space="preserve"><value>Anomaly</value></data>
+  <data name="AuditLog_Verb_TeamMemberAdded" xml:space="preserve"><value>added</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberAdded" xml:space="preserve"><value>added</value></data>
+  <data name="AuditLog_Verb_TeamMemberRemoved" xml:space="preserve"><value>removed</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberRemoved" xml:space="preserve"><value>removed</value></data>
+  <data name="AuditLog_Verb_TeamMemberRoleChanged" xml:space="preserve"><value>changed role for</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamMemberRoleChanged" xml:space="preserve"><value>changed role</value></data>
+  <data name="AuditLog_Verb_TeamJoinedDirectly" xml:space="preserve"><value>joined</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinedDirectly" xml:space="preserve"><value>joined</value></data>
+  <data name="AuditLog_Verb_TeamLeft" xml:space="preserve"><value>left</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamLeft" xml:space="preserve"><value>left</value></data>
+  <data name="AuditLog_Verb_TeamJoinRequestApproved" xml:space="preserve"><value>approved join request for</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinRequestApproved" xml:space="preserve"><value>approved join request</value></data>
+  <data name="AuditLog_Verb_TeamJoinRequestRejected" xml:space="preserve"><value>rejected join request for</value></data>
+  <data name="AuditLog_NoSubjectVerb_TeamJoinRequestRejected" xml:space="preserve"><value>rejected join request</value></data>
+  <data name="AuditLog_Verb_MemberSuspended" xml:space="preserve"><value>suspended</value></data>
+  <data name="AuditLog_NoSubjectVerb_MemberSuspended" xml:space="preserve"><value>suspended</value></data>
+  <data name="AuditLog_Verb_MemberUnsuspended" xml:space="preserve"><value>unsuspended</value></data>
+  <data name="AuditLog_NoSubjectVerb_MemberUnsuspended" xml:space="preserve"><value>unsuspended</value></data>
+  <data name="AuditLog_Verb_VolunteerApproved" xml:space="preserve"><value>approved</value></data>
+  <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>approved</value></data>
+  <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>assigned role to</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>assigned role</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>ended role for</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>ended role</value></data>
+  <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>reset Workspace password for</value></data>
+  <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>reset Workspace password</value></data>
+  <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>generated Workspace backup codes for</value></data>
+  <data name="AuditLog_NoSubjectVerb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>generated Workspace backup codes</value></data>
+  <data name="AuditLog_Verb_ConsentCheckCleared" xml:space="preserve"><value>cleared consent check for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ConsentCheckCleared" xml:space="preserve"><value>cleared consent check</value></data>
+  <data name="AuditLog_Verb_ConsentCheckFlagged" xml:space="preserve"><value>flagged consent check for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ConsentCheckFlagged" xml:space="preserve"><value>flagged consent check</value></data>
+  <data name="AuditLog_Verb_SignupRejected" xml:space="preserve"><value>rejected signup for</value></data>
+  <data name="AuditLog_NoSubjectVerb_SignupRejected" xml:space="preserve"><value>rejected signup</value></data>
+  <data name="AuditLog_Verb_TierApplicationApproved" xml:space="preserve"><value>approved tier application for</value></data>
+  <data name="AuditLog_NoSubjectVerb_TierApplicationApproved" xml:space="preserve"><value>approved tier application</value></data>
+  <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>rejected tier application for</value></data>
+  <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>rejected tier application</value></data>
+  <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>created signup for</value></data>
+  <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>confirmed signup for</value></data>
+  <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>refused signup for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>refused signup</value></data>
+  <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>voluntold</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>voluntold</value></data>
+  <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>bailed</value></data>
+  <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>marked no-show for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>marked no-show</value></data>
+  <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>removed signup for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupCancelled" xml:space="preserve"><value>removed signup</value></data>
+  <data name="AuditLog_Verb_ShiftSignupReassigned" xml:space="preserve"><value>reassigned shift signups for</value></data>
+  <data name="AuditLog_NoSubjectVerb_ShiftSignupReassigned" xml:space="preserve"><value>reassigned shift signups</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupCreated" xml:space="preserve"><value>signed up for</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupConfirmed" xml:space="preserve"><value>signed up for</value></data>
+  <data name="AuditLog_SelfVerb_ShiftSignupBailed" xml:space="preserve"><value>bailed from</value></data>
+</root>

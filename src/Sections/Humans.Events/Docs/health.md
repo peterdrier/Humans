@@ -39,8 +39,8 @@ The layout the shapes imply:
 - One repository over the seven owned tables; one service; one caching decorator over the
   approved-only projections. As built.
 - **Programme** wants one occurrence-and-naming projection, used by Browse, Schedule, the API, the
-  export and the print guide alike. The expansion is shared; the guard and the naming are not
-  (`EVENTS-1`).
+  export and the print guide alike. The expansion and its guard are shared (`EVENTS-1`,
+  closed by peterdrier/Humans#1945); the naming is not.
 - **Propose** wants one form pipeline parameterised by `isCampEvent`, not two view models and two
   dropdown-population methods. `EventsModerationController` already runs the single-pipeline
   version (`AdminEventFormViewModel` + `ApplyFormToEvent` branch on `isCampEvent`) — that is the
@@ -57,23 +57,23 @@ The layout the shapes imply:
 Behavioural facts stated so a violation is recognisable, each with the line that enforces it.
 (`Docs/Events.md` holds the full list; these are the ones this shape rests on.)
 
-1. Only `Pending` events accept a moderation decision — `Domain/Event.cs:188`.
+1. Only `Pending` events accept a moderation decision — `Domain/Event.cs:208`.
 2. An admin in-place edit preserves `Status` — an approved listing is never silently re-queued —
-   `Services/Service.cs:283`.
+   `Services/Service.cs:273`.
 3. Nothing unapproved leaves through `/api/events*`: every read there is served from the
    approved-only projection — `Data/Repository.cs:264`, `Data/Repository.cs:291`,
    `Data/Repository.cs:389`.
 4. Favourites and preferences are same-origin and self-scoped: CORS is off on them and the user id
    comes only from the signed-in principal — `Controllers/EventsApiController.cs:161`,
    `Controllers/EventsApiController.cs:166`; favourite writes also require the antiforgery token —
-   `Controllers/EventsApiController.cs:242`.
+   `Controllers/EventsApiController.cs:240`.
 5. A new submission — individual, barrio, or bulk upload — is accepted only inside
    `[SubmissionOpenAt, SubmissionCloseAt]` — `Controllers/EventsController.cs:145`,
    `Controllers/EventsController.cs:546`, `Controllers/EventsController.cs:720`. Editing or
    withdrawing an existing submission is not window-gated, by design: late corrections still reach a
    moderator.
 6. Bulk CSV import is all-or-nothing, and its template round-trips: exporting a camp's events and
-   re-uploading them unchanged is a no-op — `Services/Service.cs:307`, `Services/Service.cs:354`.
+   re-uploading them unchanged is a no-op — `Services/EventBulkImporter.cs:26`, `Services/EventBulkImporter.cs:73`.
 7. Moderation history is append-only: the repository only ever adds to it —
    `Data/Repository.cs:365`.
 8. `StartAt` is stored as an `Instant`; every local rendering goes through the edition's zone —

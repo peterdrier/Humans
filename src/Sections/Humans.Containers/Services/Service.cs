@@ -5,7 +5,6 @@ using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
-using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Containers.Services;
@@ -16,7 +15,6 @@ internal sealed class Service(
     ICampServiceRead campService,
     IAuditLogService auditLog,
     IClock clock,
-    IStringLocalizer<ContainersResource> localizer,
     ILogger<Service> logger) : IContainerService
 {
     // Names travel into JS string templates and HTML on the map pages; ban the characters
@@ -50,16 +48,16 @@ internal sealed class Service(
         return ToDto(container, await repo.GetImagesAsync([id], ct));
     }
 
-    public async Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
+    public async Task<ContainerMutationResult<ContainerDto>> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateName(data.Name);
+        if (ValidateName(data.Name) is { } nameError) return nameError.ToResult<ContainerDto>();
 
         var uploads = data.NewImages ?? [];
         foreach (var upload in uploads)
         {
-            ValidateImage(upload);
+            if (ValidateImage(upload) is { } imageError) return imageError.ToResult<ContainerDto>();
         }
-        ValidateImageCount(uploads.Count);
+        if (ValidateImageCount(uploads.Count) is { } countError) return countError.ToResult<ContainerDto>();
 
         var now = clock.GetCurrentInstant();
         var id = Guid.NewGuid();
@@ -81,27 +79,23 @@ internal sealed class Service(
             $"Created container '{created.Name}'",
             actorUserId,
             relatedEntityId: created.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        return ToDto(created, await repo.GetImagesAsync([id], ct));
+        return new(ToDto(created, await repo.GetImagesAsync([id], ct)));
     }
 
-    public async Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
+    public async Task<ContainerMutationResult<ContainerDto>> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateName(data.Name);
+        if (ValidateName(data.Name) is { } nameError) return nameError.ToResult<ContainerDto>();
 
         var uploads = data.NewImages ?? [];
         foreach (var upload in uploads)
         {
-            ValidateImage(upload);
+            if (ValidateImage(upload) is { } imageError) return imageError.ToResult<ContainerDto>();
         }
 
         var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
         var now = clock.GetCurrentInstant();
-        container.Name = data.Name;
-        container.Description = data.Description;
-        container.UpdatedAt = now;
-
         var removeIds = data.RemoveImageIds ?? [];
         var existing = await repo.GetImagesAsync([id], ct);
         var removed = existing.Where(i => removeIds.Contains(i.Id)).ToList();
@@ -109,7 +103,11 @@ internal sealed class Service(
 
         var keptCount = existing.Count - removed.Count
             + (container.ImageStoragePath is not null && !removeLegacy ? 1 : 0);
-        ValidateImageCount(keptCount + uploads.Count);
+        if (ValidateImageCount(keptCount + uploads.Count) is { } countError) return countError.ToResult<ContainerDto>();
+
+        container.Name = data.Name;
+        container.Description = data.Description;
+        container.UpdatedAt = now;
 
         var obsoletePaths = removed.Select(i => i.StoragePath).ToList();
         if (removeLegacy)
@@ -130,7 +128,7 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
         await DeleteObsoleteImagesAsync(obsoletePaths, id, "updated");
-        return ToDto(updated, await repo.GetImagesAsync([id], ct));
+        return new(ToDto(updated, await repo.GetImagesAsync([id], ct)));
     }
 
     public async Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
@@ -178,10 +176,10 @@ internal sealed class Service(
         return placements.Select(ToPlacementDto).ToList();
     }
 
-    public async Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default)
+    public async Task<ContainerMutationResult<ContainerPlacementDto>> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default)
     {
         if (!IsValidContainerPlacementGeoJson(geoJson))
-            throw new InvalidOperationException(localizer["Containers_Error_InvalidPlacementGeoJson"]);
+            return new(null, "Containers_Error_InvalidPlacementGeoJson");
 
         var placement = await repo.SavePlacementGeometryAsync(
             containerId, year, geoJson, clock.GetCurrentInstant(), ct);
@@ -190,7 +188,7 @@ internal sealed class Service(
             $"Placed container on map for {year}",
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
-        return ToPlacementDto(placement);
+        return new(ToPlacementDto(placement));
     }
 
     private static bool IsValidContainerPlacementGeoJson(string json)
@@ -260,7 +258,7 @@ internal sealed class Service(
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
     }
 
-    public async Task<ContainerPlacementDto> UpdatePlacementNotesAsync(
+    public async Task<ContainerMutationResult<ContainerPlacementDto>> UpdatePlacementNotesAsync(
         Guid containerId,
         int year,
         string? notes,
@@ -269,10 +267,10 @@ internal sealed class Service(
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        ValidateImage(image);
+        if (ValidateImage(image) is { } imageError) return imageError.ToResult<ContainerPlacementDto>();
 
-        var placement = await repo.GetPlacementAsync(containerId, year, ct)
-            ?? throw new InvalidOperationException("Placement not found. Place the container on the map first.");
+        var placement = await repo.GetPlacementAsync(containerId, year, ct);
+        if (placement is null) return new(null, "Containers_Error_PlacementNotFound");
 
         placement.PlacementNotes = string.IsNullOrWhiteSpace(notes) ? null : notes;
 
@@ -314,7 +312,7 @@ internal sealed class Service(
             }
         }
 
-        return ToPlacementDto(placement);
+        return new(ToPlacementDto(placement));
     }
 
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
@@ -346,45 +344,30 @@ internal sealed class Service(
         return new ContainerAdminOverview(year, campGroups);
     }
 
-    private void ValidateName(string name)
-    {
-        if (name.IndexOfAny(InvalidNameChars) >= 0)
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_InvalidName"]);
-        }
-    }
+    private static ValidationError? ValidateName(string name) => name.IndexOfAny(InvalidNameChars) >= 0
+        ? new("Containers_Error_InvalidName") : null;
 
-    private void ValidateImageCount(int total)
-    {
-        if (total > MaxImagesPerContainer)
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_TooManyImages", MaxImagesPerContainer]);
-        }
-    }
+    private static ValidationError? ValidateImageCount(int total) => total > MaxImagesPerContainer
+        ? new("Containers_Error_TooManyImages", MaxImagesPerContainer) : null;
 
-    private void ValidateImage(ContainerImageUpload? image)
+    private static ValidationError? ValidateImage(ContainerImageUpload? image)
     {
-        if (image is null) return;
+        if (image is null) return null;
         if (!AllowedContentTypes.Contains(image.ContentType))
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_ImageType"]);
-        }
+            return new("Containers_Error_ImageType");
         if (image.Length > MaxImageBytes)
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_ImageTooLarge"]);
-        }
-        // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
+            return new("Containers_Error_ImageTooLarge");
+        // Security: extension whitelist prevents image/jpeg + .html from being served as HTML.
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_ImageFileNameLength", MaxImageFileNameLength]);
-        }
+            return new("Containers_Error_ImageFileNameLength", MaxImageFileNameLength);
+        return !AllowedImageExtensions.Contains(Path.GetExtension(fileName))
+            ? new("Containers_Error_ImageExtension") : null;
+    }
 
-        var ext = Path.GetExtension(fileName);
-        if (!AllowedImageExtensions.Contains(ext))
-        {
-            throw new InvalidOperationException(localizer["Containers_Error_ImageExtension"]);
-        }
+    private sealed record ValidationError(string Key, params object[] Args)
+    {
+        public ContainerMutationResult<T> ToResult<T>() where T : class => new(null, Key, Args);
     }
 
     private async Task<string> SaveImageAsync(Guid containerId, ContainerImageUpload image, CancellationToken ct)

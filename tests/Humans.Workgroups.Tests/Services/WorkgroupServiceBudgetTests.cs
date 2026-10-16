@@ -31,7 +31,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
                 return new HoldedExpenseAccountRef(62900170, "account", "Workgroups", !linkExisting);
             });
 
-        var result = await NewService().SetBudgetAsync(group.Id, actor, new WorkgroupBudgetSave(100m, requested), cancellation.Token);
+        var result = (await NewService().SetBudgetAsync(group.Id, actor, new WorkgroupBudgetSave(100m, requested), cancellation.Token)).Value;
 
         result!.Created.Should().Be(!linkExisting);
         await Finance.Received(1).CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), requested, CancellationToken.None);
@@ -79,7 +79,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync(name: "ALM 2027");
         var secretary = SeedUser("Secretary");
 
-        var result = await NewService().SetBudgetAsync(workgroup.Id, secretary, new WorkgroupBudgetSave(1500m, null), Ct);
+        var result = (await NewService().SetBudgetAsync(workgroup.Id, secretary, new WorkgroupBudgetSave(1500m, null), Ct)).Value;
 
         await Finance.Received(1).CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, Arg.Any<CancellationToken>());
         result!.Created.Should().BeTrue();
@@ -140,25 +140,25 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetBudget_NegativeAmount_Throws()
+    public async Task SetBudget_NegativeAmount_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
 
         var act = () => NewService().SetBudgetAsync(workgroup.Id, SeedUser(), new WorkgroupBudgetSave(-1m, null), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key.Should().Be(WorkgroupErrorKeys.BudgetNegative);
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.BudgetNegative);
     }
 
     [HumansTheory]
     [InlineData(nameof(WorkgroupStatus.Refused))]
     [InlineData(nameof(WorkgroupStatus.Withdrawn))]
-    public async Task SetBudget_OnRefusedOrWithdrawn_Throws(string statusName)
+    public async Task SetBudget_OnRefusedOrWithdrawn_ReturnsARefusal(string statusName)
     {
         var workgroup = await SeedWorkgroupAsync(status: Enum.Parse<WorkgroupStatus>(statusName));
 
         var act = () => NewService().SetBudgetAsync(workgroup.Id, SeedUser(), new WorkgroupBudgetSave(10m, null), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key.Should().Be(WorkgroupErrorKeys.WrongStatus);
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.WrongStatus);
     }
 
     [HumansFact]
@@ -170,7 +170,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
 
         var act = () => NewService().SetBudgetAsync(workgroup.Id, SeedUser(), new WorkgroupBudgetSave(10m, 1), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key.Should().Be(WorkgroupErrorKeys.BudgetAccountFailed);
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.BudgetAccountFailed);
         await using var ctx = OpenContext();
         var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
         reloaded.BudgetAmount.Should().BeNull();

@@ -61,13 +61,17 @@ internal sealed class EventService(
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
         => settingsService.GetEventSettingsByIdAsync(id, ct);
 
-    public async Task SaveGuideSettingsAsync(
+    public async Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default)
     {
-        var burn = await settingsService.GetEventSettingsByIdAsync(eventSettingsId, ct)
-            ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
+        var burn = await settingsService.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        if (burn is null)
+        {
+            logger.LogWarning("Guide settings save rejected: event settings {EventSettingsId} no longer exist", eventSettingsId);
+            return false;
+        }
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var now = clock.GetCurrentInstant();
@@ -85,6 +89,7 @@ internal sealed class EventService(
         };
 
         await repo.UpsertGuideSettingsAsync(settings, ct);
+        return true;
     }
 
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
@@ -236,22 +241,7 @@ internal sealed class EventService(
 
     public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
     {
-        if (guideEvent.Status is EventStatus.Pending)
-        {
-            guideEvent.LastUpdatedAt = clock.GetCurrentInstant();
-        }
-        else if (guideEvent.Status is EventStatus.Approved)
-        {
-            var now = clock.GetCurrentInstant();
-            guideEvent.Status = EventStatus.Pending;
-            guideEvent.SubmittedAt = now;
-            guideEvent.LastUpdatedAt = now;
-        }
-        else
-        {
-            guideEvent.Submit(clock);
-        }
-
+        guideEvent.Resubmit(clock);
         return repo.SaveEventAsync(guideEvent, ct);
     }
 
@@ -295,95 +285,12 @@ internal sealed class EventService(
         return repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    public async Task<BulkImportResult> BulkImportAsync(
+    public Task<BulkImportResult> BulkImportAsync(
         Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
-        CancellationToken ct = default)
-    {
-        var categories = await repo.GetActiveCategoriesAsync(ct);
-        var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
-
-        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents, localizer);
-        if (errors.Count > 0)
-            return new BulkImportResult(errors, 0, 0);
-
-        var created = 0;
-        var updated = 0;
-        foreach (var row in rows)
-        {
-            var category = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
-            var date = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
-            var time = DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Value;
-            var startAt = (date + time).InZoneLeniently(timeZone).ToInstant();
-            var recurrenceOffsets = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
-                ? EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset)
-                : null;
-
-            var target = row.Id.HasValue
-                ? existingEvents.First(e => e.Id == row.Id.Value)
-                : new Event
-                {
-                    Id = Guid.NewGuid(),
-                    CampId = campId,
-                    SubmitterUserId = submitterUserId
-                };
-            var recurrenceChanged = true;
-            if (row.Id.HasValue)
-            {
-                // Compare recurrence by day-name set, not the raw offset string, so a
-                // lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an edit and the
-                // event isn't needlessly re-queued for moderation.
-                var existingDays = target.IsRecurring && !string.IsNullOrEmpty(target.RecurrenceDays)
-                    ? EventRecurrenceDays.OffsetsToDisplayDays(target.RecurrenceDays, gateOpeningDate)
-                    : string.Empty;
-                var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
-                recurrenceChanged = target.IsRecurring != row.IsRecurring
-                    || !EventRecurrenceDays.SameDays(existingDays, rowDays);
-
-                var changed =
-                    !string.Equals(target.Title, row.Title, StringComparison.Ordinal) ||
-                    !string.Equals(target.Description, row.Description, StringComparison.Ordinal) ||
-                    target.CategoryId != category.Id ||
-                    target.StartAt != startAt ||
-                    target.DurationMinutes != row.DurationMinutes ||
-                    !string.Equals(target.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
-                    !string.Equals(target.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
-                    recurrenceChanged ||
-                    target.PriorityRank != row.PriorityRank;
-
-                if (!changed) continue;
-            }
-
-            target.Title = row.Title;
-            target.Description = row.Description;
-            target.CategoryId = category.Id;
-            target.StartAt = startAt;
-            target.DurationMinutes = row.DurationMinutes;
-            target.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
-            target.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
-            target.IsRecurring = row.IsRecurring;
-            // Unchanged weekday labels cannot express a subset of repeated weekdays.
-            // Preserve existing authored offsets when another field is edited.
-            if (recurrenceChanged || !row.IsRecurring)
-                target.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
-            target.PriorityRank = row.PriorityRank;
-
-            if (row.Id.HasValue)
-            {
-                // Existing rows always update: even Draft/Rejected rows are already stored.
-                await UpdateAndResubmitAsync(target, ct);
-                updated++;
-            }
-            else
-            {
-                target.Submit(clock);
-                await SubmitEventAsync(target, lifecycleActionUrl: null, ct);
-                created++;
-            }
-        }
-
-        return new BulkImportResult([], created, updated);
-    }
+        CancellationToken ct = default) =>
+        new EventBulkImporter(repo, clock, localizer).ImportAsync(
+            campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct);
 
     public async Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default)
     {
@@ -649,10 +556,7 @@ internal sealed class EventService(
         foreach (var favourite in approved)
         {
             var e = favourite.Event;
-            // tz non-null implies burn non-null (tz is derived from burn above).
-            IReadOnlyList<Instant> occurrences = tz is not null
-                ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz, favourite.DayOffset)
-                : [e.StartAt];
+            var occurrences = e.GetOccurrenceInstants(burn?.GateOpeningDate, tz, favourite.DayOffset);
 
             var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));

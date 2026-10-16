@@ -336,4 +336,6 @@
   <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Bild nicht gefunden.</value></data>
   <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Dieses Bild gehört nicht zu diesem Camp.</value></data>
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Neue Nachricht für {0} - prüfe deine E-Mails</value></data>
+  <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Diese Saison gehört nicht zu diesem Camp.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Nur eine ausstehende oder aktive Saison kann zurückgezogen werden.</value></data>
 </root>

@@ -194,6 +194,7 @@
   <data name="Rideshare_NoticeSeat" xml:space="preserve"><value>1 Platz</value></data>
   <data name="Rideshare_NoticeSeats" xml:space="preserve"><value>{0} Plätze</value></data>
   <data name="Rideshare_NoticeAccepted" xml:space="preserve"><value>Du bist dabei: Fahrt mit {0}</value></data>
+  <data name="Rideshare_NoticeOfferAccepted" xml:space="preserve"><value>{0} hat dein Mitfahrangebot angenommen</value></data>
   <data name="Rideshare_NoticeUpdate" xml:space="preserve"><value>Fahrt-Update</value></data>
   <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} konnte diesmal keinen Platz anbieten.</value></data>
   <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} ist diesmal mit einer anderen Fahrt gefahren.</value></data>

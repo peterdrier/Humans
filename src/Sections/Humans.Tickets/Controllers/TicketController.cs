@@ -231,7 +231,11 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAttendees()
     {
-        var rows = await ticketQueryService.GetAttendeeExportDataAsync();
+        var actorId = GetCurrentUserId();
+        if (actorId is null)
+            return Forbid();
+
+        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -248,7 +252,11 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportOrders()
     {
-        var rows = await ticketQueryService.GetOrderExportDataAsync();
+        var actorId = GetCurrentUserId();
+        if (actorId is null)
+            return Forbid();
+
+        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

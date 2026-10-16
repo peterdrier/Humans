@@ -71,7 +71,7 @@ Each category shows budget vs actual with the unallocated remainder. Auto-genera
 
 (assumes Coordinator knowledge)
 
-Financial structure, year lifecycle, restricted groups, and the audit log live with FinanceAdmin and Admin. Board sees the full budget — restricted groups and salaries included — for oversight, and approves the total; day-to-day editing is done by FinanceAdmin.
+Financial structure, year lifecycle, restricted groups, and the audit log live with FinanceAdmin and Admin; only they see restricted groups and salaries. Board approves the total; day-to-day editing is done by FinanceAdmin.
 
 **FinanceAdmin is the app's Treasurer role.** Assignments live on the human detail page (see [Governance](Governance.md)) and are granted by Board or Admin.
 

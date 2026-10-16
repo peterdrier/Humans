@@ -108,7 +108,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedFinance,
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
-            Options.Create(new TravelReimbursementConfig()), _localizer);
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -1192,7 +1192,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedFinance,
             _clock,
             logger,
-            Options.Create(new TravelReimbursementConfig()), _localizer);
+            Options.Create(new TravelReimbursementConfig()));
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 

@@ -221,3 +221,5 @@ seam sends this section's stored issues to the Admin-only queue. The key is `Leg
 `Consent`: the section was renamed at the 2026-08-03 freeze and stored rows still carry
 the old string, so the queue keeps its name (and `/Debug/Sections` lists it as an
 unmatched annotation, which is the rename showing rather than hiding).
+
+Re-consent reminders select active-assignment users with unsigned required consents whose grace deadlines fall within `ConsentReminderDaysBeforeSuspension`, including overdue deadlines. The configured lead time controls eligibility as well as email wording. The reminder cooldown and successful-send timestamp remain unchanged; suspension still uses only expired deadlines.

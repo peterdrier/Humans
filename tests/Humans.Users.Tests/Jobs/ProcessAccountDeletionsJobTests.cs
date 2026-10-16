@@ -1,3 +1,4 @@
+using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -32,6 +33,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
     private readonly ProcessAccountDeletionsJob _job;
+    private readonly ILogger<ProcessAccountDeletionsJob> _logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 14, 12, 0);
 
@@ -43,16 +45,40 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
-        var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
-            _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, _metrics, logger, _clock);
+            _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, _metrics, _logger, _clock);
     }
 
     public void Dispose()
     {
         _metrics.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansFact]
+    public async Task ConfirmationFailure_DoesNotLogErasedIdentityOrExceptionContents()
+    {
+        var userId = Guid.NewGuid();
+        const string email = "erased@example.com";
+        const string name = "Erased Person";
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
+        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new AnonymizedAccountSummary(email, name, "en"));
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new IOException($"Failed to deliver to {email}: {name}", new Exception("private body"))));
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var calls = _logger.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .Select(call => call.GetArguments()).ToList();
+        var error = calls.Single(args => (LogLevel)args[0]! == LogLevel.Error);
+        error[3].Should().BeNull();
+        error[2]!.ToString().Should().Contain(nameof(IOException)).And.Contain(userId.ToString());
+        foreach (var args in calls)
+            args[2]!.ToString().Should().NotContain(email).And.NotContain(name).And.NotContain("private body");
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.AccountAnonymized, nameof(User), userId, "Account anonymized", nameof(ProcessAccountDeletionsJob));
     }
 
     [HumansFact]

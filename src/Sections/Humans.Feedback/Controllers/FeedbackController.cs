@@ -1,6 +1,7 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
@@ -64,13 +65,17 @@ internal sealed class FeedbackController(
         var assigneeOptions = await GetActiveAssigneeOptionsAsync(ct);
 
         var distinctReporters = await feedbackService.GetDistinctReportersAsync(ct);
+        var reporterUsers = await UserService.GetUserInfosAsync(
+            distinctReporters.Select(r => r.UserId).ToList(), ct);
         var reporters = distinctReporters
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new ReporterDropdownItem
+            .Select(r => (r.UserId, r.Count, Name: reporterUsers.TryGetValue(r.UserId, out var info)
+                ? info.BurnerName : r.UserId.ToString()))
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new SelectListItem
             {
-                UserId = r.UserId,
-                DisplayName = r.DisplayName,
-                Count = r.Count
+                Value = r.UserId.ToString(),
+                Text = $"{r.Name} ({r.Count})",
+                Selected = reporterUserId == r.UserId
             }).ToList();
 
         var viewModel = new FeedbackPageViewModel
@@ -143,12 +148,10 @@ internal sealed class FeedbackController(
 
         try
         {
-            await feedbackService.PostMessageAsync(id, user.Id, model.Content);
-            SetSuccess("Message posted.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.PostMessageAsync(id, user.Id, model.Content);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Message posted.");
         }
         catch (Exception ex)
         {
@@ -174,12 +177,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
-            SetSuccess("Status updated.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Status updated.");
         }
         catch (Exception ex)
         {
@@ -205,12 +206,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
-            SetSuccess("Assignment updated.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Assignment updated.");
         }
         catch (Exception ex)
         {
@@ -236,12 +235,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
-            SetSuccess("GitHub issue linked.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("GitHub issue linked.");
         }
         catch (Exception ex)
         {

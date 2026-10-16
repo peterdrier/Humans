@@ -1,6 +1,6 @@
 # SECTION-TEMPLATE — How to write a section invariants doc
 
-Every file in `docs/sections/` describes one section of the app. Each doc serves **two readers**: a human (or AI) trying to understand the section's contract before changing it, and a reviewer checking a PR against that contract. Keep it terse, concrete, and authoritative — this is not a narrative, it is a set of invariants.
+Every `src/Sections/Humans.<Section>/Docs/<Section>.md` describes one section of the app. Each doc serves **two readers**: a human (or AI) trying to understand the section's contract before changing it, and a reviewer checking a PR against that contract. Keep it terse, concrete, and authoritative — this is not a narrative, it is a set of invariants.
 
 > **This file is a template, not a section.** When adding a new section: copy the canonical shape below into a new `SectionName.md`, fill in each required heading, and delete any optional headings you do not need. Keep the order of the required headings exactly as shown — reviewers rely on it.
 
@@ -13,8 +13,8 @@ The codebase is organised by **section**, not by layer. A section is a vertical 
 Sections are the primary mechanism for keeping the app out of spaghetti as it grows. The enforcement story has three parts:
 
 1. **`docs/architecture/design-rules.md`** defines the architectural laws that apply to every section (§8 table ownership, §2c no cross-service table access, §6 no cross-domain `.Include`, §11 auth pattern, §12 append-only entities, §15 caching pattern).
-2. **`docs/sections/<Section>.md`** (this template) applies those laws to one section — who owns what, what invariants hold, which cross-section interfaces it uses, and where the section is in its migration to the §15 pattern.
-3. **Architecture tests** (`tests/Humans.Application.Tests/Architecture/`) pin the rules at compile/test time so drift fails the build, not just code review.
+2. **`src/Sections/Humans.<Section>/Docs/<Section>.md`** applies those laws to one section — who owns what, what invariants hold, which cross-section interfaces it uses, and where the section is in its migration to the §15 pattern.
+3. **Architecture analyzers** (`src/Humans.Analyzers/`) enforce mechanical rules at compile time; shared architecture tests live in `tests/Humans.Web.Tests/Architecture/`.
 
 If a change conflicts with the section doc, **either the change is wrong or the doc is** — both are PR-blocking until one is updated.
 
@@ -186,14 +186,14 @@ Delete the two blocks that do not apply.
 
 Use this single block; delete the (B) and (C) blocks below.
 
-- Service(s) live in `Humans.Application.Services.<Section>/` and never import `Microsoft.EntityFrameworkCore`.
-- `I<Section>Repository` (impl in `Humans.Infrastructure/Repositories/`) is the only code path that touches this section's tables via `DbContext`.
+- Service(s) live in `src/Sections/Humans.<Section>/Services/` and never import `Microsoft.EntityFrameworkCore`.
+- `I<Section>Repository` (impl in `src/Sections/Humans.<Section>/Data/`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — one of:
   - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
 - **Display stitching** — cross-section display data resolves through `<IUserServiceRead.GetUserInfosAsync, ITeamServiceRead.GetTeamsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/<Section>ArchitectureTests.cs` pins the shape.
+- **Architecture enforcement** — cite the applicable analyzer or existing section test in `tests/Humans.<Section>.Tests/Architecture/`.
 
 Optional appendix blocks (add only when genuinely useful; omit otherwise):
 
@@ -245,7 +245,7 @@ debt than it started. Keep these grounded in file:line references.
 
 ### For (C) Pre-migration sections
 
-> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the §15 repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the §15 repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services and repositories live in its own `Humans.<Section>` project.**
 
 Use the same three sub-blocks as (B): `#### Target repositories`, `#### Current violations`, `#### Touch-and-clean guidance`. Delete the (A) and (B) blocks.
 ```
@@ -286,8 +286,8 @@ Note: **entity field tables DO belong here** (under `## Data Model`). A section 
 When a new major section is introduced:
 
 1. **Add it to `docs/architecture/design-rules.md §8`** (Table Ownership Map) in the same PR that introduces it. Include owning services and owned tables.
-2. **Copy the canonical shape** above into `docs/sections/<SectionName>.md` and fill it in.
-3. **Pick a migration status.** New sections **must** be (A) from day one per `design-rules.md §15h(1)` — new code goes straight into `Humans.Application` with a repository. Starting in (B) or (C) is a design-rules violation, not a shortcut.
+2. **Copy the canonical shape** above into `src/Sections/Humans.<Section>/Docs/<Section>.md` and fill it in.
+3. **Pick a migration status.** New sections **must** be (A) from day one per `design-rules.md §15h(1)` — new code goes straight into its own `Humans.<Section>` project with a repository. Starting in (B) or (C) is a design-rules violation, not a shortcut.
 4. **Add a link in the project CLAUDE.md's "Extended Docs" table** if the section is significant enough to flag at the project level.
 5. **If the section owns user-scoped tables**, implement `IUserDataContributor` per `design-rules.md §8a`. The architecture tests (`GdprExportDependencyInjectionTests`) will fail until it is wired up.
 6. **If the section needs resource-based authorization**, add a `<Section>AuthorizationHandler` + `<Section>OperationRequirement` pair per `design-rules.md §11`. Do not invent a new auth pattern.

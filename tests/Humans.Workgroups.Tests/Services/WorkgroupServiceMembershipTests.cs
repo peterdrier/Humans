@@ -172,7 +172,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(0)]
     [InlineData(3)]
-    public async Task SetCoordinators_OutsideOneOrTwo_Throws(int count)
+    public async Task SetCoordinators_OutsideOneOrTwo_ReturnsARefusal(int count)
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -188,12 +188,12 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         var act = () => NewService().SetCoordinatorsAsync(workgroup.Id, coordinator, wanted, ct: Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CoordinatorCount);
     }
 
     [HumansFact]
-    public async Task SetCoordinators_ANonMember_Throws()
+    public async Task SetCoordinators_ANonMember_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -202,7 +202,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var act = () => NewService().SetCoordinatorsAsync(
             workgroup.Id, coordinator, [coordinator, stranger], ct: Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
     }
 
@@ -225,14 +225,14 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     // ── Leaving as the last coordinator ──────────────────────────────────
 
     [HumansFact]
-    public async Task Leave_AsTheLastCoordinator_WithoutReplacement_Throws()
+    public async Task Leave_AsTheLastCoordinator_WithoutReplacement_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
 
         var act = () => NewService().LeaveAsync(workgroup.Id, coordinator, null, ct: Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.LastCoordinatorNeedsReplacement);
     }
 
@@ -279,19 +279,19 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Join_OnADormantGroup_Throws()
+    public async Task Join_OnADormantGroup_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync(
             status: WorkgroupStatus.Dormant, dormantReason: WorkgroupDormantReason.Quiet);
 
         var act = () => NewService().JoinAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
 
     [HumansFact]
-    public async Task Join_Twice_Throws()
+    public async Task Join_Twice_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = SeedUser();
@@ -299,7 +299,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         var act = () => NewService().JoinAsync(workgroup.Id, member, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.AlreadyAMember);
     }
 
@@ -355,7 +355,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task LinkSurvey_SomebodyElsesSurvey_Throws()
+    public async Task LinkSurvey_SomebodyElsesSurvey_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var author = SeedUser("Author");
@@ -364,20 +364,18 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         var act = () => NewService().LinkSurveyAsync(workgroup.Id, member, surveyId, Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>())
-            .Which.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
     }
 
     [HumansFact]
-    public async Task LinkSurvey_ASurveyIdThatDoesNotExist_Throws()
+    public async Task LinkSurvey_ASurveyIdThatDoesNotExist_ReturnsARefusal()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = SeedUser("Member");
 
         var act = () => NewService().LinkSurveyAsync(workgroup.Id, member, Guid.NewGuid(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>())
-            .Which.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
+        (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
     }
 
     // ── Edits that overwrite a row leave an audit entry ──────────────────
@@ -388,9 +386,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
         var today = Clock.GetCurrentInstant().InUtc().Date;
-        var entryId = await NewService().AddLogEntryAsync(
+        var entryId = (await NewService().AddLogEntryAsync(
             workgroup.Id, member,
-            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, today, null, "First wording"), Ct);
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, today, null, "First wording"), Ct)).Value;
 
         await NewService().UpdateLogEntryAsync(
             entryId, member,
@@ -409,9 +407,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
         var now = Clock.GetCurrentInstant();
-        var meetingId = await NewService().CreateMeetingAsync(
+        var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
 
         await NewService().UpdateMeetingAsync(
             meetingId, member,
@@ -429,9 +427,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
         var now = Clock.GetCurrentInstant();
-        var meetingId = await NewService().CreateMeetingAsync(
+        var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
 
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
@@ -446,16 +444,16 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
         var now = Clock.GetCurrentInstant();
-        var meetingId = await NewService().CreateMeetingAsync(
+        var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // The tombstoned row is still readable, so a double-submitted form used to re-stamp it and
         // audit a second deletion — an event the trail would have claimed happened, and did not.
         var replay = async () => await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
-        (await replay.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await replay()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.Received(1).LogAsync(
             AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
@@ -468,9 +466,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
         var now = Clock.GetCurrentInstant();
-        var meetingId = await NewService().CreateMeetingAsync(
+        var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // Same unfiltered read, same class of bug: a deleted meeting must not be editable either.
@@ -479,7 +477,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             new WorkgroupMeetingSave("Back from the dead", now, now.Plus(Duration.FromHours(1)),
                 null, null, false, null), Ct);
 
-        (await edit.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+        (await edit()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,

@@ -56,4 +56,5 @@
 
   <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Test] {0}</value></data>
   <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Test] Aperçu de l'e-mail</value></data>
+  <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Se désabonner de ces e-mails</value></data>
 </root>

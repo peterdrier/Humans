@@ -152,23 +152,11 @@ internal sealed class ProfileEmailsController(
             return VerifyEmailError(localizer["Profile_InvalidVerificationLink"].Value);
         }
 
-        try
-        {
-            var decodedToken = HttpUtility.UrlDecode(token);
-            var result = await userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
-
-            return VerifyEmailSuccess(userId, result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogInformation("Email verification failed for user {UserId}: {Message}", userId, ex.Message);
-            return VerifyEmailError(localizer["Profile_InvalidVerificationLink"].Value);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
-            return VerifyEmailError(ex.Message);
-        }
+        var decodedToken = HttpUtility.UrlDecode(token);
+        var result = await userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
+        return result.ErrorKey is { } errorKey
+            ? VerifyEmailError(localizer[errorKey].Value)
+            : VerifyEmailSuccess(userId, result);
     }
 
     private IActionResult VerifyEmailSuccess(Guid userId, VerifyEmailResult result)

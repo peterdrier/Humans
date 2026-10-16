@@ -1,3 +1,4 @@
+using Xunit;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -30,11 +31,18 @@ public sealed class ShiftsEmailsTests
             ShiftLines: ["Mon"],
             Culture: "en");
 
-    [HumansFact]
-    public void CoordinatorRotaMessage_RoutesRepliesToCoordinator_VolunteerUpdates()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void CoordinatorRotaMessage_RoutesRepliesToCoordinator_VolunteerUpdates(string culture)
     {
-        var msg = Create().CoordinatorRotaMessage(RotaRequest());
+        var msg = Create().CoordinatorRotaMessage(RotaRequest() with { Culture = culture });
 
+        msg.Culture.Should().Be(culture);
         msg.RecipientEmail.Should().Be("rcpt@x.com");
         msg.TemplateName.Should().Be("coordinator_rota_message");
         msg.Category.Should().Be(MessageCategory.VolunteerUpdates);

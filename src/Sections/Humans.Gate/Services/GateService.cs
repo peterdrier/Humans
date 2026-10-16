@@ -32,7 +32,7 @@ internal sealed class GateService(
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
     IShiftManagementServiceRead shifts,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
@@ -70,7 +70,7 @@ internal sealed class GateService(
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
 
-        UserEarlyEntry? ee = attendee.MatchedUserId is { } uid
+        EarlyEntryRosterRow? ee = attendee.MatchedUserId is { } uid
             ? await earlyEntry.GetForUserAsync(uid, ct)
             : null;
 

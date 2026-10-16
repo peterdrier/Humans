@@ -1,19 +1,19 @@
 @model Humans.Governance.Models.ApplicationCreateViewModel
 @{
-    ViewData["Title"] = Localizer["GovernanceApplication_Title"].Value;
+    ViewData["Title"] = Localizer["Governance_Application_Title"].Value;
 }
 
 <nav aria-label="@Localizer["Governance_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["GovernanceCreate_NewApplication"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Governance_Create_NewApplication"]</li>
     </ol>
 </nav>
 
 <div class="row">
     <div class="col-md-8">
         <h1>@Localizer["Governance_ApplyButton"]</h1>
-        <p class="lead text-muted">@Localizer["GovernanceCreate_Lead"]</p>
+        <p class="lead text-muted">@Localizer["Governance_Create_Lead"]</p>
 
         <div class="card">
             <div class="card-body">
@@ -57,19 +57,19 @@
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="Motivation" class="form-label">@Localizer["GovernanceCreate_MotivationLabel"]</label>
-                        <textarea asp-for="Motivation" class="form-control" rows="6"
-                            placeholder="@Localizer["GovernanceCreate_MotivationPlaceholder"].Value"></textarea>
+                        <label asp-for="Motivation" class="form-label">@Localizer["Governance_Create_MotivationLabel"]</label>
+                        <textarea asp-for="Motivation" minlength="50" maxlength="2000" class="form-control" rows="6"
+                            placeholder="@Localizer["Governance_Create_MotivationPlaceholder"].Value"></textarea>
                         <span asp-validation-for="Motivation" class="text-danger"></span>
-                        <div class="form-text">@Localizer["GovernanceCreate_MotivationHelp"]</div>
+                        <div class="form-text">@Localizer["Governance_Create_MotivationHelp"]</div>
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="AdditionalInfo" class="form-label">@Localizer["GovernanceCreate_AdditionalInfoLabel"]</label>
-                        <textarea asp-for="AdditionalInfo" class="form-control" rows="3"
-                            placeholder="@Localizer["GovernanceCreate_AdditionalInfoPlaceholder"].Value"></textarea>
+                        <label asp-for="AdditionalInfo" class="form-label">@Localizer["Governance_Create_AdditionalInfoLabel"]</label>
+                        <textarea asp-for="AdditionalInfo" maxlength="1000" class="form-control" rows="3"
+                            placeholder="@Localizer["Governance_Create_AdditionalInfoPlaceholder"].Value"></textarea>
                         <span asp-validation-for="AdditionalInfo" class="text-danger"></span>
-                        <div class="form-text">@Localizer["GovernanceCreate_AdditionalInfoHelp"]</div>
+                        <div class="form-text">@Localizer["Governance_Create_AdditionalInfoHelp"]</div>
                     </div>
 
                     <div id="asociadoQuestionsCreate" style="display: @(Model.MembershipTier == MembershipTier.Asociado ? "block" : "none");">
@@ -77,14 +77,14 @@
 
                         <div class="mb-4">
                             <label asp-for="SignificantContribution" class="form-label">@SharedLocalizer["Application_SignificantContribution"]</label>
-                            <textarea asp-for="SignificantContribution" class="form-control" rows="4"
+                            <textarea asp-for="SignificantContribution" maxlength="2000" class="form-control" rows="4"
                                 placeholder="@SharedLocalizer["Application_SignificantContributionPlaceholder"].Value"></textarea>
                             <span asp-validation-for="SignificantContribution" class="text-danger"></span>
                         </div>
 
                         <div class="mb-4">
                             <label asp-for="RoleUnderstanding" class="form-label">@SharedLocalizer["Application_RoleUnderstanding"]</label>
-                            <textarea asp-for="RoleUnderstanding" class="form-control" rows="4"
+                            <textarea asp-for="RoleUnderstanding" maxlength="2000" class="form-control" rows="4"
                                 placeholder="@SharedLocalizer["Application_RoleUnderstandingPlaceholder"].Value"></textarea>
                             <span asp-validation-for="RoleUnderstanding" class="text-danger"></span>
                         </div>
@@ -95,14 +95,14 @@
                     <div class="form-check mb-4">
                         <input asp-for="ConfirmAccuracy" class="form-check-input" type="checkbox">
                         <label asp-for="ConfirmAccuracy" class="form-check-label">
-                            @Localizer["GovernanceCreate_ConfirmAccuracy"]
+                            @Localizer["Governance_Create_ConfirmAccuracy"]
                         </label>
                         <span asp-validation-for="ConfirmAccuracy" class="text-danger d-block"></span>
                     </div>
 
                     <div class="d-flex justify-content-between">
                         <a asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
-                        <button type="submit" class="btn btn-primary">@Localizer["GovernanceCreate_SubmitApplication"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Governance_Create_SubmitApplication"]</button>
                     </div>
                 </form>
             </div>
@@ -111,9 +111,9 @@
 
     <div class="col-md-4">
         <div class="card mb-3">
-            <div class="card-header">@Localizer["GovernanceCreate_IsThisRightForMe"]</div>
+            <div class="card-header">@Localizer["Governance_Create_IsThisRightForMe"]</div>
             <div class="card-body">
-                <p class="mb-2"><strong>@Localizer["GovernanceCreate_IdealFor"]</strong></p>
+                <p class="mb-2"><strong>@Localizer["Governance_Create_IdealFor"]</strong></p>
                 <ul class="mb-2">
                     <li>@Localizer["Governance_CampLeads"]</li>
                     <li>@Localizer["Governance_MetaVolunteers"]</li>
@@ -124,13 +124,13 @@
             </div>
         </div>
         <div class="card">
-            <div class="card-header">@Localizer["GovernanceCreate_WhatHappensNext"]</div>
+            <div class="card-header">@Localizer["Governance_Create_WhatHappensNext"]</div>
             <div class="card-body">
                 <ol class="mb-0">
-                    <li class="mb-2">@Localizer["GovernanceCreate_Step1"]</li>
-                    <li class="mb-2">@Localizer["GovernanceCreate_Step2"]</li>
-                    <li class="mb-2">@Localizer["GovernanceCreate_Step3"]</li>
-                    <li>@Localizer["GovernanceCreate_Step4"]</li>
+                    <li class="mb-2">@Localizer["Governance_Create_Step1"]</li>
+                    <li class="mb-2">@Localizer["Governance_Create_Step2"]</li>
+                    <li class="mb-2">@Localizer["Governance_Create_Step3"]</li>
+                    <li>@Localizer["Governance_Create_Step4"]</li>
                 </ol>
             </div>
         </div>

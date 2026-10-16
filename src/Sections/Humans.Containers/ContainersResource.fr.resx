@@ -149,4 +149,5 @@
   <data name="Containers_Error_ImageExtension" xml:space="preserve">
     <value>Le nom du fichier image doit se terminer par .jpg, .jpeg, .png ou .webp.</value>
   </data>
+  <data name="Containers_Error_PlacementNotFound" xml:space="preserve"><value>Placement introuvable. Placez d’abord le conteneur sur la carte.</value></data>
 </root>
