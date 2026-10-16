@@ -242,6 +242,38 @@ public class ExpenseReportServiceGdprTests
         json.Should().Contain(sourceReport.Id.ToString());
     }
 
+    [HumansFact]
+    public async Task DecisionsOnOwnReports_AndRejectionReasonAndCap_AreExported()
+    {
+        var report = MakeReport(UserId) with
+        {
+            MaxAmount = 80m,
+            LastRejectionReason = "Receipt unreadable",
+            LastRejectedAt = FakeNow,
+        };
+        _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>()).Returns([report]);
+
+        var approval = new AuditLogEntrySnapshot(
+            Guid.NewGuid(), AuditAction.ExpenseApprove, "ExpenseReport", report.Id,
+            "Finance approved expense report.", FakeNow,
+            ActorUserId: Guid.NewGuid(), RelatedEntityId: null, RelatedEntityType: null);
+        _auditLogService.GetFilteredEntriesAsync(
+                entityType: "ExpenseReport",
+                entityId: report.Id,
+                userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([approval]);
+
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
+
+        var reportsJson = JsonSerializer.Serialize(slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal)).Data);
+        reportsJson.Should().Contain("Receipt unreadable").And.Contain("\"MaxAmount\":80");
+        var auditJson = JsonSerializer.Serialize(slices.Single(s => string.Equals(s.SectionName, "ExpenseAuditLog", StringComparison.Ordinal)).Data);
+        auditJson.Should().Contain("Finance approved expense report.");
+    }
+
     /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
     private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
     {

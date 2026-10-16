@@ -2835,8 +2835,8 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
-            Arg.Any<CancellationToken>()).Returns([category.TeamId!.Value]);
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns(true);
 
         var queue = await _sut.GetReviewQueueAsync(coordinatorUserId, isFinanceAdmin: false,
             Xunit.TestContext.Current.CancellationToken);
@@ -2857,9 +2857,6 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(memberUserId,
-            Arg.Any<CancellationToken>()).Returns([]);
-
         var queue = await _sut.GetReviewQueueAsync(memberUserId, isFinanceAdmin: false,
             Xunit.TestContext.Current.CancellationToken);
 
@@ -2869,8 +2866,7 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
     {
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>()).Returns([]);
+        SetupActiveYear();
 
         var result = await _sut.GetCoordinatorQueueAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
@@ -2897,8 +2893,8 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
             ExpenseReportStatus.Submitted);
 
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
-            Arg.Any<CancellationToken>()).Returns([teamId]);
+        _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await _sut.GetCoordinatorQueueAsync(coordinatorUserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -2930,6 +2926,37 @@ public sealed class ExpenseReportServiceTests
         timeline.RegisteredInHolded.Should().BeTrue();
         timeline.OwedToMember.Should().Be(200m);
         timeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsEveryMergedId()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(sourceId, "Alice Old", "ES9121000418450200051332");
+        SetupUserAndProfile(survivorId, "Alice Tester", "ES9121000418450200051332");
+        var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId, category.Id);
+        var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId, category.Id);
+        foreach (var (reportId, docId) in new[] { (survivorReportId, "doc-1"), (sourceReportId, "doc-2") })
+        {
+            await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, ct);
+            var lineId = (await _sut.GetAsync(reportId, ct))!.Lines[0].Id;
+            await _expenseRepo.SetLineHoldedDocIdAsync(lineId, docId, FakeNow, ct);
+        }
+        var survivor = await _userService.GetUserInfoAsync(survivorId, ct);
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(survivor! with { MergedUserIds = [sourceId] });
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(survivorReportId, ct);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, ct);
+
+        timeline!.MemberRegisteredTotal.Should().Be(100m);
+        timeline.OtherAmount.Should().Be(100m);
     }
 
     [HumansTheory]

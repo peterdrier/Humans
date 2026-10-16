@@ -84,9 +84,9 @@ Stated so a violation is recognisable, each with the line that enforces it. The 
 list is `Expenses.md`; these are the ones a change is most likely to break silently.
 
 - **The payee is the submitter, snapshotted.** Submit copies the *submitter's* profile IBAN and
-  legal name into the claim (`Services/ExpenseReportService.cs:797`), never the actor's; the
+  legal name into the claim (`Services/ExpenseReportService.cs:806`), never the actor's; the
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
-  is pending approval (`Services/ExpenseReportService.cs:882`).
+  is pending approval (`Services/ExpenseReportService.cs:891`).
 - **Approved closes the claim.** Approve and finance-reject accept only Submitted or
   CoordinatorEndorsed (`Data/ExpenseRepository.cs:313`, `Data/ExpenseRepository.cs:345`);
   endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:277`,
@@ -106,11 +106,11 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   doc (`ResumeLegacySingleDocPushAsync`). A failure between Holded issuing a doc and that
   write can still mint a second one; nothing guards that window, by the small-scale rule.
 - **A header edit never moves a claim between budget years** once submitted
-  (`Services/ExpenseReportService.cs:315`).
+  (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1083`, `Services/ExpenseReportService.cs:1283`);
+  the masked form (`Services/ExpenseReportService.cs:1092`, `Services/ExpenseReportService.cs:1307`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
-  (`Services/ExpenseReportService.cs:972`).
+  (`Services/ExpenseReportService.cs:981`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a
   written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:398`).
 
@@ -177,6 +177,11 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **Finance admins hold every coordinator capability.** They may endorse and coordinator-reject
   in any category; the audit entry names them as finance admin. Peter confirmed this
   2026-09-26 — run 2's finding 1.
+- **The approval category override offers the active year's categories**, even on a claim
+  from an earlier year: claims are filed in the year they belong to. Peter confirmed this
+  2026-10-16 — run 3's finding 2.
+- **Expenses has no member nav entry.** `/Expenses` is reached from the Budget pages and the
+  approval email; the top nav has no room. Peter confirmed this 2026-10-16 — run 3's finding 18.
 - **The review queue renders in the admin shell for admin-role users and the member shell for
   everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
   filters itself.
@@ -190,4 +195,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
 | 2 | 2026-09-26 | Finance admins endorse; approval email failure no longer fails the approval; read interface folded; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
-| 3 | 2026-10-13 | Docs and guide trued to the code; dead attachment link and resx keys gone; coordinator check asked of Teams; behaviour questions raised for Peter | peterdrier/Humans#1973 |
+| 3 | 2026-10-13 | Docs and guide trued to the code; dead attachment link and resx keys gone; coordinator check asked of Teams; the queue shows every claim its viewer can sign off; GDPR export and merged-member timeline completed | peterdrier/Humans#1973 |

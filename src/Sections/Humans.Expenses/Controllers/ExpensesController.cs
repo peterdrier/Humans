@@ -77,7 +77,8 @@ internal sealed class ExpensesController(
                 CategoryNames = categoryNames,
                 AccountLedger = accountLedger,
                 BoundAccountNum = boundAccountNum,
-                IsCoordinator = coordinatorTeamIds.Count > 0,
+                // A claim waiting on this viewer's sign-off always earns the link.
+                IsCoordinator = coordinatorTeamIds.Count > 0 || coordinatorQueue.Count > 0,
                 CoordinatorQueueCount = coordinatorQueue.Count,
             };
             return View(model);
