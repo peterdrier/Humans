@@ -12,7 +12,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
     public async Task<IReadOnlyList<PreapprovalProgram>> GetProgramsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ProgramsWithChildren(ctx).OrderBy(p => p.ClaimBy).ThenBy(p => p.Name).ToListAsync(ct);
+        return await ProgramsWithChildren(ctx).ToListAsync(ct);
     }
 
     public async Task<PreapprovalProgram?> GetProgramAsync(Guid id, CancellationToken ct = default)
@@ -37,7 +37,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         return await ctx.Grants.AsNoTracking()
             .Include(g => g.Program)
             .Where(g => userIds.Contains(g.BeneficiaryUserId))
-            .OrderBy(g => g.Program.ClaimBy).ThenBy(g => g.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -152,16 +151,16 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var grants = await ctx.Grants.AsNoTracking().Include(g => g.Program)
-            .Where(g => userIds.Contains(g.BeneficiaryUserId)).OrderBy(g => g.CreatedAt).ToListAsync(ct);
+            .Where(g => userIds.Contains(g.BeneficiaryUserId)).ToListAsync(ct);
         var created = await ctx.Programs.AsNoTracking()
-            .Where(p => userIds.Contains(p.CreatedByUserId)).OrderBy(p => p.CreatedAt).ToListAsync(ct);
+            .Where(p => userIds.Contains(p.CreatedByUserId)).ToListAsync(ct);
         var managersAdded = await ctx.Managers.AsNoTracking().Include(m => m.Program)
-            .Where(m => userIds.Contains(m.AddedByUserId)).OrderBy(m => m.AddedAt).ToListAsync(ct);
+            .Where(m => userIds.Contains(m.AddedByUserId)).ToListAsync(ct);
         var managerRows = await ctx.Managers.AsNoTracking().Include(m => m.Program)
-            .Where(m => userIds.Contains(m.UserId)).OrderBy(m => m.AddedAt).ToListAsync(ct);
+            .Where(m => userIds.Contains(m.UserId)).ToListAsync(ct);
         var decided = await ctx.Grants.AsNoTracking().Include(g => g.Program)
             .Where(g => g.DecidedByUserId != null && userIds.Contains(g.DecidedByUserId.Value))
-            .OrderBy(g => g.DecidedAt).ToListAsync(ct);
+            .ToListAsync(ct);
         return new PreapprovalUserRows(grants, created, managersAdded, managerRows, decided);
     }
 

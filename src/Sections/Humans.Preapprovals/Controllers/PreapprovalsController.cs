@@ -40,7 +40,8 @@ internal sealed class PreapprovalsController(
         {
             CurrentUserId = user.Id,
             Today = today,
-            Grants = await preapprovals.GetGrantsForUserAsync(user.Id, ct),
+            Grants = (await preapprovals.GetGrantsForUserAsync(user.Id, ct))
+                .OrderBy(g => g.ClaimBy).ThenBy(g => g.CreatedAt).ToList(),
             OpenPrograms = (await preapprovals.GetProgramsAsync(ct))
                 .Where(p => p.IsAcceptingApplications(today)).OrderBy(p => p.ClaimBy).ToList(),
             CanManage = canManage
@@ -88,7 +89,8 @@ internal sealed class PreapprovalsController(
         {
             Program = program,
             Today = Today,
-            MyGrants = (await preapprovals.GetGrantsForUserAsync(userId, ct)).Where(g => g.ProgramId == program.Id).ToList(),
+            MyGrants = (await preapprovals.GetGrantsForUserAsync(userId, ct))
+                .Where(g => g.ProgramId == program.Id).OrderBy(g => g.CreatedAt).ToList(),
             Form = form
         };
 }
