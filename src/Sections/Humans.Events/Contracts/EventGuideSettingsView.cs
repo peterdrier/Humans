@@ -13,12 +13,10 @@ namespace Humans.Events.Contracts;
 /// Held as a single nullable field inside <c>CachingEventService</c>.
 /// </para>
 /// <para>
-/// <see cref="TimeZoneId"/> is read from the Settings-owned <c>event_settings</c>
-/// row at warm / refresh time via <c>ISettingsService</c>. The stale window
-/// nobodies-collective/Humans#719 described is closed: <c>CachingEventService</c>
+/// <see cref="TimeZoneId"/> is read from the Settings-owned <c>settings_event</c>
+/// row at warm / refresh time via <c>ISettingsService</c>. <c>CachingEventService</c>
 /// implements <c>IEventSettingsChangeListener</c>, so an event-settings save marks
-/// this projection stale and the next read reloads it. Before that, a timezone edit
-/// showed the old zone until another Events write or a process restart.
+/// this projection stale and the next read reloads it.
 /// </para>
 /// </remarks>
 public sealed record EventGuideSettingsView(

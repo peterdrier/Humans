@@ -2,7 +2,8 @@
 
 ## Containers
 
-Folder: `src/Sections/Humans.Containers/Services/`. **DbContext:**
+Folders: `src/Sections/Humans.Containers/Services/` (`Service`) and
+`src/Sections/Humans.Containers/Data/` (`Repository`). **DbContext:**
 `ContainersDbContext`. `Repository`
 (`src/Sections/Humans.Containers/Data/Repository.cs`, implements
 `IContainerRepository`) injects `IDbContextFactory<ContainersDbContext>`

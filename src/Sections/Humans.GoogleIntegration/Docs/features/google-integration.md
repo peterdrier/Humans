@@ -83,8 +83,6 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - "Sync Now" button per resource (Admin-only, executes adds/removes based on sync mode)
 - "Sync All" button per tab (Admin-only)
 - Inherited Shared Drive permissions are excluded from drift detection
-- Teams supplies expected Drive membership through `IGoogleDriveAccessSource`; reconciliation unions all shared-item claims before computing drift. Stronger Teams permissions remain valid, and Workgroups-only access uses its own exact-role policy.
-- A source failure aborts reconciliation before Google mutation; a partial roster never authorizes removal.
 
 ### US-7.5: Link Existing Shared Drive Folder
 **As a** Board member or authorized Coordinator
@@ -161,13 +159,13 @@ Group sync requests use Hangfire instead of in-process retry. Team membership an
 
 ## Source-Owned Drive Access
 
-`GoogleDriveAccessSyncService` reconciles folder claims from `IGoogleDriveAccessSource`, including Workgroups. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
+`GoogleDriveAccessSyncService` reconciles Drive resource claims from Teams and Workgroups through `IGoogleDriveAccessSource`. Teams supplies linked-resource and per-member team badges; reconciliation preserves resource IDs, names, types and URLs for manual results. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
 
 When multiple source-claimed user IDs hydrate to the same canonical Google address, their access is combined at the highest claimed level and reconciled once. The highest-level claimant owns the sync-log attribution, with a stable user-ID tie break.
 
-Single-resource Teams Drive sync includes all active team links for that Google id and resource type, including files; the expected access is their union, as in bulk reconciliation.
+Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Extra permissions are attributed to the email owner using the same verified-first, Gmail-alias-aware policy as Group Drive reconciliation, including failed deletes and mixed-role reductions. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`.
 
-Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Extra permissions are attributed to the email owner using the same verified-first, Gmail-alias-aware policy as Group and Teams Drive reconciliation, including failed deletes and mixed-role reductions. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`. The legacy Teams Drive path retains its inherited-permission exclusion.
+A direct role above the claimed level — including one raised by hand in Drive — is a `Downgrade`. The sync page lists every pending downgrade (resource, member, current and expected role, teams) above the per-resource tables so admins can give real access through a team role or permission level before an `AddAndRemove` run lowers it. A folder claimed by more than one source (e.g. a team and a workgroup) gets the union of the claims, highest level per user. If any source throws, the pass holds all removals and demotions and marks each claimed resource with an error.
 
 ## Data Model
 
@@ -230,8 +228,7 @@ public interface IGoogleSyncService
     Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken ct = default);
     Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken ct = default);
 
-    // Source-claimed Drive fan-out entry points (e.g. Workgroups) — independent
-    // of the Teams-keyed google_resources path above
+    // Provision folders and enqueue source-owned Drive reconciliation (Teams and Workgroups)
     Task<string> CreateSubfolderAsync(string parentFolderId, string name, CancellationToken ct = default);
     Task RequestSyncAsync(string folderId, CancellationToken ct = default);
 }
@@ -270,7 +267,7 @@ public class ResourceSyncDiff
     // Convenience properties, derived from Members
     public List<string> MembersToAdd => Members.Where(m => m.State == MemberSyncState.Missing).Select(m => m.Email).ToList();
     public List<string> MembersToRemove => Members.Where(m => m.State == MemberSyncState.Extra).Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole) && ErrorMessage is null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole or MemberSyncState.Downgrade) && ErrorMessage is null;
 }
 
 public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
@@ -279,7 +276,7 @@ public record MemberSyncStatus(
     string Email, string DisplayName, MemberSyncState State, List<TeamLink> TeamLinks,
     string? CurrentRole = null, string? ExpectedRole = null, Guid? UserId = null, string? ProfilePictureUrl = null);
 
-public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole }
+public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole, Downgrade }
 
 public class SyncPreviewResult
 {
@@ -307,8 +304,7 @@ When listing permissions, the system uses `permissionDetails` from the Drive API
 // 2. Role is not "owner"
 // 3. Has a valid email address
 // 4. Is not a service account (.iam.gserviceaccount.com)
-// 5. Legacy Teams-keyed path: has NO inherited component.
-//    Source-claimed path: has a direct component; mixed grants require a known
+// 5. Has a direct component; mixed grants require a known
 //    inherited floor and are updated in place, never deleted at the child
 //    (nobodies-collective/Humans#945). Floor-only grants need no mutation.
 ```
@@ -321,11 +317,7 @@ All Drive API calls MUST use:
 ### Multi-Team Permission Level Resolution
 When the same Drive resource (same `GoogleId`) is linked to multiple teams with different `DrivePermissionLevel` values, the system resolves the **maximum** level before setting permissions. For example, if Team A links a folder as Viewer and Team B links the same folder as Contributor, a user who belongs to both teams gets Contributor access.
 
-This resolution happens:
-- **Before the Drive API call** — not after. The max level is computed and passed to `AddUserToDriveAsync`.
-- **In `SyncDriveResourceGroupAsync`** — resources are grouped by `GoogleId`, and the max level across the group is used for all adds.
-- **In `AddUserToTeamResourcesAsync`** — when a user is added to a team, the max level is queried across all active resources with the same `GoogleId`.
-- **During reconciliation** — the daily job detects `WrongRole` drift when a user's current Google permission is lower than the resolved max, and upgrades it.
+`TeamDriveAccessSource` groups resources by `GoogleId` and computes each member's maximum level across active claiming teams. Both reconciliation and immediate `AddUserToTeamResourcesAsync` grants use that claim; an absent claim never falls back to an arbitrary level; a folder Workgroups also claims gets the union. Reconciliation repairs `WrongRole` (below expected) and `Downgrade` (above expected) drift using the expected level and inherited floor.
 
 ## Subteam Member Rollup
 
@@ -337,21 +329,18 @@ When a department (parent team) has child sub-teams, the effective membership fo
 - On subteam leave: removal is deferred to the reconciliation job, which recomputes effective membership. If the user is still a direct department member or in another sub-team, they keep access.
 - The department detail page (`/Teams/{slug}`) shows a "Humans via sub-teams" section with source team badges, visually distinct from direct members.
 
-**Sync methods that include rollup:**
-- `SyncGroupResourceAsync` — includes child team members via `GetChildTeamMembersAsync`
-- `SyncDriveResourceGroupAsync` — includes child team members via `GetChildTeamMembersAsync`
+Teams owns Drive rollup in `TeamDriveAccessSource` and Group rollup in its `IGoogleGroupMembershipSource` implementation; GoogleIntegration consumes their user-ID claims. Shared Drive resources are claimed once with the union of eligible members and their maximum level. Workgroups defines its own rosters.
 
 ## Permission Sync
 
-### Full Sync (SyncResourcePermissionsAsync)
-For Shared Drive folders:
-1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
-2. List current direct permissions from Google (paginated, with `permissionDetails`)
-3. Filter to direct managed permissions only (exclude inherited, owner, service account)
-4. Add missing permissions (expected but not in Google)
-5. Remove stale permissions (in Google but not expected)
-6. Detect permission level drift (member has access but at wrong level) and upgrade
-7. Update `LastSyncedAt`
+### Full Sync
+For claimed Drive resources:
+1. Load user IDs and permission levels from owning sections' sources, then hydrate eligible users and Google addresses.
+2. List permissions from Google, retaining direct and inherited components.
+3. Add missing grants and update role drift in place, respecting the inherited floor.
+4. Delete pure direct extras; reduce mixed direct elevations to their inherited floor.
+5. Record outcomes and errors against linked resource IDs; mark successful enabled reconciliations synced.
+6. In `AddAndRemove`, deactivate retired teams' resources only after every resource of that type reconciles without error.
 
 For Google Groups:
 1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
@@ -567,17 +556,17 @@ Stub vs. real implementation is selected automatically based on whether `GoogleW
 ```
 Schedule: 3:00 AM daily (mode-gated via SyncSettings)
 Purpose: Full reconciliation of all Google resources with DB state
-Process: Calls `SyncResourcesByTypeAsync` / `ReconcileAllAsync` with `SyncAction.Execute`; Drive sync receives `GoogleSyncSource.ScheduledSync` so its log records the scheduled trigger.
+Process: Calls Drive and Group `ReconcileAllAsync` once each with `SyncAction.Execute`; Drive sync records `GoogleSyncSource.ScheduledSync`.
          for every service; each service checks its own persisted SyncMode
          internally to decide whether adds/removes actually apply
 ```
 
 **Mode-gated behavior:**
-- `SyncMode.None` — job skips the service entirely
+- `SyncMode.None` — reconciliation remains read-only
 - `SyncMode.AddOnly` — job computes diff and only adds missing members
 - `SyncMode.AddAndRemove` — job computes diff, adds missing and removes extra members
 
-**Per-phase fault isolation:** Each top-level phase (DriveFolder sync, DriveFile sync, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
+**Per-phase fault isolation:** Each top-level phase (Drive source reconcile covering folders and files, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
 
 **Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention. Only a complete root-reaching path replaces the stored name; failed metadata reads or the depth limit preserve it.
 

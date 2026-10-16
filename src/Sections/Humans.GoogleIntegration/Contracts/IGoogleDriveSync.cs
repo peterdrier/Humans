@@ -4,15 +4,21 @@ using Humans.Base.Attributes;
 namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
-/// Orchestrates Drive access for every item claimed through
-/// <see cref="IGoogleDriveAccessSource"/>. Combines compatible claims,
-/// hydrates user IDs, applies eligibility policy and reconciles Google permissions.
-/// Sections supply membership, resource provenance and permission policy.
+/// Orchestrates Drive access for resources claimed through
+/// <see cref="IGoogleDriveAccessSource"/> — the source fan-out including Teams. Loads every registered source's
+/// expected access per resource, unions claims (two sources claiming the
+/// same resource get the highest level per user), hydrates user IDs and applies user-state filtering
+/// uniformly, then diffs against Google and applies changes through the
+/// section's Drive permissions connector.
 /// </summary>
+/// <remarks>
+/// Mirrors <see cref="IGoogleGroupSync"/>'s division of labour exactly, for
+/// Drive resources instead of Groups.
+/// </remarks>
 public interface IGoogleDriveSync
 {
     /// <summary>
-    /// Reconciles every folder claimed by any registered source. Used by the
+    /// Reconciles every resource claimed by any registered source. Used by the
     /// daily <c>GoogleResourceReconciliationJob</c>.
     /// </summary>
     /// <param name="action">
@@ -22,15 +28,17 @@ public interface IGoogleDriveSync
     /// for <see cref="SyncServiceType.GoogleDrive"/>.
     /// </param>
     /// <param name="ct">Token used to cancel reconciliation.</param>
-    /// <param name="syncSource">Initiating workflow recorded in the sync log.</param>
+    /// <param name="resourceType">Optional resource-type filter; unlinked source folders are DriveFolder.</param>
+    /// <param name="syncSource">Trigger recorded on mutation logs.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
         CancellationToken ct = default,
+        GoogleResourceType? resourceType = null,
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 
     /// <summary>
-    /// Reconciles one folder. Called by scoped on-demand sync requests
+    /// Reconciles one Drive resource. Called by scoped on-demand sync requests
     /// (<see cref="IGoogleSyncService.RequestSyncAsync"/>).
     /// </summary>
     [ExternalWrite]
@@ -39,4 +47,15 @@ public interface IGoogleDriveSync
         SyncAction action,
         CancellationToken ct = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+
+    // Hangfire serializes the exact MethodInfo at enqueue time; the overload above
+    // added syncSource, so scoped jobs queued before that deploy carry the
+    // 3-param signature and cannot resolve without it. Same compatibility
+    // pattern as IGoogleGroupSync.ReconcileOneAsync. Do not remove without first
+    // draining queued ReconcileOneAsync jobs.
+    [ExternalWrite]
+    Task<ResourceSyncDiff> ReconcileOneAsync(
+        string folderId,
+        SyncAction action,
+        CancellationToken ct);
 }

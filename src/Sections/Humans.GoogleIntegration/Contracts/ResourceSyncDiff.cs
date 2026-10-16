@@ -32,7 +32,12 @@ public enum MemberSyncState
     /// Member has access but at a lower permission level than expected
     /// (e.g., reader when they should be writer due to multi-team max resolution).
     /// </summary>
-    WrongRole
+    WrongRole,
+    /// <summary>
+    /// Drive only: member holds a direct role above what the sources claim (e.g. raised by
+    /// hand). AddAndRemove lowers it to the expected role; Preview lists it beforehand.
+    /// </summary>
+    Downgrade
 }
 
 /// <summary>
@@ -63,7 +68,7 @@ public class ResourceSyncDiff
     public List<string> MembersToRemove => Members
         .Where(m => m.State == MemberSyncState.Extra)
         .Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole) && ErrorMessage is null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole or MemberSyncState.Downgrade) && ErrorMessage is null;
 }
 
 /// <summary>

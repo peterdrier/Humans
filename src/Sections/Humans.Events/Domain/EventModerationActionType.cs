@@ -20,5 +20,11 @@ internal enum EventModerationActionType
     /// not a state-transition decision, so it is appended directly rather than
     /// through <see cref="Event.ApplyModerationAction"/>.
     /// </summary>
-    Edited = 3
+    Edited = 3,
+
+    /// <summary>
+    /// A moderator pulled an approved event from the programme. Recorded for
+    /// audit; the status change goes through <see cref="Event.Withdraw"/>.
+    /// </summary>
+    Withdrawn = 4
 }

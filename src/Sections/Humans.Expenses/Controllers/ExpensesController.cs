@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Authorization;
@@ -40,10 +41,7 @@ internal sealed class ExpensesController(
             var activeYear = await budgetService.GetActiveYearAsync();
             var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
-            var categoryNames = activeYear?.Groups
-                .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
-                .ToDictionary(x => x.Id, x => x.Display)
-                ?? new Dictionary<Guid, string>();
+            var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
 
             var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
@@ -74,7 +72,7 @@ internal sealed class ExpensesController(
                 Reports = reports,
                 HasActiveYear = activeYear is not null,
                 HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
-                CategoryNames = categoryNames,
+                BookingLabels = bookingLabels,
                 AccountLedger = accountLedger,
                 BoundAccountNum = boundAccountNum,
                 IsCoordinator = coordinatorTeamIds.Count > 0,
@@ -103,8 +101,8 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var categories = await BuildCategoryOptionsAsync();
-            if (categories.Count == 0)
+            var accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
+            if (accounts.Count == 0)
             {
                 SetInfo(localizer["Expenses_Flash_NoActiveYearCategories"]);
                 return RedirectToAction(nameof(Index));
@@ -112,7 +110,7 @@ internal sealed class ExpensesController(
 
             return View(new ExpenseNewViewModel
             {
-                Categories = categories,
+                Accounts = accounts,
                 SubmitterUserId = user.Id,
             });
         }
@@ -142,12 +140,12 @@ internal sealed class ExpensesController(
         {
             if (!ModelState.IsValid)
             {
-                model.Categories = await BuildCategoryOptionsAsync();
+                model.Accounts = await BuildAccountOptionsAsync();
                 return View(model);
             }
 
             var id = await service.CreateDraftAsync(
-                submitterUserId, user.Id, model.BudgetCategoryId, model.Note);
+                submitterUserId, user.Id, model.HoldedAccountNumber, model.Note);
             SetSuccess(localizer["Expenses_Flash_DraftCreated"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
@@ -155,7 +153,7 @@ internal sealed class ExpensesController(
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
-            model.Categories = await BuildCategoryOptionsAsync();
+            model.Accounts = await BuildAccountOptionsAsync();
             return View(model);
         }
     }
@@ -168,10 +166,7 @@ internal sealed class ExpensesController(
             var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.View, HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
-            var categoryName = category is not null
-                ? $"{category.BudgetGroup?.Name} / {category.Name}"
-                : localizer["Expenses_Detail_UnknownCategory"].Value;
+            var bookingLabel = (await ResolveBookingLabelsAsync([report], HttpContext.RequestAborted))[report.Id];
             var isSubmitter = report.SubmitterUserId == user.Id;
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
@@ -192,7 +187,7 @@ internal sealed class ExpensesController(
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
-                CategoryDisplayName = categoryName,
+                BookingLabel = bookingLabel,
                 CanEdit = canEdit,
                 CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
                 CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
@@ -209,9 +204,9 @@ internal sealed class ExpensesController(
                 CanFinanceReject = decisions.FinanceReject,
                 CanEndorse = decisions.Endorse,
                 CanCoordinatorReject = decisions.CoordinatorReject,
-                // Only the approval form offers a category override, so the list is loaded only
+                // Only the approval form offers an account override, so the list is loaded only
                 // for the one viewer who can act on it.
-                Categories = decisions.Approve ? await BuildCategoryOptionsAsync() : [],
+                Accounts = decisions.Approve ? await BuildAccountOptionsAsync(HttpContext.RequestAborted) : [],
             };
             return View(model);
         }
@@ -241,7 +236,7 @@ internal sealed class ExpensesController(
 
             var model = new ExpenseEditViewModel
             {
-                BudgetCategoryId = report.BudgetCategoryId,
+                HoldedAccountNumber = report.HoldedAccountNumber,
                 Note = report.Note
             };
             await PopulateEditModelAsync(model, report);
@@ -269,7 +264,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.UpdateDraftWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), model.BudgetCategoryId, model.Note);
+            id, user.Id, await IsFinanceAdminAsync(), model.HoldedAccountNumber, model.Note);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
@@ -660,7 +655,7 @@ internal sealed class ExpensesController(
             {
                 Reports = reports,
                 SubmitterNames = submitterNames,
-                DepartmentNames = await ResolveDepartmentNamesAsync(),
+                BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
                 // Finance admins are the only ones who can act on a written-off push, and the
                 // list is queue-wide rather than scoped, so it stays with them.
                 FailedHoldedPushReportIds = isFinanceAdmin
@@ -691,7 +686,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.ApproveWithResultAsync(
-            id, user.Id, input.OverrideCategoryId, input.MaxAmount);
+            id, user.Id, input.OverrideAccountNumber, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -832,48 +827,60 @@ internal sealed class ExpensesController(
             .ToDictionary(id => id, id => users[id].BurnerName);
     }
 
-    /// <summary>Active-year budget category id → department label. Categories in the department
-    /// group are one per team, so their own name is the department; anything else keeps its group
-    /// prefix so a non-department booking is still readable.</summary>
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveDepartmentNamesAsync()
+    /// <summary>Report id → what it books to, as a label: the Holded account's label (retired
+    /// accounts included, so an old report still reads), or for reports that predate the account
+    /// column, their category in the active year.</summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
+        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
-        var activeYear = await budgetService.GetActiveYearAsync();
-        if (activeYear is null) return new Dictionary<Guid, string>();
+        var labels = new Dictionary<Guid, string>();
+        if (reports.Count == 0) return labels;
 
-        return activeYear.Groups
-            .SelectMany(g => g.Categories.Select(c =>
-                (c.Id, Display: g.IsDepartmentGroup ? c.Name : $"{g.Name} / {c.Name}")))
-            .ToDictionary(x => x.Id, x => x.Display);
+        Dictionary<int, string>? accountLabels = null;
+        Dictionary<Guid, string>? categoryLabels = null;
+        foreach (var report in reports)
+        {
+            if (report.HoldedAccountNumber != 0)
+            {
+                accountLabels ??= (await holdedFinance.ListExpenseAccountsAsync(activeOnly: false, ct))
+                    .GroupBy(a => a.AccountNum)
+                    .ToDictionary(g => g.Key, g => g.First().Label);
+                labels[report.Id] = accountLabels.TryGetValue(report.HoldedAccountNumber, out var accountLabel)
+                    ? accountLabel
+                    : report.HoldedAccountNumber.ToString(CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                categoryLabels ??= (await budgetService.GetActiveYearAsync())?.Groups
+                    .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
+                    .ToDictionary(x => x.Id, x => x.Display)
+                    ?? [];
+                labels[report.Id] = report.BudgetCategoryId is { } categoryId
+                                    && categoryLabels.TryGetValue(categoryId, out var categoryLabel)
+                    ? categoryLabel
+                    : localizer["Expenses_Detail_UnknownCategory"].Value;
+            }
+        }
+        return labels;
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
-        model.Categories = await BuildCategoryOptionsAsync(report);
+        model.Accounts = await BuildAccountOptionsAsync();
     }
 
-    /// <summary>Category options from the report’s accounting year or the active year.</summary>
-    /// <param name="report">
-    /// When given and already submitted, the options come from the budget year that report is
-    /// booked to rather than the active one — offering this year's categories on last year's
-    /// report is how a header edit silently reclassifies its accounting year. Null (a new draft,
-    /// the approval override) keeps the active year.
-    /// </param>
-    private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync(
-        ExpenseReportDto? report = null)
+    /// <summary>The accounts a report may book to: Finance's active expense accounts, budget-category
+    /// accounts first. Which year a pending report's category may belong to is the service's call
+    /// (it refuses a cross-year rebooking), so one list serves the new form, the edit form and the
+    /// approval override.</summary>
+    private async Task<IReadOnlyList<HoldedExpenseAccountOption>> BuildAccountOptionsAsync(
+        CancellationToken ct = default)
     {
-        var isPendingApproval = report?.Status
-            is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
-        var year = isPendingApproval
-            ? await budgetService.GetYearByIdAsync(report!.BudgetYearId)
-            : await budgetService.GetActiveYearAsync();
-        if (year is null) return [];
-
-        return year.Groups
-            .OrderBy(g => g.SortOrder)
-            .SelectMany(g => g.Categories
-                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(c => new BudgetCategoryOption(c.Id, g.Name, c.Name)))
+        var accounts = await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct);
+        return accounts
+            .OrderByDescending(a => a.IsBudgetCategory)
+            .ThenBy(a => a.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

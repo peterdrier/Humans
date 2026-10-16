@@ -15,14 +15,10 @@ namespace Humans.Events.Services;
 /// <para>
 /// All event_* table writes flow through <c>IEventService</c> by design
 /// (enforced by the universal <c>HUM0025</c> analyzer), so the decorator handles its own invalidation
-/// inline after each delegated write. This interface exists for the
-/// one cross-section signal the section will eventually receive — see the
-/// <see cref="EventGuideSettingsView"/> remarks for the stale-on-EventSettings
-/// stop-gap tracked in
-/// <see href="https://github.com/nobodies-collective/Humans/issues/719"/>.
-/// External callers should not invoke these methods today; they are kept
-/// non-public-API-surface until nobodies-collective/Humans#719 wires the EventSettings invalidation
-/// edge.
+/// inline after each delegated write. This interface is
+/// a reserved in-section invalidation seat. The Settings-side signal arrives through
+/// <c>IEventSettingsChangeListener</c>, not this interface; nothing calls
+/// <c>InvalidateGuideSettingsAsync</c>, and external callers should not.
 /// </para>
 /// </remarks>
 [Grandfathered(
@@ -35,9 +31,8 @@ internal interface IEventViewInvalidator : IInvalidator
     /// <summary>
     /// Reloads the cached <see cref="EventGuideSettingsView"/> singleton
     /// (including the foreign-read <see cref="EventGuideSettingsView.TimeZoneId"/>
-    /// from <c>EventSettings</c>). Used as the future nobodies-collective/Humans#719 hook so an
-    /// EventSettings edit can flush this section's TimeZoneId cache without
-    /// the decorator owning the foreign table.
+    /// from <c>EventSettings</c>). Reserved in-section seat with no caller; the Settings-side
+    /// signal arrives through <c>IEventSettingsChangeListener</c>.
     /// </summary>
     Task InvalidateGuideSettingsAsync(CancellationToken ct = default);
 }

@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Campaigns;
 
-/// <summary>Campaigns' admin sidebar group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Campaigns' admin sidebar group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

@@ -155,6 +155,16 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
+    public async Task Coordinator_CannotEndorse_ReportOutsideTheBudget()
+    {
+        // No budget category means no coordinator route, so the endorse and reject levers stay off.
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with { BudgetCategoryId = null, BudgetYearId = null };
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.CoordinatorReject)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.View)).Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task Coordinator_CanCoordinatorReject_SubmittedReportInTheirCategory()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
@@ -387,6 +397,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = submitterId,
+            HoldedAccountNumber = 0,
             BudgetCategoryId = CategoryId,
             BudgetYearId = Guid.NewGuid(),
             Status = status,

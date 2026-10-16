@@ -159,7 +159,8 @@ internal sealed class ExpenseReportService(
         // already chose. Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
         return queue
-            .Where(r => r.SubmitterUserId == viewerUserId || categoryIds.Contains(r.BudgetCategoryId))
+            .Where(r => r.SubmitterUserId == viewerUserId
+                        || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
             .ToList();
     }
 
@@ -215,22 +216,23 @@ internal sealed class ExpenseReportService(
     }
 
     public async Task<Guid> CreateDraftAsync(
-        Guid submitterUserId, Guid actorUserId, Guid budgetCategoryId, string? note,
+        Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
         CancellationToken ct = default)
     {
-        var year = await budgetService.GetActiveYearAsync()
-            ?? throw new InvalidOperationException("No active budget year.");
-        var category = year.Groups.SelectMany(g => g.Categories)
-            .FirstOrDefault(c => c.Id == budgetCategoryId)
-            ?? throw new InvalidOperationException("Category not in active year.");
+        var (resolved, refusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
+        if (refusal is not null)
+            throw new InvalidOperationException($"Account {holdedAccountNumber} cannot be booked to: {refusal.Error?.ResourceKey ?? refusal.Error?.OperatorMessage}.");
+        var booking = resolved!;
 
         var now = clock.GetCurrentInstant();
         var report = new ExpenseReport
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = submitterUserId,
-            BudgetCategoryId = category.Id,
-            BudgetYearId = year.Id,
+            HoldedAccountNumber = booking.HoldedAccountNumber,
+            HoldedAccountId = booking.HoldedAccountId,
+            BudgetCategoryId = booking.BudgetCategoryId,
+            BudgetYearId = booking.BudgetYearId,
             Status = ExpenseReportStatus.Draft,
             Note = note,
             PayeeName = "",
@@ -298,7 +300,7 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        Guid budgetCategoryId, string? note,
+        int holdedAccountNumber, string? note,
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
@@ -310,40 +312,25 @@ internal sealed class ExpenseReportService(
             // as it always has. A report past submit already belongs to a budget year; re-resolving
             // it through the active year would silently move last year's accounting into this year's
             // books, so it keeps its own year and only that year's categories are accepted.
-            string categoryName;
-            Guid budgetYearId;
-            if (IsPendingApproval(report.Status))
-            {
-                var snapshot = await budgetService.GetCategoryByIdAsync(budgetCategoryId);
-                if (snapshot is null) return ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound");
-                if (snapshot.BudgetGroup?.BudgetYearId != report.BudgetYearId)
-                    return ExpenseMutationResult.Failure("Expenses_Validation_CategoryDifferentBudgetYear");
-                categoryName = snapshot.Name;
-                budgetYearId = report.BudgetYearId;
-            }
-            else
-            {
-                var year = await budgetService.GetActiveYearAsync()
-                    ?? throw new InvalidOperationException("No active budget year.");
-                var category = year.Groups.SelectMany(g => g.Categories)
-                    .FirstOrDefault(c => c.Id == budgetCategoryId)
-                    ?? throw new InvalidOperationException("Category not in active year.");
-                categoryName = category.Name;
-                budgetYearId = year.Id;
-            }
+            var pinnedYearId = IsPendingApproval(report.Status) ? report.BudgetYearId : null;
+            var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
+            if (bookingRefusal is not null) return bookingRefusal;
+            var booking = resolved!;
 
             var updated = new ExpenseReport
             {
                 Id = reportId,
-                BudgetCategoryId = budgetCategoryId,
-                BudgetYearId = budgetYearId,
+                HoldedAccountNumber = booking.HoldedAccountNumber,
+                HoldedAccountId = booking.HoldedAccountId,
+                BudgetCategoryId = booking.BudgetCategoryId,
+                BudgetYearId = booking.BudgetYearId,
                 Note = note,
                 UpdatedAt = clock.GetCurrentInstant()
             };
             await repo.UpdateDraftAsync(updated, ct);
 
             await AuditOnBehalfEditAsync(report, actorUserId,
-                $"Updated header (category {categoryName}, subject {DescribeNote(note)})", ct);
+                $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})", ct);
 
             return ExpenseMutationResult.Success;
         }, "Error updating expense report {ReportId}", reportId);
@@ -1085,17 +1072,27 @@ internal sealed class ExpenseReportService(
     }
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
+        Guid reportId, Guid actorUserId, int? overrideAccountNumber, decimal? maxAmount,
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
+            // Re-booking at approval keeps the report's year: a category account from another year
+            // is refused the same way a header edit would refuse it.
+            ExpenseBooking? overrideBooking = null;
+            if (overrideAccountNumber is { } overrideNumber && overrideNumber != report.HoldedAccountNumber)
+            {
+                var (resolved, refusal) = await ResolveBookingAsync(overrideNumber, report.BudgetYearId, ct);
+                if (refusal is not null) return refusal;
+                overrideBooking = resolved;
+            }
+
             var outboxEventId = Guid.NewGuid();
             var now = clock.GetCurrentInstant();
             var ok = await repo.ApproveAsync(
-                reportId, actorUserId, overrideCategoryId, maxAmount, now, outboxEventId, ct);
+                reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
             await auditLogService.LogAsync(
@@ -1104,12 +1101,15 @@ internal sealed class ExpenseReportService(
                 "Finance approved expense report." + MaxAmountDetail(maxAmount),
                 actorUserId);
 
-            if (overrideCategoryId.HasValue && overrideCategoryId.Value != report.BudgetCategoryId)
+            if (overrideBooking is not null)
             {
                 await auditLogService.LogAsync(
                     AuditAction.ExpenseCategoryOverride,
                     AuditEntityTypes.Report, reportId,
-                    $"Category overridden during approval to {overrideCategoryId.Value}.",
+                    $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
+                    + (overrideBooking.BudgetCategoryId is { } overrideCategory
+                        ? $" (budget category {overrideCategory})."
+                        : " (no budget category)."),
                     actorUserId);
             }
 
@@ -1172,9 +1172,11 @@ internal sealed class ExpenseReportService(
         }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
 
     internal async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
-        Guid categoryId, CancellationToken ct = default)
+        Guid? categoryId, CancellationToken ct = default)
     {
-        var category = await budgetService.GetCategoryByIdAsync(categoryId);
+        // A report booked to an account outside the budget has no category, so no coordinator.
+        if (categoryId is null) return false;
+        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
         if (category is null || category.TeamId is null)
             return false;
 
@@ -1208,10 +1210,54 @@ internal sealed class ExpenseReportService(
             : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
     }
 
-    private async Task<ExpenseMutationResult?> GetCoordinatorRefusalAsync(
-        Guid categoryId, Guid actorUserId, CancellationToken ct)
+    /// <summary>
+    /// Resolves what a report books to from the account the submitter picked. A budget-category
+    /// account also carries the category it maps to and that category's year; any other account
+    /// carries neither, which is what routes the report past coordinator endorsement. A draft takes
+    /// the active year's categories; a report past submit (<paramref name="pinnedYearId"/> set)
+    /// accepts only its own year's, so a header edit never moves its accounting year.
+    /// </summary>
+    private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
+        int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
-        var category = await budgetService.GetCategoryByIdAsync(categoryId);
+        var account = (await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct))
+            .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
+        if (account is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
+        if (!account.IsBudgetCategory)
+            return (new ExpenseBooking(account.AccountNum, account.AccountId, null, null), null);
+
+        // The option list said this account is a budget category, so the map row exists; the
+        // category behind it may still be gone or belong to another year.
+        var mapRow = (await holdedFinance.GetCategoryMapAsync(ct))
+            .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
+        if (mapRow is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+
+        if (pinnedYearId is { } pinned)
+        {
+            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId);
+            if (snapshot is null)
+                return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+            if (snapshot.BudgetGroup?.BudgetYearId != pinned)
+                return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryDifferentBudgetYear"));
+            return (new ExpenseBooking(account.AccountNum, account.AccountId, snapshot.Id, pinned), null);
+        }
+
+        var activeYear = await budgetService.GetActiveYearAsync()
+            ?? throw new InvalidOperationException("No active budget year.");
+        var inActiveYear = activeYear.Groups.SelectMany(g => g.Categories).Any(c => c.Id == mapRow.BudgetCategoryId);
+        if (!inActiveYear)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+        return (new ExpenseBooking(account.AccountNum, account.AccountId, mapRow.BudgetCategoryId, activeYear.Id), null);
+    }
+
+    private async Task<ExpenseMutationResult?> GetCoordinatorRefusalAsync(
+        Guid? categoryId, Guid actorUserId, CancellationToken ct)
+    {
+        if (categoryId is null)
+            return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
+        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
         if (category is null)
             throw new InvalidOperationException("Budget category not found.");
         if (!category.TeamId.HasValue)

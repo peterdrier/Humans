@@ -1,17 +1,8 @@
-using Humans.GoogleIntegration.Services.Workspace;
-
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>Distinguishes a rejected Drive recipient from caller permissions and sharing policy errors.</summary>
+/// <summary>Google API status codes that mark a grant as permanently failed rather than retryable.</summary>
 internal static class DrivePermissionErrorPolicy
 {
+    /// <summary>400 = invalid address, 403 = ineligible domain or recipient, 404 = not found.</summary>
     public static bool IsPermanentFailure(int? statusCode) => statusCode is 400 or 403 or 404;
-
-    public static bool IsTargetRejection(GoogleClientError? error) => error is { StatusCode: 400 or 403, RawMessage: { } message } &&
-        (message.Contains("does not have a google account", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("non google account", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("no google account", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("not a google account", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase));
 }

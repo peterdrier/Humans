@@ -5,7 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.GoogleIntegration.Data;
@@ -27,13 +26,14 @@ internal sealed class GoogleWorkspaceSyncService(
     ITeamServiceRead teamService,
     IUserService userService,
     IGoogleGroupSync googleGroupSync,
+    IGoogleDriveSync googleDriveSync,
+    IEnumerable<IGoogleDriveAccessSource> driveAccessSources,
     IAuditLogService auditLogService,
     IGoogleSyncLogService googleSyncLog,
     ISyncSettingsService syncSettingsService,
     IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler,
     IOptions<GoogleWorkspaceOptions> options,
     IClock clock,
-    IServiceProvider serviceProvider,
     ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncService
 {
     private readonly GoogleWorkspaceOptions _options = options.Value;
@@ -126,9 +126,24 @@ internal sealed class GoogleWorkspaceSyncService(
         GoogleClientError? error,
         CancellationToken ct)
     {
-        // Recipient errors alone reject the address; caller and sharing-policy errors remain retryable.
-        if (!DrivePermissionErrorPolicy.IsTargetRejection(error))
+        var statusCode = error?.StatusCode ?? 0;
+        var rawMessage = error?.RawMessage ?? string.Empty;
+
+        // Drive returns 400 when the recipient has no Google account on a
+        // domain that supports notification-free sharing, and 403 "Cannot share a
+        // shared drive with non Google accounts" (#1938). Other 403s are caller-
+        // permission failures (not the target's problem); the phrase predicate
+        // below tells them apart.
+        if (statusCode is not (400 or 403))
+        {
             return;
+        }
+
+        // Drive-specific predicate only — generic phrases (sharing-policy) must not flip GoogleEmailStatus (#677).
+        if (error?.IsDriveTargetRejection != true)
+        {
+            return;
+        }
 
         await userService.TrySetGoogleEmailStatusFromSyncAsync(
             userId, GoogleEmailStatus.Rejected, ct, googleEmailId);
@@ -138,8 +153,8 @@ internal sealed class GoogleWorkspaceSyncService(
             "Google email status marked Rejected for the address. Google error: {ErrorMessage}",
             userEmail,
             resource.GoogleId,
-            error!.StatusCode,
-            error.RawMessage);
+            statusCode,
+            rawMessage);
     }
 
     /// <inheritdoc />
@@ -149,8 +164,11 @@ internal sealed class GoogleWorkspaceSyncService(
         CancellationToken cancellationToken = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
-        // The resolved user's immutable snapshot supplies both the target and its state.
-        // A second email read could observe a different selection during a user edit.
+        // Merge-fold redirect (issue peterdrier/Humans#646): an outbox event enqueued
+        // before a merge is dequeued after it, so the id here may be an account that was
+        // folded away. Users resolves that forward (#1704). The resolved user's immutable
+        // snapshot supplies both the target and its state; a second email read could
+        // observe a different selection during a user edit.
         var user = await userService.GetUserInfoAsync(userId, cancellationToken);
         var target = user is null ? null : GoogleSyncMemberHydration.SelectTargetEmail(user);
         if (target is null)
@@ -257,76 +275,15 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
-    public async Task<SyncPreviewResult> SyncResourcesByTypeAsync(
+    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
         CancellationToken cancellationToken = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
-        logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
-
         if (resourceType == GoogleResourceType.Group)
-        {
-            throw new InvalidOperationException(
-                "Google Group membership sync is handled by IGoogleGroupSync.");
-        }
-
-        // Scope the report to linked resources of this type. Each selected item
-        // is reconciled against the complete source union, including other sections.
-        IReadOnlyList<GoogleResource> resources =
-            await resourceRepository.GetActiveByResourceTypeAsync(resourceType, cancellationToken);
-
-        if (resources.Count == 0)
-        {
-            return new SyncPreviewResult { Diffs = [] };
-        }
-
-        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-        var driveSync = serviceProvider.GetRequiredService<IGoogleDriveSync>();
-        var diffs = new List<ResourceSyncDiff>();
-        foreach (var googleId in resources.Select(r => r.GoogleId).Distinct(StringComparer.Ordinal))
-        {
-            diffs.Add(await driveSync.ReconcileOneAsync(googleId, action, cancellationToken, syncSource));
-        }
-
-        if (action == SyncAction.Execute)
-        {
-            // Deactivate soft-deleted-team resources now that reconciliation has
-            // revoked their Google access. Only when mode was AddAndRemove.
-            var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
-            if (mode == SyncMode.AddAndRemove)
-            {
-                // Track errored diffs by GoogleId, not ResourceId — Drive resources
-                // are grouped by GoogleId and a single diff represents potentially
-                // many GoogleResource rows.
-                var erroredGoogleIds = diffs
-                    .Where(d => !string.IsNullOrEmpty(d.ErrorMessage))
-                    .Select(d => d.GoogleId)
-                    .Where(id => !string.IsNullOrEmpty(id))
-                    .ToHashSet(StringComparer.Ordinal);
-
-                // Only deactivate when EVERY one of a soft-deleted team's resources
-                // of this type reconciled without error.
-                var softDeletedTeamIds = resources
-                    .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && !t.IsActive && r.IsActive)
-                    .GroupBy(r => r.TeamId)
-                    .Where(g => g.All(r => !erroredGoogleIds.Contains(r.GoogleId)))
-                    .Select(g => g.Key)
-                    .ToList();
-
-                if (softDeletedTeamIds.Count > 0)
-                {
-                    var teamResourceService = serviceProvider.GetRequiredService<ITeamResourceService>();
-                    foreach (var teamId in softDeletedTeamIds)
-                    {
-                        await teamResourceService.DeactivateResourcesForTeamAsync(
-                            teamId, resourceType, cancellationToken);
-                    }
-                }
-            }
-        }
-
-        return new SyncPreviewResult { Diffs = diffs };
+            throw new InvalidOperationException("Google Group membership sync is handled by IGoogleGroupSync.");
+        return googleDriveSync.ReconcileAllAsync(action, cancellationToken, resourceType, syncSource);
     }
 
     /// <inheritdoc />
@@ -347,18 +304,13 @@ internal sealed class GoogleWorkspaceSyncService(
             };
         }
 
-        // Resolve TeamInfo for this resource's team (cross-section via cache).
-        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-        var teamGoogleGroupEmail = teamsById.TryGetValue(resource.TeamId, out var teamInfo)
-            ? teamInfo.GoogleGroupEmail
-            : null;
-
         if (resource.ResourceType == GoogleResourceType.Group)
-            return await ReconcileGroupResourceAsync(resource, teamGoogleGroupEmail, action, cancellationToken);
-
-        // The source fan-out includes every claim, including other sections sharing this item.
-        return await serviceProvider.GetRequiredService<IGoogleDriveSync>()
-            .ReconcileOneAsync(resource.GoogleId, action, cancellationToken, GoogleSyncSource.ManualSync);
+        {
+            var team = await teamService.GetTeamAsync(resource.TeamId, cancellationToken);
+            return await ReconcileGroupResourceAsync(resource, team?.GoogleGroupEmail, action, cancellationToken);
+        }
+        return await googleDriveSync.ReconcileOneAsync(
+            resource.GoogleId, action, cancellationToken, GoogleSyncSource.ManualSync);
     }
 
     private async Task<ResourceSyncDiff> ReconcileGroupResourceAsync(
@@ -1038,25 +990,27 @@ internal sealed class GoogleWorkspaceSyncService(
     /// <inheritdoc />
     public async Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        // Rejection is a Users fact; Teams supplies the membership projection directly.
         var user = await userService.GetUserInfoAsync(userId, cancellationToken);
+
+        // If the user's GoogleEmailStatus is Rejected, AddUserToTeamResourcesAsync will
+        // silently skip every enqueued event — don't enqueue at all (nobodies-collective/Humans#847).
         if (user?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             logger.LogDebug("EnqueueUserSyncAsync skipped for user {UserId} — GoogleEmailStatus is Rejected", userId);
             return 0;
         }
-        var memberships = await teamService.GetUserTeamMembershipsAsync(userId, cancellationToken);
 
         var now = clock.GetCurrentInstant();
-        var events = memberships.Select(m => m.TeamId).Distinct()
-            .Select(teamId => new GoogleSyncOutboxEvent
+        var memberships = await teamService.GetUserTeamMembershipsAsync(userId, cancellationToken);
+        var events = memberships
+            .Select(t => new GoogleSyncOutboxEvent
             {
                 Id = Guid.NewGuid(),
                 EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
-                TeamId = teamId,
+                TeamId = t.TeamId,
                 UserId = userId,
                 OccurredAt = now,
-                DeduplicationKey = $"admin-resync:{userId}:{teamId}:{now.ToUnixTimeTicks()}"
+                DeduplicationKey = $"admin-resync:{userId}:{t.TeamId}:{now.ToUnixTimeTicks()}"
             })
             .ToList();
 
@@ -1066,18 +1020,17 @@ internal sealed class GoogleWorkspaceSyncService(
         return events.Count;
     }
 
-    /// <summary>Resolves a user's highest claim without interpreting another section's membership.</summary>
     private async Task<DrivePermissionLevel> ResolvePermissionLevelForUserAsync(
-        string googleId, Guid userId, CancellationToken cancellationToken)
+        string googleId, Guid userId, CancellationToken ct)
     {
-        var level = DrivePermissionLevel.None;
-        foreach (var source in serviceProvider.GetServices<IGoogleDriveAccessSource>())
-        {
-            var claims = await source.GetExpectedAccessAsync(googleId, cancellationToken);
-            if (claims.TryGetValue(googleId, out var claim) &&
-                claim.Access.TryGetValue(userId, out var expected) && expected > level)
-                level = expected;
-        }
+        // A failing source throws out of here: the outbox retries the event, whereas a partial
+        // roster would read as "no claim" and silently drop the new member's grant.
+        var load = await GoogleDriveAccessSyncService.LoadClaimsAsync(
+            driveAccessSources, googleId, logger, ct, rethrowSourceFailures: true);
+        var claim = load.Claims.SingleOrDefault(c => string.Equals(c.FolderId, googleId, StringComparison.OrdinalIgnoreCase));
+        var level = claim?.Access.GetValueOrDefault(userId) ?? DrivePermissionLevel.None;
+        if (level == DrivePermissionLevel.None)
+            logger.LogWarning("Skipping Drive grant for {UserId} on {GoogleId}: no source claims the user's access", userId, googleId);
         return level;
     }
 

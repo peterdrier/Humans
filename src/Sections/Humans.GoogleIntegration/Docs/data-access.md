@@ -33,10 +33,8 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
 `ITeamServiceRead`, `ISyncSettingsService`,
 `IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
-`IGoogleGroupProvisioningClient`, `IGoogleGroupSync` (sync orchestrator),
-`IGoogleDriveSync`, `IEnumerable<IGoogleDriveAccessSource>`. Lazy
-`IServiceProvider` resolution for sync orchestration. No
-`IMemoryCache`.
+`IGoogleGroupProvisioningClient`, `IGoogleGroupSync`, `IGoogleDriveSync`,
+and `IGoogleDriveAccessSource` (source-owned grant levels). No cache.
 
 ### GoogleGroupSyncService (Scoped)
 
@@ -51,13 +49,7 @@ direct DB access, no cache.
 
 ### GoogleDriveAccessSyncService (Scoped)
 
-No repository directly — operates over `IGoogleDrivePermissionsClient` and
-`IEnumerable<IGoogleDriveAccessSource>`. Sources own membership and permission
-policy; reconciliation owns email hydration, planning, mutation and sync logs.
-Calls `IUserService` (reads and rejected-Google-address writes), `IUserEmailService`,
-`ISyncSettingsService`, `IAuditLogService`, `IGoogleSyncLogService`,
-`IGoogleRemovalNotificationService`, and `ITeamResourceService` (linked-resource
-status and post-reconciliation deactivation). Uses `IClock`; no direct DB access or cache.
+Uses its own `IGoogleResourceRepository` to load linked Drive metadata and record errors/sync stamps. Reconciles `IGoogleDriveAccessSource` claims from Teams and Workgroups through `IGoogleDrivePermissionsClient`; the connector never derives team membership. Cross-section calls use `IUserService`, `IUserEmailService`, `ITeamServiceRead` (retirement status only), `ISyncSettingsService`, `IAuditLogService`, `IGoogleSyncLogService`, and `IGoogleRemovalNotificationService`. Resource retirement goes through the existing `ITeamResourceService` audit path. No cache.
 
 ### GoogleAdminService (Scoped)
 

@@ -3,7 +3,7 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;
 
-/// <summary>Teams owns the membership and permission policy for its linked Drive items.</summary>
+/// <summary>Teams owns membership, child-team rollup and the union of shared-resource claims.</summary>
 internal sealed class TeamDriveAccessSource(
     ITeamServiceRead teams,
     ITeamResourceServiceRead resources) : IGoogleDriveAccessSource
@@ -11,60 +11,48 @@ internal sealed class TeamDriveAccessSource(
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)
     {
-        var teamById = await teams.GetTeamsAsync(ct);
-        var resourcesByTeam = await resources.GetResourcesByTeamIdsAsync(teamById.Keys.ToList(), ct);
-        var childTeamsByParent = teamById.Values
-            .Where(t => t.IsActive && t.ParentTeamId.HasValue)
-            .GroupBy(t => t.ParentTeamId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
-        var result = new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal);
-
+        var teamsById = await teams.GetTeamsAsync(ct);
+        var resourcesByTeam = await resources.GetResourcesByTeamIdsAsync(teamsById.Keys.ToList(), ct);
+        var childrenByParent = teamsById.Values.Where(t => t.IsActive && t.ParentTeamId.HasValue)
+            .ToLookup(t => t.ParentTeamId!.Value);
+        var claims = new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal);
         foreach (var group in resourcesByTeam.Values.SelectMany(r => r)
-            .Where(r => r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile)
-            .Where(r => folderId is null || string.Equals(r.GoogleId, folderId, StringComparison.Ordinal))
+            .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group
+                && (folderId is null || string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)))
             .GroupBy(r => r.GoogleId, StringComparer.Ordinal))
         {
             var access = new Dictionary<Guid, DrivePermissionLevel>();
-            var memberTeams = new Dictionary<Guid, List<TeamLink>>();
-            var links = new List<TeamLink>();
+            var linkedTeams = new List<TeamLink>();
+            var memberLinks = new Dictionary<Guid, List<TeamLink>>();
             foreach (var resource in group)
             {
-                if (!teamById.TryGetValue(resource.TeamId, out var team))
-                    continue;
+                if (!teamsById.TryGetValue(resource.TeamId, out var team)) continue;
+                var level = resource.DrivePermissionLevel;
                 var link = new TeamLink(team.Name, team.Slug,
-                    resource.DrivePermissionLevel == DrivePermissionLevel.None ? null : resource.DrivePermissionLevel.ToString());
-                links.Add(link);
-                if (!team.IsActive)
-                    continue;
-                // Unset legacy Drive levels retain the existing Contributor grant default.
-                var level = resource.DrivePermissionLevel == DrivePermissionLevel.None
-                    ? DrivePermissionLevel.Contributor : resource.DrivePermissionLevel;
-                foreach (var memberTeam in new[] { team }.Concat(childTeamsByParent.GetValueOrDefault(team.Id) ?? []))
+                    level == DrivePermissionLevel.None ? null : level.ToString());
+                if (!linkedTeams.Any(existing => string.Equals(existing.Slug, link.Slug, StringComparison.Ordinal)))
+                    linkedTeams.Add(link);
+                if (!team.IsActive || level == DrivePermissionLevel.None) continue;
+
+                foreach (var memberTeam in new[] { team }.Concat(childrenByParent[team.Id]))
                 {
-                    var memberLink = link with { Name = memberTeam.Name, Slug = memberTeam.Slug };
+                    var memberLink = new TeamLink(memberTeam.Name, memberTeam.Slug, level.ToString());
                     foreach (var member in memberTeam.Members)
                     {
-                        if (!access.TryGetValue(member.UserId, out var current) || current < level)
+                        if (!access.TryGetValue(member.UserId, out var existingLevel) || level > existingLevel)
                             access[member.UserId] = level;
-                        if (!memberTeams.TryGetValue(member.UserId, out var memberLinks))
-                            memberTeams[member.UserId] = memberLinks = [];
-                        if (!memberLinks.Contains(memberLink))
-                            memberLinks.Add(memberLink);
+                        if (!memberLinks.TryGetValue(member.UserId, out var links))
+                            memberLinks[member.UserId] = links = [];
+                        var existing = links.FindIndex(l => string.Equals(l.Slug, memberLink.Slug, StringComparison.Ordinal));
+                        if (existing < 0) links.Add(memberLink);
+                        else if (Enum.TryParse<DrivePermissionLevel>(links[existing].PermissionLevel, out var oldLevel)
+                            && level > oldLevel) links[existing] = memberLink;
                     }
                 }
             }
-            result[group.Key] = new GoogleDriveAccessClaim(access)
-            {
-                AllowSharedAccess = true,
-                PreserveHigherPermissions = true,
-                PreserveInheritedPermissions = true,
-                Resources = group.ToList(),
-                RetiredResourceIds = group.Where(r => teamById.TryGetValue(r.TeamId, out var owner) && !owner.IsActive)
-                    .Select(r => r.Id).ToHashSet(),
-                LinkedTeams = links.DistinctBy(l => l.Slug, StringComparer.Ordinal).ToList(),
-                MemberTeams = memberTeams
-            };
+            claims[group.Key] = new(access, linkedTeams,
+                memberLinks.ToDictionary(entry => entry.Key, entry => (IReadOnlyList<TeamLink>)entry.Value));
         }
-        return result;
+        return claims;
     }
 }

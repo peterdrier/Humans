@@ -457,6 +457,28 @@ public sealed class TeamRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetEarlyEntryGrantsForEnabledTeamsAsync_ExcludesInactiveTeams()
+    {
+        var active = await SeedTeamAsync("Active");
+        var inactive = await SeedTeamAsync("Inactive");
+        active.EarlyEntryEnabled = true;
+        inactive.EarlyEntryEnabled = true;
+        inactive.IsActive = false;
+        foreach (var team in new[] { active, inactive })
+            _dbContext.TeamEarlyEntryGrants.Add(new TeamEarlyEntryGrant
+            {
+                TeamId = team.Id,
+                UserId = Guid.NewGuid(),
+                ProjectName = "P",
+            });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var grants = await _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        grants.Should().ContainSingle().Which.TeamId.Should().Be(active.Id);
+    }
+
+    [HumansFact]
     public async Task RevokeAllMembershipsAsync_ClosesEveryActiveMembershipAndRemovesAssignments()
     {
         var team1 = await SeedTeamAsync("Team A");

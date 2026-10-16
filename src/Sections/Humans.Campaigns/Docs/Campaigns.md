@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Campaigns/Contracts/**
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
@@ -19,7 +18,7 @@ Bulk code-distribution campaigns: codes imported or generated, assigned to human
 - A **Campaign** is a bulk code distribution effort — discount codes are assigned to humans and delivered via email waves.
 - A **Campaign Code** is an individual code belonging to a campaign. Codes are imported in bulk (CSV) or generated via the ticket vendor.
 - A **Campaign Grant** records the assignment of a specific code to a specific human.
-- A **Wave** is a batch email send targeting a group of humans (typically by team) who have been granted codes but not yet notified.
+- A **Wave** is a batch send to the members of one chosen team who hold no grant from this campaign yet: the wave grants each the next free code, queues the email, and sends the in-app notice.
 
 ## Data Model
 
@@ -32,7 +31,7 @@ Bulk code-distribution campaigns: codes imported or generated, assigned to human
 | Id | Guid | PK |
 | Title | string | Campaign display name |
 | Description | string? | Optional description |
-| EmailSubject | string | Subject line template (supports `{{Name}}`) |
+| EmailSubject | string | Subject line template (supports `{{Code}}` and `{{Name}}`) |
 | EmailBodyTemplate | string | Markdown body template (supports `{{Code}}` and `{{Name}}`) |
 | ReplyToAddress | string? | Optional Reply-To header for campaign emails |
 | Status | CampaignStatus | Draft / Active / Completed |
@@ -136,8 +135,9 @@ email template is copied into audit. Refused mutations emit no success entry.
 ## Cross-Section Dependencies
 
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
-- **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (Campaigns has no resx set), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` queues the message through the outbox.
-- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
+- **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (the builder reads no resx), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`). `IEmailService.SendAsync` queues the message through the outbox.
+- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `BurnerName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
+- **Gdpr:** `IUserDataContributor` (export and erasure of a user's grants) and `IUserMerge` (`Humans.Gdpr.Contracts`), both implemented by `CampaignService`.
 - **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` (Send Wave team picker) and `ITeamServiceRead.GetTeamAsync` (team-scoped wave targeting).
@@ -146,14 +146,14 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 **Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`) — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
+**Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`) — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
-- **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
+- **Cross-section reads** route through `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
 - **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserServiceRead`.
-- **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`; `HUM0024` and `HUM0021` were retired in nobodies-collective/Humans#1278).
+- **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`).
 
 ### Touch-and-clean guidance
 

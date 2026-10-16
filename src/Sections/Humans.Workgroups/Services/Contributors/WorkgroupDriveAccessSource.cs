@@ -52,8 +52,7 @@ internal sealed class WorkgroupDriveAccessSource(
 
         // The orchestrator asked about one folder; anything else this source claims is not
         // its business on this pass.
-        return claimed
-            .Where(e => folderId is null || string.Equals(e.Key, folderId, StringComparison.Ordinal))
+        return claimed.Where(e => folderId is null || string.Equals(e.Key, folderId, StringComparison.Ordinal))
             .ToDictionary(e => e.Key, e => new GoogleDriveAccessClaim(e.Value), StringComparer.Ordinal);
     }
 

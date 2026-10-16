@@ -95,6 +95,10 @@ cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
 `IEarlyEntryProvider` (role-gated team early entry).
 
+### TeamDriveAccessSource (Scoped)
+
+Implements `IGoogleDriveAccessSource` over the existing `ITeamServiceRead` and `ITeamResourceServiceRead` bulk projections. Owns membership union, maximum permission levels and active child-team rollup for linked Drive resources. Returns user-ID claims and team-link display metadata; inactive teams retain empty claims so reconciliation can revoke grants before retiring linked resources. No repository or cache.
+
 **Outbox write goes through the owning service:**
 `GoogleSyncOutboxEvents` is owned by the Google Integration section.
 `TeamService` does not reach into the table via `TeamRepository`; it calls
@@ -136,10 +140,3 @@ registered in `Section.Register`) — builds one sample per template via
 ---
 
 
-
-### TeamDriveAccessSource
-
-Implements `IGoogleDriveAccessSource` using the section’s `ITeamServiceRead` cache
-and `ITeamResourceServiceRead.GetResourcesByTeamIdsAsync`. Owns direct/child-team
-membership union and Drive permission policy; publishes user IDs and resource/team
-provenance without reading GoogleIntegration tables or calling Users.
