@@ -93,9 +93,9 @@ None.
   stop `IGoogleDriveActivityClient` moving out of it;
   `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf`
   is what holds it there.
-- **Monitor may reference GoogleIntegration and AuditLog** because no section references
-  Monitor. That is why the scan was carved out of AuditLog, a crosscut that reaches into
-  nobody.
+- **Monitor references GoogleIntegration and AuditLog, and no section references Monitor.**
+  The scan is its own section because it is a distinct read model with its own job, not part
+  of the audit log it writes to.
 - **`DriveActivityMonitorJob` is `public`.** HUM0034 allows a section's public types under
   `Jobs/`; `Section.cs` and `SectionJobs.cs` name the type.
 - **The scan reads Users through `IUserServiceRead.GetAllUserInfosAsync`**, the whole user
