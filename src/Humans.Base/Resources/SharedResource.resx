@@ -153,6 +153,14 @@
   <data name="LinkPreview_Tour_Description" xml:space="preserve"><value>A guided tour of Humans.</value></data>
   <data name="LinkPreview_Workgroups_Title" xml:space="preserve"><value>Workgroups</value></data>
   <data name="LinkPreview_Workgroups_Description" xml:space="preserve"><value>Working groups and their members.</value></data>
+  <data name="LinkPreview_Agent_Title" xml:space="preserve"><value>Assistant</value></data>
+  <data name="LinkPreview_Agent_Description" xml:space="preserve"><value>Ask the Humans assistant.</value></data>
+  <data name="LinkPreview_Camp_Title" xml:space="preserve"><value>Camp</value></data>
+  <data name="LinkPreview_Camp_Description" xml:space="preserve"><value>A camp's containers and shipping.</value></data>
+  <data name="LinkPreview_Consent_Title" xml:space="preserve"><value>Consents</value></data>
+  <data name="LinkPreview_Consent_Description" xml:space="preserve"><value>Your consents and the policies behind them.</value></data>
+  <data name="LinkPreview_Welcome_Title" xml:space="preserve"><value>Welcome</value></data>
+  <data name="LinkPreview_Welcome_Description" xml:space="preserve"><value>Get set up on Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Sign in with Google</value></data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>We couldn't finish setting up your account. Please try again.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>

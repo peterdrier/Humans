@@ -332,6 +332,30 @@
   <data name="LinkPreview_Workgroups_Description" xml:space="preserve">
     <value>Grupos de trabajo y sus miembros.</value>
   </data>
+  <data name="LinkPreview_Agent_Title" xml:space="preserve">
+    <value>Asistente</value>
+  </data>
+  <data name="LinkPreview_Agent_Description" xml:space="preserve">
+    <value>Pregunta al asistente de Humans.</value>
+  </data>
+  <data name="LinkPreview_Camp_Title" xml:space="preserve">
+    <value>Campamento</value>
+  </data>
+  <data name="LinkPreview_Camp_Description" xml:space="preserve">
+    <value>Los contenedores y envíos de un campamento.</value>
+  </data>
+  <data name="LinkPreview_Consent_Title" xml:space="preserve">
+    <value>Consentimientos</value>
+  </data>
+  <data name="LinkPreview_Consent_Description" xml:space="preserve">
+    <value>Tus consentimientos y las políticas que los respaldan.</value>
+  </data>
+  <data name="LinkPreview_Welcome_Title" xml:space="preserve">
+    <value>Bienvenida</value>
+  </data>
+  <data name="LinkPreview_Welcome_Description" xml:space="preserve">
+    <value>Configura tu cuenta en Humans.</value>
+  </data>
   <data name="Login_SignInWithGoogle" xml:space="preserve">
     <value>Iniciar sesión con Google</value>
   </data>

@@ -18,10 +18,11 @@ public static class LoginLinkPreview
     /// <summary>Top-level route segments with preview text, in canonical casing.</summary>
     public static readonly IReadOnlyList<string> Segments =
     [
-        "About", "Barrios", "Budget", "Calendar", "Camps", "Cantina", "CityPlanning", "Events",
-        "Expenses", "Feedback", "Finance", "Gate", "Governance", "Guide", "Issues", "Legal",
-        "Notifications", "Profile", "Rideshare", "Search", "Settings", "Shifts", "Store",
-        "Survey", "Teams", "Tickets", "Tour", "Workgroups"
+        "About", "Agent", "Barrios", "Budget", "Calendar", "Camp", "Camps", "Cantina",
+        "CityPlanning", "Consent", "Events", "Expenses", "Feedback", "Finance", "Gate",
+        "Governance", "Guide", "Issues", "Legal", "Notifications", "Profile", "Rideshare",
+        "Search", "Settings", "Shifts", "Store", "Survey", "Teams", "Tickets", "Tour",
+        "Welcome", "Workgroups"
     ];
 
     /// <summary>
