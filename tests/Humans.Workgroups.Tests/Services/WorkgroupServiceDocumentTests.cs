@@ -407,6 +407,22 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task AddComment_OnASensitiveGroup_ByANonMember_ReturnsARefusal()
+    {
+        var workgroup = await SeedWorkgroupAsync(isSensitive: true);
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(
+            workgroup.Id, WorkgroupDocumentStatus.Published, categories: ["Scope"],
+            opensAt: now - Duration.FromHours(1), closesAt: now + Duration.FromHours(1));
+
+        var outsider = await NewService().AddCommentAsync(document.Id, SeedUser(), "Scope", "Body", Ct);
+        var member = await NewService().AddCommentAsync(document.Id, workgroup.Members.Single().UserId, "Scope", "Body", Ct);
+
+        outsider.Refusal!.Key.Should().Be(WorkgroupErrorKeys.MembersOnly);
+        member.Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task AddComment_InsideTheWindow_Succeeds()
     {
         var workgroup = await SeedWorkgroupAsync();

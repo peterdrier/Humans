@@ -98,6 +98,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Sign In</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Sign in to access Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Sign in with Google</value></data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>We couldn't finish setting up your account. Please try again.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>This account is locked. Contact an admin if you need help signing in.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Access Denied</value></data>
@@ -806,4 +807,5 @@
   <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Additional information must not exceed 1000 characters.</value></data>
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
 </root>

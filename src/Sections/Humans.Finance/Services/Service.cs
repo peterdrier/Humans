@@ -1164,11 +1164,8 @@ internal sealed class Service(
         }
 
         var now = clock.GetCurrentInstant();
-        // Ids are minted before the file is built and never change: the persisted row is what the
-        // bank's EndToEndId points back at.
         var request = new SepaPaymentFileRequest(
             MsgId: "M" + fileId.ToString("N"),
-            PmtInfId: "P" + fileId.ToString("N"),
             CreatedAt: now,
             RequestedExecutionDate: now.InZone(MadridZone).Date,
             Debtor: new SepaDebtor(
@@ -1176,8 +1173,7 @@ internal sealed class Service(
                 sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
             MaxAmountPerTransfer: maxPerTransfer,
             Transfers: transfers
-                .Select(t => new SepaTransfer(
-                    "E" + t.Id.ToString("N"), t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
+                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
                 .ToList());
 
         string xml;
@@ -1787,8 +1783,8 @@ internal sealed class Service(
         if (batch is null && PairingRefusal(movement, feed, allRows) is { } pairing)
             return new SepaBookingResult(false, pairing);
 
-        // The file's EndToEndId, on every posting, so a Holded line traces back to one transfer —
-        // and so a retry can sum what a crashed run already posted.
+        // The transfer row id, on every posting, so a Holded line traces back to one transfer — and
+        // so a retry can sum what a crashed run already posted.
         var tag = "SEPA payout E" + transfer.Id.ToString("N");
 
         // ── Steps 3 and 4: the live creditor balance, and what this transfer already posted.

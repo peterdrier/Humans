@@ -12,14 +12,9 @@ using Humans.Users.Contracts;
 namespace Humans.Monitor.Tests;
 
 /// <summary>
-/// Behavioral tests for <see cref="DriveActivityMonitorService"/>. The service is a
-/// dispatcher over five collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceServiceRead"/>, <see cref="ISettingsService"/>,
-/// <see cref="IUserServiceRead"/> and
-/// <see cref="IAuditLogService"/> — so tests substitute all five and pin down:
-/// self-initiated changes get filtered, anomaly descriptions are built
-/// correctly and emitted through <see cref="IAuditLogService"/>,
-/// partial-failure keeps the last-run marker, and the happy path advances it.
+/// Behavioral tests for <see cref="DriveActivityMonitorService"/> over substituted
+/// collaborators: self-initiated changes are filtered, anomaly descriptions are built and
+/// audited, a partial failure holds the last-run marker back, and a clean run advances it.
 /// </summary>
 public class DriveActivityMonitorServiceTests
 {
@@ -94,7 +89,6 @@ public class DriveActivityMonitorServiceTests
             SettingKeys.DriveActivityMonitorLastRunAt,
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
-        // No anomalies → no audit entries emitted.
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -128,8 +122,7 @@ public class DriveActivityMonitorServiceTests
                 d.Contains("added writer", StringComparison.Ordinal)),
             JobName);
 
-        // Marker first, then audit — the monitor's own state is saved before the entries
-        // that describe it.
+        // Marker first, then audit: IAuditLogService wants audit after the business save.
         Received.InOrder(() =>
         {
             _ = _settingsStore.SetValueAsync(
@@ -385,6 +378,34 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_WithTotalOutageMidStream_AuditsWhatStreamedThenThrows()
+    {
+        // The connector drops after one event: that anomaly was seen, so it is audited before
+        // the total-outage throw rather than lost with it.
+        var resource = BuildResource("Dropping-Drive");
+        SeedResources(resource);
+
+        var streamed = BuildPermissionChangeEvent(
+            actorPersonName: "intruder@example.com",
+            addedRole: "writer",
+            targetUser: "intruder@example.com");
+        _client.QueryActivityAsync(resource.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => YieldThenThrowEnumerable(streamed));
+
+        var act = async () => await _service.CheckForAnomalousActivityAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("added writer", StringComparison.Ordinal)),
+            JobName);
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_DownGradesResourceNotFoundToWarning()
     {
         var missing = BuildResource("Missing-Drive");
@@ -604,6 +625,13 @@ public class DriveActivityMonitorServiceTests
         // ReSharper disable once HeuristicUnreachableCode
         yield break;
 #pragma warning restore CS0162
+    }
+
+    private static async IAsyncEnumerable<DriveActivityEvent> YieldThenThrowEnumerable(DriveActivityEvent first)
+    {
+        yield return first;
+        await Task.Yield();
+        throw new InvalidOperationException("dropped");
     }
 
     private static async IAsyncEnumerable<DriveActivityEvent> ThrowNotFoundEnumerable(string googleItemId)

@@ -18,6 +18,12 @@ independently enforce lifecycle and document rules; they do not authorize the ca
 - Join, leave, status requests and posting comments do not require the Member operation.
   Their service rules enforce Active status, membership when leaving, the last-coordinator
   replacement and the comment window. A status request is rate-limited by nothing.
+- Join is a request. Approve, Decline and Add (`ManageMembersAsync`) require a current
+  coordinator of an Active group or Board/Admin; the service re-checks the coordinator role
+  unless the controller passed `asAdmin`. A plain member gets 403.
+- A sensitive group's roster, documents, meetings and history require membership or
+  Board/Admin; the Document route returns 404 to everyone else, and `AddCommentAsync`
+  refuses non-members.
 - Only Board/Admin can reach admin actions. Anonymous callers cannot reach any route.
 - A member or coordinator cannot set the budget; the route lives on the admin controller.
 - Page controls use the same Member authorization result as POST actions.

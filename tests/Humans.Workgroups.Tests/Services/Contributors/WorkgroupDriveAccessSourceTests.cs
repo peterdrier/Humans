@@ -15,13 +15,13 @@ namespace Humans.Workgroups.Tests.Services.Contributors;
 
 /// <summary>
 /// Workgroups' half of the Drive access fan-out (design §9, §20): Active folders go
-/// Contributor for current members, Dormant folders go Viewer, and the configured root
-/// goes Viewer for the Board and approved Colaboradors/Asociados. A group with no folder
+/// ContentManager for current members (a pending request is not one), Dormant folders go
+/// Viewer, and the configured root goes Viewer for the Board only. A group with no folder
 /// is not claimed, and a <c>folderId</c> filter returns at most that one entry.
 /// </summary>
 public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 {
-    private WorkgroupDriveAccessSource NewSource() => new(NewService(), Users, Teams);
+    private WorkgroupDriveAccessSource NewSource() => new(NewService(), Teams);
 
     [HumansFact]
     public async Task WithdrawnGroup_ClaimsAnEmptyRosterToRevokeExistingGrants()
@@ -31,11 +31,11 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync("withdrawn-folder", Ct);
 
-        access.Should().ContainKey("withdrawn-folder").WhoseValue.Should().BeEmpty();
+        access.Should().ContainKey("withdrawn-folder").WhoseValue.Access.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task ActiveGroup_CurrentMembers_GetContributor()
+    public async Task ActiveGroup_CurrentMembers_GetContentManager()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, driveFolderId: "folder-1");
         var coordinator = workgroup.Members.Single().UserId;
@@ -43,7 +43,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("folder-1");
-        access["folder-1"].Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.Contributor);
+        access["folder-1"].Access.Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.ContentManager);
     }
 
     [HumansFact]
@@ -55,7 +55,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
-        access["folder-2"][coordinator].Should().Be(DrivePermissionLevel.Viewer);
+        access["folder-2"].Access[coordinator].Should().Be(DrivePermissionLevel.Viewer);
     }
 
     [HumansFact]
@@ -70,7 +70,19 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RootFolder_BoardMembers_AndApprovedColaboradorsAndAsociados_GetViewer()
+    public async Task ActiveGroup_PendingRequest_GetsNothing()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, driveFolderId: "folder-p");
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(workgroup.Id, requester, isPending: true);
+
+        var access = await NewSource().GetExpectedAccessAsync("folder-p", Ct);
+
+        access["folder-p"].Access.Should().NotContainKey(requester);
+    }
+
+    [HumansFact]
+    public async Task RootFolder_BoardMembersOnly_GetViewer()
     {
         var boardUserId = Guid.NewGuid();
         Teams.GetTeamAsync(SystemTeamIds.Board, Arg.Any<CancellationToken>())
@@ -92,10 +104,11 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("root-folder");
-        var readers = access["root-folder"];
+        var readers = access["root-folder"].Access;
         readers[boardUserId].Should().Be(DrivePermissionLevel.Viewer);
-        readers[colaborador].Should().Be(DrivePermissionLevel.Viewer);
-        readers[asociado].Should().Be(DrivePermissionLevel.Viewer);
+        // The root is the register's shelf for the Board; everyone else reaches only their groups' subfolders.
+        readers.Should().NotContainKey(colaborador);
+        readers.Should().NotContainKey(asociado);
         readers.Should().NotContainKey(unapprovedColaborador);
         readers.Should().NotContainKey(volunteer);
     }

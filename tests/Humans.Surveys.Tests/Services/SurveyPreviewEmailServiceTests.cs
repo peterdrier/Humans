@@ -19,7 +19,7 @@ public sealed class SurveyPreviewEmailServiceTests
     [Xunit.InlineData("missing-survey")]
     [Xunit.InlineData("missing-email")]
     [Xunit.InlineData("queue-failure")]
-    public async Task Preview_failures_use_the_site_ui_language(string failure)
+    public async Task Preview_failures_return_refusal_keys_without_localized_exceptions(string failure)
     {
         using var culture = new CultureScope("es");
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -55,19 +55,15 @@ public sealed class SurveyPreviewEmailServiceTests
             Substitute.For<IEmailPreviewServiceRead>(),
             new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-preview-error-language-tests")),
             NullLogger<SurveyPreviewEmailService>.Instance);
-        var act = async () =>
-        {
-            if (string.Equals(failure, "queue-failure", StringComparison.Ordinal))
-                await sut.SendToUserAsync(surveyId, userId, ct);
-            else
-                await sut.PreviewForUserAsync(surveyId, userId, ct);
-        };
+        var errorKey = string.Equals(failure, "queue-failure", StringComparison.Ordinal)
+            ? (await sut.SendToUserAsync(surveyId, userId, ct)).ErrorKey
+            : (await sut.PreviewForUserAsync(surveyId, userId, ct)).ErrorKey;
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(failure switch
+        errorKey.Should().Be(failure switch
         {
-            "missing-survey" => "No se encontró la encuesta.",
-            "missing-email" => "Tu cuenta no tiene un correo electrónico de notificación.",
-            _ => "No se pudo poner en cola el correo de vista previa de la encuesta."
+            "missing-survey" => "Surveys_PreviewNotFound",
+            "missing-email" => "Surveys_PreviewNoEmail",
+            _ => "Surveys_PreviewQueueFailed"
         });
         if (!string.Equals(failure, "queue-failure", StringComparison.Ordinal))
             await emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -111,7 +107,8 @@ public sealed class SurveyPreviewEmailServiceTests
         var preview = await sut.PreviewForUserAsync(
             surveyId, userId, Xunit.TestContext.Current.CancellationToken);
 
-        preview.Should().Be(wrapped);
+        preview.ErrorKey.Should().BeNull();
+        preview.Preview.Should().Be(wrapped);
         emailPreviews.Received(1).RenderSystemMessage(Arg.Is<EmailMessage>(m =>
             m.TemplateName == "survey_invitation"
             && m.RecipientEmail == "tester@example.com"
@@ -181,12 +178,12 @@ public sealed class SurveyPreviewEmailServiceTests
         }
         else if (queueCancelled)
         {
-            var thrown = await action.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("The survey preview email could not be queued.");
-            thrown.Which.InnerException.Should().BeSameAs(exception);
+            var result = await action();
+            result.ErrorKey.Should().Be("Surveys_PreviewQueueFailed");
+            result.RecipientEmail.Should().BeNull();
         }
         else
-            (await action()).Should().Be("tester@example.com");
+            (await action()).RecipientEmail.Should().Be("tester@example.com");
         // The token now travels inside the built body's answer link, so read it back from there.
         var sent = emailService.ReceivedCalls()
             .Single(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))

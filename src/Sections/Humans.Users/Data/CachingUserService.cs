@@ -788,14 +788,14 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public async Task<bool> UpdateUserEmailAsync(
+    public async Task<UpdateEmailResult> UpdateUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailUpdateCommand command,
         CancellationToken ct = default)
     {
         var updated = await WithInnerAsync(inner => inner.UpdateUserEmailAsync(userId, emailId, command, ct));
-        if (updated) await RefreshUserEmailsAsync(userId, ct);
+        if (updated.Succeeded) await RefreshUserEmailsAsync(userId, ct);
         return updated;
     }
 

@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 
@@ -19,6 +20,6 @@ internal sealed class HangfireGoogleDriveAccessSyncScheduler(
         }
 
         backgroundJobs.Enqueue<IGoogleDriveSync>(
-            sync => sync.ReconcileOneAsync(folderId, SyncAction.Execute, CancellationToken.None));
+            sync => sync.ReconcileOneAsync(folderId, SyncAction.Execute, CancellationToken.None, GoogleSyncSource.ManualSync));
     }
 }

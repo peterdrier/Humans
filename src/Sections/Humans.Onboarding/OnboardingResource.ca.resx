@@ -319,4 +319,5 @@
   <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>La teva inscripció no s’ha pogut aprovar en aquest moment.</value></data>
   <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>La teva inscripció no s’ha pogut aprovar: {0}</value></data>
   <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Veure el perfil</value></data>
+  <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>No s’ha pogut desar el teu perfil. Torna-ho a provar.</value></data>
 </root>

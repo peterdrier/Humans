@@ -59,6 +59,10 @@ public class SurveyServiceTests
         _teamService, _userService, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
+    private SurveyReminderSender CreateReminderSender() => new(
+        _repo, _audit, _clock, _userService, _userEmailService, _emailService,
+        _emailMessages, _tokenProvider, NullLogger<SurveyReminderSender>.Instance);
+
     /// <summary>A Board/Admin viewer: may edit any survey, so ownership never shadows what a test is pinning.</summary>
     private static SurveyViewer Board(Guid userId) => new(userId, IsBoardOrAdmin: true);
 
@@ -114,7 +118,10 @@ public class SurveyServiceTests
             Q("Q1", SurveyQuestionType.SingleChoice, 1, 1, Opt("yes", "Yes", 1), Opt("no", "No", 2)),
             Q("Q2", SurveyQuestionType.ShortText, 1, 2));
 
-        var id = await CreateService().CreateAsync(input, actor, TestContext.Current.CancellationToken);
+        var result = await CreateService().CreateAsync(input, actor, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
+        result.Error.Should().BeNull();
+        var id = result.SurveyId!.Value;
 
         id.Should().NotBeEmpty();
         captured.Should().NotBeNull();
@@ -161,10 +168,14 @@ public class SurveyServiceTests
         var overlongAct = async () => await CreateService().CreateAsync(
             overlong, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await multilineAct.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*single line*");
-        await overlongAct.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*200 characters or fewer*");
+        var multilineResult = await multilineAct();
+        multilineResult.Succeeded.Should().BeFalse();
+        multilineResult.Error!.Key.Should().Be("Surveys_Validation_SubjectSingleLine");
+        multilineResult.Error.Args.Should().Equal("en");
+        var overlongResult = await overlongAct();
+        overlongResult.Succeeded.Should().BeFalse();
+        overlongResult.Error!.Key.Should().Be("Surveys_Validation_SubjectLength");
+        overlongResult.Error.Args.Should().Equal(200, "en");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -179,8 +190,13 @@ public class SurveyServiceTests
         var act = async () => await CreateService().CreateAsync(
             input, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*4000 characters or fewer*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_MessageLength");
+        result.Error.DiagnosticMessage.Should().Match("*4000 characters or fewer*");
+        result.Error.Args.Should().Equal(4000, "en");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -258,10 +274,46 @@ public class SurveyServiceTests
         var act = () => CreateService().CreateAsync(
             Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*256 characters or fewer*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_ImageFileNameLength");
+        result.Error.Args.Should().Equal(256);
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateAsync_cleans_uploaded_images_when_expected_validation_refuses_the_save(bool duringPreparation)
+    {
+        await using var content = new MemoryStream([1, 2, 3]);
+        var upload = new SurveyImageUpload(content, "image/png", "image.png", 3);
+        var images = new List<InformationImageInput>
+        {
+            new(null, L("Label"), duringPreparation ? L("Alt") : LocalizedText.Empty, Upload: upload),
+        };
+        if (duringPreparation) images.Add(new(null, L("Second"), L("Alt")));
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Context"), LocalizedText.Empty, false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [], InformationImages: images);
+        string? storedPath = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { storedPath = call.Arg<string>(); return Task.CompletedTask; });
+
+        var result = await CreateService().CreateAsync(Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be(duringPreparation
+            ? "Surveys_Validation_ImageRequired" : "Surveys_Validation_InformationAltTextRequired");
+        storedPath.Should().NotBeNull();
+        await _fileStorage.Received(1).DeleteAsync(storedPath!, CancellationToken.None);
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -323,8 +375,12 @@ public class SurveyServiceTests
         var act = async () => await CreateService().CreateAsync(
             Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*select the file again*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_ImageRequired");
+        result.Error.DiagnosticMessage.Should().Match("*select the file again*");
         await _repo.DidNotReceive().AddAsync(
             Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
@@ -341,8 +397,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*between one and five columns*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridColumns");
+        result.Error.DiagnosticMessage.Should().Match("*between one and five columns*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -354,8 +414,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at least one row*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridRows");
+        result.Error.DiagnosticMessage.Should().Match("*at least one row*");
     }
 
     [HumansFact]
@@ -366,8 +430,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*must choose a selection mode*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridMode");
+        result.Error.DiagnosticMessage.Should().Match("*must choose a selection mode*");
     }
 
     [HumansFact]
@@ -378,8 +446,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*must choose a selection mode*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridMode");
+        result.Error.DiagnosticMessage.Should().Match("*must choose a selection mode*");
     }
 
     [HumansFact]
@@ -390,8 +462,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*row values must not be blank*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridRowBlank");
+        result.Error.DiagnosticMessage.Should().Match("*row values must not be blank*");
     }
 
     [HumansFact]
@@ -406,8 +482,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*row values must be unique*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridRowUnique");
+        result.Error.DiagnosticMessage.Should().Match("*row values must be unique*");
     }
 
     [HumansFact]
@@ -422,8 +502,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*column values must be unique*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_GridColumnUnique");
+        result.Error.DiagnosticMessage.Should().Match("*column values must be unique*");
     }
 
     [HumansFact]
@@ -455,8 +539,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot be branching sources*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_BranchUnsupportedSource");
+        result.Error.DiagnosticMessage.Should().Match("*cannot be branching sources*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -485,8 +573,12 @@ public class SurveyServiceTests
         var act = async () => await CreateService().CreateAsync(
             Input(source, dependent), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot be branching sources*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_BranchUnsupportedSource");
+        result.Error.DiagnosticMessage.Should().Match("*cannot be branching sources*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -533,7 +625,11 @@ public class SurveyServiceTests
             id, Input(), new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_SaveNotAuthor");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -670,7 +766,11 @@ public class SurveyServiceTests
     {
         var act = async () => await CreateService().CreateAsync(InputWithSlug(slug), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_SlugReserved");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -680,9 +780,15 @@ public class SurveyServiceTests
     [InlineData("ANSWER")]
     public async Task UpdateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
     {
-        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), InputWithSlug(slug), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var act = async () => await CreateService().UpdateAsync(survey.Id, InputWithSlug(slug), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_SlugReserved");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -706,17 +812,13 @@ public class SurveyServiceTests
                 Upload: new SurveyImageUpload(content, "image/png", "forecast.png", 3))]);
         var input = Input(information) with { PublicSlug = tooLong ? new string('a', 81) : " Admin " };
         var service = CreateService();
-        var act = async () =>
-        {
-            if (existing)
-                await service.UpdateAsync(survey.Id, input, Board(Guid.NewGuid()), ct);
-            else
-                await service.CreateAsync(input, Guid.NewGuid(), ct);
-        };
+        var result = existing
+            ? await service.UpdateAsync(survey.Id, input, Board(Guid.NewGuid()), ct)
+            : await service.CreateAsync(input, Guid.NewGuid(), ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(tooLong
-            ? "The public link slug must be no longer than 80 characters."
-            : "Slug 'admin' is reserved.");
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be(tooLong ? "Surveys_Validation_SlugLength" : "Surveys_Validation_SlugReserved");
+        result.Error.Args.Should().Equal(tooLong ? [80] : ["admin"]);
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
@@ -750,8 +852,11 @@ public class SurveyServiceTests
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience(SurveyAudienceType.Team), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*team is required*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Survey_Admin_Builder_Error_TeamRequired");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -762,8 +867,11 @@ public class SurveyServiceTests
             Guid.NewGuid(), InputWithAudience(SurveyAudienceType.LoggedInSince),
             Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cutoff date is required*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Survey_Admin_Builder_Error_LoggedInSinceRequired");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -773,14 +881,19 @@ public class SurveyServiceTests
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience((SurveyAudienceType)999), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not supported*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_AudienceUnsupported");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task UpdateAsync_rejects_forward_reference_and_does_not_persist()
     {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         var q1Id = Guid.NewGuid();
         var q2Id = Guid.NewGuid();
         // q1 (page 1, order 1) shows-if references q2 (page 1, order 2) → forward reference.
@@ -796,9 +909,13 @@ public class SurveyServiceTests
             "en", false, null, null, null, null, null, null,
             new List<QuestionInput> { q1, q2 });
 
-        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), input, Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        var act = async () => await CreateService().UpdateAsync(survey.Id, input, Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_BranchEarlier");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -1618,7 +1735,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1671,7 +1788,7 @@ public class SurveyServiceTests
                 [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de" }
             }));
 
-        (await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+        (await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
 
         var messages = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0])
             .OfType<EmailMessage>().ToList();
@@ -1711,7 +1828,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         // The link would land on the Closed page, and the one-shot ReminderSentAt would be spent.
         count.Should().Be(0);
@@ -1743,7 +1860,7 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -1755,7 +1872,7 @@ public class SurveyServiceTests
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(new List<SurveyInvitation>());
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1783,7 +1900,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1834,7 +1951,7 @@ public class SurveyServiceTests
                     _ => Task.FromException(new InvalidOperationException("smtp down")),
                     _ => Task.CompletedTask);
 
-        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _emailService.Received(preparationFails ? 1 : 2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -4308,10 +4425,12 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await anonymousVote.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*completion-tracked*");
-        await wrongAudience.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Asociados audience*");
+        var anonymousResult = await anonymousVote();
+        anonymousResult.Succeeded.Should().BeFalse();
+        anonymousResult.Error!.Key.Should().Be("Surveys_Validation_VoteAnonymity");
+        var audienceResult = await wrongAudience();
+        audienceResult.Succeeded.Should().BeFalse();
+        audienceResult.Error!.Key.Should().Be("Surveys_Validation_VoteAudience");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
 
         Survey? saved = null;
@@ -4362,8 +4481,12 @@ public class SurveyServiceTests
             Board(Guid.NewGuid()),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot be edited after it has opened*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_VoteReadOnly");
+        result.Error.DiagnosticMessage.Should().Match("*cannot be edited after it has opened*");
         await _repo.DidNotReceive().UpdateAsync(
             Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
@@ -4475,8 +4598,12 @@ public class SurveyServiceTests
         var act = async () => await CreateService().UpdateAsync(
             survey.Id, Input(changed), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot change after the first saved answer*");
+        var result = await act();
+        result.Succeeded.Should().BeFalse();
+        result.SurveyId.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.Key.Should().Be("Surveys_Validation_FrozenRankedSettings");
+        result.Error.DiagnosticMessage.Should().Match("*cannot change after the first saved answer*");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -4593,7 +4720,8 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        await CreateService().SubmitForApprovalAsync(survey.Id, authorId, TestContext.Current.CancellationToken);
+        var result = await CreateService().SubmitForApprovalAsync(survey.Id, authorId, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue();
 
         await _repo.Received(1).SubmitForApprovalAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
@@ -4601,16 +4729,18 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_throws_for_a_non_author()
+    public async Task SubmitForApprovalAsync_returns_refusal_for_a_non_author()
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_SubmitNotAuthor");
+        _audit.ReceivedCalls().Should().BeEmpty();
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -4618,28 +4748,32 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.PendingApproval)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task SubmitForApprovalAsync_throws_when_survey_is_not_a_draft(SurveyStatus status)
+    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_is_not_a_draft(SurveyStatus status)
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(status, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             survey.Id, authorId, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_SubmitNotDraft");
+        _audit.ReceivedCalls().Should().BeEmpty();
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_throws_when_survey_missing()
+    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_missing()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
-        var act = async () => await CreateService().SubmitForApprovalAsync(
+        var result = await CreateService().SubmitForApprovalAsync(
             Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Surveys_PreviewNotFound");
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

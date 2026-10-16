@@ -34,6 +34,10 @@ The shapes imply: one contract folder (service interface, the DTOs the shapes re
 two hosts fill in), one controller for the camp page, one service, one repository over three
 tables, one handler, three partials plus the page view, one resource set.
 
+**Expected refusals are values, not exceptions.** Every write a user can get wrong returns
+`ContainerMutationResult<T>` — the DTO, or a `Containers_*` resource key plus its arguments — and
+the host controller localizes it. Missing rows and dependency faults still throw.
+
 **View models exist only where they hold something the DTO does not.** The page model (host
 composition), the card model (host routing), and the form model (binding) each do. A container,
 a placement, and a container-with-placement do not: the DTO *is* the display shape, the two
@@ -43,28 +47,48 @@ into a second type.
 
 A DTO field carrying a URL is named as a URL (`PlacementImageUrl`).
 
+**One way to drop a file after a commit.** Every file the service deletes once its database write
+is in — superseded gallery, legacy and placement images, and staged uploads of a failed batch —
+goes through one best-effort helper that tries each path without request cancellation and logs a
+failure instead of throwing.
+
 ## 4. Invariants
 
-- A container has a real `CampId`; its camp's current-year leads and Map Admins may manage it.
-  Anyone else gets 403 on every write and on the camp's container page.
-- `Manage` is never phase-gated; `Place` is, for the lead branch only. Map Admins bypass both
-  gates. The year and the phase both come from `CityPlanningSettings`, not the camp.
+- A container write needs Manage or Place on its camp; anyone who is neither a Map Admin nor a
+  lead of that camp in the target year gets 403 on every write and on the camp's container page —
+  `Authorization/ContainerAuthorizationHandler.cs:49`, `Controllers/ContainerController.cs:34`,
+  `Controllers/ContainerController.cs:145`.
+- `Manage` is never phase-gated; `Place` is, for the lead branch only, and Map Admins return
+  before either gate — `Authorization/ContainerAuthorizationHandler.cs:54`,
+  `Authorization/ContainerAuthorizationHandler.cs:25`, `Authorization/ContainerAuthorizationHandler.cs:37`.
 - At most five images per container, counting the legacy column-backed one; removals in the same
-  request free room first. Content type, extension and 10 MB size are all checked, on every image.
+  request free room first — `Services/Service.cs:104`, `Services/Service.cs:343`.
+- Every image is checked for content type, 10 MB size, a basename of at most 256 characters and
+  an allowed extension before any file or row is written — `Services/Service.cs:349`.
 - The gallery is one uniform list; `Guid.Empty` addresses the legacy image; nothing outside
-  `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist.
-- Every container write POST carries the 55 MB request-size limit (four actions in two sections).
-- A placement row survives `Clear` iff it holds notes or an image; `Save` upserts geometry and
-  never touches notes or image; annotating requires an existing row.
-- Deleting a container removes its gallery files, its legacy file, its `container_images` rows and
-  every year's placement row. Placement-image files may be orphaned (accepted).
+  `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist — `Services/Service.cs:438`,
+  `Services/Service.cs:102`.
+- Every container create/edit POST carries the 55 MB request-size limit, so a legitimate
+  multi-image upload reaches the per-image check instead of Kestrel's default 413 —
+  `Controllers/ContainerController.cs:77`, `Controllers/ContainerController.cs:103`, and City
+  Planning's two container actions.
+- A placement's GeoJSON is a closed Polygon Feature with finite in-range coordinates and the
+  `center_lng` / `center_lat` / `rotation_degrees` properties; anything else is refused before any
+  write or audit — `Services/Service.cs:182`.
+- A placement row survives `Clear` iff it holds notes or an image — `Services/Service.cs:241`.
+  `Save` upserts geometry and never touches notes or image — `Data/Repository.cs:171`. Annotating
+  requires an existing row — `Services/Service.cs:274`.
+- Deleting a container removes its `container_images` rows and every year's placement row in one
+  save — `Data/Repository.cs:70` — then its gallery and legacy files — `Services/Service.cs:139`.
+  Placement-image files are not deleted (accepted).
 - Every write is audited under the literal entity types `Container` / `ContainerPlacement`,
-  related to `Camp` / `Container`.
-- Names never contain `<`, `>` or `$`.
+  related to `Camp` / `Container` — `Services/AuditEntityTypes.cs:22`.
+- Names never contain `<`, `>` or `$` — `Services/Service.cs:340`.
 
 ## 5. Seams
 
-- Retiring the legacy `containers.Image*` columns is specified (admin migration screen, then a
+- Retiring the legacy image columns (`ImageStoragePath`, `ImageContentType`, `ImageFileName` on
+  `containers`) is specified (admin migration screen, then a
   column-drop PR) and unbuilt. The `Guid.Empty` convention and the two legacy branches in
   `Service` are shaped by it; leave them until it lands.
 
@@ -92,8 +116,8 @@ A DTO field carrying a URL is named as a URL (`PlacementImageUrl`).
 - Audit entity types are persisted literals, not `nameof` — `Camp` is not even nameable here.
 - `Service.ValidateName` and `ContainerFormModel`'s regex enforce the same character ban on
   purpose: the form gives the user a message, the service protects every caller.
-- The handler reads `CityPlanningSettings.Year` to decide who is a lead, so the gate follows the
-  planning year, not the camp's public year.
+- The handler decides who is a lead from the target's year; a target with no year (the camp page)
+  uses the year of City Planning's current settings, which is the public year.
 - `ClearPlacementAsync` keeps a row with notes; `SavePlacementAsync` upserts geometry only — the
   "unplaced but annotated" state is real and the UI shows it.
 
@@ -103,3 +127,4 @@ A DTO field carrying a URL is named as a URL (`PlacementImageUrl`).
 |---|---|---|
 | 2026-08-16 | Doc-code alignment (phase gate, `HumansDbContext`), dead `GetPlacementAsync` removed, 5 tests added, clear-placement flow localized, 3 dead resx keys deleted | peterdrier/Humans#1341 |
 | 2026-09-08 | View-model layer collapsed into the DTOs (URL field renamed, dead surface deleted), camp container page fully localized, placement/audit/request-size invariants pinned, section docs and comments realigned; health.md moved to the target-shape format | peterdrier/Humans#1620 |
+| 2026-10-15 | Doc claims realigned with the code (GeoJSON validation owner, placement-image cleanup, full API list), one best-effort file-delete helper, dead `ForCamp` factory removed, content-type and Map Admin Place tests added | peterdrier/Humans#1983 |

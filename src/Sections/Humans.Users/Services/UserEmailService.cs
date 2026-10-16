@@ -103,15 +103,15 @@ internal sealed class UserEmailService(
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
-            throw new ValidationException("Please enter a valid email address.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Validation_EmailAddress");
 
         var held = await repository.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, cancellationToken);
         if (held.Any(e => e.UserId == userId))
-            throw new ValidationException("This email address is already in your account.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailAlreadyAdded");
 
         if (await MergeService.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
-            throw new ValidationException("A merge request is already pending for this email address.");
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailMergePending");
 
         // FindByIdAsync, not cache: UserManager token APIs read SecurityStamp directly and cache-rehydrated Users lack it.
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -165,11 +165,12 @@ internal sealed class UserEmailService(
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
         // see nobodies-collective/Humans#687 — flipping unverified→verified may newly satisfy the Google invariant.
-        await userService.UpdateUserEmailAsync(
+        var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
             new UserEmailUpdateCommand(MarkVerified: true),
             cancellationToken);
+        if (!update.Succeeded) return Refuse("Email update refused");
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
 
@@ -196,11 +197,12 @@ internal sealed class UserEmailService(
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
         // see nobodies-collective/Humans#687
-        await userService.UpdateUserEmailAsync(
+        var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
             new UserEmailUpdateCommand(MarkVerified: true),
             cancellationToken);
+        if (!update.Succeeded) return new VerifyEmailResult(string.Empty, false, update.ErrorKey);
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailManuallyVerified,
@@ -212,28 +214,28 @@ internal sealed class UserEmailService(
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
-    public async Task SetPrimaryAsync(
+    public async Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        await userService.UpdateUserEmailAsync(
+        return await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.MakePrimary),
             cancellationToken);
     }
 
-    public async Task SetVisibilityAsync(
+    public async Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId, Guid emailId, ContactFieldVisibility? visibility,
         CancellationToken cancellationToken = default)
     {
-        await userService.UpdateUserEmailAsync(
+        return await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(ChangeVisibility: true, Visibility: visibility),
             cancellationToken);
     }
 
-    public async Task<bool> DeleteEmailAsync(
+    public async Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
         var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken)
@@ -242,7 +244,7 @@ internal sealed class UserEmailService(
         if (!string.IsNullOrEmpty(email.Provider))
         {
             // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
-            return false;
+            return new DeleteEmailResult(false, "EmailGrid_DeleteRejectedHasProvider");
         }
 
         // see nobodies-collective/Humans#758 — block removal of the primary email.
@@ -250,9 +252,7 @@ internal sealed class UserEmailService(
         // can accidentally delete their sign-in/notification target (the original incident).
         if (email.IsPrimary)
         {
-            throw new ValidationException(
-                "Cannot remove your primary email. Set another verified email as primary first, " +
-                "then remove this one.");
+            return new DeleteEmailResult(false, "EmailGrid_DeletePrimaryBlocked");
         }
 
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
@@ -263,9 +263,7 @@ internal sealed class UserEmailService(
 
             if (verifiedRemaining == 0)
             {
-                throw new ValidationException(
-                    "Cannot remove your last verified email. Add another verified email first " +
-                    "so you can still receive system notifications.");
+                return new DeleteEmailResult(false, "Users_EmailDelete_LastVerifiedBlocked");
             }
         }
 
@@ -274,16 +272,15 @@ internal sealed class UserEmailService(
         // un-matching the user's event ticket on the next vendor re-sync.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
-            throw new ValidationException(
-                "Cannot remove this email — it is linked to your event ticket. " +
-                "Removing it could disconnect your ticket. Contact an admin if you need to change it.");
+            return new DeleteEmailResult(false, "EmailGrid_DeleteTicketLinkedBlocked");
         }
 
-        return await userService.RemoveUserEmailAsync(
+        var removed = await userService.RemoveUserEmailAsync(
             userId,
             emailId,
             new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail),
             cancellationToken);
+        return new DeleteEmailResult(removed);
     }
 
     /// <inheritdoc />
@@ -588,7 +585,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Google: UserEmailGoogleChange.MakeGoogle),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
 
         var description = previousGoogle is null
             ? $"Set Google identity to {row.Email}"
@@ -621,7 +618,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Google: UserEmailGoogleChange.ClearDuplicateGoogle),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailGoogleCleared,
@@ -650,7 +647,7 @@ internal sealed class UserEmailService(
             row.Id,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.ClearDuplicatePrimary),
             cancellationToken);
-        if (!updated) return false;
+        if (!updated.Succeeded) return false;
         // No auto-promote — admin is resolving a duplicate and picks the new primary deliberately.
         await auditLogService.LogAsync(
             AuditAction.UserEmailPrimaryCleared,
@@ -730,14 +727,14 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> UnlinkAsync(
+    public async Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
-        if (row is null) return false;
+        if (row is null) return new(false);
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
-            return false;
+            return new(false);
 
         // Auth-method invariant: at least one verified email must remain after unlink —
         // otherwise a programmatic unlink locks the user out of sign-in entirely (magic
@@ -753,13 +750,14 @@ internal sealed class UserEmailService(
         var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
         if (verifiedRemaining == 0)
         {
-            throw new ValidationException(
-                "Cannot unlink your last verified sign-in method. Add another verified " +
-                "email first so you can still sign in.");
+            logger.LogWarning(
+                "Refused unlink of email {EmailId} for user {UserId}: no other verified sign-in method remains",
+                userEmailId, userId);
+            return new(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is null) return false;
+        if (user is null) return new(false);
 
         // Capture before RemoveUserEmailAsync may detach the entity.
         var provider = row.Provider;
@@ -774,7 +772,7 @@ internal sealed class UserEmailService(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
                 string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-            return false;
+            return new(false);
         }
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -784,7 +782,7 @@ internal sealed class UserEmailService(
                 UserEmailRemovalMode.ProviderLinkedEmail,
                 PreserveLastVerifiedEmail: false),
             cancellationToken);
-        if (!removed) return false;
+        if (!removed) return new(false);
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -793,7 +791,7 @@ internal sealed class UserEmailService(
             actorUserId,
             relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
 
-        return true;
+        return new(true);
     }
 
     private static string ShortHash(string s)

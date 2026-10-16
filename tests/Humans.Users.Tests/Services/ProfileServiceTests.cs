@@ -83,9 +83,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        var profileId = await _editor.SaveProfileAsync(userId, "Jane Doe", request, ct: Xunit.TestContext.Current.CancellationToken);
+        var save = await _editor.SaveProfileAsync(userId, "Jane Doe", request, ct: Xunit.TestContext.Current.CancellationToken);
 
-        profileId.Should().NotBe(Guid.Empty);
+        save.Succeeded.Should().BeTrue();
+        save.ProfileId.Should().NotBeNull().And.NotBe(Guid.Empty);
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.BurnerName.Should().Be("Flame");
         profile.FirstName.Should().Be("Jane");
@@ -468,7 +469,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     // --- SaveProfileAsync workflow (audit P1-P4) ---
 
     [HumansFact]
-    public async Task SaveProfileAsync_AllergyOtherWithoutText_Throws()
+    public async Task SaveProfileAsync_AllergyOtherWithoutText_ReturnsRefusalWithoutWrites()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -480,12 +481,18 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         var act = () => _editor.SaveProfileAsync(userId, "Test", request, ct: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>()
-            .WithMessage("*Other*allergy*");
+        var result = await act();
+
+        result.Succeeded.Should().BeFalse();
+        result.ProfileId.Should().BeNull();
+        result.ErrorKey.Should().Be("Profile_DietaryMedical_AllergyOther_Required");
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!, default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileVolunteerHistoryAsync(default, default!, default);
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_Throws()
+    public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -493,8 +500,14 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         var act = () => _editor.SaveProfileAsync(userId, "Test", request, ct: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>()
-            .WithMessage("*Burner CV*");
+        var result = await act();
+
+        result.Succeeded.Should().BeFalse();
+        result.ProfileId.Should().BeNull();
+        result.ErrorKey.Should().Be("Profile_BurnerCVRequired");
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!, default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileVolunteerHistoryAsync(default, default!, default);
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -513,6 +526,27 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task SaveProfileAsync_NameOnlySavePreservesIncompleteDietaryData()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
+        var existing = await Db.Profiles.FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        existing.DietaryPreference = "Vegan";
+        existing.Allergies = [DietaryOptions.OtherOption];
+        existing.AllergyOtherText = null;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _editor.SaveProfileAsync(userId, "Named", MakeRequest(burnerName: "Named"), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var saved = await Db.Profiles.AsNoTracking().FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        saved.BurnerName.Should().Be("Named");
+        saved.DietaryPreference.Should().Be("Vegan");
+        saved.Allergies.Should().Equal(DietaryOptions.OtherOption);
+        saved.AllergyOtherText.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SaveProfileAsync_WithCvPayload_SavesVolunteerHistory()
     {
         var userId = Guid.NewGuid();
@@ -526,6 +560,23 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             userId,
             Arg.Is<List<CVEntry>>(l => l.Count == 1 && l[0].EventName == "Nowhere"),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SaveDietaryMedicalAsync_returns_other_description_refusals_without_writes(bool intolerance)
+    {
+        var command = new UserProfileDietaryMedicalCommand(null,
+            intolerance ? [] : [DietaryOptions.OtherOption], " ",
+            intolerance ? [DietaryOptions.OtherOption] : [], " ", "Existing medical details");
+
+        var result = await _editor.SaveDietaryMedicalAsync(Guid.NewGuid(), command, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be(intolerance
+            ? "Profile_DietaryMedical_IntoleranceOther_Required" : "Profile_DietaryMedical_AllergyOther_Required");
+        await _userService.DidNotReceiveWithAnyArgs().SaveDietaryMedicalAsync(default, default!, default);
     }
 
     private async Task SeedUserAsync(Guid userId,

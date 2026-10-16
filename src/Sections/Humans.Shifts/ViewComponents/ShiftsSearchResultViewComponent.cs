@@ -23,11 +23,12 @@ public sealed class ShiftsSearchResultViewComponent(
     /// <param name="rotaId">The matched rota.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid rotaId)
     {
-        var rota = await shifts.GetRotaAsync(rotaId);
+        var ct = HttpContext.RequestAborted;
+        var rota = await shifts.GetRotaAsync(rotaId, ct);
         if (rota is null)
             return Content(string.Empty);
 
-        var team = await teams.GetTeamAsync(rota.TeamId);
+        var team = await teams.GetTeamAsync(rota.TeamId, ct);
         return View(new ShiftsSearchResultViewModel(rota.Name, rota.TeamId, team?.Name ?? string.Empty));
     }
 }

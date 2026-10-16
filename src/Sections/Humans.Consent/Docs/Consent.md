@@ -134,6 +134,10 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
+- Anonymous Legal pages use the existing six-culture content-unavailable message when GitHub content is absent.
+- The shared document partial renders the supplied localized empty message for zero translations as well as empty translation text; unavailable Legal content does not leave a blank card.
+- Legal and consent document tabs retain native language names and localize the canonical Spanish legal marker in all six cultures.
+- Legal content reads retain caller cancellation through GitHub reads, including anonymous Legal and Governance pages. Caller-cancelled reads propagate without caching unavailable content; already-cancelled callers also stop on cache hits. A fetch timeout without caller cancellation degrades to unavailable content like any other GitHub failure.
 
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 

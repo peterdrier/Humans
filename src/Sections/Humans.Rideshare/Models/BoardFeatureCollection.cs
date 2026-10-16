@@ -29,7 +29,7 @@ internal static class BoardFeatureCollection
         var features = new JsonArray();
         var settings = snapshot.Settings;
 
-        foreach (var trip in snapshot.JoinableTrips(date, direction))
+        foreach (var trip in snapshot.JoinableTrips(date, direction).OrderBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt))
         {
             features.Add(Feature(TripGeometry(trip, settings, logger), TripProperties(trip, currentUserId, users, localizer)));
             features.Add(Feature(Point(trip.MemberLatitude, trip.MemberLongitude), new JsonObject
@@ -39,7 +39,7 @@ internal static class BoardFeatureCollection
             }));
         }
 
-        foreach (var request in snapshot.ActiveRequests(date, direction))
+        foreach (var request in snapshot.ActiveRequests(date, direction).OrderBy(r => r.DesiredDate).ThenBy(r => r.CreatedAt))
         {
             features.Add(Feature(Point(request.PickupLatitude, request.PickupLongitude),
                 RequestProperties(request, currentUserId, users, localizer)));

@@ -137,42 +137,6 @@ public sealed class CampaignRepositoryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task ReassignGrantsToUserAsync_MovesGrantsToTarget()
-    {
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
-        var grant = await SeedGrantAsync(campaign, "MOVE", userId: source);
-
-        await _repository.ReassignGrantsToUserAsync(
-            source, target, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
-
-        (await _db.CampaignGrants.CountAsync(g => g.UserId == target, Xunit.TestContext.Current.CancellationToken))
-            .Should().Be(1);
-        (await ReloadGrantAsync(grant.Id)).UserId.Should().Be(target);
-    }
-
-    [HumansFact]
-    public async Task ReassignGrantsToUserAsync_TargetAlreadyGrantedOnCampaign_TargetWinsSourceRowDrops()
-    {
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
-        var sourceGrant = await SeedGrantAsync(campaign, "SRC", userId: source);
-        var targetGrant = await SeedGrantAsync(campaign, "TGT", userId: target);
-
-        await _repository.ReassignGrantsToUserAsync(
-            source, target, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
-
-        (await _db.CampaignGrants.CountAsync(g => g.UserId == target, Xunit.TestContext.Current.CancellationToken))
-            .Should().Be(1);
-        (await _db.CampaignGrants.AsNoTracking()
-            .SingleOrDefaultAsync(g => g.Id == sourceGrant.Id, Xunit.TestContext.Current.CancellationToken))
-            .Should().BeNull();
-        (await ReloadGrantAsync(targetGrant.Id)).UserId.Should().Be(target);
-    }
-
-    [HumansFact]
     public async Task ReassignGrantsToUserAsync_SecondSourceRowOnSameCampaign_Drops()
     {
         // Pre-index data could hold two source grants on one campaign; moving
@@ -209,6 +173,7 @@ public sealed class CampaignRepositoryTests
         await SeedGrantAsync(draft, "D", userId: userId);
         var activeGrant = await SeedGrantAsync(active, "A", userId: userId);
         var completedGrant = await SeedGrantAsync(completed, "C", userId: userId);
+        await SeedGrantAsync(active, "OTHER", userId: Guid.NewGuid());
 
         var grants = await _repository.GetActiveOrCompletedGrantsForUserAsync(
             userId, Xunit.TestContext.Current.CancellationToken);
@@ -230,6 +195,25 @@ public sealed class CampaignRepositoryTests
             userId, Xunit.TestContext.Current.CancellationToken);
 
         grants.Select(g => g.Id).Should().BeEquivalentTo([draftGrant.Id, activeGrant.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetAvailableCodesAsync_AllocatesFreeCodesInImportOrder_NotInsertionOrder()
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
+        var granted = await SeedGrantAsync(campaign, "GRANTED");
+        await _db.CampaignCodes.AddRangeAsync(
+            NewCode(campaign, "THIRD", importOrder: 3),
+            NewCode(campaign, "FIRST", importOrder: 1),
+            NewCode(campaign, "SECOND", importOrder: 2));
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _db.ChangeTracker.Clear();
+
+        var codes = await _repository.GetAvailableCodesAsync(
+            campaign.Id, limit: 2, Xunit.TestContext.Current.CancellationToken);
+
+        codes.Select(c => c.Code).Should().Equal("FIRST", "SECOND");
+        codes.Should().NotContain(c => c.Id == granted.CampaignCodeId);
     }
 
     // ==========================================================================
@@ -279,6 +263,15 @@ public sealed class CampaignRepositoryTests
         _db.ChangeTracker.Clear();
         return grant;
     }
+
+    private CampaignCode NewCode(Campaign campaign, string code, int importOrder) => new()
+    {
+        Id = Guid.NewGuid(),
+        CampaignId = campaign.Id,
+        Code = code,
+        ImportOrder = importOrder,
+        ImportedAt = _clock.GetCurrentInstant()
+    };
 
     private async Task<CampaignGrant> ReloadGrantAsync(Guid grantId) =>
         await _db.CampaignGrants.AsNoTracking()

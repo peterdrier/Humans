@@ -40,7 +40,7 @@ internal sealed partial class WorkgroupService
         w.Members
             .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
             .ThenBy(m => m.JoinedAt)
-            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt))
+            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone as far as anything outside the repository is
         // concerned; the log keeps the history of what was scheduled.
@@ -64,7 +64,8 @@ internal sealed partial class WorkgroupService
             .ToList(),
         w.BudgetAmount,
         w.HoldedAccountNumber,
-        w.HoldedAccountId);
+        w.HoldedAccountId,
+        w.IsSensitive == true);
 
     private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
@@ -117,6 +118,18 @@ internal sealed partial class WorkgroupService
     {
         if (w.Status != WorkgroupStatus.Active)
             return new(WorkgroupErrorKeys.Frozen);
+        return null;
+    }
+
+    /// <summary>Membership decisions are the coordinators' (or the Board's/Admin's), not every member's.</summary>
+    private static WorkgroupRefusal? RequireCoordinator(Workgroup w, Guid actorUserId, bool asAdmin)
+    {
+        if (asAdmin) return null;
+        if (!w.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
+                && m.Role == WorkgroupMemberRole.Coordinator))
+        {
+            return new(WorkgroupErrorKeys.NotACoordinator);
+        }
         return null;
     }
 
@@ -182,7 +195,8 @@ internal sealed partial class WorkgroupService
         WorkgroupDeliverableKind kind,
         WorkgroupAudience audience,
         LocalDate? targetDate,
-        string? discordChannelUrl)
+        string? discordChannelUrl,
+        bool isSensitive)
     {
         w.Name = name.Trim();
         w.Purpose = purpose.Trim();
@@ -191,6 +205,7 @@ internal sealed partial class WorkgroupService
         w.Audience = audience;
         w.TargetDate = targetDate;
         w.DiscordChannelUrl = Trimmed(discordChannelUrl);
+        w.IsSensitive = isSensitive ? true : null;
     }
 
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
@@ -205,13 +220,14 @@ internal sealed partial class WorkgroupService
     }
 
     private static WorkgroupMember NewMember(
-        Guid workgroupId, Guid userId, WorkgroupMemberRole role, Instant now) => new()
+        Guid workgroupId, Guid userId, WorkgroupMemberRole role, Instant now, bool isPending = false) => new()
         {
             Id = Guid.NewGuid(),
             WorkgroupId = workgroupId,
             UserId = userId,
             Role = role,
-            JoinedAt = now
+            JoinedAt = now,
+            IsPending = isPending ? true : null
         };
 
     private static WorkgroupLogEntry SystemEntry(
@@ -502,6 +518,18 @@ internal sealed partial class WorkgroupService
     // ── Shared transitions ────────────────────────────────────────────────
 
     /// <summary>
+    /// A group that stops being Active has nobody left to decide its join requests, so
+    /// the transition closes them: the pending rows get <c>LeftAt</c>, nothing is logged.
+    /// </summary>
+    private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
+    {
+        var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
+        if (pending.Count == 0) return;
+        foreach (var m in pending) m.LeftAt = now;
+        await repository.UpdateMembersAsync(pending, ct);
+    }
+
+    /// <summary>
     /// The one place a group ends, whether a member marked it done or the Secretary closed
     /// it: Dormant with a reason, the log entry, the audit entry, the coordinators told, and
     /// the Drive folder dropped to read-only through the access source.
@@ -522,6 +550,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateWorkgroupAsync(w, ct);
         // The end decision committed; complete its record, notices and access changes.
         ct = CancellationToken.None;
+        await ClosePendingRequestsAsync(w, now, ct);
 
         await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
             Trimmed(reasons) ?? reason.ToString(), ct,

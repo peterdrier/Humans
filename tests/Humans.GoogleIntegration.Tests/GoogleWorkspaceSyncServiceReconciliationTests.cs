@@ -6,6 +6,7 @@ using Humans.GoogleIntegration.Services;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
+using Humans.GoogleIntegration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -20,10 +21,9 @@ namespace Humans.GoogleIntegration.Tests;
 /// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
 /// nobodies-collective/Humans#508. PR #227 (sprint/20260415/batch-3) layered
 /// several fixes onto this flow and every bug was caught by review rather
-/// than by a failing test — this file seeds a real (InMemory) <c>UsersDbContext</c>
+/// than by a failing test — this file seeds a real (InMemory) <c>GoogleIntegrationDbContext</c>
 /// through the real <see cref="GoogleResourceRepository"/> and a real
-/// <see cref="TeamResourceService"/> (resolved via the service-locator seam
-/// exactly as production does), and drives Drive reconciliation against the
+/// <see cref="TeamResourceService"/>, and drives the unified Drive engine against the
 /// existing dev/test <see cref="StubGoogleDrivePermissionsClient"/> fake — no
 /// new fake Google layer was needed; reuse-first applies to test
 /// infrastructure too (memory/process/reuse-first-change-discipline.md).
@@ -47,6 +47,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
 
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IGoogleDriveAccessSource _driveSource = Substitute.For<IGoogleDriveAccessSource>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
@@ -77,10 +78,8 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
 
         IGoogleResourceRepository repository = new GoogleResourceRepository(GoogleIntegrationDbFactory);
 
-        // Real TeamResourceService, resolved through the same service-locator seam
-        // GoogleWorkspaceSyncService uses in production
-        // (serviceProvider.GetRequiredService<ITeamResourceService>()), backed by
-        // the same in-memory DbContext as the resource repository above — so
+        // Real TeamResourceService backed by the same in-memory DbContext
+        // as the resource repository above — so
         // deactivation writes land in the same table the test asserts against.
         var teamResourceService = new TeamResourceService(
             repository,
@@ -93,9 +92,15 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
 
-        var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamResourceService>(teamResourceService)
-            .Build();
+        _driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(GoogleIntegrationDb.GoogleResources.Local
+                .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group
+                    && (call.ArgAt<string?>(0) is null || string.Equals(r.GoogleId, call.ArgAt<string?>(0), StringComparison.Ordinal)))
+                .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
+        var driveSync = new GoogleDriveAccessSyncService(
+            [_driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
+            _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
+            Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
 
@@ -103,21 +108,20 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleGroupProvisioningClient>(),
             _drivePermissions,
             Substitute.For<IGoogleDirectoryClient>(),
-            _teamResourceClient,
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService,
             _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
+            driveSync,
+            [_driveSource],
             AuditLog,
             _syncLog,
             _syncSettingsService,
-            _removalNotifications,
             Substitute.For<IGoogleDriveAccessSyncScheduler>(),
             options,
             Clock,
-            serviceProvider,
             NullLogger<GoogleWorkspaceSyncService>.Instance);
     }
 
@@ -338,6 +342,59 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
         permissions.Permissions.Should().ContainSingle(p => p.EmailAddress == extraEmail,
             "the extra permission must not be revoked outside AddAndRemove mode");
+    }
+
+    [HumansTheory]
+    [InlineData(GoogleResourceType.DriveFolder)]
+    [InlineData(GoogleResourceType.DriveFile)]
+    public async Task SyncSingleResourceAsync_SharedDriveItem_PreservesOtherTeamsMemberAccess(
+        GoogleResourceType resourceType)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var firstTeam = Guid.NewGuid();
+        var secondTeam = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        const string email = "second-team@nobodies.team";
+        var googleId = CreateGoogleFolder("Shared Drive item");
+        await _drivePermissions.CreatePermissionAsync(googleId, email, "writer", ct);
+        var resourceId = SeedDriveResource(firstTeam, googleId, "First link", resourceType);
+        SeedDriveResource(secondTeam, googleId, "Second link", resourceType);
+        await SaveAllAsync(ct);
+        StubTeams(
+            (firstTeam, true, []),
+            (secondTeam, true,
+            [new TeamMemberInfo(Guid.NewGuid(), memberId, "Second-team human", email, null,
+                TeamMemberRole.Member, Clock.GetCurrentInstant(), GoogleEmailStatus.Valid)]));
+        // Teams' source unions both links' claims; the connector reconciles that union once.
+        _driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal)
+            {
+                [googleId] = new(
+                    new Dictionary<Guid, DrivePermissionLevel> { [memberId] = DrivePermissionLevel.Contributor },
+                    [new TeamLink("First", "first"), new TeamLink("Second", "second")])
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo()
+            });
+        _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>
+            {
+                [memberId] =
+                [new UserEmailRowSnapshot(Guid.NewGuid(), memberId, email, true, null, null, true, false,
+                    null, null, Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]
+            });
+
+        var diff = await _syncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute, ct);
+
+        diff.ErrorMessage.Should().BeNull();
+        diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Correct);
+        diff.LinkedTeams.Should().HaveCount(2);
+        var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
+        permissions.Permissions.Should().ContainSingle(p => p.EmailAddress == email && p.Role == "writer");
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
+            default!, default, default, default, default, default);
     }
 
     // ==========================================================================

@@ -144,7 +144,7 @@
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Antrag eingereicht. Der Sekretär prüft ihn.</value></data>
-  <data name="Workgroups_Joined" xml:space="preserve"><value>Du bist der Gruppe beigetreten.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>Deine Anfrage wurde an die Koordination gesendet.</value></data>
   <data name="Workgroups_Left" xml:space="preserve"><value>Du hast die Gruppe verlassen.</value></data>
   <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Status-Update angefragt.</value></data>
   <data name="Workgroups_Saved" xml:space="preserve"><value>Gespeichert.</value></data>
@@ -202,7 +202,7 @@
   <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Zweiter Koordinator (optional)</value></data>
 
   <!-- Group page -->
-  <data name="Workgroups_Join" xml:space="preserve"><value>Beitreten</value></data>
+  <data name="Workgroups_Join" xml:space="preserve"><value>Beitritt anfragen</value></data>
   <data name="Workgroups_Leave" xml:space="preserve"><value>Verlassen</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord-Kanal</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive-Ordner</value></data>
@@ -330,4 +330,28 @@
     <value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
   </data>
+  <data name="Workgroups_RequestPending" xml:space="preserve"><value>Deine Beitrittsanfrage wartet auf die Koordination.</value></data>
+  <data name="Workgroups_WithdrawRequest" xml:space="preserve"><value>Anfrage zurückziehen</value></data>
+  <data name="Workgroups_PendingRequests" xml:space="preserve"><value>Beitrittsanfragen</value></data>
+  <data name="Workgroups_Approve" xml:space="preserve"><value>Annehmen</value></data>
+  <data name="Workgroups_Decline" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="Workgroups_AddMember" xml:space="preserve"><value>Mitglied hinzufügen</value></data>
+  <data name="Workgroups_MemberApproved" xml:space="preserve"><value>Die Anfrage wurde angenommen.</value></data>
+  <data name="Workgroups_MemberDeclined" xml:space="preserve"><value>Die Anfrage wurde abgelehnt.</value></data>
+  <data name="Workgroups_MemberAdded" xml:space="preserve"><value>Das Mitglied wurde hinzugefügt.</value></data>
+  <data name="Workgroups_Sensitive" xml:space="preserve"><value>Sensibel</value></data>
+  <data name="Workgroups_SensitiveMembersOnly" xml:space="preserve"><value>Diese Gruppe ist sensibel: Mitglieder, Dokumente und Verlauf sind nur für Mitglieder sichtbar.</value></data>
+  <data name="Workgroups_Field_IsSensitive" xml:space="preserve"><value>Sensible Gruppe</value></data>
+  <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Nur Mitglieder und der Vorstand sehen Mitgliederliste, Dokumente und Verlauf. Name und Zweck bleiben im Register.</value></data>
+  <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Deine Beitrittsanfrage wartet bereits auf die Koordination.</value></data>
+  <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>Von dieser Person liegt keine offene Anfrage vor.</value></data>
+  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Nur die Koordination entscheidet, wer beitritt.</value></data>
+  <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Diese Gruppe ist sensibel; das können nur ihre Mitglieder.</value></data>
+  <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Jemand möchte beitreten</value></data>
+  <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Deine Beitrittsanfrage wurde angenommen</value></data>
+  <data name="Workgroups_Notice_MembershipDeclined" xml:space="preserve"><value>Deine Beitrittsanfrage wurde abgelehnt</value></data>
+  <data name="Workgroups_Notice_MemberAdded" xml:space="preserve"><value>Du wurdest zur Gruppe hinzugefügt</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Offene Beitrittsanfragen</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} hat {1} Beitrittsanfrage(n).</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Anfragen prüfen</value></data>
 </root>

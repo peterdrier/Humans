@@ -93,7 +93,12 @@ internal sealed class OnboardingWidgetController(
         // data when its name is fixed here.
         var request = BuildNameSaveRequest(vm, info?.Profile);
 
-        await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
+        var save = await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
+        if (!save.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, localizer["Onboarding_ProfileSaveFailed"]);
+            return View(vm);
+        }
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
@@ -103,6 +108,7 @@ internal sealed class OnboardingWidgetController(
     // carrying forward every other field from the existing profile (null for a brand-new
     // profileless account — nothing to preserve). Picture is left as a no-op mutation
     // (null data + RemoveProfilePicture:false) so SaveProfileAsync keeps the current one.
+    // Dietary fields and CV are omitted: Users leaves them untouched on a name-only save.
     private static ProfileSaveRequest BuildNameSaveRequest(NamesViewModel vm, ProfileInfo? existing) =>
         new(
             BurnerName: vm.BurnerName,
@@ -117,10 +123,7 @@ internal sealed class OnboardingWidgetController(
             EmergencyContactPhone: existing?.EmergencyContactPhone,
             EmergencyContactRelationship: existing?.EmergencyContactRelationship,
             NoPriorBurnExperience: existing?.NoPriorBurnExperience ?? false,
-            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false,
-            DietaryPreference: existing?.DietaryPreference,
-            Allergies: existing?.Allergies.ToList(),
-            AllergyOtherText: existing?.AllergyOtherText);
+            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)

@@ -43,7 +43,7 @@ Open your profile at `/Profile/Me` and look for the My Codes section. It lists e
 
 ### Receive a campaign email
 
-When an Admin sends a wave that includes you, the code arrives by email to your notification address. The message carries the code and the campaign's description — no unsubscribe footer link and no `List-Unsubscribe` header.
+When an Admin sends a wave that includes you, the code arrives by email to your notification address. The message is the campaign's own subject and body, with your code (and name, where the template asks for it) filled in; the campaign description is not sent. It has no unsubscribe footer link and no `List-Unsubscribe` header.
 
 ### Unsubscribe from campaign emails
 

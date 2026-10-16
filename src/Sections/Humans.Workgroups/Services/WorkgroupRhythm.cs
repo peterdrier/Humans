@@ -21,9 +21,19 @@ internal static class WorkgroupRhythm
     /// <summary>A delivered document with no disposition after this long is highlighted for the Board.</summary>
     public static readonly Duration DispositionOverdueAfter = Duration.FromDays(60);
 
-    /// <summary>Current members — a soft leave keeps the row but drops off the roster.</summary>
+    /// <summary>Current members — a soft leave keeps the row but drops off the roster; a pending request is not on it yet.</summary>
     public static IEnumerable<WorkgroupMemberInfo> CurrentMembers(this WorkgroupInfo w) =>
-        w.Members.Where(m => m.LeftAt is null);
+        w.Members.Where(m => m.LeftAt is null && !m.IsPending);
+
+    /// <summary>Join requests awaiting a coordinator's approval.</summary>
+    public static IEnumerable<WorkgroupMemberInfo> PendingMembers(this WorkgroupInfo w) =>
+        w.Members.Where(m => m.LeftAt is null && m.IsPending);
+
+    public static bool IsPendingMember(this WorkgroupInfo w, Guid userId) =>
+        w.PendingMembers().Any(m => m.UserId == userId);
+
+    public static bool IsCoordinator(this WorkgroupInfo w, Guid userId) =>
+        w.Coordinators().Any(m => m.UserId == userId);
 
     /// <summary>The one or two people named on the register.</summary>
     public static IEnumerable<WorkgroupMemberInfo> Coordinators(this WorkgroupInfo w) =>

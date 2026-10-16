@@ -1,9 +1,17 @@
 # Section debt ledger for Humans.CityPlanning. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 6
+next_id: 8
 inbox:
   - added: 2026-08-26
     id: CITY-1
     what: "The container CRUD posts on CityPlanningController (CreateBarrioContainer line 374, EditContainer line 414, DeleteContainer line 451, and their ModelState-invalid branches) redirect to Containers with settings.Year — which is CampSettings.PublicYear — instead of the {year} route value the admin was on. An admin curating containers for a non-public year is bounced to the public year's list after every create, edit and delete, silently losing their place. The private TryCreate/TryUpdate helpers already thread the correct year through; only the callers pass the wrong one. Deferred by Peter (2026-08-26): the year-specific work is being taken together in the winter months, not now. Found by /section-doctor on CityPlanning 2026-08-26."
+    review: light
+  - added: 2026-10-15
+    id: CITY-6
+    what: "CityPlanningController.ContainerMap takes a {year} route value but decides whether a lead may open the map from the public year's settings (GetSettingsAsync with no year), while every placement write it drives authorizes Place against the route year through Containers' handler. For a non-public year the page gate and the write gate can disagree: a lead is let in to a map whose writes all 403, or refused a map whose writes would succeed. Pass the route year to the phase check. Same year-specific family Peter deferred to winter under CITY-1. Found by /section-doctor on Containers 2026-10-15."
+    review: light
+  - added: 2026-10-15
+    id: CITY-7
+    what: "Docs drift in this section about containers: CityPlanning.md's glossary says the container placement phase gates whether leads can add, edit or delete containers, but container CRUD is the Manage operation and is never phase-gated (Containers health.md, Peter 2026-08-16); only placement, notes and clear are. CityPlanning health.md invariant 5 cites a stale CityPlanningApiController line for the Place check. Found by /section-doctor on Containers 2026-10-15."
     review: light

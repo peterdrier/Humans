@@ -42,7 +42,7 @@ internal sealed class ShiftsGalleryViewComponent(
 
             RotaInfo? rota = null;
             Guid? sampleDeptId = null;
-            var depts = await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            var depts = await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id, HttpContext.RequestAborted);
             if (depts.Count > 0)
             {
                 sampleDeptId = depts[0].TeamId;
@@ -56,7 +56,7 @@ internal sealed class ShiftsGalleryViewComponent(
                 var browse = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
                     es.Id,
                     sampleDeptId.Value,
-                    Flags: ShiftBrowseQueryFlags.IncludeSignups));
+                    Flags: ShiftBrowseQueryFlags.IncludeSignups), HttpContext.RequestAborted);
                 sampleRotaShifts = browse
                     .Where(u => u.Shift.RotaId == rota.Id)
                     .OrderBy(u => u.Shift.DayOffset)

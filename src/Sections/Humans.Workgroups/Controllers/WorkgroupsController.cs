@@ -95,7 +95,8 @@ internal sealed class WorkgroupsController(
             People = people,
             BoardUserIds = board?.Members.Select(m => m.UserId).ToHashSet() ?? [],
             IsMember = workgroup.IsMember(user.Id),
-            IsCoordinator = workgroup.CoordinatorUserIds().Contains(user.Id),
+            IsCoordinator = workgroup.IsCoordinator(user.Id),
+            IsPendingMember = workgroup.IsPendingMember(user.Id),
             CanAdminister = canAdminister,
             CanDoMemberWork = await MayDoMemberWorkAsync(workgroup),
             CanSeeBudget = canSeeBudget,
@@ -121,6 +122,31 @@ internal sealed class WorkgroupsController(
     public Task<IActionResult> RequestStatus(string slug, string? question, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.RequestStatusAsync(id, userId, question, ct),
             "Workgroups_StatusRequested", ct, memberOnly: false);
+
+    // ── Membership decisions: coordinators and Board/Admin ────────────────
+
+    [HttpPost("{slug}/Members/{userId:guid}/Approve")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> ApproveMember(string slug, Guid userId, CancellationToken ct) =>
+        ManageMembersAsync(slug,
+            (id, actorId, asAdmin) => workgroups.ApproveMemberAsync(id, actorId, userId, asAdmin, ct),
+            "Workgroups_MemberApproved", ct);
+
+    [HttpPost("{slug}/Members/{userId:guid}/Decline")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> DeclineMember(string slug, Guid userId, CancellationToken ct) =>
+        ManageMembersAsync(slug,
+            (id, actorId, asAdmin) => workgroups.DeclineMemberAsync(id, actorId, userId, asAdmin, ct),
+            "Workgroups_MemberDeclined", ct);
+
+    [HttpPost("{slug}/Members/Add")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> AddMember(string slug, Guid? userId, CancellationToken ct) =>
+        ManageMembersAsync(slug,
+            (id, actorId, asAdmin) => userId is { } added
+                ? workgroups.AddMemberAsync(id, actorId, added, asAdmin, ct)
+                : Task.FromResult(new WorkgroupMutationResult(new WorkgroupRefusal(WorkgroupErrorKeys.NotFound))),
+            "Workgroups_MemberAdded", ct);
 
     // ── Register fields and coordinators ──────────────────────────────────
 
@@ -280,8 +306,9 @@ internal sealed class WorkgroupsController(
 
         var isMember = workgroup.IsMember(user.Id);
         var canAdminister = await MayAdministerAsync(workgroup);
-        // A draft is the group's working copy; it is not the register's business yet.
-        if (document.Status == WorkgroupDocumentStatus.Draft && !isMember && !canAdminister)
+        // A draft is the group's working copy; it is not the register's business yet. A
+        // sensitive group's documents are never anyone else's business.
+        if ((document.Status == WorkgroupDocumentStatus.Draft || workgroup.IsSensitive) && !isMember && !canAdminister)
             return NotFound();
 
         return View(new DocumentPageViewModel
@@ -497,6 +524,32 @@ internal sealed class WorkgroupsController(
         return documentId is { } id
             ? RedirectToAction(nameof(Document), new { slug = workgroup.Slug, id })
             : RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
+    }
+
+    /// <summary>
+    /// Membership decisions: a coordinator of an Active group, or Board/Admin (passed through
+    /// as <c>asAdmin</c> so the service skips its own coordinator check). Everyone else gets Forbid.
+    /// </summary>
+    private async Task<IActionResult> ManageMembersAsync(
+        string slug, Func<Guid, Guid, bool, Task<WorkgroupMutationResult>> action, string successKey, CancellationToken ct)
+    {
+        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (error is not null) return error;
+        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
+        var asAdmin = await MayAdministerAsync(workgroup);
+        if (!asAdmin && !(workgroup.IsCoordinator(user.Id) && await MayDoMemberWorkAsync(workgroup))) return Forbid();
+
+        var result = await action(workgroup.Id, user.Id, asAdmin);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), refusal.Key);
+            SetError(localizer[refusal.Key, refusal.Args]);
+        }
+        else
+        {
+            SetSuccess(localizer[successKey]);
+        }
+        return RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 
     /// <summary>Form POSTs: a rule re-renders the form with its localized message.</summary>

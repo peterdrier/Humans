@@ -88,6 +88,18 @@ internal sealed class CachingWorkgroupService(
     public Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.JoinAsync(workgroupId, userId, ct));
 
+    public Task<WorkgroupMutationResult> ApproveMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.ApproveMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+
+    public Task<WorkgroupMutationResult> DeclineMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.DeclineMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+
+    public Task<WorkgroupMutationResult> AddMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AddMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+
     public Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,

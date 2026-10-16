@@ -1197,4 +1197,19 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloquejat — tens una entrada per a aquest any</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operacions de l’esdeveniment</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novetats de la comunitat</value></data>
+  <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
+    <value>Aquesta adreça de correu ja és al teu compte.</value>
+  </data>
+  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
+    <value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu.</value>
+  </data>
+  <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
+    <value>No pots eliminar el teu últim correu verificat. Afegeix primer un altre correu verificat per continuar rebent notificacions del sistema.</value>
+  </data>
+  <data name="Users_EmailUpdate_NotFound" xml:space="preserve">
+    <value>No s'ha trobat aquesta adreça de correu en aquest compte.</value>
+  </data>
+  <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
+    <value>Només les adreces de correu verificades poden rebre notificacions del compte.</value>
+  </data>
 </root>

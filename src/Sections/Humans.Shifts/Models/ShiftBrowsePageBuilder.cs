@@ -101,7 +101,7 @@ internal sealed class ShiftBrowsePageBuilder(
             request.DepartmentId,
             filterFromDate,
             filterToDate,
-            browseFlags));
+            browseFlags), ct);
 
         var periodFilteredShifts = postFilterByPeriod
             ? urgentShifts.Where(u => activePeriods.Contains(u.Period)).ToList()
@@ -117,9 +117,9 @@ internal sealed class ShiftBrowsePageBuilder(
         // grouping doesn't express "most openings first".
         var isUrgencySort = filterDay.HasValue || !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
-        var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
+        var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id, ct);
         var allTags = await shiftManagement.GetTagsAsync();
-        var dayOptions = await BuildDayOptionsAsync(es, browseFlags);
+        var dayOptions = await BuildDayOptionsAsync(es, browseFlags, ct);
         // Preferred tag ids come from the cached ShiftUserView's
         // TagPreferences — the controller already fetched the
         // view for the signup read, so we reuse those rows here. The shape
@@ -184,7 +184,7 @@ internal sealed class ShiftBrowsePageBuilder(
             flags |= ShiftBrowseQueryFlags.IncludeAdminOnly | ShiftBrowseQueryFlags.IncludeHidden;
 
         var shifts = await shiftManagement.GetBrowseShiftsAsync(
-            new ShiftBrowseQuery(es.Id, null, null, null, flags));
+            new ShiftBrowseQuery(es.Id, null, null, null, flags), ct);
         // Returns null when the shift isn't in the browse set for this caller (e.g. it
         // just filled/closed, or a visibility race). The caller turns that into a benign
         // reload rather than a 500 — never call .First() here.
@@ -213,10 +213,10 @@ internal sealed class ShiftBrowsePageBuilder(
     /// Deliberately unfiltered by department/tag/period/day so the option list
     /// doesn't shrink as the viewer narrows other filters.
     /// </summary>
-    private async Task<List<DayFilterOption>> BuildDayOptionsAsync(BurnSettingsInfo es, ShiftBrowseQueryFlags browseFlags)
+    private async Task<List<DayFilterOption>> BuildDayOptionsAsync(BurnSettingsInfo es, ShiftBrowseQueryFlags browseFlags, CancellationToken ct)
     {
         var allShifts = await shiftManagement.GetBrowseShiftsAsync(
-            new ShiftBrowseQuery(es.Id, null, null, null, browseFlags));
+            new ShiftBrowseQuery(es.Id, null, null, null, browseFlags), ct);
 
         return allShifts
             .GroupBy(u => u.Date)
@@ -262,14 +262,14 @@ internal sealed class ShiftBrowsePageBuilder(
     private async Task<List<DepartmentOption>> GetDepartmentOptionsAsync(
         Guid? departmentId,
         IReadOnlyList<DepartmentShiftGroup> currentDepartments,
-        Guid eventSettingsId)
+        Guid eventSettingsId, CancellationToken ct)
     {
         if (!departmentId.HasValue)
             return currentDepartments
                 .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
                 .ToList();
 
-        var depts = await shiftManagement.GetDepartmentsWithRotasAsync(eventSettingsId);
+        var depts = await shiftManagement.GetDepartmentsWithRotasAsync(eventSettingsId, ct);
         return depts
             .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
             .ToList();

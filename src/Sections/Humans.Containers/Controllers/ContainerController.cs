@@ -30,7 +30,7 @@ internal sealed class ContainerController(
         var camp = await campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return NotFound();
 
-        var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
+        var target = new ContainerAuthorizationTarget(camp.Id);
         if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 
         // Place returns false for leads when phase is closed — drives the "phase closed" view message.
@@ -83,7 +83,7 @@ internal sealed class ContainerController(
         var camp = await campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return NotFound();
 
-        var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
+        var target = new ContainerAuthorizationTarget(camp.Id);
         if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 
         if (!ModelState.IsValid)

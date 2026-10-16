@@ -277,7 +277,7 @@ Category: `MessageCategory.System` (not opt-outable).
 ### Rate Limiting
 
 To prevent abuse of the magic link endpoint:
-- Login sends are cooled down off `User.MagicLinkSentAt` (nullable `Instant`) — a request within 60 seconds of the last send is silently skipped. Signup sends use a separate per-address reservation in `IMagicLinkRateLimiter`
+- Login sends are cooled down off `User.MagicLinkSentAt` (nullable `Instant`) — a request within 60 seconds of the last send is silently skipped. Signup sends use a separate per-inbox reservation in `IMagicLinkRateLimiter`: Gmail dots, plus-tags and googlemail aliases share the cooldown, while non-Gmail plus-addresses stay distinct. Normalization affects only the reservation key; the message and token retain the entered address.
 - Always show the same "If that email exists, we've sent a link" message regardless of whether the email exists (prevents account enumeration)
 - Log suspicious patterns (multiple requests for different emails from same IP) but don't block at this scale
 
