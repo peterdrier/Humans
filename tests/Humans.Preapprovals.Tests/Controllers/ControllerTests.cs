@@ -102,8 +102,13 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         var controller = BuildAdmin(SeedUser("Role holder"), role);
         var model = new ProgramFormViewModel
         {
-            Name = "2026 Creativity", Kind = ProgramKind.FixedPerPerson, PerPersonAmount = 300m,
-            HoldedAccountNumber = 62900150, ClaimBy = Today.PlusMonths(6), AcceptsApplications = true, Status = ProgramStatus.Open
+            Name = "2026 Creativity",
+            Kind = ProgramKind.FixedPerPerson,
+            PerPersonAmount = 300m,
+            HoldedAccountNumber = 62900150,
+            ClaimBy = Today.PlusMonths(6),
+            AcceptsApplications = true,
+            Status = ProgramStatus.Open
         };
 
         var result = await controller.New(model, Ct);

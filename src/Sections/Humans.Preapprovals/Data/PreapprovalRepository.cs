@@ -215,8 +215,10 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             if (!targetPrograms.Contains(row.ProgramId))
                 ctx.Managers.Add(new ProgramManager
                 {
-                    ProgramId = row.ProgramId, UserId = targetUserId,
-                    AddedByUserId = row.AddedByUserId, AddedAt = row.AddedAt
+                    ProgramId = row.ProgramId,
+                    UserId = targetUserId,
+                    AddedByUserId = row.AddedByUserId,
+                    AddedAt = row.AddedAt
                 });
         }
 

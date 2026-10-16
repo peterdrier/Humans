@@ -39,7 +39,7 @@ internal sealed partial class PreapprovalService
         };
         foreach (var userId in save.ManagerUserIds.Distinct())
             program.Managers.Add(new ProgramManager
-                { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
+            { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
         await repository.AddProgramAsync(program, ct);
 
         await AuditProgramAsync(AuditAction.PreapprovalProgramCreated, program,
