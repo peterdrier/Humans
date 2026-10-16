@@ -1312,4 +1312,7 @@
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Der wesentliche Beitrag darf höchstens 2000 Zeichen enthalten.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Die Erläuterung des Rollenverständnisses darf höchstens 2000 Zeichen enthalten.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Rechtsverbindlich</value></data>
+  <data name="Nav_Preapprovals" xml:space="preserve"><value>Vorabgenehmigungen</value></data>
+  <data name="Nav_Preapprovals_Mine" xml:space="preserve"><value>Meine Vorabgenehmigungen</value></data>
+  <data name="Nav_Preapprovals_Manage" xml:space="preserve"><value>Vorabgenehmigungen verwalten</value></data>
 </root>

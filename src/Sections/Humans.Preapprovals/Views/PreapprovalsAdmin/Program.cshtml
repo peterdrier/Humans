@@ -1,0 +1,254 @@
+@model AdminProgramViewModel
+@{
+    var p = Model.Program;
+    ViewData["Title"] = p.Name;
+    var fixedKind = p.Kind == ProgramKind.FixedPerPerson;
+    var canCommit = p.Status == ProgramStatus.Open && !p.DeadlinePassed(Model.Today);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Pre-approval programs</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0">@p.Name <span class="badge @EnumBadgeMap.For(p.Status) fs-6 align-middle">@p.Status</span></h1>
+    @if (Model.CanAdminister)
+    {
+        <a asp-action="Edit" asp-route-programId="@p.Id" class="btn btn-outline-secondary"><i class="fa-solid fa-pen me-1"></i>Edit program</a>
+    }
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Committed</div><div class="h4 mb-0">@p.Granted.ToEuro()</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Ceiling</div><div class="h4 mb-0">@(p.TotalCeiling?.ToEuro() ?? "none")</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Remaining</div><div class="h4 mb-0">@(p.Remaining?.ToEuro() ?? "—")</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Claim by</div><div class="h4 mb-0 @(p.DeadlinePassed(Model.Today) ? "text-muted" : "")">@p.ClaimBy.ToDate()</div>
+        @if (p.DeadlinePassed(Model.Today)) { <div class="small text-muted">deadline passed</div> }
+    </div></div></div>
+</div>
+
+<dl class="row small">
+    <dt class="col-sm-2">Kind</dt>
+    <dd class="col-sm-10">@(fixedKind ? $"Fixed, {p.PerPersonAmount!.Value.ToEuro()} per person" : "Amount set per grant")</dd>
+    <dt class="col-sm-2">Account</dt>
+    <dd class="col-sm-10">@p.HoldedAccountNumber</dd>
+    <dt class="col-sm-2">Applications</dt>
+    <dd class="col-sm-10">@(p.AcceptsApplications ? "accepted" : "not accepted")</dd>
+    <dt class="col-sm-2">Managers</dt>
+    <dd class="col-sm-10">@(p.ManagerUserIds.Count == 0 ? "none" : string.Join(", ", p.ManagerUserIds.Select(id => Model.NameOf(id))))</dd>
+    <dt class="col-sm-2">Not claimed</dt>
+    <dd class="col-sm-10">@p.NotClaimed(Model.Today).ToEuro() <span class="text-muted">(revoked, or open past the deadline; never adjusted)</span></dd>
+</dl>
+
+@if (!string.IsNullOrEmpty(p.Description))
+{
+    <p>@p.Description</p>
+}
+
+@if (canCommit)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Issue a pre-approval</h2>
+                    <form method="post" asp-action="Issue" asp-route-programId="@p.Id">
+                        <div class="mb-2">
+                            <vc:human-search field-name="userId" scope="Name" placeholder="Search for a person" instance-key="issue" />
+                        </div>
+                        @if (!fixedKind)
+                        {
+                            <div class="mb-2 input-group" style="max-width: 240px;">
+                                <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="Amount" required />
+                                <span class="input-group-text">€</span>
+                            </div>
+                        }
+                        <div class="mb-2">
+                            <input type="text" name="label" class="form-control" maxlength="200" placeholder="Label (optional, e.g. the project)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Issue @(fixedKind ? p.PerPersonAmount!.Value.ToEuro() : "")</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @if (fixedKind)
+        {
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5 card-title">Issue to many</h2>
+                        <p class="small text-muted">Add people one at a time, then issue @p.PerPersonAmount!.Value.ToEuro() to each. All or nothing.</p>
+                        <div class="d-flex gap-2 mb-2">
+                            <vc:human-search field-name="pendingUserId" scope="Name" placeholder="Search for a person" instance-key="many" />
+                            <button type="button" class="btn btn-outline-primary" id="pre-add-many">@SharedLocalizer["Common_Add"]</button>
+                        </div>
+                        <form method="post" asp-action="IssueMany" asp-route-programId="@p.Id" id="pre-many-form">
+                            <ul class="list-group mb-2" id="pre-many-list"></ul>
+                            <button type="submit" class="btn btn-primary" id="pre-many-submit" disabled>Issue to <span id="pre-many-count">0</span> people</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary">Closed or past its claim deadline: nothing more can be issued or approved. Existing grants stay as they are.</div>
+}
+
+@if (Model.Applications.Any())
+{
+    <h2 class="h4 mt-4">Applications <span class="badge bg-warning text-dark">@Model.Applications.Count()</span></h2>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Who</th><th>Requested</th><th>Note</th><th>Applied</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var g in Model.Applications)
+                {
+                    <tr>
+                        <td><vc:human user-id="@g.BeneficiaryUserId" layout="AvatarName" size="28" /></td>
+                        <td>@g.MaxAmount.ToEuro()</td>
+                        <td class="small">@g.ApplicationNote</td>
+                        <td class="small text-muted">@g.CreatedAt.ToDateTime()</td>
+                        <td class="text-end">
+                            @if (canCommit)
+                            {
+                                <form method="post" asp-action="Approve" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center">
+                                    @if (!fixedKind)
+                                    {
+                                        <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 120px;" value="@g.RequestedAmount" />
+                                    }
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                            }
+                            <form method="post" asp-action="Decline" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1">
+                                <input type="text" name="note" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional)" maxlength="2000" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h4 mt-4">Grants</h2>
+@if (!Model.Decided.Any())
+{
+    <p class="text-muted">No grants yet.</p>
+}
+else
+{
+    <div class="mb-2">
+        <label class="small text-muted me-2">Status</label>
+        <select class="form-select form-select-sm d-inline-block" style="width: auto;" id="pre-status-filter">
+            <option value="">All</option>
+            @foreach (var s in Enum.GetValues<GrantStatus>().Where(s => s != GrantStatus.Applied))
+            {
+                <option value="@s">@s</option>
+            }
+        </select>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle" id="pre-grants">
+            <thead><tr><th>Who</th><th>Label</th><th class="text-end">Amount</th><th>Status</th><th>Claim by</th><th>Decided</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var g in Model.Decided)
+                {
+                    var mutable = g.Status is GrantStatus.Open or GrantStatus.Claimed;
+                    <tr data-status="@g.Status">
+                        <td><vc:human user-id="@g.BeneficiaryUserId" layout="AvatarName" size="28" /></td>
+                        <td>@g.Label</td>
+                        <td class="text-end">@g.MaxAmount.ToEuro()</td>
+                        <td>
+                            <span class="badge @EnumBadgeMap.For(g.Status)">@g.Status</span>
+                            @if (g.DeadlinePassed(Model.Today))
+                            {
+                                <span class="badge bg-light text-dark border">deadline passed</span>
+                            }
+                            @if (g.ExpenseReportId is { } reportId)
+                            {
+                                <a href="/Expenses/@reportId" class="small ms-1">report</a>
+                            }
+                        </td>
+                        <td>@g.ClaimBy.ToDate()</td>
+                        <td class="small text-muted">@Model.NameOf(g.DecidedByUserId) @g.DecidedAt?.ToDateTime()</td>
+                        <td class="text-end text-nowrap">
+                            @if (mutable)
+                            {
+                                <form method="post" asp-action="Amount" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center">
+                                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 110px;" value="@g.MaxAmount" required />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set amount</button>
+                                </form>
+                                <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1"
+                                      onsubmit="return confirm('Revoke this pre-approval? The amount stays on record as not claimed.');">
+                                    <input type="text" name="reason" class="form-control form-control-sm" style="width: 160px;" placeholder="Reason (optional)" maxlength="2000" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<script>
+(function () {
+    // Status filter on the grants table.
+    var filter = document.getElementById('pre-status-filter');
+    if (filter) {
+        filter.addEventListener('change', function () {
+            var want = filter.value;
+            document.querySelectorAll('#pre-grants tbody tr').forEach(function (row) {
+                row.style.display = !want || row.dataset.status === want ? '' : 'none';
+            });
+        });
+    }
+
+    // Issue-to-many: the picker fills the hidden input; "Add" moves it to the pending list.
+    var add = document.getElementById('pre-add-many');
+    if (!add) return;
+    var text = document.getElementById('human-search-many');
+    var hidden = document.getElementById('human-search-hidden-many');
+    var list = document.getElementById('pre-many-list');
+    var submit = document.getElementById('pre-many-submit');
+    var count = document.getElementById('pre-many-count');
+    function refresh() {
+        var n = list.children.length;
+        count.textContent = n;
+        submit.disabled = n === 0;
+    }
+    add.addEventListener('click', function () {
+        var id = hidden.value;
+        var name = text.value;
+        if (!id || list.querySelector('input[value="' + id + '"]')) return;
+        var item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        var label = document.createElement('span');
+        label.textContent = name;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'userIds';
+        input.value = id;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-secondary';
+        remove.textContent = '✕';
+        remove.addEventListener('click', function () { item.remove(); refresh(); });
+        item.appendChild(label);
+        item.appendChild(input);
+        item.appendChild(remove);
+        list.appendChild(item);
+        hidden.value = '';
+        text.value = '';
+        refresh();
+    });
+})();
+</script>

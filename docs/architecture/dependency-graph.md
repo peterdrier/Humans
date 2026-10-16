@@ -63,6 +63,7 @@ graph LR
     classDef guide fill:#65a30d,color:#fff
     classDef rideshare fill:#f472b6,color:#000
     classDef workgroups fill:#e11d48,color:#fff
+    classDef preapprovals fill:#0f766e,color:#fff
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
@@ -207,6 +208,8 @@ graph LR
     Rideshare[RideshareService]:::rideshare
 
     Workgroup[WorkgroupService]:::workgroups
+
+    Preapproval[PreapprovalService]:::preapprovals
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -585,6 +588,14 @@ graph LR
     Workgroup --> SettingsSvc
     Workgroup --> Finance
     Workgroup --> Holded
+
+    %% Preapprovals
+    Preapproval --> Audit
+    Preapproval --> Email
+    Preapproval --> NotifEmitter
+    Preapproval --> User
+    Preapproval --> UEmail
+    Preapproval --> Finance
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles

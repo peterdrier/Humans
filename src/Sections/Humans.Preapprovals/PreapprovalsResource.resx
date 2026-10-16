@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+    <data name="Enum_GrantStatus_Applied" xml:space="preserve"><value>Applied</value></data>
+  <data name="Enum_GrantStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Enum_GrantStatus_Claimed" xml:space="preserve"><value>Claimed</value></data>
+  <data name="Enum_GrantStatus_Consumed" xml:space="preserve"><value>Used</value></data>
+  <data name="Enum_GrantStatus_Declined" xml:space="preserve"><value>Declined</value></data>
+  <data name="Enum_GrantStatus_Revoked" xml:space="preserve"><value>Revoked</value></data>
+  <data name="Preapprovals_Title" xml:space="preserve"><value>Pre-approvals</value></data>
+  <data name="Preapprovals_Intro" xml:space="preserve"><value>A pre-approval is a promise from the association to reimburse you up to an amount, for a purpose, if you file your expense report by the deadline. File in time: nothing is paid after it.</value></data>
+  <data name="Preapprovals_Manage" xml:space="preserve"><value>Manage pre-approvals</value></data>
+  <data name="Preapprovals_Mine" xml:space="preserve"><value>My pre-approvals</value></data>
+  <data name="Preapprovals_NoneActive" xml:space="preserve"><value>You have no open pre-approvals.</value></data>
+  <data name="Preapprovals_Program" xml:space="preserve"><value>Program</value></data>
+  <data name="Preapprovals_ClaimBy" xml:space="preserve"><value>Claim by</value></data>
+  <data name="Preapprovals_DeadlinePassed" xml:space="preserve"><value>Deadline passed</value></data>
+  <data name="Preapprovals_DaysLeft" xml:space="preserve"><value>{0} days left</value></data>
+  <data name="Preapprovals_FileExpense" xml:space="preserve"><value>File expense report</value></data>
+  <data name="Preapprovals_ViewReport" xml:space="preserve"><value>View report</value></data>
+  <data name="Preapprovals_OpenPrograms" xml:space="preserve"><value>Programs accepting applications</value></data>
+  <data name="Preapprovals_PerPerson" xml:space="preserve"><value>{0} per person</value></data>
+  <data name="Preapprovals_AmountOnRequest" xml:space="preserve"><value>Amount on request</value></data>
+  <data name="Preapprovals_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Preapprovals_Past" xml:space="preserve"><value>Past</value></data>
+  <data name="Preapprovals_ApplyTitle" xml:space="preserve"><value>Apply for a pre-approval</value></data>
+  <data name="Preapprovals_EditApplication" xml:space="preserve"><value>Edit your application</value></data>
+  <data name="Preapprovals_RequestedAmount" xml:space="preserve"><value>Amount requested</value></data>
+  <data name="Preapprovals_ApplicationNote" xml:space="preserve"><value>What is it for?</value></data>
+  <data name="Preapprovals_ApplicationNote_Help" xml:space="preserve"><value>A few lines for the program's managers: what you plan to spend it on.</value></data>
+  <data name="Preapprovals_NotAccepting" xml:space="preserve"><value>This program is not accepting applications.</value></data>
+  <data name="Preapprovals_Applied" xml:space="preserve"><value>Your application was sent to the program's managers.</value></data>
+  <data name="Preapprovals_Error_NotFound" xml:space="preserve"><value>Not found.</value></data>
+  <data name="Preapprovals_Error_NameRequired" xml:space="preserve"><value>A name is required.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountRequired" xml:space="preserve"><value>A fixed program needs a per-person amount.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountNotAllowed" xml:space="preserve"><value>A per-grant program has no per-person amount.</value></data>
+  <data name="Preapprovals_Error_AmountPositive" xml:space="preserve"><value>The amount must be greater than zero.</value></data>
+  <data name="Preapprovals_Error_AmountNotAllowed" xml:space="preserve"><value>Grants under a fixed program are always the per-person amount.</value></data>
+  <data name="Preapprovals_Error_AmountRequired" xml:space="preserve"><value>An amount is required.</value></data>
+  <data name="Preapprovals_Error_AccountNotFound" xml:space="preserve"><value>That expense account is not available.</value></data>
+  <data name="Preapprovals_Error_KindLocked" xml:space="preserve"><value>The kind cannot change once grants exist.</value></data>
+  <data name="Preapprovals_Error_CeilingExceeded" xml:space="preserve"><value>That would exceed the program's ceiling: {0} remaining.</value></data>
+  <data name="Preapprovals_Error_CeilingBelowCommitted" xml:space="preserve"><value>The ceiling cannot go below what is already committed: {0}.</value></data>
+  <data name="Preapprovals_Error_ProgramClosed" xml:space="preserve"><value>This program is closed.</value></data>
+  <data name="Preapprovals_Error_NotAcceptingApplications" xml:space="preserve"><value>This program is not accepting applications.</value></data>
+  <data name="Preapprovals_Error_DeadlinePassed" xml:space="preserve"><value>The claim deadline has passed.</value></data>
+  <data name="Preapprovals_Error_WrongStatus" xml:space="preserve"><value>That action is not possible in the grant's current status.</value></data>
+  <data name="Preapprovals_Error_NoBeneficiaries" xml:space="preserve"><value>Pick at least one person.</value></data>
+  <data name="Preapprovals_Error_TextTooLong" xml:space="preserve"><value>The text is too long.</value></data>
+  <data name="Preapprovals_Error_IssueManyFixedOnly" xml:space="preserve"><value>Issuing to many people at once needs a fixed per-person amount.</value></data>
+  <data name="Preapprovals_Notice_Issued" xml:space="preserve"><value>You have a pre-approval</value></data>
+  <data name="Preapprovals_Notice_Released" xml:space="preserve"><value>Your pre-approval is open again</value></data>
+  <data name="Preapprovals_Notice_DeadlineChanged" xml:space="preserve"><value>Your pre-approval's deadline changed</value></data>
+  <data name="Preapprovals_Notice_Reminder" xml:space="preserve"><value>File your expense report soon</value></data>
+  <data name="Preapprovals_Notice_Declined" xml:space="preserve"><value>Your application was declined</value></data>
+  <data name="Preapprovals_Notice_Revoked" xml:space="preserve"><value>Your pre-approval was revoked</value></data>
+  <data name="Preapprovals_Notice_AmountChanged" xml:space="preserve"><value>Your pre-approval's amount changed</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived" xml:space="preserve"><value>New pre-approval application</value></data>
+  <data name="Preapprovals_Notice_FileBy_Body" xml:space="preserve"><value>{1} {2}. File your expense report by {3}.</value></data>
+  <data name="Preapprovals_Notice_Decided_Body" xml:space="preserve"><value>{1} {2}. {4}</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived_Body" xml:space="preserve"><value>{4} applied for {2}.</value></data>
+  <data name="Preapprovals_Email_Greeting_Generic" xml:space="preserve"><value>Hello,</value></data>
+  <data name="Preapprovals_Email_Greeting_Named" xml:space="preserve"><value>Hello {0},</value></data>
+  <data name="Preapprovals_Email_LabelLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;For:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DetailLine" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Issued_Subject" xml:space="preserve"><value>Pre-approval: {0}</value></data>
+  <data name="Preapprovals_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;You have a pre-approval under &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Up to:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;File your expense report by:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Nothing is reimbursed after that date. &lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Declined_Subject" xml:space="preserve"><value>Pre-approval application declined: {0}</value></data>
+  <data name="Preapprovals_Email_Declined_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Your application under &lt;strong&gt;{1}&lt;/strong&gt; was declined.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;See the program&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Subject" xml:space="preserve"><value>Pre-approval application: {0}</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Someone applied for a pre-approval under &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Requested:&lt;/strong&gt; {3}&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Review the application&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Subject" xml:space="preserve"><value>Reminder: file by {1} for {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Your pre-approval under &lt;strong&gt;{1}&lt;/strong&gt; has not been used yet.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Up to:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;File your expense report by:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Nothing is reimbursed after that date. &lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Subject" xml:space="preserve"><value>Pre-approval amount changed: {0}</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;The amount of your pre-approval under &lt;strong&gt;{1}&lt;/strong&gt; changed.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Before:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Now:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Revoked_Subject" xml:space="preserve"><value>Pre-approval revoked: {0}</value></data>
+  <data name="Preapprovals_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Your pre-approval under &lt;strong&gt;{1}&lt;/strong&gt; was revoked.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Amount:&lt;/strong&gt; {3}&lt;/p&gt;{4}&lt;p&gt;If an expense report is holding it, the report can still be decided; the cap and account no longer apply. &lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Pre-approval deadline changed: file by {1} for {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;The claim deadline of your pre-approval under &lt;strong&gt;{1}&lt;/strong&gt; moved.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Up to:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;New deadline:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
+</root>

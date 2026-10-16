@@ -1,0 +1,169 @@
+@model ProgramFormViewModel
+@{
+    var isNew = Model.Id is null;
+    ViewData["Title"] = isNew ? "New pre-approval program" : "Edit program";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Pre-approval programs</a></li>
+        @if (!isNew)
+        {
+            <li class="breadcrumb-item"><a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form method="post" asp-action="@(isNew ? "New" : "Edit")" asp-route-programId="@Model.Id">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Name</label>
+                <input asp-for="Name" class="form-control" maxlength="200" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="4" maxlength="2000"></textarea>
+                <div class="form-text">Shown to members on the program page.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="Kind" class="form-label">Kind</label>
+                    <select asp-for="Kind" class="form-select" id="pre-kind" disabled="@Model.KindLocked">
+                        <option value="@ProgramKind.FixedPerPerson">Fixed amount per person</option>
+                        <option value="@ProgramKind.PerGrantAmount">Amount set per grant</option>
+                    </select>
+                    @if (Model.KindLocked)
+                    {
+                        <input type="hidden" asp-for="Kind" />
+                        <div class="form-text">Locked: grants exist.</div>
+                    }
+                </div>
+                <div class="col-md-4" id="pre-per-person">
+                    <label asp-for="PerPersonAmount" class="form-label">Per-person amount</label>
+                    <div class="input-group">
+                        <input asp-for="PerPersonAmount" type="number" step="0.01" min="0.01" class="form-control" />
+                        <span class="input-group-text">€</span>
+                    </div>
+                    <span asp-validation-for="PerPersonAmount" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="TotalCeiling" class="form-label">Total ceiling</label>
+                    <div class="input-group">
+                        <input asp-for="TotalCeiling" type="number" step="0.01" min="0.01" class="form-control" />
+                        <span class="input-group-text">€</span>
+                    </div>
+                    <div class="form-text">Empty for no ceiling.</div>
+                    <span asp-validation-for="TotalCeiling" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="HoldedAccountNumber" class="form-label">Expense account</label>
+                <select asp-for="HoldedAccountNumber" class="form-select" style="max-width: 480px;">
+                    <option value="">— choose —</option>
+                    @foreach (var a in Model.Accounts.OrderBy(a => a.AccountNum))
+                    {
+                        <option value="@a.AccountNum">@a.AccountNum — @a.Label</option>
+                    }
+                </select>
+                <div class="form-text">Every report filed against this program books to this account.</div>
+                <span asp-validation-for="HoldedAccountNumber" class="text-danger"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="ClaimBy" class="form-label">Claim by</label>
+                    <input asp-for="ClaimBy" type="date" class="form-control" />
+                    <div class="form-text">Reports must be submitted by this date. Moving it re-notifies every open holder.</div>
+                    <span asp-validation-for="ClaimBy" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Status" class="form-label">Status</label>
+                    <select asp-for="Status" class="form-select">
+                        <option value="@ProgramStatus.Open">Open</option>
+                        <option value="@ProgramStatus.Closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-md-4 pt-md-2">
+                        <input asp-for="AcceptsApplications" class="form-check-input" />
+                        <label asp-for="AcceptsApplications" class="form-check-label">Accepts applications</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Managers</label>
+                <div class="d-flex gap-2 mb-2">
+                    <vc:human-search field-name="managerPick" scope="Name" placeholder="Search for a person" instance-key="manager" />
+                    <button type="button" class="btn btn-outline-primary" id="pre-add-manager">Add</button>
+                </div>
+                <ul class="list-group" id="pre-managers">
+                    @foreach (var id in Model.ManagerUserIds.Distinct())
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@(Model.People.TryGetValue(id, out var info) ? info.BurnerName : id.ToString())</span>
+                            <input type="hidden" name="ManagerUserIds" value="@id" />
+                            <button type="button" class="btn btn-sm btn-outline-secondary pre-remove">✕</button>
+                        </li>
+                    }
+                </ul>
+                <div class="form-text">Managers issue, approve, decline and revoke grants under this program. Board, FinanceAdmin and Admin always can.</div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@(isNew ? "Create program" : "Save")</button>
+                <a asp-action="@(isNew ? "Index" : "Program")" asp-route-programId="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    var kind = document.getElementById('pre-kind');
+    var perPerson = document.getElementById('pre-per-person');
+    function toggle() { perPerson.style.display = kind.value === '@ProgramKind.FixedPerPerson' ? '' : 'none'; }
+    kind.addEventListener('change', toggle);
+    toggle();
+
+    var list = document.getElementById('pre-managers');
+    list.querySelectorAll('.pre-remove').forEach(function (b) {
+        b.addEventListener('click', function () { b.closest('li').remove(); });
+    });
+    document.getElementById('pre-add-manager').addEventListener('click', function () {
+        var hidden = document.getElementById('human-search-hidden-manager');
+        var text = document.getElementById('human-search-manager');
+        var id = hidden.value;
+        if (!id || list.querySelector('input[value="' + id + '"]')) return;
+        var item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        var label = document.createElement('span');
+        label.textContent = text.value;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ManagerUserIds';
+        input.value = id;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-secondary';
+        remove.textContent = '✕';
+        remove.addEventListener('click', function () { item.remove(); });
+        item.appendChild(label);
+        item.appendChild(input);
+        item.appendChild(remove);
+        list.appendChild(item);
+        hidden.value = '';
+        text.value = '';
+    });
+})();
+</script>
