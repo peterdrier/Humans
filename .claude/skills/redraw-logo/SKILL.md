@@ -20,6 +20,7 @@ local sessions in their worktree.
 
 ## 1. Archive the outgoing round
 ```
+mkdir -p docs/brand/logo-history/<prev>
 git mv src/Humans.Web/wwwroot/img/logo.svg    docs/brand/logo-history/<prev>/logo.svg
 git mv src/Humans.Web/wwwroot/img/favicon.svg docs/brand/logo-history/<prev>/favicon.svg
 ```

@@ -32,5 +32,5 @@
   <use href="#arm" transform="translate(97,86) scale(-1,1)"/>
   <use href="#arm" transform="translate(148,80) rotate(-22)"/>
   <use href="#arm" transform="translate(92,80) scale(-1,1) rotate(-22)"/>
-  <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M120,42 C131,42 136,50 136,60 C136.5,66 137,72 136,77 C135,80 132,80 130,78 C127,76 124,78 120,78 C116,78 113,76 110,78 C108,80 105,80 104,77 C103,72 103.5,66 104,60 C104,50 109,42 120,42 Z"/>
+  <path fill="#c9a96e" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round" d="M120,45.6 C131,45.6 136,52 136,60 C136.5,66 137,72 136,77 C135,80 132,80 130,78 C127,76 124,78 120,78 C116,78 113,76 110,78 C108,80 105,80 104,77 C103,72 103.5,66 104,60 C104,52 109,45.6 120,45.6 Z"/>
 </svg>
