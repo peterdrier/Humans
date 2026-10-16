@@ -83,7 +83,7 @@ line here: `**<yyyy-mm> · <Model>, <effort level>**`. Level was not recorded be
 - **2026-06 · Opus 4.8 (1M), level unrecorded** — first self-simplifying mark (PR #1007). Stick-figure
   anatomy in bold capsules plus etch tiers, square and circle concentric; brown-tile favicon
   restored after the transparent one washed out in the tab; apple-touch PNGs added (PR #1006).
-- **2026-10 · Fable 5.1, default effort** — faithful Leonardo geometry (square rests on the circle, navel-centred).
+- **2026-10 · Fable 5.1, high** — faithful Leonardo geometry (square rests on the circle, navel-centred).
   Real anatomy: eight-head proportions, deltoids/biceps/pectorals/abs/quads/calves etched, hands with
   fingers and thumb, feet with toes, face and shoulder-length hair. Process made repeatable:
   `/redraw-logo` skill + `derive.py` generate every icon from the master; previous round archived.
