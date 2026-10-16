@@ -41,7 +41,7 @@ namespace Humans.Events.Services;
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger)
-    : IEventService, IEventViewInvalidator, IUserDataContributor, IEventSettingsChangeListener, IHostedService
+    : IEventService, IUserDataContributor, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventService"/>
@@ -449,11 +449,6 @@ internal sealed class CachingEventService(
 
     public Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetApprovedEventsForExportAsync(ct));
-
-    // ── IEventViewInvalidator — in-section invalidation hook (no caller) ──
-
-    public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
-        MutateAsync(() => RefreshSettingsAsync(ct));
 
     // ── IEventSettingsChangeListener: Settings-side fan-out ──
 

@@ -67,11 +67,6 @@ public sealed class Section : ISection, IUserPart, ICampPart
         // the existing approved-events cache. Interface segregation only; no new cache layer.
         services.AddSingleton<IEventServiceRead>(sp => sp.GetRequiredService<CachingEventService>());
 
-        // IEventViewInvalidator must resolve to the SAME Singleton instance
-        // that backs IEventService (§15e CRITICAL).
-        services.AddSingleton<IEventViewInvalidator>(sp =>
-            sp.GetRequiredService<CachingEventService>());
-
         // The guide settings projection carries the Settings-owned TimeZoneId, so a
         // Settings-side event-settings save has to refresh it (peterdrier/Humans#1627).
         services.AddSingleton<IEventSettingsChangeListener>(sp =>

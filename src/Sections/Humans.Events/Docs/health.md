@@ -88,8 +88,6 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 - Individual events have a `Draft` status the domain honours (`IsEditableBySubmitter`) that no
   route ever produces. Either a seam for a save-without-submitting flow, or dead (Peter deferred
   the call).
-- `IEventViewInvalidator` has no caller: Settings-side saves reach the decorator through
-  `IEventSettingsChangeListener`. It is kept as a reserved seat at Peter's direction.
 
 ## 6. Deliberately not done
 

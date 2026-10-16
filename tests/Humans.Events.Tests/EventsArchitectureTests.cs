@@ -85,14 +85,11 @@ public class EventsArchitectureTests
     // ── T-03: Caching decorator invariants ───────────────────────────────────
 
     [HumansFact]
-    public void CachingEventService_ImplementsIEventService_AndIEventViewInvalidator()
+    public void CachingEventService_ImplementsIEventService()
     {
         typeof(IEventService).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
                 because: "the decorator wraps the IEventService surface");
-        typeof(IEventViewInvalidator).IsAssignableFrom(typeof(CachingEventService))
-            .Should().BeTrue(
-                because: "§15e — the decorator and its invalidator interface resolve to the same Singleton instance");
     }
 
     [HumansFact]
