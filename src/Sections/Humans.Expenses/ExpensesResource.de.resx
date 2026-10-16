@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fertig</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Neuer Ausgabenbericht</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Kategorie auswählen —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Konto</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Konto auswählen —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Budgetkategorien</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Andere Konten</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Konto nicht gefunden oder nicht mehr verfügbar.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max. 500 Zeichen)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschreibe die Ausgabe…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Entwurf erstellen</value></data>

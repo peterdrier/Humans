@@ -33,16 +33,26 @@
                         <div class="form-text">@Localizer["Expenses_ForMemberHelp"]</div>
                     </div>
 
+                    @* Budget-category accounts route through the team coordinator; other accounts go
+                       straight to Finance. The service derives the category from the account. *@
                     <div class="mb-3">
-                        <label asp-for="BudgetCategoryId" class="form-label">@Localizer["Expenses_BudgetCategory"] <span class="text-danger">*</span></label>
-                        <select asp-for="BudgetCategoryId" class="form-select" required>
-                            <option value="">@Localizer["Expenses_SelectCategory"]</option>
-                            @foreach (var c in Model.Categories)
-                            {
-                                <option value="@c.Id">@c.DisplayName</option>
-                            }
+                        <label asp-for="HoldedAccountNumber" class="form-label">@Localizer["Expenses_HoldedAccount"] <span class="text-danger">*</span></label>
+                        <select asp-for="HoldedAccountNumber" class="form-select" required>
+                            <option value="">@Localizer["Expenses_SelectAccount"]</option>
+                            <optgroup label="@Localizer["Expenses_AccountGroupBudgetCategories"]">
+                                @foreach (var a in Model.Accounts.Where(a => a.IsBudgetCategory))
+                                {
+                                    <option value="@a.AccountNum">@a.Label</option>
+                                }
+                            </optgroup>
+                            <optgroup label="@Localizer["Expenses_AccountGroupOther"]">
+                                @foreach (var a in Model.Accounts.Where(a => !a.IsBudgetCategory))
+                                {
+                                    <option value="@a.AccountNum">@a.AccountNum · @a.Label</option>
+                                }
+                            </optgroup>
                         </select>
-                        <span asp-validation-for="BudgetCategoryId" class="text-danger small"></span>
+                        <span asp-validation-for="HoldedAccountNumber" class="text-danger small"></span>
                     </div>
 
                     <div class="mb-3">

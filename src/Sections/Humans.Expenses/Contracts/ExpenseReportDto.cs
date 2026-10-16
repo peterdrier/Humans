@@ -6,8 +6,13 @@ public sealed record ExpenseReportDto
 {
     public required Guid Id { get; init; }
     public required Guid SubmitterUserId { get; init; }
-    public required Guid BudgetCategoryId { get; init; }
-    public required Guid BudgetYearId { get; init; }
+    /// <summary>Holded expense account the report books to; 0 on rows created before accounts were
+    /// chosen on the report (those book via their category).</summary>
+    public required int HoldedAccountNumber { get; init; }
+    public string? HoldedAccountId { get; init; }
+    /// <summary>Null when the account has no budget-category mapping (no coordinator route).</summary>
+    public required Guid? BudgetCategoryId { get; init; }
+    public required Guid? BudgetYearId { get; init; }
     public required ExpenseReportStatus Status { get; init; }
     public string? Note { get; init; }
     public required string PayeeName { get; init; }

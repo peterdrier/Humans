@@ -20,10 +20,6 @@
    section's .resx would duplicate them ~35 times. A section view that needs one uses
    SharedLocalizer explicitly, so which set a key comes from is visible at the call site. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
-@* Budget_ColCategory is Budget's vocabulary — the report grid's category column IS a budget
-   category — so it went home to BudgetResource at Budget's G5 rather than staying shared
-   (design §15.3b, "when the other owner has already moved, the key goes home"). *@
-@inject IStringLocalizer<BudgetResource> BudgetLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
 @* <vc:audit-log> (Expenses/Detail) is the AuditLog section's own component; without this the

@@ -201,7 +201,7 @@ public class ExpensesPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().Contain("Departamento");          // Expenses_ColDepartment
+        html.Should().Contain("Cuenta");                // Expenses_HoldedAccount
         html.Should().Contain("Enviado por");           // Expenses_ColSubmittedBy
         html.Should().NotContain("Expenses_");
     }

@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fatto</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuovo rapporto spese</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Seleziona una categoria —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Conto</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Seleziona un conto —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categorie di bilancio</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Altri conti</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Conto non trovato o non più disponibile.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facoltativo, max 500 caratteri)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descrivi la spesa…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea bozza</value></data>
