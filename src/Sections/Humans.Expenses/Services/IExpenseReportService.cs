@@ -26,15 +26,17 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (small dataset).</summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
 
-    /// <summary>Creates a draft owned by <paramref name="submitterUserId"/>. When
-    /// <paramref name="actorUserId"/> is someone else, the creation is audited as on-behalf.</summary>
+    /// <summary>Creates a draft owned by <paramref name="submitterUserId"/>, booked to the Holded
+    /// expense account <paramref name="holdedAccountNumber"/> (its budget category, when it has one,
+    /// is derived from Finance's map). When <paramref name="actorUserId"/> is someone else, the
+    /// creation is audited as on-behalf.</summary>
     Task<Guid> CreateDraftAsync(
-        Guid submitterUserId, Guid actorUserId, Guid budgetCategoryId, string? note,
+        Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        Guid budgetCategoryId, string? note,
+        int holdedAccountNumber, string? note,
         CancellationToken ct = default);
 
     /// <summary>
@@ -102,9 +104,10 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set.</summary>
+    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set; a non-null
+    /// <paramref name="overrideAccountNumber"/> rebooks the report to that account.</summary>
     Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
+        Guid reportId, Guid actorUserId, int? overrideAccountNumber, decimal? maxAmount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> FinanceRejectWithResultAsync(

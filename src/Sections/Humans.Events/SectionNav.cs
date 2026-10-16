@@ -7,7 +7,8 @@ namespace Humans.Events;
 
 /// <summary>
 /// Member top-nav contribution — the Events dropdown, gated on the <c>Features:Events</c> flag plus <see cref="PolicyNames.AppAccess"/>. The two
-/// admin sub-groups (guide dashboard/moderation/export, then guide settings/categories/venues)
+/// admin sub-groups (guide dashboard/moderation/export, then guide settings/categories/venues —
+/// guide settings is the <c>/Settings#event-guide</c> tab)
 /// are further gated on <see cref="PolicyNames.EventsAdminOrAdmin"/>, each behind its own
 /// divider so the group appears only when its items do.
 /// </summary>
@@ -30,7 +31,7 @@ internal sealed class SectionNav : ISectionNav
                 new("Moderate Events", Controller: "EventsModeration", Action: "Index", Policy: PolicyNames.EventsAdminOrAdmin),
                 new("Export Guide", Controller: "EventsExport", Action: "Index", Policy: PolicyNames.EventsAdminOrAdmin),
                 new("", Divider: true, Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Guide Settings", Controller: "EventsAdmin", Action: "Settings", Policy: PolicyNames.EventsAdminOrAdmin),
+                new("Guide Settings", RawHref: "/Settings#event-guide", Policy: PolicyNames.EventsAdminOrAdmin),
                 new("Guide Categories", Controller: "EventsAdmin", Action: "Categories", Policy: PolicyNames.EventsAdminOrAdmin),
                 new("Guide Venues", Controller: "EventsAdmin", Action: "Venues", Policy: PolicyNames.EventsAdminOrAdmin)
             ])

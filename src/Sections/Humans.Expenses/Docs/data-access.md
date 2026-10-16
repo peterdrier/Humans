@@ -23,8 +23,9 @@ Repository: `IExpenseRepository`.
 Cross-section calls via `IFileStorage`, `IBudgetServiceRead`, `ITeamServiceRead`,
 `IUserService`, `IUserEmailService`, `IEmailService`, `IAuditLogService`, `IHoldedClient`,
 `IHoldedFinanceService` (Finance section — creditor balance exposure to
-expense submitters). Implements `IUserDataContributor`. No
-`IMemoryCache`.
+expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
+account a report books to and the budget category it maps to). Implements
+`IUserDataContributor`. No `IMemoryCache`.
 
 ### ExpenseReportBackgroundProcessor (Scoped)
 

@@ -83,6 +83,7 @@ public sealed class ExpensesControllerTests
         {
             Id = reportId,
             SubmitterUserId = Guid.NewGuid(),
+            HoldedAccountNumber = 0,
             BudgetCategoryId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
             Status = ExpenseReportStatus.Draft,
@@ -125,6 +126,7 @@ public sealed class ExpensesControllerTests
         {
             Id = reportId,
             SubmitterUserId = isSubmitter ? actorId : Guid.NewGuid(),
+            HoldedAccountNumber = 0,
             BudgetCategoryId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
             Status = status,
@@ -196,6 +198,7 @@ public sealed class ExpensesControllerTests
         {
             Id = reportId,
             SubmitterUserId = actorId,
+            HoldedAccountNumber = 0,
             BudgetCategoryId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
             Status = ExpenseReportStatus.Draft,
@@ -257,6 +260,7 @@ public sealed class ExpensesControllerTests
             SubmitterUserId = Guid.NewGuid(),
             BudgetCategoryId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
+            HoldedAccountNumber = 0,
             Status = ExpenseReportStatus.Submitted,
             PayeeName = "Submitter",
             PayeeIban = "",

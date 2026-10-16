@@ -9,6 +9,8 @@ internal static class ExpenseReportMapper
     {
         Id = r.Id,
         SubmitterUserId = r.SubmitterUserId,
+        HoldedAccountNumber = r.HoldedAccountNumber,
+        HoldedAccountId = r.HoldedAccountId,
         BudgetCategoryId = r.BudgetCategoryId,
         BudgetYearId = r.BudgetYearId,
         Status = r.Status,

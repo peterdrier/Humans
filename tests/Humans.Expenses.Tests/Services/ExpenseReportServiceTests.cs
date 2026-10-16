@@ -73,6 +73,13 @@ public sealed class ExpenseReportServiceTests
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
+
+    /// <summary>The Holded account Finance maps the active year's test category to.</summary>
+    private const int CategoryAccountNumber = 62900101;
+    private const string CategoryAccountId = "acc-cat";
+    /// <summary>A managed account with no budget-category mapping: books straight to Finance.</summary>
+    private const int OtherAccountNumber = 62900900;
+    private const string OtherAccountId = "acc-other";
     private readonly ExpenseReportBackgroundProcessor _backgroundProcessor;
 
     private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
@@ -168,7 +175,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var actorId = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(actorId, actorId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await using var stream = new MemoryStream([1, 2, 3]);
         var attachmentIdOutcome = await _sut.AttachFileToLineWithResultAsync(
@@ -271,7 +278,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (year, category) = SetupActiveYear();
         var actorId = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(actorId, actorId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, false, "Invoice", 10m,
             lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
@@ -374,7 +381,7 @@ public sealed class ExpenseReportServiceTests
         var (year, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
 
-        var id = await _sut.CreateDraftAsync(userId, userId, category.Id, "test note", Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, "test note", Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded.Should().NotBeNull();
@@ -389,12 +396,67 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task CreateDraftAsync_Throws_WhenNoActiveYear()
     {
+        // A budget-category account needs the active year to pin the draft's category to.
+        SetupActiveYear();
         _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
 
         var submitter = Guid.NewGuid();
-        var act = async () => await _sut.CreateDraftAsync(submitter, submitter, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*No active budget year*");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_Throws_WhenAccountIsNotOffered()
+    {
+        SetupActiveYear();
+
+        var submitter = Guid.NewGuid();
+        var act = async () => await _sut.CreateDraftAsync(submitter, submitter, 62999999, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Expenses_Validation_AccountNotFound*");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_StoresTheAccount_AndDerivesItsCategory()
+    {
+        var (year, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+
+        var id = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.HoldedAccountNumber.Should().Be(CategoryAccountNumber);
+        loaded.HoldedAccountId.Should().Be(CategoryAccountId);
+        loaded.BudgetCategoryId.Should().Be(category.Id);
+        loaded.BudgetYearId.Should().Be(year.Id);
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_OnAnUnmappedAccount_HasNoCategoryAndNoYear()
+    {
+        SetupActiveYear();
+        var userId = Guid.NewGuid();
+
+        var id = await _sut.CreateDraftAsync(userId, userId, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.HoldedAccountNumber.Should().Be(OtherAccountNumber);
+        loaded.HoldedAccountId.Should().Be(OtherAccountId);
+        loaded.BudgetCategoryId.Should().BeNull();
+        loaded.BudgetYearId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_OnAnUnmappedAccount_NeedsNoActiveYear()
+    {
+        SetupActiveYear();
+        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        var userId = Guid.NewGuid();
+
+        var id = await _sut.CreateDraftAsync(userId, userId, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.BudgetYearId.Should().BeNull();
     }
 
     [HumansFact]
@@ -402,7 +464,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         // No audit on mere draft creation
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
@@ -415,9 +477,9 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.UpdateDraftWithResultAsync(id, other, false, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateDraftWithResultAsync(id, other, false, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_OnlySubmitterCanEdit");
     }
@@ -427,9 +489,9 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, category.Id, "updated note", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, CategoryAccountNumber, "updated note", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Error.Should().BeNull();
@@ -443,9 +505,9 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.UpdateDraftWithResultAsync(id, other, false, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateDraftWithResultAsync(id, other, false, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_OnlySubmitterCanEdit");
@@ -465,8 +527,8 @@ public sealed class ExpenseReportServiceTests
         var me = Guid.NewGuid();
         var other = Guid.NewGuid();
 
-        await _sut.CreateDraftAsync(me, me, category.Id, null, Xunit.TestContext.Current.CancellationToken);
-        await _sut.CreateDraftAsync(other, other, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CreateDraftAsync(me, me, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CreateDraftAsync(other, other, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var mine = await _sut.GetForSubmitterAsync(me, Xunit.TestContext.Current.CancellationToken);
         mine.Should().HaveCount(1);
@@ -480,7 +542,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Supplies", 25.50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
@@ -498,7 +560,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, other, false, "x", 10m, ct: Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -510,7 +572,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, submitter, false, "Supplies", 25.50m, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -526,7 +588,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, other, false, "x", 10m, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -539,7 +601,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineA = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         (await _sut.AddLineWithResultAsync(id, submitter, false, "B", 20m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -555,7 +617,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineA = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         (await _sut.AddLineWithResultAsync(id, submitter, false, "B", 20m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -573,7 +635,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         var result = await _sut.RemoveLineWithResultAsync(id, other, false, lineId, Xunit.TestContext.Current.CancellationToken);
@@ -587,7 +649,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await _sut.UpdateLineWithResultAsync(id, submitter, false, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
@@ -604,7 +666,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         var result = await _sut.UpdateLineWithResultAsync(id, submitter, false, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
@@ -621,7 +683,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         var result = await _sut.UpdateLineWithResultAsync(id, other, false, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
@@ -635,7 +697,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m, Xunit.TestContext.Current.CancellationToken);
         var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines[0];
         var originalAmount = line.Amount;
@@ -653,7 +715,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -685,7 +747,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -703,7 +765,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -719,7 +781,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await using var stream = new MemoryStream([1, 2, 3]);
 
@@ -749,7 +811,7 @@ public sealed class ExpenseReportServiceTests
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream(new byte[byteCount]);
@@ -802,6 +864,7 @@ public sealed class ExpenseReportServiceTests
             {
                 Id = reportId,
                 SubmitterUserId = actorId,
+                HoldedAccountNumber = 0,
                 BudgetCategoryId = Guid.NewGuid(),
                 BudgetYearId = Guid.NewGuid(),
                 Status = ExpenseReportStatus.Draft,
@@ -869,7 +932,7 @@ public sealed class ExpenseReportServiceTests
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await sut.AddLineWithResultAsync(
             id, submitter, false, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
@@ -888,7 +951,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -917,7 +980,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -932,7 +995,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         var wrongLineId = Guid.NewGuid();
 
@@ -948,7 +1011,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         // Seed attachment directly through repo
@@ -990,7 +1053,7 @@ public sealed class ExpenseReportServiceTests
             Options.Create(new TravelReimbursementConfig()));
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actor = Guid.NewGuid();
-        var id = await service.CreateDraftAsync(actor, actor, category.Id, null, ct);
+        var id = await service.CreateDraftAsync(actor, actor, CategoryAccountNumber, null, ct);
         var lineId = (await service.AddLineWithResultAsync(id, actor, false, "Item", 10m, ct: ct)).LineId!.Value;
         var attachment = MakeAttachment(actor);
         await repo.ReplaceLineAttachmentAsync(id, lineId, attachment, ct);
@@ -1014,7 +1077,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         // No attachment on the line — should not throw
@@ -1030,7 +1093,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var invoiceId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice 2026-042", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -1046,7 +1109,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var receiptId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Plain receipt", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         var result = await _sut.AddLineWithResultAsync(id, submitter, false, "Proof", 10m, parentLineId: receiptId, ct: Xunit.TestContext.Current.CancellationToken);
@@ -1059,7 +1122,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, submitter, false, "Proof", 10m, parentLineId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1072,7 +1135,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         using var content = new MemoryStream([1, 2, 3]);
         var result = await _sut.AddLineWithResultAsync(
@@ -1100,7 +1163,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("disk full"));
 
@@ -1129,7 +1192,7 @@ public sealed class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, ct);
         using var uploadCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
@@ -1162,7 +1225,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, ct);
         _userService.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(
                 new IOException("member lookup unavailable"))));
@@ -1191,7 +1254,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, ct);
         var lineId = (await _sut.AddLineWithResultAsync(
             id, member, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var attachment = MakeAttachment(member);
@@ -1218,7 +1281,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         string? storedKey = null;
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -1257,7 +1320,7 @@ public sealed class ExpenseReportServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, ct);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, ct);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var previous = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previous, ct);
@@ -1289,7 +1352,7 @@ public sealed class ExpenseReportServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, ct);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, ct);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: ct)).LineId!.Value;
         var previous = MakeAttachment(submitter);
         previous.HoldedUploadedAt = Clock.GetCurrentInstant();
@@ -1326,7 +1389,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 40m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var previousAttachment = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previousAttachment, Xunit.TestContext.Current.CancellationToken);
@@ -1366,7 +1429,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         using var content = new MemoryStream([1, 2, 3]);
         var result = await _sut.AddLineWithResultAsync(
@@ -1385,7 +1448,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, submitter, false, "Trip", 26m, ExpenseLineType.Mileage, ct: Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1399,7 +1462,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var invoiceId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var proofId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Timber", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
@@ -1445,7 +1508,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice, no file", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
@@ -1459,7 +1522,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var invoiceId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var invoiceFile = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, invoiceId, invoiceFile, Xunit.TestContext.Current.CancellationToken);
@@ -1478,7 +1541,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
@@ -1500,7 +1563,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
@@ -1513,7 +1576,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         (await _sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
@@ -1527,7 +1590,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
@@ -1545,7 +1608,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
@@ -1566,7 +1629,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
@@ -1599,7 +1662,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         (await _sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
@@ -1614,7 +1677,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m, Xunit.TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
@@ -1629,7 +1692,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddLineWithResultAsync(id, submitter, false, "Tent", 50m, ct: Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
@@ -1650,7 +1713,7 @@ public sealed class ExpenseReportServiceTests
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         (await sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue(); // Receipt line, no attachment
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
@@ -1679,7 +1742,7 @@ public sealed class ExpenseReportServiceTests
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await sut.AddLineWithResultAsync(id, submitter, false, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
@@ -1717,7 +1780,7 @@ public sealed class ExpenseReportServiceTests
             Options.Create(new TravelReimbursementConfig()));
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null,
+        var id = await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null,
             Xunit.TestContext.Current.CancellationToken);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
             Xunit.TestContext.Current.CancellationToken);
@@ -1892,7 +1955,7 @@ public sealed class ExpenseReportServiceTests
         var admin = Guid.NewGuid();
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
 
-        var id = await _sut.CreateDraftAsync(member, admin, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.SubmitterUserId.Should().Be(member, "the report belongs to the member, not the admin who filed it");
@@ -1919,7 +1982,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, category.Id, year.Id,
             ExpenseReportStatus.CoordinatorEndorsed);
 
-        await _sut.UpdateDraftWithResultAsync(reportId, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(reportId, admin, true, CategoryAccountNumber, "corrected", Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.Note.Should().Be("corrected");
@@ -1937,12 +2000,14 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         var oldYearId = Guid.NewGuid();
         var oldCategoryId = Guid.NewGuid();
+        const int oldAccountNumber = 62900102;
         _budgetService.GetCategoryByIdAsync(oldCategoryId)
             .Returns(MakeCategorySnapshot(oldCategoryId, null, "Last Year Category", null, oldYearId));
+        StubExpenseAccounts((oldCategoryId, oldAccountNumber, "acc-old"));
         await SeedReportWithStatus(reportId, member, oldCategoryId, oldYearId,
             ExpenseReportStatus.Submitted);
 
-        await _sut.UpdateDraftWithResultAsync(reportId, admin, true, oldCategoryId, "corrected", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(reportId, admin, true, oldAccountNumber, "corrected", Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.Note.Should().Be("corrected");
@@ -1953,7 +2018,7 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task UpdateDraftAsync_OnAPendingReport_RejectsACategoryFromAnotherYear()
     {
-        var (_, activeCategory) = SetupActiveYear();
+        SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
@@ -1961,9 +2026,9 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, Guid.NewGuid(), oldYearId,
             ExpenseReportStatus.Submitted);
 
-        // activeCategory belongs to the active year, not to this report's year.
+        // The category account maps to the active year, not to this report's year.
         var result = await _sut.UpdateDraftWithResultAsync(
-            reportId, admin, true, activeCategory.Id, "reclassified", Xunit.TestContext.Current.CancellationToken);
+            reportId, admin, true, CategoryAccountNumber, "reclassified", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_CategoryDifferentBudgetYear");
@@ -1981,7 +2046,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
 
-        await _sut.UpdateDraftWithResultAsync(reportId, submitter, false, category.Id, "note", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(reportId, submitter, false, CategoryAccountNumber, "note", Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.BudgetYearId.Should().Be(year.Id);
@@ -1996,9 +2061,9 @@ public sealed class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.UpdateDraftWithResultAsync(id, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(id, admin, true, CategoryAccountNumber, "corrected", Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _sut.UpdateLineWithResultAsync(id, admin, true, lineId, "Supplies (corrected)", 30m, Xunit.TestContext.Current.CancellationToken);
         await _sut.RemoveLineWithResultAsync(id, admin, true, lineId, Xunit.TestContext.Current.CancellationToken);
@@ -2023,9 +2088,9 @@ public sealed class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.UpdateDraftWithResultAsync(id, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(id, admin, true, CategoryAccountNumber, "corrected", Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _sut.UpdateLineWithResultAsync(id, admin, true, lineId, "Supplies (corrected)", 30m, Xunit.TestContext.Current.CancellationToken);
         await _sut.RemoveLineWithResultAsync(id, admin, true, lineId, Xunit.TestContext.Current.CancellationToken);
@@ -2044,9 +2109,9 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.UpdateDraftWithResultAsync(id, submitter, false, category.Id, "my note", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateDraftWithResultAsync(id, submitter, false, CategoryAccountNumber, "my note", Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _sut.UpdateLineWithResultAsync(id, submitter, false, lineId, "Supplies", 30m, Xunit.TestContext.Current.CancellationToken);
         await _sut.RemoveLineWithResultAsync(id, submitter, false, lineId, Xunit.TestContext.Current.CancellationToken);
@@ -2063,7 +2128,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
@@ -2078,7 +2143,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var other = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddLineWithResultAsync(id, other, false, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -2093,7 +2158,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, admin, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(admin), Xunit.TestContext.Current.CancellationToken);
@@ -2156,7 +2221,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(member, admin, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(id, admin, true, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -2332,6 +2397,52 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
         loaded.CoordinatorEndorsedByUserId.Should().Be(coordinator);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseAsync_IsRefused_OnAReportOutsideTheBudget()
+    {
+        // An account with no budget-category mapping has no coordinator: the report goes
+        // straight to Finance, and nobody can endorse it on the way.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+        await using (var ctx = new ExpensesDbContext(_expensesOptions))
+        {
+            var tracked = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
+            tracked.Status = ExpenseReportStatus.Submitted;
+            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, Guid.NewGuid(), false, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.OperatorMessage.Should().Contain("not booked to a budget category");
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        (await _sut.CategoryRequiresCoordinatorEndorsementAsync(null, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_ForACoordinator_SkipsReportsOutsideTheBudget()
+    {
+        var (year, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var submitter = Guid.NewGuid();
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinator, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var inBudget = Guid.NewGuid();
+        await SeedReportWithStatus(inBudget, submitter, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        var outsideBudget = await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+        await using (var ctx = new ExpensesDbContext(_expensesOptions))
+        {
+            var tracked = await ctx.ExpenseReports.SingleAsync(r => r.Id == outsideBudget, Xunit.TestContext.Current.CancellationToken);
+            tracked.Status = ExpenseReportStatus.Submitted;
+            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+
+        var queue = await _sut.GetReviewQueueAsync(coordinator, isFinanceAdmin: false, Xunit.TestContext.Current.CancellationToken);
+
+        queue.Select(r => r.Id).Should().BeEquivalentTo([inBudget]);
     }
 
     [HumansFact]
@@ -2683,16 +2794,21 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_WithOverrideCategory_AuditsBoth()
+    public async Task ApproveAsync_WithOverrideAccount_AuditsBoth_AndRebooks()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        var overrideCatId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
-        (await _sut.ApproveWithResultAsync(reportId, actor, overrideCatId, null, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.ApproveWithResultAsync(reportId, actor, OtherAccountNumber, null, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.HoldedAccountNumber.Should().Be(OtherAccountNumber);
+        loaded.HoldedAccountId.Should().Be(OtherAccountId);
+        loaded.BudgetCategoryId.Should().BeNull();
+        loaded.BudgetYearId.Should().BeNull();
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseApprove,
@@ -2702,6 +2818,49 @@ public sealed class ExpenseReportServiceTests
             AuditAction.ExpenseCategoryOverride,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_WithOverrideAccount_RefusesACategoryFromAnotherYear()
+    {
+        SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var oldYearId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), Guid.NewGuid(), oldYearId,
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.ApproveWithResultAsync(reportId, actor, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_CategoryDifferentBudgetYear");
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        loaded.BudgetYearId.Should().Be(oldYearId);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_WithTheSameAccount_DoesNotAuditAnOverride()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var submitter = Guid.NewGuid();
+        var reportId = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
+        await using (var ctx = new ExpensesDbContext(_expensesOptions))
+        {
+            var tracked = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
+            tracked.Status = ExpenseReportStatus.Submitted;
+            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+
+        (await _sut.ApproveWithResultAsync(reportId, actor, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.BudgetCategoryId.Should().Be(category.Id);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -2910,7 +3069,7 @@ public sealed class ExpenseReportServiceTests
         var userId = Guid.NewGuid();
         var (_, category) = SetupActiveYear();
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
-        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
@@ -2934,11 +3093,11 @@ public sealed class ExpenseReportServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
-        var (_, category) = SetupActiveYear();
+        SetupActiveYear();
         SetupUserAndProfile(sourceId, "Alice Old", "ES9121000418450200051332");
         SetupUserAndProfile(survivorId, "Alice Tester", "ES9121000418450200051332");
-        var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId, category.Id);
-        var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId, category.Id);
+        var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId);
+        var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId);
         foreach (var (reportId, docId) in new[] { (survivorReportId, "doc-1"), (sourceReportId, "doc-2") })
         {
             await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, ct);
@@ -2969,7 +3128,7 @@ public sealed class ExpenseReportServiceTests
         var userId = Guid.NewGuid();
         var (_, category) = SetupActiveYear();
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
-        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id, maxAmount: 30m);
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, maxAmount: 30m);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
@@ -3000,7 +3159,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
 
-        var reportId = await _sut.CreateDraftAsync(userId, userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var reportId = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
         var lineAId = (await _sut.AddLineWithResultAsync(reportId, userId, false, "A", 40m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         var lineBId = (await _sut.AddLineWithResultAsync(reportId, userId, false, "B", 60m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         foreach (var lineId in new[] { lineAId, lineBId })
@@ -3035,7 +3194,7 @@ public sealed class ExpenseReportServiceTests
         var userId = Guid.NewGuid();
         var (_, category) = SetupActiveYear();
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
-        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
@@ -3058,7 +3217,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(userId, userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddMileageLineWithResultAsync(id, userId, "Berlin", "Barcelona", 1281m, Xunit.TestContext.Current.CancellationToken);
 
@@ -3075,7 +3234,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(userId, userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.Overnight, 3, "Assembly Madrid", Xunit.TestContext.Current.CancellationToken);
 
@@ -3092,7 +3251,7 @@ public sealed class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(userId, userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var id = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, null, Xunit.TestContext.Current.CancellationToken);
 
         await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.DayTrip, 1, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -3142,12 +3301,12 @@ public sealed class ExpenseReportServiceTests
             .Returns(new byte[] { 1, 2, 3 });
 
         // First report links the member to contact-123 — this is the pre-existing Holded contact.
-        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await SeedApprovedReportWithAttachmentAsync(userId);
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
         _holdedFinance.ClearReceivedCalls();
 
         // Act — a fresh report for the same member carries no contact id of its own.
-        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await SeedApprovedReportWithAttachmentAsync(userId);
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — the earlier report's contact id (and its account number) are passed as the seed,
@@ -3167,7 +3326,7 @@ public sealed class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(
                 firstName: "Maria", lastName: "Garcia", iban: "ES9121000418450200051332")));
-        var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId, category.Id);
+        var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId);
         var line = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0];
 
         _holdedFinance.EnsureCreditorContactAsync(
@@ -3229,7 +3388,7 @@ public sealed class ExpenseReportServiceTests
                 iban: iban)));
 
         // Seed approved report with an attachment via the real service flow
-        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
 
         // Reload so we can verify the line's attachment key for fileStorage
         var reportBefore = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
@@ -3288,9 +3447,9 @@ public sealed class ExpenseReportServiceTests
     /// using the real sut + expenseRepo, so the outbox event row is written.
     /// </summary>
     private async Task<Guid> SeedApprovedReportWithAttachmentAsync(
-        Guid submitterId, Guid categoryId, decimal? maxAmount = null)
+        Guid submitterId, decimal? maxAmount = null)
     {
-        var reportId = await _sut.CreateDraftAsync(submitterId, submitterId, categoryId, "outbox test note", Xunit.TestContext.Current.CancellationToken);
+        var reportId = await _sut.CreateDraftAsync(submitterId, submitterId, CategoryAccountNumber, "outbox test note", Xunit.TestContext.Current.CancellationToken);
         var lineId = (await _sut.AddLineWithResultAsync(reportId, submitterId, false, "Test line", 50m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
 
         await using var stream = new MemoryStream([7, 8, 9]);
@@ -3354,8 +3513,26 @@ public sealed class ExpenseReportServiceTests
         _budgetService.GetActiveYearAsync().Returns(yearDetail);
         _budgetService.GetYearByIdAsync(yearId).Returns(yearDetail);
         _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
+        StubExpenseAccounts((categoryId, CategoryAccountNumber, CategoryAccountId));
 
         return (yearDetail, category);
+    }
+
+    /// <summary>
+    /// Stubs Finance's expense-account list and category map: one budget-category account per
+    /// <paramref name="categoryAccounts"/> entry, plus <see cref="OtherAccountNumber"/> as the one
+    /// managed account outside the budget.
+    /// </summary>
+    private void StubExpenseAccounts(params (Guid CategoryId, int AccountNumber, string AccountId)[] categoryAccounts)
+    {
+        var options = categoryAccounts
+            .Select(a => new HoldedExpenseAccountOption(a.AccountNumber, a.AccountId, $"Category {a.AccountNumber}", IsBudgetCategory: true, IsActive: true))
+            .Append(new HoldedExpenseAccountOption(OtherAccountNumber, OtherAccountId, "Other account", IsBudgetCategory: false, IsActive: true))
+            .ToList();
+        _holdedFinance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(options);
+        _holdedFinance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(categoryAccounts
+            .Select(a => new HoldedCategoryMapRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", true, FakeNow))
+            .ToList());
     }
 
     /// <summary>

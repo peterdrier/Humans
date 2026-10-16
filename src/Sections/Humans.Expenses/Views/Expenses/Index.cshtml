@@ -122,7 +122,7 @@ else
     var reportRows = Model.Reports.OrderByDescending(x => x.CreatedAt).ToList();
     var reportsTable = TableModel.For(reportRows)
         .Column(SharedLocalizer["Common_Created"].Value, r => r.CreatedAt, c => c.Date())
-        .Column(BudgetLocalizer["Budget_ColCategory"].Value, r => Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())
+        .Column(Localizer["Expenses_HoldedAccount"].Value, r => Model.BookingLabels.TryGetValue(r.Id, out var booking) ? booking : SharedLocalizer["Common_Unknown"].Value)
         .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 60 } n
             ? n[..(char.IsHighSurrogate(n[59]) && char.IsLowSurrogate(n[60]) ? 59 : 60)] + "…" : r.Note)
         .Template(SharedLocalizer["Common_Status"].Value, reportStatusCell)

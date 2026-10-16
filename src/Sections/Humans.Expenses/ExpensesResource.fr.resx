@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Compte</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Sélectionnez un compte —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Catégories budgétaires</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Autres comptes</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Compte introuvable ou plus disponible.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>

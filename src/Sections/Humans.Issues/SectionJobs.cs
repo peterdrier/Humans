@@ -8,7 +8,6 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Clean up issues 6 months after they entered a terminal state.
         yield return new RecurringJobDescriptor(
             "issues-cleanup", typeof(CleanupIssuesJob), "0 5 * * *");
     }

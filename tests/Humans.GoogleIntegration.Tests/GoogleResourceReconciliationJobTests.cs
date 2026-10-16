@@ -60,24 +60,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(
-                GoogleResourceType.DriveFolder,
-                SyncAction.Execute,
-                Arg.Any<CancellationToken>(),
-                GoogleSyncSource.ScheduledSync);
-        await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(
-                GoogleResourceType.DriveFile,
-                SyncAction.Execute,
-                Arg.Any<CancellationToken>(),
-                GoogleSyncSource.ScheduledSync);
-        await _googleSyncService.DidNotReceive()
-            .SyncResourcesByTypeAsync(
-                GoogleResourceType.Group,
-                Arg.Any<SyncAction>(),
-                Arg.Any<CancellationToken>(),
-                Arg.Any<GoogleSyncSource>());
+        await _googleSyncService.DidNotReceiveWithAnyArgs()
+            .SyncResourcesByTypeAsync(default, default, default, default);
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
         await _googleDriveSync.Received(1)
@@ -126,21 +110,42 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ExecuteAsync_WhenDriveResultHasErrors_RecordsPartialFailureAndNotifiesSyncError()
+    {
+        _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new GroupSettingsDriftResult());
+        _googleDriveSync.ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>())
+            .Returns(new SyncPreviewResult
+            {
+                Diffs = [new ResourceSyncDiff { ErrorMessage = "Drive API failed" }]
+            });
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _metrics.Received(1).RecordJobRun("google_resource_reconciliation", "partial_failure");
+        _metrics.DidNotReceive().RecordJobRun("google_resource_reconciliation", "success");
+        await _notifications.Received(1).SendToRoleAsync(
+            NotificationSource.SyncError,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            RoleNames.Admin,
+            Arg.Is<string?>(b => b != null && b.Contains("Drive access source reconcile")),
+            "/Google/Sync",
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ExecuteAsync_PropagatesCancellation_InsteadOfTreatingItAsPhaseFailure()
     {
-        _googleSyncService.SyncResourcesByTypeAsync(
-                GoogleResourceType.DriveFolder,
-                SyncAction.Execute,
-                Arg.Any<CancellationToken>(),
-                GoogleSyncSource.ScheduledSync)
+        _googleDriveSync.ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException());
 
         Func<Task> act = () => _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         await _googleGroupSync.DidNotReceive()
-            .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
-        await _googleDriveSync.DidNotReceive()
             .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
     }
 }

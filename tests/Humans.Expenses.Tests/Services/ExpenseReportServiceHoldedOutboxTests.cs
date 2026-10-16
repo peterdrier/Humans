@@ -126,6 +126,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Id = reportId,
             SubmitterUserId = SubmitterId,
+            HoldedAccountNumber = 0,
             BudgetCategoryId = CategoryId,
             BudgetYearId = Guid.NewGuid(),
             Status = ExpenseReportStatus.Approved,
@@ -342,6 +343,41 @@ public class ExpenseReportServiceHoldedOutboxTests
                 i.Lines.Count == 1 &&
                 string.Equals(i.Lines[0].AccountId, "holded-acc-629001", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_BooksLinesToTheAccountChosenOnTheReport()
+    {
+        // A report that names its own account books there directly; the category map is only
+        // the fallback for rows that predate the account column.
+        var report = MakeReport() with
+        {
+            HoldedAccountNumber = 62900900,
+            HoldedAccountId = "holded-acc-629009",
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+            },
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+
+        await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i =>
+                i.Lines.Count == 1 &&
+                string.Equals(i.Lines[0].AccountId, "holded-acc-629009", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _holdedFinance.DidNotReceive().GetHoldedAccountIdForCategoryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

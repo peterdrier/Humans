@@ -81,8 +81,8 @@ public sealed class EventTests
     [HumansFact]
     public void Withdraw_CampEventInDraft_Throws()
     {
-        // Camp (barrio) events have no Draft stage — the asymmetry the
-        // controllers used to encode is now owned by the entity (E2-E4).
+        // Camp (barrio) events have no Draft stage — the entity owns
+        // that asymmetry.
         var guideEvent = CreateEvent(EventStatus.Draft);
         guideEvent.CampId = Guid.NewGuid();
 

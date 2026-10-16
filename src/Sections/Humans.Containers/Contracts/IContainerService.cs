@@ -17,9 +17,8 @@ public interface IContainerService : IApplicationService
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Update a placement's notes and/or sketch image. Requires the placement row
-    /// to already exist (i.e., the container has been placed for the given year).
-    /// Returns a refusal key if no placement row exists.
+    /// Update a placement's notes and/or sketch image. Returns a refusal key if the
+    /// container has no placement row for the year.
     /// </summary>
     Task<ContainerMutationResult<ContainerPlacementDto>> UpdatePlacementNotesAsync(
         Guid containerId,
@@ -54,7 +53,7 @@ public record ContainerImageUpload(Stream Content, string ContentType, string Fi
 
 /// <summary>
 /// One image in a container's gallery, in display order. <see cref="Id"/> is
-/// <see cref="Guid.Empty"/> for the pre-nobodies-collective/Humans#797 single image still held in the
+/// <see cref="Guid.Empty"/> for the legacy single image still held in the
 /// <c>containers</c> image columns; every other id is a <c>container_images</c> row.
 /// </summary>
 public record ContainerImageDto(Guid Id, string Url, string? FileName);

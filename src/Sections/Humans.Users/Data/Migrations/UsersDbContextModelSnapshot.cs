@@ -552,6 +552,10 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ProfilePictureStorageKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Pronouns")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");

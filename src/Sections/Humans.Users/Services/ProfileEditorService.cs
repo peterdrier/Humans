@@ -6,7 +6,6 @@ namespace Humans.Users.Services;
 
 internal sealed class ProfileEditorService(
     IUserServiceInternal userService,
-    IFileStorage fileStorage,
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {
     // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
@@ -44,7 +43,6 @@ internal sealed class ProfileEditorService(
                 request.ProfilePictureData,
                 ct);
 
-            await CleanupPreviousProfilePictureAsync(storageResult);
             profileId = storageResult.ProfileId;
         }
 
@@ -138,27 +136,5 @@ internal sealed class ProfileEditorService(
 
         await userService.SaveDietaryMedicalAsync(userId, command, ct);
         return new(true);
-    }
-
-    private async Task CleanupPreviousProfilePictureAsync(UserProfileSaveResult storageResult)
-    {
-        if (storageResult.PreviousProfilePictureContentType is null
-            || string.Equals(storageResult.PreviousProfilePictureContentType,
-                storageResult.CurrentProfilePictureContentType, StringComparison.Ordinal))
-            return;
-
-        try
-        {
-            await fileStorage.DeleteAsync(
-                ProfilePictureStorageKeys.ProfilePictureKey(
-                    storageResult.ProfileId, storageResult.PreviousProfilePictureContentType),
-                CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
-                storageResult.ProfileId);
-        }
     }
 }

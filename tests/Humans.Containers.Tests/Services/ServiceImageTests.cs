@@ -454,6 +454,19 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_RejectsNonImageContentTypeEvenWithAnImageExtension()
+    {
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: "Bad",
+            Description: null,
+            NewImages: [new(Stream.Null, "text/html", "page.png", 1024)]), ct: TestContext.Current.CancellationToken);
+
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageType");
+        await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateAsync_RejectsImageOver10MB()
     {
         var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(

@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Campaigns/Contracts/**
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
@@ -99,4 +98,4 @@ See [24. Ticket Vendor Integration](../../../Humans.Tickets/Docs/features/ticket
 
 ## Related
 
-- [Campaigns section invariants](../Campaigns.md) — current data model, routing, and architecture status (own project since G5, nobodies-collective/Humans#866; `CampaignsDbContext` owns the `campaign*` tables)
+- [Campaigns section invariants](../Campaigns.md) — current data model, routing, and architecture status

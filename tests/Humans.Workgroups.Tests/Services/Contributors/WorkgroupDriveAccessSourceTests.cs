@@ -31,7 +31,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync("withdrawn-folder", Ct);
 
-        access.Should().ContainKey("withdrawn-folder").WhoseValue.Should().BeEmpty();
+        access.Should().ContainKey("withdrawn-folder").WhoseValue.Access.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -43,7 +43,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("folder-1");
-        access["folder-1"].Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.ContentManager);
+        access["folder-1"].Access.Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.ContentManager);
     }
 
     [HumansFact]
@@ -55,7 +55,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
-        access["folder-2"][coordinator].Should().Be(DrivePermissionLevel.Viewer);
+        access["folder-2"].Access[coordinator].Should().Be(DrivePermissionLevel.Viewer);
     }
 
     [HumansFact]
@@ -78,7 +78,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync("folder-p", Ct);
 
-        access["folder-p"].Should().NotContainKey(requester);
+        access["folder-p"].Access.Should().NotContainKey(requester);
     }
 
     [HumansFact]
@@ -104,7 +104,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("root-folder");
-        var readers = access["root-folder"];
+        var readers = access["root-folder"].Access;
         readers[boardUserId].Should().Be(DrivePermissionLevel.Viewer);
         // The root is the register's shelf for the Board; everyone else reaches only their groups' subfolders.
         readers.Should().NotContainKey(colaborador);

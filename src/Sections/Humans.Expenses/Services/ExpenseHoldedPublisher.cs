@@ -66,9 +66,13 @@ internal sealed class ExpenseHoldedPublisher(
         // retryable doc-create + attachment steps; the supplier-account number is set in step 5.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
-        // Books items[].account directly at doc creation — the account IS the category. Null when
-        // the category has no active mapping; the doc still creates, just unbooked.
-        var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
+        // Books items[].account directly at doc creation to the account chosen on the report.
+        // Reports that predate the account column still resolve through their category's mapping;
+        // null when there is none, and the doc still creates, just unbooked.
+        var holdedAccountId = report.HoldedAccountId
+            ?? (report.BudgetCategoryId is { } categoryId
+                ? await holdedFinance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
+                : null);
 
         // 2–4. One purchase doc per bookable line, each carrying its one receipt. A report pushed
         // before per-line docs carries a report-level doc id instead: that push resumes onto its

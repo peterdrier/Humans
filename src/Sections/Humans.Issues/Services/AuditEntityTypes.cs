@@ -10,13 +10,7 @@ namespace Humans.Issues.Services;
 /// they are a data contract with every row already in the database — not a view of the
 /// current CLR type names.
 /// </para>
-/// <para>
-/// They were written as <c>nameof(Issue)</c>, which would silently change what the code
-/// writes and queries if the entity were renamed. Declaring the literal is what makes a
-/// rename schema-inert the way the EF <c>ToTable</c> calls already are
-/// (memory/code/type-name-as-persisted-string.md). Never regenerate these from
-/// <c>nameof</c>.
-/// </para>
+/// <para>Literal, never <c>nameof</c>: an entity rename must not change what is written or queried (memory/code/type-name-as-persisted-string.md).</para>
 /// </remarks>
 internal static class AuditEntityTypes
 {

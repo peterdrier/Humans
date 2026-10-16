@@ -55,6 +55,23 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
+    public async Task Withdraw_approved_event_records_the_moderator()
+    {
+        var moderatorId = Guid.NewGuid();
+        var guideEvent = new Event { Id = Guid.NewGuid(), Title = "Approved event", Status = EventStatus.Approved };
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+
+        var controller = BuildController(moderatorId, guideEvent.Id);
+
+        await controller.Withdraw(new ModerationActionFormModel { EventId = guideEvent.Id });
+
+        await _guide.Received(1).ModeratorWithdrawAsync(guideEvent, moderatorId, Arg.Any<CancellationToken>());
+        await _guide.DidNotReceive().WithdrawEventAsync(Arg.Any<Event>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Index_carries_the_actor_of_each_history_entry_newest_first()
     {
         var moderatorId = Guid.NewGuid();

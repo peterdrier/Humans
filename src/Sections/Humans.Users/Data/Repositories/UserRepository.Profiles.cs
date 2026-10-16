@@ -46,29 +46,32 @@ internal sealed partial class UserRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<string?> GetProfilePictureContentTypeAsync(
+    public async Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
         Guid profileId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
+        var row = await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.Id == profileId)
-            .Select(p => p.ProfilePictureContentType)
+            .Select(p => new { p.ProfilePictureContentType, p.ProfilePictureStorageKey })
             .FirstOrDefaultAsync(ct);
+        return row?.ProfilePictureContentType is { } contentType
+            ? (contentType, row.ProfilePictureStorageKey)
+            : null;
     }
 
-    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
         GetCustomPictureRowsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var rows = await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.ProfilePictureContentType != null)
-            .Select(p => new { p.Id, p.UserId, p.BurnerName, p.ProfilePictureContentType, p.UpdatedAt })
+            .Select(p => new { p.Id, p.UserId, p.BurnerName, p.ProfilePictureContentType, p.ProfilePictureStorageKey, p.UpdatedAt })
             .ToListAsync(ct);
 
         return rows
-            .Select(r => (r.Id, r.UserId, r.BurnerName, r.ProfilePictureContentType!, r.UpdatedAt))
+            .Select(r => (r.Id, r.UserId, r.BurnerName, r.ProfilePictureContentType!, r.ProfilePictureStorageKey, r.UpdatedAt))
             .ToList();
     }
 
@@ -364,6 +367,7 @@ internal sealed partial class UserRepository
         sourceProfile.Pronouns = null;
         sourceProfile.DateOfBirth = null;
         sourceProfile.ProfilePictureContentType = null;
+        sourceProfile.ProfilePictureStorageKey = null;
         sourceProfile.EmergencyContactName = null;
         sourceProfile.EmergencyContactPhone = null;
         sourceProfile.EmergencyContactRelationship = null;
@@ -399,6 +403,7 @@ internal sealed partial class UserRepository
         profile.Pronouns = null;
         profile.DateOfBirth = null;
         profile.ProfilePictureContentType = null;
+        profile.ProfilePictureStorageKey = null;
         profile.EmergencyContactName = null;
         profile.EmergencyContactPhone = null;
         profile.EmergencyContactRelationship = null;

@@ -84,19 +84,19 @@ Stated so a violation is recognisable, each with the line that enforces it. The 
 list is `Expenses.md`; these are the ones a change is most likely to break silently.
 
 - **The payee is the submitter, snapshotted.** Submit copies the *submitter's* profile IBAN and
-  legal name into the claim (`Services/ExpenseReportService.cs:806`), never the actor's; the
+  legal name into the claim (`Services/ExpenseReportService.cs:793`), never the actor's; the
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
-  is pending approval (`Services/ExpenseReportService.cs:891`).
+  is pending approval (`Services/ExpenseReportService.cs:878`).
 - **Approved closes the claim.** Approve and finance-reject accept only Submitted or
-  CoordinatorEndorsed (`Data/ExpenseRepository.cs:313`, `Data/ExpenseRepository.cs:345`);
-  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:277`,
-  `Data/ExpenseRepository.cs:295`); the only move out of Approved is Withdrawn
-  (`Data/ExpenseRepository.cs:262`). No payment state is ever stamped on a claim.
+  CoordinatorEndorsed (`Data/ExpenseRepository.cs:315`, `Data/ExpenseRepository.cs:353`);
+  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:279`,
+  `Data/ExpenseRepository.cs:297`); the only move out of Approved is Withdrawn
+  (`Data/ExpenseRepository.cs:264`). No payment state is ever stamped on a claim.
 - **Payable is the only figure payment math uses** — `min(Total, MaxAmount)`
   (`Contracts/ExpenseReportDto.cs:19`).
 - **A decider's form replaces the cap outright**, blank clears it
-  (`Data/ExpenseRepository.cs:279`, `Data/ExpenseRepository.cs:323`); neither reject touches it.
-- **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:121`) and never reach Holded —
+  (`Data/ExpenseRepository.cs:281`, `Data/ExpenseRepository.cs:331`); neither reject touches it.
+- **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:123`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
   no upload (`ExpenseHoldedPublisher.PushPerLineDocsAsync`).
@@ -108,11 +108,11 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1092`, `Services/ExpenseReportService.cs:1307`);
+  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1353`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
-  (`Services/ExpenseReportService.cs:981`).
+  (`Services/ExpenseReportService.cs:968`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a
-  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:398`).
+  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:406`).
 
 ## 5. Seams — specified but unbuilt
 
@@ -177,9 +177,6 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **Finance admins hold every coordinator capability.** They may endorse and coordinator-reject
   in any category; the audit entry names them as finance admin. Peter confirmed this
   2026-09-26 — run 2's finding 1.
-- **The approval category override offers the active year's categories**, even on a claim
-  from an earlier year: claims are filed in the year they belong to. Peter confirmed this
-  2026-10-16 — run 3's finding 2.
 - **Expenses has no member nav entry.** `/Expenses` is reached from the Budget pages and the
   approval email; the top nav has no room. Peter confirmed this 2026-10-16 — run 3's finding 18.
 - **The review queue renders in the admin shell for admin-role users and the member shell for

@@ -7,8 +7,15 @@ internal sealed class ExpenseReport
 {
     public Guid Id { get; init; }
     public Guid SubmitterUserId { get; set; }
-    public Guid BudgetCategoryId { get; set; }
-    public Guid BudgetYearId { get; set; }
+    /// <summary>Holded expense account (accounting number) this report books to. 0 only on rows
+    /// created before accounts were chosen on the report; those still book via the category map.</summary>
+    public int HoldedAccountNumber { get; set; }
+    /// <summary>Holded id of <see cref="HoldedAccountNumber"/>, captured when the account was chosen.</summary>
+    public string? HoldedAccountId { get; set; }
+    /// <summary>Budget category the account maps to; null when the account is not a budget category.</summary>
+    public Guid? BudgetCategoryId { get; set; }
+    /// <summary>Budget year of <see cref="BudgetCategoryId"/>; null when the report has no category.</summary>
+    public Guid? BudgetYearId { get; set; }
     public ExpenseReportStatus Status { get; set; }
     public string? Note { get; set; }
     public string PayeeName { get; set; } = "";

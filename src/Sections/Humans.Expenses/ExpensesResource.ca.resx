@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fet</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nou informe de despeses</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Seleccioneu una categoria —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Compte</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Seleccioneu un compte —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categories del pressupost</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Altres comptes</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Compte no trobat o ja no disponible.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, màx. 500 caràcters)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descriviu la despesa…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea un esborrany</value></data>

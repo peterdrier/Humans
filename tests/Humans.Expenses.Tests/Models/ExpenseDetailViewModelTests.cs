@@ -22,6 +22,7 @@ public class ExpenseDetailViewModelTests
             Id = Guid.NewGuid(),
             SubmitterUserId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
+            HoldedAccountNumber = 0,
             BudgetCategoryId = Guid.NewGuid(),
             Total = total,
             MaxAmount = maxAmount,
@@ -38,7 +39,7 @@ public class ExpenseDetailViewModelTests
         new()
         {
             Report = report,
-            CategoryDisplayName = "Ops / Fuel",
+            BookingLabel = "Ops / Fuel",
             IsSubmitter = isSubmitter,
             CanBindCreditor = isFinanceAdmin,
             CanEdit = canEdit,
