@@ -7,7 +7,7 @@
 
 ## Monitor
 
-Project: `src/Sections/Humans.Monitor` — a leaf-consumer section. Owns no DB
+Project: `src/Sections/Humans.Monitor` — a consumer section no other section references. Owns no DB
 tables and has no `Data/` folder of its own. Owns
 `DriveActivityMonitorService` (+ `IDriveActivityMonitorService` in
 `Contracts/`, + `DriveActivityMonitorJob` in `Jobs/`); Google Integration
