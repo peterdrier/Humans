@@ -378,6 +378,34 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_WithTotalOutageMidStream_AuditsWhatStreamedThenThrows()
+    {
+        // The connector drops after one event: that anomaly was seen, so it is audited before
+        // the total-outage throw rather than lost with it.
+        var resource = BuildResource("Dropping-Drive");
+        SeedResources(resource);
+
+        var streamed = BuildPermissionChangeEvent(
+            actorPersonName: "intruder@example.com",
+            addedRole: "writer",
+            targetUser: "intruder@example.com");
+        _client.QueryActivityAsync(resource.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => YieldThenThrowEnumerable(streamed));
+
+        var act = async () => await _service.CheckForAnomalousActivityAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.AnomalousPermissionDetected,
+            nameof(GoogleResource),
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("added writer", StringComparison.Ordinal)),
+            JobName);
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_DownGradesResourceNotFoundToWarning()
     {
         var missing = BuildResource("Missing-Drive");
@@ -597,6 +625,13 @@ public class DriveActivityMonitorServiceTests
         // ReSharper disable once HeuristicUnreachableCode
         yield break;
 #pragma warning restore CS0162
+    }
+
+    private static async IAsyncEnumerable<DriveActivityEvent> YieldThenThrowEnumerable(DriveActivityEvent first)
+    {
+        yield return first;
+        await Task.Yield();
+        throw new InvalidOperationException("dropped");
     }
 
     private static async IAsyncEnumerable<DriveActivityEvent> ThrowNotFoundEnumerable(string googleItemId)
