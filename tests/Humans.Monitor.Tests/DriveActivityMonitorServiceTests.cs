@@ -12,14 +12,9 @@ using Humans.Users.Contracts;
 namespace Humans.Monitor.Tests;
 
 /// <summary>
-/// Behavioral tests for <see cref="DriveActivityMonitorService"/>. The service is a
-/// dispatcher over five collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceServiceRead"/>, <see cref="ISettingsService"/>,
-/// <see cref="IUserServiceRead"/> and
-/// <see cref="IAuditLogService"/> — so tests substitute all five and pin down:
-/// self-initiated changes get filtered, anomaly descriptions are built
-/// correctly and emitted through <see cref="IAuditLogService"/>,
-/// partial-failure keeps the last-run marker, and the happy path advances it.
+/// Behavioral tests for <see cref="DriveActivityMonitorService"/> over substituted
+/// collaborators: self-initiated changes are filtered, anomaly descriptions are built and
+/// audited, a partial failure holds the last-run marker back, and a clean run advances it.
 /// </summary>
 public class DriveActivityMonitorServiceTests
 {
@@ -94,7 +89,6 @@ public class DriveActivityMonitorServiceTests
             SettingKeys.DriveActivityMonitorLastRunAt,
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
-        // No anomalies → no audit entries emitted.
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -128,8 +122,7 @@ public class DriveActivityMonitorServiceTests
                 d.Contains("added writer", StringComparison.Ordinal)),
             JobName);
 
-        // Marker first, then audit — the monitor's own state is saved before the entries
-        // that describe it.
+        // Marker first, then audit: IAuditLogService wants audit after the business save.
         Received.InOrder(() =>
         {
             _ = _settingsStore.SetValueAsync(

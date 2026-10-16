@@ -8,8 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Monitor;
 
 /// <summary>
-/// Monitor's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
+/// Monitor's DI entry point. Discovered by Shell — nothing names it, so it needs no section
+/// prefix.
 /// </summary>
 public sealed class Section : ISection
 {
