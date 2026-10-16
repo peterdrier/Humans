@@ -109,4 +109,4 @@ None.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-02 | First doctoring: docs and comments still described the pre-carve-out world and a renamed Settings interface; people-id resolution moved into one nested resolver; three untested invariants pinned | peterdrier/Humans#1582 |
-| section-doctor | 2026-10-16 | Monitor builds as a plain controller section now its views are gone; its docs stop contradicting its csproj and the code; a mid-stream outage is pinned | pending |
+| section-doctor | 2026-10-16 | Monitor builds as a plain controller section now its views are gone; its docs stop contradicting its csproj and the code; a mid-stream outage is pinned | peterdrier/Humans#1988 |
