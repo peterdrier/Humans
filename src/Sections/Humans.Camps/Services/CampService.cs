@@ -35,7 +35,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampServiceRead, closing the cycle.
-    private readonly Lazy<ICityPlanningService> _cityPlanningService;
+    private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserServiceRead _userServiceRead;
@@ -58,7 +58,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
-        Lazy<ICityPlanningService> cityPlanningService,
+        Lazy<ICityPlanningWrite> cityPlanningService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
         IUserServiceRead userServiceRead,

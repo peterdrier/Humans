@@ -19,7 +19,7 @@ internal sealed class CampController(
     ICampService campService,
     ICampContactService campContactService,
     ICampRoleService campRoleService,
-    ICityPlanningServiceRead cityPlanningService,
+    ICityPlanningService cityPlanningService,
     IShiftView shiftView,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,

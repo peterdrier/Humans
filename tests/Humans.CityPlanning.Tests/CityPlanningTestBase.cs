@@ -43,7 +43,7 @@ public abstract class CityPlanningTestBase : IDisposable
     /// The section's real <c>CityPlanningMapAdmin</c> policy over <paramref name="cityPlanning"/>,
     /// so a controller test runs the same gate production does.
     /// </summary>
-    private protected static IAuthorizationService MapAdminAuthorization(ICityPlanningServiceRead cityPlanning)
+    private protected static IAuthorizationService MapAdminAuthorization(ICityPlanningService cityPlanning)
     {
         var services = new ServiceCollection();
         services.AddLogging();

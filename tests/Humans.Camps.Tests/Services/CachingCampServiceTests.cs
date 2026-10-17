@@ -42,8 +42,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             new InMemoryFileStorage(), Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
-            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningService>(() =>
-                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningService>()),
+            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
+                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
             Substitute.For<IEarlyEntryInvalidator>(), Substitute.For<ICampInfoInvalidator>(),
             Substitute.For<Humans.Users.Contracts.IUserServiceRead>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
