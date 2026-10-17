@@ -605,7 +605,7 @@ internal sealed partial class WorkgroupService(
 
         // The entry is a trusted system record naming a survey, so the id has to be one the
         // member actually authored — otherwise the log can point at somebody else's survey, or
-        // at nothing at all. Peter 2026-09-14: author == actor is the whole check.
+        // at nothing at all. Author == actor is the whole check.
         var survey = (await surveys.GetSummariesAsync(ct))
             .FirstOrDefault(s => s.Id == surveyId);
         if (survey is null || survey.CreatedByUserId != actorUserId)
@@ -737,8 +737,7 @@ internal sealed partial class WorkgroupService(
     public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
     {
         var stored = await repository.GetRootDriveFolderIdAsync(ct)
-            // Existing installations keep their configured root until an admin saves it
-            // locally. New state is section-owned; there is no automatic data backfill.
+            // Legacy Settings value, used until an admin saves a local one.
             ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
         // Values saved before the setter normalized may still hold the pasted URL.
         return stored is null ? null : NormalizeFolderId(stored);

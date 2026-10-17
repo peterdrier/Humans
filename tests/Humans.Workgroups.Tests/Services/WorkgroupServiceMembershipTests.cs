@@ -683,8 +683,8 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
-        // The tombstoned row is still readable, so a double-submitted form used to re-stamp it and
-        // audit a second deletion — an event the trail would have claimed happened, and did not.
+        // The tombstoned row is still readable, so a replayed delete is refused rather than
+        // re-stamped and audited a second time.
         var replay = async () => await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         (await replay()).Refusal!.Key

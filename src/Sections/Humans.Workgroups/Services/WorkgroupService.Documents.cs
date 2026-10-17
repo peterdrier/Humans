@@ -178,9 +178,8 @@ internal sealed partial class WorkgroupService
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
         var now = clock.GetCurrentInstant();
-        // "A comment window ... must end before Delivered" (design §7). Delivering mid-window
-        // would freeze the body and cut short a comment period the group promised publicly —
-        // Close the window first, which is one click and leaves the comments in place.
+        // A comment window must end before Delivered (design §7): delivering mid-window
+        // would cut short a publicly promised comment period.
         if (document.CommentsCloseAt is { } closes && closes > now)
             return new(Refusal: new(WorkgroupErrorKeys.CommentsStillOpen));
 
