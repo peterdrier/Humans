@@ -1341,18 +1341,12 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SaveProfileVolunteerHistoryAsync_RefreshesVolunteerHistorySlice()
+    public async Task SaveProfileAsync_RefreshesVolunteerHistorySlice()
     {
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.SaveProfileVolunteerHistoryAsync(
-                userId,
-                Arg.Any<IReadOnlyList<CVEntry>>(),
-                Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var profile = new Profile
         {
@@ -1372,11 +1366,16 @@ public class CachingUserServiceTests
         });
         StubRefreshEntry(userId, profile);
 
-        var saved = await sut.SaveProfileVolunteerHistoryAsync(
-            userId,
-            [new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew")], Xunit.TestContext.Current.CancellationToken);
+        var command = new UserProfileSaveCommand("Alice", "Alice", "Alice", "Person", null, null,
+            null, null, null, null, null, null, null, null, null, null, null, null, false,
+            UserProfilePictureMutation.None, null);
+        var entries = new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
+        _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
+            .Returns(new UserProfileSaveResult(profileId, null, null));
 
-        saved.Should().BeTrue();
+        await sut.SaveProfileAsync(userId, command, ct: Xunit.TestContext.Current.CancellationToken, volunteerHistory: entries);
+
+        await _inner.Received(1).SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries);
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.VolunteerHistory.Should().ContainSingle(v =>

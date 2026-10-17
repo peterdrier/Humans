@@ -151,9 +151,6 @@ public class ProfileControllerEditTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(true, _profileId));
-        _userService.SaveProfileVolunteerHistoryAsync(
-                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(true));
         _userService.SaveProfileLanguagesAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserProfileLanguagesSaveResult(true, _userId)));

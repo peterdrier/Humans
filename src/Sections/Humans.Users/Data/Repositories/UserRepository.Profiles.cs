@@ -107,7 +107,8 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
+    public async Task UpdateAsync(
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Attach the detached entity and mark only its own scalar properties as
@@ -116,6 +117,8 @@ internal sealed partial class UserRepository
         // existing related rows when those collections are empty on the in-memory entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
+        if (volunteerHistory is not null)
+            await ReconcileCVEntriesAsync(ctx, profile.Id, volunteerHistory, ct);
         await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
     }
@@ -422,13 +425,12 @@ internal sealed partial class UserRepository
         return true;
     }
 
-    public async Task ReconcileCVEntriesAsync(
+    private async Task ReconcileCVEntriesAsync(
+        UsersDbContext ctx,
         Guid profileId,
         IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
         // Load tracked entities so the change tracker can detect in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == profileId)
@@ -485,7 +487,5 @@ internal sealed partial class UserRepository
                 });
             }
         }
-
-        await ctx.SaveChangesAsync(ct);
     }
 }

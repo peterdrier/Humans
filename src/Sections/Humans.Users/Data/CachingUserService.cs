@@ -656,10 +656,11 @@ internal sealed class CachingUserService(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<CVEntry>? volunteerHistory = null)
     {
         var result = await WithInnerAsync(inner =>
-            inner.SaveProfileAsync(userId, command, profilePictureData, ct));
+            inner.SaveProfileAsync(userId, command, profilePictureData, ct, volunteerHistory));
         await RefreshEntryAsync(userId);
         return result;
     }
@@ -685,17 +686,6 @@ internal sealed class CachingUserService(
             inner.AnonymizeProfileForDeletionAsync(userId, ct));
         if (result.Anonymized) await RefreshEntryAsync(userId);
         return result;
-    }
-
-    public async Task<bool> SaveProfileVolunteerHistoryAsync(
-        Guid userId,
-        IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default)
-    {
-        var saved = await WithInnerAsync(inner =>
-            inner.SaveProfileVolunteerHistoryAsync(userId, entries, ct));
-        if (saved) await RefreshEntryAsync(userId);
-        return saved;
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(

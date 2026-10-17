@@ -82,12 +82,14 @@ internal interface IUserServiceInternal : IUserService
     /// display label in the same storage operation. Supplied picture bytes are
     /// written before their content-type metadata; a failed write preserves the
     /// previous picture. Old/current metadata lets the editor clean up stale files.
+    /// A supplied CV is reconciled in the same save as the profile fields; null leaves it unchanged.
     /// </summary>
     Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        IReadOnlyList<CVEntry>? volunteerHistory = null);
 
     /// <summary>
     /// Persists the six dietary + medical Profile columns (the DietaryMedical page).
@@ -106,15 +108,6 @@ internal interface IUserServiceInternal : IUserService
     /// </summary>
     Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Reconciles the profile's volunteer-history rows. Returns false when no
-    /// profile exists for the user.
-    /// </summary>
-    Task<bool> SaveProfileVolunteerHistoryAsync(
-        Guid userId,
-        IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default);
 
     /// <summary>

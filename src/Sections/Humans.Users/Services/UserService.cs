@@ -435,7 +435,8 @@ internal sealed class UserService(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<CVEntry>? volunteerHistory = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 
@@ -541,7 +542,7 @@ internal sealed class UserService(
         // saved names and carries any existing suspension forward.
         try
         {
-            await repo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct, volunteerHistory);
         }
         catch when (newPictureKey is not null)
         {
@@ -638,19 +639,6 @@ internal sealed class UserService(
                 ? null
                 : ProfilePictureKeys.Resolve(
                     profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
-    }
-
-    public async Task<bool> SaveProfileVolunteerHistoryAsync(
-        Guid userId,
-        IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return false;
-
-        await repo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
-        return true;
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(

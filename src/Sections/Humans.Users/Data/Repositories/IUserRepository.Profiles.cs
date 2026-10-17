@@ -9,7 +9,7 @@ namespace Humans.Users.Data.Repositories;
 /// <remarks>
 /// Read methods may include aggregate-local collections (<c>VolunteerHistory</c>,
 /// <c>Languages</c>) where noted. The write path for CV entries is owned by
-/// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
+/// <see cref="UpdateAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
 internal partial interface IUserRepository
@@ -87,8 +87,22 @@ internal partial interface IUserRepository
     /// to a fresh context and saved. Use after mutating an entity obtained from
     /// <see cref="GetByUserIdAsync"/>. Also updates the owning user's stored
     /// <see cref="UserState"/>.
+    /// A null CV payload leaves existing entries untouched.
+    /// Reconciles the CV-entry collection for the given profile with the
+    /// provided set, keyed by <see cref="CVEntry.Id"/>:
+    /// <list type="bullet">
+    ///   <item>entries with a non-empty Id that matches an existing row update
+    ///     that row in place (preserving <c>Id</c> and <c>CreatedAt</c>, bumping
+    ///     <c>UpdatedAt</c> only when fields actually change),</item>
+    ///   <item>entries with <see cref="Guid.Empty"/> or an unknown Id are
+    ///     inserted with a freshly generated Id,</item>
+    ///   <item>existing rows whose Id is absent from the incoming set are
+    ///     deleted.</item>
+    /// </list>
+    /// These changes share the profile field save.
     /// </summary>
-    Task UpdateAsync(Profile profile, CancellationToken ct = default);
+    Task UpdateAsync(
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null);
 
     /// <summary>
     /// Clears identifying profile fields, labels the profile "Deleted User", and
@@ -171,24 +185,5 @@ internal partial interface IUserRepository
     /// <returns>The source picture metadata after the fold commits, or null when no profiles were folded.</returns>
     Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Reconciles the CV-entry collection for the given profile with the
-    /// provided set, keyed by <see cref="CVEntry.Id"/>:
-    /// <list type="bullet">
-    ///   <item>entries with a non-empty Id that matches an existing row update
-    ///     that row in place (preserving <c>Id</c> and <c>CreatedAt</c>, bumping
-    ///     <c>UpdatedAt</c> only when fields actually change),</item>
-    ///   <item>entries with <see cref="Guid.Empty"/> or an unknown Id are
-    ///     inserted with a freshly generated Id,</item>
-    ///   <item>existing rows whose Id is absent from the incoming set are
-    ///     deleted.</item>
-    /// </list>
-    /// Persists in a single SaveChanges.
-    /// </summary>
-    Task ReconcileCVEntriesAsync(
-        Guid profileId,
-        IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default);
 }
