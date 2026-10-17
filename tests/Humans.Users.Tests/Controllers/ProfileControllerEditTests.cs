@@ -59,7 +59,7 @@ public class ProfileControllerEditTests
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IEmailOutboxServiceRead _emailOutbox = Substitute.For<IEmailOutboxServiceRead>();
+    private readonly IEmailOutboxService _emailOutbox = Substitute.For<IEmailOutboxService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ProfileController _controller;

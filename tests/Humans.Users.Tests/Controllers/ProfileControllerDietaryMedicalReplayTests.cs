@@ -100,7 +100,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             localizer,
             sharedLocalizer,
             Substitute.For<ICampaignService>(),
-            Substitute.For<IEmailOutboxServiceRead>(),
+            Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),

@@ -20,7 +20,7 @@ public sealed class EmailOutboxDashboardTests
     [HumansFact]
     public async Task EmailOutbox_UsesConfiguredBatchSize()
     {
-        var outbox = Substitute.For<IEmailOutboxService>();
+        var outbox = Substitute.For<IEmailOutboxManagement>();
         outbox.GetOutboxStatsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new EmailOutboxStats(0, 0, 0, 0, false, []));
         outbox.GetDailySendCountsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -46,7 +46,7 @@ public sealed class EmailOutboxDashboardTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var outbox = Substitute.For<IEmailOutboxService>();
+        var outbox = Substitute.For<IEmailOutboxManagement>();
         outbox.GetOutboxStatsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new EmailOutboxStats(0, 0, 0, 0, false, []));
         outbox.GetDailySendCountsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

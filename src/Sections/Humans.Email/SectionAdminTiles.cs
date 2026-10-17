@@ -16,7 +16,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
     private static async ValueTask<AdminTileValue?> OutboxAsync(IServiceProvider sp, CancellationToken ct)
     {
         // recentMessageCount: 0 — the tile wants the count, not the messages.
-        var stats = await sp.GetRequiredService<IEmailOutboxServiceRead>().GetOutboxStatsAsync(0, ct);
+        var stats = await sp.GetRequiredService<IEmailOutboxManagement>().GetOutboxStatsAsync(0, ct);
         return new AdminTileValue(stats.TotalCount.ToString("N0", CultureInfo.CurrentCulture), Detail: "outbox total");
     }
 }

@@ -6,7 +6,7 @@ namespace Humans.Email.Contracts;
 /// Read-only rendering seam for displaying an always-send system email exactly as the outbox
 /// would wrap it, without enqueueing or recording delivery activity.
 /// </summary>
-public interface IEmailPreviewServiceRead : IApplicationService
+public interface IEmailPreviewService : IApplicationService
 {
     /// <summary>
     /// Applies the canonical branded email wrapper to a system message.

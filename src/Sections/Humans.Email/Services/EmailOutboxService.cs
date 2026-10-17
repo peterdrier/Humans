@@ -14,7 +14,7 @@ using NodaTime;
 namespace Humans.Email.Services;
 
 /// <summary>
-/// The implementation of <see cref="IEmailOutboxService"/>:
+/// The implementation of <see cref="IEmailOutboxManagement"/>:
 /// admin-dashboard reads (stats, recent messages, per-user history) and admin
 /// writes (retry, discard, pause/resume) over <see cref="IEmailOutboxRepository"/>.
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
@@ -29,7 +29,7 @@ internal sealed class EmailOutboxService(
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
     IClock clock,
-    IAuditLogService audit) : IEmailOutboxService, IUserDataContributor
+    IAuditLogService audit) : IEmailOutboxManagement, IUserDataContributor
 {
     internal const string EmailOutbox = "EmailOutbox";
 

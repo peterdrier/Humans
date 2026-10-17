@@ -65,7 +65,7 @@ internal sealed class ProfileController(
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
     ICampaignServiceRead campaignService,
-    IEmailOutboxServiceRead emailOutboxService,
+    IEmailOutboxService emailOutboxService,
     IClock clock,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,

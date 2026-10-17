@@ -50,8 +50,8 @@ public sealed class Section : ISection
 
         services.AddSingleton<IEmailBodyComposer, BrandedEmailBodyComposer>();
         services.AddSingleton<EmailPreviewService>();
-        services.AddSingleton<IEmailPreviewServiceRead>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddSingleton<IEmailPreviewService>(sp => sp.GetRequiredService<EmailPreviewService>());
+        services.AddSingleton<IEmailPreviewManagement>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
         services.AddScoped<IEmailPreviewContributor, FacilitatedMessagePreviews>();
         services.AddScoped<IEmailService, OutboxEmailService>();
@@ -71,8 +71,8 @@ public sealed class Section : ISection
                 })));
 
         services.AddScoped<EmailOutboxService>();
+        services.AddScoped<IEmailOutboxManagement>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxServiceRead>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
         // GDPR fan-out: outbox rows are user-scoped personal data (#853).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());

@@ -41,7 +41,7 @@ public sealed class EmailPreviewGalleryTests
 
         var controller = new EmailController(
             Substitute.For<IUserServiceRead>(),
-            Substitute.For<IEmailOutboxService>(),
+            Substitute.For<IEmailOutboxManagement>(),
             Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings()));

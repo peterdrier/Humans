@@ -66,7 +66,7 @@ public class UsersAdminControllerPurgeTests
         var c = new UsersAdminController(
             _userService,
             _userEmails,
-            Substitute.For<IEmailOutboxServiceRead>(),
+            Substitute.For<IEmailOutboxService>(),
             _roleAssignments,
             Substitute.For<IApplicationServiceRead>(),
             Substitute.For<IConsentService>(),
