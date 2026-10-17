@@ -3,8 +3,9 @@ namespace Humans.Shifts.Services;
 
 /// <summary>
 /// Orchestrator for the "Email a rota" coordinator action: enumerates current
-/// (Pending/Confirmed) signups on a rota, groups them by user, and queues one
-/// personalised email per recipient through <c>IEmailService</c>.
+/// (Pending/Confirmed) signups on a rota, groups them by user, and requests one
+/// personalised email per recipient through <c>IEmailService</c>. Recipient counts
+/// describe successful send requests; Email may suppress them under saved preferences.
 /// </summary>
 /// <remarks>
 /// One method, one responsibility. Lives separate from

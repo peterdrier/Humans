@@ -403,7 +403,7 @@ internal sealed class ShiftAdminController(
             return View(model);
         }
 
-        SetSuccess($"Queued {result.RecipientCount} email(s) to recipients on rota '{result.RotaName}'.");
+        SetSuccess($"Requested email for {result.RecipientCount} recipient(s) on rota '{result.RotaName}'.");
         return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
     }
 
@@ -505,7 +505,7 @@ internal sealed class ShiftAdminController(
             return View(model);
         }
 
-        SetSuccess($"Queued {result.RecipientCount} email(s) across {result.RotaCount} rota(s) in '{result.TeamName}'.");
+        SetSuccess($"Requested email for {result.RecipientCount} recipient(s) across {result.RotaCount} rota(s) in '{result.TeamName}'.");
         return RedirectToAction(nameof(Index), new { slug });
     }
 
