@@ -10,7 +10,8 @@ namespace Humans.Tickets.ViewComponents;
 /// <summary>
 /// The member dashboard's ticket card: confirmed, not attending, or missing — plus the
 /// buy/declare actions that go with each. Shows a "not configured" note when no ticket
-/// vendor is set up, rather than hiding.
+/// vendor is set up, rather than hiding. Renders nothing off season (the admin switch on
+/// the active event settings): there is no ticket to buy or declare against.
 /// </summary>
 public sealed class MemberTicketStatusViewComponent(
     ITicketService ticketService,
@@ -27,9 +28,15 @@ public sealed class MemberTicketStatusViewComponent(
         }
 
         var ct = HttpContext.RequestAborted;
+        var activeEvent = await ActiveEventAsync(ct);
+        if (activeEvent?.IsOffSeason == true)
+        {
+            return Content(string.Empty);
+        }
+
         var configured = ticketSettings.Value.IsConfigured;
         var ticketCount = configured ? await TicketCountAsync(userId, ct) : 0;
-        var eventYear = await ActiveEventYearAsync(ct);
+        var eventYear = activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : (int?)null;
 
         return View(new MemberTicketStatusViewModel(
             userId,
@@ -56,12 +63,11 @@ public sealed class MemberTicketStatusViewComponent(
         }
     }
 
-    private async Task<int?> ActiveEventYearAsync(CancellationToken ct)
+    private async Task<EventSettingsInfo?> ActiveEventAsync(CancellationToken ct)
     {
         try
         {
-            var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
-            return activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : null;
+            return await settingsService.GetActiveEventSettingsAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

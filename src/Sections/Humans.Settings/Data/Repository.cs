@@ -93,6 +93,7 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             existing.BarriosEarlyEntryAllocation = settings.BarriosEarlyEntryAllocation;
             existing.EarlyEntryClose = settings.EarlyEntryClose;
             existing.EarlyEntryStartOffset = settings.EarlyEntryStartOffset;
+            existing.IsOffSeason = settings.IsOffSeason;
             existing.Status = settings.Status;
             existing.UpdatedAt = now;
         }

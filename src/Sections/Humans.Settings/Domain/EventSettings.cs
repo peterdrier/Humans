@@ -48,6 +48,15 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public int? EarlyEntryStartOffset { get; set; }
 
+    /// <summary>
+    /// Admin-set "this cycle is wrapped" switch. While true, the member dashboard drops its
+    /// in-season cards (ticket status, shift callouts). Deriving it from the strike date is
+    /// deferred to the settings revamp; until then an operator flips it by hand. Nullable
+    /// because a new column on an existing table must be (required-columns-need-approval);
+    /// null reads as false.
+    /// </summary>
+    public bool? IsOffSeason { get; set; }
+
     // ------------------------------------------------------------------
     // Build-phase sub-period boundaries — the build period is split into
     // four named sub-periods so the shift dashboard can filter per phase.

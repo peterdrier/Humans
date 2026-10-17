@@ -119,6 +119,18 @@ public sealed class EventSettingsViewModelTests
         Status: EventSettingsStatus.Active);
 
     [HumansFact]
+    public void IsOffSeason_RoundTripsThroughTheForm()
+    {
+        var form = EventSettingsFormMapper.ToViewModel(SavedRow() with { IsOffSeason = true });
+        form.IsOffSeason.Should().BeTrue();
+
+        var parsed = EventSettingsFormMapper.Parse(form);
+
+        parsed.Success.Should().BeTrue();
+        parsed.Settings!.IsOffSeason.Should().BeTrue();
+    }
+
+    [HumansFact]
     public void Parse_DerivesYearFromTheGateOpeningDate()
     {
         var form = EventSettingsFormMapper.ToViewModel(SavedRow());

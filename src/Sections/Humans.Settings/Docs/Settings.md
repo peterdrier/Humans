@@ -83,6 +83,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | EarlyEntryClose | Instant, nullable | |
 | EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |
 | Status | EventSettingsStatus | |
+| IsOffSeason | bool | Admin-set "this cycle is wrapped" switch, a checkbox on the event form. Tickets' and Shifts' member-dashboard cards hide behind it. Deriving it from `StrikeEndOffset` is deferred to the settings revamp. |
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
 **Indexes / constraints:** PKs only — both invariants below are service-enforced

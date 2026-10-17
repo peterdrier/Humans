@@ -109,6 +109,11 @@
                         <label asp-for="IsActive" class="form-check-label">Active</label>
                         <div class="form-text">At most one event row is active — the one every section reads as the current cycle. Leave the form blank (no existing row loaded) to start a new cycle.</div>
                     </div>
+                    <div class="form-check mt-3">
+                        <input asp-for="IsOffSeason" type="checkbox" class="form-check-input" />
+                        <label asp-for="IsOffSeason" class="form-check-label">Off season</label>
+                        <div class="form-text">The cycle is wrapped: the member dashboard hides ticket status and the shift callouts. Clear it when the next cycle's tickets or shifts open.</div>
+                    </div>
                 </div>
             </div>
 

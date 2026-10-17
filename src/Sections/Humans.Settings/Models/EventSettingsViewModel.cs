@@ -51,6 +51,9 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     /// <summary>Negative day offset from <see cref="GateOpeningDate"/>; null until configured.</summary>
     public int? EarlyEntryStartOffset { get; set; }
 
+    /// <summary>The cycle is wrapped: the member dashboard hides its in-season cards.</summary>
+    public bool IsOffSeason { get; set; }
+
     /// <summary>
     /// The form's view of <see cref="EventSettingsStatus"/>: the checkbox maps to
     /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
@@ -132,6 +135,7 @@ internal static class EventSettingsFormMapper
             : null,
         IsActive = src.Status == EventSettingsStatus.Active,
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
+        IsOffSeason = src.IsOffSeason,
     };
 
     internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
@@ -190,7 +194,8 @@ internal static class EventSettingsFormMapper
                 Status: model.IsActive
                     ? EventSettingsStatus.Active
                     : EventSettingsStatus.Inactive,
-                EarlyEntryStartOffset: model.EarlyEntryStartOffset),
+                EarlyEntryStartOffset: model.EarlyEntryStartOffset,
+                IsOffSeason: model.IsOffSeason),
             []);
     }
 

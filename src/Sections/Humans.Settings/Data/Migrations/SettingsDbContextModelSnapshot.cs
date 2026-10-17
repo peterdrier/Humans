@@ -65,6 +65,9 @@ namespace Humans.Settings.Data.Migrations
                     b.Property<LocalDate>("GateOpeningDate")
                         .HasColumnType("date");
 
+                    b.Property<bool?>("IsOffSeason")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("PreEventWeekStartOffset")
                         .HasColumnType("integer");
 

@@ -1266,4 +1266,10 @@
     <value>Créneau supprimé.</value>
   </data>
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Sélectionnez des jours compris dans le calendrier de l’événement.</value></data>
+  <data name="Dashboard_OffSeasonTitle" xml:space="preserve">
+    <value>Saison terminée</value>
+  </data>
+  <data name="Dashboard_OffSeasonBody" xml:space="preserve">
+    <value>Merci pour cette année. Les créneaux rouvriront quand le Conseil publiera le prochain événement.</value>
+  </data>
 </root>

@@ -18,7 +18,6 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 ## Concepts
 
 - Resource administration audits persisted Drive/group links and reactivations, active unlinks, permission-level saves and inherited-access preferences, with the acting manager and owning team. Refused or missing-resource paths do not write entries; the committed inherited-access preference is audited even when subsequent Drive enforcement fails.
-- The member-dashboard Google resources card uses the section’s localized title in every supported culture.
 - **Google Resources** are Shared Drive folders, Shared Drives, Drive files, and Google Groups linked to a team. When a human joins or leaves a team, their access to the team's linked Google resources is automatically managed. Resource rows live in GoogleIntegration's `google_resources`, owned by its `TeamResourceService`.
 - **Sync Mode** controls how the system interacts with Google APIs for each service type. Modes are: None (disabled), AddOnly (grant access but never revoke), or AddAndRemove (full bidirectional sync).
 - **Reconciliation** compares the expected Google resource state (based on team membership) against the actual Google resource state, detecting drift.
@@ -139,7 +138,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - **Manual Execute runs to completion regardless of the admin's browser.** `GoogleController.SyncExecute` / `SyncExecuteAll` pass `CancellationToken.None` to the sync call, not the request's `HttpContext.RequestAborted` — an admin closing the tab mid-reconcile must not abort partway through applying group memberships and Drive permissions, which would leave Workspace half-synced with no record of where it stopped (nobodies-collective/Humans#950).
 - **Cancelled health probes propagate cancellation.** A stopped Google credential/API probe is never reported as an authentication failure; credential-free instances still report degraded. The per-probe SDK client is disposed after every outcome.
 - **Drive Activity reads remain cancellable.** Activity queries and Directory identity lookups pass their caller token through the shared credential loader and Google API read. A cancelled identity lookup propagates cancellation instead of returning an unresolved person.
-- **Member dashboard reads stop with the request.** `MyGoogleResourcesViewComponent` passes `HttpContext.RequestAborted` through its volunteer gate and resource read, and rethrows a matching cancellation rather than treating a disconnected browser as a widget failure.
 - **Workspace account timestamps are UTC.** Directory creation and last-login timestamps retain their instant regardless of server timezone; missing creation time remains `DateTime.MinValue` and missing login time remains null.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
 - Successful Workspace provisioning sends credentials and an inbox notice in the recipient's supported preferred language (English fallback), reusing the credential email subject and linking to their profile.
