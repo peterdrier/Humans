@@ -1,3 +1,8 @@
+using System.Diagnostics.Metrics;
+using System.Reflection;
+using Humans.Governance.Services;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime.Testing;
 using Humans.Users.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
@@ -7,6 +12,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Governance.Data;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Humans.Governance.Tests.Data;
 
@@ -114,7 +121,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var approved = SeedApp(userId);
-        approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         (await _repo.AnySubmittedForUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
@@ -135,7 +142,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     {
         var submitted = SeedApp();
         var approved = SeedApp();
-        approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (items, total) = await _repo.GetFilteredAsync(status: null, tier: null, page: 1, pageSize: 10, ct: Xunit.TestContext.Current.CancellationToken);
@@ -150,7 +157,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     {
         SeedApp();
         var approved = SeedApp();
-        approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (items, total) = await _repo.GetFilteredAsync(ApplicationStatus.Approved, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
@@ -213,7 +220,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             new BoardVote { Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = Guid.NewGuid(), Vote = VoteChoice.No, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        app.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        app.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _repo.FinalizeAsync(app, Xunit.TestContext.Current.CancellationToken);
 
         var remaining = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == app.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -249,7 +256,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             .AddInterceptors(recorder).Options;
         var repo = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
         var detached = (await repo.GetByIdAsync(app.Id, ct))!;
-        var clock = new NodaTime.Testing.FakeClock(app.SubmittedAt + Duration.FromHours(1));
+        var clock = new FakeClock(app.SubmittedAt + Duration.FromHours(1));
         if (finalize)
         {
             detached.Approve(Guid.NewGuid(), "Approved", clock);
@@ -278,7 +285,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         _dbContext.BoardVotes.Add(new BoardVote { Id = Guid.NewGuid(), ApplicationId = appB.Id, BoardMemberUserId = Guid.NewGuid(), Vote = VoteChoice.Yay, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        appA.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        appA.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _repo.FinalizeAsync(appA, Xunit.TestContext.Current.CancellationToken);
 
         var otherVotes = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == appB.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -315,7 +322,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     public async Task UpdateAsync_PersistsMutations()
     {
         var app = SeedApp();
-        app.Withdraw(new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        app.Withdraw(new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
 
         await _repo.UpdateAsync(app, Xunit.TestContext.Current.CancellationToken);
 
@@ -329,7 +336,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var erasedUserId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
         var scrubbedAt = Instant.FromUtc(2026, 9, 21, 6, 0);
-        var clock = new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var ownApplication = SeedApp(erasedUserId);
         ownApplication.AdditionalInfo = "private context";
         ownApplication.SignificantContribution = "private contribution";
@@ -388,6 +395,69 @@ public sealed class ApplicationRepositoryTests : IDisposable
             Xunit.TestContext.Current.CancellationToken);
         vote.Note.Should().BeNull();
         vote.UpdatedAt.Should().Be(scrubbedAt);
+    }
+
+    [HumansFact]
+    public async Task AsociadosGauge_CountsDistinctActiveAsociadoTermsInsteadOfAllApprovals()
+    {
+        var clock = new FakeClock(Instant.FromUtc(2026, 10, 17, 12, 0));
+        var today = clock.GetCurrentInstant().InUtc().Date;
+        var activeUser = Guid.NewGuid();
+        var active = SeedApp(activeUser, tier: MembershipTier.Asociado);
+        var renewal = SeedApp(activeUser, tier: MembershipTier.Asociado);
+        var expiresToday = SeedApp(tier: MembershipTier.Asociado);
+        var expired = SeedApp(tier: MembershipTier.Asociado);
+        var colaborador = SeedApp();
+        foreach (var app in new[] { active, renewal, expiresToday, expired, colaborador })
+            app.Approve(Guid.NewGuid(), null, clock);
+        expiresToday.TermExpiresAt = today;
+        expired.TermExpiresAt = today.PlusDays(-1);
+        SeedApp(tier: MembershipTier.Asociado); // A submitted application is not a term.
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var applications = Substitute.For<IApplicationServiceRead>();
+        applications.GetAdminStatsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => _repo.GetAdminStatsAsync(call.Arg<CancellationToken>()));
+        applications.GetActiveApprovedTierUserIdsAsync(
+                Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(call => _repo.GetActiveApprovedTierUserIdsAsync(
+                call.Arg<MembershipTier>(), call.Arg<LocalDate>(), call.Arg<CancellationToken>()));
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<UserInfo>)[]);
+        var membership = Substitute.For<IMembershipCalculatorRead>();
+        membership.GetUsersWithAllRequiredConsentsAsync(
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+            .Returns((IReadOnlyList<Guid>)[]);
+        var services = new ServiceCollection();
+        services.AddSingleton(applications);
+        services.AddSingleton(users);
+        services.AddSingleton(membership);
+        services.AddSingleton<IClock>(clock);
+        using var provider = services.BuildServiceProvider();
+        using var sut = new GovernanceMetricsService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<GovernanceMetricsService>.Instance);
+        var refresh = typeof(GovernanceMetricsService).GetMethod(
+            "RefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        await (Task)refresh.Invoke(sut, null)!;
+
+        int? observed = null;
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (string.Equals(instrument.Meter.Name, "Humans.Metrics", StringComparison.Ordinal)
+                    && string.Equals(instrument.Name, "humans.asociados", StringComparison.Ordinal))
+                    meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<int>((_, value, _, _) => observed = value);
+        listener.Start();
+        listener.RecordObservableInstruments();
+
+        observed.Should().Be(2);
     }
 
     private sealed class ChildWriteRecorder : SaveChangesInterceptor

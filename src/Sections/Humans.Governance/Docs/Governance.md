@@ -10,6 +10,8 @@
 
 Colaborador and Asociado tier applications, Board voting workflow, term lifecycle, and the association's binding assembly votes. **Not** volunteer onboarding — that lives under `src/Sections/Humans.Onboarding/Docs/Onboarding.md` and is explicitly a separate track.
 
+The `humans.asociados` gauge counts distinct humans with an active approved Asociado term on the current UTC date, including terms expiring today. Colaborador approvals, expired terms, and duplicate renewal applications do not inflate it.
+
 ## Concepts
 
 - **Volunteer** is the standard membership tier. Nearly all humans are Volunteers. Becoming a Volunteer happens through the onboarding process — not through the application/voting workflow described here.
