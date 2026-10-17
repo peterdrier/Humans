@@ -1,6 +1,8 @@
 
 using NodaTime;
 
+using Humans.Base.Interfaces;
+
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
@@ -17,7 +19,7 @@ namespace Humans.Shifts.Contracts;
 /// writes and would make this name a lie); the dev-fixture verbs are
 /// <see cref="IShiftSeeding"/>.
 /// </remarks>
-public interface IShiftManagementService
+public interface IShiftManagementService : IApplicationService
 {
     /// <summary>
     /// Whether the user is a department coordinator for the given team

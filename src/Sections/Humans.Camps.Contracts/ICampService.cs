@@ -1,4 +1,6 @@
 
+using Humans.Base.Interfaces;
+
 namespace Humans.Camps.Contracts;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Humans.Camps.Contracts;
 /// interface for camp read models and settings - never EF entities. The
 /// section-internal <c>ICampManagement</c> extends it.
 /// </summary>
-public interface ICampService
+public interface ICampService : IApplicationService
 {
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);

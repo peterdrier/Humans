@@ -1,5 +1,7 @@
 using Humans.Base.Attributes;
 
+using Humans.Base.Interfaces;
+
 namespace Humans.Tickets.Contracts;
 
 /// <summary>
@@ -13,7 +15,7 @@ namespace Humans.Tickets.Contracts;
 /// <see cref="TicketOrderInfo"/>, not a new method
 /// (memory/architecture/read-model-enrichment.md).
 /// </remarks>
-public interface ITicketService
+public interface ITicketService : IApplicationService
 {
     /// <summary>
     /// Returns the ticket order projection used by cross-section read callers.

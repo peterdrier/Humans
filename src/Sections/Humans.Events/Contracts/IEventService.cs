@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Events.Contracts;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Humans.Events.Contracts;
 /// <c>IEventManagement</c>; registered as a forward to the caching
 /// singleton so reads are served from the approved-events cache.
 /// </summary>
-public interface IEventService
+public interface IEventService : IApplicationService
 {
     /// <summary>
     /// Approved events, optionally filtered by camp / venue / category / free text,

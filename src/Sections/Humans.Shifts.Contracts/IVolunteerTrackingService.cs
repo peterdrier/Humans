@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Humans.Shifts.Contracts;
 /// the <see cref="VolunteerBuildStripDto"/> projection, which
 /// backs <c>&lt;vc:volunteer-build-strip&gt;</c>.
 /// </summary>
-public interface IVolunteerTrackingService
+public interface IVolunteerTrackingService : IApplicationService
 {
     /// <summary>One volunteer's build-window strip, or null when there is no
     /// active event.</summary>
