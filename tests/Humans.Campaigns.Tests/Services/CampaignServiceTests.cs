@@ -1,3 +1,5 @@
+using System.Text;
+using Humans.Base.Constants;
 using AwesomeAssertions.Execution;
 using System.Security.Claims;
 using Humans.AuditLog.Contracts;
@@ -159,7 +161,7 @@ public sealed class CampaignServiceTests
     [HumansFact]
     public async Task AdminMutationActions_without_a_current_actor_do_not_change_data()
     {
-        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>(), NullLogger<CampaignController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -185,12 +187,76 @@ public sealed class CampaignServiceTests
         _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("csv")]
+    [Xunit.InlineData("txt")]
+    [Xunit.InlineData("multiline")]
+    [Xunit.InlineData("plain")]
+    public async Task ImportCodes_ReadsUploadedCodeValues(string format)
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var controller = CreateImportController();
+        var content = format switch
+        {
+            "csv" => "\"A,One\"\r\n\"B\"\"Two\"\r\n",
+            "multiline" => "\"A,\nOne\"\r\n\"B\"\"Two\"\r\n",
+            "plain" => "AOne\r\nBTwo\r\n",
+            _ => "A,One\r\nB\"Two\r\n",
+        };
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var file = new FormFile(stream, 0, stream.Length, "file", string.Equals(format, "txt", StringComparison.Ordinal) ? "codes.txt" : "codes.CSV");
+
+        var result = await controller.ImportCodes(campaign.Id, file);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        var codes = await CampaignsDb.CampaignCodes.AsNoTracking().Where(c => c.CampaignId == campaign.Id)
+            .OrderBy(c => c.ImportOrder).Select(c => c.Code).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        codes.Should().Equal(format switch { "multiline" => "A,\nOne", "plain" => "AOne", _ => "A,One" },
+            format is "plain" ? "BTwo" : "B\"Two");
+        controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("VALID\r\n\"UNCLOSED")]
+    [Xunit.InlineData("VALID\r\nFIRST,SECOND\r\n")]
+    public async Task ImportCodes_InvalidCsv_DoesNotImportAPartialPrefix(string content)
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var controller = CreateImportController();
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var file = new FormFile(stream, 0, stream.Length, "file", "codes.csv");
+        _audit.ClearReceivedCalls();
+
+        var result = await controller.ImportCodes(campaign.Id, file);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private CampaignController CreateImportController()
+    {
+        var actor = SeedUser(_actorId);
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(actor));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test")),
+        };
+        return new CampaignController(_service, users, NullLogger<CampaignController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+    }
+
     [HumansFact]
     public async Task AbandonedAdminPages_CancelRepositoryReads()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
         using var request = new CancellationTokenSource();
-        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>(), NullLogger<CampaignController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -268,7 +334,7 @@ public sealed class CampaignServiceTests
                 User = new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim(ClaimTypes.NameIdentifier, viewer.Id.ToString())], "test")),
             };
-            return new(_service, userRead)
+            return new(_service, userRead, NullLogger<CampaignController>.Instance)
             {
                 ControllerContext = new ControllerContext { HttpContext = http },
                 TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

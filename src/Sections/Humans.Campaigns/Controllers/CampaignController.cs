@@ -1,3 +1,5 @@
+using CsvHelper;
+using Humans.Base.Csv;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
@@ -11,7 +13,8 @@ namespace Humans.Campaigns.Controllers;
 
 [Authorize]
 [Route("Campaigns/Admin")]
-internal sealed class CampaignController(CampaignService campaignService, IUserServiceRead userService)
+internal sealed class CampaignController(
+    CampaignService campaignService, IUserServiceRead userService, ILogger<CampaignController> logger)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -153,11 +156,46 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
 
         using var reader = new StreamReader(file.OpenReadStream());
         var content = await reader.ReadToEndAsync(HttpContext.RequestAborted);
-        var codes = content
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .ToList();
+        var codes = new List<string>();
+        if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var config = HumansCsv.ReadConfig();
+            config.HasHeaderRecord = false;
+            using var csv = new CsvReader(new StringReader(content), config);
+            var invalid = false;
+            try
+            {
+                while (await csv.ReadAsync())
+                {
+                    HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                    if (csv.Parser.Count != 1)
+                    {
+                        invalid = true;
+                        break;
+                    }
+                    var code = csv.GetField(0);
+                    if (!string.IsNullOrWhiteSpace(code)) codes.Add(code);
+                }
+            }
+            catch (CsvHelperException)
+            {
+                invalid = true;
+            }
+            if (invalid)
+            {
+                logger.LogWarning("Rejected campaign {CampaignId} code CSV at row {Row}: expected one well-formed column",
+                    id, csv.Parser.Row);
+                SetError("Invalid CSV. Upload one column of codes without a header.");
+                return RedirectToAction(nameof(Detail), new { id });
+            }
+        }
+        else
+        {
+            // TXT uploads contain one literal code per line, including commas and quotes.
+            codes.AddRange(content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .Where(line => !string.IsNullOrWhiteSpace(line)));
+        }
 
         if (codes.Count == 0)
         {

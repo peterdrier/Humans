@@ -54,7 +54,7 @@
     {
         <form asp-action="ImportCodes" asp-route-id="@Model.Campaign.Id" method="post" enctype="multipart/form-data" class="d-inline-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
-            <input type="file" name="file" accept=".csv,.txt" class="form-control form-control-sm" style="max-width: 250px;" required />
+            <input type="file" name="file" accept=".csv,.txt" title="CSV: one column without a header. TXT: one code per line." class="form-control form-control-sm" style="max-width: 250px;" required />
             <button type="submit" class="btn btn-outline-primary btn-sm">
                 <i class="fa-solid fa-file-import me-1"></i>Import Codes
             </button>
