@@ -3,8 +3,56 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;
 
+/// <summary>
+/// One node of the team tree: a department or one of its (recursively nested) sub-teams.
+/// <see cref="IsLinkable"/> says whether the viewer can open the team's Details page.
+/// </summary>
+internal sealed record TeamTreeNode(
+    string Name,
+    string? Description,
+    string Slug,
+    int MemberCount,
+    bool IsLinkable,
+    IReadOnlyList<TeamTreeNode> Children);
+
 internal static class TeamDirectoryBuilder
 {
+    /// <summary>
+    /// Departments with their sub-teams nested beneath them, name-sorted at every level.
+    /// Inactive, hidden and system teams are left out, along with everything under them.
+    /// An anonymous viewer gets only the departments that opted into a public page
+    /// (the anonymous directory rule); their sub-teams are listed but link only when promoted.
+    /// </summary>
+    public static IReadOnlyList<TeamTreeNode> BuildTree(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        bool isAuthenticated)
+    {
+        var included = teamsById.Values
+            .Where(t => t.IsActive && !t.IsHidden && !t.IsSystemTeam)
+            .ToList();
+        var childrenByParent = included
+            .Where(t => t.ParentTeamId is not null)
+            .ToLookup(t => t.ParentTeamId!.Value);
+
+        return included
+            .Where(t => t.ParentTeamId is null && (isAuthenticated || t.IsPublicPage))
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => ToNode(t, childrenByParent, isAuthenticated))
+            .ToList();
+    }
+
+    private static TeamTreeNode ToNode(TeamInfo team, ILookup<Guid, TeamInfo> childrenByParent, bool isAuthenticated) =>
+        new(
+            team.Name,
+            team.Description,
+            team.Slug,
+            team.Members.Count,
+            isAuthenticated || (team.ParentTeamId is null ? team.IsPublicPage : team.IsPromotedToDirectory),
+            childrenByParent[team.Id]
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(t => ToNode(t, childrenByParent, isAuthenticated))
+                .ToList());
+
     public static async Task<TeamDirectoryResult> BuildAsync(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,
         IRoleAssignmentService roleAssignmentService,

@@ -573,6 +573,18 @@ internal sealed class TeamController(
         return RedirectToAction(nameof(MyTeams));
     }
 
+    [AllowAnonymous]
+    [HttpGet("Tree")]
+    public async Task<IActionResult> Tree(CancellationToken ct)
+    {
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+        return View(new TeamTreeViewModel
+        {
+            Departments = TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated),
+        });
+    }
+
     [HttpGet("Summary")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary(CancellationToken ct)

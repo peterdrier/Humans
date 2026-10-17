@@ -40,7 +40,7 @@ internal sealed class TeamService(
     private const int MaxTeamSlugLength = 256;
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
     {
-        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search"
+        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search", "tree"
     };
 
     internal const string TeamMemberships = "TeamMemberships";

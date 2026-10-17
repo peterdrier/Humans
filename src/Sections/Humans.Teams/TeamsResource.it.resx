@@ -530,6 +530,8 @@
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Team nascosti</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visibile solo agli admin)</value></data>
   <data name="Teams_Summary" xml:space="preserve"><value>Riepilogo</value></data>
+  <data name="Teams_Tree_Title" xml:space="preserve"><value>Albero dei team</value></data>
+  <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Ogni dipartimento e i team al suo interno.</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Stato sincronizzazione</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Team di sistema</value></data>
   <data name="Teams_TeamAdminResources_Title" xml:space="preserve">
