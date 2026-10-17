@@ -30,6 +30,34 @@ public sealed class BoardFeatureCollectionTests
     }
 
     [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void Build_ProvidesLocalizedPopupDatesAlongsideMachineDates(string culture)
+    {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
+        var trip = Trip(Guid.NewGuid(), route: StoredRoute);
+        var request = Request(Guid.NewGuid());
+        var snapshot = new RideshareSnapshot(2026, Settings, [trip], [request], []);
+
+        var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound,
+            Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
+
+        var offer = features[0].GetProperty("properties");
+        var pin = features[2].GetProperty("properties");
+        offer.GetProperty("departureDate").GetString().Should().Be("2026-07-03");
+        pin.GetProperty("desiredDate").GetString().Should().Be("2026-07-03");
+        offer.GetProperty("departureDateLabel").GetString().Should().Be(
+            Humans.Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(trip.DepartureDate));
+        pin.GetProperty("desiredDateLabel").GetString().Should().Be(
+            Humans.Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(request.DesiredDate));
+    }
+
+    [HumansTheory]
     [InlineData(StoredRoute)]
     [InlineData("""{"type":"LineString","coordinates":[[2.35,48.85,100],[-2.4,43.2,200]],"bbox":[-2.4,43.2,2.35,48.85]}""")]
     public void Build_EmitsALineAndAStartPerJoinableTrip_APinPerActiveRequest_AndTheDestination(string route)

@@ -105,7 +105,7 @@ async function init(el) {
 
 function tripPopupHtml(t, i18n) {
     const rows = [
-        `<div class="small">${esc(i18n('Departs'))} ${esc(t.departureDate)} · ${esc(fmt(i18n('Days'), t.durationDays))}</div>`,
+        `<div class="small">${esc(i18n('Departs'))} ${esc(t.departureDateLabel)} · ${esc(fmt(i18n('Days'), t.durationDays))}</div>`,
         `<div class="small">${esc(t.vehicleType)} · ${esc(t.luggageCapacity)} · ${esc(t.costSharing)}${t.costNote ? ' — ' + esc(t.costNote) : ''}</div>`,
         t.willingToDetour ? `<div class="small">${esc(i18n('Detour'))}</div>` : '',
         t.restrictions ? `<div class="small text-muted">${esc(i18n('Restrictions'))}: ${esc(t.restrictions)}</div>` : '',
@@ -124,7 +124,7 @@ function requestPopupHtml(r, i18n) {
         ? `<span class="badge bg-primary">${esc(i18n('YourRequest'))}</span>`
         : `<button type="button" class="btn btn-outline-primary btn-sm js-popup-take">${esc(i18n('Take'))}</button>`;
     return `${personHtml(r.riderName, r.riderPictureUrl, i18n('Rider'))}
-        <div><strong>${esc(r.placeLabel)}</strong> · ${esc(r.desiredDate)}</div>
+        <div><strong>${esc(r.placeLabel)}</strong> · ${esc(r.desiredDateLabel)}</div>
         <div class="small">${esc(i18n('People'))}: ${esc(r.partySize)} · ${esc(r.luggageLoad)}${r.canContributeToFuel ? ' · ' + esc(i18n('Fuel')) : ''}</div>
         ${r.notes ? `<div class="small text-muted">${esc(r.notes)}</div>` : ''}
         <div class="mt-2">${action}</div>`;
