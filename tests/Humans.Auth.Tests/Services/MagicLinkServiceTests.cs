@@ -1,3 +1,5 @@
+using System.Globalization;
+using Humans.Base.Extensions;
 using Humans.Auth.Services;
 using Humans.Auth.Tests.Infrastructure;
 using AwesomeAssertions;
@@ -76,13 +78,21 @@ public sealed class MagicLinkServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [HumansFact]
-    public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink()
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink(string recipientCulture)
     {
+        using var culture = new CultureScope("en");
         var userId = Guid.NewGuid();
         var user = new User
         {
             Id = userId,
+            PreferredLanguage = recipientCulture,
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
@@ -108,9 +118,11 @@ public sealed class MagicLinkServiceTests : IDisposable
                 m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin
                 && m.RecipientEmail == "alice@work.com"
                 && m.RecipientName == "Alice"
+                && m.Subject == $"Auth_Email_MagicLinkLogin_Subject#{recipientCulture}"
                 && m.HtmlBody.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         _urlBuilder.Received(1).BuildLoginUrl(userId, "/dashboard");
+        CultureInfo.CurrentUICulture.Name.Should().Be("en");
     }
 
     [HumansFact]
