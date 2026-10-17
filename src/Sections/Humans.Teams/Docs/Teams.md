@@ -17,6 +17,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 - A **Department** is a team with no parent.
 - A **Sub-Team** is a team within a department. Only one level of nesting is allowed.
+- Manual membership and role-assignment grants resolve the selected person before duplicate checks or writes. Missing and terminal accounts are refused; merge aliases use the survivor for membership, pending requests, roles, outbox and audit attribution. Existing live-account admission states remain allowed.
 - **System teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) are managed automatically — members cannot be manually added or removed.
 - A **Coordinator** is a team member assigned to the management role on a department. Coordinators have full authority over the department and all its sub-teams, including Google resource management. They are added to the Coordinators system team.
 - A **Sub-team Manager** is a team member assigned to the management role on a sub-team. Managers have scoped authority over their sub-team only: member management, join requests, roles, shifts, and team page editing. They **cannot** manage Google resources, the parent department, or sibling sub-teams. They are **not** added to the Coordinators system team.
