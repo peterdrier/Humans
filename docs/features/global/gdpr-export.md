@@ -177,7 +177,7 @@ id alone. Asking with either id has to reach the same record.
 | `TicketAttendeeMatches` | `TicketQueryService` | Array of `{ AttendeeName, AttendeeEmail, TicketTypeName, Price, Status }`. |
 | `CampaignGrants` | `CampaignService` | Array of `{ CampaignTitle, Code, AssignedAt, RedeemedAt, EmailStatus }`. |
 | `CampRoleAssignments` | `CampService` | Array of `{ CampSlug, SeasonYear, RoleName, AssignedAt, AssignedByUserId }`. |
-| `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"). |
+| `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"), covering every account in the resolved merge chain without duplicate requests. |
 | `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
 | `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
 | `AgentConversations` | `AgentService` | Array of `{ Id, StartedAt, LastMessageAt, Locale, MessageCount, Messages: [{ Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId }] }` — the user's AI assistant conversations with full message history. |

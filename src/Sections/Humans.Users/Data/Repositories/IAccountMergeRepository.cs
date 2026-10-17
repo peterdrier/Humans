@@ -35,19 +35,18 @@ internal interface IAccountMergeRepository : IRepository
     Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns read-only summaries of merge requests where the user is either
-    /// the source or the target, ordered by <c>CreatedAt</c> descending.
-    /// Used by the GDPR export contributor.
-    /// </summary>
-    /// <summary>
     /// GDPR Art. 17: clears the requested email address and any admin notes on
     /// every merge request naming this user. The row itself stays — the merge
     /// chain is what keeps a tombstoned account's history resolvable.
     /// </summary>
     Task<int> ScrubPiiForUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns each merge request naming any of the subject's account IDs once.
+    /// Marks the subject as target when any of those IDs is the request's target.
+    /// </summary>
     Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
-        Guid userId, CancellationToken ct = default);
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the subset of email IDs that have a pending merge request.

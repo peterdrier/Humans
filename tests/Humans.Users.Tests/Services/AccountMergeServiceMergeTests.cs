@@ -1,3 +1,6 @@
+using Xunit;
+using Microsoft.EntityFrameworkCore;
+using Humans.Users.Data;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
@@ -37,9 +40,9 @@ public class AccountMergeServiceMergeTests
             .Returns(new List<AccountMergeRequest>());
     }
 
-    private AccountMergeService BuildSut() =>
+    private AccountMergeService BuildSut(IAccountMergeRepository? mergeRepository = null) =>
         new(
-            _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
+            mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService, _activeTeamsCacheInvalidator, _roles, _notify, _consentCache);
 
@@ -55,6 +58,56 @@ public class AccountMergeServiceMergeTests
             }.ToUserInfo());
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId }.ToUserInfo());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesEveryMergedAccountsRequestsOnce(bool requestArchivedId)
+    {
+        var oldestId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var outsiderId = Guid.NewGuid();
+        var unrelatedSourceId = Guid.NewGuid();
+        var unrelatedTargetId = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using var db = new UsersDbContext(options);
+        db.Users.AddRange(new[] { oldestId, archivedId, survivorId, outsiderId, unrelatedSourceId, unrelatedTargetId }
+            .Select(id => new User { Id = id }));
+        foreach (var (source, target, status) in new[]
+                 {
+                     (oldestId, archivedId, AccountMergeRequestStatus.Accepted),
+                     (archivedId, survivorId, AccountMergeRequestStatus.Accepted),
+                     (survivorId, outsiderId, AccountMergeRequestStatus.Pending),
+                     (unrelatedSourceId, unrelatedTargetId, AccountMergeRequestStatus.Rejected)
+                 })
+        {
+            db.AccountMergeRequests.Add(new AccountMergeRequest
+            {
+                Id = Guid.NewGuid(), SourceUserId = source, TargetUserId = target,
+                Status = status, CreatedAt = _clock.GetCurrentInstant()
+            });
+        }
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var requestedId = requestArchivedId ? oldestId : survivorId;
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = survivorId }.ToUserInfo() with { MergedUserIds = [oldestId, archivedId] });
+        var repository = new AccountMergeRepository(new TestDbContextFactory(options));
+
+        var slices = await BuildSut(repository).ContributeForUserAsync(
+            requestedId, Xunit.TestContext.Current.CancellationToken);
+
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(s => string.Equals(s.SectionName, AccountMergeService.AccountMergeRequests,
+                StringComparison.Ordinal)).Data));
+        var rows = json.RootElement.EnumerateArray().ToArray();
+        rows.Should().HaveCount(3);
+        rows.Select(r => r.GetProperty("Status").GetString())
+            .Should().BeEquivalentTo(["Accepted", "Accepted", "Pending"]);
+        rows.Select(r => r.GetProperty("Role").GetString())
+            .Should().BeEquivalentTo(["Target", "Target", "Source"]);
     }
 
     [HumansFact]
