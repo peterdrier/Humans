@@ -542,7 +542,7 @@
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have received your request to delete your account. Your account and all associated data will be permanently deleted on &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;If you change your mind, you can cancel this request before the deletion date by visiting:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;After deletion, this action cannot be undone and all your data will be permanently removed.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
   <data name="Users_Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>

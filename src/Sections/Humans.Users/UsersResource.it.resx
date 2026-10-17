@@ -1140,7 +1140,7 @@
 &lt;p&gt;Ciao {0},&lt;/p&gt;
 &lt;p&gt;Abbiamo ricevuto la tua richiesta di eliminazione dell'account. Il tuo account e tutti i dati associati saranno eliminati permanentemente il &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Se cambi idea, puoi annullare questa richiesta prima della data di eliminazione:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Annulla richiesta di eliminazione&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Annulla richiesta di eliminazione&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Dopo l'eliminazione, questa azione non può essere annullata e tutti i tuoi dati saranno rimossi permanentemente.&lt;/p&gt;
 &lt;p&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>

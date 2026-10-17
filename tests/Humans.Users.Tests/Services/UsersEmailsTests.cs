@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using System.Reflection;
 using Humans.Base.Extensions;
@@ -56,19 +58,25 @@ public sealed class UsersEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
-    public void AccountDeletionRequested_FormatsTheDateInTheRecipientCulture(string culture)
+    public void AccountDeletionRequested_UsesRecipientCultureAndTheCancellationPage(string culture)
     {
         using var callerCulture = new CultureScope("en");
         string expectedDate;
         using (new CultureScope(culture))
             expectedDate = DeletionDate.InUtc().Date.ToDate();
 
-        var msg = Create().AccountDeletionRequested("a@x.com", "Alice", DeletionDate, culture);
+        var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+        var emails = new UsersEmails(
+            Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }),
+            localizer, NullLogger<UsersEmails>.Instance);
+        var msg = emails.AccountDeletionRequested("a@x.com", "Alice", DeletionDate, culture);
 
         msg.TemplateName.Should().Be("deletion_requested");
         msg.Category.Should().BeNull();
         msg.Culture.Should().Be(culture);
         msg.HtmlBody.Should().Contain(expectedDate);
+        msg.HtmlBody.Should().Contain($"href=\"{TestUsersEmails.BaseUrl}/User/Deletion\"");
     }
 
     [HumansFact]
