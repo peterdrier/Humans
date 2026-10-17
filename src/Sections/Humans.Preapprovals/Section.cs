@@ -1,0 +1,70 @@
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
+using Humans.Base.Models.Tables;
+using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Preapprovals.Authorization;
+using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Data;
+using Humans.Preapprovals.Domain;
+using Humans.Preapprovals.Jobs;
+using Humans.Preapprovals.Services;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Humans.Preapprovals;
+
+/// <summary>
+/// Preapprovals' DI entry point, at the project root by convention. Discovered by Shell —
+/// nothing names it, so it needs no section prefix.
+/// </summary>
+public sealed class Section : ISection, ISectionAdminNav
+{
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Pre-approvals", [
+            new("Programs", "PreapprovalsAdmin", "Index", null, null,
+                "fa-solid fa-stamp", PreapprovalsPolicies.Manage)
+        ])
+    ];
+
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSectionDbContext<PreapprovalsDbContext>(sentinelTable: "pre_programs");
+
+        // Singleton + IDbContextFactory pattern (§15b): the repository owns context lifetime.
+        services.AddSingleton<IPreapprovalRepository, PreapprovalRepository>();
+
+        // No caching decorator: a handful of programs, read on a few pages a day.
+        services.AddScoped<PreapprovalService>();
+        services.AddScoped<IPreapprovalManagementService>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IPreapprovalService>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IPreapprovalServiceRead>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<PreapprovalService>());
+
+        services.AddScoped<IAuthorizationHandler, PreapprovalsPolicyHandler>();
+        services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
+
+        services.AddScoped<PreapprovalRemindersJob>();
+
+        // Preapprovals owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<PreapprovalsEmails>();
+        services.AddScoped<IEmailPreviewContributor, PreapprovalsEmailPreviews>();
+
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [GrantStatus.Applied] = "bg-warning text-dark",
+            [GrantStatus.Open] = "bg-primary",
+            [GrantStatus.Claimed] = "bg-info text-dark",
+            [GrantStatus.Consumed] = "bg-success",
+            [GrantStatus.Declined] = "bg-secondary",
+            [GrantStatus.Revoked] = "bg-danger",
+            [ProgramStatus.Open] = "bg-success",
+            [ProgramStatus.Closed] = "bg-secondary",
+        });
+    }
+}

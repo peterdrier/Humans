@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+      <data name="Enum_GrantStatus_Applied" xml:space="preserve"><value>Richiesta</value></data>
+  <data name="Enum_GrantStatus_Open" xml:space="preserve"><value>Aperta</value></data>
+  <data name="Enum_GrantStatus_Claimed" xml:space="preserve"><value>Rivendicata</value></data>
+  <data name="Enum_GrantStatus_Consumed" xml:space="preserve"><value>Usata</value></data>
+  <data name="Enum_GrantStatus_Declined" xml:space="preserve"><value>Rifiutata</value></data>
+  <data name="Enum_GrantStatus_Revoked" xml:space="preserve"><value>Revocata</value></data>
+  <data name="Preapprovals_Title" xml:space="preserve"><value>Preapprovazioni</value></data>
+  <data name="Preapprovals_Intro" xml:space="preserve"><value>Una preapprovazione è l'impegno dell'associazione a rimborsarti fino a un importo, per uno scopo, se presenti la tua nota spese entro la scadenza. Presentala in tempo: dopo non viene pagato nulla.</value></data>
+  <data name="Preapprovals_Manage" xml:space="preserve"><value>Gestire le preapprovazioni</value></data>
+  <data name="Preapprovals_Mine" xml:space="preserve"><value>Le mie preapprovazioni</value></data>
+  <data name="Preapprovals_NoneActive" xml:space="preserve"><value>Non hai preapprovazioni aperte.</value></data>
+  <data name="Preapprovals_Program" xml:space="preserve"><value>Programma</value></data>
+  <data name="Preapprovals_ClaimBy" xml:space="preserve"><value>Presentare entro il</value></data>
+  <data name="Preapprovals_DeadlinePassed" xml:space="preserve"><value>Scadenza superata</value></data>
+  <data name="Preapprovals_DaysLeft" xml:space="preserve"><value>Mancano {0} giorni</value></data>
+  <data name="Preapprovals_FileExpense" xml:space="preserve"><value>Presenta nota spese</value></data>
+  <data name="Preapprovals_ViewReport" xml:space="preserve"><value>Vedi nota spese</value></data>
+  <data name="Preapprovals_OpenPrograms" xml:space="preserve"><value>Programmi che accettano richieste</value></data>
+  <data name="Preapprovals_PerPerson" xml:space="preserve"><value>{0} a persona</value></data>
+  <data name="Preapprovals_AmountOnRequest" xml:space="preserve"><value>Importo su richiesta</value></data>
+  <data name="Preapprovals_Apply" xml:space="preserve"><value>Richiedi</value></data>
+  <data name="Preapprovals_Past" xml:space="preserve"><value>Precedenti</value></data>
+  <data name="Preapprovals_ApplyTitle" xml:space="preserve"><value>Richiedi una preapprovazione</value></data>
+  <data name="Preapprovals_EditApplication" xml:space="preserve"><value>Modifica la tua richiesta</value></data>
+  <data name="Preapprovals_RequestedAmount" xml:space="preserve"><value>Importo richiesto</value></data>
+  <data name="Preapprovals_ApplicationNote" xml:space="preserve"><value>A cosa serve?</value></data>
+  <data name="Preapprovals_ApplicationNote_Help" xml:space="preserve"><value>Qualche riga per chi gestisce il programma: come pensi di spenderlo.</value></data>
+  <data name="Preapprovals_NotAccepting" xml:space="preserve"><value>Questo programma non accetta richieste.</value></data>
+  <data name="Preapprovals_Applied" xml:space="preserve"><value>La tua richiesta è stata inviata a chi gestisce il programma.</value></data>
+  <data name="Preapprovals_Error_NotFound" xml:space="preserve"><value>Non trovato.</value></data>
+  <data name="Preapprovals_Error_NameRequired" xml:space="preserve"><value>Serve un nome.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountRequired" xml:space="preserve"><value>Un programma a importo fisso richiede un importo a persona.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountNotAllowed" xml:space="preserve"><value>Un programma a importo per concessione non ha un importo a persona.</value></data>
+  <data name="Preapprovals_Error_AmountPositive" xml:space="preserve"><value>L'importo deve essere maggiore di zero.</value></data>
+  <data name="Preapprovals_Error_AmountNotAllowed" xml:space="preserve"><value>Le concessioni di un programma a importo fisso sono sempre l'importo a persona.</value></data>
+  <data name="Preapprovals_Error_AmountRequired" xml:space="preserve"><value>Serve un importo.</value></data>
+  <data name="Preapprovals_Error_AccountNotFound" xml:space="preserve"><value>Quel conto spese non è disponibile.</value></data>
+  <data name="Preapprovals_Error_KindLocked" xml:space="preserve"><value>Il tipo non può cambiare una volta che esistono concessioni.</value></data>
+  <data name="Preapprovals_Error_CeilingExceeded" xml:space="preserve"><value>Supererebbe il tetto del programma: restano {0}.</value></data>
+  <data name="Preapprovals_Error_CeilingBelowCommitted" xml:space="preserve"><value>Il tetto non può scendere sotto quanto già impegnato: {0}.</value></data>
+  <data name="Preapprovals_Error_ProgramClosed" xml:space="preserve"><value>Questo programma è chiuso.</value></data>
+  <data name="Preapprovals_Error_NotAcceptingApplications" xml:space="preserve"><value>Questo programma non accetta richieste.</value></data>
+  <data name="Preapprovals_Error_DeadlinePassed" xml:space="preserve"><value>La scadenza per presentare è passata.</value></data>
+  <data name="Preapprovals_Error_WrongStatus" xml:space="preserve"><value>L'azione non è possibile nello stato attuale della concessione.</value></data>
+  <data name="Preapprovals_Error_NoBeneficiaries" xml:space="preserve"><value>Scegli almeno una persona.</value></data>
+  <data name="Preapprovals_Error_TextTooLong" xml:space="preserve"><value>Il testo è troppo lungo.</value></data>
+  <data name="Preapprovals_Error_IssueManyFixedOnly" xml:space="preserve"><value>Concedere a più persone insieme richiede un importo fisso a persona.</value></data>
+  <data name="Preapprovals_Notice_Issued" xml:space="preserve"><value>Hai una preapprovazione</value></data>
+  <data name="Preapprovals_Notice_Released" xml:space="preserve"><value>La tua preapprovazione è di nuovo aperta</value></data>
+  <data name="Preapprovals_Notice_DeadlineChanged" xml:space="preserve"><value>La scadenza della tua preapprovazione è cambiata</value></data>
+  <data name="Preapprovals_Notice_Reminder" xml:space="preserve"><value>Presenta presto la tua nota spese</value></data>
+  <data name="Preapprovals_Notice_Declined" xml:space="preserve"><value>La tua richiesta è stata rifiutata</value></data>
+  <data name="Preapprovals_Notice_Revoked" xml:space="preserve"><value>La tua preapprovazione è stata revocata</value></data>
+  <data name="Preapprovals_Notice_AmountChanged" xml:space="preserve"><value>L'importo della tua preapprovazione è cambiato</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived" xml:space="preserve"><value>Nuova richiesta di preapprovazione</value></data>
+  <data name="Preapprovals_Notice_FileBy_Body" xml:space="preserve"><value>{1} {2}. Presenta la tua nota spese entro il {3}.</value></data>
+  <data name="Preapprovals_Notice_Decided_Body" xml:space="preserve"><value>{1} {2}. {4}</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived_Body" xml:space="preserve"><value>{4} ha richiesto {2}.</value></data>
+  <data name="Preapprovals_Email_Greeting_Generic" xml:space="preserve"><value>Ciao,</value></data>
+  <data name="Preapprovals_Email_Greeting_Named" xml:space="preserve"><value>Ciao {0},</value></data>
+  <data name="Preapprovals_Email_LabelLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Per:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DetailLine" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Issued_Subject" xml:space="preserve"><value>Preapprovazione: {0}</value></data>
+  <data name="Preapprovals_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Hai una preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Fino a:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Presenta la nota spese entro il:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Dopo quella data non viene rimborsato nulla. &lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Declined_Subject" xml:space="preserve"><value>Richiesta di preapprovazione rifiutata: {0}</value></data>
+  <data name="Preapprovals_Email_Declined_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;La tua richiesta nel programma &lt;strong&gt;{1}&lt;/strong&gt; è stata rifiutata.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Vedi il programma&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Subject" xml:space="preserve"><value>Richiesta di preapprovazione: {0}</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Qualcuno ha richiesto una preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Richiesto:&lt;/strong&gt; {3}&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Esamina la richiesta&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Subject" xml:space="preserve"><value>Promemoria: presenta entro il {1} per {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;La tua preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt; non è ancora stata usata.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Fino a:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Presenta la nota spese entro il:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Dopo quella data non viene rimborsato nulla. &lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Subject" xml:space="preserve"><value>Importo della preapprovazione modificato: {0}</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;L'importo della tua preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt; è cambiato.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Prima:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Ora:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Revoked_Subject" xml:space="preserve"><value>Preapprovazione revocata: {0}</value></data>
+  <data name="Preapprovals_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;La tua preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt; è stata revocata.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Importo:&lt;/strong&gt; {3}&lt;/p&gt;{4}&lt;p&gt;Se una nota spese la sta usando, la nota può comunque essere decisa; il tetto e il conto non si applicano più. &lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Scadenza della preapprovazione modificata: presenta entro il {1} per {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;La scadenza della tua preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt; è stata spostata.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Fino a:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nuova scadenza:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
+</root>

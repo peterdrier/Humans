@@ -1,0 +1,103 @@
+@model MemberProgramViewModel
+@{
+    var p = Model.Program;
+    ViewData["Title"] = p.Name;
+    var accepting = p.IsAcceptingApplications(Model.Today);
+    var pending = Model.Pending;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Preapprovals_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+    </ol>
+</nav>
+
+<h1>@p.Name</h1>
+
+<dl class="row">
+    <dt class="col-sm-3">@SharedLocalizer["Common_Amount"]</dt>
+    <dd class="col-sm-9">
+        @(p.Kind == ProgramKind.FixedPerPerson
+            ? Localizer["Preapprovals_PerPerson", p.PerPersonAmount!.Value.ToEuro()].Value
+            : Localizer["Preapprovals_AmountOnRequest"].Value)
+    </dd>
+    <dt class="col-sm-3">@Localizer["Preapprovals_ClaimBy"]</dt>
+    <dd class="col-sm-9 @(p.DeadlinePassed(Model.Today) ? "text-muted" : "")">
+        @p.ClaimBy.ToDate()
+        @if (p.DeadlinePassed(Model.Today))
+        {
+            <span class="ms-1">(@Localizer["Preapprovals_DeadlinePassed"])</span>
+        }
+    </dd>
+</dl>
+
+@if (!string.IsNullOrEmpty(p.Description))
+{
+    <p>@p.Description</p>
+}
+
+@if (Model.MyGrants.Count > 0)
+{
+    <h2 class="h5 mt-4">@Localizer["Preapprovals_Mine"]</h2>
+    <ul class="list-group mb-4">
+        @foreach (var g in Model.MyGrants)
+        {
+            <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span>
+                    @g.MaxAmount.ToEuro()
+                    @if (g.Label is not null)
+                    {
+                        <span class="text-muted">· @g.Label</span>
+                    }
+                    @if (g.Status == GrantStatus.Applied && g.ApplicationNote is not null)
+                    {
+                        <div class="small text-muted">@g.ApplicationNote</div>
+                    }
+                </span>
+                <span>
+                    <span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span>
+                    @if (g.IsClaimable(Model.Today))
+                    {
+                        <a href="/Expenses/New?grant=@g.Id" class="btn btn-sm btn-primary ms-2">@Localizer["Preapprovals_FileExpense"]</a>
+                    }
+                </span>
+            </li>
+        }
+    </ul>
+}
+
+@if (accepting)
+{
+    <div class="card" style="max-width: 640px;">
+        <div class="card-body">
+            <h2 class="h5 card-title">@(pending is null ? Localizer["Preapprovals_ApplyTitle"] : Localizer["Preapprovals_EditApplication"])</h2>
+            <form method="post" asp-action="Apply" asp-route-programId="@p.Id">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                @if (p.Kind == ProgramKind.PerGrantAmount)
+                {
+                    <div class="mb-3">
+                        <label asp-for="Form.RequestedAmount" class="form-label">@Localizer["Preapprovals_RequestedAmount"]</label>
+                        <div class="input-group" style="max-width: 240px;">
+                            <input asp-for="Form.RequestedAmount" type="number" step="0.01" min="0.01" class="form-control"
+                                   value="@(Model.Form.RequestedAmount ?? pending?.RequestedAmount)" required />
+                            <span class="input-group-text">€</span>
+                        </div>
+                        <span asp-validation-for="Form.RequestedAmount" class="text-danger"></span>
+                    </div>
+                }
+                <div class="mb-3">
+                    <label asp-for="Form.Note" class="form-label">@Localizer["Preapprovals_ApplicationNote"]</label>
+                    <textarea asp-for="Form.Note" class="form-control" rows="4" maxlength="2000">@(Model.Form.Note ?? pending?.ApplicationNote)</textarea>
+                    <div class="form-text">@Localizer["Preapprovals_ApplicationNote_Help"]</div>
+                    <span asp-validation-for="Form.Note" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">@(pending is null ? Localizer["Preapprovals_Apply"] : SharedLocalizer["Common_Save"])</button>
+            </form>
+        </div>
+    </div>
+}
+else
+{
+    <p class="text-muted">@Localizer["Preapprovals_NotAccepting"]</p>
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Preapprovals' cross-section surface as its own leaf: Expenses (and later Creativity) consume
+    it, and Humans.Preapprovals cannot host a Contracts/ folder for them without each consumer
+    referencing the section project itself (memory/architecture/section-project-cycle-fix.md).
+    References Humans.Base only.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>
