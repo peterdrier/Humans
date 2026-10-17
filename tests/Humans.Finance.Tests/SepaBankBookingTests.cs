@@ -844,8 +844,7 @@ public class SepaBankBookingTests
     {
         SeedContacts(_userId);
 
-        var (rows, _, unmatched, error) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         error.Should().BeNull();
         unmatched.Should().BeEmpty();
@@ -865,8 +864,7 @@ public class SepaBankBookingTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().ContainSingle().Which.Reason.Should()
@@ -879,8 +877,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(amount: -12.5m, description: "DOMICILIACION ENDESA"));
 
-        var (_, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (_, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         var line = unmatched.Should().ContainSingle().Subject;
         line.ParsedAccountNum.Should().BeNull();
@@ -898,8 +895,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(description: Textless));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         var row = rows.Should().ContainSingle().Subject;
@@ -913,8 +909,7 @@ public class SepaBankBookingTests
     {
         SeedContacts(_userId);
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateMatchedByText.Should().BeTrue();
     }
@@ -927,8 +922,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId, otherUser);
         SeedMovements(Movement(description: Textless));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().OnlyContain(r => !r.CanBook);
         unmatched.Should().ContainSingle().Which.Reason.Should()
@@ -987,8 +981,7 @@ public class SepaBankBookingTests
         SeedMovements(Movement(description: Textless));
         var service = MakeService();
 
-        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
         var process = await service.BookSepaFileAsync(smallFile, MovementId, Guid.NewGuid());
 
@@ -1009,6 +1002,57 @@ public class SepaBankBookingTests
         await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
+    }
+
+    // ─── The editable tolerance: days either side of the file date ──────────────
+
+    /// <summary>Three days after the file (generated 2026-04-28): outside the default two.</summary>
+    private static readonly LocalDate LateLineDate = new(2026, 5, 1);
+
+    [HumansFact]
+    public async Task Page_TextlessLine_OutsideTheDefaultTolerance_IsNotPaired_ButIsWhenWidened()
+    {
+        SeedContacts(_userId);
+        SeedMovements(Movement(description: Textless, date: LateLineDate));
+        var service = MakeService();
+
+        var (strict, _, strictUnmatched, _) = await service.GetSepaPayoutsAsync(
+            ct: Xunit.TestContext.Current.CancellationToken);
+        var (wide, _, wideUnmatched, _) = await service.GetSepaPayoutsAsync(
+            toleranceDays: 7, ct: Xunit.TestContext.Current.CancellationToken);
+
+        strict.Should().ContainSingle().Which.CanBook.Should().BeFalse();
+        strictUnmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer is for");
+        wide.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+        wideUnmatched.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Page_TextMatchedLine_OutsideTheDefaultTolerance_StillPairs()
+    {
+        // The text ties the line to the account; only a line dated before the file is refused.
+        SeedContacts(_userId);
+        SeedMovements(Movement(date: LateLineDate));
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Booking_TextlessLine_OutsideThePostedTolerance_Refuses_AndBooksWhenWidened()
+    {
+        SeedMovements(Movement(description: Textless, date: LateLineDate));
+        var service = MakeService();
+
+        var strict = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+        await AssertNothingPosted();
+        var wide = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid(), toleranceDays: 7);
+
+        strict.Succeeded.Should().BeFalse();
+        strict.Message.Should().Contain("does not match this transfer");
+        wide.Succeeded.Should().BeTrue(wide.Message);
     }
 
     private static readonly Guid MatchedFileId = Guid.Parse("55555555-5555-5555-5555-555555555555");
@@ -1056,8 +1100,7 @@ public class SepaBankBookingTests
             });
         var service = MakeService();
 
-        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var result = await service.BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
 
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
@@ -1122,8 +1165,7 @@ public class SepaBankBookingTests
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .ThrowsAsync(new HoldedTransientException("Holded 503"));
 
-        var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unavailable.Should().BeNull();
         error.Should().Contain("bank feed could not be read");
@@ -1142,8 +1184,7 @@ public class SepaBankBookingTests
             Row(stale, _userId, generatedAt: FixedNow - Duration.FromDays(200)));
         SeedContacts(_userId);
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         rows.Single(r => r.TransferId == TransferId).CandidateBankMovementId.Should().Be(MovementId);
@@ -1173,8 +1214,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(date: new LocalDate(2026, 4, 20)));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer");
@@ -1199,8 +1239,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(status: "partial"));
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
     }
@@ -1223,8 +1262,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(), Movement(id: "mov-2"));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().HaveCount(2);
@@ -1283,8 +1321,7 @@ public class SepaBankBookingTests
         SeedWindowEdgeTransfer();
         SeedContacts(_userId);
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().Be(MovementId);
     }
@@ -1363,8 +1400,7 @@ public class SepaBankBookingTests
     {
         SeedBatch();
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         rows.Should().HaveCount(4).And.OnlyContain(r => r.BatchLine != null && !r.CanBook);
@@ -1380,8 +1416,7 @@ public class SepaBankBookingTests
     {
         SeedBatch("TRANSF SEPA M" + BatchFileId.ToString("N").ToUpperInvariant());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows[0].BatchLine!.QuotesFileReference.Should().BeTrue();
     }
@@ -1399,8 +1434,7 @@ public class SepaBankBookingTests
             .ToArray();
         SeedRows(rows);
 
-        var (result, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (result, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().OnlyContain(r => r.BatchLine == null);
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 payout files total 100.00 EUR");
@@ -1414,8 +1448,7 @@ public class SepaBankBookingTests
             Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
             Movement("mov-batch-2", -100m, "TRANSFERENCIAS SEPA"));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
 
         rows.Should().OnlyContain(r => r.BatchLine == null);
@@ -1435,8 +1468,7 @@ public class SepaBankBookingTests
             Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
             Movement("mov-own", -10m, "TRANSF 40000011 - NCA - ANA RUIZ"));
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
 
         rows.Should().OnlyContain(r => r.BatchLine == null);
@@ -1459,8 +1491,7 @@ public class SepaBankBookingTests
                 Source = CreditorContactSource.Auto,
             }).ToList());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows[0].BatchLine!.NotProcessableReason.Should().Contain("40000011").And.Contain("no Holded contact binding");
     }

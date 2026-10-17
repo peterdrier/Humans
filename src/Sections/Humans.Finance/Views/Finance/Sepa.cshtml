@@ -26,6 +26,15 @@
     hand.
 </p>
 
+<form method="get" asp-action="Sepa" class="d-flex align-items-center gap-2 mb-3">
+    <label for="days" class="form-label mb-0">Pair a bank line dated within</label>
+    <input type="number" id="days" name="days" class="form-control form-control-sm" style="width: 5rem"
+           min="0" max="90" value="@Model.ToleranceDays" />
+    <span>days of the file date</span>
+    <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+    <span class="text-muted small">Default @Humans.Finance.Services.IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
+</form>
+
 @if (Model.UnavailableReason is { } unavailable)
 {
     <div class="alert alert-warning">
@@ -110,6 +119,7 @@
                       data-confirm="Book all @matched transfers of @file.FileName, each against the Sabadell line shown on its row? This posts real payments, and a journal entry for anything a member's documents do not cover.">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="fileId" value="@file.FileId" />
+                    <input type="hidden" name="days" value="@Model.ToleranceDays" />
                     <button type="submit" class="btn btn-sm btn-primary text-nowrap">
                         <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book file
                     </button>
@@ -154,6 +164,7 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="fileId" value="@file.FileId" />
                             <input type="hidden" name="bankMovementId" value="@batch.MovementId" />
+                            <input type="hidden" name="days" value="@Model.ToleranceDays" />
                             <button type="submit" class="btn btn-sm btn-primary text-nowrap">
                                 <i class="fa-solid fa-file-invoice-dollar me-1"></i>Process
                             </button>
@@ -221,6 +232,7 @@
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="transferId" value="@t.Row.TransferId" />
                                     <input type="hidden" name="bankMovementId" value="@t.Row.CandidateBankMovementId" />
+                                    <input type="hidden" name="days" value="@Model.ToleranceDays" />
                                     <button type="submit" class="btn btn-sm btn-primary">
                                         <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
                                     </button>

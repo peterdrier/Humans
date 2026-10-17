@@ -3285,8 +3285,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryAccountId = "";
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3321,8 +3320,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryLedgerAccount = null;
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryLedgerAccount");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3336,8 +3334,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.NotBookableReason.Should().Contain("no Holded contact binding");
     }
@@ -3352,8 +3349,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000099 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3373,8 +3369,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3393,8 +3388,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
@@ -3413,8 +3407,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.

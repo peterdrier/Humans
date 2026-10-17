@@ -169,6 +169,7 @@ ledger, so paying one would post against a document that does not exist for acco
 | Ambiguous match (two unbooked transfers generated inside the feed window fit one line — of its account, or of any account when its text names none) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
 | A textless line whose amount is also a multi-transfer file's total | neither the transfer nor the file takes it; the panel says so |
 | A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
+| A textless line dated outside the tolerance of every file of its amount | the panel; widen the tolerance on the page if it is that file's |
 | The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | refused; nothing posted |
@@ -210,9 +211,14 @@ is logged at Warning. One bad line or one Holded exception never aborts the rest
 ## One line per transfer, no text — Book file
 
 Sabadell's live behaviour: one outgoing line per transfer, dated the execution day, with no
-remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked, bookable
-transfer of exactly its amount whose file was generated no later than the line (less the 2-day
-slack), inside the feed window. Nothing else is inferred:
+remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked transfer of
+exactly its amount whose file date is within the **tolerance** of the line's date, inside the feed
+window. The tolerance is days either side of the file's generation date, default
+`IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
+`/Finance/Sepa` (`?days=N`, clamped to 0..90) for a bank that executed a file late; the value posts
+back with every booking from that view, so the booking re-validates under the window the page
+paired with. A line whose text names the account is bound only from below (no earlier than the
+tolerance before the file), as before. Nothing else is inferred:
 
 - two unbooked transfers of that amount, in any files, make the line ambiguous — the panel names
   the count and a human books it in Holded;
@@ -220,6 +226,10 @@ slack), inside the feed window. Nothing else is inferred:
   the panel;
 - a line whose amount is also a multi-transfer file's total is left to a human, since it could be
   the file's single debit instead.
+
+Ambiguity is judged over **every** unbooked transfer in the window, bookable or not — the same set
+the booking's own `PairingRefusal` uses — so a line the page pairs is one the booking accepts; a
+line whose only match cannot be booked goes to the panel with that row's reason.
 
 A paired row shows the line (date, amount, id, text) with a "matched on amount and date only"
 badge and **no button of its own**. The file's card offers **Book file**

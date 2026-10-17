@@ -55,12 +55,24 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// screen (missing configuration), the outgoing bank lines that matched nothing or matched
     /// ambiguously, and the reason the live bank feed could not be read. Makes one live bank-feed
     /// call; a vendor failure costs the candidates and the panel, not the page
-    /// (nobodies-collective/Humans#1185).</summary>
+    /// (nobodies-collective/Humans#1185).
+    /// <para><paramref name="toleranceDays"/> is how far a bank line's date may sit from its
+    /// file's generation date and still be that file's: either side for a textless line (a
+    /// Sabadell line names no account, so the date is half of what ties it to a transfer), before
+    /// only for a line whose text names the account. The page's default is
+    /// <see cref="DefaultSepaMatchToleranceDays"/>; the treasurer widens it per view, and the same
+    /// value rides every booking posted from that view so the booking re-validates with the window
+    /// the page paired under.</para></summary>
     Task<(IReadOnlyList<SepaPayoutTransferRow> Rows,
           string? UnavailableReason,
           IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
           string? BankFeedError)>
-        GetSepaPayoutsAsync(CancellationToken ct = default);
+        GetSepaPayoutsAsync(int toleranceDays = DefaultSepaMatchToleranceDays, CancellationToken ct = default);
+
+    /// <summary>The default for <c>toleranceDays</c> on the SEPA page and every booking: a line
+    /// within two days of its file's generation date. Also the slack the sweep reads the feed back
+    /// by.</summary>
+    const int DefaultSepaMatchToleranceDays = 2;
 
     /// <summary>Books one transfer against the outgoing Sabadell line that paid it
     /// (nobodies-collective/Humans#1185): re-validates the pairing server-side, reads the live
@@ -75,7 +87,8 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// (<c>memory/architecture/cancellation-token-propagation.md</c>).</summary>
     [ExternalWrite]
     Task<SepaBookingResult> BookSepaTransferAsync(
-        Guid transferId, string bankMovementId, Guid? actorUserId);
+        Guid transferId, string bankMovementId, Guid? actorUserId,
+        int toleranceDays = DefaultSepaMatchToleranceDays);
 
     /// <summary>Books every unbooked transfer of one payout file against the single Sabadell line
     /// the bank debited the whole file as — the line's amount must be the file's total, exactly.
@@ -86,7 +99,9 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// processing the file again finishes the rest. Takes no <c>CancellationToken</c>, for the same
     /// reason.</summary>
     [ExternalWrite]
-    Task<SepaBookingResult> BookSepaFileAsync(Guid fileId, string bankMovementId, Guid actorUserId);
+    Task<SepaBookingResult> BookSepaFileAsync(
+        Guid fileId, string bankMovementId, Guid actorUserId,
+        int toleranceDays = DefaultSepaMatchToleranceDays);
 
     /// <summary>Books every unbooked transfer of one payout file, each against the Sabadell line
     /// <see cref="GetSepaPayoutsAsync"/> paired it with — the approval for lines Sabadell booked one
@@ -97,5 +112,6 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// and approving the file again finishes the rest. Takes no <c>CancellationToken</c>, for the
     /// same reason.</summary>
     [ExternalWrite]
-    Task<SepaBookingResult> BookSepaFileMatchesAsync(Guid fileId, Guid actorUserId);
+    Task<SepaBookingResult> BookSepaFileMatchesAsync(
+        Guid fileId, Guid actorUserId, int toleranceDays = DefaultSepaMatchToleranceDays);
 }

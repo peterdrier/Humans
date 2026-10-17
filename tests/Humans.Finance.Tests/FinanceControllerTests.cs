@@ -356,7 +356,7 @@ public class FinanceControllerTests
         var older = Guid.NewGuid();
         var newer = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow>
             {
                 Transfer(newer, "new.xml", Stamp(2), admin, Bo, 40000007),
@@ -378,7 +378,7 @@ public class FinanceControllerTests
     public async Task Sepa_CanceledRead_StopsMemberNameLookup()
     {
         using var cancellation = new CancellationTokenSource();
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
             null, [], null));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -397,7 +397,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
     {
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
                 (IReadOnlyList<SepaBankMovementVm>)[], (string?)null));
 
@@ -415,7 +415,7 @@ public class FinanceControllerTests
             new("mov-1", new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null,
                 "pending", "its text names no creditor account"),
         };
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), (string?)null,
                 (IReadOnlyList<SepaBankMovementVm>)unmatched, (string?)null));
 
@@ -427,7 +427,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Sepa_BankFeedUnreadable_RendersTheBannerAndStillListsFiles()
     {
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
             (string?)null, (IReadOnlyList<SepaBankMovementVm>)[], "Holded's bank feed did not answer."));
         NameThem((Ana, "Ada"));
@@ -465,16 +465,28 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task BookSepaFileMatches_PassesTheFileIdThrough()
+    public async Task BookSepaFileMatches_PassesTheFileIdAndToleranceThrough()
     {
         var fileId = Guid.NewGuid();
-        _connector.BookSepaFileMatchesAsync(fileId, Ana)
+        _connector.BookSepaFileMatchesAsync(fileId, Ana, 7)
             .Returns(new SepaBookingResult(true, "Booked."));
         var controller = MakeControllerWithHttpContext(Ana);
 
-        await controller.BookSepaFileMatches(fileId);
+        await controller.BookSepaFileMatches(fileId, days: 7);
 
-        await _connector.Received(1).BookSepaFileMatchesAsync(fileId, Ana);
+        await _connector.Received(1).BookSepaFileMatchesAsync(fileId, Ana, 7);
+    }
+
+    [HumansFact]
+    public async Task Sepa_PassesThePostedToleranceToTheServiceAndThePage()
+    {
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken, days: 7));
+
+        page.ToleranceDays.Should().Be(7);
+        await _connector.Received(1).GetSepaPayoutsAsync(7, Arg.Any<CancellationToken>());
     }
 
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
