@@ -16,7 +16,7 @@ authored surveys.
 `SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
 pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
-`TrackedCache` at our small scale). There is no `ISurveyService`: it shipped
+`TrackedCache` at our small scale). There is no public `ISurveyService` contract (the internal one remains): it shipped
 empty and was deleted. The public contracts that leave `Contracts/` are the
 single-member `ISurveyReminderSender`, which the section's own
 `Jobs/SendSurveyReminderJob` calls, and `ISurveyAnalysisRead`, which Backdoor's
