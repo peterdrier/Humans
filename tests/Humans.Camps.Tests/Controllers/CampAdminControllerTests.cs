@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Csv;
+using Humans.Base.Enums;
 using AwesomeAssertions;
 using Humans.Camps.Models;
 using Humans.Users.Contracts;
@@ -18,6 +21,46 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampAdminControllerTests
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Export_AuditsAdministratorAndEmittedRows_IncludingEmptyExports(bool hasSeason)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var audit = Substitute.For<IAuditLogService>();
+        var actorId = Guid.NewGuid();
+        var leadId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "contact@example.org", "+34600000000", false, 1, []);
+        if (hasSeason)
+            camp = camp with
+            {
+                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, camp.Slug, 2026, null,
+                    "Camp name", "", "en", [], CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.Yes,
+                    AdultPlayspacePolicy.No, 12, null, null, null, 0, null, null) { LeadUserIds = [leadId] }]
+            };
+        var noSeason = camp with { Id = Guid.NewGuid(), Slug = "no-season", Seasons = [] };
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, audit: audit);
+        var ct = controller.HttpContext.RequestAborted;
+        camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, []));
+        camps.GetCampsForYearAsync(2026, ct).Returns(new List<CampInfo> { camp, noSeason });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [leadId] = MakeUser(leadId) with { BurnerName = "Lead", IdentityEmailColumn = "lead@example.org" }
+            });
+
+        var file = (await controller.ExportCamps()).Should().BeOfType<FileContentResult>().Which;
+
+        var csv = HumansCsv.Utf8WithBom.GetString(file.FileContents);
+        csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(hasSeason ? 2 : 1);
+        if (hasSeason)
+            csv.Should().Contain("contact@example.org").And.Contain("Lead <lead@example.org>");
+        file.FileDownloadName.Should().Be("barrios-2026.csv");
+        await audit.Received(1).LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+            $"Camp contact and lead list exported for 2026: {(hasSeason ? 1 : 0)} rows", actorId);
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -294,13 +337,13 @@ public class CampAdminControllerTests
     };
 
     private static CampAdminController CreateController(
-        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null)
+        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null, IAuditLogService? audit = null)
     {
         var controller = new CampAdminController(
             camps,
             roles,
             new CampAdminPageBuilder(camps, roles),
-            new CampCsvExportBuilder(camps, users),
+            new CampCsvExportBuilder(camps, users, audit ?? Substitute.For<IAuditLogService>()),
             users,
             logger ?? NullLogger<CampAdminController>.Instance);
         var services = new ServiceCollection().BuildServiceProvider();

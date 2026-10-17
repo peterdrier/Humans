@@ -190,6 +190,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- Admin camp CSV downloads record `CampsExported` with the authenticated actor, public year and emitted data-row count, including empty/repeated downloads. Camps without a season produce no row and are not counted; existing contact/lead columns and CampAdmin/Admin access are preserved.
+
 Admin EE slot-cap updates reject malformed number binding with HTTP 400 before mutation; an explicitly submitted zero remains a valid cap.
 
 - Existing browser mutation audits in `CampService` record the authenticated actor, including nested season and name changes during an edit. Dev-persona season opt-in runs before sign-in and explicitly retains job attribution.

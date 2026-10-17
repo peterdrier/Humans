@@ -372,4 +372,5 @@
   <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Versione del documento legale pubblicata</value></data>
   <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Riepilogo della versione del documento legale aggiornato</value></data>
   <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guida degli eventi esportata</value></data>
+  <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camp esportati</value></data>
 </root>
