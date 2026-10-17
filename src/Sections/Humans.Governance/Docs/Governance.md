@@ -368,6 +368,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Issue queue
 
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
+
 Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `Board`, plus `Admin`, which handles every queue. Issues

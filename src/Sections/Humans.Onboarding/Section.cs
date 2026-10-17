@@ -50,5 +50,9 @@ public sealed class Section : ISection, IIssueQueueOwner
     // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Onboarding";
 
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Onboarding";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["onboardingreview"];
+
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin];
 }

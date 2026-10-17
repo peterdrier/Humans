@@ -314,6 +314,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Issue queue
 
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
+
 Camps owns the `Camps` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues

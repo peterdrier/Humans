@@ -7,9 +7,8 @@ namespace Humans.Issues.Contracts;
 /// issues are filed under, and the role(s) whose holders handle them (Admin is implicit on
 /// every queue and is never listed here). Each owning section implements this on its own
 /// <c>Section</c> entry point, so routing holds no list of participating sections — it
-/// iterates what DI discovered (the Area labels and page-path guess in <c>Models/</c> are
-/// still hand lists). A section that stops owning a queue drops the seam, and the
-/// keys stored on its old rows fall through to the Admin-only queue with no migration. The
+/// iterates what DI discovered for routing, Area labels and page-path inference. Dropping
+/// the seam sends old stored keys to the Admin-only queue with no migration. The
 /// seam doubles as the queue's <see cref="ISectionAnnotations"/> publication, so
 /// <c>/Debug/Sections</c> still shows where a reported issue lands.
 /// </summary>
@@ -20,6 +19,12 @@ public interface IIssueQueueOwner : ISectionAnnotations
 
     /// <summary>The roles, besides Admin, that own the queue.</summary>
     IReadOnlyList<string> OwningRoles { get; }
+
+    /// <summary>The IssuesResource key used to label this queue in the Area controls.</summary>
+    string AreaLabelResourceKey { get; }
+
+    /// <summary>First URL path segments whose issue reports belong to this queue.</summary>
+    IReadOnlyList<string> PathSegments { get; }
 
     IEnumerable<SectionAnnotation> ISectionAnnotations.Annotations() =>
         [new SectionAnnotation(QueueKey, "Issue queue", string.Join(", ", OwningRoles))];

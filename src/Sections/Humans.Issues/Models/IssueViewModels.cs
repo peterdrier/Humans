@@ -202,27 +202,10 @@ internal sealed class SetIssueGitHubIssueModel
 /// </summary>
 internal static class AreaLabelMap
 {
-    // Resource keys for the Area dropdowns; rendering consumers sort the localized labels.
-    public static readonly IReadOnlyDictionary<string, string> Map =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["Camps"] = "Issues_Area_Camps",
-            ["Budget"] = "Issues_Area_Budget",
-            ["CityPlanning"] = "Issues_Area_CityPlanning",
-            ["Legal"] = "Issues_Area_Legal",
-            ["Onboarding"] = "Issues_Area_Onboarding",
-            ["Profiles"] = "Issues_Area_Profiles",
-            ["Scanner"] = "Issues_Area_Scanner",
-            ["Shifts"] = "Issues_Area_Shifts",
-            ["Teams"] = "Issues_Area_Teams",
-            ["Tickets"] = "Issues_Area_Tickets",
-            ["Governance"] = "Issues_Area_Governance",
-        };
-
     /// <summary>Localizes known labels and the null/General fallback; unknown routing keys keep their spelling.</summary>
-    public static string LabelFor(string? section, IStringLocalizer<IssuesResource> localizer)
+    public static string LabelFor(string? section, IStringLocalizer<IssuesResource> localizer, IssueSectionRouting routing)
     {
         if (section is null) return localizer["Issues_Area_General"].Value;
-        return Map.TryGetValue(section, out var key) ? localizer[key].Value : section;
+        return routing.AreaLabelResourceKeys.TryGetValue(section, out var key) ? localizer[key].Value : section;
     }
 }

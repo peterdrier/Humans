@@ -83,7 +83,7 @@ internal sealed class IssuesController(
             : routing.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
-            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s, localizer) })
+            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s, localizer, routing) })
             .OrderBy(o => o.Label, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
@@ -153,7 +153,7 @@ internal sealed class IssuesController(
             return View("New", model);
         }
 
-        var section = model.Section ?? IssueSectionInference.FromPath(model.PageUrl);
+        var section = model.Section ?? IssueSectionInference.FromPath(model.PageUrl, routing);
 
         try
         {
@@ -461,7 +461,7 @@ internal sealed class IssuesController(
         Id = i.Id,
         Status = i.Status,
         Category = i.Category,
-        AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
+        AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer, routing),
         Title = i.Title,
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
@@ -483,7 +483,7 @@ internal sealed class IssuesController(
             Status = i.Status,
             Category = i.Category,
             Section = i.Section,
-            AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
+            AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer, routing),
             Title = i.Title,
             Description = i.Description,
             PageUrl = i.PageUrl,
