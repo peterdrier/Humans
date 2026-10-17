@@ -710,6 +710,7 @@ internal sealed class ExpensesController(
                 Reports = reports,
                 SubmitterNames = submitterNames,
                 BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
+                Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
                 // Finance admins are the only ones who can act on a written-off push, and the
                 // list is queue-wide rather than scoped, so it stays with them.
                 FailedHoldedPushReportIds = isFinanceAdmin
@@ -916,6 +917,17 @@ internal sealed class ExpensesController(
             }
         }
         return labels;
+    }
+
+    /// <summary>Report id → the pre-approval it files against, for the queue's pre-approval column.</summary>
+    private async Task<IReadOnlyDictionary<Guid, GrantOption>> ResolveGrantsAsync(
+        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
+    {
+        var grants = new Dictionary<Guid, GrantOption>();
+        foreach (var report in reports)
+            if (report.PreapprovalGrantId is { } grantId && await preapprovals.GetGrantAsync(grantId, ct) is { } grant)
+                grants[report.Id] = grant;
+        return grants;
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)

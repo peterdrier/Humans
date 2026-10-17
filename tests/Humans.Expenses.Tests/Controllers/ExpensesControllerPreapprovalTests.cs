@@ -35,6 +35,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private readonly IHoldedFinanceServiceRead _holdedFinance = Substitute.For<IHoldedFinanceServiceRead>();
     private readonly IPreapprovalServiceRead _preapprovals = Substitute.For<IPreapprovalServiceRead>();
     private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+    private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 
     public ExpensesControllerPreapprovalTests()
     {
@@ -46,6 +47,8 @@ public sealed class ExpensesControllerPreapprovalTests
         _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new HoldedExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call =>
             new LocalizedString(call.Arg<string>(), $"{call.Arg<string>()}:{string.Join(",", call.Arg<object[]>())}"));
@@ -59,7 +62,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
         return new ExpensesController(_users, _reports, _budget, _holdedFinance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), TestClock, NullLogger<ExpensesController>.Instance, _localizer)
+            _authorization, TestClock, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -163,4 +166,57 @@ public sealed class ExpensesControllerPreapprovalTests
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
             "Expenses_Flash_CreateFailed Expenses_Validation_PreapprovalNotClaimable:");
     }
+
+    [HumansFact]
+    public async Task Review_NamesEachPreapprovedReportsGrant_AndFlagsARevokedOne()
+    {
+        var revoked = Grant("Bus", Today.PlusDays(10), GrantStatus.Revoked);
+        var held = Grant("Art", Today.PlusDays(10), GrantStatus.Claimed);
+        var onRevoked = ReviewRow(revoked.Id);
+        var onHeld = ReviewRow(held.Id);
+        var plain = ReviewRow(null);
+        _reports.GetReviewQueueAsync(_actorId, false, Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
+        _holdedFinance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
+        _preapprovals.GetGrantAsync(revoked.Id, Arg.Any<CancellationToken>()).Returns(revoked);
+        _preapprovals.GetGrantAsync(held.Id, Arg.Any<CancellationToken>()).Returns(held);
+
+        var model = (await Build().Review()).Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Subject;
+
+        model.Grants.Keys.Should().BeEquivalentTo([onRevoked.Id, onHeld.Id]);
+        model.IsRevoked(onRevoked.Id).Should().BeTrue();
+        model.IsRevoked(onHeld.Id).Should().BeFalse();
+        model.IsRevoked(plain.Id).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Banner_ShowsRevoked_AtEveryStatus_AndReadsAsUrgent()
+    {
+        var revoked = new PreapprovalBannerModel(Grant("Bus", Today.PlusDays(30), GrantStatus.Revoked), Today, ShowDeadline: false);
+        var open = new PreapprovalBannerModel(Grant("Bus", Today.PlusDays(30)), Today, ShowDeadline: false);
+
+        revoked.Revoked.Should().BeTrue();
+        revoked.Urgent.Should().BeTrue("a cap that is gone must not look like a live pre-approval");
+        open.Revoked.Should().BeFalse();
+        open.Urgent.Should().BeFalse();
+    }
+
+    private ExpenseReportDto ReviewRow(Guid? grantId) => new()
+    {
+        Id = Guid.NewGuid(),
+        SubmitterUserId = _actorId,
+        HoldedAccountNumber = 62900500,
+        BudgetCategoryId = null,
+        BudgetYearId = null,
+        PreapprovalGrantId = grantId,
+        Status = ExpenseReportStatus.Submitted,
+        PayeeName = "Submitter",
+        PayeeIban = "",
+        Total = 0,
+        CreatedAt = default,
+        UpdatedAt = default,
+        Lines = []
+    };
 }

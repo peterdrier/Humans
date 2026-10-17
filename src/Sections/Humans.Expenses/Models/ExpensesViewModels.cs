@@ -222,6 +222,12 @@ internal sealed class ExpenseReviewViewModel
     /// <summary>Reports whose Holded push was written off and need a finance admin to look at them.
     /// Empty hides the banner and the Holded column.</summary>
     public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
+    /// <summary>Report id → the pre-approval it files against. Empty hides the column; a revoked
+    /// grant flags its row from the moment of revocation.</summary>
+    public required IReadOnlyDictionary<Guid, GrantOption> Grants { get; init; }
+
+    public bool IsRevoked(Guid reportId) =>
+        Grants.TryGetValue(reportId, out var grant) && grant.Status == GrantStatus.Revoked;
 
     /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
     public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>
@@ -282,7 +288,10 @@ internal sealed record PreapprovalBannerModel(GrantOption Grant, LocalDate Today
     public int DaysLeft => Period.DaysBetween(Today, Grant.ClaimBy);
     /// <summary>The draft was filed in time and holds the grant: the deadline no longer applies.</summary>
     public bool FiledInTime => Grant.Status == GrantStatus.Claimed;
-    public bool Urgent => ShowDeadline && !FiledInTime && DaysLeft <= 7;
+    /// <summary>Shown from the moment of revocation at every status: the report can no longer be
+    /// approved against the grant.</summary>
+    public bool Revoked => Grant.Status == GrantStatus.Revoked;
+    public bool Urgent => Revoked || (ShowDeadline && !FiledInTime && DaysLeft <= 7);
 }
 
 /// <summary>The pre-approval picker on the new and edit forms.</summary>

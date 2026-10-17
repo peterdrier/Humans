@@ -288,6 +288,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Envíalo hoy: el plazo de reclamación termina el {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>El plazo de reclamación ({0}) ha vencido; este informe ya no puede enviarse contra la preaprobación.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentado a tiempo: el plazo ya no aplica. Vuelve a enviarlo cuando esté listo.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Esta preaprobación ha sido revocada. El informe no puede aprobarse con ella: una vez rechazado, la preaprobación puede quitarse o cambiarse en el borrador.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preaprobación</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocada</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No se puede presentar contra esa preaprobación: no es del miembro, no está abierta o su plazo ha vencido.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprobación y la cuenta de un informe enviado no se pueden cambiar.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprobación fue revocada; este informe no puede enviarse contra ella.</value></data>

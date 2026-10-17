@@ -288,6 +288,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Invia oggi: la scadenza è il {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>La scadenza {0} è passata; questo rapporto non può più essere inviato a fronte della preapprovazione.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentato in tempo: la scadenza non si applica più. Reinvia quando è pronto.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Questa preapprovazione è stata revocata. La nota non può essere approvata con essa: una volta respinta, la preapprovazione può essere rimossa o cambiata nella bozza.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preapprovazione</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocata</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Non è possibile presentare a fronte di quella preapprovazione: non è del membro, non è aperta o la scadenza è passata.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preapprovazione e il conto di un rapporto inviato non possono essere modificati.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preapprovazione è stata revocata; questo rapporto non può essere inviato a fronte di essa.</value></data>

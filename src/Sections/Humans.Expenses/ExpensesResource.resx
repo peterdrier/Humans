@@ -301,6 +301,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Submit today: the claim deadline is {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>The claim deadline {0} has passed; this report can no longer be submitted against the pre-approval.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Filed in time: the claim deadline no longer applies. Resubmit when ready.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>This pre-approval was revoked. The report cannot be approved against it: once rejected, the pre-approval can be dropped or swapped on the draft.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Pre-approval</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revoked</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>That pre-approval cannot be filed against: it is not the member’s, not open, or past its claim deadline.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>The pre-approval and account of a submitted report cannot be changed.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>The pre-approval was revoked; this report cannot be submitted against it.</value></data>

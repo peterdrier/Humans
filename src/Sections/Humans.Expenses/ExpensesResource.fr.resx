@@ -288,6 +288,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Soumettez aujourd’hui : la date limite est le {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>La date limite {0} est dépassée ; cette note ne peut plus être soumise au titre de la préapprobation.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Déposée à temps : la date limite ne s’applique plus. Soumettez à nouveau quand elle est prête.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Cette préapprobation a été révoquée. La note ne peut pas être approuvée avec elle : une fois rejetée, la préapprobation peut être retirée ou remplacée dans le brouillon.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Préapprobation</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>révoquée</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Impossible de déclarer au titre de cette préapprobation : elle n’appartient pas au membre, n’est pas ouverte ou sa date limite est dépassée.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La préapprobation et le compte d’une note soumise ne peuvent pas être modifiés.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La préapprobation a été révoquée ; cette note ne peut pas être soumise à son titre.</value></data>

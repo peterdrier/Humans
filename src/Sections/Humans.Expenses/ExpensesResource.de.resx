@@ -288,6 +288,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Heute einreichen: die Frist endet am {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>Die Frist {0} ist abgelaufen; dieser Bericht kann nicht mehr gegen die Vorabgenehmigung eingereicht werden.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Rechtzeitig eingereicht: die Frist gilt nicht mehr. Reiche erneut ein, wenn alles bereit ist.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Diese Vorabgenehmigung wurde widerrufen. Die Abrechnung kann damit nicht genehmigt werden: nach der Ablehnung kann die Vorabgenehmigung im Entwurf entfernt oder getauscht werden.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Vorabgenehmigung</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>widerrufen</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Gegen diese Vorabgenehmigung kann nicht eingereicht werden: sie gehört nicht dem Mitglied, ist nicht offen oder ihre Frist ist abgelaufen.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>Vorabgenehmigung und Konto eines eingereichten Berichts können nicht geändert werden.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>Die Vorabgenehmigung wurde widerrufen; dieser Bericht kann nicht dagegen eingereicht werden.</value></data>

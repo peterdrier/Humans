@@ -8,7 +8,11 @@
     <strong><i class="fa-solid fa-stamp me-1"></i>@Localizer["Expenses_Preapprovals_Banner", g.Label is null ? g.ProgramName : $"{g.ProgramName} · {g.Label}"]</strong>
     · @Localizer["Expenses_Preapprovals_UpTo", g.MaxAmount.ToEuro()]
     · @Localizer["Expenses_Preapprovals_ClaimBy", g.ClaimBy.ToDate()]
-    @if (Model.ShowDeadline)
+    @if (Model.Revoked)
+    {
+        <div class="small mt-1">@Localizer["Expenses_Preapprovals_Revoked"]</div>
+    }
+    else if (Model.ShowDeadline)
     {
         <div class="small mt-1">
             @if (Model.FiledInTime)

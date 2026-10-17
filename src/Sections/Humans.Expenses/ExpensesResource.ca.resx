@@ -288,6 +288,9 @@
   <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Envia’l avui: el termini de reclamació acaba el {0}.</value></data>
   <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>El termini de reclamació ({0}) ha vençut; aquest informe ja no es pot enviar contra la preaprovació.</value></data>
   <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentat a temps: el termini ja no aplica. Torna a enviar-lo quan estigui llest.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Aquesta preaprovació ha estat revocada. L'informe no es pot aprovar amb ella: un cop rebutjat, la preaprovació es pot treure o canviar a l'esborrany.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preaprovació</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocada</value></data>
   <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No es pot presentar contra aquesta preaprovació: no és del membre, no està oberta o el seu termini ha vençut.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprovació i el compte d’un informe enviat no es poden canviar.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprovació va ser revocada; aquest informe no es pot enviar contra ella.</value></data>
