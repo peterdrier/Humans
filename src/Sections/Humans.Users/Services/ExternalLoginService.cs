@@ -116,6 +116,12 @@ internal sealed class ExternalLoginService(
             if (string.IsNullOrEmpty(attempt.Email))
                 return null;
 
+            if (!attempt.EmailVerified)
+            {
+                logger.LogWarning("Refused {Provider} lockout relink without a verified provider email", attempt.Login.LoginProvider);
+                return null;
+            }
+
             var lockedSource = await userManager.FindByLoginAsync(
                 attempt.Login.LoginProvider,
                 attempt.Login.ProviderKey);
@@ -172,6 +178,12 @@ internal sealed class ExternalLoginService(
         var existingByEmail = await magicLinkService.FindUserByVerifiedEmailAsync(attempt.Email, ct);
         if (existingByEmail is null)
             return null;
+
+        if (!attempt.EmailVerified)
+        {
+            logger.LogWarning("Refused {Provider} email-match sign-in without a verified provider email", attempt.Login.LoginProvider);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.ProviderError);
+        }
 
         try
         {

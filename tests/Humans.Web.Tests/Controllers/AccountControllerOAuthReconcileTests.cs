@@ -270,41 +270,33 @@ public class AccountControllerOAuthReconcileTests
         await _signInManager.Received(1).SignInAsync(activeTarget, true, null);
     }
 
-    [HumansFact]
-    public async Task LockoutRelink_UnverifiedEmailClaim_PassedThroughAsFalse()
-    {
-        // Pre-697 the lockout-relink branch had NO UserEmail sync at all;
-        // this is the highest-risk plumbing path. Pin the email_verified=false
-        // case alongside the existing verified case so the claim flows through
-        // every OAuth-success path.
-        var lockedSourceId = Guid.NewGuid();
-        var activeTargetId = Guid.NewGuid();
-        var email = "relink@example.com";
-        var info = MakeInfo(email, emailVerified: false);
-
-        _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
-            .Returns(SignInResult.LockedOut);
-
-        var lockedSource = new User { Id = lockedSourceId };
-        var activeTarget = new User { Id = activeTargetId };
-        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(lockedSource);
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
-            .Returns(activeTarget);
-        _userManager.RemoveLoginAsync(lockedSource, Provider, ProviderKey)
-            .Returns(IdentityResult.Success);
-        _userManager.AddLoginAsync(activeTarget, Arg.Any<UserLoginInfo>())
-            .Returns(IdentityResult.Success);
-        _userManager.UpdateAsync(activeTarget).Returns(IdentityResult.Success);
-
-        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
-
-        await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
-            activeTargetId, Provider, ProviderKey, email,
-            claimEmailVerified: false, Arg.Any<CancellationToken>());
-    }
-
     // ─── Path 4: email-match link (unauthenticated, address already known) ───
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task EmailSelectedAccount_UnverifiedProviderClaim_DoesNotLinkOrSignIn(bool lockedOut)
+    {
+        const string email = "existing@example.com";
+        var target = new User { Id = Guid.NewGuid(), State = UserState.Active };
+        var source = new User { Id = Guid.NewGuid(), State = UserState.Merged, MergedToUserId = target.Id };
+        _signInManager.GetExternalLoginInfoAsync().Returns(MakeInfo(email, emailVerified: false));
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(lockedOut ? SignInResult.LockedOut : SignInResult.Failed);
+        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>()).Returns(target);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(source);
+        _userManager.RemoveLoginAsync(source, Provider, ProviderKey).Returns(IdentityResult.Success);
+        _userManager.AddLoginAsync(target, Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Login");
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userManager.DidNotReceiveWithAnyArgs().RemoveLoginAsync(default!, default!, default!);
+        await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
+        await _signInManager.DidNotReceiveWithAnyArgs().SignInAsync(default!, default(bool), default);
+        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default, default);
+    }
 
     [HumansFact]
     public async Task EmailMatchLink_CallsReconcileForMatchedUser()
