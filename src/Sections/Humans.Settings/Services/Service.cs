@@ -41,7 +41,7 @@ internal sealed class Service(
     public async Task SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        ValidateCalendarDates(settings);
+        ValidateEventDates(settings);
         if (settings.Status == EventSettingsStatus.Active
             && await repository.AnyOtherActiveEventSettingsAsync(settings.Id, cancellationToken))
         {
@@ -80,7 +80,7 @@ internal sealed class Service(
     public async Task CreateActiveEventAsync(
         EventSettingsInfo settings, CancellationToken cancellationToken = default)
     {
-        ValidateCalendarDates(settings);
+        ValidateEventDates(settings);
         var current = await repository.GetActiveEventSettingsAsync(cancellationToken);
         if (current is not null && current.Id != settings.Id)
         {
@@ -96,8 +96,15 @@ internal sealed class Service(
         NotifyChangeListeners(settings.Id);
     }
 
-    private void ValidateCalendarDates(EventSettingsInfo settings)
+    private void ValidateEventDates(EventSettingsInfo settings)
     {
+        if (settings.EventEndOffset < 0 || settings.StrikeEndOffset < settings.EventEndOffset)
+        {
+            logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} or strike end {StrikeEndOffset} invert the event windows",
+                settings.Id, settings.EventEndOffset, settings.StrikeEndOffset);
+            throw new InvalidOperationException("Event end must be on or after gate opening, and strike end must be on or after event end.");
+        }
+
         int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,
             settings.FirstCrewStartOffset, settings.SetupWeekStartOffset,
             settings.PreEventWeekStartOffset, settings.FinishingWeekendStartOffset,

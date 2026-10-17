@@ -36,6 +36,20 @@ public sealed class EventSettingsViewModelTests
         GateOpeningDate = "2026-07-09",
     };
 
+    [HumansTheory]
+    [Xunit.InlineData(-1, 9, false)]
+    [Xunit.InlineData(6, 5, false)]
+    [Xunit.InlineData(0, 0, true)]
+    [Xunit.InlineData(6, 6, true)]
+    public void EventWindows_KeepGateDayInsideTheEventAndStrikeAfterIt(int eventEnd, int strikeEnd, bool valid)
+    {
+        var model = FilledForm();
+        model.EventEndOffset = eventEnd;
+        model.StrikeEndOffset = strikeEnd;
+
+        ValidateFully(model).Any().Should().Be(!valid);
+    }
+
     [HumansFact]
     public void TheShippedDefaults_Validate()
     {
