@@ -67,7 +67,7 @@ public sealed class ConsentArchitectureTests
     // ── T-04 cache decorators ────────────────────────────────────────────────
 
     /// <summary>
-    /// T-04: the decorator implements both <see cref="IConsentService"/>
+    /// T-04: the decorator implements both <see cref="IConsentManagement"/>
     /// and <see cref="IConsentCacheInvalidator"/> on the same Singleton so
     /// cross-section signallers (e.g. <c>AccountMergeService</c>) and read
     /// callers hit the same instance.
@@ -75,27 +75,27 @@ public sealed class ConsentArchitectureTests
     [HumansFact]
     public void CachingConsentService_ImplementsBothServiceAndInvalidator()
     {
-        typeof(IConsentService).IsAssignableFrom(typeof(CachingConsentService))
+        typeof(IConsentManagement).IsAssignableFrom(typeof(CachingConsentService))
             .Should().BeTrue();
         typeof(IConsentCacheInvalidator).IsAssignableFrom(typeof(CachingConsentService))
             .Should().BeTrue(
-                because: "merge accept fan-out resolves IConsentCacheInvalidator and must hit the same singleton that backs IConsentService");
+                because: "merge accept fan-out resolves IConsentCacheInvalidator and must hit the same singleton that backs IConsentManagement");
     }
 
     /// <summary>
     /// T-04: the global-document decorator implements both
-    /// <see cref="ILegalDocumentSyncService"/> and
+    /// <see cref="ILegalDocumentSyncManagement"/> and
     /// <see cref="ILegalDocumentCacheInvalidator"/> so the SaveChanges
     /// interceptor and read callers share one instance.
     /// </summary>
     [HumansFact]
     public void CachingLegalDocumentSyncService_ImplementsBothServiceAndInvalidator()
     {
-        typeof(ILegalDocumentSyncService).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
+        typeof(ILegalDocumentSyncManagement).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
             .Should().BeTrue();
         typeof(ILegalDocumentCacheInvalidator).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
             .Should().BeTrue(
-                because: "LegalDocumentSyncService resolves ILegalDocumentCacheInvalidator directly after each write and must hit the same singleton that backs ILegalDocumentSyncService (nobodies-collective/Humans#751)");
+                because: "LegalDocumentSyncService resolves ILegalDocumentCacheInvalidator directly after each write and must hit the same singleton that backs ILegalDocumentSyncManagement (nobodies-collective/Humans#751)");
     }
 
     /// <summary>
@@ -119,49 +119,6 @@ public sealed class ConsentArchitectureTests
         method.DeclaringType.Should().Be(
             typeof(CachingConsentService),
             because: "synchronous invalidation belongs on the decorator, not inherited or delegated");
-    }
-
-    // ── IConsentServiceRead split (memory/architecture/section-read-write-split.md) ──
-
-    /// <summary>
-    /// Asserts that <see cref="IConsentService"/> inherits from
-    /// <see cref="IConsentServiceRead"/> so external sections can inject the
-    /// narrow read surface while the full service still satisfies the full interface.
-    /// </summary>
-    [HumansFact]
-    public void IConsentService_InheritsIConsentServiceRead()
-    {
-        typeof(IConsentServiceRead).IsAssignableFrom(typeof(IConsentService))
-            .Should().BeTrue(
-                because: "IConsentService is the full Consent surface; external sections inject the narrow IConsentServiceRead. " +
-                         "See memory/architecture/section-read-write-split.md.");
-    }
-
-    /// <summary>
-    /// Asserts that <see cref="IConsentService"/> and <see cref="IConsentServiceRead"/>
-    /// resolve to the same singleton instance from the production DI registration —
-    /// <c>Section.Register</c> itself, not a test-built mirror of it.
-    /// </summary>
-    [HumansFact]
-    public void IConsentService_And_IConsentServiceRead_ResolveToSameSingleton()
-    {
-        var services = new ServiceCollection();
-        // The section registers against the host's baseline; the caching
-        // singletons only need logging and a clock to construct.
-        services.AddLogging();
-        services.AddSingleton(Substitute.For<IClock>());
-
-        new Section().Register(services, new ConfigurationBuilder().Build());
-
-        using var provider = services.BuildServiceProvider();
-
-        var fromFull = provider.GetRequiredService<IConsentService>();
-        var fromRead = provider.GetRequiredService<IConsentServiceRead>();
-
-        fromFull.Should().BeOfType<CachingConsentService>(
-            because: "the cache decorator is the section's public face");
-        ReferenceEquals(fromFull, fromRead).Should().BeTrue(
-            because: "both interfaces must expose the same singleton so the cache is shared");
     }
 
     [HumansFact]

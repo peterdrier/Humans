@@ -1,12 +1,11 @@
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// Cross-section read surface for the Consent section. External sections inject
+/// Public contract of the Consent section. External sections inject
 /// this interface; only Consent projections (RequiredConsentRow, ConsentReviewDetail)
 /// and value-type reads, no EF entities and no writes/cache hooks.
-/// See memory/architecture/section-read-write-split.md.
 /// </summary>
-public interface IConsentServiceRead
+public interface IConsentService
 {
     Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default);

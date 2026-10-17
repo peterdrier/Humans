@@ -181,7 +181,7 @@ public class AgentUserSnapshotProviderTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
 
-        var consents = Substitute.For<IConsentServiceRead>();
+        var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

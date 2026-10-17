@@ -11,7 +11,7 @@ through another section's public contract.
 
 The section's only class with dependencies, and none of them is a repository.
 Cross-section reads via `ITicketServiceRead` (the barcode-to-attendee lookup),
-`IUserServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`,
+`IUserServiceRead`, `IEarlyEntryService`, `IConsentService`,
 `IICalFeedService`, `IEventServiceRead` and `ISettingsService`. Every action
 is a `GET` and none of them writes, so the section owns no invalidation: the
 ticket card is assembled per request from those reads and held nowhere.

@@ -32,7 +32,7 @@ internal sealed class UsersAdminController(
     IEmailOutboxServiceRead emailOutboxService,
     IRoleAssignmentService roleAssignmentService,
     IApplicationServiceRead applicationDecisionService,
-    IConsentServiceRead consentService,
+    IConsentService consentService,
     ICampaignServiceRead campaignService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,

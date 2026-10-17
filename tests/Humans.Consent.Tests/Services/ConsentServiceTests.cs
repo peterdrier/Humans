@@ -21,7 +21,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 {
     private readonly ConsentService _service;
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
-    private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
+    private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();

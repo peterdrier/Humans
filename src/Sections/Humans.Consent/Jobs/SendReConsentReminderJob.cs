@@ -24,7 +24,7 @@ namespace Humans.Consent.Jobs;
 /// directly (design-rules §2c).
 ///
 /// Consent owns it: the reminder exists to close a re-consent gap, the required-version set
-/// it mails about is <see cref="ILegalDocumentSyncServiceRead"/>'s, and the job id is
+/// it mails about is <see cref="ILegalDocumentSyncManagement"/>'s, and the job id is
 /// <c>consent-reconsent-reminders</c>. What it reads from Governance and Users is the
 /// audience and the display data, both through their read interfaces. It sits under
 /// <c>Jobs/</c> and is internal: only Consent's own <c>Section.cs</c> and
@@ -39,7 +39,7 @@ namespace Humans.Consent.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
     IMembershipCalculatorRead membershipCalculator,
-    ILegalDocumentSyncServiceRead legalDocService,
+    ILegalDocumentSyncManagement legalDocService,
     IUserService userService,
     IEmailService emailService,
     ConsentEmails emailMessages,

@@ -94,7 +94,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         // by the source only, so a History match under a target read proves
         // the source-tombstone id was unioned in.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
+        var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentManagement>();
         var dashboard = await consentService.GetConsentDashboardAsync(targetId, TestContext.Current.CancellationToken);
 
         dashboard.History.Should().Contain(

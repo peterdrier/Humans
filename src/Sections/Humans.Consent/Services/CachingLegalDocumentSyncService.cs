@@ -8,7 +8,7 @@ using Humans.Consent.Domain;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ILegalDocumentSyncService"/>
+/// Singleton caching decorator for <see cref="ILegalDocumentSyncManagement"/>
 /// (T-04). Caches the global active-document set that backs the every-page
 /// consent-banner read (<see cref="GetActiveRequiredDocumentsForTeamsAsync"/>)
 /// and the per-version snapshot lookup
@@ -41,11 +41,11 @@ internal sealed class CachingLegalDocumentSyncService(
     IClock clock,
     ILogger<CachingLegalDocumentSyncService> logger)
     : TrackedCache<Guid, LegalDocumentInfo>("Legal.LegalDocumentInfo", warmOnStartup: true, logger),
-        ILegalDocumentSyncService, ILegalDocumentCacheInvalidator
+        ILegalDocumentSyncManagement, ILegalDocumentCacheInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
-    /// <see cref="ILegalDocumentSyncService"/> is registered. The Singleton
+    /// <see cref="ILegalDocumentSyncManagement"/> is registered. The Singleton
     /// decorator resolves the Scoped inner per-call via
     /// <see cref="IServiceScopeFactory"/>.
     /// </summary>
@@ -204,7 +204,7 @@ internal sealed class CachingLegalDocumentSyncService(
         // carries a bare TeamId (memory/architecture/no-cross-section-ef-joins.md);
         // team display names are stitched here via ITeamServiceRead.
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
         var allDocs = await inner.GetActiveDocumentsAsync(ct);
         var docs = allDocs
             .Where(d => d.IsActive && d.IsRequired)
@@ -264,11 +264,11 @@ internal sealed class CachingLegalDocumentSyncService(
     // Inner-service resolution
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<ILegalDocumentSyncService, Task<TResult>> action)
+    private async Task<TResult> WithInner<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider
-            .GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
+            .GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
         return await action(inner);
     }
 }

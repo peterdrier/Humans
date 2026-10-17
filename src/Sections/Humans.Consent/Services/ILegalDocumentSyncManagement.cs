@@ -12,11 +12,22 @@ namespace Humans.Consent.Services;
 /// </summary>
 /// <remarks>
 /// Internal: two members return <see cref="LegalDocument"/> itself, and the rest serve the
-/// consent dashboard and review pages. The three reads that cross the boundary are on
-/// <see cref="ILegalDocumentSyncServiceRead"/>, which this inherits.
+/// consent dashboard and review pages. The one read that crosses the boundary is on
+/// <see cref="ILegalDocumentSyncService"/>, which this inherits.
 /// </remarks>
-internal interface ILegalDocumentSyncService : ILegalDocumentSyncServiceRead
+internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 {
+    /// <summary>
+    /// Current versions of every active+required document, across all teams.
+    /// </summary>
+    Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Count of currently active+required legal documents, for the section's metrics gauge.
+    /// </summary>
+    Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Returns the documents that were updated.</summary>
     Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(CancellationToken cancellationToken = default);
 

@@ -42,7 +42,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var other = MakeDocument("Other required", true);
         var optional = MakeDocument("Own optional", false);
         optional.TeamId = own.TeamId;
-        var sync = Substitute.For<ILegalDocumentSyncService>();
+        var sync = Substitute.For<ILegalDocumentSyncManagement>();
         sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new[] { own, other, optional });
         var teams = Substitute.For<ITeamServiceRead>();
         teams.GetTeamAsync(own.TeamId, Arg.Any<CancellationToken>()).Returns(new TeamInfo(
@@ -87,7 +87,7 @@ public sealed class LegalDocumentSyncRunnerTests
     [HumansFact]
     public async Task Sync_OptionalUpdate_DoesNotResolveRecipientsOrSendConsentEmail()
     {
-        var sync = Substitute.For<ILegalDocumentSyncService>();
+        var sync = Substitute.For<ILegalDocumentSyncManagement>();
         sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new[] { MakeDocument("Optional", false) });
         var teams = Substitute.For<ITeamServiceRead>();
         var email = Substitute.For<IEmailService>();

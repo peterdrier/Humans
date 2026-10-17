@@ -69,7 +69,7 @@ public class UsersAdminControllerPurgeTests
             Substitute.For<IEmailOutboxServiceRead>(),
             _roleAssignments,
             Substitute.For<IApplicationServiceRead>(),
-            Substitute.For<IConsentServiceRead>(),
+            Substitute.For<IConsentService>(),
             Substitute.For<ICampaignServiceRead>(),
             _lifecycle,
             _onboarding,

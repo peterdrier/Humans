@@ -29,7 +29,7 @@ internal sealed class OnboardingService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculatorRead membershipCalculator,
-    IConsentServiceRead consentService,
+    IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
     ILogger<OnboardingService> logger) : IOnboardingService
