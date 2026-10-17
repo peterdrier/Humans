@@ -2,9 +2,9 @@
 namespace Humans.Camps.Contracts;
 
 /// <summary>
-/// Cross-section read surface for the Camps section. External sections inject
-/// this interface for camp read models and settings - never EF entities.
-/// See memory/architecture/section-read-write-split.md.
+/// Public contract of the Camps section. External sections inject this
+/// interface for camp read models and settings - never EF entities. The
+/// section-internal <c>ICampManagement</c> extends it.
 /// </summary>
 public interface ICampService
 {

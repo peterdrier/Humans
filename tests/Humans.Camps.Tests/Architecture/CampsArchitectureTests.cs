@@ -22,7 +22,7 @@ public class CampsArchitectureTests
     // ── CachingCampService (T-06 decorator) ──────────────────────────────────
 
     [HumansFact]
-    public void CachingCampService_ImplementsICampService()
+    public void CachingCampService_ImplementsICampManagement()
     {
         typeof(ICampManagement).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue(
@@ -91,59 +91,12 @@ public class CampsArchitectureTests
             because: "the role sub-service must not depend on the full Camps service surface");
     }
 
-    // ── ICampService split (memory/architecture/section-read-write-split.md) ──
-
-    [HumansFact]
-    public void ICampService_InheritsICampServiceRead()
-    {
-        typeof(ICampService).IsAssignableFrom(typeof(ICampManagement))
-            .Should().BeTrue(
-                because: "ICampManagement is the full Camps surface; external sections inject the narrow ICampService. " +
-                         "See memory/architecture/section-read-write-split.md.");
-    }
-
-    [HumansFact]
-    public void CachingCampService_ImplementsICampServiceRead()
-    {
-        typeof(ICampService).IsAssignableFrom(typeof(CachingCampService))
-            .Should().BeTrue();
-    }
-
     [HumansFact]
     public void CachingCampService_ImplementsICampRoleCampAccess()
     {
         typeof(ICampRoleCampAccess).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue(
                 because: "CampRoleService must use the decorator-backed port so migration writes still invalidate CampInfo");
-    }
-
-    [HumansFact]
-    public void ICampService_And_ICampServiceRead_ResolveToSameSingleton()
-    {
-        // Mirrors the Camps-section DI shape: the same CachingCampService
-        // singleton is exposed under both interface keys.
-        var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<ICampRepository>());
-        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
-        services.AddSingleton(Substitute.For<ISettingsService>());
-        services.AddSingleton(Substitute.For<IClock>());
-        services.AddSingleton(Substitute.For<ILogger<CachingCampService>>());
-
-        services.AddSingleton<CachingCampService>();
-        services.AddSingleton<ICampManagement>(sp => sp.GetRequiredService<CachingCampService>());
-        services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
-        services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
-
-        using var provider = services.BuildServiceProvider();
-
-        var fromFull = provider.GetRequiredService<ICampManagement>();
-        var fromRead = provider.GetRequiredService<ICampService>();
-        var fromRoleAccess = provider.GetRequiredService<ICampRoleCampAccess>();
-        var concrete = provider.GetRequiredService<CachingCampService>();
-
-        ReferenceEquals(fromFull, concrete).Should().BeTrue();
-        ReferenceEquals(fromRead, concrete).Should().BeTrue();
-        ReferenceEquals(fromRoleAccess, concrete).Should().BeTrue();
     }
 
     [HumansFact]
