@@ -252,7 +252,7 @@ public sealed class ExpensesControllerTests
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
-        var reports = Substitute.For<IExpenseReportService>();
+        var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetForSubmitterAsync(actorId, Arg.Any<CancellationToken>()).Returns([]);
         reports.GetCoordinatorQueueAsync(actorId, Arg.Any<CancellationToken>()).Returns([new ExpenseReportDto
         {
@@ -269,7 +269,7 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = []
         }]);
-        var budget = Substitute.For<IBudgetServiceRead>();
+        var budget = Substitute.For<IBudgetService>();
         budget.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
         var context = new DefaultHttpContext
         {
