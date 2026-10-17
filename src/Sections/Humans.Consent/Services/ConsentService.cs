@@ -129,6 +129,7 @@ internal sealed class ConsentService(
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
+        userId = info.Id;
 
         var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 

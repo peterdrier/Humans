@@ -272,17 +272,20 @@ public sealed class OnboardingServiceTests
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SetConsentCheckPendingIfEligibleAsync_WhenEligible_UsesUserServiceMutation()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SetConsentCheckPendingIfEligibleAsync_WhenEligible_UsesResolvedUserMutation(bool archivedId)
     {
         var userId = Guid.NewGuid();
+        var requestedId = archivedId ? Guid.NewGuid() : userId;
         var profile = UserFixtures.Profile(
             burnerName: "Burner",
             firstName: "First",
             lastName: "Last",
             createdAt: Instant.FromUnixTimeSeconds(1));
 
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile)));
         _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
                 userId,
@@ -296,7 +299,7 @@ public sealed class OnboardingServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
 
         set.Should().BeTrue();
         await _userService.Received(1).ApplyProfileOnboardingMutationAsync(

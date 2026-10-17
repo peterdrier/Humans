@@ -115,14 +115,23 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         profile: profile,
         communicationPreferences: []);
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_ValidConsent_CreatesRecord()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SubmitConsentAsync_ValidConsent_CreatesRecordForResolvedUser(bool archivedId)
     {
         var userId = Guid.NewGuid();
+        var requestedId = archivedId ? Guid.NewGuid() : userId;
+        var info = WrapInUserInfo(userId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant())) with { MergedUserIds = archivedId ? [requestedId] : [] };
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
 
-        var result = await _service.SubmitConsentAsync(userId, versionId, true, "192.168.1.1", "TestAgent", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SubmitConsentAsync(requestedId, versionId, true, "192.168.1.1", "TestAgent", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var record = await LegalDb.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
@@ -132,6 +141,10 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         record.UserAgent.Should().Be("TestAgent");
         record.ExplicitConsent.Should().BeTrue();
         record.ConsentedAt.Should().Be(Clock.GetCurrentInstant());
+        await _notificationInboxService.Received(1)
+            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
+        await _humanLifecycleService.Received(1)
+            .RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
 
     [HumansFact]
