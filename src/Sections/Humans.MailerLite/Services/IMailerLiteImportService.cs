@@ -34,5 +34,5 @@ internal interface IMailerLiteImportService : IApplicationService
     /// </summary>
     [ExternalWrite]
     Task<ImportResult> ApplyAsync(
-        ImportPlan plan, int? maxPerOutcome = null, CancellationToken ct = default);
+        ImportPlan plan, Guid actorUserId, int? maxPerOutcome = null, CancellationToken ct = default);
 }

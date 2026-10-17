@@ -174,7 +174,7 @@ internal sealed class MailerLiteImportService(
     }
 
     public async Task<ImportResult> ApplyAsync(
-        ImportPlan plan, int? maxPerOutcome = null, CancellationToken ct = default)
+        ImportPlan plan, Guid actorUserId, int? maxPerOutcome = null, CancellationToken ct = default)
     {
         var start = clock.GetCurrentInstant();
         int created = 0, flippedIn = 0, flippedOut = 0, preserved = 0,
@@ -294,7 +294,7 @@ internal sealed class MailerLiteImportService(
             AuditAction.MailerLiteReconciliationCompleted,
             entityType: "MailerLite", entityId: state.Id,
             description: result.FormatSummary(),
-            jobName: nameof(MailerLiteImportService));
+            actorUserId: actorUserId);
 
         return result;
     }
