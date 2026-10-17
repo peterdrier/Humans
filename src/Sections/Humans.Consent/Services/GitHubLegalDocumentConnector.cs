@@ -107,11 +107,20 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
         using var _ = _logger.TimeOperation();
         try
         {
+            var commits = await _client.Repository.Commit.GetAll(
+                _settings.Owner,
+                _settings.Repository,
+                new CommitRequest { Sha = _settings.Branch, Path = path },
+                new ApiOptions { StartPage = 1, PageCount = 1, PageSize = 1 }).WaitAsync(ct);
+            var commit = commits.FirstOrDefault();
+            if (commit is null) return null;
+
+            // Pin the content to the last commit changing this path, so its summary matches.
             var contents = await _client.Repository.Content.GetAllContentsByRef(
                 _settings.Owner,
                 _settings.Repository,
                 path,
-                _settings.Branch).WaitAsync(ct);
+                commit.Sha).WaitAsync(ct);
 
             var file = contents.FirstOrDefault();
             if (file is null) return null;
@@ -124,7 +133,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 file.Sha).WaitAsync(ct);
 
             var content = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(blob.Content));
-            return new GitHubFileContent(content, file.Sha);
+            return new GitHubFileContent(content, file.Sha, commit.Sha);
         }
         catch (NotFoundException)
         {

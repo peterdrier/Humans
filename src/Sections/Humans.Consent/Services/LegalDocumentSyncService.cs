@@ -543,7 +543,7 @@ internal sealed partial class LegalDocumentSyncService(
             content[lang] = file.Content;
         }
 
-        var commitMessage = await gitHub.GetCommitMessageAsync(commitSha, cancellationToken);
+        var commitMessage = await gitHub.GetCommitMessageAsync(canonicalResult.CommitSha, cancellationToken);
 
         var isNew = document.Versions.Count == 0;
         var versionNumber = $"v{document.Versions.Count + 1}.0";

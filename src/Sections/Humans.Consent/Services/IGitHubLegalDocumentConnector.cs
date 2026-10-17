@@ -18,7 +18,7 @@ internal interface IGitHubLegalDocumentConnector
         string folderPath, CancellationToken ct = default);
 
     /// <summary>
-    /// Fetches raw UTF-8 content plus file SHA for a given repository path.
+    /// Fetches raw UTF-8 content, blob SHA and the last commit changing the path.
     /// Returns null when the file does not exist (Octokit's
     /// <c>NotFoundException</c> is translated to a null result).
     /// </summary>
@@ -44,9 +44,9 @@ internal interface IGitHubLegalDocumentConnector
 }
 
 /// <summary>
-/// Raw content + SHA of a GitHub repository file fetch.
+/// Raw content with its immutable blob identity and the commit used to fetch it.
 /// </summary>
-internal sealed record GitHubFileContent(string Content, string Sha);
+internal sealed record GitHubFileContent(string Content, string Sha, string CommitSha);
 
 /// <summary>
 /// Translation of Octokit's <c>ApiException</c> (Legal's analogue of
