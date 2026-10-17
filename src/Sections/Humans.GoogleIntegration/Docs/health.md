@@ -35,6 +35,7 @@ section's own sync log, which other pages render for a resource or a person.
 | "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
 | "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
+| "Can the service account read this Drive folder?" | Workgroups (root-folder setting) | `IGoogleSyncServiceRead.IsFolderReachableAsync` |
 | "What did sync do to this resource / person?" | `/Google/Resource/{id}` and `/Google/Human/{id}` | `IGoogleSyncLogViewer` |
 | "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |

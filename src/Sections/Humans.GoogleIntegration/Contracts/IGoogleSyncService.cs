@@ -142,13 +142,6 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Whether the service account can read the Drive folder
-    /// <paramref name="folderId"/>. Lets a section refuse a folder setting that
-    /// <see cref="CreateSubfolderAsync"/> would later 404 on.
-    /// </summary>
-    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Requests an on-demand Drive access reconcile for one folder claimed
     /// through the <see cref="IGoogleDriveAccessSource"/> fan-out (e.g.
     /// Teams or Workgroups, after a membership or status change). Deferred: returns
