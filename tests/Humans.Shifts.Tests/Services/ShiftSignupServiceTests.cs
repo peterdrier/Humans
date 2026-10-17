@@ -6,6 +6,7 @@ using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -147,6 +148,122 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         signup.GetProperty("UpdatedAt").GetString().Should().Be("2026-06-15T13:00:00Z");
         signup.GetProperty("ReviewedAt").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
         signup.GetProperty("StatusReason").GetString().Should().Be("Shift cancelled");
+    }
+
+    [HumansTheory]
+    [InlineData("signup", "signup", true)]
+    [InlineData("signup", "signup", false)]
+    [InlineData("range", "voluntell-range", true)]
+    [InlineData("voluntell", "range", true)]
+    [InlineData("approve", "signup", false)]
+    [InlineData("approve-range", "signup", false)]
+    public async Task ConcurrentEnrollment_PreservesDuplicateAndCapacityGuards(
+        string firstPath, string secondPath, bool sameUser)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var calendar = new EventSettings
+        {
+            Id = Guid.NewGuid(), EventName = "Test Event", TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1), BuildStartOffset = -14,
+            EventEndOffset = 6, StrikeEndOffset = 9, IsShiftBrowsingOpen = true, IsActive = true
+        };
+        ShiftsDb.EventSettings.Add(calendar);
+        await ShiftsDb.SaveChangesAsync(ct);
+        var pause = new PauseFirstEnrollmentSave();
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var factory = new TestDbContextFactory<ShiftsDbContext>(options);
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(), EventSettingsId = calendar.Id, TeamId = Guid.NewGuid(),
+            Name = "Event rota", Policy = SignupPolicy.Public, Period = RotaPeriod.Event
+        };
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(), RotaId = rota.Id, DayOffset = 1, IsAllDay = true,
+            MinVolunteers = 0, MaxVolunteers = sameUser ? 2 : 1
+        };
+        var firstUserId = Guid.NewGuid();
+        var secondUserId = sameUser ? firstUserId : Guid.NewGuid();
+        var pendingId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        await using (var seed = new ShiftsDbContext(options))
+        {
+            seed.EventSettings.Add(new EventSettings { Id = calendar.Id, IsShiftBrowsingOpen = true });
+            seed.Rotas.Add(rota);
+            seed.Shifts.Add(shift);
+            if (firstPath.StartsWith("approve", StringComparison.Ordinal))
+                seed.ShiftSignups.Add(new ShiftSignup
+                {
+                    Id = pendingId, ShiftId = shift.Id, UserId = firstUserId,
+                    SignupBlockId = blockId, Status = SignupStatus.Pending,
+                    CreatedAt = TestNow, UpdatedAt = TestNow
+                });
+            await seed.SaveChangesAsync(ct);
+        }
+        pause.Armed = true;
+        await using var firstDb = new ShiftsDbContext(options);
+        await using var secondDb = new ShiftsDbContext(options);
+        var services = new ServiceLocatorBuilder().With<ITeamServiceRead>(_teamService).Build();
+        ShiftSignupService NewService(ShiftsDbContext db) => new(
+            new ShiftRepository(factory, db, Clock), new VolunteerTrackingRepository(db),
+            Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
+            AdminAuthorization, _viewInvalidator, EarlyEntryInvalidator, services, Clock,
+            NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        Task<SignupResult> Enroll(ShiftSignupService service, string path, Guid userId) => path switch
+        {
+            "signup" => service.SignUpAsync(userId, shift.Id),
+            "range" => service.SignUpRangeAsync(userId, rota.Id, 1, 1),
+            "voluntell" => service.VoluntellAsync(userId, shift.Id, Guid.NewGuid()),
+            "voluntell-range" => service.VoluntellRangeAsync(userId, rota.Id, 1, 1, Guid.NewGuid()),
+            "approve" => service.ApproveAsync(pendingId, Guid.NewGuid()),
+            _ => service.ApproveRangeAsync(blockId, Guid.NewGuid())
+        };
+        var first = Enroll(NewService(firstDb), firstPath, firstUserId);
+        Task<SignupResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first enrollment save must be paused");
+            second = Enroll(NewService(secondDb), secondPath, secondUserId);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        await using var stored = new ShiftsDbContext(options);
+        var signup = (await stored.ShiftSignups.ToListAsync(ct)).Should().ContainSingle().Subject;
+        signup.UserId.Should().Be(firstUserId);
+        signup.Status.Should().Be(SignupStatus.Confirmed);
+        results[0].Success.Should().BeTrue();
+        results[1].Success.Should().BeFalse();
+        results[1].Error.Should().NotBeNullOrWhiteSpace();
+    }
+
+    private sealed class PauseFirstEnrollmentSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public bool Armed { get; set; }
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Armed && eventData.Context!.ChangeTracker.Entries<ShiftSignup>().Any(entry =>
+                    entry.State == EntityState.Added
+                    || (entry.State == EntityState.Modified && entry.Entity.Status == SignupStatus.Confirmed))
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansTheory]

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Resources;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Calendar.Contracts;
@@ -40,6 +41,9 @@ internal sealed class ShiftSignupService(
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ShiftsResource));
+    // Release after the enrollment save, before audit and notices; using scopes
+    // still release the gate on refusals and failures.
+    private static readonly TrackedLock EnrollmentLock = new("Shifts.Enrollment");
 
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string ShiftSignups = "ShiftSignups";
@@ -56,6 +60,7 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -124,6 +129,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(localEs.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
@@ -149,6 +155,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
@@ -185,6 +192,7 @@ internal sealed class ShiftSignupService(
         signup.Confirm(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
@@ -276,6 +284,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var targetUserId = await ResolveVoluntellTargetAsync(userId);
         if (targetUserId is null)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -317,6 +326,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
@@ -349,6 +359,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var targetUserId = await ResolveVoluntellTargetAsync(userId);
         if (targetUserId is null)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -440,6 +451,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         // Range affects every shift in the rota; cascade via the rota.
@@ -548,6 +560,7 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -624,6 +637,7 @@ internal sealed class ShiftSignupService(
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateRota(rotaId);
@@ -847,6 +861,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,
             ShiftSignupBlockMutationScope.PendingOnly);
@@ -903,6 +918,7 @@ internal sealed class ShiftSignupService(
             if (skippedAtCapacity.Count > 0)
             {
                 await repo.SaveChangesAsync();
+                enrollment.Dispose();
                 shiftMgmt.InvalidateDashboardCaches(calendar.Id);
                 viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
                 viewInvalidator.InvalidateRota(skippedAtCapacity[0].Shift.RotaId);
@@ -922,6 +938,7 @@ internal sealed class ShiftSignupService(
         try
         {
             await repo.SaveChangesAsync();
+            enrollment.Dispose();
         }
         finally
         {
