@@ -204,6 +204,8 @@ internal sealed class WorkgroupsAdminController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
         var result = await action(user.Id);
         if (result.Refusal is { } refusal)
         {

@@ -196,6 +196,7 @@ Stored as string via `HasConversion<string>()`.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- Year-status POSTs reject binding errors after resolving the actor and before mutation. A malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
 - Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.

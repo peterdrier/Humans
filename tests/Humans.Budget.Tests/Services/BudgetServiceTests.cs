@@ -92,7 +92,28 @@ public sealed class BudgetServiceTests
         else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
     }
 
-    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task YearStatus_MalformedBinding_DoesNotResetActiveYear(bool malformed)
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
+        var (controller, _, _) = CreateAdminController(true, _service);
+        if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
+
+        var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
+
+        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+    }
+
+    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetService? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetService>();
@@ -106,7 +127,7 @@ public sealed class BudgetServiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
         };
-        var controller = new BudgetAdminController(budget, _teamService,
+        var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
             new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
             Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
             NullLogger<BudgetAdminController>.Instance)

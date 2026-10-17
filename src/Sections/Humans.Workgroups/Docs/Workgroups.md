@@ -294,6 +294,7 @@ Settings and Register an existing group on first setup or after clearing the que
   (register, refer, refuse, withdraw, close, reactivate, disposition, coordinator
   override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
+- Admin actions through the shared decision handler reject binding errors after actor resolution and before mutation. A malformed disposition cannot default to Accepted; no system log, audit or notification is emitted for a rejected form.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.
