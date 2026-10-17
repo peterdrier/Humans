@@ -71,7 +71,7 @@ administrative recognition, and every decision is a human's.
 |----------|------|-------|
 | Id | Guid | PK |
 | Name | string(200) | |
-| Slug | string(100) | Admin-editable; re-slugs when Name changes. Plain index, not unique — uniqueness is the service's job (`ReserveSlugAsync`), never a DB constraint on an editable string |
+| Slug | string(100) | Admin-editable; re-slugs when Name changes. Nonblank names without ASCII slug characters use the `workgroup` seed and the usual collision suffixing. Plain index, not unique — uniqueness is the service's job (`ReserveSlugAsync`), never a DB constraint on an editable string |
 | Purpose | string(4000) | Markdown, sanitized on render |
 | Deliverable | string(500) | One line |
 | DeliverableKind | WorkgroupDeliverableKind | |

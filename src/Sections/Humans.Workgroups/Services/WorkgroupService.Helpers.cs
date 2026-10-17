@@ -293,7 +293,7 @@ internal sealed partial class WorkgroupService
     {
         var baseSlug = SlugHelper.GenerateSlug(name);
         if (string.IsNullOrEmpty(baseSlug))
-            return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
+            baseSlug = "workgroup";
 
         // Name allows 200 characters, Slug's column holds 100, and the suffix loop below can
         // add up to "-100" — so trim here rather than let a long name fail on insert.
