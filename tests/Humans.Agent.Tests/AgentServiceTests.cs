@@ -14,6 +14,7 @@ using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Agent.Tests;
 
@@ -47,6 +48,39 @@ public class AgentServiceTests
         conversation.GetProperty("LastMessageAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
         foreach (var message in messages.EnumerateArray())
             message.GetProperty("CreatedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Export_includes_merged_transcripts_but_excludes_other_people(bool archivedId)
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var requestedId = archivedId ? sourceId : survivorId;
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
+                with { MergedUserIds = [sourceId] });
+        var (service, client) = await BuildService(settings => settings.Enabled = true, users: users);
+        foreach (var (ownerId, question) in new[]
+        {
+            (survivorId, "Survivor question"), (sourceId, "Before merge question"), (strangerId, "Other person's secret")
+        })
+        {
+            client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+            await foreach (var _ in service.AskAsync(new AgentTurnRequest(Guid.Empty, ownerId, question, "es"),
+                Xunit.TestContext.Current.CancellationToken)) { }
+        }
+
+        var slices = await service.ContributeForUserAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+
+        var payload = JsonSerializer.Serialize(slices.Single().Data);
+        JsonSerializer.SerializeToElement(slices.Single().Data).GetArrayLength().Should().Be(2);
+        payload.Should().Contain("Survivor question").And.Contain("Before merge question")
+            .And.NotContain("Other person's secret");
     }
 
     [HumansTheory]
@@ -965,7 +999,8 @@ public class AgentServiceTests
         Action<AgentSettings> tune,
         IAgentRateLimitStore? rateLimitStore = null,
         IAgentToolDispatcher? toolDispatcher = null,
-        ILogger<AgentService>? logger = null)
+        ILogger<AgentService>? logger = null,
+        IUserServiceRead? users = null)
     {
         var dbOptions = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -1012,7 +1047,7 @@ public class AgentServiceTests
         var resolvedLogger = logger ?? NullLogger<AgentService>.Instance;
 
         var svc = new AgentService(settingsService, ratelimit, abuse, repo, new AgentRetentionRunStore(),
-            snapshots, preload, assembler, tools, client, options, clock, resolvedLogger);
+            snapshots, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserServiceRead>());
         return (svc, client);
     }
 
