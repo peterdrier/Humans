@@ -40,7 +40,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | Status | ApplicationStatus | Current state (Submitted, Approved, Rejected, Withdrawn), stored as string |
 | Motivation | string (4000) | Required motivation statement |
 | AdditionalInfo | string? (4000) | Optional additional information |
-| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Nowhere or another Burn. No configured max length. |
+| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Elsewhere or another Burn; maximum 2000 characters. |
 | RoleUnderstanding | string? | Asociado-only: applicant's understanding of the asociado role and why they want it. No configured max length. |
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
@@ -250,7 +250,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
+- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures. The shared Asociado contribution prompt names Elsewhere in all six cultures, including profile editing.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 
