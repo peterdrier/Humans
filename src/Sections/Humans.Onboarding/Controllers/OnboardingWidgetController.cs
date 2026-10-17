@@ -158,6 +158,8 @@ internal sealed class OnboardingWidgetController(
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
+        if (result.Warning is { } warning)
+            SetInfo(warning);
         return RedirectToAction(nameof(Consents));
     }
 
@@ -172,6 +174,8 @@ internal sealed class OnboardingWidgetController(
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpRangeFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
+        if (result.Warning is { } warning)
+            SetInfo(warning);
         return RedirectToAction(nameof(Consents));
     }
 

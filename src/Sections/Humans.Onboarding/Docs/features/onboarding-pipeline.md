@@ -206,6 +206,8 @@ The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a glo
 
 Shift signups created in Step 2 follow the rota's normal `Policy`: Public rotas auto-confirm at signup, RequireApproval rotas create `Pending` signups for coordinator review. The user's mid-widget (pre-consent) status does **not** change this — a Public-rota slot is Confirmed immediately, before any consents are signed. There is no post-admission promotion step; chasing down committed-but-unconsented volunteers is a business/coordinator concern handled out-of-band. Both single and range signup require `UserState.Active`; the widget exemption does not let non-Active accounts create signups.
 
+Successful single and range signups carry localized capacity or skipped-day warnings into the information alert on the next page.
+
 ### Direct-POST safety
 
 The Names POST is reachable directly. `IProfileEditorService.SaveProfileAsync` does a full-field overwrite, and the widget's Names viewmodel has only three populated fields, so the controller builds the save request by carrying forward every other field from the existing profile — a stray POST can't wipe an already-populated profile (bio, location, emergency contact, …). For an already-named user (stale page / back-button re-POST) the save is skipped and the user is dispatched back through `Index`. That guard checks the user's own profile (`HasRequiredNameFields`), not the cross-section widget step — gating the name save on consent/step state bounced bare accounts with no required legal docs into an endless Names redirect loop (peterdrier/Humans PR #908).

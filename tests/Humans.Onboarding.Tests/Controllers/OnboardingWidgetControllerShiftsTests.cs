@@ -60,6 +60,9 @@ public class OnboardingWidgetControllerShiftsTests
         };
         // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.
         ctrl.Url = Substitute.For<IUrlHelper>();
+        ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            _http,
+            Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
         return ctrl;
     }
 
@@ -83,19 +86,22 @@ public class OnboardingWidgetControllerShiftsTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildSut(userId).Shifts(ct: request.Token));
     }
 
-    [HumansFact]
-    public async Task SignUp_Post_CallsService_AndRedirectsToConsents()
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("localized early-entry capacity warning")]
+    public async Task SignUp_Post_CallsService_AndRedirectsToConsents(string? warning)
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
-            .Returns(SignupResult.Ok(Guid.NewGuid()));
+            .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.SignUp(shiftId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
         await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
     }
 
@@ -107,9 +113,6 @@ public class OnboardingWidgetControllerShiftsTests
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
-        ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
-            _http,
-            Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
 
         var result = await ctrl.SignUp(shiftId);
 
@@ -117,6 +120,23 @@ public class OnboardingWidgetControllerShiftsTests
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
         // Use the canonical TempData key so <vc:temp-data-alerts /> reads it.
         Assert.Equal("nope", ctrl.TempData[TempDataKeys.ErrorMessage]);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_Post_PreservesPartialSignupWarningAcrossRedirect()
+    {
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        const string warning = "localized warning naming full days omitted from signup";
+        _signups.SignUpRangeAsync(userId, rotaId, -3, -1)
+            .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.SignUpRange(rotaId, -3, -1);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
     }
 
     [HumansFact]
