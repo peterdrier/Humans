@@ -120,17 +120,32 @@ public sealed class TeamDirectoryBuilderTests
         var grandchild = Team("Fonts", parentId: logo.Id);
 
         var tree = TeamDirectoryBuilder.BuildTree(
-            Graph(build, art, hidden, inactive, system, logo, signs, hiddenChild, orphanOfHidden, grandchild));
+            Graph(build, art, hidden, inactive, system, logo, signs, hiddenChild, orphanOfHidden, grandchild),
+            isAuthenticated: true);
 
         tree.Select(n => n.Name).Should().Equal("Art", "Build");
-        var (artNode, buildNode) = (tree[0], tree[1]);
+        tree.Should().AllSatisfy(n => n.IsLinkable.Should().BeTrue());
+        var buildNode = tree[1];
         buildNode.MemberCount.Should().Be(2);
-        buildNode.IsAnonymouslyVisible.Should().BeTrue();
         buildNode.Children.Select(c => c.Name).Should().Equal("Logo", "Signs");
-        var (logoNode, signsNode) = (buildNode.Children[0], buildNode.Children[1]);
-        logoNode.IsAnonymouslyVisible.Should().BeTrue();
-        signsNode.IsAnonymouslyVisible.Should().BeFalse();
-        logoNode.Children.Select(c => c.Name).Should().Equal("Fonts");
-        artNode.IsAnonymouslyVisible.Should().BeFalse();
+        buildNode.Children[1].IsLinkable.Should().BeTrue();
+        buildNode.Children[0].Children.Select(c => c.Name).Should().Equal("Fonts");
+    }
+
+    [HumansFact]
+    public void Tree_Anonymous_SeesPublicDepartmentsOnly_AndLinksPromotedSubTeams()
+    {
+        var build = Team("Build", isPublicPage: true);
+        var privateDept = Team("Cantina");
+        var logo = Team("Logo", parentId: build.Id, isPromoted: true);
+        var signs = Team("Signs", parentId: build.Id);
+        var privateChild = Team("Bar", parentId: privateDept.Id, isPromoted: true);
+
+        var tree = TeamDirectoryBuilder.BuildTree(
+            Graph(build, privateDept, logo, signs, privateChild), isAuthenticated: false);
+
+        tree.Select(n => n.Name).Should().Equal("Build");
+        tree[0].IsLinkable.Should().BeTrue();
+        tree[0].Children.Select(c => (c.Name, c.IsLinkable)).Should().Equal(("Logo", true), ("Signs", false));
     }
 }

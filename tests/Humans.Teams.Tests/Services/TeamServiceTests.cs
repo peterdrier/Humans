@@ -800,6 +800,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedRenameKeepsTheExistingUrl(string name)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -824,6 +825,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedCustomSlugRefusesTheUpdate(string slug)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

@@ -319,6 +319,7 @@ public class EndpointAuthorizationTests
             "GuestAccountController.UpdatePreference",
             "TeamController.Index",
             "TeamController.Details",
+            "TeamController.Tree",
             "DebugController.DbVersion",
             "ProfileEmailsController.VerifyEmail",
             "ProfileViewController.Picture",

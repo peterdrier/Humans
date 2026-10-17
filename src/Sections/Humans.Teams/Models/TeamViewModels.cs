@@ -22,7 +22,6 @@ internal sealed class TeamIndexViewModel
 internal sealed class TeamTreeViewModel
 {
     public IReadOnlyList<TeamTreeNode> Departments { get; init; } = [];
-    public bool IsAuthenticated { get; init; }
 }
 
 internal sealed class TeamSummaryViewModel

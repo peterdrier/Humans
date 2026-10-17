@@ -578,10 +578,10 @@ internal sealed class TeamController(
     public async Task<IActionResult> Tree(CancellationToken ct)
     {
         var teamsById = await teamService.GetTeamsAsync(ct);
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
         return View(new TeamTreeViewModel
         {
-            Departments = TeamDirectoryBuilder.BuildTree(teamsById),
-            IsAuthenticated = User.Identity?.IsAuthenticated == true,
+            Departments = TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated),
         });
     }
 

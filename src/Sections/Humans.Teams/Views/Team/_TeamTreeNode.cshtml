@@ -1,58 +1,28 @@
-@model (Humans.Teams.Services.TeamTreeNode Node, bool IsAuthenticated, bool IsDepartment)
-@{
-    var node = Model.Node;
-    var canLink = Model.IsAuthenticated || node.IsAnonymouslyVisible;
-}
+@model Humans.Teams.Services.TeamTreeNode
 
-<div class="team-node">
-    @if (Model.IsDepartment)
-    {
-        <h2 class="h4 mb-0">
-            @if (canLink)
-            {
-                <a asp-action="Details" asp-route-slug="@node.Slug" class="text-decoration-none">@node.Name</a>
-            }
-            else
-            {
-                @node.Name
-            }
-        </h2>
-    }
-    else
-    {
-        <span class="fw-semibold">
-            @if (canLink)
-            {
-                <a asp-action="Details" asp-route-slug="@node.Slug" class="text-decoration-none">@node.Name</a>
-            }
-            else
-            {
-                @node.Name
-            }
-        </span>
-    }
-    <span class="badge rounded-pill text-bg-light border">
-        <i class="fa-solid fa-user me-1"></i>@string.Format(Localizer["Teams_MemberCount"].Value, node.MemberCount)
-    </span>
-    @if (node.Children.Count > 0)
-    {
-        <span class="badge rounded-pill text-bg-light border">
-            <i class="fa-solid fa-sitemap me-1"></i>@string.Format(Localizer["Teams_Tree_TeamCount"].Value, node.Children.Count)
-        </span>
-    }
-</div>
-@if (!string.IsNullOrWhiteSpace(node.Description))
-{
-    <div class="team-desc">@Html.SanitizedMarkdown(node.Description)</div>
-}
-@if (node.Children.Count > 0)
-{
-    <ul class="mt-2">
-        @foreach (var child in node.Children)
+<li>
+    <span class="team-name">
+        @if (Model.IsLinkable)
         {
-            <li>
-                <partial name="_TeamTreeNode" model="(child, Model.IsAuthenticated, false)" />
-            </li>
+            <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">@Model.Name</a>
         }
-    </ul>
-}
+        else
+        {
+            @Model.Name
+        }
+    </span>
+    <span class="team-count" title="@string.Format(Localizer["Teams_MemberCount"].Value, Model.MemberCount)"><i class="fa-solid fa-user fa-xs"></i> @Model.MemberCount</span>
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <div class="team-desc">@Html.SanitizedMarkdown(Model.Description)</div>
+    }
+    @if (Model.Children.Count > 0)
+    {
+        <ul>
+            @foreach (var child in Model.Children)
+            {
+                <partial name="_TeamTreeNode" model="child" />
+            }
+        </ul>
+    }
+</li>

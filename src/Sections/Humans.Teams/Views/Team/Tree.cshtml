@@ -4,19 +4,27 @@
 }
 
 <style>
-    .team-tree { list-style: none; padding-left: 0; margin: 0; }
-    .team-tree ul { list-style: none; padding-left: 1.75rem; margin: 0; position: relative; }
-    .team-tree ul::before {
-        content: ""; position: absolute; top: 0; bottom: 0.75rem; left: 0.6rem;
-        border-left: 2px solid var(--bs-border-color);
+    .team-tree, .team-tree ul { list-style: none; margin: 0; padding: 0; }
+    .team-tree ul { padding-left: 1.5rem; }
+    .team-tree li { position: relative; padding: 0.35rem 0 0.35rem 1.25rem; }
+    /* vertical rail: full height on every node, clipped at the elbow on the last one */
+    .team-tree li::before {
+        content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+        border-left: 2px solid var(--bs-border-color, #dee2e6);
     }
-    .team-tree ul > li { position: relative; padding: 0.3rem 0 0.3rem 1rem; }
-    .team-tree ul > li::before {
-        content: ""; position: absolute; top: 1.15rem; left: calc(-1.75rem + 0.6rem);
-        width: calc(1.75rem - 0.6rem + 0.5rem); border-top: 2px solid var(--bs-border-color);
+    .team-tree li:last-child::before { bottom: auto; height: 1.15rem; }
+    /* elbow into the node */
+    .team-tree li::after {
+        content: ""; position: absolute; left: 0; top: 1.15rem; width: 0.9rem;
+        border-top: 2px solid var(--bs-border-color, #dee2e6);
     }
-    .team-tree .team-node { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-    .team-tree .team-desc { color: var(--bs-secondary-color); font-size: 0.875rem; margin: 0.15rem 0 0; }
+    .team-tree > li { padding-left: 0; }
+    .team-tree > li::before, .team-tree > li::after { display: none; }
+    .team-tree > li + li { margin-top: 1.25rem; }
+    .team-tree .team-name { font-weight: 600; }
+    .team-tree > li > .team-name { font-size: 1.25rem; }
+    .team-tree .team-count { color: var(--bs-secondary-color); font-size: 0.875rem; margin-left: 0.4rem; }
+    .team-tree .team-desc { color: var(--bs-secondary-color); font-size: 0.875rem; max-width: 60ch; }
     .team-tree .team-desc p:last-child { margin-bottom: 0; }
 </style>
 
@@ -41,11 +49,7 @@ else
     <ul class="team-tree">
         @foreach (var department in Model.Departments)
         {
-            <li class="card mb-3">
-                <div class="card-body">
-                    <partial name="_TeamTreeNode" model="(department, Model.IsAuthenticated, true)" />
-                </div>
-            </li>
+            <partial name="_TeamTreeNode" model="department" />
         }
     </ul>
 }
