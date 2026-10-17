@@ -596,6 +596,28 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_UnregisteredFolder_NamesTheSourceFolderNotTheId()
+    {
+        var service = CreateService(new StaticSource("1AbCdEfGhIjKlMnOpQrStUvWxYz0123456", "Finance 2026"));
+        StubFolder("1AbCdEfGhIjKlMnOpQrStUvWxYz0123456",
+            new DrivePermission("perm-1", "user", "reader", "old@nobodies.team", HasInheritedComponent: false));
+        _drivePermissions.DeletePermissionAsync("1AbCdEfGhIjKlMnOpQrStUvWxYz0123456", "perm-1", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, null));
+
+        var diff = await service.ReconcileOneAsync("1AbCdEfGhIjKlMnOpQrStUvWxYz0123456", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ResourceName.Should().Be("Finance 2026");
+        await _removalNotifications.Received(1).NotifyRemovalAsync(
+            "old@nobodies.team", GoogleResourceType.DriveFolder, "Finance 2026", Arg.Any<string?>(),
+            SyncRemovalReason.Reconciliation, Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, Guid.Empty, Arg.Is<string>(d => d.Contains("Finance 2026")),
+            nameof(GoogleDriveAccessSyncService), "old@nobodies.team", "MEMBER",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: null,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_FailedRemoval_DoesNotNotifyTheFormerMember()
     {
         var service = CreateService(new StaticSource("folder-1"));
@@ -996,6 +1018,11 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private sealed class StaticSource(string folderId, params (Guid UserId, DrivePermissionLevel Level)[] access)
         : IGoogleDriveAccessSource
     {
+        private readonly string? _resourceName;
+
+        public StaticSource(string folderId, string resourceName, params (Guid UserId, DrivePermissionLevel Level)[] access)
+            : this(folderId, access) => _resourceName = resourceName;
+
         public Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
             string? folderId2 = null,
             CancellationToken ct = default)
@@ -1005,7 +1032,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
             return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal)
             {
-                [folderId] = new(access.ToDictionary(a => a.UserId, a => a.Level))
+                [folderId] = new(access.ToDictionary(a => a.UserId, a => a.Level), ResourceName: _resourceName)
             });
         }
     }

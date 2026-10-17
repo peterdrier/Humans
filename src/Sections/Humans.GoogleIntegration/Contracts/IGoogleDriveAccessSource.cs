@@ -13,8 +13,13 @@ public interface IGoogleDriveAccessSource
         string? folderId = null, CancellationToken ct = default);
 }
 
-/// <summary>Expected user access with optional owner-provided links for sync display.</summary>
+/// <summary>
+/// Expected user access with optional owner-provided display metadata. <paramref name="ResourceName"/>
+/// is the human-readable name of the folder for members' emails, the sync log and the sync page when no
+/// registered Google resource names it; without one the raw file id shows.
+/// </summary>
 public sealed record GoogleDriveAccessClaim(
     Dictionary<Guid, DrivePermissionLevel> Access,
     IReadOnlyList<TeamLink>? LinkedTeams = null,
-    IReadOnlyDictionary<Guid, IReadOnlyList<TeamLink>>? MemberTeamLinks = null);
+    IReadOnlyDictionary<Guid, IReadOnlyList<TeamLink>>? MemberTeamLinks = null,
+    string? ResourceName = null);

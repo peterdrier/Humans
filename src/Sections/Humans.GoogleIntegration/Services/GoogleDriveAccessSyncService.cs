@@ -257,7 +257,7 @@ internal sealed class GoogleDriveAccessSyncService(
         return new ResourceSyncDiff
         {
             ResourceId = primary?.Id ?? Guid.Empty,
-            ResourceName = primary?.Name ?? claim.FolderId,
+            ResourceName = claim.DisplayName,
             ResourceType = (primary?.ResourceType ?? GoogleResourceType.DriveFolder).ToString(),
             GoogleId = claim.FolderId,
             Url = primary?.Url,
@@ -450,7 +450,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 case DrivePermissionCreateOutcome.Created:
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId,
-                        $"Granted Drive access ({role}) to {member.Email} ({claim.FolderId})",
+                        $"Granted Drive access ({role}) to {member.Email} ({claim.DisplayName})",
                         nameof(GoogleDriveAccessSyncService),
                         member.Email, role, syncSource, success: true,
                         userId: member.UserId, ct: ct);
@@ -516,7 +516,7 @@ internal sealed class GoogleDriveAccessSyncService(
             ? GoogleSyncLogAction.AccessRevoked
             : GoogleSyncLogAction.AccessGranted;
         var description = error is null
-            ? $"Changed Drive access for {member.Email} from {member.CurrentRole} to {role} ({claim.FolderId})"
+            ? $"Changed Drive access for {member.Email} from {member.CurrentRole} to {role} ({claim.DisplayName})"
             : $"Google Drive role change failed for {member.Email} (HTTP {error.StatusCode}): {error.RawMessage}";
         if (error is not null)
             logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}",
@@ -538,7 +538,7 @@ internal sealed class GoogleDriveAccessSyncService(
             case DrivePermissionDeleteOutcome.Deleted:
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessRevoked, claim.ResourceId,
-                    $"Removed {email} from Drive folder {claim.FolderId}",
+                    $"Removed {email} from Drive folder {claim.DisplayName}",
                     nameof(GoogleDriveAccessSyncService),
                     email, "MEMBER", syncSource, success: true,
                     userId: userId, ct: ct);
@@ -568,7 +568,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             await removalNotifications.NotifyRemovalAsync(
                 email, claim.Resources.FirstOrDefault()?.ResourceType ?? GoogleResourceType.DriveFolder,
-                claim.Resources.FirstOrDefault()?.Name, claim.Resources.FirstOrDefault()?.Url ?? claim.FolderId,
+                claim.DisplayName, claim.Resources.FirstOrDefault()?.Url ?? claim.FolderId,
                 SyncRemovalReason.Reconciliation, ct);
         }
         catch (Exception ex)
@@ -596,6 +596,9 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         public Dictionary<Guid, DrivePermissionLevel> Access => Claim.Access;
         public Guid ResourceId => Resources.FirstOrDefault()?.Id ?? Guid.Empty;
+
+        /// <summary>Registered resource name, else the source's name, else the raw file id.</summary>
+        public string DisplayName => Resources.FirstOrDefault()?.Name ?? Claim.ResourceName ?? FolderId;
     }
 
     private sealed record DriveExpectedMember(
