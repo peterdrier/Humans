@@ -227,6 +227,8 @@
   <data name="Enum_AuditAction_ExpenseHoldedPushed" xml:space="preserve"><value>Despesa enviada a Holded</value></data>
   <data name="Enum_AuditAction_ExpenseHoldedFailed" xml:space="preserve"><value>La transferència de despeses a Holded ha fallat</value></data>
   <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Despesa tornada a posar a la cua per a Holded</value></data>
+  <data name="Enum_AuditAction_ExpenseLineDeclined" xml:space="preserve"><value>Línia de despesa rebutjada</value></data>
+  <data name="Enum_AuditAction_ExpenseLineDeclineUndone" xml:space="preserve"><value>Rebuig de la línia de despesa desfet</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Compte de despeses de Holded creat</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Compte de despeses de Holded vinculat</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Estat actiu del compte de despeses de Holded canviat</value></data>

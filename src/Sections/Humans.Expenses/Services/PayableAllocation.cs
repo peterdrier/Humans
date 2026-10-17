@@ -7,7 +7,8 @@ namespace Humans.Expenses.Services;
 /// <c>SortOrder</c>, until the payable runs out — the line the cap lands inside is trimmed, and
 /// every line after it is skipped. Where the reduction lands is presentation only (the whole
 /// report books to one category account), so greedy-in-order is as correct as anything and keeps
-/// each Holded doc matching its receipt. The push, the detail view, and the audit message all
+/// each Holded doc matching its receipt. Declined lines take no part: they are out of the payable
+/// and never book. The push, the detail view, and the audit message all
 /// read this one allocation so they can never disagree.
 /// </summary>
 internal static class PayableAllocation
@@ -26,7 +27,7 @@ internal static class PayableAllocation
         var remaining = report.Payable;
         var allocations = new List<LineAllocation>();
         foreach (var line in report.Lines
-                     .Where(l => l.ParentLineId is null)
+                     .Where(l => l.ParentLineId is null && !l.Declined)
                      .OrderBy(l => l.SortOrder))
         {
             var booked = Math.Max(0m, Math.Min(line.Amount, remaining));

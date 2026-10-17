@@ -383,6 +383,66 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    // ─── DeclineLine ─────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Coordinator_CanDeclineLine_OnSubmittedReportInTheirCategory()
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.DeclineLine)).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Coordinator_CannotDeclineLine_OnceTheReportIsEndorsed()
+    {
+        // The coordinator holds Endorse only while Submitted; DeclineLine follows it.
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.CoordinatorEndorsed);
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Coordinator_CannotDeclineLine_InAnotherCategory()
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
+        (await EvaluateAsync(CreateUser(OtherCoordinatorId), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task FinanceAdmin_CanDeclineLine_WhileTheReportAwaitsADecision(ExpenseReportStatus status)
+    {
+        var report = MakeReport(SubmitterId, status);
+        (await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task FinanceAdmin_CannotDeclineLine_OutsideTheDecisionWindow(ExpenseReportStatus status)
+    {
+        var report = MakeReport(SubmitterId, status);
+        (await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task Submitter_CannotDeclineLine_OnTheirOwnReport(ExpenseReportStatus status)
+    {
+        var report = MakeReport(SubmitterId, status);
+        (await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RandomMember_CannotDeclineLine()
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
+        (await EvaluateAsync(CreateUser(RandomUserId), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
     private async Task<bool> EvaluateAsync(
         ClaimsPrincipal user,
         ExpenseReportDto resource,
