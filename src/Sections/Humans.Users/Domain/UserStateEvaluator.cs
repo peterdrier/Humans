@@ -69,7 +69,7 @@ internal static class UserStateEvaluator
     /// Legacy-only: rows anonymized before the email scrub was added to the erasure path lack the
     /// tombstoned email, so recognise the pre-email tombstone shape instead. The blank BurnerName
     /// is what makes the shape unreachable by a member: erasure clears it
-    /// (<c>AnonymizeProfileInternalAsync</c> sets <c>Profile.BurnerName = string.Empty</c> and
+    /// (<c>AnonymizeForDeletionByUserIdAsync</c> sets <c>Profile.BurnerName = string.Empty</c> and
     /// mirrors it onto the User row), and it was only from #1098 onward that erasure wrote the
     /// sentinel there instead. A member who types "Deleted User" / "Deleted" / "User" carries
     /// their burner name in all three columns, so they never match.

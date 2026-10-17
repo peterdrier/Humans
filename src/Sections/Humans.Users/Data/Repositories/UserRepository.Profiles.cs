@@ -154,12 +154,6 @@ internal sealed partial class UserRepository
             CopyNamesToUser(user, profile);
     }
 
-    public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        AnonymizeProfileInternalAsync(userId, "Merged", "User", ct);
-
-    public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        AnonymizeProfileInternalAsync(userId, "Deleted", "User", ct);
-
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -168,7 +162,7 @@ internal sealed partial class UserRepository
         if (profile is not null)
         {
             // Article 9 special-category data — health and diet. Not touched by the
-            // shared anonymization path because the merge fold must not drop them.
+            // profile fold because a merge must not drop them.
             profile.DietaryPreference = null;
             profile.Allergies = [];
             profile.Intolerances = [];
@@ -347,8 +341,7 @@ internal sealed partial class UserRepository
             }
         }
 
-        // Anonymize the source profile in place (rolls in the work of
-        // AnonymizeForMergeByUserIdAsync). The row is kept as a tombstone
+        // Anonymize the source profile in place. The row is kept as a tombstone
         // counterpart to User.MergedToUserId; only identifying scalars are
         // cleared. ContactField rows belong to the ContactFields section
         // (IContactFieldService) and are re-FK'd by the merge orchestrator's
@@ -383,8 +376,8 @@ internal sealed partial class UserRepository
         return previousPicture;
     }
 
-    private async Task<bool> AnonymizeProfileInternalAsync(
-        Guid userId, string firstName, string lastName, CancellationToken ct)
+    public async Task<bool> AnonymizeForDeletionByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
@@ -393,8 +386,8 @@ internal sealed partial class UserRepository
         if (profile is null)
             return false;
 
-        profile.FirstName = firstName;
-        profile.LastName = lastName;
+        profile.FirstName = "Deleted";
+        profile.LastName = "User";
         profile.BurnerName = string.Empty;
         // #1097 dual-write — see MirrorProfileNamesToUserAsync.
         await MirrorProfileNamesToUserAsync(ctx, profile, ct);

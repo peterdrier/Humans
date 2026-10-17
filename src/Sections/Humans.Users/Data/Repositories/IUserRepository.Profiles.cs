@@ -91,39 +91,19 @@ internal partial interface IUserRepository
     Task UpdateAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
-    /// Clears identifying fields on the profile (name, location, bio,
-    /// emergency contacts, pronouns, birthday, profile picture, board notes,
-    /// admin notes, contribution interests) and removes every
-    /// <see cref="ContactField"/> and <see cref="VolunteerHistoryEntry"/>
-    /// row for the profile in a single <c>SaveChangesAsync</c> call. Used by
-    /// <c>AccountMergeService</c> and <c>DuplicateAccountService</c> when
-    /// archiving a source account.
+    /// Clears identifying profile fields, labels the profile "Deleted User", and
+    /// removes its contact fields and volunteer history for GDPR erasure.
     /// </summary>
     /// <remarks>
-    /// No-op if the user has no profile. Returns true when a profile existed
-    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
-    /// intentionally left as-is; they are not personally identifying.
-    /// </remarks>
-    Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Same set of writes as <see cref="AnonymizeForMergeByUserIdAsync"/>,
-    /// but labels the anonymized row as <c>"Deleted User"</c> instead of
-    /// <c>"Merged User"</c>. Used by the expired-deletion job path so the
-    /// post-anonymization audit log, profile view, etc. identify the record
-    /// as a GDPR-erasure outcome rather than an account merge.
-    /// </summary>
-    /// <remarks>
-    /// No-op if the user has no profile. Returns true when a profile existed
-    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
-    /// intentionally left as-is; they are not personally identifying.
+    /// Returns false when no profile exists. Health data and languages are erased
+    /// separately by <see cref="EraseProfileExtrasForUserAsync"/>.
     /// </remarks>
     Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR Art. 17, deletion path only: clears the Article 9 special-category
-    /// fields the shared anonymization deliberately leaves alone for the merge
-    /// fold (diet, allergies, intolerances, medical conditions) plus the
+    /// fields the account-merge fold deliberately leaves on archived profiles
+    /// (diet, allergies, intolerances, medical conditions) plus the
     /// consent-check and rejection prose, and deletes the profile's language rows.
     /// </summary>
     Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default);
@@ -161,8 +141,7 @@ internal partial interface IUserRepository
     /// Account-merge fold: bulk-moves the source profile's
     /// <see cref="VolunteerHistoryEntry"/> and <see cref="ProfileLanguage"/>
     /// rows onto the target profile, anonymizes the source profile's
-    /// identifying scalar fields in the same save (rolling in the work of
-    /// <see cref="AnonymizeForMergeByUserIdAsync"/>), and stamps
+    /// identifying scalar fields in the same save, and stamps
     /// <see cref="Profile.UpdatedAt"/> on the source.
     /// </summary>
     /// <remarks>

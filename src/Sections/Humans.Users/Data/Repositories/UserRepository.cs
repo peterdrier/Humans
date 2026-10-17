@@ -166,8 +166,8 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = "Merged User";
 
-        // #1097: overwrite the User-side names with the same tombstone labels
-        // AnonymizeProfileInternalAsync writes, so the resolver (User.BurnerName first) cannot
+        // #1097: overwrite the User-side names with the profile fold's tombstone labels,
+        // so the resolver (User.BurnerName first) cannot
         // render the merged human's real name and the two sides stay in sync.
         user.BurnerName = "Merged User";
         user.FirstName = "Merged";

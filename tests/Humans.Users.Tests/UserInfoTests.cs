@@ -459,7 +459,7 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
         user.FirstName = "Deleted";
         user.LastName = "User";
-        // Erasure clears BurnerName (AnonymizeProfileInternalAsync) and only wrote the sentinel
+        // Erasure clears BurnerName (AnonymizeForDeletionByUserIdAsync) and only wrote the sentinel
         // there from #1098 on, so blank is the pre-scrub shape — and the part a member cannot
         // reproduce. Set explicitly: it is load-bearing, not incidental.
         user.BurnerName = string.Empty;

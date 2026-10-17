@@ -188,8 +188,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task UpdateAsync(Profile profile, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default) =>
