@@ -30,12 +30,8 @@ internal sealed class FinanceEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
             L("Finance_Email_SepaPayoutGenerated_Subject"),
-            Lf("Finance_Email_SepaPayoutGenerated_Body", Encode(userName), Euros(amount), Encode(ibanMasked)),
+            Lf("Finance_Email_SepaPayoutGenerated_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked)),
             "sepa_payout_generated", MessageCategory.System));
-
-    /// <summary>Amount in the recipient's own number format — "1.234,56 €" in es, "1,234.56 €" in en.</summary>
-    private static string Euros(decimal amount) =>
-        amount.ToString("N2", CultureInfo.CurrentCulture) + " €";
 
     private string L(string key) => localizer[key].Value;
 
