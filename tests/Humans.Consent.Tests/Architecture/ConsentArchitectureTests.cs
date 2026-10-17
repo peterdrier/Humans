@@ -121,6 +121,33 @@ public sealed class ConsentArchitectureTests
             because: "synchronous invalidation belongs on the decorator, not inherited or delegated");
     }
 
+    /// <summary>
+    /// Asserts that <see cref="IConsentManagement"/> and <see cref="IConsentService"/>
+    /// resolve to the same singleton instance from the production DI registration —
+    /// <c>Section.Register</c> itself, not a test-built mirror of it.
+    /// </summary>
+    [HumansFact]
+    public void IConsentManagement_And_IConsentService_ResolveToSameSingleton()
+    {
+        var services = new ServiceCollection();
+        // The section registers against the host's baseline; the caching
+        // singletons only need logging and a clock to construct.
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IClock>());
+
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromManagement = provider.GetRequiredService<IConsentManagement>();
+        var fromPublic = provider.GetRequiredService<IConsentService>();
+
+        fromManagement.Should().BeOfType<CachingConsentService>(
+            because: "the cache decorator is the section's public face");
+        ReferenceEquals(fromManagement, fromPublic).Should().BeTrue(
+            because: "both interfaces must expose the same singleton so the cache is shared");
+    }
+
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
     {
