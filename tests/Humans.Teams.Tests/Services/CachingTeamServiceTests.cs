@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NodaTime;
 using Xunit;
 
 namespace Humans.Teams.Tests.Services;
@@ -51,6 +52,117 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
     }
+
+    [HumansFact]
+    public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_IncludesDepartmentAndActiveChildren_ForDirectCoordinator()
+    {
+        var userId = Guid.NewGuid();
+        var deptId = Guid.NewGuid();
+        var activeChildId = Guid.NewGuid();
+        var inactiveChildId = Guid.NewGuid();
+
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [deptId] = MakeTeam(
+                deptId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
+            [activeChildId] = MakeTeam(
+                activeChildId, "Prep", parentTeamId: deptId, isActive: true),
+            [inactiveChildId] = MakeTeam(
+                inactiveChildId, "Retired Sub-team", parentTeamId: deptId, isActive: false),
+        };
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var result = await _service.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEquivalentTo(new[] { deptId, activeChildId });
+    }
+
+    [HumansFact]
+    public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_IncludesDepartment_ForManagementRoleHolder()
+    {
+        var userId = Guid.NewGuid();
+        var deptId = Guid.NewGuid();
+
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [deptId] = MakeTeam(
+                deptId, "Logistics", parentTeamId: null, isActive: true,
+                managementRoleHolderUserIds: new HashSet<Guid> { userId }),
+        };
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var result = await _service.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEquivalentTo(new[] { deptId });
+    }
+
+    [HumansFact]
+    public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_ExcludesChildTeamCoordinatorship_OnlyDepartmentsQualify()
+    {
+        var userId = Guid.NewGuid();
+        var deptId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+
+        // User is a coordinator of a CHILD team (which has a parent), not a department.
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [deptId] = MakeTeam(deptId, "Site Ops", parentTeamId: null, isActive: true),
+            [childId] = MakeTeam(
+                childId, "Fences", parentTeamId: deptId, isActive: true,
+                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
+        };
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var result = await _service.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_ReturnsEmpty_ForNonCoordinatorMember()
+    {
+        var userId = Guid.NewGuid();
+        var deptId = Guid.NewGuid();
+
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [deptId] = MakeTeam(
+                deptId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(userId, TeamMemberRole.Member)]),
+        };
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var result = await _service.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+    }
+
+    private static TeamInfo MakeTeam(
+        Guid id,
+        string name,
+        Guid? parentTeamId,
+        bool isActive,
+        List<TeamMemberInfo>? members = null,
+        IReadOnlySet<Guid>? managementRoleHolderUserIds = null) =>
+        new(
+            id, name, null, name.ToLowerInvariant().Replace(' ', '-'),
+            IsActive: isActive, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: members ?? [],
+            ParentTeamId: parentTeamId,
+            ManagementRoleHolderUserIds: managementRoleHolderUserIds);
+
+    private static TeamMemberInfo MakeMember(Guid userId, TeamMemberRole role) =>
+        new(
+            TeamMemberId: Guid.NewGuid(),
+            UserId: userId,
+            DisplayName: "Member",
+            Email: null,
+            ProfilePictureUrl: null,
+            Role: role,
+            JoinedAt: Instant.MinValue);
 
     [HumansFact]
     public async Task GetTeamDirectoryAsync_DelegatesToTheInnerService()

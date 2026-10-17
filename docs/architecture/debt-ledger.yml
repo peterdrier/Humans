@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 84
+next_id: 85
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -252,24 +252,12 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 10
+    remaining: 2
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-16
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-17
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-16
-    id: CENTRAL-82
-    what: "tests/Humans.Integration.Tests/Controllers/MonitorPageRenderTests.cs is named for Monitor but renders only GoogleIntegration's /Google/Resource/{id} and /Google/Human/{id} pages (its own summary says so); Monitor has no pages. Rename the class and file for GoogleIntegration and update the reference in AuditLogPageRenderTests.cs's remarks. Found by /section-doctor on Monitor 2026-10-16."
-    review: light
-  - added: 2026-10-12
-    id: CENTRAL-83
-    what: "Camps season open/close and name-lock-date writes (CampService.OpenSeasonAsync, CloseSeasonAsync, SetNameLockDateAsync, CampAdmin actions) leave no audit entry, and AuditAction (src/Sections/Humans.AuditLog/Contracts/AuditAction.cs) has no member for them. AGENTS.md: admin actions need their audit entries. Fix spans AuditLog (new AuditAction members + labels) and Camps (log the writes). Found by section-doctor 2026-10-12 (docs/health/runs/2026-10-12-Camps.md)."
-    review: light
-  - added: 2026-09-20
-    id: CENTRAL-59
-    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit. A tag-only fix is circular (reverted in peterdrier/Humans#1932); making HUM0028 see unmarked invalidators widens the analyzer. Plan: Peter 2026-10-10 — waits for the invalidator rework the HUM0028 theme is parked on; do not work it separately."
-    review: light

@@ -160,8 +160,24 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    private static WorkgroupRefusal? ValidateApplication(WorkgroupApplication application) =>
-        ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable);
+    private async Task<WorkgroupMutationResult<WorkgroupApplication>> ValidateApplicationAsync(
+        WorkgroupApplication application, CancellationToken ct)
+    {
+        if (ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable) is { } refusal)
+            return new(Refusal: refusal);
+        if (application.SecondCoordinatorUserId is not { } second)
+            return new(application);
+        var coordinator = await ResolveMemberTargetAsync(second, ct);
+        return coordinator is null
+            ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
+            : new(application with { SecondCoordinatorUserId = coordinator.Value });
+    }
+
+    private async Task<Guid?> ResolveMemberTargetAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.GetUserInfoAsync(userId, ct);
+        return user is null || user.IsTombstone ? null : user.Id;
+    }
 
     private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable)
     {

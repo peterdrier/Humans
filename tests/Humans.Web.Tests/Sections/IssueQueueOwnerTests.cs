@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
+using Humans.Issues.Domain;
+using Humans.Issues.Models;
 using Humans.Web.Extensions;
 using Xunit;
 
@@ -81,6 +83,21 @@ public class IssueQueueOwnerTests
             owner.OwningRoles.Should().OnlyContain(r => !string.IsNullOrWhiteSpace(r));
             owner.OwningRoles.Should().OnlyHaveUniqueItems();
             owner.OwningRoles.Should().NotContain(RoleNames.Admin, "Admin handles every queue implicitly");
+        }
+    }
+
+    [HumansFact]
+    public void Declared_paths_and_labels_are_available_without_a_hub_mapping()
+    {
+        var owners = Owners();
+        var routing = new IssueSectionRouting(owners.Select(o => o.Owner));
+        foreach (var (_, owner) in owners)
+        {
+            routing.AreaLabelResourceKeys[owner.QueueKey].Should().Be(owner.AreaLabelResourceKey);
+            foreach (var segment in owner.PathSegments)
+            {
+                IssueSectionInference.FromPath($"/{segment}/item", routing).Should().Be(owner.QueueKey);
+            }
         }
     }
 

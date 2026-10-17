@@ -40,15 +40,15 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="ConsentIndex_Title" xml:space="preserve">
+  <data name="Consent_Index_Title" xml:space="preserve">
     <value>Accordi</value>
   </data>
   <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
-  <data name="ConsentReview_Title" xml:space="preserve">
+  <data name="Consent_Review_Title" xml:space="preserve">
     <value>Esame: {0}</value>
     <comment>{0} = document name</comment>
   </data>
-  <data name="ConsentReview_Progress" xml:space="preserve">
+  <data name="Consent_Review_Progress" xml:space="preserve">
     <value>Documento {0} di {1}</value>
     <comment>{0} = current document index, {1} = total required documents</comment>
   </data>
@@ -92,28 +92,28 @@
   <data name="Consent_AboutDescription" xml:space="preserve">
     <value>Acconsentendo a questi documenti, accetta di essere vincolato ai loro termini. La versione in spagnolo è il testo legalmente vincolante. Le traduzioni in inglese sono fornite solo per comodità.</value>
   </data>
-  <data name="ConsentReview_AlreadyConsented" xml:space="preserve">
+  <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Consenso già dato</value>
   </data>
-  <data name="ConsentReview_ChangesInVersion" xml:space="preserve">
+  <data name="Consent_Review_ChangesInVersion" xml:space="preserve">
     <value>Modifiche in questa versione:</value>
   </data>
-  <data name="ConsentReview_ContentNotAvailable" xml:space="preserve">
+  <data name="Consent_Review_ContentNotAvailable" xml:space="preserve">
     <value>Contenuto non disponibile.</value>
   </data>
-  <data name="ConsentReview_ConsentCheckbox" xml:space="preserve">
+  <data name="Consent_Review_ConsentCheckbox" xml:space="preserve">
     <value>Ho letto e compreso questo documento e accetto di essere vincolato ai suoi termini.</value>
   </data>
-  <data name="ConsentReview_SpanishLegalNote" xml:space="preserve">
+  <data name="Consent_Review_SpanishLegalNote" xml:space="preserve">
     <value>Comprendo che la versione in spagnolo è il testo legalmente vincolante.</value>
   </data>
-  <data name="ConsentReview_BackToList" xml:space="preserve">
+  <data name="Consent_Review_BackToList" xml:space="preserve">
     <value>Torna all'elenco</value>
   </data>
-  <data name="ConsentReview_GiveConsent" xml:space="preserve">
+  <data name="Consent_Review_GiveConsent" xml:space="preserve">
     <value>Dai il consenso</value>
   </data>
-  <data name="ConsentReview_CheckboxRequired" xml:space="preserve">
+  <data name="Consent_Review_CheckboxRequired" xml:space="preserve">
     <value>Seleziona questa casella per confermare di aver letto e accettato i termini.</value>
   </data>
   <data name="Consent_MustCheck" xml:space="preserve">

@@ -22,6 +22,7 @@ namespace Humans.Containers.Tests.Services;
 public sealed class ServiceImageTests
 {
     private readonly IFileStorage _fileStorage;
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly Microsoft.Extensions.Logging.ILogger<Service> _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<Service>>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     internal static readonly IStringLocalizer<ContainersResource> Localizer =
@@ -39,11 +40,13 @@ public sealed class ServiceImageTests
     public ServiceImageTests()
     {
         _fileStorage = Substitute.For<IFileStorage>();
+        _camps.GetCampByIdAsync(CampId, Arg.Any<CancellationToken>())
+            .Returns(new CampInfo(CampId, "camp", string.Empty, string.Empty, false, 0, []));
         var repo = new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new Service(
             repo,
             _fileStorage,
-            Substitute.For<ICampServiceRead>(),
+            _camps,
             _auditLog,
             new FakeClock(StartTime), _logger);
     }
@@ -84,6 +87,25 @@ public sealed class ServiceImageTests
         }
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         return container;
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateAsync_MissingCamp_RefusesBeforeSavingFilesOrRows(bool emptyId)
+    {
+        var missingCamp = emptyId ? Guid.Empty : Guid.NewGuid();
+
+        var result = await _sut.CreateAsync(new ContainerData(missingCamp, "Container", null, FakeImages(1)),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Containers_Error_CampNotFound");
+        result.Value.Should().BeNull();
+        await using var ctx = new ContainersDbContext(_containersOptions);
+        (await ctx.Containers.AnyAsync(TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await ctx.ContainerImages.AnyAsync(TestContext.Current.CancellationToken)).Should().BeFalse();
+        _fileStorage.ReceivedCalls().Should().BeEmpty();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

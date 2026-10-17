@@ -160,5 +160,9 @@ public sealed class Section : ISection, IIssueQueueOwner
     // keeps its name and HumanAdmin keeps seeing it.
     string IIssueQueueOwner.QueueKey => "Profiles";
 
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Profiles";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["profile", "humans"];
+
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.HumanAdmin];
 }

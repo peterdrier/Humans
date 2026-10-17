@@ -147,6 +147,7 @@ internal sealed class ShiftAdminController(
     {
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {
@@ -176,6 +177,7 @@ internal sealed class ShiftAdminController(
     {
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var timeSlots = new List<ShiftTimeSlotInput>();
         foreach (var slot in model.TimeSlots)

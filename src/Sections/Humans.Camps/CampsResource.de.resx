@@ -248,6 +248,7 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Saison zurückgezogen.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Saison als voll markiert.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Der Name darf nicht leer sein.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>Frühere Namen dürfen höchstens 256 Zeichen lang sein.</value></data>
   <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>Der Name '{0}' erzeugt einen reservierten Slug.</value></data>
   <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>Die Saison {0} ist nicht für die Anmeldung geöffnet.</value></data>
   <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Das Camp hat bereits eine Saison für {0}.</value></data>
@@ -339,4 +340,5 @@
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Neue Nachricht für {0} - prüfe deine E-Mails</value></data>
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Diese Saison gehört nicht zu diesem Camp.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Nur eine ausstehende oder aktive Saison kann zurückgezogen werden.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Nur eine aktive Saison kann als voll markiert werden.</value></data>
 </root>

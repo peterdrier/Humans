@@ -120,6 +120,7 @@
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>I coordinatori devono già essere membri.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Sei l'ultimo coordinatore; indica un sostituto prima di uscire.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La cartella Drive principale dei Gruppi di lavoro non è ancora configurata.</value></data>
+  <data name="Workgroups_Error_RootFolderUnreachable" xml:space="preserve"><value>L'account di servizio non riesce ad accedere a quella cartella di Drive. Controlla l'id e che la cartella sia condivisa con esso.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Creazione della cartella Drive del gruppo non riuscita; riprova.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Non è possibile nello stato attuale del gruppo o del documento.</value></data>
   <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Le voci di registro di sistema non possono essere modificate o eliminate.</value></data>

@@ -1,5 +1,3 @@
-using System.Globalization;
-using Humans.Base.Csv;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
@@ -11,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
-using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
@@ -30,62 +27,18 @@ internal sealed class EventsExportController(
     [HttpGet("Csv")]
     public async Task<IActionResult> DownloadCsv(CancellationToken ct)
     {
-        var (events, settings) = await guide.GetApprovedEventsForExportAsync(ct);
-        var eventSettings = await LoadBurnSettingsAsync(guide, settings, ct);
-        var tz = GetTimeZone(eventSettings);
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
-        var submitters = await LoadSubmittersAsync(
-            UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
 
-        var rows = new List<object?[]>();
-        foreach (var e in events.OrderBy(e => e.StartAt))
-        {
-            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = ResolveCampName(camp) ?? "";
-            var venueName = e.VenueName ?? "";
-            var submitterName = e.CampId == null
-                ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
-                : "";
-
-            foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
-            {
-                rows.Add([
-                    e.Id.ToString(),
-                    e.Title,
-                    e.Description,
-                    e.CategoryName,
-                    campName,
-                    venueName,
-                    submitterName,
-                    e.LocationNote ?? "",
-                    date,
-                    time,
-                    e.DurationMinutes,
-                    e.IsRecurring ? "Yes" : "No",
-                    e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? "",
-                    e.Status.ToString(),
-                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
-                    e.Host ?? "",
-                ]);
-            }
-        }
-
-        var bytes = HumansCsv.WriteBytes(csv =>
-        {
-            csv.WriteRow("Id", "Title", "Description", "Category", "CampName", "VenueName", "SubmitterName",
-                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt", "Host");
-            foreach (var row in rows)
-            {
-                csv.WriteRow(row);
-            }
-        });
+        var bytes = await guide.GetApprovedEventsForExportAsync(actorUserId.Value, ct);
         return File(bytes, "text/csv", "event-guide-export.csv");
     }
 
     [HttpGet("PrintGuide")]
     public async Task<IActionResult> PrintGuide(CancellationToken ct)
     {
-        var (events, settings) = await guide.GetApprovedEventsForExportAsync(ct);
+        var events = await guide.GetApprovedEventsAsync(null, null, null, null, [], ct);
+        var settings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, settings, ct);
         var tz = GetTimeZone(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
@@ -143,17 +96,6 @@ internal sealed class EventsExportController(
         };
 
         return View(model);
-    }
-
-    private static List<(string Date, string Time)> GetOccurrences(EventInfo e, LocalDate? gateOpeningDate, DateTimeZone? tz)
-    {
-        var results = new List<(string, string)>();
-        foreach (var occurrence in e.GetOccurrenceInstants(gateOpeningDate, tz))
-        {
-            var local = ToLocalDateTime(occurrence, tz);
-            results.Add((local.ToInvariantDate(), local.ToInvariantTime()));
-        }
-        return results;
     }
 
     internal sealed class PrintGuideViewModel

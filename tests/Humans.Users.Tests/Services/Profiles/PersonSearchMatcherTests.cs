@@ -229,6 +229,26 @@ public class PersonSearchMatcherTests
         PersonSearchMatcher.Match(human, query, PersonSearchFields.Bio).Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void LongFormMatch_SnippetEdgesPreserveUnicode(bool interests, bool atStart)
+    {
+        var text = atStart
+            ? new string('x', 39) + "😀" + new string('x', 59) + "needle" + "tail"
+            : "needle" + new string('x', 59) + "😀" + "tail";
+        var human = interests ? Human(interests: text) : Human(bio: text);
+
+        var match = PersonSearchMatcher.Match(human, "needle", PersonSearchFields.Bio);
+
+        match.Should().NotBeNull();
+        match.Snippet.Should().Contain("needle").And.Contain("😀");
+        Action encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(match.Snippet!);
+        encode.Should().NotThrow();
+    }
+
     [HumansFact]
     public void Volunteer_cv_matches_under_Bio_scope()
     {

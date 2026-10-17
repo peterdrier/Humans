@@ -303,4 +303,7 @@
   <data name="Issue_Section_Terminal" xml:space="preserve">
     <value>No se puede cambiar la sección de una incidencia cerrada.</value>
   </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Las capturas deben ocupar 10 MB o menos.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Las capturas deben ser imágenes PNG, JPEG o WebP.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>El nombre del archivo de la captura no puede superar los 256 caracteres.</value></data>
 </root>

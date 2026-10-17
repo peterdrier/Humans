@@ -31,6 +31,10 @@ internal sealed class StubGoogleSyncService(
         return result.FolderId;
     }
 
+    // The stub creates subfolders under any parent, so every folder counts as reachable.
+    public Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(true);
+
     public Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))

@@ -151,7 +151,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
             [new SubscriberDecision("ghost@x.com", "n/a", SubscriberOutcome.ResetMarketingFlag, ghostId, null, null)],
             TotalPulled: 1);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(1);
         await harness.Prefs.Received(1).ResetPreferenceAsync(
@@ -173,7 +173,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
             [new SubscriberDecision("self@x.com", "n/a", SubscriberOutcome.ResetMarketingFlag, id, null, null)],
             TotalPulled: 1);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(0);
         await harness.Prefs.DidNotReceive().ResetPreferenceAsync(

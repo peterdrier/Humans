@@ -32,9 +32,10 @@ section's own sync log, which other pages render for a resource or a person.
 | "Who is supposed to be in group X?" — asked *by* this section | answered by Teams and Camps | `IGoogleGroupMembershipSource.GetExpectedAsync` |
 | "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' pages and this section's audit page | `ITeamResourceService` |
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
-| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
+| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceServiceRead.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
 | "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
+| "Can the service account read this Drive folder?" | Workgroups (root-folder setting) | `IGoogleSyncServiceRead.IsFolderReachableAsync` |
 | "What did sync do to this resource / person?" | `/Google/Resource/{id}` and `/Google/Human/{id}` | `IGoogleSyncLogViewer` |
 | "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |
@@ -113,9 +114,8 @@ The shapes imply:
 
 ## 5. Seams
 
-- **No `ITeamResourceServiceRead`.** Teams' page services and Monitor take the full
-  `ITeamResourceService` for reads (`debt-ledger.yml`); the read split is the next
-  PR-sized cut and reshapes every item touching that interface.
+- **Resource reads have a narrow contract.** Monitor and other read-only callers use
+  `ITeamResourceServiceRead`; resource mutations remain on `ITeamResourceService`.
 - **`GoogleWorkspaceHealthCheck` calls `Google.Apis` directly** instead of a client
   interface (`debt-ledger.yml`); moving it behind a client is queued, so items touching
   the health check are shaped by it.

@@ -5,7 +5,11 @@ using Humans.Issues.Domain;
 namespace Humans.Issues.Tests.Domain;
 
 /// <summary>A section's queue declaration, stood up by hand.</summary>
-internal sealed record TestQueueOwner(string QueueKey, IReadOnlyList<string> OwningRoles) : IIssueQueueOwner;
+internal sealed record TestQueueOwner(string QueueKey, IReadOnlyList<string> OwningRoles) : IIssueQueueOwner
+{
+    public string AreaLabelResourceKey => $"Issues_Area_{QueueKey}";
+    public IReadOnlyList<string> PathSegments => [];
+}
 
 /// <summary>
 /// The contributions the shipped sections declare through <see cref="IIssueQueueOwner"/>. Issues'

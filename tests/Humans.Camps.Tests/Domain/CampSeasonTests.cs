@@ -67,21 +67,30 @@ public class CampSeasonTests
         season.UpdatedAt.Should().Be(Now);
     }
 
-    [HumansTheory]
-    [InlineData(CampSeasonStatus.Active, CampSeasonStatus.Full)]
-    [InlineData(CampSeasonStatus.Full, CampSeasonStatus.Active)]
-    [InlineData(CampSeasonStatus.Pending, CampSeasonStatus.Rejected)]
-    public void SetStatus_SetsStatusUnconditionally(CampSeasonStatus source, CampSeasonStatus target)
+    [HumansFact]
+    public void MarkFull_ActiveSeason_BecomesFull()
     {
-        // No transition validation — SetStatus is a plain field flip, used for the
-        // informational Full label. Guarded transitions (Approve/Reject/Withdraw/
-        // Reactivate) keep their own methods and are unaffected.
-        var season = CreateSeason(source);
+        var season = CreateSeason(CampSeasonStatus.Active);
 
-        season.SetStatus(target, Now);
+        season.MarkFull(Now);
 
-        season.Status.Should().Be(target);
+        season.Status.Should().Be(CampSeasonStatus.Full);
         season.UpdatedAt.Should().Be(Now);
+    }
+
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    [InlineData(CampSeasonStatus.Withdrawn)]
+    [InlineData(CampSeasonStatus.Full)]
+    public void MarkFull_NonActiveSeason_Throws(CampSeasonStatus status)
+    {
+        var season = CreateSeason(status);
+
+        var action = () => season.MarkFull(Now);
+
+        action.Should().Throw<InvalidOperationException>();
+        season.Status.Should().Be(status);
     }
 
     [HumansTheory]

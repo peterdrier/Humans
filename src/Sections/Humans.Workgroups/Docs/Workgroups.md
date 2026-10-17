@@ -28,6 +28,7 @@ administrative recognition, and every decision is a human's.
   (`WorkgroupMemberRole.Coordinator`). Every member may do member work; the one thing a
   coordinator holds that a member does not is the membership decision — who joins.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
+- Selected members and coordinators must resolve to existing non-terminal accounts before admission, application or existing-group registration writes. Merge aliases use the survivor; a second-coordinator alias of the applicant creates no duplicate membership. Registration validates people before budget or Drive creation. This adds no admission-state restriction for live accounts.
 - A **Member** is any signed-in human a coordinator (or Board/Admin) let in: a join is a
   **request** (`IsPending`) until approved, or the coordinator adds the person directly.
 - A **Sensitive** group keeps its roster, documents, meetings and history to its members and
@@ -213,7 +214,9 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 `workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
-through the Workgroups repository and audits the actor. Until that first save,
+through the Workgroups repository and audits the actor. A save is refused unless
+the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
+so a stale id surfaces on save, not at the next registration. Until that first save,
 reads fall back to the legacy Settings key; reads never backfill or mutate it.
 New section state is never written to the shared store. Registration is refused with
 a clear error while unset.
@@ -294,6 +297,7 @@ Settings and Register an existing group on first setup or after clearing the que
   (register, refer, refuse, withdraw, close, reactivate, disposition, coordinator
   override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
+- Admin actions through the shared decision handler reject binding errors after actor resolution and before mutation. A malformed disposition cannot default to Accepted; no system log, audit or notification is emitted for a rejected form.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.

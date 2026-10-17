@@ -775,6 +775,9 @@ internal sealed class UserEmailService(
             return new(false);
         }
 
+        // Identity removal committed; finish the email row, invariants, cache and audit after disconnect.
+        cancellationToken = CancellationToken.None;
+
         var removed = await userService.RemoveUserEmailAsync(
             userId,
             userEmailId,

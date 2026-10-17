@@ -28,6 +28,31 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Disposition_MalformedBinding_DoesNotRecordAcceptance(bool malformed)
+    {
+        var group = await SeedWorkgroupAsync();
+        var document = await AddDocumentAsync(group.Id, WorkgroupDocumentStatus.Delivered);
+        var controller = MakeAdminController(nameof(WorkgroupsAdminController.Disposition));
+        if (malformed) controller.ModelState.AddModelError("disposition", "Invalid value.");
+
+        var result = await controller.Disposition(document.Id, WorkgroupDisposition.Accepted, "Agreed", Ct);
+
+        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = OpenContext();
+        var stored = await db.Documents.SingleAsync(d => d.Id == document.Id, Ct);
+        stored.Disposition.Should().Be(malformed ? null : WorkgroupDisposition.Accepted);
+        if (malformed)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            Email.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task UnexpectedDependencyLookup_IsNotNotFound(bool budget)
     {
         var service = Substitute.For<IWorkgroupService>();

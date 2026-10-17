@@ -5,6 +5,7 @@ using Humans.Email.Controllers;
 using Microsoft.AspNetCore.RateLimiting;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Jobs;
 using Humans.Email.Services;
@@ -76,6 +77,7 @@ public sealed class Section : ISection
         services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
         // GDPR fan-out: outbox rows are user-scoped personal data (#853).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EmailOutboxService>());
 
         services.AddScoped<IEmailOutboxProcessor, EmailOutboxProcessor>();
 

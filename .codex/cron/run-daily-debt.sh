@@ -50,6 +50,29 @@ codex_auth_ok() {
   [[ -s "${CODEX_HOME:-$HOME/.codex}/auth.json" ]]
 }
 
+# App-server events can contain megabytes on a single JSON line. Keep the full
+# log on disk; prompts and PRs get only bounded, human-readable diagnostics.
+log_excerpt() {
+  python3 - "$1" <<'PYTHON'
+from collections import deque
+from pathlib import Path
+import sys
+
+lines = deque(maxlen=160)
+with Path(sys.argv[1]).open(errors="replace") as log:
+    for line in log:
+        if line.lstrip().startswith('{'):
+            continue
+        if len(line) > 2048:
+            line = line[:1024] + " … [line shortened] … " + line[-1024:]
+        lines.append(line)
+excerpt = "".join(lines).encode("utf-8")
+if len(excerpt) > 24000:
+    excerpt = b"[Earlier diagnostics omitted; full output remains in the runner log]\n" + excerpt[-23000:]
+sys.stdout.write(excerpt.decode("utf-8", errors="replace"))
+PYTHON
+}
+
 # Give Codex one bounded repair pass when the final gate catches a regression
 # left by the main sweep. The repair prompt is deliberately separate from the
 # debt prompt: it may only make the current branch build/test green, commit
@@ -75,7 +98,7 @@ run_gate_repair() {
     echo "Expected branch: $branch"
     echo
     echo "## Failure excerpt"
-    tail -n 160 "$log_file"
+    log_excerpt "$log_file"
   } >"$repair_prompt"
   rm -f "$repair_message"
   log "starting bounded Codex gate-repair pass for $failure_kind (deadline $repair_deadline)"
@@ -518,61 +541,47 @@ main() {
   log "codex made $commits_made commit(s)"
 
   # ---- gate before pushing: build + test ----------------------------------
-  local gate_repair_count=0
-  log "running dotnet build Humans.slnx -v quiet -clp:ErrorsOnly"
-  if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
-    build_result="pass"
-  else
-    build_result="fail"
-    if (( gate_repair_count < GATE_REPAIR_ATTEMPTS )) && run_gate_repair "build" "$WORK_DIR" "$LOG_DIR" "$log_file" "$run_date" "$branch" "$CODEX_MODEL" "$CODEX_EFFORT" "$CODEX_DANGEROUS" "$gate_repair_seconds"; then
-      gate_repair_count=$(( gate_repair_count + 1 ))
-      head_after="$(git rev-parse HEAD)"
-      commits_made="$(git rev-list --count "$head_before..$head_after")"
-      log "retrying build after gate repair ($gate_repair_count/$GATE_REPAIR_ATTEMPTS)"
-      if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
-        build_result="pass"
+  local gate_repair_count=0 failure_kind
+  while true; do
+    log "running dotnet build Humans.slnx -v quiet -clp:ErrorsOnly"
+    if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
+      build_result="pass"
+      log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter $VSTestTestCaseFilter"
+      if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter "$VSTestTestCaseFilter" >>"$log_file" 2>&1; then
+        test_result="pass"
+        break
       fi
+      test_result="fail"
+      failure_kind="test"
+    else
+      build_result="fail"
+      test_result="skipped"
+      failure_kind="build"
     fi
-    if [[ "$build_result" != "pass" ]]; then
-      exit_reason="build-failed"
-      log "ERROR: build failed after bounded repair attempts — publishing a draft PR. See $log_file"
-      publish_failed_gate_draft "build" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
-    fi
-  fi
 
-  log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter $VSTestTestCaseFilter"
-  if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter "$VSTestTestCaseFilter" >>"$log_file" 2>&1; then
-    test_result="pass"
-  else
-    test_result="fail"
-    if (( gate_repair_count < GATE_REPAIR_ATTEMPTS )) && run_gate_repair "test" "$WORK_DIR" "$LOG_DIR" "$log_file" "$run_date" "$branch" "$CODEX_MODEL" "$CODEX_EFFORT" "$CODEX_DANGEROUS" "$gate_repair_seconds"; then
-      gate_repair_count=$(( gate_repair_count + 1 ))
-      head_after="$(git rev-parse HEAD)"
-      commits_made="$(git rev-list --count "$head_before..$head_after")"
-      log "rerunning build and tests after gate repair ($gate_repair_count/$GATE_REPAIR_ATTEMPTS)"
-      if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
-        build_result="pass"
-        if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter "$VSTestTestCaseFilter" >>"$log_file" 2>&1; then
-          test_result="pass"
-        fi
-      else
-        build_result="fail"
-      fi
+    if (( gate_repair_count >= GATE_REPAIR_ATTEMPTS )); then
+      exit_reason="$failure_kind-failed"
+      log "ERROR: $failure_kind failed after $gate_repair_count repair pass(es) — publishing a draft PR. See $log_file"
+      publish_failed_gate_draft "$failure_kind" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
     fi
-    if [[ "$test_result" != "pass" ]]; then
-      exit_reason="test-failed"
-      log "ERROR: tests failed after bounded repair attempts — publishing a draft PR. See $log_file"
-      publish_failed_gate_draft "test" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
+    gate_repair_count=$(( gate_repair_count + 1 ))
+    if run_gate_repair "$failure_kind" "$WORK_DIR" "$LOG_DIR" "$log_file" "$run_date" "$branch" "$CODEX_MODEL" "$CODEX_EFFORT" "$CODEX_DANGEROUS" "$gate_repair_seconds"; then
+      {
+        printf '\n\n## Gate repair %s\n\n' "$gate_repair_count"
+        cat "$LOG_DIR/repair-message-$run_date.md"
+      } >>"$last_message_file"
     fi
-  fi
+    # A failed repair can still have changed Git state. Never gate a dirty
+    # tree or advertise results for a different branch, even on fallback.
+    if [[ "$(git rev-parse --abbrev-ref HEAD)" != "$branch" || -n "$(git status --porcelain)" ]]; then
+      exit_reason="invalid-tree-after-gate-repair"
+      die "gate repair changed branches or left uncommitted changes; preserving work without publishing"
+    fi
+    head_after="$(git rev-parse HEAD)"
+    commits_made="$(git rev-list --count "$head_before..$head_after")"
+    log "rerunning gates after repair pass $gate_repair_count/$GATE_REPAIR_ATTEMPTS"
+  done
   log "build and test both passed"
-  if (( gate_repair_count > 0 )); then
-    {
-      printf '\n\n## Gate repair\n\n'
-      cat "$LOG_DIR/repair-message-$run_date.md"
-    } >>"$last_message_file"
-    run_report="$(cat "$last_message_file")"
-  fi
   append_ledger_count "$head_before" "$last_message_file"
   # Wrapper timestamps, not the agent's estimate. Save this with the report
   # so a retry of PR creation preserves the original run's timing.
@@ -640,7 +649,7 @@ This PR is a draft because the final $gate gate failed after the bounded repair 
 
 Relevant failure output:
 
-$(tail -n 80 "$log_file")
+$(log_excerpt "$log_file")
 
 Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed")."
   printf '\n\n%s\n' "$warning" >>"$last_message_file"
@@ -696,10 +705,33 @@ open_pr_for_branch() {
     echo "Cannot publish a debt PR without its cumulative report" >&2
     return 1
   fi
-  {
-    printf '%s\n\n' "$run_report"
-    echo "Runner validation: build ${build_result:-skipped}, tests ${test_result:-skipped}; Humans.Integration.Tests excluded."
-  } >"$pr_body_file"
+  printf '%s\n' "$run_report" >"$pr_body_file"
+  # GitHub rejects bodies over 65,536 characters. Bound bytes below that
+  # limit too, and preserve automation warnings even when they sit in the
+  # omitted middle of an unusually large agent report or recovered log.
+  python3 - "$pr_body_file" "${build_result:-skipped}" "${test_result:-skipped}" <<'PYTHON'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+report = path.read_text()
+footer = f"\n\nRunner validation: build {sys.argv[2]}, tests {sys.argv[3]}; Humans.Integration.Tests excluded.\n"
+budget = 60000 - len(footer.encode("utf-8"))
+encoded = report.encode("utf-8")
+if len(encoded) > budget:
+    warnings = {}
+    for match in re.finditer(r"^## Automated (?:gate|goal) warning\n.*?(?=^## |\Z)", report, re.M | re.S):
+        warning = re.split(r"Relevant failure output:|Committed changes", match[0], maxsplit=1)[0]
+        heading = warning.splitlines()[0]
+        warnings[heading] = warning.encode("utf-8")[:2000].decode("utf-8", errors="ignore")
+    notice = "\n\n[Report shortened for GitHub; complete report and logs remain in the runner log directory.]\n\n"
+    prefix = "\n\n".join(warnings.values()) + "\n\n" if warnings else ""
+    available = budget - len((prefix + notice).encode("utf-8"))
+    half = available // 2
+    report = prefix + encoded[:half].decode("utf-8", errors="ignore") + notice + encoded[-half:].decode("utf-8", errors="ignore")
+path.write_text(report + footer)
+PYTHON
 
   local result
   local -a draft_args=()

@@ -8,5 +8,6 @@ internal sealed record VolunteerExportRequest(
     LocalDate StartDate,
     LocalDate EndDate,
     ShiftPeriod? Period,
+    Guid ActorUserId,
     string ActorPlayaName,
     Instant GeneratedAtUtc);

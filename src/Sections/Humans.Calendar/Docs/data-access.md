@@ -66,12 +66,12 @@ the token is ever compared) and `IEnumerable<ICalendarFeedContributor>`.
 |-------|-----|
 | _(none — token check via `ICalendarFeedTokenService`, no direct DB access)_ | — |
 
-### CalendarFeedTokenService (Singleton, `Humans.Calendar.Services`)
+### CalendarFeedTokenService (Scoped, `Humans.Calendar.Services`)
 
 Repository: `ICalendarRepository`. `EnsureAsync` is a single
 `GetOrAddFeedTokenAsync` round trip rather than a read then a write, so a racing
 first view loses on the primary key and adopts the winner's token instead of
-500ing; `RotateAsync` keeps the plain upsert, where last write wins. Internal:
+500ing; the repository reports whether this call created the token. `RotateAsync` keeps the plain upsert, where last write wins. Both successful mutations audit the member as actor without exposing the credential; reads and adopted tokens do not audit. The service is Scoped to consume `IAuditLogService`. Internal:
 the token's whole lifecycle stays inside the section, and the only part that leaves it is
 `IICalFeedService.HasFeedAsync` (a bool for the admin widget, never the token).
 

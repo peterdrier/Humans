@@ -117,16 +117,11 @@ internal sealed class CampSeason
         UpdatedAt = now;
     }
 
-    /// <summary>
-    /// Direct status flip with no transition validation. For informational status
-    /// labels only (e.g. Active -> Full, which does not gate anything — see
-    /// CampService.SetSeasonStatusAsync). Approve/Reject/Withdraw/Reactivate keep
-    /// their own guarded transitions and side effects; don't route those through
-    /// this method.
-    /// </summary>
-    public void SetStatus(CampSeasonStatus status, Instant now)
+    /// <summary>Marks an approved Active season Full; the label does not block join requests.</summary>
+    public void MarkFull(Instant now)
     {
-        Status = status;
+        EnsureStatus(CampSeasonStatus.Active, "mark full");
+        Status = CampSeasonStatus.Full;
         UpdatedAt = now;
     }
 

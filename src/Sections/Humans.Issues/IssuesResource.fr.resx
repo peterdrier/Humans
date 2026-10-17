@@ -303,4 +303,7 @@
   <data name="Issue_Section_Terminal" xml:space="preserve">
     <value>La section d’un signalement clos ne peut pas être modifiée.</value>
   </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Les captures d’écran ne doivent pas dépasser 10 Mo.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Les captures d’écran doivent être des images PNG, JPEG ou WebP.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>Le nom du fichier de la capture d’écran ne doit pas dépasser 256 caractères.</value></data>
 </root>

@@ -863,7 +863,7 @@ internal sealed class ProfileController(
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
-                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id);
 
             return Ok();
         }

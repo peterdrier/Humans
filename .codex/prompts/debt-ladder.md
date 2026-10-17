@@ -249,26 +249,30 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
 
 ## Rung 7 — Naming / resource-key prefixes
 
-**What:** Resx keys missing their section's `<Section>_` prefix. Both known
-instances (`GovernanceResource` — 85% of keys, `TeamsResource` — 90%) are
-large, six-culture, every-view-binding renames — the auditors themselves
-flagged both as report-only, not self-contained. Expect to skip most nights;
-only take one if it can land as a single-section, same-commit rename (old
-key deleted, new key + every usage site + all six cultures updated together)
-that finishes inside the budget. Otherwise skip-and-note.
+**What:** A deliberate, single-section resource-key prefix cleanup under
+`memory/code/resource-key-prefix-matches-section.md`. Existing keys are not
+renamed as a side effect of unrelated work. Keep reflection-resolved
+`Enum_{TypeName}_{Value}` keys and the approved `Issue_` prefix unchanged.
+Update every usage and all six cultures together; only take a candidate that
+can finish as one coherent change inside the remaining window.
 
-**Finds:**
+**Seed check (2026-10-17):** The former Governance and Teams prefix seeds are
+resolved. Re-run Finds for other sections; historical percentages are not a
+current backlog.
+
+**Finds:** Resources live at each section project's root, not in a `Resources/`
+subdirectory. Inspect each result against the naming atom before selecting it.
 ```
-for f in src/Sections/*/Resources/*Resource.resx; do
+for f in src/Sections/*/*Resource.resx; do
   section=$(basename "$f" Resource.resx)
   total=$(grep -c '<data name=' "$f")
   prefixed=$(grep -c "<data name=\"${section}_" "$f")
-  echo "$section: $prefixed/$total prefixed"
+  echo "$section: $prefixed/$total prefixed (includes exempt keys)"
 done
 ```
 
-**Drained when:** no section's ratio is low enough to fix in one session, or
-every remaining gap is already report-only per a prior night's note.
+**Drained when:** no remaining candidate fits a deliberate single-section
+change after accounting for the documented exemptions and every usage site.
 
 **Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter "SharedResourceParityTests|SectionResourceParityTests"` plus a full-text search confirming no orphaned old key remains anywhere in `src/`.
 

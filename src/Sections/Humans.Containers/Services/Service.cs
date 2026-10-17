@@ -59,6 +59,9 @@ internal sealed class Service(
         }
         if (ValidateImageCount(uploads.Count) is { } countError) return countError.ToResult<ContainerDto>();
 
+        if (await campService.GetCampByIdAsync(data.CampId, ct) is null)
+            return new(null, "Containers_Error_CampNotFound");
+
         var now = clock.GetCurrentInstant();
         var id = Guid.NewGuid();
         var container = new Container

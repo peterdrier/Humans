@@ -101,7 +101,8 @@ Stated so a violation is recognisable:
    (`Controllers/CityPlanningApiController.cs:91`) are exempt from the phase and the ownership check.
 5. A camp lead may place, annotate or clear their own camp's containers only while
    `IsContainerPlacementOpen` — the `ContainerOperationRequirement.Place` check each placement
-   endpoint makes (`Controllers/CityPlanningApiController.cs:266`), decided by Containers'
+   endpoint makes (`CityPlanningApiController.SaveContainerPlacement`, `UpdateContainerPlacementNotes` and
+   `ClearContainerPlacement`), decided by Containers'
    handler. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
    camp's polygon (`Controllers/CityPlanningApiController.cs:119`,

@@ -578,7 +578,7 @@
                             <input id="admin-add-verified-email-input" class="form-control" type="email" name="email"
                                    placeholder="you@example.com" required />
                         </div>
-                        <button type="submit" class="btn btn-danger">
+                        <button type="submit" class="btn btn-danger" @(Model.CanAddEmail ? "" : "disabled")>
                             <i class="fa-solid fa-plus me-1"></i>Insert verified row
                         </button>
                     </form>
@@ -625,7 +625,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary"
-                            @((Model.IsAdminContext || Model.CanAddEmail) ? "" : "disabled")>
+                            @(Model.CanAddEmail ? "" : "disabled")>
                         <i class="fa-solid fa-paper-plane me-1"></i>
                         @Localizer["Emails_SendVerification"]
                     </button>

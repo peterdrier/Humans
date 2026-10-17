@@ -120,6 +120,7 @@
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Els coordinadors ja han de ser membres.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Ets l'últim coordinador; anomena un substitut abans de marxar.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La carpeta arrel de Drive de Grups de treball encara no està configurada.</value></data>
+  <data name="Workgroups_Error_RootFolderUnreachable" xml:space="preserve"><value>El compte de servei no pot accedir a aquesta carpeta de Drive. Comprova l'id i que la carpeta estigui compartida amb ell.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>No s'ha pogut crear la carpeta de Drive del grup; torna-ho a provar.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Això no és possible en l'estat actual del grup o del document.</value></data>
   <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Les entrades de l'historial del sistema no es poden editar ni eliminar.</value></data>

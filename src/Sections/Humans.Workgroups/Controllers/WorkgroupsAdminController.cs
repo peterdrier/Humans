@@ -55,18 +55,18 @@ internal sealed class WorkgroupsAdminController(
 
     [HttpPost("{id:guid}/Refuse")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Refuse(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, id, slug, reasons);
+    public Task<IActionResult> Refuse(Guid id, string? reasons, string? slug, CancellationToken ct) =>
+        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons ?? string.Empty, ct), "Registration refused", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Withdraw(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, id, slug, reasons);
+    public Task<IActionResult> Withdraw(Guid id, string? reasons, string? slug, CancellationToken ct) =>
+        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons ?? string.Empty, ct), "Registration withdrawn", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Close")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Close(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, id, slug, reasons);
+    public Task<IActionResult> Close(Guid id, string? reasons, string? slug, CancellationToken ct) =>
+        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons ?? string.Empty, ct), "Group closed", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Reactivate")]
     [ValidateAntiForgeryToken]
@@ -157,8 +157,8 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("Documents/{id:guid}/Disposition")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Disposition(
-        Guid id, WorkgroupDisposition disposition, string note, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RecordDispositionAsync(id, actor, disposition, note, ct),
+        Guid id, WorkgroupDisposition disposition, string? note, CancellationToken ct) =>
+        ActAsync(actor => workgroups.RecordDispositionAsync(id, actor, disposition, note ?? string.Empty, ct),
             "Disposition recorded", ct);
 
     // ── Settings ──────────────────────────────────────────────────────────
@@ -203,6 +203,8 @@ internal sealed class WorkgroupsAdminController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
+
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var result = await action(user.Id);
         if (result.Refusal is { } refusal)
