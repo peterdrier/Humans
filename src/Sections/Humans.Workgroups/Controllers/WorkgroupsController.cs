@@ -510,16 +510,7 @@ internal sealed class WorkgroupsController(
         if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (owns is not null && !owns(workgroup)) return NotFound();
 
-        var result = await action(workgroup.Id, user.Id);
-        if (result.Refusal is { } refusal)
-        {
-            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), refusal.Key);
-            SetError(localizer[refusal.Key, refusal.Args]);
-        }
-        else
-        {
-            SetSuccess(localizer[successKey]);
-        }
+        Flash(await action(workgroup.Id, user.Id), successKey);
 
         return documentId is { } id
             ? RedirectToAction(nameof(Document), new { slug = workgroup.Slug, id })
@@ -539,16 +530,7 @@ internal sealed class WorkgroupsController(
         var asAdmin = await MayAdministerAsync(workgroup);
         if (!asAdmin && !(workgroup.IsCoordinator(user.Id) && await MayDoMemberWorkAsync(workgroup))) return Forbid();
 
-        var result = await action(workgroup.Id, user.Id, asAdmin);
-        if (result.Refusal is { } refusal)
-        {
-            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), refusal.Key);
-            SetError(localizer[refusal.Key, refusal.Args]);
-        }
-        else
-        {
-            SetSuccess(localizer[successKey]);
-        }
+        Flash(await action(workgroup.Id, user.Id, asAdmin), successKey);
         return RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 
@@ -567,6 +549,20 @@ internal sealed class WorkgroupsController(
 
         SetSuccess(localizer[successKey]);
         return response!;
+    }
+
+    /// <summary>A redirecting POST's feedback: the refusal's localized message, or the success key.</summary>
+    private void Flash(WorkgroupMutationResult result, string successKey)
+    {
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), refusal.Key);
+            SetError(localizer[refusal.Key, refusal.Args]);
+        }
+        else
+        {
+            SetSuccess(localizer[successKey]);
+        }
     }
 
     private string? ActionName() => ControllerContext.ActionDescriptor.ActionName;

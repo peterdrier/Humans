@@ -15,7 +15,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Concepts
 
-- A **Container** is a physical asset owned by a `Camp` (`CampId` non-null). Containers persist year-over-year — they are NOT scoped to a season. Every container belongs to a real camp; there is no system-managed or virtual camp.
+- A **Container** is a physical asset owned by a `Camp` (`CampId` non-null). Containers persist year-over-year — they are NOT scoped to a season. Creation verifies camp existence through `ICampServiceRead` before saving files or rows; a missing or empty camp id returns the localized refusal to every caller. Every container belongs to a real camp; there is no system-managed or virtual camp.
 - **Org-level containers** (not tied to any barrio) are owned by an ordinary, production-created camp like any other; admin-only access falls out naturally because that camp has no assigned leads.
 - A **ContainerImage** is one photo in a container's gallery. A container holds **at most 5** images; they are year-agnostic like the container itself.
 - A **ContainerPlacement** is a per-year placement of a container on the city map. Composite primary key on `(ContainerId, Year)`. Placement-only metadata (notes, placement image) lives here, since it varies year over year.
@@ -123,7 +123,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Cross-Section Dependencies
 
 - **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
-- **City Planning:** `ICityPlanningServiceRead` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
+- **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 - **Audit Log:** `IAuditLogService.LogAsync` on every write, under the literal entity types in `Services/AuditEntityTypes.cs`.
 - **Users:** `IUserServiceRead`, injected by `ContainerController` for `HumansControllerBase`'s current-user resolution.
 

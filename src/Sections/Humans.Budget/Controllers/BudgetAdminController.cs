@@ -27,7 +27,7 @@ namespace Humans.Budget.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class BudgetAdminController(
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     ITeamServiceRead teamService,
     TicketingBudgetService ticketingBudgetService,
     IClock clock,
@@ -223,6 +223,12 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget year status for {YearId}", id);
+            return BadRequest(ModelState);
+        }
 
         try
         {

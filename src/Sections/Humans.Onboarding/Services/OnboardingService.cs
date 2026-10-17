@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
-using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
@@ -20,7 +19,6 @@ namespace Humans.Onboarding.Services;
 // Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
 // admin dashboard tiles (section-contributed chrome, nobodies-collective/Humans#1091), account
 // deletion (IAccountDeletionService, in Humans.Users).
-[CrossSectionWrite("Onboarding applies the profile mutation that completes signup.")]
 internal sealed class OnboardingService(
     IUserService userService,
     IApplicationServiceRead applicationDecisionService,
@@ -29,7 +27,7 @@ internal sealed class OnboardingService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculatorRead membershipCalculator,
-    IConsentServiceRead consentService,
+    IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
     ILogger<OnboardingService> logger) : IOnboardingService

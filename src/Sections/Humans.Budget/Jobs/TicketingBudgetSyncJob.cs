@@ -18,12 +18,12 @@ namespace Humans.Budget.Jobs;
 public sealed class TicketingBudgetSyncJob : IRecurringJob
 {
     private readonly ITicketingBudgetService _ticketingBudgetService;
-    private readonly IBudgetServiceRead _budgetService;
+    private readonly IBudgetService _budgetService;
     private readonly ILogger<TicketingBudgetSyncJob> _logger;
 
     internal TicketingBudgetSyncJob(
         ITicketingBudgetService ticketingBudgetService,
-        IBudgetServiceRead budgetService,
+        IBudgetService budgetService,
         ILogger<TicketingBudgetSyncJob> logger)
     {
         _ticketingBudgetService = ticketingBudgetService;

@@ -50,9 +50,9 @@
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <!--
       Pre-approval grants a report may file against: claim at submit, release at withdraw,
-      consume at approve, all through Preapprovals' contracts leaf.
+      consume at approve, all through Preapprovals' Contracts folder.
     -->
-    <ProjectReference Include="..\Humans.Preapprovals.Contracts\Humans.Preapprovals.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Preapprovals\Humans.Preapprovals.csproj" />
   </ItemGroup>
 
   <ItemGroup>

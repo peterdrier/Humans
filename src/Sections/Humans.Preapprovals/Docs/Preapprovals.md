@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Preapprovals/**
-  src/Sections/Humans.Preapprovals.Contracts/**
   tests/Humans.Preapprovals.Tests/**
 -->
 <!-- freshness:flag-on-change
@@ -96,7 +95,7 @@ Delivery log only; nothing reads it but the job.
 
 | Enum | Values |
 |------|--------|
-| `GrantStatus` (`Humans.Preapprovals.Contracts`) | Applied, Open, Claimed, Consumed, Declined, Revoked |
+| `GrantStatus` (`Humans.Preapprovals.Contracts`, public) | Applied, Open, Claimed, Consumed, Declined, Revoked |
 | `ProgramKind` | FixedPerPerson, PerGrantAmount |
 | `ProgramStatus` | Open, Closed |
 | `ReminderKind` | D14, D3 |
@@ -196,21 +195,27 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
 - **AuditLog**: `IAuditLogService.LogAsync` (actor and job overloads).
 - **Gdpr**: implements `IUserDataContributor`.
-- **Expenses** (consumer, PR 3 of the feature): `IPreapprovalService.ClaimAsync` /
-  `ReleaseAsync` / `ConsumeAsync` inside its own `TransactionScope`;
-  `IPreapprovalServiceRead.ListClaimableForUserAsync` / `GetGrantAsync`.
+- **Expenses** (consumer, PR 3 of the feature): `IPreapprovalWrite.ClaimAsync` / `ReleaseAsync` /
+  `ConsumeAsync` inside its own `TransactionScope`; `IPreapprovalService.ListClaimableForUserAsync` /
+  `GetGrantAsync`.
 
 ## Architecture
 
-**Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalManagementService` internal, `IPreapprovalService` / `IPreapprovalServiceRead` via `Humans.Preapprovals.Contracts`)
+**Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
-### Cross-section read interface
+### Public contract
 
-| Read interface | Methods | Notes |
+A `Contracts/` folder in the section (no leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). Expenses is the only consumer.
+
+| Interface | Methods | Notes |
 |---|---:|---|
-| `IPreapprovalServiceRead` | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`; `IPreapprovalService` adds the three Expenses transitions. Returns `GrantOption` / `GrantStamp`, never entities. |
+| `IPreapprovalService` (public) | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`. Returns `GrantOption`, never entities. |
+| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `GrantStamp`). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders. |
+
+`GrantOption`, `GrantStamp` and `GrantStatus` are the public types beside them.
 
 ### For (A) Migrated sections
 

@@ -10,7 +10,7 @@ namespace Humans.CityPlanning.Authorization;
 /// CampAdmin/Admin, otherwise admits city-planning team members — the claim-free half of
 /// the check, so it has to be a requirement rather than a role policy.
 /// </summary>
-internal sealed class CityPlanningMapAdminHandler(ICityPlanningServiceRead cityPlanning)
+internal sealed class CityPlanningMapAdminHandler(ICityPlanningService cityPlanning)
     : AuthorizationHandler<CityPlanningMapAdminRequirement>
 {
     protected override async Task HandleRequirementAsync(

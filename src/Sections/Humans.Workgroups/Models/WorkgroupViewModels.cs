@@ -63,7 +63,7 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 
     /// <summary>Raw posted text, parsed invariantly by <see cref="ParsedAmount"/> — not model-bound
     /// as a decimal, which uses the request culture: <c>&lt;input type="number"&gt;</c> always posts
-    /// "12.34", and a comma-decimal culture would read that as 1234 (as FinanceController does).</summary>
+    /// "12.34", and a comma-decimal culture would read that as 1234.</summary>
     public string? Amount { get; set; }
 
     /// <summary>"create" (default) or "link".</summary>

@@ -19,7 +19,7 @@ Review each one against **this run's target shape and inventory**, on four lense
 - **Validity** — does it still describe real code? Do its paths, types, routes and project
   names resolve? Was it shipped already?
 - **Consistency** — does it contradict the section doc, another open issue, or a hard rule?
-- **Freshness** — does it predate a change (section split, read-split, a deleted context) that
+- **Freshness** — does it predate a change (section split, contract rename, a deleted context) that
   changes the answer or the scope?
 - **Spec quality** — are the acceptance criteria still meaningful? Is the section label present?
 

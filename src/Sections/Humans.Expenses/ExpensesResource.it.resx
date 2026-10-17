@@ -86,6 +86,9 @@
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>
   <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Contabilizza {0} di {1} — massimo autorizzato</value></data>
   <data name="Expenses_LineNotBooked" xml:space="preserve"><value>Non contabilizzato — massimo autorizzato raggiunto</value></data>
+  <data name="Expenses_Line_Declined" xml:space="preserve"><value>Rifiutata</value></data>
+  <data name="Expenses_Line_DeclinedReason" xml:space="preserve"><value>Motivo: {0}</value></data>
+  <data name="Expenses_Line_DeclinedBanner" xml:space="preserve"><value>Un revisore ha rifiutato questa voce. Motivo: {0}. Non conta nel tuo totale. Sostituisci il file o rimuovi la voce per annullare il rifiuto.</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Importo massimo</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Le mie note spese</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuova nota</value></data>
@@ -296,4 +299,10 @@
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preapprovazione è stata revocata; questo rapporto non può essere inviato a fronte di essa.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>La scadenza {0} è passata; questo rapporto non può più essere inviato a fronte della preapprovazione.</value></data>
   <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preapprovazione non è più disponibile: è stata richiesta da un altro rapporto o già usata.</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puoi correggere questo rendiconto senza ricominciare: apri una qualsiasi riga qui sotto per modificarla, sostituire la ricevuta o rimuoverla, poi invia di nuovo.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Vai alle righe</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Richiedente</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nome legale</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obbligatorio. Indica il nome del progetto a cui si riferisce la spesa, ad es. il tuo progetto artistico.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Aggiungi un oggetto (il nome del progetto) prima di inviare.</value></data>
 </root>

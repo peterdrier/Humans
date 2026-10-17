@@ -3,13 +3,14 @@ using Humans.Base.Interfaces;
 namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
-/// The transitions Expenses drives on a grant as its report moves. Each one runs inside the
-/// ambient <c>TransactionScope</c> the caller opens around its own status change, so the report
-/// and the grant commit together or not at all, and each one is audited with the report id.
-/// Program and grant administration stay inside the section on an internal management
-/// interface; nothing outside sees them.
+/// The writes Preapprovals exposes outside itself, alongside the read-only
+/// <see cref="IPreapprovalService"/>: the three grant transitions an expense report drives as it
+/// moves. Each runs inside the ambient <c>TransactionScope</c> Expenses opens around its own status
+/// change, so the report and the grant commit together or not at all; a view component cannot sit
+/// inside that transaction, which is why this is an interface. Each is audited with the report id.
+/// Every other write (programs, issuing, approving, declining, revoking) is internal.
 /// </summary>
-public interface IPreapprovalService : IApplicationService, IPreapprovalServiceRead
+public interface IPreapprovalWrite : IApplicationService
 {
     /// <summary>
     /// <see cref="GrantStatus.Open"/> → <see cref="GrantStatus.Claimed"/> by
@@ -22,7 +23,8 @@ public interface IPreapprovalService : IApplicationService, IPreapprovalServiceR
 
     /// <summary>
     /// <see cref="GrantStatus.Claimed"/> → <see cref="GrantStatus.Open"/> when the holding report
-    /// is withdrawn before approval. The report id is kept on the grant for the trail.
+    /// is withdrawn before approval, or drops the grant from its draft. The report id is kept on
+    /// the grant for the trail.
     /// </summary>
     Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
 

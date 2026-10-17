@@ -74,6 +74,8 @@ public class ShiftsControllerToggleDayTests
 
     public ShiftsControllerToggleDayTests()
     {
+        _volunteerTrackingService.SetAvailabilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<IReadOnlyList<int>>())
+            .Returns(true);
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _onboardingLocalizer[Arg.Any<string>()].Returns(ci =>
@@ -149,6 +151,22 @@ public class ShiftsControllerToggleDayTests
         result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().Be("No hay ningún evento activo.");
         await _volunteerTrackingService.DidNotReceive().SetAvailabilityAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<IReadOnlyList<int>>());
+    }
+
+    [HumansFact]
+    public async Task SaveAvailability_RefusedSelection_ReturnsLocalizedError()
+    {
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
+        _volunteerTrackingService.SetAvailabilityAsync(userId, Event.Id, Arg.Any<IReadOnlyList<int>>()).Returns(false);
+        _localizer["Shifts_AvailabilityInvalidDays"].Returns(
+            new LocalizedString("Shifts_AvailabilityInvalidDays", "Selecciona días del calendario del evento."));
+
+        var result = await sut.SaveAvailability([int.MaxValue]);
+
+        result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().Be("Selecciona días del calendario del evento.");
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansTheory]

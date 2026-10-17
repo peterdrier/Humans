@@ -15,7 +15,7 @@ public sealed class CityPlanningSettingsTabViewComponentTests
     [HumansFact]
     public async Task InvokeAsync_ReturnsSettingsAndRegistrationInfo()
     {
-        var service = Substitute.For<ICityPlanningServiceRead>();
+        var service = Substitute.For<ICityPlanningService>();
         var settings = new CityPlanningSettingsDto(
             Id: Guid.NewGuid(), Year: 2026, IsPlacementOpen: true, OpenedAt: null, ClosedAt: null,
             PlacementOpensAt: null, PlacementClosesAt: null, RegistrationInfo: "unused-year-scoped-field",

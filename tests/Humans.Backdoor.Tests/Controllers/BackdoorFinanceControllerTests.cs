@@ -30,16 +30,16 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
-/// <see cref="IExpenseReportServiceRead"/> and <see cref="IHoldedFinanceServiceRead"/>
+/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceServiceRead"/>
 /// (peterdrier/Humans#1838). Everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
 /// </summary>
 public class BackdoorFinanceControllerTests
 {
-    private readonly IExpenseReportServiceRead _expenses = Substitute.For<IExpenseReportServiceRead>();
+    private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
     private readonly IHoldedFinanceServiceRead _finance = Substitute.For<IHoldedFinanceServiceRead>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly BackdoorFinanceController _sut;

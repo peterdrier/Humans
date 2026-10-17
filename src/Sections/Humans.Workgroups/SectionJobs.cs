@@ -8,7 +8,6 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Early morning, before anyone reads their notifications over coffee.
         yield return new RecurringJobDescriptor(
             WorkgroupRhythmJob.JobId, typeof(WorkgroupRhythmJob), "0 6 * * *");
     }

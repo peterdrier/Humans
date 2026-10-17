@@ -65,8 +65,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="Note" class="form-label">@Localizer["Expenses_ColSubject"] <small class="text-muted">@Localizer["Expenses_OptionalMaxChars"]</small></label>
+                        <label asp-for="Note" class="form-label">@Localizer["Expenses_ColSubject"]</label>
                         <textarea asp-for="Note" class="form-control" rows="3" maxlength="500" placeholder="@Localizer["Expenses_SubjectPlaceholder"]"></textarea>
+                        <div class="form-text">@Localizer["Expenses_SubjectHelp"]</div>
                         <span asp-validation-for="Note" class="text-danger small"></span>
                     </div>
 

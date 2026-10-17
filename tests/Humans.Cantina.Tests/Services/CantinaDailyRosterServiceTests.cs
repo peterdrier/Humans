@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
@@ -23,6 +24,7 @@ public class CantinaDailyRosterServiceTests
     private readonly ISettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
 
     private static readonly LocalDate GateOpening = new(2026, 7, 7); // a Tuesday
@@ -44,7 +46,7 @@ public class CantinaDailyRosterServiceTests
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock, _audit);
     }
 
     /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
@@ -295,9 +297,9 @@ public class CantinaDailyRosterServiceTests
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
-        (await _service.GetDailyRosterAsync(0, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
-        (await _service.GetDailyRosterAsync(-3, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-8);
-        (await _service.GetDailyRosterAsync(5, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
+        (await _service.GetDailyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
+        (await _service.GetDailyRosterAsync(-3, ct: Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-8);
+        (await _service.GetDailyRosterAsync(5, ct: Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
     }
 
     [HumansFact]
@@ -351,7 +353,7 @@ public class CantinaDailyRosterServiceTests
         // not from UTC. With clock pinned to 23:30 UTC on day 0, Europe/Madrid
         // is already day 1 (CET = UTC+2 in July).
         var fakeClock = new FakeClock(Instant.FromUtc(2026, 7, 7, 23, 30));
-        var service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, fakeClock);
+        var service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, fakeClock, _audit);
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 

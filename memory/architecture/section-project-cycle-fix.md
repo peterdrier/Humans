@@ -12,7 +12,7 @@ When you hit one, there is exactly one correct fix and one tempting wrong one.
 
 **Correct — split the upstream section's contracts downward.** Section A needs a type from section
 B, and B already references A. Carve `Humans.B.Contracts`: a leaf project holding only B's
-`IBServiceRead`, its canonical read DTOs and its domain events, referencing Base and nothing else.
+`IBService`, its canonical read DTOs and its domain events, referencing Base and nothing else.
 `Humans.B` references `Humans.B.Contracts` and implements it; `Humans.A` references
 `Humans.B.Contracts` only. The cycle is gone and B's implementation is still invisible to A.
 
@@ -38,5 +38,5 @@ knots; nothing else is split in advance.
   Those are the whole list; a cycle does not add to it.
 - Full mechanics and the pilot plan: `docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md`.
 
-Related: [[sections-are-logical-units]], [[section-read-write-split]],
+Related: [[sections-are-logical-units]], [[section-public-contract]],
 [[universal-enforcement-over-per-section]], [[interface-method-additions-are-debt]].

@@ -140,5 +140,6 @@ internal interface IEventService : IApplicationService, IEventServiceRead
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
-    Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default);
+    /// <summary>Builds the approved-event CSV and audits its expanded row count and recipient.</summary>
+    Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default);
 }

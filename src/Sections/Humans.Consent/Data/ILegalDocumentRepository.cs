@@ -57,7 +57,7 @@ internal interface ILegalDocumentRepository : IRepository
     /// <summary>
     /// Returns every active, required legal document with <c>Versions</c>
     /// included. Read-only (AsNoTracking). Used by
-    /// <see cref="Humans.Consent.Contracts.ILegalDocumentSyncServiceRead.GetRequiredVersionsAsync"/>.
+    /// <see cref="Humans.Consent.Services.ILegalDocumentSyncManagement.GetRequiredVersionsAsync"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsAsync(CancellationToken ct = default);
 

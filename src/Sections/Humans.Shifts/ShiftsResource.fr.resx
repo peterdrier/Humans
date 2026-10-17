@@ -1265,4 +1265,5 @@
   <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
     <value>Créneau supprimé.</value>
   </data>
+  <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Sélectionnez des jours compris dans le calendrier de l’événement.</value></data>
 </root>

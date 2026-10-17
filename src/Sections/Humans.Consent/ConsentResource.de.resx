@@ -40,15 +40,15 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="ConsentIndex_Title" xml:space="preserve">
+  <data name="Consent_Index_Title" xml:space="preserve">
     <value>Vereinbarungen</value>
   </data>
   <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
-  <data name="ConsentReview_Title" xml:space="preserve">
+  <data name="Consent_Review_Title" xml:space="preserve">
     <value>Prüfung: {0}</value>
     <comment>{0} = document name</comment>
   </data>
-  <data name="ConsentReview_Progress" xml:space="preserve">
+  <data name="Consent_Review_Progress" xml:space="preserve">
     <value>Dokument {0} von {1}</value>
     <comment>{0} = current document index, {1} = total required documents</comment>
   </data>
@@ -92,28 +92,28 @@
   <data name="Consent_AboutDescription" xml:space="preserve">
     <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Englische Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
   </data>
-  <data name="ConsentReview_AlreadyConsented" xml:space="preserve">
+  <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Bereits zugestimmt</value>
   </data>
-  <data name="ConsentReview_ChangesInVersion" xml:space="preserve">
+  <data name="Consent_Review_ChangesInVersion" xml:space="preserve">
     <value>Änderungen in dieser Version:</value>
   </data>
-  <data name="ConsentReview_ContentNotAvailable" xml:space="preserve">
+  <data name="Consent_Review_ContentNotAvailable" xml:space="preserve">
     <value>Inhalt nicht verfügbar.</value>
   </data>
-  <data name="ConsentReview_ConsentCheckbox" xml:space="preserve">
+  <data name="Consent_Review_ConsentCheckbox" xml:space="preserve">
     <value>Ich habe dieses Dokument gelesen und verstanden und erkläre mich mit dessen Bedingungen einverstanden.</value>
   </data>
-  <data name="ConsentReview_SpanishLegalNote" xml:space="preserve">
+  <data name="Consent_Review_SpanishLegalNote" xml:space="preserve">
     <value>Ich verstehe, dass die spanische Fassung der rechtsverbindliche Text ist.</value>
   </data>
-  <data name="ConsentReview_BackToList" xml:space="preserve">
+  <data name="Consent_Review_BackToList" xml:space="preserve">
     <value>Zurück zur Liste</value>
   </data>
-  <data name="ConsentReview_GiveConsent" xml:space="preserve">
+  <data name="Consent_Review_GiveConsent" xml:space="preserve">
     <value>Einwilligung erteilen</value>
   </data>
-  <data name="ConsentReview_CheckboxRequired" xml:space="preserve">
+  <data name="Consent_Review_CheckboxRequired" xml:space="preserve">
     <value>Bitte aktivieren Sie dieses Kontrollkästchen, um zu bestätigen, dass Sie die Bedingungen gelesen haben und ihnen zustimmen.</value>
   </data>
   <data name="Consent_MustCheck" xml:space="preserve">

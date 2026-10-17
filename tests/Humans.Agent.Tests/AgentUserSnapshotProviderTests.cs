@@ -181,11 +181,11 @@ public class AgentUserSnapshotProviderTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
 
-        var consents = Substitute.For<IConsentServiceRead>();
+        var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var feedback = Substitute.For<IFeedbackServiceRead>();
+        var feedback = Substitute.For<IFeedbackService>();
         feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

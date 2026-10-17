@@ -147,9 +147,9 @@ internal partial interface ICampRepository : IRepository
     Task AddSeasonAsync(CampSeason season, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the <c>NameLockDate</c> for every season in the given year.
+    /// Sets the <c>NameLockDate</c> for every season in the given year, returning the changed count.
     /// </summary>
-    Task SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
+    Task<int> SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the maximum <c>NameLockDate</c> per year, for the given years.

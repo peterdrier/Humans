@@ -6,7 +6,7 @@ namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Cross-section read DTO over the Shifts-owned <c>event_settings</c> row
-/// (colloquially "the burn" — Nowhere 2026, etc.). Exposes only the fields
+/// (colloquially "the burn" — Elsewhere 2026, etc.). Exposes only the fields
 /// other sections legitimately need (identity, calendar anchor, build
 /// calendar, early-entry capacity, and the global shift-browsing switch) —
 /// Shifts-internal tuning knobs (<c>GlobalVolunteerCap</c>,

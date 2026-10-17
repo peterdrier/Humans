@@ -54,12 +54,13 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData(GrantStatus.Claimed, "another expense report")]
-    [Xunit.InlineData(GrantStatus.Revoked, "revoked")]
-    [Xunit.InlineData(GrantStatus.Consumed, "consumed")]
-    [Xunit.InlineData(GrantStatus.Applied, "Applied")]
-    public async Task Claim_NotOpen_Throws(GrantStatus status, string reason)
+    [Xunit.InlineData((int)GrantStatus.Claimed, "another expense report")]
+    [Xunit.InlineData((int)GrantStatus.Revoked, "revoked")]
+    [Xunit.InlineData((int)GrantStatus.Consumed, "consumed")]
+    [Xunit.InlineData((int)GrantStatus.Applied, "Applied")]
+    public async Task Claim_NotOpen_Throws(int statusValue, string reason)
     {
+        var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, status: status, expenseReportId: status == GrantStatus.Applied ? null : OtherReport);
 

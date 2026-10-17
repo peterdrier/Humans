@@ -21,6 +21,7 @@ internal sealed class GoogleController(
     ITeamResourceService teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
+    IGoogleSyncLogService syncLog,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Resource/{id:guid}")]
@@ -64,6 +65,7 @@ internal sealed class GoogleController(
     {
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
 
@@ -112,6 +114,20 @@ internal sealed class GoogleController(
         }
 
         return View(report);
+    }
+
+    [HttpGet("ActivityLog")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> ActivityLog(
+        NodaTime.LocalDate? from, NodaTime.LocalDate? to, GoogleSyncLogAction? action,
+        GoogleSyncSource? source, bool? success, string? resource)
+    {
+        var entries = await syncLog.GetRecentAsync(
+            from?.AtStartOfDayInZone(NodaTime.DateTimeZone.Utc).ToInstant(),
+            to?.PlusDays(1).AtStartOfDayInZone(NodaTime.DateTimeZone.Utc).ToInstant(),
+            action, source, success, resource, HttpContext.RequestAborted);
+
+        return View(new ActivityLogViewModel(from, to, action, source, success, resource, entries));
     }
 
     [HttpPost("CheckGroupSettings")]

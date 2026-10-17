@@ -12,43 +12,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Xunit;
 using CommunicationPreferenceService = Humans.Users.Services.CommunicationPreferenceService;
 
 namespace Humans.Users.Tests.Services;
-
-file sealed class StubAuditLogService : IAuditLogService
-{
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, string jobName,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>(([], 0, 0));
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        IReadOnlyList<AuditAction>? actions = null,
-        int limit = 20,
-        CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
-}
 
 public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
 {
@@ -89,8 +56,85 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
             userService,
             tokenProvider,
             Clock,
-            new StubAuditLogService(),
+            AuditLog,
             NullLogger<CommunicationPreferenceService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task FullPreferenceUpdate_UsesTheKnownActorOrKeepsAnonymousAttribution(bool authenticated)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var source = authenticated ? "Profile" : "MagicLink";
+
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+            optedOut: false, inboxEnabled: false, source, actorUserId: authenticated ? actorId : null, cancellationToken: ct);
+
+        var audit = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        audit[0].Should().Be(AuditAction.CommunicationPreferenceChanged);
+        audit[2].Should().Be(userId);
+        audit[4].Should().Be(authenticated ? actorId : nameof(CommunicationPreferenceService));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EmailOnlyUpdate_PreservesInboxOrUsesTheDomainDefault(bool existing)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        if (existing)
+        {
+            Db.CommunicationPreferences.Add(new CommunicationPreference
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Category = MessageCategory.Marketing,
+                OptedOut = true,
+                InboxEnabled = false,
+                UpdatedAt = Clock.GetCurrentInstant(),
+                UpdateSource = "Profile"
+            });
+            await Db.SaveChangesAsync(ct);
+        }
+
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+            optedOut: false, source: "MailerLite", cancellationToken: ct);
+
+        var preference = await Db.CommunicationPreferences.AsNoTracking().SingleAsync(ct);
+        preference.OptedOut.Should().BeFalse();
+        preference.InboxEnabled.Should().Be(existing ? false : new CommunicationPreference().InboxEnabled);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnchangedPreference_DoesNotRewriteMetadataOrAudit(bool fullUpdate)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+            optedOut: false, inboxEnabled: false, source: "Profile", actorUserId: userId, cancellationToken: ct);
+        var original = await Db.CommunicationPreferences.AsNoTracking().SingleAsync(ct);
+        Clock.Advance(Duration.FromHours(1));
+        AuditLog.ClearReceivedCalls();
+
+        if (fullUpdate)
+            await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+                optedOut: false, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: ct);
+        else
+            await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+                optedOut: false, source: "MailerLite", cancellationToken: ct);
+
+        var unchanged = await Db.CommunicationPreferences.AsNoTracking().SingleAsync(ct);
+        unchanged.UpdatedAt.Should().Be(original.UpdatedAt);
+        unchanged.SubscribedAt.Should().Be(original.SubscribedAt);
+        unchanged.UpdateSource.Should().Be("Profile");
+        unchanged.InboxEnabled.Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
@@ -131,6 +175,12 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
         // Attempt to opt out of always-on categories
         await _service.UpdatePreferenceAsync(userId, MessageCategory.System, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
         await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.System, optedOut: true,
+            inboxEnabled: false, source: "Profile", actorUserId: userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true,
+            inboxEnabled: false, source: "Profile", actorUserId: userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
 
         // No rows should have been created (update was silently rejected)
         var systemPref = await Db.CommunicationPreferences

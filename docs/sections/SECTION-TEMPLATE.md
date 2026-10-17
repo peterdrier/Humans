@@ -154,7 +154,7 @@ section is a pure read/write surface with no side effects." (rare).
 <!--
 Required. One bullet per other section this one talks to, naming the
 dependency direction and the interface used. Concrete is better than abstract:
-"calls `IUserServiceRead.GetUserInfosAsync`" beats "integrates with Users." Required
+"calls `IUserService.GetUserInfosAsync`" beats "integrates with Users." Required
 whether the dependency is strong (shared writes) or weak (display labels only).
 -->
 
@@ -164,13 +164,14 @@ whether the dependency is strong (shared writes) or weak (display labels only).
 **Owned tables:** `<table_a>`, `<table_b>`
 **Status:** <(A) Migrated | (B) Partially migrated | (C) Pre-migration>  —  <one-line summary with issue/PR + date>
 
-### Cross-section read interface
+### Public contract
 
-If this section's service is consumed by code in other sections, define `I<Section>ServiceRead` containing only the methods external sections call, returning section-owned projections (DTOs / `*Info` types), never EF entities. The full `I<Section>Service` inherits from `I<Section>ServiceRead` and adds writes, cache-invalidation hooks, and section-internal reads. Same impl class; DI registers both. See [`memory/architecture/section-read-write-split.md`](../../memory/architecture/section-read-write-split.md).
+A section's `Contracts/` (or `.Contracts` leaf) is its whole public face. If other sections consume this section, define `I<Section>Service` containing only the methods external sections call, returning section-owned projections (DTOs / `*Info` types), never EF entities. Add `I<Section>Write` only where another section genuinely must write (prefer the owning section's own view components, so the write stays internal). Everything else is the internal `I<Section>Management`. Same impl class; DI registers each face. See [`memory/architecture/section-public-contract.md`](../../memory/architecture/section-public-contract.md).
 
-| Read interface | Methods | Notes |
+| Public interface | Methods | Notes |
 |---|---:|---|
-| `I<Section>ServiceRead` | N | List or "—" if section is not cross-section-consumed |
+| `I<Section>Service` | N | Read contract; "—" if section is not cross-section-consumed |
+| `I<Section>Write` | N | Optional; "—" unless a cross-section write is unavoidable (state why) |
 
 <!--
 Required. The three-line footer. Owning services and owned tables must stay in
@@ -191,7 +192,7 @@ Use this single block; delete the (B) and (C) blocks below.
 - **Decorator decision** — one of:
   - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
-- **Display stitching** — cross-section display data resolves through `<IUserServiceRead.GetUserInfosAsync, ITeamServiceRead.GetTeamsAsync, …>`.
+- **Display stitching** — cross-section display data resolves through `<IUserService.GetUserInfosAsync, ITeamService.GetTeamsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
 - **Architecture enforcement** — cite the applicable analyzer or existing section test in `tests/Humans.<Section>.Tests/Architecture/`.
 

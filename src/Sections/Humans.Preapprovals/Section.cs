@@ -39,9 +39,9 @@ public sealed class Section : ISection, ISectionAdminNav
 
         // No caching decorator: a handful of programs, read on a few pages a day.
         services.AddScoped<PreapprovalService>();
-        services.AddScoped<IPreapprovalManagementService>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IPreapprovalManagement>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IPreapprovalService>(sp => sp.GetRequiredService<PreapprovalService>());
-        services.AddScoped<IPreapprovalServiceRead>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IPreapprovalWrite>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<PreapprovalService>());
 

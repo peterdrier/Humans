@@ -256,6 +256,9 @@ internal sealed class MailerLiteAdminController(
             return BadRequest(ModelState);
         }
 
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
         var fresh = await import.BuildPlanAsync(ct);
 
         if (TempData["PlanCountsSnapshot"] is string snapshotJson)
@@ -271,7 +274,7 @@ internal sealed class MailerLiteAdminController(
         // The plan build above is a read and may be abandoned; applying it
         // creates/assigns MailerLite subscribers, so it must not be torn in half
         // by the admin navigating away (nobodies-collective/Humans#950).
-        var result = await import.ApplyAsync(fresh, maxPerOutcome, CancellationToken.None);
+        var result = await import.ApplyAsync(fresh, actorUserId.Value, maxPerOutcome, CancellationToken.None);
         TempData["Banner"] = result.FormatSummary();
         return RedirectToAction(nameof(Index));
     }

@@ -88,7 +88,7 @@ internal interface ICityPlanningRepository : IRepository
     /// <remarks>
     /// This section's tables carry no FK to <c>CampSeason</c> — the column is a bare
     /// <c>Guid</c> — so nothing in the database cascades when a camp season goes.
-    /// Camps calls this through <c>ICityPlanningService</c> inside its own delete,
+    /// Camps calls this through <c>ICityPlanningWrite</c> inside its own delete,
     /// never repository-to-repository.
     /// </remarks>
     Task<int> DeletePolygonsForCampSeasonsAsync(

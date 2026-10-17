@@ -2,12 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 12
-inbox:
-  - added: 2026-10-07
-    id: EVENTS-9
-    what: "No test refuses a submission outside [SubmissionOpenAt, SubmissionCloseAt]: the individual, barrio and bulk-upload gates (Controllers/EventsController.cs:145, :546, :720) run only with an open window in EventsControllerTests. Found by /section-doctor on Events 2026-10-07 (Tests thread). Plan: one controller test per gate with the clock past SubmissionCloseAt, asserting no service write."
-    review: light
-  - added: 2026-10-07
-    id: EVENTS-10
-    what: "No test pins that favourite and preference writes act only on the signed-in user (Controllers/EventsApiController.cs:161, :166): EventsApiControllerTests never posts as one user and checks another user's rows stay untouched. Found by /section-doctor on Events 2026-10-07 (Tests thread). Plan: a controller test with two users asserting the service receives the principal's id only."
-    review: light
+inbox: []

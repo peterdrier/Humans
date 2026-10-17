@@ -7,8 +7,7 @@ namespace Humans.Workgroups.Tests.Infrastructure;
 /// <summary>
 /// Forces EF's one-time <see cref="WorkgroupsDbContext"/> model build before any test in the
 /// assembly runs (see AssemblyFixtures.cs), so the cost lands here instead of inside whichever
-/// <c>[HumansFact]</c>/<c>[HumansTheory]</c> happens to run first on a cold, contended runner —
-/// src/Sections/Humans.Workgroups/Docs/debt.yml WG-1.
+/// <c>[HumansFact]</c>/<c>[HumansTheory]</c> happens to run first on a cold, contended runner.
 /// </summary>
 public sealed class WorkgroupsModelWarmupFixture : IDisposable
 {

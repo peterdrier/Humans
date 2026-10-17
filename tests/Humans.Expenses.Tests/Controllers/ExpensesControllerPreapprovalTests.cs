@@ -30,10 +30,10 @@ public sealed class ExpensesControllerPreapprovalTests
 
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly IExpenseReportService _reports = Substitute.For<IExpenseReportService>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IExpenseReportManagement _reports = Substitute.For<IExpenseReportManagement>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedFinanceServiceRead _holdedFinance = Substitute.For<IHoldedFinanceServiceRead>();
-    private readonly IPreapprovalServiceRead _preapprovals = Substitute.For<IPreapprovalServiceRead>();
+    private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 
@@ -103,6 +103,19 @@ public sealed class ExpensesControllerPreapprovalTests
 
         model.PreapprovalGrantId.Should().Be(theirs.Id);
         model.Grants.Select(g => g.Id).Should().Equal(theirs.Id, own.Id);
+    }
+
+    [HumansFact]
+    public async Task NewGet_WithAGrant_PrefillsTheSubjectFromItsLabel()
+    {
+        // The grant's label is the project name, which is what the required Subject asks for.
+        var labelled = Grant("Art", Today.PlusDays(10)) with { Label = "Giant Duck" };
+        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([labelled]);
+
+        var model = (await Build().New(labelled.Id)).Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<ExpenseNewViewModel>().Subject;
+
+        model.Note.Should().Be("Giant Duck");
     }
 
     [HumansFact]

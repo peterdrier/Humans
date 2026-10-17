@@ -10,7 +10,7 @@ namespace Humans.Budget.Services;
 /// </summary>
 internal sealed class TicketingBudgetService(
     ITicketServiceRead ticketService,
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     IClock clock,
     ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
 {

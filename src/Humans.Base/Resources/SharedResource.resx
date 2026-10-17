@@ -261,7 +261,7 @@
   <data name="ProfileEdit_TierAsociadoDesc" xml:space="preserve"><value>You've meaningfully led or contributed to an area of the event or community, you understand that this role is about making governance decisions on behalf of the whole community, and you're prepared to take that responsibility seriously. If you're not sure, collaborator is probably the better fit for now.</value></data>
   <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve"><value>voting member</value></data>
   <data name="Application_AsociadoQuestionsHeader" xml:space="preserve"><value>Additional questions for Asociado applicants</value></data>
-  <data name="Application_SignificantContribution" xml:space="preserve"><value>What has been your most significant contribution to Nowhere?</value></data>
+  <data name="Application_SignificantContribution" xml:space="preserve"><value>What has been your most significant contribution to Elsewhere?</value></data>
   <data name="Application_SignificantContributionPlaceholder" xml:space="preserve"><value>If you can't think of any, but have significantly contributed to another Burn, tell us about that.</value></data>
   <data name="Application_SignificantContributionRequired" xml:space="preserve"><value>Please describe your most significant contribution for an Asociado application.</value></data>
   <data name="Application_RoleUnderstanding" xml:space="preserve"><value>In your own words, what do you understand the role of an associado to be, and why do you want that responsibility?</value></data>

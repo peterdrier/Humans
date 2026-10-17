@@ -1,4 +1,5 @@
 using Humans.Users.Services;
+using Humans.Users.Domain;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
@@ -81,6 +82,12 @@ internal sealed class ExternalLoginService(
         if (currentUser is null)
             return null;
 
+        if (UserStateEvaluator.IsTombstone(currentUser))
+        {
+            logger.LogWarning("Refused OAuth linking to terminal account {UserId}", currentUser.Id);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LockedOut);
+        }
+
         var addLinkResult = await userManager.AddLoginAsync(currentUser, attempt.Login);
         if (addLinkResult.Succeeded)
         {
@@ -116,12 +123,24 @@ internal sealed class ExternalLoginService(
             if (string.IsNullOrEmpty(attempt.Email))
                 return null;
 
+            if (!attempt.EmailVerified)
+            {
+                logger.LogWarning("Refused {Provider} lockout relink without a verified provider email", attempt.Login.LoginProvider);
+                return null;
+            }
+
             var lockedSource = await userManager.FindByLoginAsync(
                 attempt.Login.LoginProvider,
                 attempt.Login.ProviderKey);
             var activeTarget = await magicLinkService.FindUserByVerifiedEmailAsync(attempt.Email, ct);
             if (lockedSource is null || activeTarget is null || lockedSource.Id == activeTarget.Id)
                 return null;
+
+            if (UserStateEvaluator.IsTombstone(activeTarget))
+            {
+                logger.LogWarning("Refused OAuth relinking to terminal account {UserId}", activeTarget.Id);
+                return null;
+            }
 
             var removeResult = await userManager.RemoveLoginAsync(
                 lockedSource,
@@ -172,6 +191,18 @@ internal sealed class ExternalLoginService(
         var existingByEmail = await magicLinkService.FindUserByVerifiedEmailAsync(attempt.Email, ct);
         if (existingByEmail is null)
             return null;
+
+        if (!attempt.EmailVerified)
+        {
+            logger.LogWarning("Refused {Provider} email-match sign-in without a verified provider email", attempt.Login.LoginProvider);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.ProviderError);
+        }
+
+        if (UserStateEvaluator.IsTombstone(existingByEmail))
+        {
+            logger.LogWarning("Refused OAuth email matching to terminal account {UserId}", existingByEmail.Id);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LockedOut);
+        }
 
         try
         {

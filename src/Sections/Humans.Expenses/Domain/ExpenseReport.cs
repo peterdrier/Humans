@@ -23,6 +23,7 @@ internal sealed class ExpenseReport
     public string? Note { get; set; }
     public string PayeeName { get; set; } = "";
     public string PayeeIban { get; set; } = "";
+    /// <summary>Sum of the top-level line amounts a reviewer has not declined — the repository keeps it in step.</summary>
     public decimal Total { get; set; }
     /// <summary>Cap the deciders authorized, or null for no cap. Payable is min(Total, MaxAmount).</summary>
     public decimal? MaxAmount { get; set; }

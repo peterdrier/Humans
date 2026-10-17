@@ -21,7 +21,7 @@ this section injects the narrow read surface rather than the full decision servi
 `IApplicationDecisionService` because it submits and updates drafts.
 
 Cross-section reads inside the section go through the read surfaces
-(`IUserServiceRead`, `ITeamServiceRead`, `IConsentServiceRead`).
+(`IUserServiceRead`, `ITeamServiceRead`, `IConsentService`).
 
 ### ApplicationDecisionService (Scoped)
 
@@ -120,7 +120,7 @@ Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
 ### MembershipCalculator (Scoped)
 
 No repository. Pure read computation over `IMembershipQuery`,
-`IUserServiceRead`, `ILegalDocumentSyncServiceRead`, `IConsentServiceRead`
+`IUserServiceRead`, `ILegalDocumentSyncService`, `IConsentService`
 (resolved lazily via `IServiceProvider` to break a DI cycle), and
 `IClock`. Implements `IMembershipCalculatorRead`. No DB access, no cache.
 

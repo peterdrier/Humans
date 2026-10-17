@@ -1,15 +1,17 @@
+using Humans.Base.Interfaces;
 using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Domain;
 
 namespace Humans.Preapprovals.Services;
 
 /// <summary>
 /// The section's full surface: program and manager administration, issuing, applying, approving,
-/// declining and revoking, plus the reminder pass. Internal, the
-/// <c>ITeamManagementService : ITeamService</c> pattern — only the section's own controllers,
-/// job and tests see it; Expenses sees <see cref="IPreapprovalService"/>. Authorization is the
-/// controllers' job: every method trusts its actor.
+/// declining and revoking, and the reminder pass, over the two public faces (the reads on
+/// <see cref="IPreapprovalService"/>, the grant transitions Expenses drives on
+/// <see cref="IPreapprovalWrite"/>). Internal. Authorization is the controllers' job: every
+/// method trusts its actor.
 /// </summary>
-internal interface IPreapprovalManagementService : IPreapprovalService
+internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite, IApplicationService
 {
     // ── Reads ─────────────────────────────────────────────────────────────
 

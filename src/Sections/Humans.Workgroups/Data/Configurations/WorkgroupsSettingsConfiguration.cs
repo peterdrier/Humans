@@ -11,7 +11,6 @@ internal sealed class WorkgroupsSettingsConfiguration : IEntityTypeConfiguration
         builder.ToTable("workgroups_settings");
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).ValueGeneratedNever();
-        // Preserve the previous Settings store's value limit.
         builder.Property(s => s.RootDriveFolderId).HasMaxLength(1000).IsRequired();
     }
 }

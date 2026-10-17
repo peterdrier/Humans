@@ -25,7 +25,7 @@ public sealed class OnboardingServiceTests
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
-    private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly OnboardingEmails _emailMessages = TestOnboardingEmails.Create();

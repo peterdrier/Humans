@@ -32,16 +32,16 @@ public sealed class Section : ISection
 
         services.AddSingleton<CachingCalendarService>();
         services.AddSingleton<ICalendarService>(sp => sp.GetRequiredService<CachingCalendarService>());
-        services.AddSingleton<ICalendarServiceRead>(sp => sp.GetRequiredService<CachingCalendarService>());
+        services.AddSingleton<ICalendarQueries>(sp => sp.GetRequiredService<CachingCalendarService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCalendarService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());
 
         // The feed credential: Calendar's own table, so its whole lifecycle — mint,
         // rotate, GDPR erase, merge — is registered here and nothing outside the
-        // section writes it. Singleton to match the repository it wraps.
-        services.AddSingleton<CalendarFeedTokenService>();
-        services.AddSingleton<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
+        // section writes it. Scoped to match the audit writer it consumes.
+        services.AddScoped<CalendarFeedTokenService>();
+        services.AddScoped<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 

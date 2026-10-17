@@ -14,7 +14,7 @@ namespace Humans.Containers.Authorization;
 ///   <see cref="ContainerOperation.Place"/> the placement phase must also be open in the target year
 /// - Everyone else: deny
 /// </summary>
-internal sealed class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningServiceRead cityPlanningService)
+internal sealed class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningService cityPlanningService)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     protected override async Task HandleRequirementAsync(

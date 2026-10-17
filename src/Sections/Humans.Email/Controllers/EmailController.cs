@@ -18,7 +18,7 @@ namespace Humans.Email.Controllers;
 [Route("Email")]
 internal sealed class EmailController(
     IUserServiceRead userService,
-    IEmailOutboxService outboxService,
+    IEmailOutboxManagement outboxService,
     IAuditLogService audit,
     ILogger<EmailController> logger,
     IOptions<EmailSettings> emailSettings) : HumansControllerBase(userService)

@@ -11,7 +11,7 @@ namespace Humans.Budget.Tests.Authorization;
 
 public sealed class BudgetAuthorizationHandlerTests
 {
-    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly BudgetAuthorizationHandler _handler;
 
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();

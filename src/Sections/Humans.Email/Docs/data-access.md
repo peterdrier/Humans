@@ -36,7 +36,7 @@ Repository: `IEmailOutboxRepository`.
 
 Drains the outbox queue (the G5 playbook, step 6b): claims a processing batch,
 sends via the section-internal `IEmailTransport`, and records each outcome.
-Checks the pause flag through `IEmailOutboxService.IsEmailPausedAsync` before
+Checks the pause flag through `IEmailOutboxManagement.IsEmailPausedAsync` before
 each run. Cross-section calls via `ICampaignService` (mirrors campaign-grant
 email status after send — `[CrossSectionWrite]`-marked) and `IHumansMetrics` /
 `IMeters`, plus `IClock`. No `IMemoryCache`.
@@ -79,8 +79,8 @@ No repository — side-effect-free preview only, via the same
 |-------|-----|
 | (none) | — |
 
-Implements `IEmailPreviewServiceRead` (cross-section) and the section-internal
-`IEmailPreviewService` it extends. `RenderSystemMessage` composes an
+Implements `IEmailPreviewService` (cross-section) and the section-internal
+`IEmailPreviewManagement` it extends. `RenderSystemMessage` composes an
 `EmailMessage` (system-category only) into a `RenderedEmailPreview` without
 touching `EmailOutboxMessages` or any repository. `RenderMarkdown`
 (internal-only) renders an arbitrary human-typed subject/Markdown body (via

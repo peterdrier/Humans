@@ -86,6 +86,9 @@
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
   <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Comptabilitza {0} de {1} — màxim autoritzat</value></data>
   <data name="Expenses_LineNotBooked" xml:space="preserve"><value>No comptabilitzat — màxim autoritzat assolit</value></data>
+  <data name="Expenses_Line_Declined" xml:space="preserve"><value>Rebutjada</value></data>
+  <data name="Expenses_Line_DeclinedReason" xml:space="preserve"><value>Motiu: {0}</value></data>
+  <data name="Expenses_Line_DeclinedBanner" xml:space="preserve"><value>Un revisor ha rebutjat aquesta línia. Motiu: {0}. No compta en el teu total. Substitueix-ne el fitxer o elimina la línia per anul·lar el rebuig.</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Import màxim</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Els meus informes de despeses</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nou informe</value></data>
@@ -296,4 +299,10 @@
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprovació va ser revocada; aquest informe no es pot enviar contra ella.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>El termini de reclamació ({0}) ha vençut; aquest informe ja no es pot enviar contra la preaprovació.</value></data>
   <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preaprovació ja no està disponible: la va reclamar un altre informe o ja s’ha fet servir.</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Pots corregir aquest informe sense començar de nou: obre qualsevol línia de sota per editar-la, substituir-ne el rebut o eliminar-la, i torna a enviar-lo.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ves a les línies</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Sol·licitant</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nom legal</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatori. Indica el nom del projecte al qual correspon aquesta despesa, p. ex. el del teu projecte artístic.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Afegeix un assumpte (el nom del projecte) abans d'enviar.</value></data>
 </root>

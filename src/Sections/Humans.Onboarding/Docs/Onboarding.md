@@ -117,7 +117,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
 - **Governance:** `IApplicationServiceRead` — pending-application lookup (review queue); the narrow read slice of `IApplicationDecisionService`. Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag no longer sync.
-- **Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
+- **Consent:** `IConsentService` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
 - **Lifecycle:** `IHumanLifecycleService` — used by `GetNextUnsignedConsentAsync` to self-heal a consent-suspended user who is already compliant (nothing left to sign after the required set shrank).
 - **Notifications / Email:** Onboarding owns its one template — `OnboardingEmails` (internal) builds the `EmailMessage` from Onboarding's own `Onboarding_Email_*` keys in `OnboardingResource`, rendered in the recipient's culture via `CultureScope`, and `OnboardingEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview`; Email supplies transport only (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` (with `OnboardingEmails.SignupRejected`), `INotificationEmitter` (`ProfileRejected`). The notification auto-resolve dependency moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
 - **Cross-cutting:** `IMembershipCalculatorRead` (consent-check eligibility + review-queue snapshots), `ILogger`.
@@ -145,6 +145,8 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Architecture test** — `tests/Humans.Onboarding.Tests/Architecture/OnboardingArchitectureTests.cs` enforces one thing: every `IStringLocalizer<T>` / `IHtmlLocalizer<T>` in the section names `OnboardingResource`, `SharedResource` or `ConsentResource` (`OnboardingLocalizerBindingTests` is the per-key half of that guard — it checks every rendered key actually exists in the set its call site binds). The shape claims above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md).
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Onboarding owns the `Onboarding` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

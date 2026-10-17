@@ -41,7 +41,7 @@ public class GateArchitectureTests
         paramTypes
             .Where(t => t.Namespace?.StartsWith("Humans.Tickets", StringComparison.Ordinal) == true)
             .Should().OnlyContain(t => t.Namespace == "Humans.Tickets.Contracts",
-                because: "cross-section ticket reads must use the contracts leaf (section-read-write-split / HUM0032)");
+                because: "cross-section ticket reads must use the contracts leaf (section-public-contract)");
     }
 
     [HumansFact]

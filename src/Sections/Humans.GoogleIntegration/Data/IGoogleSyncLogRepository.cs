@@ -1,5 +1,8 @@
 using Humans.Base.Interfaces.Repositories;
+using Humans.Base.Enums;
+using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Domain;
+using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
@@ -22,6 +25,20 @@ internal interface IGoogleSyncLogRepository : IRepository
 
     /// <summary>Most recent entries for one Google resource.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Newest-first entries across all resources, at most <paramref name="limit"/>. A null filter
+    /// matches everything; <paramref name="from"/> is inclusive, <paramref name="to"/> exclusive.
+    /// A non-null <paramref name="unlinkedDescriptionContains"/> widens the resource filter: rows with no
+    /// resource (<see cref="Guid.Empty"/>) whose description contains it (case-insensitive) match too.
+    /// </summary>
+    Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
+        Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
+        string? unlinkedDescriptionContains = null);
+
+    /// <summary>Every distinct resource id the log references.</summary>
+    Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default);
 
     /// <summary>Most recent entries attributed to any of <paramref name="userIds"/>.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(

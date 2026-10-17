@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -28,7 +27,6 @@ internal sealed record DashboardResetResult(
 /// All writes go through the owning section services. The controller keeps destructive
 /// reset behind full Admin authorization.
 /// </summary>
-[CrossSectionWrite("Dev teardown deletes the seeded teams and users.")]
 internal sealed class DevelopmentDashboardSeeder(
     IShiftSeeding shiftSeeding,
     ISettingsService settingsService,

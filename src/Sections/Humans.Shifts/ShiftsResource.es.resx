@@ -1266,4 +1266,5 @@
   <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
     <value>Turno eliminado.</value>
   </data>
+  <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Selecciona días del calendario del evento.</value></data>
 </root>

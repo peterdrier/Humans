@@ -303,4 +303,7 @@
   <data name="Issue_Section_Terminal" xml:space="preserve">
     <value>No es pot canviar la secció d’una incidència tancada.</value>
   </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Les captures han d’ocupar 10 MB o menys.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Les captures han de ser imatges PNG, JPEG o WebP.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>El nom del fitxer de la captura no pot superar els 256 caràcters.</value></data>
 </root>

@@ -22,6 +22,7 @@ internal sealed class GoogleSyncLogService(
     : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
 {
     internal const string GoogleSyncLog = "GoogleSyncLog";
+    private const int MaxRecentRows = 500;
 
     public async Task LogAsync(
         GoogleSyncLogAction action,
@@ -88,6 +89,26 @@ internal sealed class GoogleSyncLogService(
         Guid userId, CancellationToken ct = default)
     {
         var entries = await repo.GetByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
+        return await ToViewsAsync(entries, ct);
+    }
+
+    public async Task<IReadOnlyList<GoogleSyncLogView>> GetRecentAsync(
+        Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
+        string? resourceName, CancellationToken ct = default)
+    {
+        // Names live in google_resources (ITeamResourceService), so resolve the name filter to ids first.
+        IReadOnlyCollection<Guid>? resourceIds = null;
+        if (!string.IsNullOrWhiteSpace(resourceName))
+        {
+            var needle = resourceName.Trim();
+            var names = await teamResourceService.GetResourceNamesByIdsAsync(await repo.GetResourceIdsAsync(ct), ct);
+            resourceIds = names.Where(n => n.Value.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                .Select(n => n.Key).ToList();
+        }
+
+        // Unregistered Drive folders log Guid.Empty; the sync service puts their path in the description.
+        var entries = await repo.GetRecentAsync(from, to, action, source, success, resourceIds, MaxRecentRows, ct,
+            unlinkedDescriptionContains: resourceName?.Trim() is { Length: > 0 } needle2 ? needle2 : null);
         return await ToViewsAsync(entries, ct);
     }
 
@@ -186,7 +207,8 @@ internal sealed class GoogleSyncLogService(
                 e.Role,
                 e.Source,
                 e.Success,
-                e.ErrorMessage))
+                e.ErrorMessage,
+                e.UserId))
             .ToList();
     }
 }

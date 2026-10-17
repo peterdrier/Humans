@@ -136,7 +136,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == line.Id && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return false;
-        if (tracked.ParentLineId is null)
+        // A declined line is already out of the total; its new amount counts only once it is accepted.
+        if (tracked.ParentLineId is null && !tracked.Declined)
             report.Total = report.Total - tracked.Amount + line.Amount;
         tracked.Description = line.Description;
         tracked.Amount = line.Amount;
@@ -171,8 +172,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         ctx.ExpenseLines.RemoveRange(proofs);
         ctx.ExpenseLines.Remove(tracked);
         ctx.ExpenseAttachments.RemoveRange(attachments);
-        // Proof rows never counted toward the total, so only the line itself adjusts it.
-        if (tracked.ParentLineId is null)
+        // Proof rows never counted toward the total, and a declined line is already out of it.
+        if (tracked.ParentLineId is null && !tracked.Declined)
             report.Total = report.Total - tracked.Amount;
         await ctx.SaveChangesAsync(ct);
         return attachments;
@@ -204,6 +205,43 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             ctx.ExpenseAttachments.Remove(replaced);
         await ctx.SaveChangesAsync(ct);
         return (true, replaced);
+    }
+
+    public async Task<bool> SetLineDeclinedAsync(
+        Guid reportId, Guid lineId, bool declined, string? reason, Guid? byUserId,
+        Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var report = await ctx.ExpenseReports
+            .FirstOrDefaultAsync(r => r.Id == reportId, ct);
+        var line = await ctx.ExpenseLines
+            .FirstOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
+        if (report is null || line is null) return false;
+        if (line.Declined == declined) return true;
+
+        // Proof rows never count toward the total, so only a top-level line moves it.
+        if (line.ParentLineId is null)
+            report.Total += declined ? -line.Amount : line.Amount;
+        if (declined)
+        {
+            line.DeclinedReason = reason;
+            line.DeclinedByUserId = byUserId;
+            line.DeclinedAt = now;
+        }
+        else
+        {
+            ClearDecline(line);
+        }
+        report.UpdatedAt = now;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    private static void ClearDecline(ExpenseLine line)
+    {
+        line.DeclinedReason = null;
+        line.DeclinedByUserId = null;
+        line.DeclinedAt = null;
     }
 
     public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)

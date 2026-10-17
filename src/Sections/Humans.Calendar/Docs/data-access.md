@@ -11,7 +11,7 @@ directly. Owns `CalendarEvents`, `CalendarEventExceptions`,
 `Humans.Calendar.Services.CachingCalendarService` (Singleton decorator
 inheriting `TrackedCache<Guid, CalendarEventInfo>`, warmed on startup).
 The decorator exposes the cross-section read surface as
-`ICalendarServiceRead` and is its only implementation — it answers them
+`ICalendarQueries` and is its only implementation — it answers them
 from its snapshot, so the inner does not implement that interface at all. Writes
 delegate to the inner service then refresh the affected event row. `CalendarRepository` does not join the `Teams`
 table — the decorator stitches team names via `ITeamServiceRead` at the
@@ -37,7 +37,7 @@ not an injected dependency.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, CalendarEventInfo>` (`Calendar.Event`, warmed on startup) | Per-Entity | yes | yes | yes (per-event `ReplaceAsync` after each delegated write) |
 
-Implements `ICalendarService`, `ICalendarServiceRead`. Resolves the keyed
+Implements `ICalendarService`, `ICalendarQueries`. Resolves the keyed
 Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
 names, and (when `teamId` is null) `IEnumerable<ICalendarFeedContributor>`
 for community-calendar items — fanned out fresh per call, never cached, and
@@ -66,12 +66,12 @@ the token is ever compared) and `IEnumerable<ICalendarFeedContributor>`.
 |-------|-----|
 | _(none — token check via `ICalendarFeedTokenService`, no direct DB access)_ | — |
 
-### CalendarFeedTokenService (Singleton, `Humans.Calendar.Services`)
+### CalendarFeedTokenService (Scoped, `Humans.Calendar.Services`)
 
 Repository: `ICalendarRepository`. `EnsureAsync` is a single
 `GetOrAddFeedTokenAsync` round trip rather than a read then a write, so a racing
 first view loses on the primary key and adopts the winner's token instead of
-500ing; `RotateAsync` keeps the plain upsert, where last write wins. Internal:
+500ing; the repository reports whether this call created the token. `RotateAsync` keeps the plain upsert, where last write wins. Both successful mutations audit the member as actor without exposing the credential; reads and adopted tokens do not audit. The service is Scoped to consume `IAuditLogService`. Internal:
 the token's whole lifecycle stays inside the section, and the only part that leaves it is
 `IICalFeedService.HasFeedAsync` (a bool for the admin widget, never the token).
 

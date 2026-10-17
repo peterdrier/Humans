@@ -20,10 +20,11 @@ public sealed record ExpenseReportDto
     public string? Note { get; init; }
     public required string PayeeName { get; init; }
     public required string PayeeIban { get; init; }
+    /// <summary>The accepted total: top-level line amounts, declined lines excluded.</summary>
     public required decimal Total { get; init; }
     /// <summary>Cap the deciders authorized, or null for no cap.</summary>
     public decimal? MaxAmount { get; init; }
-    /// <summary>What is actually reimbursed: the receipts total, capped. The only amount payment math may use.</summary>
+    /// <summary>What is actually reimbursed: the accepted total, capped. The only amount payment math may use.</summary>
     public decimal Payable => MaxAmount is { } cap && cap < Total ? cap : Total;
     public Instant? SubmittedAt { get; init; }
     public Guid? CoordinatorEndorsedByUserId { get; init; }

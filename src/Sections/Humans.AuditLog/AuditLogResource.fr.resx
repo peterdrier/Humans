@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Camp mis à jour</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Camp supprimé</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Saison de camp créée</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Inscriptions aux camps ouvertes</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Inscriptions aux camps fermées</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Date de verrouillage des noms de camp modifiée</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Saison de camp approuvée</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Saison de camp rejetée</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Saison de camp retirée</value></data>
@@ -227,6 +230,8 @@
   <data name="Enum_AuditAction_ExpenseHoldedPushed" xml:space="preserve"><value>Dépense envoyée à Holded</value></data>
   <data name="Enum_AuditAction_ExpenseHoldedFailed" xml:space="preserve"><value>Le transfert des dépenses vers Holded a échoué</value></data>
   <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Dépense remise en file d’attente pour Holded</value></data>
+  <data name="Enum_AuditAction_ExpenseLineDeclined" xml:space="preserve"><value>Ligne de dépense refusée</value></data>
+  <data name="Enum_AuditAction_ExpenseLineDeclineUndone" xml:space="preserve"><value>Refus de la ligne de dépense annulé</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Compte de dépenses Holded créé</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Compte de dépenses Holded associé</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>État actif du compte de dépenses Holded modifié</value></data>
@@ -359,4 +364,17 @@
   <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Ressource Google liée</value></data>
   <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Ressource Google dissociée</value></data>
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Paramètres de la ressource Google mis à jour</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Jeton du flux calendrier créé</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Jeton du flux calendrier renouvelé</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Mode de synchronisation modifié</value></data>
+  <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Paramètres de l’assistant mis à jour</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Document juridique créé</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Paramètres du document juridique mis à jour</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Document juridique archivé</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Version du document juridique publiée</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Résumé de la version du document juridique mis à jour</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guide des événements exporté</value></data>
+  <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camps exportés</value></data>
+  <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Liste de la cantine exportée</value></data>
+  <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Suivi des bénévoles exporté</value></data>
 </root>

@@ -14,7 +14,7 @@ namespace Humans.Budget.Controllers;
 [Authorize]
 [Route("Budget")]
 internal sealed class BudgetController(
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     IAuthorizationService authService,
     IUserServiceRead userService,
     IStringLocalizer<BudgetResource> localizer,

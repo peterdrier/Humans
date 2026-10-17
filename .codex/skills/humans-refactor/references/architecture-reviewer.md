@@ -58,7 +58,7 @@ Read-model consolidation checks:
 - If it is not derivable, name the missing fact and decide whether that fact belongs on the canonical read DTO.
 - Adding fields/behavior to an existing canonical read DTO is usually good when it lets callers avoid DB/full-service reads; do not confuse this with creating a new DTO bag.
 - New read DTOs/read shards are acceptable only when keyed or bounded differently in a cohesive way; otherwise prefer the existing `<Section>Info`.
-- Cross-section callers using a write/full surface should be treated as high debt unless they are intentionally orchestrating a command. Prefer `I<Section>ServiceRead` and DTO facts; existing exceptions should be explicit/grandfathered.
+- Cross-section callers using a write surface (`I<Section>Write`) should be treated as high debt unless a section-owned component cannot do the write. Prefer `I<Section>Service` and DTO facts; existing exceptions should be explicit/grandfathered.
 
 Before verdict, answer these internally:
 - What concept was deleted?

@@ -596,7 +596,7 @@
     <value>Preguntes addicionals per a sol·licitants d'Associat</value>
   </data>
   <data name="Application_SignificantContribution" xml:space="preserve">
-    <value>Quina ha estat la teva contribució més significativa a Nowhere?</value>
+    <value>Quina ha estat la teva contribució més significativa a Elsewhere?</value>
   </data>
   <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
     <value>Si no se t'acudeix cap, però has contribuït significativament a un altre Burn, explica'ns-ho.</value>

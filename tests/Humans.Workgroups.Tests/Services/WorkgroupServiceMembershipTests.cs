@@ -425,6 +425,46 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.NoPendingRequest);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task AddMember_TerminalAccount_DoesNotCreateMembership(UserState state)
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var target = SeedUser("Terminal");
+        var person = (await Users.GetUserInfoAsync(target, Ct))! with { State = state, MergedAt = Clock.GetCurrentInstant() };
+        Users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(person));
+
+        var result = await NewService().AddMemberAsync(group.Id, coordinator, target, ct: Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var ctx = OpenContext();
+        (await ctx.Members.CountAsync(m => m.UserId == target, Ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AddMember_MergeAlias_ApprovesSurvivorPendingRequest()
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var survivor = SeedUser("Survivor");
+        await AddMemberAsync(group.Id, survivor, isPending: true);
+        var source = Guid.NewGuid();
+        var survivorInfo = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(survivorInfo));
+
+        (await NewService().AddMemberAsync(group.Id, coordinator, source, ct: Ct)).Refusal.Should().BeNull();
+
+        await using var ctx = OpenContext();
+        var member = await ctx.Members.SingleAsync(m => m.UserId == survivor, Ct);
+        member.IsPending.Should().NotBe(true);
+        (await ctx.Members.CountAsync(m => m.UserId == source, Ct)).Should().Be(0);
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), group.Id,
+            Arg.Any<string>(), coordinator, survivor, "User");
+    }
+
     [HumansFact]
     public async Task AddMember_ByACoordinator_AdmitsDirectly()
     {
@@ -683,8 +723,8 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
-        // The tombstoned row is still readable, so a double-submitted form used to re-stamp it and
-        // audit a second deletion — an event the trail would have claimed happened, and did not.
+        // The tombstoned row is still readable, so a replayed delete is refused rather than
+        // re-stamped and audited a second time.
         var replay = async () => await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         (await replay()).Refusal!.Key
@@ -716,5 +756,29 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(WorkgroupLogKind.Registered))]
+    [InlineData(nameof(WorkgroupLogKind.MemberJoined))]
+    public async Task SystemLogEntries_CannotBeEditedOrDeleted(string kindName)
+    {
+        var kind = Enum.Parse<WorkgroupLogKind>(kindName);
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var entry = await AddLogEntryAsync(workgroup.Id, kind);
+
+        var edit = await NewService().UpdateLogEntryAsync(
+            entry.Id, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, entry.OccurredOn, "Rewritten", "Rewritten body"), Ct);
+        var delete = await NewService().DeleteLogEntryAsync(entry.Id, member, Ct);
+
+        edit.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        delete.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        await using var ctx = OpenContext();
+        var stored = await ctx.LogEntries.SingleAsync(e => e.Id == entry.Id, Ct);
+        stored.Kind.Should().Be(kind);
+        stored.Title.Should().BeNull();
+        stored.Body.Should().BeNull();
     }
 }

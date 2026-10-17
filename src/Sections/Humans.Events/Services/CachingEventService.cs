@@ -447,8 +447,9 @@ internal sealed class CachingEventService(
         // counts that the approved-only cache cannot answer.
         WithInner(inner => inner.GetAllEventsForDashboardAsync(ct));
 
-    public Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetApprovedEventsForExportAsync(ct));
+    public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>
+        // Every CSV disclosure must audit, including repeated downloads of unchanged data.
+        WithInner(inner => inner.GetApprovedEventsForExportAsync(actorUserId, ct));
 
     // ── IEventSettingsChangeListener: Settings-side fan-out ──
 

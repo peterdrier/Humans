@@ -4,8 +4,8 @@ namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Cross-section read surface for the Google Integration sync service.
-/// External sections inject this interface; it exposes only the outbox read
-/// projections needed cross-section, never EF entities or mutation methods.
+/// External sections inject this interface; it exposes the outbox read
+/// projections and Drive probes needed cross-section, never EF entities or mutation methods.
 /// See <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
 public interface IGoogleSyncServiceRead
@@ -33,6 +33,13 @@ public interface IGoogleSyncServiceRead
     /// </summary>
     Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the service account can read the Drive folder
+    /// <paramref name="folderId"/>. Lets a section refuse a folder setting that
+    /// <see cref="IGoogleSyncService.CreateSubfolderAsync"/> would later 404 on.
+    /// </summary>
+    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default);
 }
 
 public sealed record GoogleSyncOutboxEventSnapshot(

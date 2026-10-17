@@ -30,7 +30,7 @@ Implements `IUserDataContributor`. No `IMemoryCache`.
 No repository, no DB access of its own, no cache. The Tickets→Budget bridge:
 reads paid ticket sales through `ITicketServiceRead.GetTicketOrdersAsync` (the
 cached read surface), aggregates them into weekly ticketing actuals, and hands
-those to `IBudgetService.SyncTicketingActualsAsync`, which owns every resulting
+those to `IBudgetManagement.SyncTicketingActualsAsync`, which owns every resulting
 `BudgetLineItem` / `TicketingProjection` write. Cross-section calls via
 `ITicketServiceRead`, plus `IClock` and `ILogger`.
 

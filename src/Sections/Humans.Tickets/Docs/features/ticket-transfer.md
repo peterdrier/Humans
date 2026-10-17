@@ -42,6 +42,8 @@ Outcomes are recorded on the request columns + audit log.
 ## User Stories
 
 ### US-42.1: Sender requests a transfer (one-page wizard)
+
+A receiver selected before an account merge must be selected again: confirmation and creation reject ids that resolve to a different survivor. Transfers never create a receiver link to an archived account, including an archived alias of the sender.
 **As a** Sender (current holder of a `Valid`, not-yet-checked-in ticket)
 **I want to** request sending the ticket to a specific other Humans member
 **So that** the seat goes to someone I trust rather than being wasted

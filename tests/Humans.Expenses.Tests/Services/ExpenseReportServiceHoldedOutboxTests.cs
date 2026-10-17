@@ -32,7 +32,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private const int BatchSize = 100;
 
     private readonly IExpenseRepository _repo;
-    private readonly IBudgetServiceRead _budgetService;
+    private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
     private readonly IHoldedFinanceService _holdedFinance;
@@ -63,7 +63,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             []);
 
         _repo = Substitute.For<IExpenseRepository>();
-        _budgetService = Substitute.For<IBudgetServiceRead>();
+        _budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so every test
@@ -108,6 +108,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedClient,
             _holdedFinance,
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
+            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));
@@ -782,6 +783,42 @@ public class ExpenseReportServiceHoldedOutboxTests
                 s.Contains("doc-first") &&
                 s.Contains("'second.pdf' (€100.00) not booked — authorized maximum reached.")),
             Arg.Any<string>(), null, null);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    public async Task CreateIncomingDoc_LongUnicodeSummary_RemainsValidUtf8(int padding)
+    {
+        var description = new string('a', padding) + string.Concat(Enumerable.Repeat("😀", 249));
+        var report = MakeReport() with
+        {
+            Total = 800m,
+            MaxAmount = 1m,
+            Lines = Enumerable.Range(0, 8).Select(i =>
+                MakeLineWithAttachment(Guid.NewGuid(), $"receipt-{i}.pdf", i, holdedUploadedAt: null)
+                    with
+                { Description = description, Amount = 100m }).ToList(),
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-emoji");
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
+
+        await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        var audit = _auditLog.ReceivedCalls().Single(c =>
+            string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)
+            && Equals(c.GetArguments()[0], AuditAction.ExpenseHoldedPushed));
+        var summary = (string)audit.GetArguments()[3]!;
+        summary.Length.Should().BeLessThanOrEqualTo(3500);
+        summary.Should().EndWith("…");
+        Action encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(summary);
+        encode.Should().NotThrow();
+        await _repo.Received(1).MarkOutboxProcessedAsync(outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     // ─── UpdateIncomingDocTag: v2 has no tag-update endpoint, so this just drains ──────────

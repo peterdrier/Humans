@@ -1265,4 +1265,5 @@
   <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
     <value>Schicht gelöscht.</value>
   </data>
+  <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Wähle Tage innerhalb des Veranstaltungskalenders.</value></data>
 </root>

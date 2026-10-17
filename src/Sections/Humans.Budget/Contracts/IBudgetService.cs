@@ -4,17 +4,17 @@ using NodaTime;
 namespace Humans.Budget.Contracts;
 
 /// <summary>
-/// Cross-section read surface for the Budget section. Other sections inject this interface; it exposes the active year's projection, one
-/// category lookup, the coordinator's team set and the summary computation — no EF
-/// entities, no writes. See <c>memory/architecture/section-read-write-split.md</c>.
+/// Public contract of the Budget section. Other sections inject this interface; it exposes the active year's projection, one
+/// category lookup, the coordinator's team set and the summary computation — DTOs only,
+/// no EF entities.
 /// </summary>
 /// <remarks>
-/// The section's own controllers take the internal <c>IBudgetService</c>, so the
-/// other members of the internal <c>IBudgetService</c> — year/group/category/line-item
+/// The section's own controllers take the internal <c>IBudgetManagement</c>, so the
+/// other members of the internal <c>IBudgetManagement</c> — year/group/category/line-item
 /// CRUD, the audit log, the cash-flow and VAT projections, the ticketing projection
 /// parameters — are not public at all (design §15 step 5).
 /// </remarks>
-public interface IBudgetServiceRead : IApplicationService
+public interface IBudgetService : IApplicationService
 {
     /// <summary>
     /// The active budget year with its full group → category → line item projection,
@@ -151,7 +151,7 @@ public sealed record BudgetCategoryLineItemSnapshot(
 
 /// <summary>
 /// Computed budget summary with income/expense totals and categorical breakdowns.
-/// Produced by <see cref="IBudgetServiceRead.ComputeBudgetSummary"/> from in-memory group data.
+/// Produced by <see cref="IBudgetService.ComputeBudgetSummary"/> from in-memory group data.
 /// </summary>
 public sealed class BudgetSummaryResult
 {

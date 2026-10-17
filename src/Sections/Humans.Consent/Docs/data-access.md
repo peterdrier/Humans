@@ -8,7 +8,7 @@ Folder: `src/Sections/Humans.Consent/Services/` — Legal and
 `LegalDbContext`. `LegalDocumentRepository` injects
 `IDbContextFactory<LegalDbContext>` directly. Owns `LegalDocuments`,
 `DocumentVersions` (`ConsentRecords`, the third table on this context, is
-owned by the same section's [Consent](#consent) repository below). The inner `ILegalDocumentSyncService` is wrapped by
+owned by the same section's [Consent](#consent) repository below). The inner `ILegalDocumentSyncManagement` is wrapped by
 `Humans.Consent.Services.CachingLegalDocumentSyncService`
 (Singleton decorator inheriting `TrackedCache<Guid, LegalDocumentInfo>`,
 warmed on startup, with a version-id → document-id index). It caches the
@@ -17,7 +17,7 @@ the per-version lookup, invalidated wholesale after any persisted
 `legal_documents` / `document_versions` write.
 
 `LegalDocumentSyncService` is the sole writer for `LegalDocuments` /
-`DocumentVersions` — it implements both `ILegalDocumentSyncService` (the
+`DocumentVersions` — it implements both `ILegalDocumentSyncManagement` (the
 GitHub-sync write/read surface) and `IAdminLegalDocumentService` (the
 admin create/update/archive/version-summary surface). Being the single
 writer lets it call `ILegalDocumentCacheInvalidator.InvalidateAll()`
@@ -39,7 +39,7 @@ content provider (no DB access); the naming collision exists because the
 merged writer took the `LegalDocumentSyncService` name since
 `LegalDocumentService` was already taken by this class.
 
-### LegalDocumentSyncService (Scoped — wrapped by CachingLegalDocumentSyncService Singleton decorator; implements `ILegalDocumentSyncService` + `IAdminLegalDocumentService`)
+### LegalDocumentSyncService (Scoped — wrapped by CachingLegalDocumentSyncService Singleton decorator; implements `ILegalDocumentSyncManagement` + `IAdminLegalDocumentService`)
 
 Repository: `ILegalDocumentRepository`.
 
@@ -70,7 +70,7 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R |
 
 The body of `SyncLegalDocumentsJob`. Runs
-`ILegalDocumentSyncService.SyncAllDocumentsAsync`, then, for each updated
+`ILegalDocumentSyncManagement.SyncAllDocumentsAsync`, then, for each updated
 document, narrows the affected teams' active members down to those without a
 consent record for the new version — `GetPairsForUsersAndVersionsAsync` is its
 only repository call, read-only — and mails them the re-consent notice.
@@ -84,7 +84,7 @@ builder (`ReConsentsRequired`), `ITeamServiceRead` (team membership) and
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via `ILegalDocumentCacheInvalidator.InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write) |
 
-Implements `ILegalDocumentSyncService`, `ILegalDocumentCacheInvalidator`.
+Implements `ILegalDocumentSyncManagement`, `ILegalDocumentCacheInvalidator`.
 Warm resolves team display names via `ITeamService` through a fresh DI
 scope per warm. Surfaced on `/Debug/CacheStats`.
 
@@ -99,15 +99,15 @@ Folder: `src/Sections/Humans.Consent/Services/` — shares the project with
 the same context as Legal's `LegalDocuments` /
 `DocumentVersions`. `ConsentRepository` injects
 `IDbContextFactory<LegalDbContext>` directly. Owns `ConsentRecords`.
-The inner `IConsentService` is wrapped by
+The inner `IConsentManagement` is wrapped by
 `Humans.Consent.Services.CachingConsentService` (Singleton
 decorator inheriting `TrackedCache<Guid, UserConsentInfo>`, lazy / no
 startup warmup). It caches the per-user set of consented document-version
 ids (with the account-merge source-id chain resolved at load) and
 **synchronously** evicts the affected user on `SubmitConsentAsync` before
 returning, so the next-page consent-banner check never observes a stale
-"still required" entry. It exposes the cross-section read surface as
-`IConsentServiceRead`.
+"still required" entry. It exposes the public contract as
+`IConsentService`.
 
 ### ConsentService (Scoped — wrapped by CachingConsentService Singleton decorator)
 
@@ -117,7 +117,7 @@ Repository: `IConsentRepository`.
 |-------|-----|
 | ConsentRecords | R/W |
 
-Cross-section calls via `ILegalDocumentSyncService`,
+Cross-section calls via `ILegalDocumentSyncManagement`,
 `INotificationAutoResolve`, `IHumanLifecycleService`, `IUserServiceRead`,
 `IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculatorRead`
 (cycle-breaking). Implements
@@ -130,7 +130,7 @@ lives in the decorator.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, UserConsentInfo>` (`Consent.UserConsentInfo`, lazy, no warmup) | Per-User | yes (consented-version-set reads) | yes (lazy load) | yes (synchronous per-user evict on submit; via `IConsentCacheInvalidator`) |
 
-Implements `IConsentService`, `IConsentServiceRead`,
+Implements `IConsentManagement`, `IConsentService`,
 `IConsentCacheInvalidator`. Richer record reads (dashboards, history,
 record counts) pass through to the inner service. Surfaced on
 `/Debug/CacheStats`.

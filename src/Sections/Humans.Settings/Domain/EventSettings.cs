@@ -17,7 +17,7 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// <summary>Unique identifier — the id other sections store to point at this cycle.</summary>
     public Guid Id { get; init; }
 
-    /// <summary>Display name for this event (e.g., "Nowhere 2026").</summary>
+    /// <summary>Display name for this event (e.g., "Elsewhere 2026").</summary>
     public string EventName { get; set; } = string.Empty;
 
     /// <summary>

@@ -44,7 +44,7 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      CampService clears a deleted camp's polygons through Lazy<ICityPlanningService>. The
+      CampService clears a deleted camp's polygons through Lazy<ICityPlanningWrite>. The
       other direction goes through Humans.Camps.Contracts, never this project, which is what
       keeps the pair acyclic.
     -->

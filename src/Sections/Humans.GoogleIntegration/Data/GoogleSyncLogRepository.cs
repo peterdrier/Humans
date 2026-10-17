@@ -1,5 +1,8 @@
+using Humans.Base.Enums;
+using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Domain;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
@@ -55,6 +58,40 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
             .Take(MaxRows)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
+        Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
+        string? unlinkedDescriptionContains = null)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var query = ctx.GoogleSyncLog.AsNoTracking();
+        if (unlinkedDescriptionContains is not null)
+        {
+            var needle = unlinkedDescriptionContains.ToLowerInvariant();
+            var ids = resourceIds ?? [];
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            query = query.Where(e => ids.Contains(e.ResourceId)
+                || (e.ResourceId == Guid.Empty && e.Description.ToLower().Contains(needle)));
+#pragma warning restore MA0011
+        }
+        else if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
+        if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);
+        if (to.HasValue) query = query.Where(e => e.OccurredAt < to.Value);
+        if (action.HasValue) query = query.Where(e => e.Action == action.Value);
+        if (source.HasValue) query = query.Where(e => e.Source == source.Value);
+        if (success.HasValue) query = query.Where(e => e.Success == success.Value);
+        return await query
+            .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleSyncLog.AsNoTracking().Select(e => e.ResourceId).Distinct().ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(

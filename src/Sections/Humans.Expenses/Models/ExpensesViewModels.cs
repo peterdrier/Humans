@@ -116,6 +116,20 @@ internal sealed class ExpenseDetailViewModel
     /// no wider than the submitter and the finance admins who approve the payment.</summary>
     public bool CanSeePayee => IsSubmitter || CanBindCreditor;
 
+    /// <summary>The submitter's burner (display) name and legal name show to the submitter and to anyone
+    /// holding a review grant on the report (category coordinator, finance admin) — a wider audience than
+    /// <see cref="CanSeePayee"/>, which also unlocks the IBAN. The page is only reachable with the View
+    /// grant, which only those three hold; the controller sets this explicitly all the same.</summary>
+    public bool CanSeeNames { get; init; }
+    /// <summary>Submitter's burner name from their profile; null unless <see cref="CanSeeNames"/>.</summary>
+    public string? SubmitterBurnerName { get; init; }
+    /// <summary>What the Submitter card renders: the burner name, only for a viewer who may see names.</summary>
+    public string? VisibleBurnerName => CanSeeNames ? SubmitterBurnerName : null;
+    /// <summary>What the Submitter card renders: the legal name, only for a viewer who may see names.</summary>
+    public string? VisibleLegalName => CanSeeNames ? SubmitterLegalName : null;
+    /// <summary>Submitter's legal name: the frozen snapshot once submitted, else their current profile.</summary>
+    public string? SubmitterLegalName { get; init; }
+
     /// <summary>Legal name frozen onto the report at submit — who Holded will actually pay, regardless
     /// of later profile edits. Null on a draft (not yet snapshotted). Not masked.</summary>
     public string? PayeeName =>
@@ -150,6 +164,9 @@ internal sealed class ExpenseDetailViewModel
     public bool CanEndorse { get; init; }
     /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
     public bool CanCoordinatorReject { get; init; }
+
+    /// <summary>The viewer may decline or un-decline individual lines (holds Endorse or Approve while the report awaits a decision).</summary>
+    public bool CanDeclineLines { get; init; }
 
     /// <summary>Accounts offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
     public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; init; } = [];
@@ -206,6 +223,12 @@ internal sealed class EditLineInputModel
 }
 
 internal sealed class CoordinatorRejectInputModel
+{
+    [Required, StringLength(1000, MinimumLength = 1)]
+    public string Reason { get; set; } = "";
+}
+
+internal sealed class DeclineLineInputModel
 {
     [Required, StringLength(1000, MinimumLength = 1)]
     public string Reason { get; set; } = "";

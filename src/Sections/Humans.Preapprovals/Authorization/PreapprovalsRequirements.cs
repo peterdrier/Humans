@@ -16,7 +16,7 @@ internal sealed class PreapprovalsAccessRequirement : IAuthorizationRequirement;
 /// common admin path. Both policies resolve the live user id, so a merged-away id sees
 /// what the surviving account sees.
 /// </summary>
-internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagementService preapprovals) : IAuthorizationHandler
+internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprovals) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {

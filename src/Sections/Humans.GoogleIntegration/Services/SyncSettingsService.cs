@@ -1,11 +1,12 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.AuditLog.Contracts;
 using NodaTime;
 using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>Per-service sync-mode settings (Drive/Groups/Discord). Owns sync_service_settings via repository.</summary>
-internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IClock clock) : ISyncSettingsService
+internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IClock clock, IAuditLogService audit) : ISyncSettingsService
 {
     public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
     {
@@ -28,10 +29,13 @@ internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IC
     {
         var updated = await repository.UpdateModeAsync(
             serviceType, mode, actorUserId, clock.GetCurrentInstant(), ct);
-        if (!updated)
+        if (updated is null)
         {
             throw new InvalidOperationException($"No sync setting found for {serviceType}");
         }
+
+        await audit.LogAsync(AuditAction.SyncModeChanged, "SyncServiceSettings", updated.Id,
+            $"{serviceType} sync mode set to {mode}", actorUserId);
     }
 
 }

@@ -11,11 +11,11 @@ namespace Humans.Expenses.Services;
 /// report, and differ when a finance admin files or fixes one on a member's behalf. Every mutation
 /// therefore takes <c>actorUserId</c> plus <c>actorIsFinanceAdmin</c> — the caller's authority,
 /// resolved at the controller (design-rules §6), mirroring
-/// <see cref="IExpenseReportServiceRead.GetReviewQueueAsync"/>. Set it and the ownership match is
+/// <see cref="IExpenseReportService.GetReviewQueueAsync"/>. Set it and the ownership match is
 /// waived and the editable window widens from Draft to Draft/Submitted/CoordinatorEndorsed; the
 /// checks are defence in depth behind the resource-based handler, not the primary gate.</para>
 /// </remarks>
-internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
+internal interface IExpenseReportManagement : IExpenseReportService, IApplicationService
 {
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
@@ -114,6 +114,20 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
 
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Declines one line, with a reason: it stays on the report but leaves <c>Total</c> and
+    /// <c>Payable</c> and is never pushed to Holded. The cap is untouched. Open to whoever holds
+    /// Endorse or Approve on the report while it awaits their decision; proof rows are not declinable.
+    /// </summary>
+    Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        CancellationToken ct = default);
+
+    /// <summary>Undoes a decline under the same conditions that allow one.</summary>
+    Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set; a non-null

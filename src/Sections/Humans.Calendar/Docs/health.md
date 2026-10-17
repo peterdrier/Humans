@@ -43,7 +43,7 @@ Every externally reachable thing, grouped by the question it answers.
 
 | Question-shape | Surfaces answering it | Notes |
 |---|---|---|
-| *What is scheduled between these two instants (optionally for one team)?* | The routes `/Calendar`, `/Calendar/List`, `/Calendar/Agenda`, `/Calendar/Team/{teamId}`, plus `ICalendarServiceRead.GetOccurrencesInWindowAsync` | They differ in how the window is derived and how it is rendered. Nothing else. |
+| *What is scheduled between these two instants (optionally for one team)?* | The routes `/Calendar`, `/Calendar/List`, `/Calendar/Agenda`, `/Calendar/Team/{teamId}`, plus `ICalendarQueries.GetOccurrencesInWindowAsync` | They differ in how the window is derived and how it is rendered. Nothing else. |
 | *What is this one entry?* | `/Calendar/Event/{id}` route; `GetEventByIdAsync` (UI projection) and `GetEventInfoAsync` / `GetAllEventInfosAsync` (cache projections) | One question, several projections of it — all but the UI one exist for the cache, not for a caller. |
 | *Change a whole entry* | `Event/Create`, `Event/{id}/Edit`, `Event/{id}/Delete`; `CreateEventWithResultAsync` / `UpdateEventWithResultAsync` / `DeleteEventAsync` on `ICalendarService` | One silhouette each. Create and update share one input record and are published only in their result-returning form. |
 | *Change one occurrence of a repeating entry* | `Event/{id}/Occurrence/{originalStartUtc}/Edit`, `.../Cancel`; `OverrideOccurrenceAsync`, `CancelOccurrenceAsync` | Both are one upsert against the occurrence's identity with a different field-setter. The identity is a date for an all-day series and an instant for a timed one. |
@@ -216,7 +216,7 @@ Settled decisions. Later runs should stop re-litigating these.
   feed would silently lose someone's commitments, so it throws; a broken contributor must not
   take down the whole community calendar, so the community window logs and skips it.
 - **The caching decorator answers the window and detail reads from its snapshot, and it is the
-  only implementation of them.** `ICalendarServiceRead` is deliberately not part of
+  only implementation of them.** `ICalendarQueries` is deliberately not part of
   `ICalendarService`: the keyed inner would only be able to implement it with code nothing can
   reach. `GetAllAsync` is the only bulk read, and `CalendarOccurrenceExpander.FilterForWindow`
   the only window prefilter.

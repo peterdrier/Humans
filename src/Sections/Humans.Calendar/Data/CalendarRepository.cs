@@ -142,21 +142,21 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         return row?.Token;
     }
 
-    public async Task<Guid> GetOrAddFeedTokenAsync(
+    public async Task<(Guid Token, bool Created)> GetOrAddFeedTokenAsync(
         Guid userId, Guid candidate, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         if (await ctx.CalendarFeedTokens.AsNoTracking()
                 .FirstOrDefaultAsync(t => t.UserId == userId, ct) is { } existing)
         {
-            return existing.Token;
+            return (existing.Token, false);
         }
 
         ctx.CalendarFeedTokens.Add(new CalendarFeedToken { UserId = userId, Token = candidate });
         try
         {
             await ctx.SaveChangesAsync(ct);
-            return candidate;
+            return (candidate, true);
         }
         catch (DbUpdateException)
         {
@@ -172,7 +172,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
             // Nothing there means the write failed for some other reason, which is
             // not ours to swallow.
             if (winner is null) throw;
-            return winner.Token;
+            return (winner.Token, false);
         }
     }
 

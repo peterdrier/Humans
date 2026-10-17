@@ -33,7 +33,7 @@ internal sealed partial class PreapprovalService(
     PreapprovalsEmails emailFactory,
     IAuditLogService auditLog,
     IClock clock,
-    ILogger<PreapprovalService> logger) : IPreapprovalManagementService
+    ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 

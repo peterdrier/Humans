@@ -132,7 +132,7 @@ purchase doc carrying its description + amount. No special handling.
 
 ### Reuse — the math already exists
 
-`IExpenseReportServiceRead.GetHoldedTimelineAsync(report)` already returns, for the
+`IExpenseReportService.GetHoldedTimelineAsync(report)` already returns, for the
 submitter's creditor account:
 
 - `OwedToMember` — the Holded creditor balance = the **IOU**
@@ -156,7 +156,7 @@ Surface the rows without adding an interface method:
 - Extend `ExpenseHoldedTimeline` with `IReadOnlyList<HoldedPaymentInfo> Payments`
   (`GetHoldedTimelineAsync` maps `status.Payments` through).
 
-**No new method on any `*ServiceRead` interface** → `IExpenseReportServiceRead`'s
+**No new method on any `*ServiceRead` interface** → `IExpenseReportService`'s
 `[SurfaceBudget(7)]` is preserved. (Decision flagged for sign-off.)
 
 ### Controller / view
@@ -178,7 +178,7 @@ Surface the rows without adding an interface method:
 
 ### Cross-section integrity
 
-The controller calls only `IExpenseReportServiceRead` (own section). The Expenses *service*
+The controller calls only `IExpenseReportService` (own section). The Expenses *service*
 calls `IHoldedFinanceService.GetCreditorStatusAsync` — a dependency that **already exists**
 (documented tech debt in `Expenses.md` / `Finance.md`). No new cross-section call is added;
 only the returned DTO grows. Holded boundary unchanged (read-only cache).
@@ -195,9 +195,9 @@ only the returned DTO grows. Holded boundary unchanged (read-only cache).
 - `Services/Finance/Dtos/HoldedPaymentInfo.cs` (new record) ·
   `HoldedCreditorStatus.Payments` · `ExpenseHoldedTimeline.Payments` (record extensions).
 - `ExpenseLineDto.LineType` (DTO field).
-- `IExpenseReportService` (mutation interface) gains
+- `IExpenseReportManagement` (mutation interface) gains
   `AddMileageLineWithResultAsync(...)` and `AddPerDiemLineWithResultAsync(...)`.
-  *(No change to `IExpenseReportServiceRead`.)*
+  *(No change to `IExpenseReportService`.)*
 
 **Infrastructure**
 - EF mapping for `ExpenseLine.LineType` + one migration.

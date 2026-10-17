@@ -1265,4 +1265,5 @@
   <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
     <value>Torn eliminat.</value>
   </data>
+  <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Selecciona dies del calendari de l’esdeveniment.</value></data>
 </root>

@@ -253,10 +253,11 @@ public sealed class GrantTests : PreapprovalsTestHarness
     // ── Revoke ────────────────────────────────────────────────────────────
 
     [HumansTheory]
-    [Xunit.InlineData(GrantStatus.Open)]
-    [Xunit.InlineData(GrantStatus.Claimed)]
-    public async Task Revoke_KeepsAmountAndReport_ResolvesFileBy_NotifiesHolder(GrantStatus status)
+    [Xunit.InlineData((int)GrantStatus.Open)]
+    [Xunit.InlineData((int)GrantStatus.Claimed)]
+    public async Task Revoke_KeepsAmountAndReport_ResolvesFileBy_NotifiesHolder(int statusValue)
     {
+        var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
         var person = SeedUser("Person");
         var reportId = status == GrantStatus.Claimed ? Guid.NewGuid() : (Guid?)null;
@@ -281,12 +282,13 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData(GrantStatus.Applied)]
-    [Xunit.InlineData(GrantStatus.Consumed)]
-    [Xunit.InlineData(GrantStatus.Declined)]
-    [Xunit.InlineData(GrantStatus.Revoked)]
-    public async Task Revoke_AndChangeAmount_RefusedOutsideOpenOrClaimed(GrantStatus status)
+    [Xunit.InlineData((int)GrantStatus.Applied)]
+    [Xunit.InlineData((int)GrantStatus.Consumed)]
+    [Xunit.InlineData((int)GrantStatus.Declined)]
+    [Xunit.InlineData((int)GrantStatus.Revoked)]
+    public async Task Revoke_AndChangeAmount_RefusedOutsideOpenOrClaimed(int statusValue)
     {
+        var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, status: status);
         var service = NewService();

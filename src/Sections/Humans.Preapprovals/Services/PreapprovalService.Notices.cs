@@ -1,6 +1,8 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Domain;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
@@ -63,11 +65,11 @@ internal sealed partial class PreapprovalService
     /// <summary>Declined, revoked, amount changed: informational, no source key.</summary>
     private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct) =>
         NotifyAsync([info.BeneficiaryUserId], NotificationSource.PreapprovalGrantDecided,
-            info.Status == Contracts.GrantStatus.Revoked && info.ExpenseReportId is not null
+            info.Status == GrantStatus.Revoked && info.ExpenseReportId is not null
                 ? NotificationClass.Actionable
                 : NotificationClass.Informational,
             NotificationPriority.Normal, titleKey, info, "Preapprovals_Notice_Decided_Body",
-            info.Status == Contracts.GrantStatus.Revoked && info.ExpenseReportId is { } reportId
+            info.Status == GrantStatus.Revoked && info.ExpenseReportId is { } reportId
                 ? $"/Expenses/{reportId}"
                 : MemberUrl(info.ProgramId),
             sourceKey: null, ct, detail);

@@ -20,7 +20,7 @@ namespace Humans.Preapprovals.Controllers;
 [Authorize(Policy = PreapprovalsPolicies.Manage)]
 [Route("Preapprovals/Admin")]
 internal sealed class PreapprovalsAdminController(
-    IPreapprovalManagementService preapprovals,
+    IPreapprovalManagement preapprovals,
     IUserServiceRead users,
     IHoldedFinanceServiceRead finance,
     IStringLocalizer<PreapprovalsResource> localizer,

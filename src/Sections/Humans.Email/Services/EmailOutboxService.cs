@@ -1,7 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
-using Humans.Base.Attributes;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
@@ -9,12 +8,13 @@ using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Email.Services;
 
 /// <summary>
-/// The implementation of <see cref="IEmailOutboxService"/>:
+/// The implementation of <see cref="IEmailOutboxManagement"/>:
 /// admin-dashboard reads (stats, recent messages, per-user history) and admin
 /// writes (retry, discard, pause/resume) over <see cref="IEmailOutboxRepository"/>.
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
@@ -23,13 +23,12 @@ namespace Humans.Email.Services;
 /// <see cref="IEmailOutboxRetention"/>. Also the section's GDPR fan-out member:
 /// outbox rows are user-scoped personal data (address, name, rendered body).
 /// </summary>
-[CrossSectionWrite("Email owns the IsEmailSendingPaused flag; the Settings key/value store is where it is kept.")]
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
     IClock clock,
-    IAuditLogService audit) : IEmailOutboxService, IUserDataContributor
+    IAuditLogService audit) : IEmailOutboxManagement, IUserDataContributor, IUserMerge
 {
     internal const string EmailOutbox = "EmailOutbox";
 
@@ -230,6 +229,10 @@ internal sealed class EmailOutboxService(
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repo.DeleteForUserAsync(userId, ct);
+
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
+        CancellationToken ct) =>
+        repo.ReassignToUserAsync(mergedFromUserId, mergedToUserId, ct);
 
     private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
         message.Id,

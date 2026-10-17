@@ -11,7 +11,3 @@ inbox:
     id: CITY-6
     what: "CityPlanningController.ContainerMap takes a {year} route value but decides whether a lead may open the map from the public year's settings (GetSettingsAsync with no year), while every placement write it drives authorizes Place against the route year through Containers' handler. For a non-public year the page gate and the write gate can disagree: a lead is let in to a map whose writes all 403, or refused a map whose writes would succeed. Pass the route year to the phase check. Same year-specific family Peter deferred to winter under CITY-1. Found by /section-doctor on Containers 2026-10-15."
     review: light
-  - added: 2026-10-15
-    id: CITY-7
-    what: "Docs drift in this section about containers: CityPlanning.md's glossary says the container placement phase gates whether leads can add, edit or delete containers, but container CRUD is the Manage operation and is never phase-gated (Containers health.md, Peter 2026-08-16); only placement, notes and clear are. CityPlanning health.md invariant 5 cites a stale CityPlanningApiController line for the Place check. Found by /section-doctor on Containers 2026-10-15."
-    review: light

@@ -1,10 +1,13 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
-/// The cross-section read surface of Preapprovals. Expenses lists a member's claimable grants
-/// on its forms and reads one back by id; nothing here changes state.
+/// The public read contract: the grant reads an expense form needs, a member's claimable grants
+/// and one grant by id. Nothing here changes state; the transitions Expenses drives are on
+/// <see cref="IPreapprovalWrite"/>. Everything else the section does is internal.
 /// </summary>
-public interface IPreapprovalServiceRead
+public interface IPreapprovalService : IApplicationService
 {
     /// <summary>
     /// The grants <paramref name="userId"/> may file against today: <see cref="GrantStatus.Open"/>

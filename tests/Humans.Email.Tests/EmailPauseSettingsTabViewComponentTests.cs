@@ -16,7 +16,7 @@ public sealed class EmailPauseSettingsTabViewComponentTests
 {
     private static async Task<EmailPauseSettingsTabViewModel> InvokeAsync(bool isPaused)
     {
-        var outbox = Substitute.For<IEmailOutboxService>();
+        var outbox = Substitute.For<IEmailOutboxManagement>();
         outbox.IsEmailPausedAsync(Arg.Any<CancellationToken>()).Returns(isPaused);
 
         var sut = new EmailPauseSettingsTabViewComponent(outbox)

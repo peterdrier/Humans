@@ -142,11 +142,13 @@ internal static class PersonSearchMatcher
             return string.Empty;
 
         var index = CultureInfo.InvariantCulture.CompareInfo.IndexOf(text, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
-        if (index < 0)
-            return text.Length <= contextChars * 2 ? text : text[..(contextChars * 2)] + "...";
-
-        var start = Math.Max(0, index - contextChars);
-        var end = Math.Min(text.Length, index + query.Length + contextChars);
+        var start = index < 0 ? 0 : Math.Max(0, index - contextChars);
+        var end = Math.Min(text.Length, index < 0 ? contextChars * 2 : index + query.Length + contextChars);
+        // A context edge may fall between the UTF-16 halves of one character.
+        if (start > 0 && char.IsLowSurrogate(text[start]) && char.IsHighSurrogate(text[start - 1]))
+            start--;
+        if (end < text.Length && char.IsHighSurrogate(text[end - 1]) && char.IsLowSurrogate(text[end]))
+            end++;
         var snippet = text[start..end];
         if (start > 0) snippet = "..." + snippet;
         if (end < text.Length) snippet += "...";

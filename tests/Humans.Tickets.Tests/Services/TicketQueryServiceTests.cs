@@ -22,7 +22,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 {
     private readonly TicketRepository _repo;
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
-    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ICampaignServiceRead _campaignService = Substitute.For<ICampaignServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();

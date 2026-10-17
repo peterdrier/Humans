@@ -10,7 +10,7 @@
         TabsId = "contentTabs",
         ContentId = "contentTabsContent",
         DefaultLanguage = defaultLang,
-        EmptyMessage = Localizer["ConsentReview_ContentNotAvailable"].Value,
+        EmptyMessage = Localizer["Consent_Review_ContentNotAvailable"].Value,
         ContentCssClass = "tab-content border border-top-0 p-4 bg-white"
     };
 
@@ -21,18 +21,18 @@
         var culture = new System.Globalization.CultureInfo(lang.Key);
         consentTranslations[lang.Key] = new
         {
-            checkbox = rm.GetString("ConsentReview_ConsentCheckbox", culture) ?? "",
-            legalNote = rm.GetString("ConsentReview_SpanishLegalNote", culture) ?? "",
-            validationMsg = rm.GetString("ConsentReview_CheckboxRequired", culture) ?? ""
+            checkbox = rm.GetString("Consent_Review_ConsentCheckbox", culture) ?? "",
+            legalNote = rm.GetString("Consent_Review_SpanishLegalNote", culture) ?? "",
+            validationMsg = rm.GetString("Consent_Review_CheckboxRequired", culture) ?? ""
         };
     }
-    var spanishLegalNote = rm.GetString("ConsentReview_SpanishLegalNote", new System.Globalization.CultureInfo("es")) ?? "";
+    var spanishLegalNote = rm.GetString("Consent_Review_SpanishLegalNote", new System.Globalization.CultureInfo("es")) ?? "";
 }
 
 @if (!string.IsNullOrEmpty(Model.ChangesSummary))
 {
     <div class="alert alert-info">
-        <strong>@Localizer["ConsentReview_ChangesInVersion"]</strong> @Model.ChangesSummary
+        <strong>@Localizer["Consent_Review_ChangesInVersion"]</strong> @Model.ChangesSummary
     </div>
 }
 
@@ -43,7 +43,7 @@
 else
 {
     <div class="alert alert-secondary">
-        <p class="text-muted mb-0">@Localizer["ConsentReview_ContentNotAvailable"]</p>
+        <p class="text-muted mb-0">@Localizer["Consent_Review_ContentNotAvailable"]</p>
     </div>
 }
 
@@ -54,12 +54,12 @@ else
 
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" name="ExplicitConsent" value="true" id="explicitConsent"
-                       data-val-required="@Localizer["ConsentReview_CheckboxRequired"]">
+                       data-val-required="@Localizer["Consent_Review_CheckboxRequired"]">
                 <label class="form-check-label" for="explicitConsent">
-                    <strong id="consent-checkbox-text">@Localizer["ConsentReview_ConsentCheckbox"]</strong>
+                    <strong id="consent-checkbox-text">@Localizer["Consent_Review_ConsentCheckbox"]</strong>
                     <br />
                     <small class="text-muted" id="consent-legal-note">
-                        @Localizer["ConsentReview_SpanishLegalNote"]
+                        @Localizer["Consent_Review_SpanishLegalNote"]
                     </small>
                 </label>
             </div>

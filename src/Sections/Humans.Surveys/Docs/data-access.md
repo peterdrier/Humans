@@ -80,7 +80,7 @@ side-effect-free survey invitation preview to the requesting Board/Admin
 user, reusing the production invitation template/transport but creating no
 invitation, response, or funnel row. Calls `ISurveyService` (own section,
 for the survey content), `IUserEmailService` / `IUserServiceRead` (Users),
-`IEmailService` / `IEmailPreviewServiceRead` (Email — both via public service
+`IEmailService` / `IEmailPreviewService` (Email — both via public service
 interfaces) plus the section's own `SurveysEmails`, and `SurveyPreviewTokenProvider`
 (local, HMAC preview tokens).
 

@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -26,11 +25,10 @@ namespace Humans.Expenses.Services;
 /// Expenses' application service: the report state machine over the section's repository,
 /// and the GDPR export contributor.
 /// </summary>
-[CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,
-    IBudgetServiceRead budgetService,
+    IBudgetService budgetService,
     ITeamServiceRead teamService,
     IUserService userService,
     IUserEmailService userEmailService,
@@ -40,9 +38,10 @@ internal sealed class ExpenseReportService(
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IPreapprovalService preapprovals,
+    IPreapprovalWrite preapprovalWrites,
     IClock clock,
     ILogger<ExpenseReportService> logger,
-    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
+    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
         IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";
@@ -410,7 +409,7 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                await preapprovals.ReleaseAsync(releasedId, reportId, actorUserId, ct);
+                await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
                 await repo.UpdateDraftAsync(updated, ct);
                 scope.Complete();
             }
@@ -796,6 +795,14 @@ internal sealed class ExpenseReportService(
             }
         }
 
+        // A new file answers a decline: the line is back in the total for the reviewer to judge
+        // again. Cleared only once the upload and its audit have stuck, so a rolled-back upload
+        // never leaves a declined line payable.
+        if (line.Declined)
+            await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: false, reason: null, byUserId: null,
+                clock.GetCurrentInstant(), CancellationToken.None);
+
         return null;
     }
 
@@ -863,6 +870,11 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
             if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
+            // The Subject carries the project name; reviewers cannot tell what was paid for without it.
+            // A pre-approved report is no exception: the grant's label only prefills the field on the new form.
+            if (string.IsNullOrWhiteSpace(report.Note))
+                return ExpenseMutationResult.Failure("Expenses_Validation_SubjectRequired");
+
             if (!report.Lines.Any())
                 return ExpenseMutationResult.Failure("Expenses_Validation_ReportNeedsLine");
 
@@ -906,7 +918,7 @@ internal sealed class ExpenseReportService(
                 GrantStamp stamp;
                 try
                 {
-                    stamp = await preapprovals.ClaimAsync(grantId, reportId, actorUserId, ct);
+                    stamp = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -939,7 +951,7 @@ internal sealed class ExpenseReportService(
 
     /// <summary>
     /// Why the submitter cannot claim their pre-approval now, as a member-facing refusal, or null when
-    /// the claim should be attempted. Mirrors <see cref="IPreapprovalService.ClaimAsync"/>'s rules:
+    /// the claim should be attempted. Mirrors <see cref="IPreapprovalWrite.ClaimAsync"/>'s rules:
     /// the report already holding the grant resubmits past the deadline; anyone else is refused.
     /// </summary>
     private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
@@ -990,7 +1002,7 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                await preapprovals.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
+                await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
                 var ok = await repo.WithdrawAsync(reportId, now, ct);
                 if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
                 scope.Complete();
@@ -1217,6 +1229,96 @@ internal sealed class ExpenseReportService(
 
         }, "Error coordinator-rejecting expense report {ReportId}", reportId);
 
+    public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, async () =>
+        {
+            var trimmed = reason?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return ExpenseMutationResult.OperatorFailure("A reason is required to decline a line.");
+            if (trimmed.Length > DeclineReasonMaxLength)
+                return ExpenseMutationResult.OperatorFailure(
+                    $"The reason can be at most {DeclineReasonMaxLength} characters.");
+
+            var (_, line, refusal) = await GetDeclinableLineAsync(
+                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            if (refusal is not null) return refusal;
+            if (line!.Declined)
+                return ExpenseMutationResult.OperatorFailure("That line is already declined.");
+
+            var ok = await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: true, trimmed, actorUserId, clock.GetCurrentInstant(), ct);
+            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not decline the line.");
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseLineDeclined,
+                AuditEntityTypes.Report, reportId,
+                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} declined line "
+                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
+        }, "Error declining line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, async () =>
+        {
+            var (_, line, refusal) = await GetDeclinableLineAsync(
+                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            if (refusal is not null) return refusal;
+            if (!line!.Declined)
+                return ExpenseMutationResult.OperatorFailure("That line is not declined.");
+
+            var ok = await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: false, reason: null, byUserId: null, clock.GetCurrentInstant(), ct);
+            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not undo the decline.");
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseLineDeclineUndone,
+                AuditEntityTypes.Report, reportId,
+                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} undid the decline of line "
+                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
+                    + $"it had been declined: {line.DeclinedReason}",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
+        }, "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
+
+    private const int DeclineReasonMaxLength = 1000;
+
+    /// <summary>
+    /// The service-side half of the DeclineLine gate (the resource-based handler is the first): the
+    /// report must still await a decision — a coordinator holds Endorse only while Submitted, a
+    /// finance admin through CoordinatorEndorsed — and the line must be a top-level one on this
+    /// report. Proof rows are display-only and never declinable.
+    /// </summary>
+    private async Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
+        GetDeclinableLineAsync(
+            Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct)
+    {
+        const string cannot = "Could not change the line. The report may no longer be awaiting a decision.";
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
+
+        var open = actorIsFinanceAdmin
+            ? report.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
+            : report.Status is ExpenseReportStatus.Submitted;
+        if (!open) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
+
+        if (!actorIsFinanceAdmin
+            && await GetCoordinatorRefusalAsync(report.BudgetCategoryId, actorUserId, ct) is { } coordinatorRefusal)
+            return (null, null, coordinatorRefusal);
+
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null) return (null, null, ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport"));
+        if (line.ParentLineId is not null)
+            return (null, null, ExpenseMutationResult.OperatorFailure("Proof rows cannot be declined; decline the invoice line instead."));
+        return (report, line, null);
+    }
+
     /// <summary>
     /// Tells the submitter their report was approved (peterdrier/Humans#1820). Re-reads the
     /// report after the flip so the amount is the DTO's own <c>Payable</c> — the cap the approver
@@ -1296,7 +1398,7 @@ internal sealed class ExpenseReportService(
                     TransactionScopeAsyncFlowOption.Enabled);
                 try
                 {
-                    await preapprovals.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
+                    await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -1522,6 +1624,8 @@ internal sealed class ExpenseReportService(
             AuditAction.ExpensePaid,
             AuditAction.ExpenseAttachmentUploaded,
             AuditAction.ExpenseAttachmentRemoved,
+            AuditAction.ExpenseLineDeclined,
+            AuditAction.ExpenseLineDeclineUndone,
             AuditAction.IbanSet,
             AuditAction.IbanRemove,
             AuditAction.IbanReveal,
@@ -1573,6 +1677,9 @@ internal sealed class ExpenseReportService(
                     l.LineType,
                     l.ParentLineId,
                     l.SortOrder,
+                    l.Declined,
+                    l.DeclinedReason,
+                    DeclinedAt = l.DeclinedAt?.ToIso8601(),
                     Attachment = l.Attachment is null
                         ? null
                         : new

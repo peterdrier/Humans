@@ -35,7 +35,7 @@ namespace Humans.Consent.Tests.Controllers;
 public sealed class ConsentControllerTests
 {
     private readonly UserManager<User> _userManager;
-    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly IConsentManagement _consentService = Substitute.For<IConsentManagement>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =

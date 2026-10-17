@@ -21,7 +21,7 @@ internal sealed class ScannerController(
     ITicketServiceRead tickets,
     IUserServiceRead users,
     IEarlyEntryService earlyEntry,
-    IConsentServiceRead consents,
+    IConsentService consents,
     IICalFeedService calendarFeed,
     IEventServiceRead events,
     ISettingsService settingsService) : Controller
