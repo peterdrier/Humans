@@ -199,7 +199,7 @@ public class GoogleControllerSyncCancellationTests
             _resources,
             Substitute.For<IEmailProvisioningService>(),
             _admin,
-            Substitute.For<IGoogleSyncLogViewer>(),
+            Substitute.For<IGoogleSyncLogService>(),
             _logger);
 
         var aborted = new CancellationTokenSource();

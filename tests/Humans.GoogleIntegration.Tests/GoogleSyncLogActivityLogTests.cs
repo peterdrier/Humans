@@ -33,19 +33,19 @@ public sealed class GoogleSyncLogActivityLogTests
         Instant at, GoogleSyncLogAction action = GoogleSyncLogAction.AccessGranted,
         GoogleSyncSource source = GoogleSyncSource.ScheduledSync, bool success = true, Guid? resourceId = null,
         string description = "Sync: x") => new()
-    {
-        Id = Guid.NewGuid(),
-        Action = action,
-        ResourceId = resourceId ?? Guid.NewGuid(),
-        UserId = Guid.NewGuid(),
-        UserEmail = "member@example.com",
-        Role = "reader",
-        Source = source,
-        Success = success,
-        Description = description,
-        JobName = "Sync",
-        OccurredAt = at
-    };
+        {
+            Id = Guid.NewGuid(),
+            Action = action,
+            ResourceId = resourceId ?? Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            UserEmail = "member@example.com",
+            Role = "reader",
+            Source = source,
+            Success = success,
+            Description = description,
+            JobName = "Sync",
+            OccurredAt = at
+        };
 
     [HumansFact]
     public async Task GetRecentAsync_NoFilters_ReturnsNewestFirstAcrossResources()

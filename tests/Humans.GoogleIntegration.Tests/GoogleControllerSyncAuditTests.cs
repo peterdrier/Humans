@@ -17,7 +17,7 @@ public sealed class GoogleControllerSyncAuditTests
 {
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
-    private readonly IGoogleSyncLogViewer _syncLog = Substitute.For<IGoogleSyncLogViewer>();
+    private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
 
     [HumansFact]
     public async Task Resource_WithUnknownId_ReturnsNotFound()

@@ -21,7 +21,7 @@ internal sealed class GoogleController(
     ITeamResourceService teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
-    IGoogleSyncLogViewer syncLogViewer,
+    IGoogleSyncLogService syncLog,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Resource/{id:guid}")]
@@ -121,7 +121,7 @@ internal sealed class GoogleController(
         NodaTime.LocalDate? from, NodaTime.LocalDate? to, GoogleSyncLogAction? action,
         GoogleSyncSource? source, bool? success, string? resource)
     {
-        var entries = await syncLogViewer.GetRecentAsync(
+        var entries = await syncLog.GetRecentAsync(
             from?.AtStartOfDayInZone(NodaTime.DateTimeZone.Utc).ToInstant(),
             to?.PlusDays(1).AtStartOfDayInZone(NodaTime.DateTimeZone.Utc).ToInstant(),
             action, source, success, resource, HttpContext.RequestAborted);
