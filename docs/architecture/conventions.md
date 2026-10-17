@@ -299,7 +299,7 @@ Stop and reconsider when a change introduces any of these:
 **Service / persistence smells:**
 - a new service placed in `Humans.Web/Services/` instead of the owning section project's `Services/`
 - a service that injects an application `DbContext` (any per-section context) directly instead of going through its owning repository
-- a service that injects another domain's repository (should call the other domain's `I{Section}ServiceRead` interface instead)
+- a service that injects another domain's repository (should call the other domain's `I{Section}Service` interface instead)
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)
 - a repository method that takes or returns another domain's type
 - a repository method that returns `IQueryable<T>`

@@ -12,7 +12,7 @@
 # where an item is written. `themes:` stays central — rotation state is global.
 # Entries already in `inbox:` are left where they are; rotation drains them.
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
-# HUM0009, HUM0020, HUM0025, HUM0032 (HUM0029 retired). The staleness check re-creates
+# HUM0009, HUM0020, HUM0025 (HUM0029, HUM0032 retired). The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
 # Deliberately excluded from staleness/inventory (not fixable debt):
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration

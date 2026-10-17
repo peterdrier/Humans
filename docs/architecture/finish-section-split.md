@@ -49,7 +49,7 @@ Done when required member operations, the profile page and the admin member page
 - [ ] Settle the open design in nobodies-collective/Humans#799 first: failure semantics (a failing subscriber must not fail the writer), handler lifetimes, and whether publish happens inside or after the writer's transaction. Then land it: a writer publishes a fact about its own domain; caches subscribe. No writer names another section's invalidator.
 - [ ] Migrate every `I<X>Invalidator` injection site and retire the interfaces as their last subscriber moves. The HUM0028 grandfathers go with them (`grandfathered-hum0028-invalidators` in the debt ledger).
 
-Done when no section injects another section's invalidator, `[CrossSectionWrite]` sites that existed only to flush a cache are gone, and package 1's Users flushes and package 8's connector flushes ride the bus. Prerequisite for the done-state of packages 1 and 8.
+Done when no section injects another section's invalidator, cross-section writes that existed only to flush a cache are gone, and package 1's Users flushes and package 8's connector flushes ride the bus. Prerequisite for the done-state of packages 1 and 8.
 
 ### 3. Complete event-settings ownership
 
@@ -106,7 +106,7 @@ Done when removing an optional integration or campaign domain leaves generic not
 
 ### 9. Let the compiler enforce the boundary
 
-- [ ] Internalize implementation-only write interfaces and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058). A write another section genuinely needs stays on the public contract, reviewed; what becomes a compile error is reaching a write nobody agreed to export.
+- [ ] Internalize implementation-only write interfaces as `I<X>Management` and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058); Contracts are the whole public face. A write another section genuinely needs prefers the owning section's own view component; `I<X>Write` is the reviewed fallback; what becomes a compile error is reaching a write nobody agreed to export.
 - [ ] Fold the `.Contracts` leaves no cycle pins (nobodies-collective/Humans#1066, #1041) and retire the analyzers, baselines and `[Grandfathered]` entries the assembly boundary subsumes (nobodies-collective/Humans#1010).
 
 Done when a section's public surface is its `Contracts/` folder or leaf plus the exceptions design-rules already enumerates (`Section`, the `<Section>Resource` marker, migrations, `Jobs/`, and framework-discovered view components and tag helpers), and the remaining analyzers are the ones the compiler cannot express.

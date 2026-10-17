@@ -139,7 +139,7 @@ Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven
 
 ## Taste
 
-- Width is a cost. The best cross-section feature is the one that touches the fewest lanes, through the narrowest interfaces (`I<Section>ServiceRead` for cross-section reads).
+- Width is a cost. The best cross-section feature is the one that touches the fewest lanes, through the narrowest interfaces (`I<Section>Service` for cross-section reads, `I<Section>Write` only where a write is unavoidable).
 - Reuse before adding ([`reuse-first-change-discipline`](memory/process/reuse-first-change-discipline.md)). Before any new file, public type, interface method, DTO, helper, endpoint, or DI registration: audit the existing owner and prefer reuse or caller-side composition. New public surface needs Peter's approval, and you should say which existing options you rejected and why.
 - Think before coding. Don't assume, don't hide confusion, surface tradeoffs. State your assumptions; if multiple interpretations exist, present them instead of picking silently; if a simpler approach exists, say so and push back.
 - Minimum code that solves the problem. No speculative flexibility, no abstractions for single-use code. If you wrote 200 lines and it could be 50, rewrite it.
