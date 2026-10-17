@@ -5,6 +5,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -260,9 +262,12 @@ public sealed class TicketTransferServiceTests
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
         _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
-            .Returns(_ => Task.FromCanceled(aborted.Token));
+            .Returns(async _ =>
+            {
+                await aborted.CancelAsync();
+                throw new OperationCanceledException(aborted.Token);
+            });
 
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token);
@@ -328,6 +333,63 @@ public sealed class TicketTransferServiceTests
         (await act()).RefusalKey.Should().Be("TicketTransfer_AlreadyPending");
         await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateRequest_ConcurrentPosts_CreateOnlyOnePendingRequest()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        var pause = new PauseFirstTransferSave();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var repository = new TicketTransferRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var request = new TicketTransferRequestDto(_attendeeId, _receiverId, "Please transfer");
+        var first = CreateService(repository).CreateRequestAsync(request, _senderId, ct);
+        Task<TicketTransferMutationResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first request save must be paused");
+            second = CreateService(repository).CreateRequestAsync(request, _senderId, ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        await using var db = new TicketsDbContext(options);
+        var stored = (await db.TicketTransferRequests.ToListAsync(ct)).Should().ContainSingle().Subject;
+        stored.OriginalTicketAttendeeId.Should().Be(_attendeeId);
+        stored.Status.Should().Be(TicketTransferStatus.Pending);
+        results.Should().ContainSingle(result => result.Transfer != null);
+        results.Should().ContainSingle(result => string.Equals(
+            result.RefusalKey, "TicketTransfer_AlreadyPending", StringComparison.Ordinal));
+        _auditLog.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetArguments().OfType<AuditAction>().Contains(AuditAction.TicketTransferRequested));
+    }
+
+    private sealed class PauseFirstTransferSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<TicketTransferRequest>()
+                    .Any(entry => entry.State == EntityState.Added)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     // ── CancelAsync ─────────────────────────────────────────────────────────────
@@ -978,9 +1040,9 @@ public sealed class TicketTransferServiceTests
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
-    private TicketTransferService CreateService() =>
+    private TicketTransferService CreateService(ITicketTransferRepository? transferRepository = null) =>
         new(
-            _transferRepo,
+            transferRepository ?? _transferRepo,
             _ticketRepo,
             Substitute.For<ITicketService>(),
             _vendor,

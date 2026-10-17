@@ -212,6 +212,8 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`
 
+Transfer creation holds the existing in-process gate by attendee ID from validation through persistence, so concurrent requests cannot create two Pending transfers for one ticket; the loser receives the existing already-pending refusal. Decisions continue to use the request ID.
+
 **Authorization note:** transfer authorization is **service-level** — `TicketTransferService` validates ownership and state (e.g. requester owns the attendee, attendee is `Valid`, one pending at a time) in `CreateRequestAsync`, `CancelAsync`, etc. No dedicated `AuthorizationHandler` was added: the controller surface is small and the service guards are sufficient. If a non-controller surface (CLI, internal API) is added in a future PR, a `TicketTransferAuthorizationHandler` should be introduced then.
 
 **Vendor connectors — their own section, `Humans.TicketTailor`:**
