@@ -236,6 +236,35 @@ public class AccountControllerOAuthReconcileTests
 
     // ─── Path 3: lockout-relink ──────────────────────────────────────────────
 
+    [HumansTheory]
+    [Xunit.InlineData("session", UserState.Deleted)]
+    [Xunit.InlineData("email", UserState.Merged)]
+    [Xunit.InlineData("relink", UserState.Deleted)]
+    public async Task OAuthLink_TerminalTarget_DoesNotRecreateCredentials(string path, UserState state)
+    {
+        const string email = "old@example.com";
+        var target = new User { Id = Guid.NewGuid(), State = state };
+        _signInManager.GetExternalLoginInfoAsync().Returns(MakeInfo(email, emailVerified: true));
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(string.Equals(path, "relink", StringComparison.Ordinal) ? SignInResult.LockedOut : SignInResult.Failed);
+        _userManager.FindByIdAsync(target.Id.ToString()).Returns(target);
+        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>()).Returns(target);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(new User { Id = Guid.NewGuid(), State = UserState.Merged });
+        _userManager.RemoveLoginAsync(Arg.Any<User>(), Provider, ProviderKey).Returns(IdentityResult.Success);
+        _userManager.AddLoginAsync(target, Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
+        if (string.Equals(path, "session", StringComparison.Ordinal))
+            _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, target.Id.ToString())], "existing-session"));
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Login");
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userManager.DidNotReceiveWithAnyArgs().RemoveLoginAsync(default!, default!, default!);
+        await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
+        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default, default);
+    }
+
     [HumansFact]
     public async Task LockoutRelink_CallsReconcileForActiveTarget()
     {

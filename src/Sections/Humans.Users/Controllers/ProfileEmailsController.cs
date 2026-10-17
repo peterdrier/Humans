@@ -1,4 +1,5 @@
 using Humans.Users.Services;
+using Humans.Users.Domain;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
@@ -1082,7 +1083,7 @@ internal sealed class ProfileEmailsController(
             }).ToList(),
             RawUserEmails = rawUserEmails,
             LinkedAccounts = linkedAccounts,
-            CanAddEmail = canAdd,
+            CanAddEmail = !UserStateEvaluator.IsTombstone(user) && (isAdminContext || canAdd),
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,
             HasNobodiesTeamEmail = hasNobodiesTeam,

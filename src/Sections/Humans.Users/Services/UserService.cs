@@ -6,6 +6,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 using Humans.Base.Helpers;
@@ -724,8 +725,10 @@ internal sealed class UserService(
 
         var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
 
-        _ = await repo.GetByIdAsync(userId, ct)
+        var user = await repo.GetByIdAsync(userId, ct)
             ?? throw new InvalidOperationException("User not found.");
+        if (UserStateEvaluator.IsTombstone(user))
+            throw new InvalidOperationException("Cannot add email addresses to a deleted or merged account.");
 
         var now = clock.GetCurrentInstant();
         var row = new UserEmail
@@ -854,6 +857,11 @@ internal sealed class UserService(
         UserEmailReconcilePlanCommand command,
         CancellationToken ct = default)
     {
+        var user = await repo.GetByIdAsync(userId, ct)
+            ?? throw new InvalidOperationException("User not found.");
+        if (UserStateEvaluator.IsTombstone(user))
+            throw new InvalidOperationException("Cannot reconcile email addresses for a deleted or merged account.");
+
         await repo.ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: command.DisplacedRowToDelete,
             rowToDelete: command.RowToDelete,

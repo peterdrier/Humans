@@ -744,6 +744,43 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         row.IsVerified.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData("deleted", false, false)]
+    [InlineData("merged", true, false)]
+    [InlineData("deleted", true, true)]
+    [InlineData("merged", true, true)]
+    [InlineData("legacy-deleted", false, false)]
+    [InlineData("legacy-merged", true, false)]
+    public async Task EmailInsertion_Tombstone_DoesNotRecreatePersonalData(string kind, bool verified, bool reconcile)
+    {
+        var userId = Guid.NewGuid();
+        var user = SeedUser(userId);
+        user.State = kind switch { "deleted" => UserState.Deleted, "merged" => UserState.Merged, _ => UserState.Bare };
+        if (kind.Contains("deleted", StringComparison.Ordinal)) user.Email = $"deleted-{userId:N}@deleted.local";
+        if (string.Equals(kind, "legacy-merged", StringComparison.Ordinal)) user.Email = $"merged-{userId:N}@merged.local";
+        if (string.Equals(kind, "merged", StringComparison.Ordinal))
+        {
+            user.MergedAt = Clock.GetCurrentInstant();
+            user.MergedToUserId = Guid.NewGuid();
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Func<Task> act = async () =>
+        {
+            if (reconcile)
+                await _service.ApplyUserEmailReconcilePlanAsync(userId, new UserEmailReconcilePlanCommand(null, null, null,
+                    new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "recreated@example.com", IsVerified = verified }),
+                    TestContext.Current.CancellationToken);
+            else
+                await _service.AddUserEmailAsync(userId, new UserEmailAddCommand("recreated@example.com", IsVerified: verified),
+                    TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await Db.UserEmails.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
     {
