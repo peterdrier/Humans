@@ -262,6 +262,7 @@ themes:
 inbox:
   - added: 2026-10-17
     id: CENTRAL-84
-    what: "GdprService calls EmailOutboxService.ContributeForUserAsync once with the survivor id; Email queries only that exact UserId and does not reassign outbox rows on merge, so Article 15 exports omit retained source-account mail. Verified against merge fan-out and EmailOutboxRepository.GetForUserAsync; erasure already visits every chain id. Crosscut purity forbids an Email-to-Users identity lookup, while the shared contributor contract supplies no identity chain."
+    status: partial
+    what: "Historical account merges left source-keyed outbox rows: GdprService calls EmailOutboxService.ContributeForUserAsync once with the survivor id, so Article 15 exports omit that retained mail. The Email IUserMerge hook now reassigns rows for future merges; existing rows still need chain-aware export reads, not a data backfill. Erasure already visits every chain id. Crosscut purity forbids an Email-to-Users identity lookup, while the shared contributor contract supplies no identity chain."
     review: panel
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.

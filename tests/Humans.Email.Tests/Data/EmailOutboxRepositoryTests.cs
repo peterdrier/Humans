@@ -400,6 +400,55 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         remaining.Should().BeEquivalentTo([recentSent.Id, oldFailed.Id, oldQueued.Id]);
     }
 
+    [HumansFact]
+    public async Task ReassignToUserAsync_MovesAllStatusesAndPreservesRowsAndIsIdempotent()
+    {
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        var queued = BuildMessage(userId: sourceId, status: EmailOutboxStatus.Queued);
+        queued.PickedUpAt = now;
+        var sent = BuildMessage(userId: sourceId, status: EmailOutboxStatus.Sent, sentAt: now);
+        var failed = BuildMessage(userId: sourceId, status: EmailOutboxStatus.Failed, retryCount: 3);
+        failed.LastError = "smtp failure";
+        failed.NextRetryAt = now + Duration.FromMinutes(5);
+        var targetRow = BuildMessage(userId: targetId, status: EmailOutboxStatus.Failed, retryCount: 1);
+        var otherRow = BuildMessage(userId: otherId);
+        await _repo.AddAsync(queued, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(sent, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(failed, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(targetRow, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(otherRow, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.ReassignToUserAsync(sourceId, targetId, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignToUserAsync(sourceId, targetId, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignToUserAsync(targetId, targetId, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _dbContext.EmailOutboxMessages.AsNoTracking().ToDictionaryAsync(m => m.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        foreach (var original in new[] { queued, sent, failed })
+        {
+            var persisted = rows[original.Id];
+            persisted.UserId.Should().Be(targetId);
+            persisted.RecipientEmail.Should().Be(original.RecipientEmail);
+            persisted.RecipientName.Should().Be(original.RecipientName);
+            persisted.Subject.Should().Be(original.Subject);
+            persisted.HtmlBody.Should().Be(original.HtmlBody);
+            persisted.PlainTextBody.Should().Be(original.PlainTextBody);
+            persisted.TemplateName.Should().Be(original.TemplateName);
+            persisted.Status.Should().Be(original.Status);
+            persisted.RetryCount.Should().Be(original.RetryCount);
+            persisted.CreatedAt.Should().Be(original.CreatedAt);
+            persisted.SentAt.Should().Be(original.SentAt);
+            persisted.PickedUpAt.Should().Be(original.PickedUpAt);
+            persisted.LastError.Should().Be(original.LastError);
+            persisted.NextRetryAt.Should().Be(original.NextRetryAt);
+        }
+        rows[targetRow.Id].UserId.Should().Be(targetId);
+        rows[otherRow.Id].UserId.Should().Be(otherId);
+    }
+
     // ==========================================================================
     // Daily send counts (#1195)
     // ==========================================================================
