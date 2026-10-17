@@ -1,6 +1,8 @@
 using Xunit;
 using System.Security.Cryptography;
 using Humans.Consent.Services;
+using Humans.Consent.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,7 @@ namespace Humans.Consent.Tests.Services;
 public sealed class ConsentServiceTests : ConsentTestHarness
 {
     private readonly ConsentService _service;
+    private readonly IConsentCacheInvalidator _consentCacheInvalidator = Substitute.For<IConsentCacheInvalidator>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
@@ -90,6 +93,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         _service = new ConsentService(
             consentRepository,
+            _consentCacheInvalidator,
             _legalDocumentSyncService,
             _notificationInboxService,
             _humanLifecycleService,
@@ -114,6 +118,39 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_FinalSignature_RestoresSuspensionWithAWarmConsentCache()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _service);
+        services.AddScoped<IUserServiceRead>(_ => _userService);
+        using var provider = services.BuildServiceProvider();
+        var cached = new CachingConsentService(_legalDocumentSyncService, Clock,
+            provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<CachingConsentService>.Instance);
+        _consentCacheInvalidator.When(signal => signal.InvalidateUser(Arg.Any<Guid>()))
+            .Do(call => cached.InvalidateUser(call.Arg<Guid>()));
+        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(async call => (await cached.GetConsentedVersionIdsAsync(
+                userId, call.ArgAt<CancellationToken>(1))).Contains(versionId));
+        (await cached.GetConsentedVersionIdsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+
+        var result = await cached.SubmitConsentAsync(userId, versionId, true,
+            "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await cached.GetConsentedVersionIdsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain(versionId);
+        await _membershipCalculator.Received(1).HasAllRequiredConsentsAsync(userId, CancellationToken.None);
+        await _humanLifecycleService.Received(1).RestoreConsentSuspensionAsync(userId, CancellationToken.None);
+        await _notificationInboxService.Received(1)
+            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false)]
