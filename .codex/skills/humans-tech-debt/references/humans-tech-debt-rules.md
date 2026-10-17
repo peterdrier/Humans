@@ -121,7 +121,7 @@ When a caller needs a stable fact about an aggregate already exposed through a b
 Good pattern:
 
 - add `StripeFee` and `ApplicationFee` to `TicketOrderInfo`
-- let callers derive totals from `ITicketServiceRead.GetTicketOrdersAsync()`
+- let callers derive totals from `ITicketService.GetTicketOrdersAsync()`
 - keep the existing cached/read boundary as the one source of ticket-order facts
 
 Bad pattern:
@@ -158,24 +158,22 @@ Before committing a parameter-object change, answer:
 
 If the answer is weak, abandon the patch even if the score improves.
 
-## Section Read-Service Rules
+## Section Public-Contract Rules
 
-When a section exposes both a full service interface and a `*ServiceRead` interface, code outside the owning section should depend on the read interface unless it truly writes, invalidates caches, performs an owning-section workflow, or needs an entity-only method that has no read-model equivalent yet.
+A section's `Contracts/` (or `.Contracts` leaf) is its whole public face. Code outside the owning section depends on the public DTO-only `I<Section>Service`. Where another section genuinely must write, the preferred shape is the owning section's own view component/GUI control (the write stays internal); a public `I<Section>Write` is the reviewed fallback. The section's `I<Section>Management` is internal and never injected from outside.
 
-Read interfaces are the preferred cross-section boundary:
-
-- `ITeamServiceRead` returns `TeamInfo` / `TeamSearchHit` projections for external Teams reads; only Teams-owned write flows and entity-specific operations should inject `ITeamService`.
-- `IUserServiceRead` returns `UserInfo`, `HumanSearchResult`, `OnsiteUserRow`, and merge-chain read projections for external Users reads; write flows, identity mutations, account deletion, merge, and entity-only operations may keep `IUserService`.
-- `IConsentServiceRead` is the external Consent read surface; consent submission and consent-owned writes keep `IConsentService`.
-- When adding the same split to another section, first define a narrow `ISectionServiceRead` around the canonical cached projection, make the full service inherit it, register both interfaces to the same caching decorator, and migrate external read-only callers to the read interface.
+- `ITeamService` returns `TeamInfo` / `TeamSearchHit` projections for external Teams reads.
+- `IUserService` returns `UserInfo`, `HumanSearchResult`, `OnsiteUserRow`, and merge-chain read projections for external Users reads.
+- `IConsentService` is the external Consent read surface.
+- Some sections still carry the retired `*ServiceRead` / full-`*Service` split until their rename lands; treat `I<Section>ServiceRead` as the public `I<Section>Service` and the old full interface as `I<Section>Management`.
 
 Migration strategy:
 
-- Search production code for full-service injections such as `IUserService`, `ITeamService`, `IConsentService`, and future `I*Service` interfaces that also have a `*ServiceRead`.
+- Search production code for cross-section injections of write-capable or entity-returning interfaces.
 - Ignore implementations, caching decorators, DI registrations, tests that intentionally exercise full-service behavior, and same-section write/orchestration flows.
-- For each external caller, inspect every method used. If all calls are available on the read interface, change the constructor/field/base class/helper parameter and update tests to substitute the read interface.
-- If a caller uses an entity-returning legacy method only to render display data, migrate the caller to the read projection (`UserInfo`, `TeamInfo`, `CampInfo`, etc.) instead of keeping the full interface.
-- Leave TODO-free notes only when a full-service dependency is intentionally retained because it writes or still needs an unmigrated entity-only operation.
+- For each external caller, inspect every method used. If all calls are available on the public read contract, change the constructor/field/base class/helper parameter and update tests to substitute it.
+- If a caller uses an entity-returning legacy method only to render display data, migrate the caller to the read projection (`UserInfo`, `TeamInfo`, `CampInfo`, etc.).
+- Leave TODO-free notes only when a write dependency is intentionally retained because it writes or still needs an unmigrated entity-only operation.
 
 ## Safety Checks
 
