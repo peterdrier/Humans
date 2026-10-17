@@ -1026,8 +1026,10 @@ internal sealed class UserService(
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
+            State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
             DeletionScheduledFor = user.DeletionScheduledFor.ToIso8601(),
+            DeletionEligibleAfter = user.DeletionEligibleAfter.ToIso8601(),
             CreatedAt = user.CreatedAt.ToIso8601(),
             LastLoginAt = user.LastLoginAt.ToIso8601()
         };

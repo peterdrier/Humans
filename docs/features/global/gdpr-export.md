@@ -150,8 +150,8 @@ id alone. Asking with either id has to reach the same record.
 
 | Section | Contributor | Shape |
 |---------|-------------|-------|
-| `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, deletion request/scheduled instants, created/last-login instants. |
-| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
+| `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, lifecycle state, deletion request/scheduled/post-event-hold instants, created/last-login instants. |
+| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
 | `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, Visibility }`. |
 | `Profile` | `UserService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, membership tier, approval/suspension state, consent check state, emergency contact, created/updated instants. |
 | `MergedProfiles` | `UserService` | Array of `{ UserId, Profile }` for archived profiles in the transitive merge chain. Reuses the current profile shape, including retained dietary and medical data; requests under an archived ID resolve to the survivor first. |

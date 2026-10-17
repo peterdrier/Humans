@@ -118,14 +118,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         row.Visibility.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn(
+        bool hasDeletionHold)
     {
         // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
         // (exports are JSON files users download). The value sources from
         // (Provider != null), not IsGoogle.
         var userId = Guid.NewGuid();
-        SeedUser(userId);
+        var accountUser = SeedUser(userId);
         Db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -137,7 +140,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             ProviderKey = "sub-1",
             IsGoogle = false,
         });
+        accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
+        accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
+        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
+        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
         Db.EventParticipations.Add(new EventParticipation
         {
             Id = Guid.NewGuid(), UserId = userId, Year = 2026,
@@ -172,6 +179,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             string.Equals(s.SectionName, UserService.Account, StringComparison.Ordinal));
         var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
+        using var accountData = System.Text.Json.JsonDocument.Parse(accountJson);
+        accountData.RootElement.GetProperty("State").GetString().Should().Be(accountUser.State.ToString());
+        accountData.RootElement.GetProperty("DeletionEligibleAfter").GetString()
+            .Should().Be(accountUser.DeletionEligibleAfter.ToIso8601());
+        accountData.RootElement.GetProperty("DeletionScheduledFor").GetString()
+            .Should().Be(accountUser.DeletionScheduledFor.ToIso8601());
 
         var participationSlice = slices.Single(s =>
             string.Equals(s.SectionName, UserService.EventParticipations, StringComparison.Ordinal));
