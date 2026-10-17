@@ -19,6 +19,36 @@ namespace Humans.Camps.Tests.Controllers;
 public class CampAdminControllerTests
 {
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EeSlotCount_RejectsMalformedBinding_ButAcceptsExplicitZero(bool malformed)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+        if (malformed)
+            controller.ModelState.AddModelError("slotCount", "Not a number.");
+
+        var result = await controller.SetCampSeasonEeSlotCount(seasonId, 0, ct);
+
+        if (malformed)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            await camps.DidNotReceive().SetCampSeasonEeSlotCountAsync(
+                Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await camps.Received(1).SetCampSeasonEeSlotCountAsync(seasonId, 0, actorId, ct);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("Open", true)]
     [InlineData("Close", true)]
     [InlineData("LockDate", true)]

@@ -163,6 +163,7 @@ internal sealed class CampAdminController(
     {
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {

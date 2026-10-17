@@ -234,6 +234,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+Operator build/strike staffing and event-shift generation reject malformed numeric binding with HTTP 400 before generating shifts. Valid default staffing values and event day zero retain their existing meaning.
+
 - Department browse groups label all-phase rotas as “All phases”, using the shared localized phase labels rather than the event-only label.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
