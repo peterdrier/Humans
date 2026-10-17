@@ -12,7 +12,7 @@ internal sealed class OnboardingWidgetState(
     IShiftView shiftView,
     IMembershipCalculatorRead membership,
     ISettingsService settingsService,
-    IConsentServiceRead consents,
+    IConsentService consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState
 {
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)

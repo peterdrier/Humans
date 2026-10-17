@@ -306,7 +306,6 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            // The entire registration uses a non-cancellable token.
             return new(await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
         }
         catch (Exception ex)

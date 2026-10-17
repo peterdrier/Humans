@@ -20,8 +20,8 @@ namespace Humans.Expenses.Controllers;
 [Route("Expenses")]
 internal sealed class ExpensesController(
     IUserServiceRead userService,
-    IExpenseReportService service,
-    IBudgetServiceRead budgetService,
+    IExpenseReportManagement service,
+    IBudgetService budgetService,
     IHoldedFinanceServiceRead holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger,
@@ -840,7 +840,7 @@ internal sealed class ExpensesController(
 
     /// <summary>
     /// The actor's finance-admin authority, handed to the service so its own ownership and status
-    /// checks know an admin is acting for a member (see <c>IExpenseReportService</c> remarks).
+    /// checks know an admin is acting for a member (see <c>IExpenseReportManagement</c> remarks).
     /// </summary>
     private async Task<bool> IsFinanceAdminAsync() =>
         (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;

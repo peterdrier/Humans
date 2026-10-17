@@ -1,7 +1,7 @@
 using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Humans.Feedback.Contracts;
+using Humans.Feedback.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Feedback;
@@ -20,7 +20,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> OpenAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = await sp.GetRequiredService<IFeedbackServiceRead>().GetActionableCountAsync(ct);
+        var count = await sp.GetRequiredService<FeedbackService>().GetActionableCountAsync(ct);
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} open feedback");
     }
 }

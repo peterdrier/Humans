@@ -13,13 +13,13 @@ namespace Humans.Budget.Tests.Services;
 /// <summary>
 /// Unit tests for the Application-layer <see cref="TicketingBudgetService"/>.
 /// Covers the ISO-week bucketing, exclusion of the current (not-yet-complete)
-/// week, and delegation of Budget-owned mutations to <see cref="IBudgetService"/>.
+/// week, and delegation of Budget-owned mutations to <see cref="IBudgetManagement"/>.
 /// Ticket reads are stubbed via NSubstitute; no DB involvement.
 /// </summary>
 public class TicketingBudgetServiceTests
 {
     private readonly ITicketServiceRead _ticketService = Substitute.For<ITicketServiceRead>();
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly IBudgetManagement _budgetService = Substitute.For<IBudgetManagement>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 11, 9, 0)); // Wed 11 Mar 2026
 
     private readonly Guid _yearId = Guid.NewGuid();

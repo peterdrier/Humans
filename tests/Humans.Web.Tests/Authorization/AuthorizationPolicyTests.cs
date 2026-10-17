@@ -34,9 +34,9 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddScoped(_ => Substitute.For<IBudgetServiceRead>());
+        services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampServiceRead>());
-        services.AddScoped(_ => Substitute.For<ICityPlanningServiceRead>());
+        services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<ITeamServiceRead>());
         // Agent's rate-limit handler moved into Humans.Agent with the section and is registered

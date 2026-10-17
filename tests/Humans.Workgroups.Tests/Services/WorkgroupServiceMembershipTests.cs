@@ -723,8 +723,8 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
-        // The tombstoned row is still readable, so a double-submitted form used to re-stamp it and
-        // audit a second deletion — an event the trail would have claimed happened, and did not.
+        // The tombstoned row is still readable, so a replayed delete is refused rather than
+        // re-stamped and audited a second time.
         var replay = async () => await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         (await replay()).Refusal!.Key
@@ -756,5 +756,29 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(WorkgroupLogKind.Registered))]
+    [InlineData(nameof(WorkgroupLogKind.MemberJoined))]
+    public async Task SystemLogEntries_CannotBeEditedOrDeleted(string kindName)
+    {
+        var kind = Enum.Parse<WorkgroupLogKind>(kindName);
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var entry = await AddLogEntryAsync(workgroup.Id, kind);
+
+        var edit = await NewService().UpdateLogEntryAsync(
+            entry.Id, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, entry.OccurredOn, "Rewritten", "Rewritten body"), Ct);
+        var delete = await NewService().DeleteLogEntryAsync(entry.Id, member, Ct);
+
+        edit.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        delete.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        await using var ctx = OpenContext();
+        var stored = await ctx.LogEntries.SingleAsync(e => e.Id == entry.Id, Ct);
+        stored.Kind.Should().Be(kind);
+        stored.Title.Should().BeNull();
+        stored.Body.Should().BeNull();
     }
 }

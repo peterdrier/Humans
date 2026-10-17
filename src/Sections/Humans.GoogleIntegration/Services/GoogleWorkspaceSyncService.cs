@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -16,7 +15,6 @@ namespace Humans.GoogleIntegration.Services;
 /// <see cref="IGoogleSyncService"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
 /// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
 /// </summary>
-[CrossSectionWrite("Workspace sync writes Google email status back to the user.")]
 internal sealed class GoogleWorkspaceSyncService(
     IGoogleGroupProvisioningClient groupProvisioning,
     IGoogleDrivePermissionsClient drivePermissions,
@@ -799,7 +797,7 @@ internal sealed class GoogleWorkspaceSyncService(
         {
             try
             {
-                var fullPath = await ResolveDriveFolderPathAsync(resource.GoogleId, cancellationToken);
+                var fullPath = await DriveFolderPath.ResolveAsync(drivePermissions, resource.GoogleId, logger, cancellationToken);
                 if (fullPath is not null && !string.Equals(resource.Name, fullPath, StringComparison.Ordinal))
                 {
                     logger.LogInformation(
@@ -818,65 +816,6 @@ internal sealed class GoogleWorkspaceSyncService(
         }
 
         return updatedCount;
-    }
-
-    /// <summary>
-    /// Resolves the full path of a Drive folder by walking the parent chain.
-    /// </summary>
-    private async Task<string?> ResolveDriveFolderPathAsync(string fileId, CancellationToken cancellationToken)
-    {
-        var segments = new List<string>();
-        var currentId = fileId;
-        var reachedRoot = false;
-        const int maxDepth = 20;
-
-        for (var depth = 0; depth < maxDepth; depth++)
-        {
-            var fileResult = await drivePermissions.GetFileAsync(currentId, cancellationToken);
-            if (fileResult.File is null)
-            {
-                var code = fileResult.Error?.StatusCode ?? 0;
-                if (code == 404)
-                {
-                    logger.LogWarning("Drive folder {GoogleId} not found", currentId);
-                }
-                return null;
-            }
-
-            var file = fileResult.File;
-
-            // If the file IS the Shared Drive root, fetch the drive name.
-            if (!string.IsNullOrEmpty(file.DriveId)
-                && string.Equals(currentId, file.DriveId, StringComparison.Ordinal))
-            {
-                var driveResult = await drivePermissions.GetSharedDriveAsync(file.DriveId, cancellationToken);
-                var driveName = driveResult.Drive?.Name ?? file.Name;
-                if (driveName is null)
-                    return null;
-                segments.Add(driveName);
-                reachedRoot = true;
-                break;
-            }
-
-            if (file.Name is null)
-                return null;
-            segments.Add(file.Name);
-
-            if (file.Parents is null || file.Parents.Count == 0)
-            {
-                reachedRoot = true;
-                break;
-            }
-
-            currentId = file.Parents[0];
-        }
-
-        // A failed read or bounded walk must not overwrite a known full path with a suffix.
-        if (!reachedRoot || segments.Count == 0)
-            return null;
-
-        segments.Reverse();
-        return string.Join(" / ", segments);
     }
 
     /// <inheritdoc />

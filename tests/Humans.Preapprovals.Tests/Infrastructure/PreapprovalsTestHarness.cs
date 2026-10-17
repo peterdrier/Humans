@@ -2,7 +2,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;

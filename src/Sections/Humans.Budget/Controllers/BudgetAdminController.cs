@@ -27,7 +27,7 @@ namespace Humans.Budget.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class BudgetAdminController(
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     ITeamServiceRead teamService,
     TicketingBudgetService ticketingBudgetService,
     IClock clock,

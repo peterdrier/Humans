@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Metering;
@@ -25,12 +24,11 @@ namespace Humans.Email.Services;
 /// <remarks>
 /// The grant mirror goes through <see cref="ICampaignService"/> so Campaigns owns
 /// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to Settings
-/// through <see cref="IEmailOutboxService.IsEmailPausedAsync"/>.
+/// through <see cref="IEmailOutboxManagement.IsEmailPausedAsync"/>.
 /// </remarks>
-[CrossSectionWrite("Marks the campaign grant email status after send.")]
 internal sealed class EmailOutboxProcessor(
     IEmailOutboxRepository outboxRepo,
-    IEmailOutboxService emailOutboxService,
+    IEmailOutboxManagement emailOutboxService,
     ICampaignService campaignService,
     IEmailTransport transport,
     IHumansMetrics metrics,

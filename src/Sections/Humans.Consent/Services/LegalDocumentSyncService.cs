@@ -21,7 +21,7 @@ namespace Humans.Consent.Services;
 /// <c>document_versions</c>). Owns both the admin write surface
 /// (<see cref="IAdminLegalDocumentService"/> — create/update/archive/version-summary
 /// edits from <c>/Legal/Admin/Documents</c>) and the GitHub-sync write surface
-/// (<see cref="ILegalDocumentSyncService"/> — version add, sync touch). Being the
+/// (<see cref="ILegalDocumentSyncManagement"/> — version add, sync touch). Being the
 /// single writer lets it call <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/>
 /// directly after each successful repository write instead of relying on a
 /// cross-cutting SaveChanges interceptor (nobodies-collective/Humans#751).
@@ -36,7 +36,7 @@ internal sealed partial class LegalDocumentSyncService(
     IAuditLogService audit,
     IOptions<GitHubSettings> githubSettings,
     IClock clock,
-    ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService, IAdminLegalDocumentService
+    ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncManagement, IAdminLegalDocumentService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ConsentResource));
 
@@ -291,7 +291,7 @@ internal sealed partial class LegalDocumentSyncService(
     private static partial Regex GitHubUrlPattern();
 
     // ==========================================================================
-    // ILegalDocumentSyncService — GitHub-sync write/read surface
+    // ILegalDocumentSyncManagement — GitHub-sync write/read surface
     // ==========================================================================
 
     public async Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(

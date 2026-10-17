@@ -1,11 +1,13 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Expenses.Contracts;
 
 /// <summary>
-/// Read-only cross-section surface for expense reports. Backdoor's finance read API
-/// (peterdrier/Humans#1838) consumes it; it exposes exactly what <c>IExpenseReportService</c>
+/// Public contract for expense reports (read-only). Backdoor's finance read API
+/// (peterdrier/Humans#1838) consumes it; it exposes exactly what <c>IExpenseReportManagement</c>
 /// exposes internally.
 /// </summary>
-public interface IExpenseReportServiceRead
+public interface IExpenseReportService : IApplicationService
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
 

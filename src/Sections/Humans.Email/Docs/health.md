@@ -52,12 +52,12 @@ Every external entry point, grouped by the question it answers.
 |---|---|---|
 | **Send one message** | `IEmailService.SendAsync` | The single transport path. One method, deliberately. |
 | **Describe a message** | `IEmailMessageFactory.FacilitatedMessage` | One method, the person-to-person relay. Every other section builds its own `EmailMessage` in its own `<Section>Emails` (peterdrier/Humans#1651). |
-| **Show me a message without sending it** | `IEmailPreviewServiceRead.RenderSystemMessage`; `IEmailPreviewService.RenderMarkdown` (internal) | Two arms of one job: a finished always-send message, and a half-typed Markdown body. The second is internal because only this section's own `EmailPreviewController` serves it. |
+| **Show me a message without sending it** | `IEmailPreviewService.RenderSystemMessage`; `IEmailPreviewManagement.RenderMarkdown` (internal) | Two arms of one job: a finished always-send message, and a half-typed Markdown body. The second is internal because only this section's own `EmailPreviewController` serves it. |
 | **Put my templates in the gallery** | `IEmailPreviewContributor` | The fan-out that keeps the gallery from naming other sections. Email contributes to it like anyone else. |
 | **Which templates cannot wait?** | `TimeSensitiveTemplates` | One list, read by both the immediate drain and the batch order, so they cannot disagree. |
-| **What have we sent this person?** | `IEmailOutboxServiceRead` — per-user list, per-user count, dashboard stats | Consumed by Shell's profile and user-admin pages and the admin tile. |
+| **What have we sent this person?** | `IEmailOutboxService` — per-user list, per-user count (dashboard stats are internal, on `IEmailOutboxManagement`) | Consumed by Shell's profile and user-admin pages. |
 | **Drain the queue / prune the queue** | `IEmailOutboxProcessor`, `IEmailOutboxRetention`, `IImmediateOutboxProcessor` | Job-facing. The first two have no consumer outside the section any more; Shell registers the third. |
-| **Admin operates the queue** | `IEmailOutboxService` (internal) behind `/Email/EmailOutbox` and the `/Settings#email` tab — pause, resume, retry, discard, volume, backfill | Section-internal; `EmailController` and the settings tab component are its only callers. |
+| **Admin operates the queue** | `IEmailOutboxManagement` (internal) behind `/Email/EmailOutbox` and the `/Settings#email` tab — pause, resume, retry, discard, volume, backfill | Section-internal; `EmailController` and the settings tab component are its only callers. |
 | **Admin reads the templates** | `/Email/EmailPreview` | Every contributor's samples, rendered in each of the six cultures. |
 
 Inside, the work runs in this order: **send service** (opt-out, headers, wrap, log row) →
@@ -198,7 +198,7 @@ Settled decisions and essential complexity — stop re-litigating these.
   namespace. Moving it to a `Resources` namespace makes every email body fall back to its
   raw key at runtime. It is public because the boot localization diagnostic discovers
   markers through `GetExportedTypes()`.
-- **`IEmailOutboxService` survives the internalise pass** even though its only consumers are
+- **`IEmailOutboxManagement` survives the internalise pass** even though its only consumers are
   inside the section: the concrete service is sealed and the test doubles need an interface
   to substitute.
 - **The repository is a Singleton over `IDbContextFactory`** so the same instance serves

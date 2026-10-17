@@ -129,6 +129,7 @@ public class EndpointAuthorizationTests
     [InlineData("UpdateSyncSetting")]
     [InlineData("SyncSystemTeams")]
     [InlineData("SyncResults")]
+    [InlineData("ActivityLog")]
     [InlineData("CheckGroupSettings")]
     [InlineData("GroupSettingsResults")]
     public void GoogleAdminEndpoint_RequiresAdminPolicy(string actionName)

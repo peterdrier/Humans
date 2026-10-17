@@ -1,6 +1,17 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
+  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
+  src/Sections/Humans.Auth/Contracts/IRoleAssignmentServiceRead.cs
+  src/Sections/Humans.Teams.Contracts/ITeamServiceRead.cs
+  src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
+  src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
+  src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
+  src/Sections/Humans.Settings/Contracts/ISettingsService.cs
 -->
 <!-- freshness:flag-on-change
   Lifecycle transitions and the Dormant freeze, the one-or-two-coordinators rule, the
@@ -414,15 +425,17 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserServiceRead` — names, `MembershipTier`, approved-profile check.
-- **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges and the root Drive readers.
+- **Users**: `IUserServiceRead` — names, `MembershipTier`, approved-profile check;
+  `IUserEmailService` — notification target addresses for lifecycle emails.
+- **Auth**: `IRoleAssignmentServiceRead` — active holders of the Board role, the recipients of Board emails.
+- **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
   folders → ContentManager (`fileOrganizer`) for current members (never a pending request), Dormant → Viewer,
-  root → Board readers only. Withdrawn folders remain claimed with an empty roster so existing direct
-  grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
+  root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when GoogleIntegration cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
+  Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
@@ -489,9 +502,10 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
-  `IRoleAssignmentServiceRead`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
+  `IRoleAssignmentServiceRead`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
+  `ITeamServiceRead` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
   builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own
   `Workgroups_Email_*` keys in `WorkgroupsResource`, rendered in the recipient's culture

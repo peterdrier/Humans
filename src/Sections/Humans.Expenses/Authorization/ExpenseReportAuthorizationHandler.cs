@@ -13,7 +13,7 @@ namespace Humans.Expenses.Authorization;
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>
-internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budgetService, ITeamServiceRead teamService)
+internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamServiceRead teamService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(

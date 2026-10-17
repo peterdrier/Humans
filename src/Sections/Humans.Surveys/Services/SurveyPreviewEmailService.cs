@@ -22,7 +22,7 @@ internal sealed class SurveyPreviewEmailService(
     IUserServiceRead userService,
     IEmailService emailService,
     SurveysEmails emailMessages,
-    IEmailPreviewServiceRead emailPreviews,
+    IEmailPreviewService emailPreviews,
     SurveyPreviewTokenProvider previewTokens,
     ILogger<SurveyPreviewEmailService> logger) : ISurveyPreviewEmailService
 {

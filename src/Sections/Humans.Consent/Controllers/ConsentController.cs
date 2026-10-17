@@ -13,7 +13,7 @@ namespace Humans.Consent.Controllers;
 [Authorize]
 internal sealed class ConsentController(
     IUserServiceRead userService,
-    IConsentService consentService,
+    IConsentManagement consentService,
     IOnboardingIntake onboardingService,
     IStringLocalizer<ConsentResource> localizer,
     ILogger<ConsentController> logger) : HumansControllerBase(userService)

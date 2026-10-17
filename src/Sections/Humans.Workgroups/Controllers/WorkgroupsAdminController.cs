@@ -192,12 +192,13 @@ internal sealed class WorkgroupsAdminController(
 
     // ── Plumbing ──────────────────────────────────────────────────────────
 
+    /// <summary>TempData key for a refused form's preserved draft.</summary>
+    internal static string DraftKey(Guid? id, string action) => $"WorkgroupsDraft:{id}:{action}";
+
     /// <summary>
     /// Admin POSTs land back on the group's Details page when the form carries its slug,
     /// otherwise on the queue. A rule failure flashes the error and redirects the same way.
     /// </summary>
-    internal static string DraftKey(Guid? id, string action) => $"WorkgroupsDraft:{id}:{action}";
-
     private async Task<IActionResult> ActAsync<T>(
         Func<Guid, Task<T>> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null) where T : WorkgroupMutationResult
     {

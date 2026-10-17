@@ -20,7 +20,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, "Test Team A");
@@ -58,7 +58,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -92,7 +92,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
@@ -124,7 +124,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -151,7 +151,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -191,7 +191,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -219,7 +219,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -252,7 +252,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -295,7 +295,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -373,7 +373,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarQueries>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");

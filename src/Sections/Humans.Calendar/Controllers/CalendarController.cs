@@ -18,7 +18,7 @@ namespace Humans.Calendar.Controllers;
 [Route("Calendar")]
 internal sealed class CalendarController : HumansControllerBase
 {
-    private readonly ICalendarServiceRead _calendarRead;
+    private readonly ICalendarQueries _calendarRead;
     private readonly ICalendarService _calendar;
     private readonly ITeamServiceRead _teams;
     private readonly ICalendarFeedTokenService _feedTokens;
@@ -29,7 +29,7 @@ internal sealed class CalendarController : HumansControllerBase
     public CalendarController(
         IUserServiceRead userService,
         ICalendarFeedTokenService feedTokens,
-        ICalendarServiceRead calendarRead,
+        ICalendarQueries calendarRead,
         ICalendarService calendar,
         ITeamServiceRead teams,
         IClock clock,

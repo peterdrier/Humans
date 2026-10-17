@@ -30,7 +30,7 @@ internal sealed record ConsentDashboardHistoryItem(
     Instant ConsentedAt);
 
 /// <summary>
-/// The section's own service surface: everything <see cref="IConsentServiceRead"/> and
+/// The section's own service surface: everything <see cref="IConsentService"/> and
 /// <see cref="IConsentSubmission"/> expose across the boundary, plus the consent dashboard,
 /// whose row records are rendered directly by the section's dashboard view.
 /// </summary>
@@ -41,7 +41,7 @@ internal sealed record ConsentDashboardHistoryItem(
 /// class and Castle DynamicProxy cannot proxy a sealed type (Budget's rule, design §15
 /// step 5).
 /// </remarks>
-internal interface IConsentService : IConsentServiceRead, IConsentSubmission, IApplicationService
+internal interface IConsentManagement : IConsentService, IConsentSubmission, IApplicationService
 {
     Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default);
 }

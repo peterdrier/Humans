@@ -60,7 +60,7 @@ public class ExpenseReportServiceGdprTests
         _sut = new ExpenseReportService(
             _repo,
             Substitute.For<IFileStorage>(),
-            Substitute.For<IBudgetServiceRead>(),
+            Substitute.For<IBudgetService>(),
             Substitute.For<ITeamServiceRead>(),
             _userService,
             Substitute.For<IUserEmailService>(),

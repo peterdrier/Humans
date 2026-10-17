@@ -6,7 +6,7 @@ namespace Humans.Budget.Services;
 
 /// <summary>
 /// Budget's full service surface: everything on top of the cross-section
-/// <see cref="IBudgetServiceRead"/> that only the section's own controllers, views and
+/// <see cref="IBudgetService"/> that only the section's own controllers, views and
 /// bridge service call. Internal on purpose — the assembly boundary is what keeps
 /// year/group/category/line-item mutation out of other sections' reach.
 /// </summary>
@@ -15,7 +15,7 @@ namespace Humans.Budget.Services;
 /// the ticketing bridge's unit tests substitute it (design §15 step 5, "keep an interface
 /// only where something needs the seam").
 /// </remarks>
-internal interface IBudgetService : IBudgetServiceRead, IApplicationService
+internal interface IBudgetManagement : IBudgetService, IApplicationService
 {
     // Budget Years
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false);

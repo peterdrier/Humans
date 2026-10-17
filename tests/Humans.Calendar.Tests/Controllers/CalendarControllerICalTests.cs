@@ -37,7 +37,7 @@ public class CalendarControllerICalTests
 {
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ICalendarFeedTokenService _feedTokens = Substitute.For<ICalendarFeedTokenService>();
-    private readonly ICalendarServiceRead _calendarRead = Substitute.For<ICalendarServiceRead>();
+    private readonly ICalendarQueries _calendarRead = Substitute.For<ICalendarQueries>();
     private readonly ICalendarService _calendar = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly InMemorySession _session = new();

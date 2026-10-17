@@ -13,17 +13,17 @@ namespace Humans.Calendar.Tests;
 /// <remarks>
 /// Two shape rules this file does NOT cover, so nothing here should be read as
 /// covering them: that <c>CalendarService</c> never touches a <c>DbContext</c>, and
-/// that the <c>ICalendarServiceRead</c> surface stays DTO-only. Both are review-time
+/// that the <c>ICalendarQueries</c> surface stays DTO-only. Both are review-time
 /// rules; the section assembly holds the repository, so neither is a reference-graph
 /// property any test can read off the assembly.
 /// </remarks>
 public class CalendarArchitectureTests
 {
     [HumansFact]
-    public void CachingCalendarService_ImplementsReadAndWriteSurfaces()
+    public void CachingCalendarService_ImplementsQueriesAndWriteSurfaces()
     {
-        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarServiceRead>(
-            because: "unkeyed ICalendarServiceRead resolves to the cache-backed read service");
+        typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarQueries>(
+            because: "unkeyed ICalendarQueries resolves to the cache-backed query service");
         typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarService>(
             because: "write calls still pass through the decorator so the read cache refreshes after mutations");
     }

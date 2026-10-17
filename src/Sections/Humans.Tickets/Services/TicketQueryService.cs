@@ -22,7 +22,7 @@ namespace Humans.Tickets.Services;
 internal sealed class TicketQueryService(
     ITicketRepository ticketRepository,
     ITicketTransferRepository ticketTransferRepository,
-    IBudgetServiceRead budgetService,
+    IBudgetService budgetService,
     ICampaignServiceRead campaignService,
     IUserServiceRead userService,
     IUserEmailService userEmailService,

@@ -8,7 +8,7 @@ These supersede all other docs and are the final word on how to write code in th
 
 **Layers keep the rules in one findable place.** Controllers only translate — parse the request, call services, format/sort/filter the response — so business logic lives where tests reach it. Services (`IApplicationService`) are the only repository callers so invariants are enforced exactly once. Caching decorators wrap the service interface, never the repository, so a cache hit and a miss run the same business logic. Orchestrators own no tables and call no repositories, so coordination never becomes a back door into data.
 
-**Public surface is a promise.** Every public member is something other sections will build on and we will maintain forever. Expose the narrowest contract that serves the caller — `I<Section>ServiceRead` for cross-section reads — document it, and treat each addition as needing a reason and review.
+**Public surface is a promise.** Every public member is something other sections will build on and we will maintain forever. A section's Contracts are its whole public face: `I<Section>Service` for reads (DTOs only), and `I<Section>Write` only where another section genuinely has to write — everything else stays internal. Document it, and treat each addition as needing a reason and review.
 
 **Enforcement lives in analyzers,** because in-editor feedback at the exact line beats review vigilance and test archaeology. A red analyzer is the architecture answering you. Tests are not acceptable for rules that fit the analyzer pattern, such as "no new violations from here" baselines.
 

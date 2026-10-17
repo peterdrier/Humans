@@ -21,7 +21,7 @@ namespace Humans.CityPlanning;
 /// or a per-year polygon list. Cross-section reads (camps, teams, users) route through the
 /// owning service interfaces.
 /// <para>
-/// <c>Lazy&lt;ICityPlanningService&gt;</c> is registered by <c>Humans.Camps</c>'s own
+/// <c>Lazy&lt;ICityPlanningWrite&gt;</c> is registered by <c>Humans.Camps</c>'s own
 /// <c>Section.cs</c>, not here: it exists to break the CampService ↔ CityPlanningService
 /// construction cycle, so it belongs with the consumer, not the producer.
 /// </para>
@@ -36,8 +36,8 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddSingleton<ICityPlanningRepository, CityPlanningRepository>();
         services.AddScoped<CityPlanningService>();
+        services.AddScoped<ICityPlanningWrite>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
-        services.AddScoped<ICityPlanningServiceRead>(sp => sp.GetRequiredService<CityPlanningService>());
 
         // Backs CityPlanningMapAdmin, registered by this section's SectionPolicies.
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();

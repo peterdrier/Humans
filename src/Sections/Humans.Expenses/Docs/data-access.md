@@ -20,7 +20,7 @@ Repository: `IExpenseRepository`.
 | ExpenseAttachments | R/W |
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
-Cross-section calls via `IFileStorage`, `IBudgetServiceRead`, `ITeamServiceRead`,
+Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamServiceRead`,
 `IUserService`, `IUserEmailService`, `IEmailService`, `IAuditLogService`, `IHoldedClient`,
 `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the

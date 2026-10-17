@@ -52,7 +52,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
 > | `MailerLiteDbContext` | `MailerLiteSyncStates` (`mailerlite_sync_states`) (own project, `src/Sections/Humans.MailerLite/`) |
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
-> | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments` (own project, `src/Sections/Humans.Workgroups/`) |
+> | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings` (own project, `src/Sections/Humans.Workgroups/`) |
 > | `PreapprovalsDbContext` | `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent` (own project, `src/Sections/Humans.Preapprovals/`) |
 >
 > Each context applies its `IEntityTypeConfiguration` classes explicitly (no
@@ -162,13 +162,13 @@ Every table is owned by exactly one repository; there are no HUM0025
 2. **Read/write surface split (read-split interfaces).** Several sections
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
-   `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
+   `ITeamServiceRead`, `IConsentService`,
    `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
    `IEventServiceRead` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
-   `ICityPlanningServiceRead` (exposes `GetSettingsAsync` /
+   `ICityPlanningService` (exposes `GetSettingsAsync` /
    `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
@@ -226,7 +226,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    |-----|-------------------|------------|
    | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
    | `DriveActivityMonitor:LastRunAt` | Monitor | `DriveActivityMonitorService` → `ISettingsService` |
-   | `Workgroups:RootDriveFolderId` | Workgroups | `WorkgroupService` → `ISettingsService` (read and written) |
+   | `Workgroups:RootDriveFolderId` | Workgroups | `WorkgroupService` → `ISettingsService` (legacy read fallback only; Workgroups owns its root folder in `workgroups_settings`) |
 
    New keys should be added to `SettingKeys` and accessed through
    `ISettingsService`. The first two keys move to their own sections' settings

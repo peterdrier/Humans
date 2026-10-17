@@ -52,7 +52,7 @@ public sealed class SurveyPreviewEmailServiceTests
         }
         var sut = new SurveyPreviewEmailService(
             surveys, userEmails, users, emailService, TestSurveysEmails.Create(),
-            Substitute.For<IEmailPreviewServiceRead>(),
+            Substitute.For<IEmailPreviewService>(),
             new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-preview-error-language-tests")),
             NullLogger<SurveyPreviewEmailService>.Instance);
         var errorKey = string.Equals(failure, "queue-failure", StringComparison.Ordinal)
@@ -79,7 +79,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
-        var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
+        var emailPreviews = Substitute.For<IEmailPreviewService>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-page-tests"));
         var editable = new SurveyEditInput(
@@ -132,7 +132,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
-        var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
+        var emailPreviews = Substitute.For<IEmailPreviewService>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-email-tests"));
         var editable = new SurveyEditInput(
@@ -211,7 +211,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
-        var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
+        var emailPreviews = Substitute.For<IEmailPreviewService>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-language-fallback-tests"));
         var spanishOnlySubject = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)

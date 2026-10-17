@@ -17,14 +17,14 @@ namespace Humans.Consent.Services;
 // consent_records is append-only (design-rules §12).
 internal sealed class ConsentService(
     IConsentRepository repo,
-    ILegalDocumentSyncService legalDocumentSyncService,
+    ILegalDocumentSyncManagement legalDocumentSyncService,
     INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
     IUserServiceRead userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,
-    ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
+    ILogger<ConsentService> logger) : IConsentManagement, IUserDataContributor
 {
     internal const string Consents = "Consents";
 

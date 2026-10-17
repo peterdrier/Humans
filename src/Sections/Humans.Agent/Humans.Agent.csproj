@@ -35,7 +35,7 @@
     <!-- The agent's user snapshot lists the caller's still-open feedback reports.
          Contracts/ is a folder on Humans.Feedback (its other consumers are all in Shell),
          so the reference is to the section project — acyclic, and the assembly boundary
-         limits it to IFeedbackServiceRead (design §15 step 5b). -->
+         limits it to IFeedbackService (design §15 step 5b). -->
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
     <!-- route_to_issue's proposal carries the section the user should file under, typed as
          Issues' own IssueCategory. That enum sits in Issues' Contracts/ folder precisely

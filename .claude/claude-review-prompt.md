@@ -95,9 +95,9 @@ the PR introduces it; cite the atom or doc named.
 - **Another section's tables.** A repository, `DbContext`, `DbSet<>` or EF
   config in section A that reads or writes a table section B owns, or a
   nav property / `HasOne` / FK across sections. Cross-section data is an
-  in-memory join through `I<Section>ServiceRead`. (`no-cross-section-ef-joins`,
+  in-memory join through the owning section's public `I<Section>Service`. (`no-cross-section-ef-joins`,
   design-rules §6b)
-- **EF entities crossing a boundary.** An `I*Read` or other public interface
+- **EF entities crossing a boundary.** A public contract interface
   returning an entity, `IQueryable`, or an EF type. (`service-read-no-ef`)
 - **Logic in controllers.** Business rules, repository calls or cache calls
   in a controller; it should only parse, call a service, and format.

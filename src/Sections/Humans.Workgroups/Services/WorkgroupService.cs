@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
@@ -31,7 +30,6 @@ namespace Humans.Workgroups.Services;
 /// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
 /// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
 /// </remarks>
-[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,
@@ -60,11 +58,8 @@ internal sealed partial class WorkgroupService(
         return graph.Workgroups.Select(ToInfo).ToList();
     }
 
-    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default)
-    {
-        var workgroup = await repository.GetWorkgroupBySlugAsync(slug, ct);
-        return workgroup is null ? null : ToInfo(workgroup);
-    }
+    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
+        (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
 
     public async Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -130,10 +125,9 @@ internal sealed partial class WorkgroupService(
 
     public async Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
         if (existing is not null)
@@ -155,10 +149,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> ApproveMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
@@ -171,10 +164,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> DeclineMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
@@ -196,10 +188,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> AddMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
         var target = await ResolveMemberTargetAsync(userId, ct);
         if (target is null)
@@ -317,10 +308,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var now = clock.GetCurrentInstant();
         var info = ToInfo(workgroup);
@@ -350,10 +340,9 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(edit);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (ValidateRegisterFields(edit.Name, edit.Purpose, edit.Deliverable) is { } fieldsRefusal) return new(Refusal: fieldsRefusal);
 
         var now = clock.GetCurrentInstant();
@@ -449,10 +438,9 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (ValidateMeeting(save) is { } meetingValidationRefusal) return new(Refusal: meetingValidationRefusal);
 
         var now = clock.GetCurrentInstant();
@@ -477,10 +465,9 @@ internal sealed partial class WorkgroupService(
         var meetingResult = await RequireLiveMeetingAsync(meetingId, ct);
         if (meetingResult.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
         var meeting = meetingResult.Value!;
-        var workgroupResult = await RequireAsync(meeting.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(meeting.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (ValidateMeeting(save) is { } meetingValidationRefusal) return new(Refusal: meetingValidationRefusal);
 
         ApplyMeetingFields(meeting, save);
@@ -500,10 +487,9 @@ internal sealed partial class WorkgroupService(
         var meetingResult = await RequireLiveMeetingAsync(meetingId, ct);
         if (meetingResult.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
         var meeting = meetingResult.Value!;
-        var workgroupResult = await RequireAsync(meeting.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(meeting.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var now = clock.GetCurrentInstant();
         meeting.DeletedAt = now;
@@ -520,10 +506,9 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireMemberKind(save.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
         if (string.IsNullOrWhiteSpace(save.Body))
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
@@ -554,10 +539,9 @@ internal sealed partial class WorkgroupService(
         ArgumentNullException.ThrowIfNull(save);
         var entry = await repository.GetLogEntryAsync(entryId, ct);
         if (entry is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(entry.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(entry.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         // System entries are the section's record of what it did; they never change.
         if (RequireMemberKind(entry.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
         if (RequireMemberKind(save.Kind) is { } newKindRefusal) return new(Refusal: newKindRefusal);
@@ -585,10 +569,9 @@ internal sealed partial class WorkgroupService(
     {
         var entry = await repository.GetLogEntryAsync(entryId, ct);
         if (entry is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(entry.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(entry.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireMemberKind(entry.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
 
         await repository.DeleteLogEntryAsync(entryId, ct);
@@ -602,14 +585,13 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> LinkSurveyAsync(
         Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         // The entry is a trusted system record naming a survey, so the id has to be one the
         // member actually authored — otherwise the log can point at somebody else's survey, or
-        // at nothing at all. Peter 2026-09-14: author == actor is the whole check.
+        // at nothing at all. Author == actor is the whole check.
         var survey = (await surveys.GetSummariesAsync(ct))
             .FirstOrDefault(s => s.Id == surveyId);
         if (survey is null || survey.CreatedByUserId != actorUserId)
@@ -637,10 +619,9 @@ internal sealed partial class WorkgroupService(
         if (reason is not (WorkgroupDormantReason.Delivered or WorkgroupDormantReason.Abandoned))
             return new(Refusal: new(WorkgroupErrorKeys.DoneReasonInvalid));
 
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         // Same gate as delivering a document (design §7): ending the group while a comment
         // period is still running would cut short a window the group promised publicly.
@@ -741,8 +722,7 @@ internal sealed partial class WorkgroupService(
     public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
     {
         var stored = await repository.GetRootDriveFolderIdAsync(ct)
-            // Existing installations keep their configured root until an admin saves it
-            // locally. New state is section-owned; there is no automatic data backfill.
+            // Legacy Settings value, used until an admin saves a local one.
             ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
         // Values saved before the setter normalized may still hold the pasted URL.
         return stored is null ? null : NormalizeFolderId(stored);

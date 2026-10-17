@@ -33,7 +33,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator = Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>();
     private readonly ICampRoleService _campRoleService;
-    private readonly ICityPlanningService _cityPlanningService;
+    private readonly ICityPlanningWrite _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
@@ -55,7 +55,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // City Planning is its own assembly: its tests own "the rows actually go"; what
         // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
         // season ids.
-        _cityPlanningService = Substitute.For<ICityPlanningService>();
+        _cityPlanningService = Substitute.For<ICityPlanningWrite>();
 
         _settingsService = Substitute.For<ISettingsService>();
         _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
@@ -69,7 +69,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Notifier,
             _leadBadgeInvalidator,
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator,
             _campInfoInvalidator,
             _userServiceRead,
@@ -2146,7 +2146,7 @@ public sealed class CampServiceTests : CampsTestHarness
             new CampRepository(CampsDbFactory), AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
@@ -2219,7 +2219,7 @@ public sealed class CampServiceTests : CampsTestHarness
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
@@ -2729,7 +2729,7 @@ public sealed class CampServiceTests : CampsTestHarness
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
@@ -2755,7 +2755,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct);
 
-        // The Camps section clears polygon rows through ICityPlanningService instead of orphaning them.
+        // The Camps section clears polygon rows through ICityPlanningWrite instead of orphaning them.
         await _cityPlanningService.Received(1).DeleteCampPolygonsForSeasonsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(season.Id)),
             Arg.Any<CancellationToken>());

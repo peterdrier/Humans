@@ -1,28 +1,50 @@
 using Humans.Base.Interfaces;
+using NodaTime;
 
 namespace Humans.CityPlanning.Contracts;
 
 /// <summary>
-/// The two writes City Planning exposes outside itself, on top of
-/// <see cref="ICityPlanningServiceRead"/>. Contracts holds everything consumed from outside
-/// the section, read <em>or</em> write, until the project-wide read/write split lands
-/// (design §15.5b). Everything else the section's own service does — polygon save/restore,
-/// placement phases, zone uploads, export — is internal to <c>Humans.CityPlanning</c>.
+/// Public contract of the City Planning section. External sections
+/// inject this interface; it exposes only the per-year settings projection
+/// (<see cref="CityPlanningSettingsDto"/>), the registration-info scalar, and the
+/// City Planning team-membership check — no EF entities, no writes.
 /// </summary>
-public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationService
+public interface ICityPlanningService : IApplicationService
 {
     /// <summary>
-    /// Deletes every polygon and history row belonging to the given camp seasons.
-    /// Returns the number of rows removed. Called by the Camps section when a Camp
-    /// is deleted, before its seasons go; no FK ties these rows to a season, so
-    /// nothing else removes them.
+    /// Gets the per-year City Planning settings (creates the row on demand for
+    /// the requested year, or current PublicYear when omitted).
     /// </summary>
-    Task<int> DeleteCampPolygonsForSeasonsAsync(
-        IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default);
+    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default, int? year = null);
 
     /// <summary>
-    /// Sets the registration-info markdown for the current settings row. Written from the
-    /// Camps admin page, which owns the URL the barrio leads are sent to.
+    /// Gets the registration-info markdown keyed to the highest open season
+    /// (falls back to PublicYear).
     /// </summary>
-    Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
+    Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the user is an active member of the City Planning team.
+    /// </summary>
+    Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// The per-year City Planning settings row as callers see it. Lives on the contracts leaf
+/// because it is the return type of <see cref="ICityPlanningService.GetSettingsAsync"/>.
+/// </summary>
+public record CityPlanningSettingsDto(
+    Guid Id,
+    int Year,
+    bool IsPlacementOpen,
+    Instant? OpenedAt,
+    Instant? ClosedAt,
+    LocalDateTime? PlacementOpensAt,
+    LocalDateTime? PlacementClosesAt,
+    string? RegistrationInfo,
+    string? LimitZoneGeoJson,
+    string? OfficialZonesGeoJson,
+    bool IsContainerPlacementOpen,
+    Instant? ContainerPlacementOpenedAt,
+    Instant? ContainerPlacementClosedAt,
+    Instant UpdatedAt);

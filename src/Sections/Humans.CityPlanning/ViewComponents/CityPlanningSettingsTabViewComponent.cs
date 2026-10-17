@@ -10,13 +10,13 @@ namespace Humans.CityPlanning.ViewComponents;
 /// member), so every viewer who reaches this component may edit — no read-only branch,
 /// unlike <c>EventSettingsTabViewComponent</c>.
 /// </summary>
-internal sealed class CityPlanningSettingsTabViewComponent(ICityPlanningServiceRead cityPlanningService) : ViewComponent
+internal sealed class CityPlanningSettingsTabViewComponent(ICityPlanningService cityPlanningService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var settings = await cityPlanningService.GetSettingsAsync(HttpContext.RequestAborted);
         // Registration info is keyed to the highest open season, not settings.Year — see
-        // ICityPlanningServiceRead.GetRegistrationInfoAsync.
+        // ICityPlanningService.GetRegistrationInfoAsync.
         var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync(HttpContext.RequestAborted);
 
         return View(new CityPlanningSettingsTabViewModel(settings, registrationInfo));

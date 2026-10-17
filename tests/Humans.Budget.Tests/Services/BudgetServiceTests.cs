@@ -113,10 +113,10 @@ public sealed class BudgetServiceTests
         (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
     }
 
-    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetService? budgetOverride = null)
+    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
-        var budget = Substitute.For<IBudgetService>();
+        var budget = Substitute.For<IBudgetManagement>();
         var users = Substitute.For<IUserServiceRead>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(

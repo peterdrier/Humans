@@ -9,7 +9,7 @@ namespace Humans.Email.ViewComponents;
 /// contributes this tab with <c>PolicyNames.AdminOnly</c>, so composition already keeps
 /// a non-admin from seeing it — no further check needed here.
 /// </summary>
-internal sealed class EmailPauseSettingsTabViewComponent(IEmailOutboxService outboxService) : ViewComponent
+internal sealed class EmailPauseSettingsTabViewComponent(IEmailOutboxManagement outboxService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

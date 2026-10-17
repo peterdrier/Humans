@@ -218,8 +218,6 @@
   <data name="Workgroups_Board" xml:space="preserve"><value>Consiglio</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinatore sostitutivo (sei l'ultimo)</value></data>
   <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Salva coordinatori</value></data>
-  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>ID utente coordinatore 1</value></data>
-  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>ID utente coordinatore 2 (opzionale)</value></data>
   <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Richiedi un aggiornamento di stato</value></data>
   <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Una domanda in una riga (opzionale)</value></data>
   <data name="Workgroups_MarkDone" xml:space="preserve"><value>Contrassegna come concluso</value></data>

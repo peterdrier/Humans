@@ -15,7 +15,7 @@ namespace Humans.Containers.Controllers;
 internal sealed class ContainerController(
     ICampServiceRead campService,
     IContainerService containerService,
-    ICityPlanningServiceRead cityPlanningService,
+    ICityPlanningService cityPlanningService,
     IAuthorizationService authorizationService,
     IUserServiceRead userService,
     IStringLocalizer<ContainersResource> localizer,

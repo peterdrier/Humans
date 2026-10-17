@@ -6,7 +6,7 @@ namespace Humans.Consent.Services;
 /// Cached projection record for the Legal section's global cache (T-04).
 /// Holds the active+required legal-document set in a shape suitable for
 /// the every-page consent-banner read served by
-/// <see cref="ILegalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync"/>.
+/// <see cref="ILegalDocumentSyncManagement.GetActiveRequiredDocumentsForTeamsAsync"/>.
 /// One <c>LegalDocumentInfo</c> per active+required legal document.
 /// </summary>
 /// <remarks>

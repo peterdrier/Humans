@@ -24,20 +24,20 @@ including the VAT the association will settle each quarter.
 | Feed ticket actuals in / re-forecast | `/Finance/TicketingBudget/{yearId}/Sync`, `/Finance/TicketingProjection/{groupId}/Update`, `/Finance/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
 | When does money move? | `/Finance/CashFlow` (weekly/monthly, VAT settlements, runway) |
 | Who changed what? | `/Finance/AuditLog/{yearId?}` |
-| Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetServiceRead`, `IBudgetDemoSeeder` (`Contracts/` folder) |
+| Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetService`, `IBudgetDemoSeeder` (`Contracts/` folder) |
 
 ## Structure
 
 The shapes imply the layered split that exists:
 
 - Two thin controllers — member-facing (`/Budget`) and admin (`/Finance` prefix) — that
-  parse, call `IBudgetService`, and redirect with a flash message. Cash-flow *presentation*
+  parse, call `IBudgetManagement`, and redirect with a flash message. Cash-flow *presentation*
   grouping (week/month bucketing of already-computed entries) is view-model shaping and may
   live controller-side; VAT/summary *computation* belongs to the service.
 - One `BudgetService`: the tree CRUD pass-through to atomic repository ops, the coordinator
   scope derivation, the pure summary/VAT computations, and the GDPR contributor.
 - One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketServiceRead` into
-  weekly actuals and hands them to `IBudgetService`; no data of its own. Anything it does
+  weekly actuals and hands them to `IBudgetManagement`; no data of its own. Anything it does
   that never reads Tickets is a pass-through the admin controller could make itself.
 - One singleton `BudgetRepository` (`IDbContextFactory`): each mutation is one atomic
   method that writes its audit rows in the same `SaveChanges`. The projected-week
@@ -80,8 +80,8 @@ The shapes imply the layered split that exists:
 ## Deliberately not done
 
 - No caching decorator: admin-only, low-traffic (same rationale as Governance/User/Feedback).
-- No `I<X>ServiceRead` widening: `IBudgetServiceRead` stays at the methods external
-  callers actually call; the other `IBudgetService` members stay internal.
+- No public-contract widening: `IBudgetService` stays at the methods external
+  callers actually call; the other `IBudgetManagement` members stay internal.
 - `ITicketingBudgetService` stays single-member (the job's test seam); the admin controller
   injects the concrete `TicketingBudgetService` for its other calls.
 - No cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`): labels

@@ -62,7 +62,6 @@
     <Project Path="src/Sections/Humans.Users/Humans.Users.csproj" />
     <Project Path="src/Sections/Humans.Users.Contracts/Humans.Users.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Preapprovals/Humans.Preapprovals.csproj" />
-    <Project Path="src/Sections/Humans.Preapprovals.Contracts/Humans.Preapprovals.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Workgroups/Humans.Workgroups.csproj" />
   </Folder>
   <Folder Name="/tests/">

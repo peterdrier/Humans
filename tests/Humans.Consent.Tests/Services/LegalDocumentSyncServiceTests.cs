@@ -20,7 +20,7 @@ namespace Humans.Consent.Tests.Services;
 /// Covers the merged <see cref="LegalDocumentSyncService"/> (nobodies-collective/Humans#751):
 /// the sole writer for <c>legal_documents</c>/<c>document_versions</c>, owning both the admin
 /// write surface (<see cref="IAdminLegalDocumentService"/>) and the GitHub-sync write surface
-/// (<see cref="ILegalDocumentSyncService"/>). Invalidator assertions here replace the deleted
+/// (<see cref="ILegalDocumentSyncManagement"/>). Invalidator assertions here replace the deleted
 /// <c>LegalDocumentSaveChangesInterceptorTests</c> — invalidation now fires from the service
 /// after each successful repository write instead of from a cross-cutting EF interceptor.
 /// </summary>

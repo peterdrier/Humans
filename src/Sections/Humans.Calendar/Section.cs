@@ -32,7 +32,7 @@ public sealed class Section : ISection
 
         services.AddSingleton<CachingCalendarService>();
         services.AddSingleton<ICalendarService>(sp => sp.GetRequiredService<CachingCalendarService>());
-        services.AddSingleton<ICalendarServiceRead>(sp => sp.GetRequiredService<CachingCalendarService>());
+        services.AddSingleton<ICalendarQueries>(sp => sp.GetRequiredService<CachingCalendarService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCalendarService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());

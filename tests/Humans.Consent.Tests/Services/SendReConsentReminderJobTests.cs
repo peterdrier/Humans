@@ -40,7 +40,7 @@ public sealed class SendReConsentReminderJobTests
         var membership = Substitute.For<IMembershipCalculatorRead>();
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id, cooling.Id });
-        var legal = Substitute.For<ILegalDocumentSyncServiceRead>();
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -105,7 +105,7 @@ public sealed class SendReConsentReminderJobTests
         var membership = Substitute.For<IMembershipCalculatorRead>();
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id });
-        var legal = Substitute.For<ILegalDocumentSyncServiceRead>();
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
