@@ -12,7 +12,7 @@ namespace Humans.Calendar.Contracts;
 /// (IICalFeedService) fans out and assembles one VCALENDAR
 /// without any cross-section database reads. A contributor reads only from
 /// its owning section's tables — cross-section names (teams, burn settings)
-/// flow through the existing IServiceRead surfaces.
+/// flow through the existing I&lt;Section&gt;Service contracts.
 /// </para>
 /// <para>
 /// Lives under Calendar's <c>Contracts/</c> because a contributor fan-out inverts

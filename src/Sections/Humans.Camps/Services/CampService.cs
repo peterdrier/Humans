@@ -38,7 +38,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
-    private readonly IUserService _userServiceRead;
+    private readonly IUserService _userService;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
@@ -62,7 +62,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         Lazy<ICityPlanningWrite> cityPlanningService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
-        IUserService userServiceRead,
+        IUserService userService,
         ISettingsService settingsService,
         IClock clock,
         ILogger<CampService> logger)
@@ -77,7 +77,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         _cityPlanningService = cityPlanningService;
         _earlyEntryInvalidator = earlyEntryInvalidator;
         _campInfoInvalidator = campInfoInvalidator;
-        _userServiceRead = userServiceRead;
+        _userService = userService;
         _settingsService = settingsService;
         _clock = clock;
         _logger = logger;
@@ -1402,7 +1402,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     {
         try
         {
-            var language = (await _userServiceRead.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
+            var language = (await _userService.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
             return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -1533,7 +1533,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
     private async Task<Guid?> EnsureActiveCampMemberAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        var user = await _userServiceRead.GetUserInfoAsync(userId, cancellationToken);
+        var user = await _userService.GetUserInfoAsync(userId, cancellationToken);
         if (user is null || user.IsTombstone)
             return null;
         // Merge aliases identify the survivor; never create a new footprint on the archived account.
@@ -1789,7 +1789,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     /// </summary>
     private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct)
     {
-        var info = await _userServiceRead.GetUserInfoAsync(userId, ct);
+        var info = await _userService.GetUserInfoAsync(userId, ct);
         return info?.EventParticipations.Any(p =>
             p.Year == year && p.Status == ParticipationStatus.Attended) ?? false;
     }

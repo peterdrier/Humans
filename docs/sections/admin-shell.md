@@ -78,7 +78,7 @@ None — this section is a pure rendering surface with no DB writes and no side 
 None directly — since nobodies-collective/Humans#1091, the shell names no section. Nav groups (`ISectionAdminNav`), dashboard tiles (`ISectionAdminTiles`) and dashboard cards (`ISectionChrome`, `admin-dashboard` slot) are section-contributed and merged by Shell's composition/rendering code, which reaches no section service directly. The tiles and cards are owned by (and call the service interfaces of) their contributing sections:
 
 - **Users:** `users.total` / `users.profiles` / `users.tickets` tiles (`IUserService`); the "Preferred language" card.
-- **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementServiceRead`).
+- **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementService`).
 - **Feedback:** `feedback.open` tile, AdminOnly (`FeedbackService`, section-internal).
 - **Teams:** `teams.total` tile (`ITeamService`).
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
@@ -88,7 +88,7 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Governance:** the "Tier applications" card (`IGovernanceService`); also contributes the Voting tab pill's unvoted-application count.
 - **Debug:** the "User set membership" (Venn/UpSet) card.
 
-Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. Every piece above lives in the section it names and reads only that section, so none of them crosses a section boundary to render. Most reach their own data through their section's public read-side contract (`I*ServiceRead` / `I*Contracts`), which exists because something outside the section needs it. Store's and Expenses' tiles are the exception and not a violation: neither publishes a read contract, so each `SectionAdminTiles` resolves its own section's internal service — a section calling itself. Either way the shell holds no repository and writes nothing.
+Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. Every piece above lives in the section it names and reads only that section, so none of them crosses a section boundary to render. Most reach their own data through their section's public read-side contract (`I<Section>Service` in `Contracts/`), which exists because something outside the section needs it. Store's and Expenses' tiles are the exception and not a violation: neither publishes a read contract, so each `SectionAdminTiles` resolves its own section's internal service — a section calling itself. Either way the shell holds no repository and writes nothing.
 
 ## Architecture
 

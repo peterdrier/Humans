@@ -25,8 +25,8 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     ITicketCacheInvalidator ticketCache,
     ITicketVendorCacheInvalidator vendorCache,
-    IUserService userServiceRead,
-    IUserWrite userService,
+    IUserService userService,
+    IUserWrite userWrite,
     ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService, IUserMerge
 {
@@ -231,7 +231,7 @@ internal sealed class TicketSyncService(
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
         // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
-        var users = await userServiceRead.GetAllUserInfosAsync(ct);
+        var users = await userService.GetAllUserInfosAsync(ct);
         var (lookup, collisions) = VerifiedEmailLookup.Build(users);
         foreach (var (email, userCount) in collisions)
         {
@@ -471,7 +471,7 @@ internal sealed class TicketSyncService(
         // Diffing against it lets us skip the per-user upsert — and the cache-slice
         // refresh it triggers — for the vast majority of ticket-holders whose status
         // hasn't changed since the last 15-minute sync.
-        var current = (await userServiceRead.GetAllParticipationsForYearAsync(year, ct))
+        var current = (await userService.GetAllParticipationsForYearAsync(year, ct))
             .ToDictionary(ep => ep.UserId);
 
         foreach (var (userId, info) in userTickets)
@@ -490,7 +490,7 @@ internal sealed class TicketSyncService(
                     && existing.CheckedInAt is not null)
                     continue;
 
-                await userService.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Attended, info.CheckedInAt, ct);
             }
             else if (hasValidTicket)
@@ -501,7 +501,7 @@ internal sealed class TicketSyncService(
                     or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
                     continue;
 
-                await userService.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
@@ -517,7 +517,7 @@ internal sealed class TicketSyncService(
                 !info.Statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
-                await userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
+                await userWrite.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
             }
         }
     }

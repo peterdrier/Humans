@@ -289,7 +289,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     audience resolution and display-name stitching — never a foreign
     repository. `IGoogleTranslationService` (GoogleIntegration section)
     is the translation bridge for the admin pre-fill helper. No
-    cross-section table reads. There is no `ISurveyServiceRead` — no other
+    cross-section table reads. There is no `ISurveyService` — no other
     section consumes one; the section's outbound contracts are the
     single-member `ISurveyReminderSender` (its own reminder job) and
     `ISurveyAnalysisRead` (Backdoor's machine API).

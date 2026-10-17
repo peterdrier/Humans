@@ -315,7 +315,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IRideshareServiceRead` | — | Not published — no other section consumes Rideshare; no `Contracts` leaf |
+| `IRideshareService` | — | Not published — no other section consumes Rideshare; no `Contracts` leaf |
 
 ### For (A) Migrated sections
 

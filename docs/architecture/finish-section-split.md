@@ -106,7 +106,7 @@ Done when removing an optional integration or campaign domain leaves generic not
 
 ### 9. Let the compiler enforce the boundary
 
-- [ ] Internalize implementation-only write interfaces as `I<X>Management` and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058); Contracts are the whole public face. A write another section genuinely needs prefers the owning section's own view component; `I<X>Write` is the reviewed fallback; what becomes a compile error is reaching a write nobody agreed to export.
+- [x] Internalize implementation-only write interfaces as `I<X>Management` and collapse the old read split into `I<X>Service` (nobodies-collective/Humans#1058, done in peterdrier/Humans#2009-#2013 and the wave-3 sweep); Contracts are the whole public face. A write another section genuinely needs prefers the owning section's own view component; `I<X>Write` is the reviewed fallback; what becomes a compile error is reaching a write nobody agreed to export.
 - [ ] Fold the `.Contracts` leaves no cycle pins (nobodies-collective/Humans#1066, #1041) and retire the analyzers, baselines and `[Grandfathered]` entries the assembly boundary subsumes (nobodies-collective/Humans#1010).
 
 Done when a section's public surface is its `Contracts/` folder or leaf plus the exceptions design-rules already enumerates (`Section`, the `<Section>Resource` marker, migrations, `Jobs/`, and framework-discovered view components and tag helpers), and the remaining analyzers are the ones the compiler cannot express.

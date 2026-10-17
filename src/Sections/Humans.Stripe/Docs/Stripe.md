@@ -133,7 +133,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 4 + 3 flags | The whole outward surface. Read/write is not split: the connector's "write" is a call to Stripe, not to a table, so `peters-hard-rules.md`'s `I<Section>ServiceRead` pattern has nothing to separate. |
+| `IStripeService` | 4 + 3 flags | The whole outward surface. Read/write is not split: the connector's "write" is a call to Stripe, not to a table, so there is no `I<Section>Write` to separate out. |
 
 - The section is plain `Microsoft.NET.Sdk` plus a `FrameworkReference` (for `IHostedService`
   and `IOptions`); no Razor, no `Humans.UI`, no `Humans.Infrastructure`.

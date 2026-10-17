@@ -95,8 +95,8 @@ failure instead of throwing.
 ## 6. Deliberately not done
 
 - **No caching decorator** — small dataset, lead-facing, rare writes.
-- **No `IContainerServiceRead` split** — both external consumers (City Planning's two
-  controllers) also write; the split would carry nothing.
+- **No separate read contract** — both external consumers (City Planning's two
+  controllers) also write, so there is one public face, not a read/write pair.
 - **Placement API and admin pages stay in City Planning** — their URLs are City Planning's
   (`/api/city-planning/containers/*`, `/CityPlanning/BarrioMap/Admin/Containers/*`), and moving
   them is a URL change, out of scope.

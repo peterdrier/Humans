@@ -25,7 +25,7 @@ internal sealed class UserEmailService(
 
     // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketService.
     // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
-    private Humans.Tickets.Contracts.ITicketService TicketServiceRead =>
+    private Humans.Tickets.Contracts.ITicketService TicketService =>
         serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
@@ -505,7 +505,7 @@ internal sealed class UserEmailService(
     private async Task<bool> IsAddressTicketLinkedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
     {
-        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
+        var orders = await TicketService.GetTicketOrdersAsync(cancellationToken);
 
         foreach (var order in orders)
         {

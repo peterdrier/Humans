@@ -15,7 +15,7 @@ internal sealed class CampRoleService(
     ICampRoleCampAccess campAccess,
     ICampInfoInvalidator campInfoInvalidator,
     IUserEmailService userEmailService,
-    IUserService userServiceRead,
+    IUserService userService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
     IOptions<GoogleWorkspaceOptions> googleOptions,
@@ -301,7 +301,7 @@ internal sealed class CampRoleService(
             var culture = CultureInfo.GetCultureInfo("en");
             try
             {
-                var language = (await userServiceRead.GetUserInfoAsync(memberLookup.UserId, ct))?.PreferredLanguage;
+                var language = (await userService.GetUserInfoAsync(memberLookup.UserId, ct))?.PreferredLanguage;
                 culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

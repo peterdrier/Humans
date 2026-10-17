@@ -485,7 +485,7 @@ display-name reads.
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IWorkgroupServiceRead` | — | Not published — no other section consumes Workgroups directly (Calendar and GoogleIntegration are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
+| `IWorkgroupService` | — | Not published — no other section consumes Workgroups directly (Calendar and GoogleIntegration are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
 
 ### For (A) Migrated sections
 

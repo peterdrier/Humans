@@ -116,7 +116,7 @@ it. No `WorkgroupAdmin` role exists; adding one is a separate change.
 **UI.**
 - Group page: a "Budget" block showing the amount and the Holded account number/name. Rendered
   for Board/Admin and for viewers whose `MembershipTier` is Colaborador or Asociado; hidden from
-  Volunteers. (Tier via `IUserServiceRead`, as the page already stitches for the roster.)
+  Volunteers. (Tier via `IUserService`, as the page already stitches for the roster.)
 - Admin form (Board/Admin, on the group page beside the other admin controls): checkbox "This
   workgroup has a budget" → amount field → radio "Create `Workgroups / {Name}` in Holded"
   (default) / "Link an existing account" with a select of the live chart (number — name).

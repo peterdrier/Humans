@@ -20,7 +20,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
-    private readonly IUserService _userServiceRead;
+    private readonly IUserService _userService;
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -33,7 +33,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
-        _userServiceRead = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserService>();
 
         var settingsService = Substitute.For<ISettingsService>();
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
@@ -50,7 +50,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             new Lazy<ICityPlanningWrite>(() => Substitute.For<ICityPlanningWrite>()),
             Substitute.For<IEarlyEntryInvalidator>(),
             Substitute.For<ICampInfoInvalidator>(),
-            _userServiceRead,
+            _userService,
             settingsService,
             Clock,
             NullLogger<CampService>.Instance);
@@ -382,7 +382,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             Status = status,
             Source = ParticipationSource.TicketSync,
         };
-        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 user, [], [participation], [], null, [])));
     }
