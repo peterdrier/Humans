@@ -152,7 +152,7 @@ internal sealed class GuestAccountController(
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is not null)
-            return (user.Id, null, false);
+            return user.IsGdprAnonymized ? (null, null, false) : (user.Id, null, false);
 
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
@@ -162,7 +162,7 @@ internal sealed class GuestAccountController(
             return (null, null, false);
 
         var userInfo = await FindUserInfoByIdAsync(result.UserId, ct);
-        return userInfo is not null
+        return userInfo is { IsGdprAnonymized: false }
             ? (userInfo.Id, result.Category, true)
             : (null, null, false);
     }

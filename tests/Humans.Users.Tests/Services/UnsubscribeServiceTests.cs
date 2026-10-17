@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.DataProtection;
@@ -201,6 +202,40 @@ public class UnsubscribeServiceTests
             survivorId, MessageCategory.Marketing, true, "MagicLink", Arg.Any<CancellationToken>());
         await _preferenceService.DidNotReceive().UpdatePreferenceAsync(
             mergedId, Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConfirmUnsubscribeAsync_ErasedAccount_DoesNotRecreatePreferences(bool legacy)
+    {
+        var userId = Guid.NewGuid();
+        var erasedUser = CreateUserInfo(new User
+        {
+            Id = userId, DisplayName = "Deleted User", Email = $"deleted-{userId:N}@deleted.local"
+        });
+        erasedUser.IsGdprAnonymized.Should().BeTrue();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(erasedUser);
+        var token = "pre-erasure-token";
+        if (legacy)
+        {
+            token = _dataProtection.CreateProtector("CampaignUnsubscribe").ToTimeLimitedDataProtector()
+                .Protect(userId.ToString(), TimeSpan.FromDays(90));
+            _preferenceService.ValidateUnsubscribeToken(token)
+                .Returns((TokenValidationStatus.Invalid, Guid.Empty, MessageCategory.Marketing));
+        }
+        else
+        {
+            _preferenceService.ValidateUnsubscribeToken(token)
+                .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
+        }
+
+        var result = await _service.ConfirmUnsubscribeAsync(token, "OneClick", Xunit.TestContext.Current.CancellationToken);
+
+        result.IsValid.Should().BeFalse();
+        result.UserId.Should().BeNull();
+        await _preferenceService.DidNotReceive().UpdatePreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

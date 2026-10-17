@@ -172,6 +172,39 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update)
+    {
+        var userId = Guid.NewGuid();
+        var controller = BuildSut(new User
+        {
+            Id = userId, DisplayName = "Deleted User", Email = $"deleted-{userId:N}@deleted.local"
+        });
+        if (!signedIn)
+            controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        _commPrefService.ValidateUnsubscribeToken("pre-erasure-token")
+            .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
+        _commPrefService.GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
+        _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+
+        if (update)
+            Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(
+                MessageCategory.Marketing, false, false, "pre-erasure-token"));
+        else
+            Assert.IsType<ChallengeResult>(await controller.CommunicationPreferences("pre-erasure-token"));
+
+        await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+        await _commPrefService.DidNotReceive().UpdatePreferenceAsync(Arg.Any<Guid>(),
+            Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData("Viewer")]
     [InlineData("TokenViewer")]
     [InlineData("Preferences")]

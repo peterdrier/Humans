@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- GDPR-erased accounts cannot use current or legacy unsubscribe tokens, or a lingering Guest session, to read or recreate communication preferences. Live merge survivors remain eligible.
+
 - Guest preference tokens minted before an account merge read and update the surviving account, matching the one-click unsubscribe flow.
 
 - Communication preference writes share one channel-update path. Signed-in profile and Guest changes audit their authenticated actor; token/one-click and imported changes retain service attribution. Email-only writes preserve the inbox channel; no-ops preserve timestamps, source and audit history.
