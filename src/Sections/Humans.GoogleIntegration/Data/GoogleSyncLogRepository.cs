@@ -62,10 +62,11 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
-        int limit, CancellationToken ct = default)
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.GoogleSyncLog.AsNoTracking();
+        if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
         if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);
         if (to.HasValue) query = query.Where(e => e.OccurredAt < to.Value);
         if (action.HasValue) query = query.Where(e => e.Action == action.Value);
@@ -75,6 +76,12 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
             .Take(limit)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleSyncLog.AsNoTracking().Select(e => e.ResourceId).Distinct().ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(

@@ -51,7 +51,7 @@ public sealed class GoogleSyncLogActivityLogTests
     {
         await SeedAsync(Entry(T0), Entry(T0.Plus(Duration.FromHours(2))), Entry(T0.Plus(Duration.FromHours(1))));
 
-        var rows = await Repo().GetRecentAsync(null, null, null, null, null, 10, Xunit.TestContext.Current.CancellationToken);
+        var rows = await Repo().GetRecentAsync(null, null, null, null, null, null, 10, Xunit.TestContext.Current.CancellationToken);
 
         rows.Select(r => r.OccurredAt).Should().BeInDescendingOrder().And.HaveCount(3);
     }
@@ -61,7 +61,7 @@ public sealed class GoogleSyncLogActivityLogTests
     {
         await SeedAsync(Enumerable.Range(0, 5).Select(i => Entry(T0.Plus(Duration.FromHours(i)))).ToArray());
 
-        var rows = await Repo().GetRecentAsync(null, null, null, null, null, 2, Xunit.TestContext.Current.CancellationToken);
+        var rows = await Repo().GetRecentAsync(null, null, null, null, null, null, 2, Xunit.TestContext.Current.CancellationToken);
 
         rows.Select(r => r.OccurredAt).Should().Equal(T0.Plus(Duration.FromHours(4)), T0.Plus(Duration.FromHours(3)));
     }
@@ -72,7 +72,7 @@ public sealed class GoogleSyncLogActivityLogTests
         await SeedAsync(Entry(T0.Minus(Duration.FromSeconds(1))), Entry(T0), Entry(T0.Plus(Duration.FromHours(1))));
 
         var rows = await Repo().GetRecentAsync(
-            T0, T0.Plus(Duration.FromHours(1)), null, null, null, 10, Xunit.TestContext.Current.CancellationToken);
+            T0, T0.Plus(Duration.FromHours(1)), null, null, null, null, 10, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.OccurredAt.Should().Be(T0);
     }
@@ -88,20 +88,34 @@ public sealed class GoogleSyncLogActivityLogTests
             Entry(T0, GoogleSyncLogAction.AccessRevoked, GoogleSyncSource.ManualSync, success: true));
 
         var rows = await Repo().GetRecentAsync(
-            null, null, GoogleSyncLogAction.AccessRevoked, GoogleSyncSource.ManualSync, false, 10,
+            null, null, GoogleSyncLogAction.AccessRevoked, GoogleSyncSource.ManualSync, false, null, 10,
             Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.Id.Should().Be(match.Id);
     }
 
     [HumansFact]
-    public async Task Viewer_GetRecentAsync_ResolvesNamesAndFiltersByResourceName()
+    public async Task GetRecentAsync_ResourceIds_KeepsOnlyThoseResources()
+    {
+        var keep = Guid.NewGuid();
+        await SeedAsync(Entry(T0, resourceId: keep), Entry(T0), Entry(T0.Plus(Duration.FromHours(1)), resourceId: keep));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var rows = await Repo().GetRecentAsync(null, null, null, null, null, [keep], 10, ct);
+
+        rows.Should().HaveCount(2).And.OnlyContain(r => r.ResourceId == keep);
+        (await Repo().GetResourceIdsAsync(ct)).Should().HaveCount(2).And.Contain(keep);
+    }
+
+    [HumansFact]
+    public async Task Viewer_GetRecentAsync_ResolvesNamesAndFiltersByResourceNameInTheRepository()
     {
         var docs = Guid.NewGuid();
         var other = Guid.NewGuid();
         var repo = Substitute.For<IGoogleSyncLogRepository>();
-        repo.GetRecentAsync(default, default, default, default, default, default, default).ReturnsForAnyArgs(
+        repo.GetRecentAsync(default, default, default, default, default, default, default, default).ReturnsForAnyArgs(
             [Entry(T0, resourceId: docs), Entry(T0, resourceId: other), Entry(T0, resourceId: Guid.Empty)]);
+        repo.GetResourceIdsAsync(default).ReturnsForAnyArgs([docs, other, Guid.Empty]);
         var resources = Substitute.For<ITeamResourceService>();
         resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(
             new Dictionary<Guid, string> { [docs] = "Board Docs", [other] = "Camp Group" });
@@ -111,13 +125,16 @@ public sealed class GoogleSyncLogActivityLogTests
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var all = await sut.GetRecentAsync(null, null, null, null, null, null, ct);
-        var filtered = await sut.GetRecentAsync(null, null, null, null, null, "board", ct);
+        await sut.GetRecentAsync(null, null, null, null, null, " board ", ct);
+        var none = await sut.GetRecentAsync(null, null, null, null, null, "nothing", ct);
 
         all.Select(v => v.ResourceName).Should().Equal("Board Docs", "Camp Group", null);
         all.Should().OnlyContain(v => v.UserId != null);
-        filtered.Should().ContainSingle().Which.ResourceName.Should().Be("Board Docs");
-        await repo.Received(1).GetRecentAsync(null, null, null, null, null, 500, ct);
-        await repo.Received(1).GetRecentAsync(null, null, null, null, null, int.MaxValue, ct);
+        none.Should().BeEmpty();
+        await repo.Received(1).GetRecentAsync(null, null, null, null, null, null, 500, ct);
+        await repo.Received(1).GetRecentAsync(null, null, null, null, null,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { docs })), 500, ct);
+        await repo.ReceivedWithAnyArgs(2).GetRecentAsync(default, default, default, default, default, default, default, default);
     }
 
     private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)

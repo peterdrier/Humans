@@ -32,7 +32,10 @@ internal interface IGoogleSyncLogRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
-        int limit, CancellationToken ct = default);
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default);
+
+    /// <summary>Every distinct resource id the log references.</summary>
+    Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default);
 
     /// <summary>Most recent entries attributed to any of <paramref name="userIds"/>.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(

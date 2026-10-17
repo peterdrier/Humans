@@ -96,14 +96,20 @@ internal sealed class GoogleSyncLogService(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
         string? resourceName, CancellationToken ct = default)
     {
-        // Names live in another table, so a name filter reads every row the other filters match.
-        var byName = !string.IsNullOrWhiteSpace(resourceName);
-        var entries = await repo.GetRecentAsync(
-            from, to, action, source, success, byName ? int.MaxValue : MaxRecentRows, ct);
-        var views = await ToViewsAsync(entries, ct);
-        if (byName)
-            views = views.Where(v => v.ResourceName?.Contains(resourceName!.Trim(), StringComparison.OrdinalIgnoreCase) == true).ToList();
-        return views.Take(MaxRecentRows).ToList();
+        // Names live in google_resources (ITeamResourceService), so resolve the name filter to ids first.
+        IReadOnlyCollection<Guid>? resourceIds = null;
+        if (!string.IsNullOrWhiteSpace(resourceName))
+        {
+            var needle = resourceName.Trim();
+            var names = await teamResourceService.GetResourceNamesByIdsAsync(await repo.GetResourceIdsAsync(ct), ct);
+            resourceIds = names.Where(n => n.Value.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                .Select(n => n.Key).ToList();
+            if (resourceIds.Count == 0)
+                return [];
+        }
+
+        var entries = await repo.GetRecentAsync(from, to, action, source, success, resourceIds, MaxRecentRows, ct);
+        return await ToViewsAsync(entries, ct);
     }
 
     /// <summary>GDPR Article 15 slice — every sync row attributed to this human, uncapped.</summary>

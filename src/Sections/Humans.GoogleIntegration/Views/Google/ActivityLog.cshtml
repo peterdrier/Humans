@@ -65,7 +65,7 @@
             <option value="">Any</option>
             @foreach (var value in Enum.GetValues<GoogleSyncLogAction>())
             {
-                <option value="@value" selected="@(Model.Action == value)">@(value == GoogleSyncLogAction.AccessGranted ? "Granted" : "Revoked")</option>
+                <option value="@value" selected="@(Model.Action == value ? "selected" : null)">@(value == GoogleSyncLogAction.AccessGranted ? "Granted" : "Revoked")</option>
             }
         </select>
     </div>
@@ -75,7 +75,7 @@
             <option value="">Any</option>
             @foreach (var value in Enum.GetValues<GoogleSyncSource>())
             {
-                <option value="@value" selected="@(Model.Source == value)">@value</option>
+                <option value="@value" selected="@(Model.Source == value ? "selected" : null)">@value</option>
             }
         </select>
     </div>
@@ -83,8 +83,8 @@
         <label class="form-label" for="success">Result</label>
         <select id="success" name="success" class="form-select">
             <option value="">Any</option>
-            <option value="true" selected="@(Model.Success == true)">Success</option>
-            <option value="false" selected="@(Model.Success == false)">Failed</option>
+            <option value="true" selected="@(Model.Success == true ? "selected" : null)">Success</option>
+            <option value="false" selected="@(Model.Success == false ? "selected" : null)">Failed</option>
         </select>
     </div>
     <div class="col-auto">
