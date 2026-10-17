@@ -2872,7 +2872,7 @@ public class HoldedFinanceServiceTests
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
                     Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
-                    bookedAt, null, null, null, null, null),
+                    bookedAt, null, null, null, null, null, null),
             });
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -3037,7 +3037,7 @@ public class HoldedFinanceServiceTests
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
     }
 
     [HumansFact]
@@ -3055,7 +3055,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -3117,7 +3117,7 @@ public class HoldedFinanceServiceTests
             BankLineDate, 40000004, 57200001, 20m,
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
@@ -3144,7 +3144,7 @@ public class HoldedFinanceServiceTests
         await _client.Received(1).PostLedgerEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -3168,7 +3168,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
@@ -3219,7 +3219,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
@@ -3249,7 +3249,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
     }
 
     [HumansFact]
@@ -3431,7 +3431,7 @@ public class HoldedFinanceServiceTests
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
                     Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
-                    null, null, null, null, null, null),
+                    null, null, null, null, null, null, null),
             });
         return userId;
     }

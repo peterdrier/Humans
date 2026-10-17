@@ -42,10 +42,12 @@ internal sealed class SepaPayoutTransfer
     /// <summary>The finance admin who pressed Book. Bare FK (no nav).</summary>
     public Guid? BookedByUserId { get; set; }
 
-    /// <summary>Comma-joined Holded payment ids from before nobodies-collective/Humans#1185 moved
-    /// the record onto <see cref="HoldedBankMovementId"/>. Retained unused so no shipped row loses
-    /// what it holds; dropping the column is its own PR and needs Peter's approval
-    /// (memory/architecture/no-drops-until-prod-verified.md). Nothing reads or writes it.</summary>
+    /// <summary>Comma-joined Holded payment ids this transfer posted (<c>POST purchases/{id}/payments</c>),
+    /// in posting order; an accepted-but-unreadable one is kept as its <c>unconfirmed:</c> sentinel.
+    /// Written with the booking, and on a run that posted payments and then stopped short of
+    /// booking, so a retry can refuse rather than post over them. Null on a row that never posted a
+    /// payment. The sweep re-issues the bank-line reconcile from the confirmed ids while
+    /// <see cref="ReconciledAt"/> is null.</summary>
     public string? HoldedPaymentRefs { get; set; }
 
     /// <summary>The Holded treasury bank-movement id this transfer was booked against — the Sabadell

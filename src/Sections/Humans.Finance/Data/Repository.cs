@@ -200,7 +200,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                           t.UserId, t.SupplierAccountNum, t.HoldedContactId,
                           t.CreditorName, t.IbanMasked, t.Amount,
                           t.BookedAt, t.BookedByUserId, t.HoldedBankMovementId, t.ReconciledAt,
-                          null, null))
+                          t.HoldedPaymentRefs, null, null))
             .ToListAsync(ct);
     }
 
@@ -214,7 +214,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
     public async Task SaveSepaTransferBookingAsync(
         Guid transferId, Instant bookedAt, Guid? bookedByUserId,
-        string bankMovementId, Instant? reconciledAt, CancellationToken ct = default)
+        string bankMovementId, Instant? reconciledAt, string? holdedPaymentRefs,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
@@ -224,6 +225,18 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         existing.BookedByUserId = bookedByUserId;
         existing.HoldedBankMovementId = bankMovementId;
         existing.ReconciledAt = reconciledAt;
+        existing.HoldedPaymentRefs = holdedPaymentRefs;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task SaveSepaTransferPaymentRefsAsync(
+        Guid transferId, string holdedPaymentRefs, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
+        if (existing is null) return;
+
+        existing.HoldedPaymentRefs = holdedPaymentRefs;
         await ctx.SaveChangesAsync(ct);
     }
 

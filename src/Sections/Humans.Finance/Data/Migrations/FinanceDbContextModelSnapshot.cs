@@ -320,8 +320,7 @@ namespace Humans.Finance.Data.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<string>("HoldedPaymentRefs")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Iban")
                         .IsRequired()

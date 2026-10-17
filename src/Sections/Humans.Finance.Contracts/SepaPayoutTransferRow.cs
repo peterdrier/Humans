@@ -26,6 +26,9 @@ namespace Humans.Finance.Contracts;
 /// <param name="BookedByUserId">The user who booked the transfer, if booked.</param>
 /// <param name="HoldedBankMovementId">The matching Holded bank movement identifier, if reconciled.</param>
 /// <param name="ReconciledAt">When the transfer was reconciled with Holded, if reconciled.</param>
+/// <param name="HoldedPaymentRefs">Comma-joined Holded payment ids the transfer posted, if any. On a
+/// row that is not booked they are what an attempt landed before it stopped — see
+/// <see cref="PostedButNotBooked"/>.</param>
 /// <param name="CandidateBankMovementDate">The candidate bank movement's date, when matched.</param>
 /// <param name="CandidateBankMovementAmount">The candidate bank movement's amount, when matched.</param>
 /// <param name="CandidateBankMovementDescription">The candidate bank movement's description, when matched.</param>
@@ -49,6 +52,7 @@ public sealed record SepaPayoutTransferRow(
     Guid? BookedByUserId,
     string? HoldedBankMovementId,
     Instant? ReconciledAt,
+    string? HoldedPaymentRefs,
     string? NotBookableReason,
     string? CandidateBankMovementId,
     LocalDate? CandidateBankMovementDate = null,
@@ -63,6 +67,11 @@ public sealed record SepaPayoutTransferRow(
     /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
     public bool ReconcilePending =>
         IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
+
+    /// <summary>An attempt posted payments to Holded and then stopped before the row was booked.
+    /// Holded drops the tag on a purchase payment, so a retry cannot see those payments and would
+    /// post over them; the transfer is settled in Holded by hand instead.</summary>
+    public bool PostedButNotBooked => !IsBooked && HoldedPaymentRefs is { Length: > 0 };
 
     /// <summary>A bank line was found for this transfer and everything else checks out. The three
     /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it

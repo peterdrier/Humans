@@ -252,7 +252,17 @@ public class RepositoryTests
                 IbanMasked = "ES79****789", Amount = 30m,
             }], Ct);
 
-        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, Ct);
+        // A run that posted and then stopped records what landed; the booking then overwrites it
+        // with the full list.
+        await repo.SaveSepaTransferPaymentRefsAsync(transferId, "pay-1", Ct);
+        var landed = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        landed.IsBooked.Should().BeFalse();
+        landed.HoldedPaymentRefs.Should().Be("pay-1");
+        landed.PostedButNotBooked.Should().BeTrue();
+
+        // Well past the 512 characters the column used to hold.
+        var refs = string.Join(",", Enumerable.Range(1, 30).Select(i => $"68f2a7c1e5b3d4a9f0c1b2{i:D2}"));
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, refs, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         row.TransferId.Should().Be(transferId);
@@ -261,8 +271,10 @@ public class RepositoryTests
         row.BookedByUserId.Should().Be(actor);
         row.HoldedBankMovementId.Should().Be("mv-1");
         row.ReconciledAt.Should().BeNull();
+        row.HoldedPaymentRefs.Should().Be(refs);
         row.HoldedContactId.Should().Be("c1");
         row.IsBooked.Should().BeTrue();
+        row.PostedButNotBooked.Should().BeFalse();
     }
 
     [HumansFact]
@@ -290,7 +302,7 @@ public class RepositoryTests
                 CreditorName = "Ana Ruiz", Iban = "ES7921000813610123456789",
                 IbanMasked = "ES79****789", Amount = 30m,
             }], Ct);
-        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, Ct);
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, null, Ct);
 
         var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(3));
         await repo.MarkSepaTransferReconciledAsync(transferId, reconciledAt, Ct);
@@ -333,7 +345,7 @@ public class RepositoryTests
         unbooked.ReconciledAt.Should().BeNull();
 
         var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(1));
-        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-2", reconciledAt, Ct);
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-2", reconciledAt, null, Ct);
 
         var booked = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         booked.HoldedBankMovementId.Should().Be("mv-2");
