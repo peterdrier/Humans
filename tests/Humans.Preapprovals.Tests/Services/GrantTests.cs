@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -135,6 +136,48 @@ public sealed class GrantTests : PreapprovalsTestHarness
             $"/Preapprovals/Admin/{program.Id}", Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.RequestSourceKey(grant.Id), Arg.Any<CancellationToken>());
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(NotificationSource.PreapprovalApplicationReceived, PreapprovalService.RequestSourceKey(grant.Id), applicant, Ct);
         await AuditLog.Received(2).LogAsync(AuditAction.PreapprovalGrantApplied, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Apply_ApplicantNameLookupFailure_DoesNotFailTheSavedApplication(
+        bool isUpdate, bool failEmailLookup)
+    {
+        var manager = SeedUser("Manager");
+        var applicant = SeedUser("Applicant");
+        var program = await SeedProgramAsync(managers: manager);
+        var service = NewService();
+        Guid? originalId = null;
+        if (isUpdate)
+            originalId = (await service.ApplyAsync(program.Id, applicant, "Original note", null, Ct)).Value;
+        var person = await Users.GetUserInfoAsync(applicant, Ct);
+        Notifications.ClearReceivedCalls();
+        Email.ClearReceivedCalls();
+        AuditLog.ClearReceivedCalls();
+        var lookups = 0;
+        Users.GetUserInfoAsync(applicant, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            // Membership lookup succeeds; one later, post-save channel fails during enrichment.
+            if (++lookups == (failEmailLookup ? 3 : 2))
+                throw new IOException("Applicant name lookup failed");
+            return new ValueTask<Humans.Users.Contracts.UserInfo?>(person);
+        });
+
+        var result = await service.ApplyAsync(program.Id, applicant, "Saved note", null, Ct);
+
+        result.Refusal.Should().BeNull();
+        var grant = (await OpenContext().Grants.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        grant.Id.Should().Be(result.Value);
+        if (isUpdate) grant.Id.Should().Be(originalId!.Value);
+        grant.ApplicationNote.Should().Be("Saved note");
+        grant.Status.Should().Be(GrantStatus.Applied);
+        Notifications.ReceivedCalls().Should().HaveCount(failEmailLookup ? 1 : 0);
+        Email.ReceivedCalls().Should().HaveCount(failEmailLookup ? 0 : 1);
+        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalGrantApplied, AuditEntityTypes.Grant,
+            grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

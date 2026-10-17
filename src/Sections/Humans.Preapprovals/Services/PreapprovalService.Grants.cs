@@ -305,7 +305,7 @@ internal sealed partial class PreapprovalService
 
     private async Task AnnounceApplicationAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
-        await NotifyManagersAsync(program, info, ct);
-        await EmailManagersAsync(program, info, ct);
+        await SafeAsync(() => NotifyManagersAsync(program, info, ct), "notify managers", info.Id);
+        await SafeAsync(() => EmailManagersAsync(program, info, ct), "email managers", info.Id);
     }
 }

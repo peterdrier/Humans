@@ -172,7 +172,10 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the
   notification; release re-raises it.
 - Apply: `PreapprovalApplicationReceived` to every manager (source key `pre-request:{id}`)
-  plus email; approve, decline and a merge-drop resolve it.
+  plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
+  belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
+  save, leaves the successful application successful, and does not skip the other channel.
+  Caller cancellation still propagates.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
