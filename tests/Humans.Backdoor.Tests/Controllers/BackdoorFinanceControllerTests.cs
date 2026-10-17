@@ -598,7 +598,7 @@ public class BackdoorFinanceControllerTests
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 6, 1, 9, 0),
                     generatedBy, member, 40000060, "c-ana", "Ana Torres", maskedIban, 50m,
-                    Instant.FromUtc(2026, 6, 2, 9, 0), generatedBy, "mv-1", null, null, null),
+                    Instant.FromUtc(2026, 6, 2, 9, 0), generatedBy, "mv-1", null, null, null, null),
             ],
             (string?)null));
 
@@ -731,7 +731,7 @@ public class BackdoorFinanceControllerTests
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 6, 1, 9, 0),
                     userId, userId, 40000060, Tainted, Tainted, Tainted, 50m,
-                    null, null, Tainted, null, Tainted, Tainted),
+                    null, null, Tainted, null, Tainted, Tainted, Tainted),
             ],
             (string?)Tainted));
         _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(

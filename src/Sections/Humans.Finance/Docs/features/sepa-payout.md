@@ -124,12 +124,21 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
 8. **Persist first, then reconcile.** `BookedAt`, the acting admin (or null for the sweep) and the
    bank movement id land on the row before anything is reconciled — the local save is the cheap
    write, and losing it after Holded already took the money was the original bug
-   (nobodies-collective/Humans#1185). The line is then reconciled in Holded against the paid
-   documents and the journal entry; a refused `dailyledger` type retries with the documents alone.
-   That retry, like a reconcile whose entry ref came back `unconfirmed:` and so was never named,
-   drops a remainder Holded may leave the line `partial` against — so either stamps only if the
-   line then reads `reconciled` on the feed. `ReconciledAt` means Holded says `reconciled`;
-   anything else leaves it null, reconcile-pending, and the booking still stands.
+   (nobodies-collective/Humans#1185), together with the comma-joined payment ids the run posted
+   (`HoldedPaymentRefs`). The line is then reconciled in Holded against **those payment ids**
+   (`{document_id: <payment id>, document_type: "payment"}`) — never against the purchase document
+   ids: a `purchase` ref reads as "this line pays that document", and Holded mints a brand-new
+   payment for the whole line amount on the first document named, leaving the payments just posted
+   as unmatched legs (production, 2026-10-17: a 75.00 line, a phantom 75.00 payment, 150.00 of
+   debits). A payment whose ref came back `unconfirmed:` is left out, never replaced by its
+   document id; a journal entry is left out too, because Holded cannot link a bank line to a
+   ledger entry (`dailyledger` / `entry` are accepted and silently do nothing). Whenever something
+   was left out — an unconfirmed payment, a journal remainder, a resumed run — Holded may read the
+   line `partial`, so the stamp waits for the line to read `reconciled` on the feed; when every
+   euro was named, Holded accepting the call is the reconcile. `ReconciledAt` means Holded says
+   `reconciled`; anything else leaves it null, reconcile-pending, and the booking still stands —
+   and when a journal entry was posted, the result and the audit entry say the line is a human's to
+   reconcile in Holded.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
 9. One `AuditAction.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
@@ -140,24 +149,27 @@ ledger, so paying one would post against a document that does not exist for acco
 
 ### Known limits
 
-- **A resumed booking usually ends reconcile-pending.** The reconcile payload is built from the
-  documents *this run* paid; documents an earlier run already settled come back with nothing pending
-  and are skipped, and Holded's purchase list does not expose which payment settled them. So a
-  booking that resumed after a crash normally leaves `ReconciledAt` null, and the line is ticked
-  either by a human in the Holded GUI or by the sweep noticing Holded now reports it reconciled.
-  Nothing is posted twice; only the reconcile is deferred.
+- **A payout that needed a journal entry stays reconcile-pending until a human reconciles it.**
+  Holded's reconcile cannot name a ledger entry, so the payments are linked and the entry's share of
+  the line is not; the line reads `partial` (or `pending`, when the whole payout was an entry) until
+  someone reconciles it in the Holded GUI. The row says so, and the sweep's re-issue cannot help.
+- **A retry after `PARTIAL` or `SHORT` is refused.** Holded discards the description on a purchase
+  payment, so the `SEPA payout E<id>` tag never reaches the ledger for a payment and the step-4 sum
+  reads 0 for it — a retry would post the money again as a journal entry. A run that posted
+  payments and then stopped writes their ids to `HoldedPaymentRefs` with `BookedAt` still null
+  (`PostedButNotBooked`); the page shows the reason in place of the button and `Book` refuses
+  naming the ids. The transfer is settled in Holded by hand. A journal entry keeps its tag, so a
+  run that posted *only* an entry still resumes from the tag sum.
 - **A transfer older than the feed window can only be settled by hand.** Matching ignores rows
   generated more than 90 days ago — otherwise one stale row makes every later transfer of the same
   account and amount permanently ambiguous, with no way to clear it. Such a row renders with
   "generated more than 90 days ago — … settle it in Holded by hand" in place of a button, and stays
   `Generated` in Humans for the record.
-- **`HoldedPaymentRefs` is retained unused.** The column that held the old payment refs stays on
-  `sepa_payout_transfers` with nothing reading or writing it; this change's migration only *adds*
-  `HoldedBankMovementId` and `ReconciledAt`. Dropping it is a follow-up PR of its own and needs
-  Peter's approval ([`no-drops-until-prod-verified`](../../../../../memory/architecture/no-drops-until-prod-verified.md)).
-- **Outgoing lines are assumed to be negative** on the bank feed, and a `dailyledger` reconcile
-  target is unconfirmed (the ladder covers the second). If the first is ever wrong, no line matches
-  and every row waits — visible as rows that never leave "waiting for the Sabadell line".
+- **`HoldedPaymentRefs` is back in use**, unbounded (`text`; the old 512 cap overflowed at about
+  20 documents): the comma-joined payment ids a booking posted, in posting order, `unconfirmed:`
+  sentinels included. It is what the sweep re-issues the reconcile from.
+- **Outgoing lines are assumed to be negative** on the bank feed. If that is ever wrong, no line
+  matches and every row waits — visible as rows that never leave "waiting for the Sabadell line".
 
 ### Refusals
 
@@ -191,7 +203,8 @@ posted twice.
 
 A posting Holded **accepted** but gave no readable id for is not a failure at all: the client returns
 `"unconfirmed:{documentId}"` (or `"unconfirmed:entry"`), and the allocation continues. The sentinel
-now only reaches the audit entry — nothing is stored on the row for it.
+reaches the audit entry and, for a payment, `HoldedPaymentRefs`; it is never sent to Holded as a
+reconcile ref.
 
 ## The sweep
 
@@ -200,9 +213,17 @@ unbooked transfers, reads the bank feed once over a window covering every candid
 lines **whose text names a creditor account** to transfers with the same rules as the button, and
 books every unique match. A textless line is never booked by the sweep: Sabadell's lines carry no
 text, so until that matching has earned trust a human approves each file on `/Finance/Sepa`. A line matching no transfer, or matching more than one, is skipped and surfaced on
-`/Finance/Sepa`'s "bank lines needing a human" panel. The sweep also retries the reconcile for every
-row still `ReconcilePending`, by checking whether the stored bank line now reads `reconciled` in
-Holded. Every reconcile-pending row's line lies inside the window read for it: the read's lower
+`/Finance/Sepa`'s "bank lines needing a human" panel. The sweep also **re-issues the reconcile** for
+every row still `ReconcilePending`: rows sharing one bank line (a Processed file) are re-issued
+together, against the union of their recorded payment ids, when the line still reads `pending` in
+Holded; the row is stamped when the line then reads `reconciled`. A line Holded already reads
+`reconciled` (a human in the GUI) is stamped as is. A line that reads `partial` is not re-issued —
+its payments are linked and what remains (a journal entry) is a human's — and a row with no payment
+id (booked before the ids were kept, or paid by an entry alone) only has its line's status read.
+A file a Process run got part-way through is not re-issued either: linking the booked part would
+turn the line `partial`, and the Process retry that finishes the file refuses a touched line.
+Rows booked while the token could not write to the bank feed are what the re-issue exists for.
+Every reconcile-pending row's line lies inside the window read for it: the read's lower
 bound drops to the oldest pending row's first payable day with no feed floor, so a pending row
 never ages out of its own re-check. The floor (90 days plus the 2-day generation slack) still bounds
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
@@ -367,7 +388,8 @@ slice — plus the booking guards that do not depend on the bank line (already b
 member, rebound member, unconfigured treasury and ledger account) and what `/Finance/Sepa` renders
 in each case. `SepaBankBookingTests.cs` covers the bank-line-driven flow: the matcher (amount,
 account, ambiguity, already-booked, already-reconciled), the resume arithmetic, FIFO allocation
-dated the bank line, the reconcile ladder and its fallback, and the sweep's own pass — plus the
+dated the bank line, the payment-id reconcile and when it stamps, the refused retry after a
+PARTIAL or SHORT run, the sweep's re-issue, and its own booking pass — plus the
 ways a booking could over-post or over-claim: a second booking racing the first, a resume from a
 click-dated legacy posting, a resume that cannot close the gap, the tagged credit leg on the bank
 account, a failed row save, and what `/Finance/Sepa` shows (the candidate line, the "needs a human"
