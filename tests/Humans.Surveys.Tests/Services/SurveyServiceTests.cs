@@ -4183,6 +4183,44 @@ public class SurveyServiceTests
 
     // ── GDPR export contributor ────────────────────────────────────────────────
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_includes_identified_responses_and_invitations_from_merged_accounts(bool archivedId)
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var requestedId = archivedId ? sourceId : survivorId;
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+            .Returns(UserWithLastLogin(survivorId, null) with { MergedUserIds = [sourceId] });
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        survey.Questions = [TextQuestion(Guid.NewGuid(), survey.Id, 1)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        foreach (var id in new[] { survivorId, sourceId })
+        {
+            _repo.GetIdentifiedResponsesForUserAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new List<SurveyResponse> { SubmittedResponse(survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    _clock.GetCurrentInstant(), id, TextAnswer(survey.Questions.Single().Id, id.ToString())) });
+            _repo.GetInvitationsForUserAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new List<SurveyInvitation> { new()
+                {
+                    Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = id,
+                    CreatedAt = _clock.GetCurrentInstant(), Completed = true
+                } });
+        }
+        var authored = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: survivorId);
+        authored.Title = L("Survivor draft");
+        _repo.GetSurveysAuthoredByAsync(survivorId, Arg.Any<CancellationToken>()).Returns(new List<Survey> { authored });
+
+        var slices = await CreateService().ContributeForUserAsync(requestedId, TestContext.Current.CancellationToken);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(slices);
+        json.Should().Contain(sourceId.ToString()).And.Contain(survivorId.ToString()).And.Contain("Survivor draft");
+        var invitations = slices.Single(slice => string.Equals(slice.SectionName, SurveyService.SurveyInvitations, StringComparison.Ordinal));
+        System.Text.Json.JsonSerializer.SerializeToElement(invitations.Data).GetArrayLength().Should().Be(2);
+        await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers()
     {

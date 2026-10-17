@@ -176,7 +176,11 @@ internal sealed partial class WorkgroupService
     {
         ct = CancellationToken.None;
         ArgumentNullException.ThrowIfNull(bootstrap);
-        if (ValidateApplication(bootstrap.Application) is { } applicationRefusal) return new(Refusal: applicationRefusal);
+        var validation = await ValidateApplicationAsync(bootstrap.Application, ct);
+        if (validation.Refusal is { } applicationRefusal) return new(Refusal: applicationRefusal);
+        var application = validation.Value!;
+        if (await ResolveMemberTargetAsync(bootstrap.CoordinatorUserId, ct) is not { } coordinatorId)
+            return new(Refusal: new(WorkgroupErrorKeys.NotFound));
 
         var now = clock.GetCurrentInstant();
         var slugResult = await ReserveSlugAsync(bootstrap.Application.Name, null, ct);
@@ -189,20 +193,19 @@ internal sealed partial class WorkgroupService
             // Bootstrapping records a group that already exists: it is registered from the
             // moment it really started, and the application it never filed is the same date.
             Status = WorkgroupStatus.Active,
-            AppliedByUserId = bootstrap.CoordinatorUserId,
+            AppliedByUserId = coordinatorId,
             AppliedAt = bootstrap.RegisteredAt,
             RegisteredAt = bootstrap.RegisteredAt,
             CreatedAt = now,
             UpdatedAt = now
         };
-        var application = bootstrap.Application;
         ApplyFields(workgroup, application.Name, application.Purpose, application.Deliverable,
             application.DeliverableKind, application.Audience, application.TargetDate,
             application.DiscordChannelUrl, application.IsSensitive);
 
-        workgroup.Members.Add(NewMember(workgroup.Id, bootstrap.CoordinatorUserId,
+        workgroup.Members.Add(NewMember(workgroup.Id, coordinatorId,
             WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
-        if (application.SecondCoordinatorUserId is { } second && second != bootstrap.CoordinatorUserId)
+        if (application.SecondCoordinatorUserId is { } second && second != coordinatorId)
         {
             workgroup.Members.Add(NewMember(workgroup.Id, second,
                 WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
@@ -303,7 +306,6 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            // The entire registration uses a non-cancellable token.
             return new(await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
         }
         catch (Exception ex)

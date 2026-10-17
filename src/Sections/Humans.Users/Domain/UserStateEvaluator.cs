@@ -54,6 +54,15 @@ internal static class UserStateEvaluator
         (user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase))
         || IsLegacyGdprTombstone(user);
 
+    /// <summary>Terminal accounts must not acquire new personal data or credentials.</summary>
+    internal static bool IsTombstone(User user) =>
+        user.State is UserState.Deleted or UserState.Merged
+        || user.MergedAt is not null
+        || user.MergedToUserId is not null
+        || IsGdprTombstoned(user)
+        || (user.IdentityEmailColumn is { } email
+            && email.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase));
+
     internal const string DeletedEmailSuffix = "@deleted.local";
 
     /// <summary>

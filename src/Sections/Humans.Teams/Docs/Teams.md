@@ -17,6 +17,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 - A **Department** is a team with no parent.
 - A **Sub-Team** is a team within a department. Only one level of nesting is allowed.
+- Manual membership and role-assignment grants resolve the selected person before duplicate checks or writes. Missing and terminal accounts are refused; merge aliases use the survivor for membership, pending requests, roles, outbox and audit attribution. Existing live-account admission states remain allowed.
 - **System teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) are managed automatically — members cannot be manually added or removed.
 - A **Coordinator** is a team member assigned to the management role on a department. Coordinators have full authority over the department and all its sub-teams, including Google resource management. They are added to the Coordinators system team.
 - A **Sub-team Manager** is a team member assigned to the management role on a sub-team. Managers have scoped authority over their sub-team only: member management, join requests, roles, shifts, and team page editing. They **cannot** manage Google resources, the parent department, or sibling sub-teams. They are **not** added to the Coordinators system team.
@@ -346,6 +347,8 @@ Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vo
 `SystemTeamSyncJob` is Teams' own: `Services/SystemTeamSyncJob.cs`, `internal sealed`, registered in `Section.cs` and scheduled by `SectionJobs.cs`. Its interface `ISystemTeamSync` lives on `Humans.Teams.Contracts`, which is what the consuming sections reference. Hangfire keys the recurring job on its id and rewrites the stored type name at every startup, so the implementation's assembly and namespace are free to move.
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Teams owns the `Teams` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

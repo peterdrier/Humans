@@ -29,7 +29,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// the policies registered in Shell still apply.
 /// </para>
 /// </remarks>
-public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
+public class GoogleSyncAuditPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 120000)]
     public async Task Google_sync_audit_for_a_human_renders_with_tag_helpers_applied()

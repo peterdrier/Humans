@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Campamento actualizado</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Campamento eliminado</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Temporada de campamento creada</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Inscripción de barrios abierta</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Inscripción de barrios cerrada</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Fecha de bloqueo de nombres de barrio cambiada</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Temporada de campamento aprobada</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Temporada de campamento rechazada</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Temporada de campamento retirada</value></data>
@@ -359,4 +362,17 @@
   <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Recurso de Google vinculado</value></data>
   <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Recurso de Google desvinculado</value></data>
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Configuración del recurso de Google actualizada</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Token del calendario creado</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Token del calendario renovado</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Modo de sincronización cambiado</value></data>
+  <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Configuración del asistente actualizada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Documento legal creado</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Configuración del documento legal actualizada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Documento legal archivado</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Versión del documento legal publicada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Resumen de la versión del documento legal actualizado</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guía de eventos exportada</value></data>
+  <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Barrios exportados</value></data>
+  <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Lista de cantina exportada</value></data>
+  <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Seguimiento del voluntariado exportado</value></data>
 </root>

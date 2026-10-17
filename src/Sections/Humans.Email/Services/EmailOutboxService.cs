@@ -9,6 +9,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Email.Services;
@@ -29,7 +30,7 @@ internal sealed class EmailOutboxService(
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
     IClock clock,
-    IAuditLogService audit) : IEmailOutboxService, IUserDataContributor
+    IAuditLogService audit) : IEmailOutboxService, IUserDataContributor, IUserMerge
 {
     internal const string EmailOutbox = "EmailOutbox";
 
@@ -230,6 +231,10 @@ internal sealed class EmailOutboxService(
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repo.DeleteForUserAsync(userId, ct);
+
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
+        CancellationToken ct) =>
+        repo.ReassignToUserAsync(mergedFromUserId, mergedToUserId, ct);
 
     private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
         message.Id,

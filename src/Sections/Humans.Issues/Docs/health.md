@@ -59,9 +59,8 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
-  and never a second viewer inline. **Target, not built:** the Area label and the
-  page-path → queue guess come from the sections that own the queues, not from hand lists in
-  `Models/` (`AreaLabelMap`, `IssueSectionInference`) that name sections by hand.
+  and never a second viewer inline. Area labels, dropdown options and page-path inference
+  come from each owner’s `IIssueQueueOwner` declaration through `IssueSectionRouting`.
 - **`Authorization/`** — one requirement (`Handle`) and its resource handler, which asks
   `IssueSectionRouting.CanHandle` the same question the service asks, to shape the page and to
   answer 403 where the service would answer 404.

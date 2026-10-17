@@ -26,6 +26,7 @@ namespace Humans.MailerLite.Tests.Controllers;
 /// </summary>
 public class MailerLiteAdminControllerTests
 {
+    private readonly Guid _actorUserId = Guid.NewGuid();
     private readonly IMailerLiteImportService _importService = Substitute.For<IMailerLiteImportService>();
     private readonly IMailerLiteService _mlService = Substitute.For<IMailerLiteService>();
     private readonly IMailerLiteAudienceSyncService _audienceSync = Substitute.For<IMailerLiteAudienceSyncService>();
@@ -43,7 +44,7 @@ public class MailerLiteAdminControllerTests
 
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())
                 ],
                 "test")),
         };
@@ -79,7 +80,7 @@ public class MailerLiteAdminControllerTests
     {
         var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
         _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
-        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(StubResult());
         var controller = BuildSut();
         controller.ModelState.AddModelError("maxPerOutcome", "Not an integer.");
@@ -122,7 +123,7 @@ public class MailerLiteAdminControllerTests
             "Plan changed since preview — review and re-confirm.",
             ctrl.TempData["Banner"]);
         await _importService.DidNotReceive().ApplyAsync(
-            Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+            Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     // -----------------------------------------------------------------------
@@ -252,7 +253,7 @@ public class MailerLiteAdminControllerTests
         var freshPlan = new ImportPlan(freshDecisions, TotalPulled: 17);
 
         _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(freshPlan);
-        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(StubResult());
 
         var ctrl = BuildSut(snapshot);
@@ -261,7 +262,7 @@ public class MailerLiteAdminControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerLiteAdminController.Index), redirect.ActionName);
-        await _importService.Received(1).ApplyAsync(freshPlan, limit, CancellationToken.None);
+        await _importService.Received(1).ApplyAsync(freshPlan, _actorUserId, limit, CancellationToken.None);
     }
 
     // -----------------------------------------------------------------------

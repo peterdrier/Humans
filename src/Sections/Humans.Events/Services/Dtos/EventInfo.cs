@@ -137,13 +137,6 @@ internal sealed record EventFavouriteInfo(
     EventInfo Event);
 
 /// <summary>
-/// Approved events plus the guide settings, projected for export surfaces.
-/// </summary>
-internal sealed record ApprovedEventsExportInfo(
-    IReadOnlyList<EventInfo> Events,
-    EventGuideSettingsView? Settings);
-
-/// <summary>
 /// A camp's submissions bucketed by moderation status. Presentation consumers
 /// choose the display order for the events.
 /// </summary>

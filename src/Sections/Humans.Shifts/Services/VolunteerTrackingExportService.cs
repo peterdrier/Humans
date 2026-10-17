@@ -1,4 +1,5 @@
 using Humans.Shifts.Services.Dtos;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
@@ -19,13 +20,15 @@ internal sealed class VolunteerTrackingExportService(
     IShiftManagementRepository shiftManagementRepository,
     IShiftManagementService shiftManagementService,
     IBurnSettingsService burnSettingsService,
-    IUserServiceRead userService)
+    IUserServiceRead userService,
+    IAuditLogService audit)
     : IVolunteerTrackingExportService, IEarlyEntryProvider
 {
     private readonly IShiftManagementRepository _shiftManagementRepository = shiftManagementRepository;
     private readonly IShiftManagementService _shiftManagementService = shiftManagementService;
     private readonly IBurnSettingsService _burnSettingsService = burnSettingsService;
     private readonly IUserServiceRead _userService = userService;
+    private readonly IAuditLogService _audit = audit;
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {
@@ -50,7 +53,7 @@ internal sealed class VolunteerTrackingExportService(
             : null;
 
         if (shifts.Count == 0)
-            return BuildModel(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
+            return await BuildModelAsync(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
 
         // (1) Build (userId, day) → list of (teamId, teamName, hours) for the range.
         var perUserPerDay = BucketByUserDayTeam(shifts, days, zone, teamNames);
@@ -115,7 +118,7 @@ internal sealed class VolunteerTrackingExportService(
 
         var totals = ComputeTotals(days, rows, firstShiftDay);
 
-        return BuildModel(request, days, groups, totals, filteredTeamName);
+        return await BuildModelAsync(request, days, groups, totals, filteredTeamName);
     }
 
     private static Dictionary<(Guid userId, LocalDate day), List<(Guid teamId, string teamName, double hours)>>
@@ -260,7 +263,7 @@ internal sealed class VolunteerTrackingExportService(
         return ShiftEarlyEntryProjection.Project(rows, zone, teamNames);
     }
 
-    private static VolunteerExportModel BuildModel(
+    private async Task<VolunteerExportModel> BuildModelAsync(
         VolunteerExportRequest request,
         IReadOnlyList<LocalDate> days,
         IReadOnlyList<DepartmentGroup> groups,
@@ -273,7 +276,7 @@ internal sealed class VolunteerTrackingExportService(
         var filePrefix = slug is { Length: > 0 }
             ? $"volunteer-tracking-{slug}-"
             : "volunteer-tracking-";
-        return new VolunteerExportModel(
+        var model = new VolunteerExportModel(
             MethodologyBlurb: "Rows = humans with >=1 confirmed shift in range. Cell color = the team they worked most " +
                 "hours that day. White cell = day before their first confirmed shift (arrival day). " +
                 "Totals row = humans on-site that day (used for meal counts). Names shown are playa names.",
@@ -284,5 +287,10 @@ internal sealed class VolunteerTrackingExportService(
             Groups: groups,
             TotalsPerDay: totals,
             SuggestedFileName: $"{filePrefix}{request.StartDate.ToInvariantDate()}-to-{request.EndDate.ToInvariantDate()}.xlsx");
+        await _audit.LogAsync(AuditAction.VolunteerTrackingExported, "EventSettings", request.EventSettingsId,
+            $"Volunteer tracking XLSX exported: {groups.Sum(group => group.Humans.Count)} people rows, " +
+            $"range {request.StartDate.ToInvariantDate()} to {request.EndDate.ToInvariantDate()}, " +
+            $"department {request.DepartmentId?.ToString() ?? "all"}", request.ActorUserId);
+        return model;
     }
 }

@@ -251,6 +251,23 @@ public sealed class OutboxEmailServiceTests : IDisposable
         [.. TimeSensitiveTemplates.Names];
 
     [HumansFact]
+    public async Task SendAsync_ImmediateTriggerFailure_KeepsSuccessfullyQueuedMessage()
+    {
+        _immediate.When(processor => processor.TriggerImmediate())
+            .Do(_ => throw new InvalidOperationException("Hangfire unavailable"));
+
+        await _service.SendAsync(Message(template: "magic_link_login"), TestContext.Current.CancellationToken);
+
+        var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
+        queued.TemplateName.Should().Be("magic_link_login");
+        queued.Status.Should().Be(EmailOutboxStatus.Queued);
+        queued.PickedUpAt.Should().BeNull();
+        queued.RetryCount.Should().Be(0);
+        _metrics.Received(1).RecordEmailQueued("magic_link_login");
+        _immediate.Received(1).TriggerImmediate();
+    }
+
+    [HumansFact]
     public async Task SendAsync_OrdinaryTemplate_DoesNotRunImmediateProcessor()
     {
         await _service.SendAsync(Message(template: "access_suspended"), Xunit.TestContext.Current.CancellationToken);

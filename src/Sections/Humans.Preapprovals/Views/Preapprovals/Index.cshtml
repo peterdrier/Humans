@@ -1,0 +1,126 @@
+@model MemberIndexViewModel
+@{
+    ViewData["Title"] = Localizer["Preapprovals_Title"];
+
+    string DeadlineClass(GrantInfo g) =>
+        g.DeadlinePassed(Model.Today) ? "text-muted"
+        : g.Status == GrantStatus.Open && g.DaysLeft(Model.Today) <= 7 ? "text-danger fw-bold"
+        : "";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0"><i class="fa-solid fa-stamp me-2"></i>@Localizer["Preapprovals_Title"]</h1>
+    @if (Model.CanManage)
+    {
+        <a asp-controller="PreapprovalsAdmin" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-gear me-1"></i>@Localizer["Preapprovals_Manage"]
+        </a>
+    }
+</div>
+
+<p class="text-muted">@Localizer["Preapprovals_Intro"]</p>
+
+<h2 class="h4 mt-4">@Localizer["Preapprovals_Mine"]</h2>
+@if (!Model.Active.Any())
+{
+    <p class="text-muted">@Localizer["Preapprovals_NoneActive"]</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>@Localizer["Preapprovals_Program"]</th>
+                    <th>@SharedLocalizer["Common_Amount"]</th>
+                    <th>@SharedLocalizer["Common_Status"]</th>
+                    <th>@Localizer["Preapprovals_ClaimBy"]</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var g in Model.Active)
+                {
+                    <tr>
+                        <td>
+                            <a asp-action="Program" asp-route-programId="@g.ProgramId" class="text-decoration-none">@g.ProgramName</a>
+                            @if (g.Label is not null)
+                            {
+                                <div class="small text-muted">@g.Label</div>
+                            }
+                        </td>
+                        <td>@g.MaxAmount.ToEuro()</td>
+                        <td><span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span></td>
+                        <td class="@DeadlineClass(g)">
+                            @g.ClaimBy.ToDate()
+                            @if (g.DeadlinePassed(Model.Today))
+                            {
+                                <div class="small">@Localizer["Preapprovals_DeadlinePassed"]</div>
+                            }
+                            else if (g.Status == GrantStatus.Open)
+                            {
+                                <div class="small">@Localizer["Preapprovals_DaysLeft", g.DaysLeft(Model.Today)]</div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (g.IsClaimable(Model.Today))
+                            {
+                                <a href="/Expenses/New?grant=@g.Id" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-receipt me-1"></i>@Localizer["Preapprovals_FileExpense"]
+                                </a>
+                            }
+                            else if (g.Status == GrantStatus.Claimed && g.ExpenseReportId is { } reportId)
+                            {
+                                <a href="/Expenses/@reportId" class="btn btn-sm btn-outline-secondary">@Localizer["Preapprovals_ViewReport"]</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.OpenPrograms.Count > 0)
+{
+    <h2 class="h4 mt-4">@Localizer["Preapprovals_OpenPrograms"]</h2>
+    <div class="d-grid gap-3 mb-4">
+        @foreach (var p in Model.OpenPrograms)
+        {
+            <div class="card">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <a asp-action="Program" asp-route-programId="@p.Id" class="h5 text-decoration-none">@p.Name</a>
+                        <div class="small text-muted">
+                            @(p.Kind == ProgramKind.FixedPerPerson
+                                ? Localizer["Preapprovals_PerPerson", p.PerPersonAmount!.Value.ToEuro()].Value
+                                : Localizer["Preapprovals_AmountOnRequest"].Value)
+                            · @Localizer["Preapprovals_ClaimBy"] @p.ClaimBy.ToDate()
+                        </div>
+                    </div>
+                    <a asp-action="Program" asp-route-programId="@p.Id" class="btn btn-outline-primary">@Localizer["Preapprovals_Apply"]</a>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (Model.Past.Any())
+{
+    <h2 class="h5 mt-4 text-muted">@Localizer["Preapprovals_Past"]</h2>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle text-muted">
+            <tbody>
+                @foreach (var g in Model.Past)
+                {
+                    <tr>
+                        <td>@g.ProgramName @(g.Label is null ? "" : $"· {g.Label}")</td>
+                        <td>@g.MaxAmount.ToEuro()</td>
+                        <td><span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span></td>
+                        <td>@g.ClaimBy.ToDate()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

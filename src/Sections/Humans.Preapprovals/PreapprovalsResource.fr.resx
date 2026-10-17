@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+      <data name="Enum_GrantStatus_Applied" xml:space="preserve"><value>Demandée</value></data>
+  <data name="Enum_GrantStatus_Open" xml:space="preserve"><value>Ouverte</value></data>
+  <data name="Enum_GrantStatus_Claimed" xml:space="preserve"><value>Réclamée</value></data>
+  <data name="Enum_GrantStatus_Consumed" xml:space="preserve"><value>Utilisée</value></data>
+  <data name="Enum_GrantStatus_Declined" xml:space="preserve"><value>Refusée</value></data>
+  <data name="Enum_GrantStatus_Revoked" xml:space="preserve"><value>Révoquée</value></data>
+  <data name="Preapprovals_Title" xml:space="preserve"><value>Pré-approbations</value></data>
+  <data name="Preapprovals_Intro" xml:space="preserve"><value>Une pré-approbation est l'engagement de l'association à te rembourser jusqu'à un montant, pour un objet, si tu déposes ta note de frais avant la date limite. Dépose-la à temps : rien n'est payé après.</value></data>
+  <data name="Preapprovals_Manage" xml:space="preserve"><value>Gérer les pré-approbations</value></data>
+  <data name="Preapprovals_Mine" xml:space="preserve"><value>Mes pré-approbations</value></data>
+  <data name="Preapprovals_NoneActive" xml:space="preserve"><value>Tu n'as aucune pré-approbation ouverte.</value></data>
+  <data name="Preapprovals_Program" xml:space="preserve"><value>Programme</value></data>
+  <data name="Preapprovals_ClaimBy" xml:space="preserve"><value>À réclamer avant le</value></data>
+  <data name="Preapprovals_DeadlinePassed" xml:space="preserve"><value>Délai dépassé</value></data>
+  <data name="Preapprovals_DaysLeft" xml:space="preserve"><value>{0} jours restants</value></data>
+  <data name="Preapprovals_FileExpense" xml:space="preserve"><value>Déposer une note de frais</value></data>
+  <data name="Preapprovals_ViewReport" xml:space="preserve"><value>Voir la note de frais</value></data>
+  <data name="Preapprovals_OpenPrograms" xml:space="preserve"><value>Programmes acceptant les demandes</value></data>
+  <data name="Preapprovals_PerPerson" xml:space="preserve"><value>{0} par personne</value></data>
+  <data name="Preapprovals_AmountOnRequest" xml:space="preserve"><value>Montant sur demande</value></data>
+  <data name="Preapprovals_Apply" xml:space="preserve"><value>Demander</value></data>
+  <data name="Preapprovals_Past" xml:space="preserve"><value>Passées</value></data>
+  <data name="Preapprovals_ApplyTitle" xml:space="preserve"><value>Demander une pré-approbation</value></data>
+  <data name="Preapprovals_EditApplication" xml:space="preserve"><value>Modifier ta demande</value></data>
+  <data name="Preapprovals_RequestedAmount" xml:space="preserve"><value>Montant demandé</value></data>
+  <data name="Preapprovals_ApplicationNote" xml:space="preserve"><value>Pour quoi ?</value></data>
+  <data name="Preapprovals_ApplicationNote_Help" xml:space="preserve"><value>Quelques lignes pour les responsables du programme : ce que tu comptes dépenser.</value></data>
+  <data name="Preapprovals_NotAccepting" xml:space="preserve"><value>Ce programme n'accepte pas de demandes.</value></data>
+  <data name="Preapprovals_Applied" xml:space="preserve"><value>Ta demande a été envoyée aux responsables du programme.</value></data>
+  <data name="Preapprovals_Error_NotFound" xml:space="preserve"><value>Introuvable.</value></data>
+  <data name="Preapprovals_Error_NameRequired" xml:space="preserve"><value>Un nom est requis.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountRequired" xml:space="preserve"><value>Un programme à montant fixe exige un montant par personne.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountNotAllowed" xml:space="preserve"><value>Un programme à montant par octroi n'a pas de montant par personne.</value></data>
+  <data name="Preapprovals_Error_AmountPositive" xml:space="preserve"><value>Le montant doit être supérieur à zéro.</value></data>
+  <data name="Preapprovals_Error_AmountNotAllowed" xml:space="preserve"><value>Les octrois d'un programme à montant fixe sont toujours le montant par personne.</value></data>
+  <data name="Preapprovals_Error_AmountRequired" xml:space="preserve"><value>Un montant est requis.</value></data>
+  <data name="Preapprovals_Error_AccountNotFound" xml:space="preserve"><value>Ce compte de dépenses n'est pas disponible.</value></data>
+  <data name="Preapprovals_Error_KindLocked" xml:space="preserve"><value>Le type ne peut plus changer une fois des octrois créés.</value></data>
+  <data name="Preapprovals_Error_CeilingExceeded" xml:space="preserve"><value>Cela dépasserait le plafond du programme : {0} restants.</value></data>
+  <data name="Preapprovals_Error_CeilingBelowCommitted" xml:space="preserve"><value>Le plafond ne peut pas descendre sous ce qui est déjà engagé : {0}.</value></data>
+  <data name="Preapprovals_Error_ProgramClosed" xml:space="preserve"><value>Ce programme est fermé.</value></data>
+  <data name="Preapprovals_Error_NotAcceptingApplications" xml:space="preserve"><value>Ce programme n'accepte pas de demandes.</value></data>
+  <data name="Preapprovals_Error_DeadlinePassed" xml:space="preserve"><value>Le délai de réclamation est dépassé.</value></data>
+  <data name="Preapprovals_Error_WrongStatus" xml:space="preserve"><value>Cette action n'est pas possible dans l'état actuel de l'octroi.</value></data>
+  <data name="Preapprovals_Error_NoBeneficiaries" xml:space="preserve"><value>Choisis au moins une personne.</value></data>
+  <data name="Preapprovals_Error_TextTooLong" xml:space="preserve"><value>Le texte est trop long.</value></data>
+  <data name="Preapprovals_Error_IssueManyFixedOnly" xml:space="preserve"><value>Octroyer à plusieurs personnes à la fois exige un montant fixe par personne.</value></data>
+  <data name="Preapprovals_Notice_Issued" xml:space="preserve"><value>Tu as une pré-approbation</value></data>
+  <data name="Preapprovals_Notice_Released" xml:space="preserve"><value>Ta pré-approbation est de nouveau ouverte</value></data>
+  <data name="Preapprovals_Notice_DeadlineChanged" xml:space="preserve"><value>Le délai de ta pré-approbation a changé</value></data>
+  <data name="Preapprovals_Notice_Reminder" xml:space="preserve"><value>Dépose bientôt ta note de frais</value></data>
+  <data name="Preapprovals_Notice_Declined" xml:space="preserve"><value>Ta demande a été refusée</value></data>
+  <data name="Preapprovals_Notice_Revoked" xml:space="preserve"><value>Ta pré-approbation a été révoquée</value></data>
+  <data name="Preapprovals_Notice_AmountChanged" xml:space="preserve"><value>Le montant de ta pré-approbation a changé</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived" xml:space="preserve"><value>Nouvelle demande de pré-approbation</value></data>
+  <data name="Preapprovals_Notice_FileBy_Body" xml:space="preserve"><value>{1} {2}. Dépose ta note de frais avant le {3}.</value></data>
+  <data name="Preapprovals_Notice_Decided_Body" xml:space="preserve"><value>{1} {2}. {4}</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived_Body" xml:space="preserve"><value>{4} a demandé {2}.</value></data>
+  <data name="Preapprovals_Email_Greeting_Generic" xml:space="preserve"><value>Bonjour,</value></data>
+  <data name="Preapprovals_Email_Greeting_Named" xml:space="preserve"><value>Bonjour {0},</value></data>
+  <data name="Preapprovals_Email_LabelLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Pour :&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DetailLine" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Issued_Subject" xml:space="preserve"><value>Pré-approbation : {0}</value></data>
+  <data name="Preapprovals_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Tu as une pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Jusqu'à :&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Dépose ta note de frais avant le :&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Rien n'est remboursé après cette date. &lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Declined_Subject" xml:space="preserve"><value>Demande de pré-approbation refusée : {0}</value></data>
+  <data name="Preapprovals_Email_Declined_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Ta demande dans le programme &lt;strong&gt;{1}&lt;/strong&gt; a été refusée.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Voir le programme&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Subject" xml:space="preserve"><value>Demande de pré-approbation : {0}</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Quelqu'un a demandé une pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Demandé :&lt;/strong&gt; {3}&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Examiner la demande&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Subject" xml:space="preserve"><value>Rappel : à déposer avant le {1} pour {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Ta pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt; n'a pas encore été utilisée.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Jusqu'à :&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Dépose ta note de frais avant le :&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Rien n'est remboursé après cette date. &lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Subject" xml:space="preserve"><value>Montant de pré-approbation modifié : {0}</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Le montant de ta pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt; a changé.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Avant :&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Maintenant :&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Revoked_Subject" xml:space="preserve"><value>Pré-approbation révoquée : {0}</value></data>
+  <data name="Preapprovals_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Ta pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt; a été révoquée.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Montant :&lt;/strong&gt; {3}&lt;/p&gt;{4}&lt;p&gt;Si une note de frais la détient, la note peut encore être décidée ; le plafond et le compte ne s'appliquent plus. &lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Délai de pré-approbation modifié : à déposer avant le {1} pour {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Le délai de réclamation de ta pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt; a été déplacé.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Jusqu'à :&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nouveau délai :&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
+</root>

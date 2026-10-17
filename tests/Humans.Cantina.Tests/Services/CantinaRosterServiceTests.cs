@@ -1,3 +1,10 @@
+using System.Security.Claims;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Csv;
+using Humans.Cantina.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
@@ -24,6 +31,7 @@ public class CantinaRosterServiceTests
     private readonly ISettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
 
     private static readonly LocalDate GateOpening = new(2026, 7, 7);
@@ -50,7 +58,46 @@ public class CantinaRosterServiceTests
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock, _audit);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task CsvDownloads_AuditActorAndPersonalRows_WithoutAuditingPageReads(bool daily, bool populated)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        var burn = ActiveEvent();
+        _burnSettings.GetActiveEventSettingsAsync(ct).Returns(burn);
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct)
+            .Returns(populated ? new[] { personId } : Array.Empty<Guid>());
+        SetupHumans(Human(personId, "Chef", dietary: "Vegan", allergies: ["Other"], allergyOther: "Peanuts"));
+        var controller = new CantinaController(_service, NullLogger<CantinaController>.Instance, _userRead)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+                }
+            }
+        };
+
+        var result = daily ? await controller.DayCsv(0, ct) : await controller.Csv(0, ct);
+
+        var file = result.Should().BeOfType<FileContentResult>().Which;
+        if (populated)
+            HumansCsv.Utf8WithBom.GetString(file.FileContents).Should().Contain("Chef").And.Contain("Peanuts");
+        await _audit.Received(1).LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn.Id,
+            Arg.Is<string>(text => text.StartsWith(daily ? "Daily" : "Weekly", StringComparison.Ordinal)
+                && text.Contains($"{(populated ? 1 : 0)} people rows", StringComparison.Ordinal)), actorId);
+        var page = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);
+        page.Should().BeOfType<ViewResult>();
+        _audit.ReceivedCalls().Should().ContainSingle("page reads do not disclose a file");
     }
 
     /// <summary>Builds a profile carrying burner name + dietary (dietary now lives on the profile).</summary>
@@ -125,7 +172,7 @@ public class CantinaRosterServiceTests
     {
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.WeekStartOffset.Should().Be(WeekStartOffset);
         result.WeekStartDate.Should().BeNull();
@@ -160,7 +207,7 @@ public class CantinaRosterServiceTests
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.WeekStartDate.Should().Be(GateOpening);
         result.WeekEndDate.Should().Be(GateOpening.PlusDays(6));
@@ -189,7 +236,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 0, userId);
         SetupHumans(Human(userId, "AlicePrime", "Omnivore"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.UnansweredCount.Should().Be(0);
@@ -232,7 +279,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 4, userId);
         SetupHumans(Human(userId, "Alice", "Vegan"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.DietaryBreakdown["Vegan"].Should().Be(1);
@@ -271,7 +318,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 2, userId);
         SetupHumans(Human(userId, "BobBurner"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.UnansweredCount.Should().Be(1);
@@ -317,7 +364,7 @@ public class CantinaRosterServiceTests
             Human(c, "Cleo", "Omnivore", allergies: ["Other"], allergyOther: "MSG"),
             Human(d, "Dee"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(4);
         result.UnansweredCount.Should().Be(1);
@@ -372,7 +419,7 @@ public class CantinaRosterServiceTests
             // identical free-text — must dedup
             Human(b, "Beth", "Omnivore", allergies: ["Other"], allergyOther: "MSG"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(2);
         result.AllergyOtherEntries.Should().BeEquivalentTo(new[] { "MSG" });
@@ -399,7 +446,7 @@ public class CantinaRosterServiceTests
             dietaryPreference: "Omnivore",
             medicalConditions: "Severe peanut allergy")));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
@@ -426,7 +473,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 5, onSiteUserId);
         SetupHumans(Human(onSiteUserId, "OnSite", "Omnivore"), Human(excludedUserId, "Excluded"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.People.Should().HaveCount(1);
         result.People.Should().NotContain(p => p.UserId == excludedUserId);
@@ -458,7 +505,7 @@ public class CantinaRosterServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Ash"));
 
-        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken);
 
         var person = result.People.Single(p => p.UserId == id);
         // Arrival = day before the first confirmed shift (offset 2 → offset 1).
@@ -491,7 +538,7 @@ public class CantinaRosterServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Bo"));
 
-        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.People.Should().ContainSingle(p => p.UserId == id);
         var person = result.People.Single(p => p.UserId == id);
@@ -515,7 +562,7 @@ public class CantinaRosterServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Cy"));
 
-        var result = await _service.GetWeeklyRosterAsync(-7, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(-7, ct: Xunit.TestContext.Current.CancellationToken);
 
         var person = result.People.Single(p => p.UserId == id);
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
@@ -541,7 +588,7 @@ public class CantinaRosterServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Di"));
 
-        var result = await _service.GetWeeklyRosterAsync(7, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetWeeklyRosterAsync(7, ct: Xunit.TestContext.Current.CancellationToken);
 
         var person = result.People.Single(p => p.UserId == id);
         // ArrivesOn must be the first shift IN this week, not a spurious arrival

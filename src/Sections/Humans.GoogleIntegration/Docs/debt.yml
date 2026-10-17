@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 6
-inbox:
-  - added: 2026-10-16
-    id: GOOGLE-5
-    what: "Docs/health.md's shapes table names `ITeamResourceService.GetActiveDriveFoldersAsync` for Monitor, and its Seams entry says Monitor takes the full `ITeamResourceService` and that no `ITeamResourceServiceRead` exists; Monitor's DriveActivityMonitorService injects `ITeamResourceServiceRead`, which lives in Contracts/. Re-derive both on GoogleIntegration's next doctor run. Found by /section-doctor on Monitor 2026-10-16."
-    review: light
+inbox: []

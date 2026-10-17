@@ -1,3 +1,11 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Workgroups/**
+  tests/Humans.Workgroups.Tests/**
+  src/Sections/Humans.Auth/Contracts/IRoleAssignmentServiceRead.cs
+  src/Sections/Humans.Teams.Contracts/ITeamServiceRead.cs
+  src/Humans.Base/Constants/SystemTeamIds.cs
+-->
+
 # Workgroups — Authorization
 
 `WorkgroupsController` requires `AppAccess`. `WorkgroupsAdminController` requires

@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Camp updated</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Camp deleted</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Camp season created</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Camp registration opened</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Camp registration closed</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Camp name lock date changed</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Camp season approved</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Camp season rejected</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Camp season withdrawn</value></data>
@@ -359,4 +362,17 @@
   <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Google resource linked</value></data>
   <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Google resource unlinked</value></data>
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Google resource settings updated</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Calendar feed token created</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Calendar feed token rotated</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Sync mode changed</value></data>
+  <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Assistant settings updated</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Legal document created</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Legal document settings updated</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Legal document archived</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Legal document version published</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Legal document version summary updated</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Event guide exported</value></data>
+  <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camps exported</value></data>
+  <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Cantina roster exported</value></data>
+  <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Volunteer tracking exported</value></data>
 </root>

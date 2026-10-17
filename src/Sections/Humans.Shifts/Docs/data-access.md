@@ -104,7 +104,7 @@ Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
-Cross-section calls via `IUserServiceRead`, `IShiftViewInvalidator`. No
+Cross-section calls via `IUserServiceRead`, `IShiftViewInvalidator`, `IAuditLogService` (self-service availability saves). No
 cache. Holds the gap-detection algorithm + heatmap data assembly,
 plus the full day-availability / camp-setup / day-off mutation surface.
 Build-eligibility signups (`ShiftSignups` + `EventSettings`) read through

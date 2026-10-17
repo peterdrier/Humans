@@ -8,7 +8,7 @@ internal interface IAgentSettingsService : IApplicationService
 {
     AgentSettingsDto Current { get; }
     Task LoadAsync(CancellationToken cancellationToken);
-    Task UpdateAsync(Action<AgentSettings> mutator, CancellationToken cancellationToken);
+    Task UpdateAsync(Action<AgentSettings> mutator, Guid actorUserId, CancellationToken cancellationToken);
 }
 
 internal sealed record AgentSettingsDto(

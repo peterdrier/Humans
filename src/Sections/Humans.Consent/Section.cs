@@ -108,5 +108,9 @@ public sealed class Section : ISection, IIssueQueueOwner
     // Coordinator keeps seeing it.
     string IIssueQueueOwner.QueueKey => "Legal";
 
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Legal";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["legal", "consent"];
+
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator];
 }

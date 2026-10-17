@@ -190,7 +190,7 @@ public class MailerLiteImportServiceClassifierTests
         else replacement.Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, Created: true));
         var plan = await harness.Service.BuildPlanAsync(ct);
 
-        var result = await harness.Service.ApplyAsync(plan, ct: ct);
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: ct);
 
         result.HumansCreated.Should().Be(fails ? 0 : 1);
         result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
@@ -224,7 +224,7 @@ public class MailerLiteImportServiceClassifierTests
         decision.AmbiguousUserIds.Should().BeEquivalentTo(new[] { owner, otherOwner }.Distinct());
         plan.Counts.AmbiguousMultipleVerified.Should().Be(1);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1,
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome: 1,
             ct: Xunit.TestContext.Current.CancellationToken);
 
         result.AmbiguousSkipped.Should().Be(1);

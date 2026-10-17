@@ -159,6 +159,12 @@ internal interface IEmailOutboxRepository : IRepository
     /// </summary>
     Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Reassigns all outbox rows from a merged user to the survivor, regardless
+    /// of delivery status. Repeating the operation is safe.
+    /// </summary>
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
     // ==========================================================================
     // Daily send counts — durable denominator for spam-rate spikes (#1195).
     // Never purged by CleanupEmailOutboxJob.

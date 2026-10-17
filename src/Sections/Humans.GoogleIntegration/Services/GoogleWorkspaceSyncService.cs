@@ -367,6 +367,18 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
+    public async Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        var result = await drivePermissions.GetFileAsync(folderId, cancellationToken);
+        if (result.Error is { } error)
+        {
+            logger.LogWarning("Drive folder {FolderId} is unreachable (HTTP {StatusCode}): {Message}",
+                folderId, error.StatusCode, error.RawMessage);
+        }
+        return result.File is not null;
+    }
+
+    /// <inheritdoc />
     public Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))

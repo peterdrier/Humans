@@ -25,17 +25,18 @@ public class MailerLiteImportServiceIdempotencyTests
     public async Task ApplyAsync_RunTwice_ProducesZeroPerRowEntries_AndOneSummary()
     {
         var harness = new IdempotencyHarness();
+        var actorUserId = Guid.NewGuid();
 
         // Pass 1 – subscriber exists, no human user yet.
         var plan1 = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
-        await harness.Service.ApplyAsync(plan1, ct: Xunit.TestContext.Current.CancellationToken);
+        await harness.Service.ApplyAsync(plan1, actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
         var perRowAfterFirst = harness.Audit.PerRowCount;
 
         // Now wire the harness so the subscriber is "known" on the second pass.
         harness.PromoteToVerifiedUser();
 
         var plan2 = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
-        var result2 = await harness.Service.ApplyAsync(plan2, ct: Xunit.TestContext.Current.CancellationToken);
+        var result2 = await harness.Service.ApplyAsync(plan2, actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
 
         var perRowDelta = harness.Audit.PerRowCount - perRowAfterFirst;
         perRowDelta.Should().Be(0, "second pass over unchanged state must not log per-row events");
@@ -43,6 +44,9 @@ public class MailerLiteImportServiceIdempotencyTests
         result2.PrefsFlippedToOptIn.Should().Be(0);
         result2.PrefsFlippedToOptOut.Should().Be(0);
         harness.Audit.SummaryCount.Should().Be(2);
+        await harness.Audit.Mock.Received(2).LogAsync(
+            AuditAction.MailerLiteReconciliationCompleted, "MailerLite", Arg.Any<Guid>(),
+            Arg.Any<string>(), actorUserId: actorUserId);
     }
 }
 
@@ -160,7 +164,7 @@ internal sealed class AuditCounter
     public IAuditLogService Mock { get; } = Substitute.For<IAuditLogService>();
 
     /// <summary>
-    /// Total calls to the job-actor LogAsync overload with the summary action.
+    /// Total LogAsync calls with the summary action.
     /// Should equal the number of ApplyAsync invocations.
     /// </summary>
     public int SummaryCount =>

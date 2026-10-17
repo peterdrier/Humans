@@ -27,6 +27,7 @@ namespace Humans.Camps.Tests.Services;
 /// </summary>
 public sealed class CachingCampServiceTests : CampsTestHarness
 {
+    private static readonly Guid TestActorId = Guid.NewGuid();
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
     private readonly ISettingsService _settingsService;
@@ -109,6 +110,20 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// flow usually approves the season next and hides it; a cancellation between the two
     /// leaves the stale result indefinitely.
     /// </summary>
+    [HumansFact]
+    public async Task SeedingOptIn_ExplicitlyUsesTheAutomatedActorPath()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync(2026, [2026]);
+        var (camp, _) = await SeedCampWithSeasonAsync(2026);
+        _innerSubstitute.OptInToSeasonAsync(camp.Id, 2027, actorUserId: null, ct)
+            .Returns(new CampWriteResult<CampSeason>(new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2027 }));
+
+        await ((ICampSeeding)_service).OptInToSeasonAsync(camp.Id, 2027, ct);
+
+        await _innerSubstitute.Received(1).OptInToSeasonAsync(camp.Id, 2027, actorUserId: null, ct);
+    }
+
     [HumansFact]
     public async Task CreateCampForSeedAsync_MakesTheNewCampVisibleToListReads()
     {
@@ -531,21 +546,21 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public static TheoryData<string, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task>> SnapshotWriteVerbs => new()
     {
         { nameof(ICampService.CreateCampAsync), (t, c, se, ct) => t._service.CreateCampAsync(Guid.NewGuid(), "New Camp", "n@x.com", "+34600000001", null, null, false, 1, SeedSeasonData(), null, 2026, ct) },
-        { nameof(ICampService.OptInToSeasonAsync), (t, c, se, ct) => t._service.OptInToSeasonAsync(c, 2026, ct) },
-        { nameof(ICampService.UpdateSeasonAsync), (t, c, se, ct) => t._service.UpdateSeasonAsync(c, se, SeedSeasonData(), ct) },
+        { nameof(ICampService.OptInToSeasonAsync), (t, c, se, ct) => t._service.OptInToSeasonAsync(c, 2026, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.UpdateSeasonAsync), (t, c, se, ct) => t._service.UpdateSeasonAsync(c, se, SeedSeasonData(), actorUserId: TestActorId, ct) },
         { nameof(ICampService.ApproveSeasonAsync), (t, c, se, ct) => t._service.ApproveSeasonAsync(se, Guid.NewGuid(), null, ct) },
         { nameof(ICampService.RejectSeasonAsync), (t, c, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
-        { nameof(ICampService.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, ct) },
-        { nameof(ICampService.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, ct) },
-        { nameof(ICampService.SetSeasonStatusAsync), (t, c, se, ct) => t._service.SetSeasonStatusAsync(c, se, CampSeasonStatus.Full, ct) },
-        { nameof(ICampService.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", ct) },
-        { nameof(ICampService.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), ct) },
+        { nameof(ICampService.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.MarkSeasonFullAsync), (t, c, se, ct) => t._service.MarkSeasonFullAsync(c, se, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", actorUserId: TestActorId, ct) },
+        { nameof(ICampService.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), actorUserId: TestActorId, ct) },
         { nameof(ICampService.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", ct) },
         { nameof(ICampService.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), ct) },
-        { nameof(ICampService.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, ct) },
-        { nameof(ICampService.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), ct) },
+        { nameof(ICampService.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), actorUserId: TestActorId, ct) },
         { nameof(ICampService.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampService.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
         { nameof(ICampService.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
         { nameof(ICampService.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampService.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
@@ -598,7 +613,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var input = new CampUpdateInput(camp.Id, "changed@camp.com", camp.ContactPhone, null, null,
             false, 1, false, season.Id, season.Name, SeedSeasonData());
         var failure = new InvalidOperationException("Post-write dependency failed");
-        _innerSubstitute.UpdateCampAsync(input, ct).Returns(async _ =>
+        _innerSubstitute.UpdateCampAsync(input, actorUserId: TestActorId, ct).Returns(async _ =>
         {
             camp.ContactEmail = input.ContactEmail;
             await SaveAllAsync(ct);
@@ -608,12 +623,12 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         if (throws)
         {
-            Func<Task> update = () => _service.UpdateCampAsync(input, ct);
+            Func<Task> update = () => _service.UpdateCampAsync(input, actorUserId: TestActorId, ct);
             (await update.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         }
         else
         {
-            (await _service.UpdateCampAsync(input, ct)).Succeeded.Should().BeFalse();
+            (await _service.UpdateCampAsync(input, actorUserId: TestActorId, ct)).Succeeded.Should().BeFalse();
         }
         (await _service.GetCampByIdAsync(camp.Id, ct))!.ContactEmail.Should().Be(input.ContactEmail);
     }
@@ -626,14 +641,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var (camp, season) = await SeedCampWithSeasonAsync(2026);
         await _service.GetCampsForYearAsync(2026, ct);
         var failure = new InvalidOperationException("Post-write dependency failed");
-        _innerSubstitute.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, ct).Returns(async _ =>
+        _innerSubstitute.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, ct).Returns(async _ =>
         {
             season.Status = CampSeasonStatus.Full;
             await SaveAllAsync(ct);
             return await Task.FromException<CampUpdateResult>(failure);
         });
 
-        Func<Task> change = () => _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, ct);
+        Func<Task> change = () => _service.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, ct);
         (await change.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         var fresh = (await _service.GetCampsForYearAsync(2026, ct)).Single(c => c.Id == camp.Id);
         fresh.Seasons.Single().Status.Should().Be(CampSeasonStatus.Full);
@@ -674,7 +689,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         using var mutationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         await SeedSettingsAsync(2026, [2026]);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
-        _innerSubstitute.OpenSeasonAsync(2027, mutationCancellation.Token).Returns(async _ =>
+        _innerSubstitute.OpenSeasonAsync(2027, Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
         {
             var settings = await CampsDb.CampSettings.SingleAsync(ct);
             settings.OpenSeasons = [2026, 2027];
@@ -682,7 +697,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             await mutationCancellation.CancelAsync();
         });
 
-        Func<Task> open = () => _service.OpenSeasonAsync(2027, mutationCancellation.Token);
+        Func<Task> open = () => _service.OpenSeasonAsync(2027, Guid.NewGuid(), mutationCancellation.Token);
         (await open.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken
             .Should().Be(mutationCancellation.Token);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
@@ -690,9 +705,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
-        { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },
-        { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, Guid.NewGuid(), ct) },
+        { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, Guid.NewGuid(), ct) },
+        { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
     };
 
     [HumansTheory]
@@ -724,7 +739,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _ = await _service.GetCampsForYearAsync(2026, ct);
         _innerSubstitute.ClearReceivedCalls();
 
-        await _service.DeleteCampAsync(camp.Id, ct);
+        await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct);
 
         var after = await _service.GetCampsForYearAsync(2026, ct);
         after.Should().NotContain(c => c.Id == camp.Id,
@@ -738,11 +753,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// </summary>
     private void StubSucceedingWriteResults(Camp camp)
     {
-        _innerSubstitute.UpdateCampAsync(Arg.Any<CampUpdateInput>(), Arg.Any<CancellationToken>())
+        _innerSubstitute.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorUserId: TestActorId, Arg.Any<CancellationToken>())
             .Returns(CampUpdateResult.Success());
         _innerSubstitute.UploadImageAsync(
                 Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<long>(), Arg.Any<CancellationToken>())
+                Arg.Any<long>(), actorUserId: TestActorId, Arg.Any<CancellationToken>())
             .Returns(new CampImageUploadResult(true, null, null));
         _innerSubstitute.LeaveCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(CampMembershipMutationResult.Success());

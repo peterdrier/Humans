@@ -286,6 +286,24 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     // ==========================================================================
+    // IsFolderReachableAsync
+    // ==========================================================================
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task IsFolderReachableAsync_ReflectsWhetherDriveReturnsTheFolder(bool found)
+    {
+        _drivePermissions.GetFileAsync("root-1", Arg.Any<CancellationToken>())
+            .Returns(found
+                ? new DriveFileMetadataResult(new DriveFileMetadata("root-1", "Root", null, null, null), null)
+                : new DriveFileMetadataResult(null, new GoogleClientError(404, "File not found")));
+
+        (await _syncService.IsFolderReachableAsync("root-1", Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(found);
+    }
+
+    // ==========================================================================
     // RequestSyncAsync
     // ==========================================================================
 

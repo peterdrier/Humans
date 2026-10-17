@@ -1,0 +1,64 @@
+@model AdminIndexViewModel
+@{
+    ViewData["Title"] = "Pre-approval programs";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0"><i class="fa-solid fa-stamp me-2"></i>Pre-approval programs</h1>
+    @if (Model.CanAdminister)
+    {
+        <a asp-action="New" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i>New program</a>
+    }
+</div>
+
+@if (Model.Programs.Count == 0)
+{
+    <p class="text-muted">No programs yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Program</th>
+                    <th>Kind</th>
+                    <th class="text-end">Committed</th>
+                    <th class="text-end">Ceiling</th>
+                    <th class="text-end">Remaining</th>
+                    <th class="text-end">Not claimed</th>
+                    <th class="text-center">Applications</th>
+                    <th>Claim by</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Programs)
+                {
+                    <tr>
+                        <td><a asp-action="Program" asp-route-programId="@p.Id" class="text-decoration-none">@p.Name</a></td>
+                        <td>@(p.Kind == ProgramKind.FixedPerPerson ? $"{p.PerPersonAmount!.Value.ToEuro()} per person" : "Per grant")</td>
+                        <td class="text-end">@p.Granted.ToEuro()</td>
+                        <td class="text-end">@(p.TotalCeiling?.ToEuro() ?? "—")</td>
+                        <td class="text-end">@(p.Remaining?.ToEuro() ?? "—")</td>
+                        <td class="text-end text-muted">@p.NotClaimed(Model.Today).ToEuro()</td>
+                        <td class="text-center">
+                            @if (p.OpenApplications > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@p.OpenApplications</span>
+                            }
+                        </td>
+                        <td class="@(p.DeadlinePassed(Model.Today) ? "text-muted" : "")">@p.ClaimBy.ToDate()</td>
+                        <td>
+                            <span class="badge @EnumBadgeMap.For(p.Status)">@p.Status</span>
+                            @if (p.AcceptsApplications && p.IsAcceptingApplications(Model.Today))
+                            {
+                                <span class="badge bg-info text-dark">Accepting applications</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

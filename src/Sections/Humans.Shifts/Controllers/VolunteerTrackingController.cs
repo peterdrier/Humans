@@ -155,7 +155,8 @@ internal sealed class VolunteerTrackingController(
         }
 
         var actorInfo = await GetCurrentUserInfoAsync(ct);
-        var actor = actorInfo?.BurnerName ?? localizer["VolTrack_UnknownUser"].Value;
+        if (actorInfo is null) return Unauthorized();
+        var actor = actorInfo.BurnerName;
 
         var request = new VolunteerExportRequest(
             EventSettingsId: eventSettings.Id,
@@ -163,6 +164,7 @@ internal sealed class VolunteerTrackingController(
             StartDate: rangeStart,
             EndDate: rangeEnd,
             Period: period,
+            ActorUserId: actorInfo.Id,
             ActorPlayaName: actor,
             GeneratedAtUtc: SystemClock.Instance.GetCurrentInstant());
 

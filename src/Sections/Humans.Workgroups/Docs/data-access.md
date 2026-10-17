@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Workgroups/**
+  tests/Humans.Workgroups.Tests/**
+  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
+  src/Sections/Humans.Auth/Contracts/IRoleAssignmentServiceRead.cs
+  src/Sections/Humans.Settings/Contracts/ISettingsService.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
+  src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+-->
+
 # Workgroups — Data Access
 
 ## Workgroups
@@ -11,8 +24,8 @@ on reads. Owns its seven tables: `workgroups`, `workgroup_members`, `workgroup_m
 `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`.
 
 Every cross-section reference (`AppliedByUserId`, `UserId`, `CreatedByUserId`,
-`AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`, `DispositionByUserId`,
-`SurveyId`, `HoldedAccountNumber`, `HoldedAccountId`) is a bare column — no FK, no
+`UpdatedByUserId`, `AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`,
+`DispositionByUserId`, `SurveyId`, `HoldedAccountNumber`, `HoldedAccountId`) is a bare column — no FK, no
 navigation (`memory/architecture/no-cross-section-ef-joins.md`). Intra-section FKs (Workgroup →
 Members/Meetings/LogEntries/Documents, cascade; Document → Comments, cascade; LogEntry →
 Document, `SetNull`) use EF navigations as usual.
@@ -38,11 +51,11 @@ Repository: `IWorkgroupRepository`.
 | workgroups_settings | R/W |
 
 Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentServiceRead`,
-`ITeamServiceRead`, `ISettingsService` (legacy root read only), `IGoogleSyncService`, `INotificationService`,
-`IEmailService`, the section's own `WorkgroupsEmails` builder, `IAuditLogService`,
-`ISurveyAnalysisRead`,
-`IClock` (NodaTime). The
-inner service has no `IMemoryCache`.
+`ISettingsService` (legacy root read only), `IGoogleSyncService`, `IHoldedFinanceService`,
+`IHoldedClient`, `INotificationService`, `IEmailService`, the section's own
+`WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).
+The inner service has no `IMemoryCache`. `ITeamServiceRead` is used by
+`WorkgroupsController` and `WorkgroupDriveAccessSource` (Board membership), not the service.
 
 ### CachingWorkgroupService (Singleton, `Humans.Workgroups.Services`)
 

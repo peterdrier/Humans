@@ -24,10 +24,9 @@ internal sealed partial class WorkgroupService
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (string.IsNullOrWhiteSpace(save.Title))
             return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
 
@@ -178,9 +177,8 @@ internal sealed partial class WorkgroupService
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
         var now = clock.GetCurrentInstant();
-        // "A comment window ... must end before Delivered" (design §7). Delivering mid-window
-        // would freeze the body and cut short a comment period the group promised publicly —
-        // Close the window first, which is one click and leaves the comments in place.
+        // A comment window must end before Delivered (design §7): delivering mid-window
+        // would cut short a publicly promised comment period.
         if (document.CommentsCloseAt is { } closes && closes > now)
             return new(Refusal: new(WorkgroupErrorKeys.CommentsStillOpen));
 
@@ -255,12 +253,11 @@ internal sealed partial class WorkgroupService
     {
         var comment = await repository.GetCommentAsync(commentId, ct);
         if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
         // Responding is the answering half of the resolution's "show what you heard"; it
         // stays open after the window closes, but not after the group ends.
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
 
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
@@ -326,10 +323,9 @@ internal sealed partial class WorkgroupService
 
         var comment = await repository.GetCommentAsync(commentId, ct);
         if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         comment.HiddenAt = clock.GetCurrentInstant();
         comment.HiddenByUserId = actorUserId;
