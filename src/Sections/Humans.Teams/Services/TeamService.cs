@@ -7,6 +7,7 @@ using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
@@ -37,6 +38,7 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
+    private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
     private const int MaxTeamSlugLength = 256;
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
     {
@@ -752,6 +754,7 @@ internal sealed class TeamService(
         if (!team.RequiresApproval)
             return new TeamJoinRequestResult(ErrorKey: "Teams_JoinPolicyChanged");
 
+        using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
         if (existingRequest is not null)
             return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
@@ -771,6 +774,7 @@ internal sealed class TeamService(
         };
 
         await repo.AddRequestAsync(request, cancellationToken);
+        joinRequest.Dispose();
 
         logger.LogInformation("User {UserId} requested to join team {TeamId}", userId, teamId);
         await SendTeamJoinRequestSubmittedNotificationAsync(team, userId, cancellationToken);

@@ -36,6 +36,7 @@ using Humans.Teams.Services;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -1138,6 +1139,76 @@ public sealed class TeamServiceTests : TeamsTestHarness
         (await TeamsDb.TeamJoinRequests.SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .UserId.Should().Be(user.Id);
         (await TeamsDb.TeamMembers.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task JoinTeamAsync_ConcurrentRequests_CreateOnlyOnePendingRequest()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pause = new PauseFirstJoinRequestSave();
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var repository = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team
+        {
+            Id = Guid.NewGuid(), Name = "Approval team", Slug = "approval-team",
+            IsActive = true, RequiresApproval = true, SystemTeamType = SystemTeamType.None,
+            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+        };
+        await using (var seed = new TeamsDbContext(options))
+        {
+            seed.Teams.Add(team);
+            await seed.SaveChangesAsync(ct);
+        }
+        var provider = new ServiceLocatorBuilder().Build();
+        TeamService NewService() => new(repository, AuditLog, Notifier,
+            Substitute.For<IShiftManagementService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
+            ShiftAuthInvalidator, AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
+            NullLogger<TeamService>.Instance);
+        var userId = Guid.NewGuid();
+        var first = NewService().JoinTeamAsync(team.Id, userId, "Pick me", ct);
+        Task<TeamJoinRequestResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first join request save must be paused");
+            second = NewService().RequestToJoinTeamAsync(team.Id, userId, "Pick me", ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        await Task.WhenAll(first, second);
+
+        await using var db = new TeamsDbContext(options);
+        var request = (await db.TeamJoinRequests.ToListAsync(ct)).Should().ContainSingle().Subject;
+        request.TeamId.Should().Be(team.Id);
+        request.UserId.Should().Be(userId);
+        request.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        (await first).Outcome.Should().Be(TeamJoinOutcome.RequestSubmitted);
+        (await second).ErrorKey.Should().Be("Teams_Team_AlreadyPendingRequest");
+    }
+
+    private sealed class PauseFirstJoinRequestSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<TeamJoinRequest>()
+                    .Any(entry => entry.State == EntityState.Added)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansFact]
