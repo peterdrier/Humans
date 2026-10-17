@@ -1,3 +1,7 @@
 version: 1
-next_id: 4
-inbox: []
+next_id: 5
+inbox:
+  - added: 2026-10-17
+    id: WORKGROUPS-4
+    what: "WorkgroupsController.Details uses Profile.MembershipTier for budget-card and BudgetSet-history visibility. An expired Colaborador/Asociado cache retains access, while an active approved term behind a Volunteer cache is denied. Governance.Contracts IApplicationServiceRead.HasActiveApprovedTierAsync already supplies the authoritative term check; replace this cached-tier authorization predicate while preserving Board/Admin access. Found by nightly source audit and four reproduced stale-cache visibility failures."
+    review: panel

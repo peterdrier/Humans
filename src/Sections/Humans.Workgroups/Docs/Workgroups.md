@@ -61,8 +61,7 @@ administrative recognition, and every decision is a human's.
 - A **Budget** is an optional EUR allocation on the register plus the Holded expense
   account the group's spending books to. Finance owns the account's creation and naming
   ("Workgroups / {Name}"); Workgroups owns the amount and the reference. Visible to
-  Board/Admin, Colaborador and Asociado. Tier access uses Governance’s active approved
-  terms on the current UTC date, never the cached profile tier.
+  Board/Admin, Colaborador and Asociado.
 
 ## Data Model
 
@@ -367,8 +366,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - A member **cannot** leave as the last coordinator without naming a replacement
   (`BoardOrAdmin` may override).
 - A Volunteer **cannot** see a group's budget: neither the budget card nor the `BudgetSet`
-  History entries render unless the viewer is `BoardOrAdmin`, or has an active approved
-  Colaborador or Asociado term; an expired cached profile tier grants no access.
+  History entries render unless the viewer is `BoardOrAdmin`, Colaborador or Asociado.
 
 ## Triggers
 
@@ -434,7 +432,6 @@ should end is the Board's decision, taken on the register in front of them.
 
 - **Users**: `IUserServiceRead` — names, `MembershipTier`, approved-profile check;
   `IUserEmailService` — notification target addresses for lifecycle emails.
-- **Governance**: `IApplicationServiceRead` — active approved Colaborador/Asociado terms for budget visibility.
 - **Auth**: `IRoleAssignmentServiceRead` — active holders of the Board role, the recipients of Board emails.
 - **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of

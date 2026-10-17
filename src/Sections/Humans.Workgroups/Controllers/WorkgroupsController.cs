@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -25,7 +24,6 @@ internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
     IUserServiceRead users,
     ITeamServiceRead teams,
-    IApplicationServiceRead applications,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
     IAuthorizationService authorization,
@@ -83,10 +81,8 @@ internal sealed class WorkgroupsController(
         var people = await PeopleAsync([workgroup], ct);
         var board = await teams.GetTeamAsync(SystemTeamIds.Board, ct);
         var canAdminister = await MayAdministerAsync(workgroup);
-        var today = clock.GetCurrentInstant().InUtc().Date;
         var canSeeBudget = canAdminister
-            || await applications.HasActiveApprovedTierAsync(user.Id, MembershipTier.Colaborador, today, ct)
-            || await applications.HasActiveApprovedTierAsync(user.Id, MembershipTier.Asociado, today, ct);
+            || user.Profile?.MembershipTier is MembershipTier.Colaborador or MembershipTier.Asociado;
         IReadOnlyList<HoldedExpenseAccountDto> accounts = canAdminister
             ? await workgroups.ListExpenseAccountsAsync(ct)
             : [];
