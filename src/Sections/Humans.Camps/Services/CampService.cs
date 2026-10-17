@@ -1531,8 +1531,13 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
     }
 
-    private async Task<Guid> EnsureActiveCampMemberAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    private async Task<Guid?> EnsureActiveCampMemberAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
+        var user = await _userServiceRead.GetUserInfoAsync(userId, cancellationToken);
+        if (user is null || user.IsTombstone)
+            return null;
+        // Merge aliases identify the survivor; never create a new footprint on the archived account.
+        userId = user.Id;
         var now = _clock.GetCurrentInstant();
         var result = await _repo.AddActiveMembershipAsync(campSeasonId, userId, now, actorUserId, cancellationToken);
 
@@ -1563,8 +1568,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         if (openSeason is null)
             return AddCampMemberOutcome.NoActiveSeason;
 
-        await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
-        return AddCampMemberOutcome.Added;
+        var memberId = await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
+        return memberId is null ? AddCampMemberOutcome.InvalidUser : AddCampMemberOutcome.Added;
     }
 
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
@@ -1579,8 +1584,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
             return AssignCampRoleOutcome.SeasonNotFound;
 
         var memberId = await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
+        if (memberId is null)
+            return AssignCampRoleOutcome.MemberNotFound;
         return await _campRoleService.Value.AssignAsync(
-            openSeason.Id, roleDefinitionId, memberId, actorUserId, cancellationToken);
+            openSeason.Id, roleDefinitionId, memberId.Value, actorUserId, cancellationToken);
     }
 
     public async Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(
