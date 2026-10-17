@@ -152,7 +152,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - A member **cannot** reach `/Preapprovals/Admin/*` (policy `PreapprovalsManage`).
 - A member with no grant, no managed program and no program to apply to **cannot** reach
-  `/Preapprovals` (policy `PreapprovalsAccess`); the nav entry is hidden for them.
+  `/Preapprovals` (policy `PreapprovalsAccess`). There is no member nav entry: people reach
+  the page through notifications, emails and links handed out by managers.
 - A program manager **cannot** create or edit a program, set its ceiling, name managers or
   close it (`ProgramOperationRequirement.Administer` is roles only).
 - A manager of program A **cannot** manage, issue under, or act on grants of program B

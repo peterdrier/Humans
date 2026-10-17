@@ -16,16 +16,4 @@ public sealed class SectionNavTests
         item.Action.Should().Be(nameof(PreapprovalsAdminController.Index));
         item.Policy.Should().Be(PreapprovalsPolicies.Manage);
     }
-
-    [HumansFact]
-    public void MemberNav_MineUnderAccess_ManageUnderManage()
-    {
-        ISectionNav navigation = new SectionNav();
-        var top = navigation.Items().Single();
-        top.Policy.Should().Be(PreapprovalsPolicies.Access);
-        top.Children.Should().NotBeNull();
-        top.Children!.Where(c => !c.Divider).Select(c => (c.Controller, c.Policy)).Should().Equal(
-            ("Preapprovals", PreapprovalsPolicies.Access),
-            ("PreapprovalsAdmin", PreapprovalsPolicies.Manage));
-    }
 }

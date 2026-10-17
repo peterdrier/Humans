@@ -1504,7 +1504,4 @@
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribution significative ne doit pas dépasser 2000 caractères.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La compréhension du rôle ne doit pas dépasser 2000 caractères.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Version légale</value></data>
-  <data name="Nav_Preapprovals" xml:space="preserve"><value>Pré-approbations</value></data>
-  <data name="Nav_Preapprovals_Mine" xml:space="preserve"><value>Mes pré-approbations</value></data>
-  <data name="Nav_Preapprovals_Manage" xml:space="preserve"><value>Gérer les pré-approbations</value></data>
 </root>
