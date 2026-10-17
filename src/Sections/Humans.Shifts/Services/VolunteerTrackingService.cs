@@ -18,8 +18,12 @@ internal sealed class VolunteerTrackingService(
     IClock clock,
     IAuditLogService audit) : IVolunteerTrackingService, IUserMerge
 {
-    public async Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
+    public async Task<bool> SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
     {
+        var calendar = await calendarResolver.GetAsync(eventSettingsId);
+        if (calendar is null || dayOffsets.Any(day => day < calendar.BuildStartOffset || day > calendar.StrikeEndOffset))
+            return false;
+
         var now = clock.GetCurrentInstant();
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
         await audit.LogAsync(
@@ -28,6 +32,7 @@ internal sealed class VolunteerTrackingService(
             $"EventSettingsId={eventSettingsId}; AvailableDays={dayOffsets.Count}; self-service update", userId,
             relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
         viewInvalidator.InvalidateUser(userId);
+        return true;
     }
 
     public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(

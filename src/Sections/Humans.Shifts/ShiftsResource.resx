@@ -479,4 +479,5 @@
   <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
     <value>Shift deleted.</value>
   </data>
+  <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Select days within the event calendar.</value></data>
 </root>
