@@ -5,6 +5,7 @@ using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
+using NodaTime;
 
 namespace Humans.Expenses.Controllers;
 
@@ -23,11 +25,17 @@ internal sealed class ExpensesController(
     IExpenseReportManagement service,
     IBudgetService budgetService,
     IHoldedFinanceServiceRead holdedFinance,
+    IPreapprovalService preapprovals,
     IAuthorizationService authService,
+    IClock clock,
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
+
+    /// <summary>Pre-approval claim deadlines are Europe/Madrid dates, the zone the association books in.</summary>
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -45,6 +53,8 @@ internal sealed class ExpensesController(
 
             var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
+            var openGrants = (await preapprovals.ListClaimableForUserAsync(user.Id, HttpContext.RequestAborted))
+                .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
             // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
             // account only. The binding is tracked separately from the ledger: GetCreditorLedgerAsync
@@ -73,6 +83,8 @@ internal sealed class ExpensesController(
                 HasActiveYear = activeYear is not null,
                 HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
                 BookingLabels = bookingLabels,
+                OpenGrants = openGrants,
+                Today = Today,
                 AccountLedger = accountLedger,
                 BoundAccountNum = boundAccountNum,
                 // A claim waiting on this viewer's sign-off always earns the link.
@@ -94,8 +106,12 @@ internal sealed class ExpensesController(
         }
     }
 
+    /// <summary>The new-report form. <paramref name="grant"/> preselects that pre-approval (the
+    /// "File expense" link on the index and on /Preapprovals). Any grant is accepted here so a
+    /// finance admin can file on a member's behalf; the service only ever lets the submitter's own
+    /// be claimed.</summary>
     [HttpGet("New")]
-    public async Task<IActionResult> New()
+    public async Task<IActionResult> New(Guid? grant = null)
     {
         try
         {
@@ -109,11 +125,16 @@ internal sealed class ExpensesController(
                 return RedirectToAction(nameof(Index));
             }
 
-            return View(new ExpenseNewViewModel
+            var model = new ExpenseNewViewModel
             {
                 Accounts = accounts,
                 SubmitterUserId = user.Id,
-            });
+                PreapprovalGrantId = grant,
+            };
+            await PopulateGrantOptionsAsync(model, user.Id, HttpContext.RequestAborted);
+            // The grant's label is the project name, which is what the Subject asks for.
+            model.Note = model.Grants.FirstOrDefault(g => g.Id == grant)?.Label;
+            return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -137,26 +158,53 @@ internal sealed class ExpensesController(
             : user.Id;
         if (submitterUserId != user.Id && !await IsFinanceAdminAsync()) return Forbid();
 
+        // A pre-approval brings its own account, so the account field is not required with one.
+        if (model.PreapprovalGrantId is not null) ModelState.Remove(nameof(model.HoldedAccountNumber));
+
         try
         {
             if (!ModelState.IsValid)
             {
                 model.Accounts = await BuildAccountOptionsAsync();
+                await PopulateGrantOptionsAsync(model, user.Id);
                 return View(model);
             }
 
-            var id = await service.CreateDraftAsync(
-                submitterUserId, user.Id, model.HoldedAccountNumber, model.Note);
-            SetSuccess(localizer["Expenses_Flash_DraftCreated"]);
-            return RedirectToAction(nameof(Edit), new { id });
+            var result = await service.CreateDraftAsync(
+                submitterUserId, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
+            if (result.Succeeded)
+            {
+                SetSuccess(localizer["Expenses_Flash_DraftCreated"]);
+                return RedirectToAction(nameof(Edit), new { id = result.ReportId });
+            }
+
+            SetError(GetErrorMessage(result.Error) is { } reason
+                ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
+                : localizer["Expenses_Flash_CreateFailed"].Value);
+            model.Accounts = await BuildAccountOptionsAsync();
+            await PopulateGrantOptionsAsync(model, user.Id);
+            return View(model);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
             model.Accounts = await BuildAccountOptionsAsync();
+            await PopulateGrantOptionsAsync(model, user.Id);
             return View(model);
         }
+    }
+
+    /// <summary>The grants the new form offers: the viewer's claimable ones, plus the preselected
+    /// one when it is somebody else's (an admin filing on their behalf) so the form can show it.</summary>
+    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, Guid viewerId, CancellationToken ct = default)
+    {
+        var grants = (await preapprovals.ListClaimableForUserAsync(viewerId, ct)).OrderBy(g => g.ClaimBy).ToList();
+        if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
+            && await preapprovals.GetGrantAsync(wanted, ct) is { } other)
+            grants.Insert(0, other);
+        model.Grants = grants;
+        model.Today = Today;
     }
 
     [HttpGet("{id:guid}")]
@@ -184,6 +232,9 @@ internal sealed class ExpensesController(
                 ? await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted)
                 : null;
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
+            var grant = report.PreapprovalGrantId is { } grantId
+                ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
+                : null;
 
             // View is held only by the submitter, the category coordinator and finance admins, so
             // reaching this page already proves the viewer may see who the submitter is. IBAN stays
@@ -195,6 +246,8 @@ internal sealed class ExpensesController(
             {
                 Report = report,
                 BookingLabel = bookingLabel,
+                PreapprovalGrant = grant,
+                Today = Today,
                 CanEdit = canEdit,
                 CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
                 CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
@@ -250,7 +303,8 @@ internal sealed class ExpensesController(
             var model = new ExpenseEditViewModel
             {
                 HoldedAccountNumber = report.HoldedAccountNumber,
-                Note = report.Note
+                Note = report.Note,
+                PreapprovalGrantId = report.PreapprovalGrantId,
             };
             await PopulateEditModelAsync(model, report);
             return View(model);
@@ -270,6 +324,7 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
 
+        if (model.PreapprovalGrantId is not null) ModelState.Remove(nameof(model.HoldedAccountNumber));
         if (!ModelState.IsValid)
         {
             await PopulateEditModelAsync(model, report);
@@ -277,7 +332,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.UpdateDraftWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), model.HoldedAccountNumber, model.Note);
+            id, user.Id, await IsFinanceAdminAsync(), model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
@@ -704,6 +759,7 @@ internal sealed class ExpensesController(
                 Reports = reports,
                 SubmitterNames = submitterNames,
                 BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
+                Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
                 // Finance admins are the only ones who can act on a written-off push, and the
                 // list is queue-wide rather than scoped, so it stays with them.
                 FailedHoldedPushReportIds = isFinanceAdmin
@@ -912,10 +968,29 @@ internal sealed class ExpensesController(
         return labels;
     }
 
+    /// <summary>Report id → the pre-approval it files against, for the queue's pre-approval column.</summary>
+    private async Task<IReadOnlyDictionary<Guid, GrantOption>> ResolveGrantsAsync(
+        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
+    {
+        var grants = new Dictionary<Guid, GrantOption>();
+        foreach (var report in reports)
+            if (report.PreapprovalGrantId is { } grantId && await preapprovals.GetGrantAsync(grantId, ct) is { } grant)
+                grants[report.Id] = grant;
+        return grants;
+    }
+
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
         model.Accounts = await BuildAccountOptionsAsync();
+        // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between
+        // the member's own pre-approvals. The one the report holds stays listed in any state.
+        var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();
+        if (report.PreapprovalGrantId is { } held && grants.All(g => g.Id != held)
+            && await preapprovals.GetGrantAsync(held, HttpContext.RequestAborted) is { } heldGrant)
+            grants.Insert(0, heldGrant);
+        model.Grants = grants;
+        model.Today = Today;
     }
 
     /// <summary>The accounts a report may book to: Finance's active expense accounts, budget-category

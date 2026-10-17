@@ -107,6 +107,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _auditLog,
             _holdedClient,
             _holdedFinance,
+            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
+            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));

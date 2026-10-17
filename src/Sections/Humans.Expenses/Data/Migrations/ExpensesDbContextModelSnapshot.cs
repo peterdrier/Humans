@@ -193,6 +193,9 @@ namespace Humans.Expenses.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("PreapprovalGrantId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -217,6 +220,8 @@ namespace Humans.Expenses.Data.Migrations
                     b.HasIndex("HoldedContactId");
 
                     b.HasIndex("HoldedDocId");
+
+                    b.HasIndex("PreapprovalGrantId");
 
                     b.HasIndex("Status");
 

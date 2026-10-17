@@ -28,15 +28,22 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
 
     /// <summary>Creates a draft owned by <paramref name="submitterUserId"/>, booked to the Holded
     /// expense account <paramref name="holdedAccountNumber"/> (its budget category, when it has one,
-    /// is derived from Finance's map). When <paramref name="actorUserId"/> is someone else, the
-    /// creation is audited as on-behalf.</summary>
-    Task<Guid> CreateDraftAsync(
+    /// is derived from Finance's map). A non-null <paramref name="preapprovalGrantId"/> files the
+    /// report against that pre-approval instead: it must be claimable by the submitter, and the
+    /// account comes from the grant, with no budget category. When <paramref name="actorUserId"/>
+    /// is someone else, the creation is audited as on-behalf.</summary>
+    Task<ExpenseCreateDraftResult> CreateDraftAsync(
         Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
 
+    /// <summary>On a Draft, <paramref name="preapprovalGrantId"/> may keep, swap or drop the
+    /// pre-approval the report files against; past Draft the pre-approval and its account are locked
+    /// and only the note changes.</summary>
     Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
 
     /// <summary>
@@ -79,11 +86,16 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid lineId, CancellationToken ct = default);
 
     /// <summary>Submits the report. The payee snapshot is taken from the profile of the report's
-    /// submitter, never the actor's.</summary>
+    /// submitter, never the actor's. A report filed against a pre-approval claims the grant here,
+    /// inside one transaction with the status change, and is restamped with the grant's account and
+    /// cap as they are now; a first submit past the program's claim deadline is refused, a
+    /// resubmit of the report already holding the grant is not.</summary>
     Task<ExpenseMutationResult> SubmitWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default);
 
-    /// <summary>Withdrawal stays the submitter's own decision — there is no on-behalf path.</summary>
+    /// <summary>Withdrawal stays the submitter's own decision — there is no on-behalf path. Withdrawn
+    /// before approval, a pre-approved report releases its grant; after approval the grant stays
+    /// consumed.</summary>
     Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
@@ -119,7 +131,9 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set; a non-null
-    /// <paramref name="overrideAccountNumber"/> rebooks the report to that account.</summary>
+    /// <paramref name="overrideAccountNumber"/> rebooks the report to that account. On a pre-approved
+    /// report the account is locked, a blank cap keeps the grant's current amount, and a cap above it
+    /// is refused; approval consumes the grant in the same transaction.</summary>
     Task<ExpenseMutationResult> ApproveWithResultAsync(
         Guid reportId, Guid actorUserId, int? overrideAccountNumber, decimal? maxAmount,
         CancellationToken ct = default);
@@ -163,6 +177,10 @@ internal sealed record ExpenseMutationResult(bool Succeeded, ExpenseError? Error
 /// <summary>Line-add outcome; <see cref="LineId"/> is set on success so the caller can redirect
 /// into the new line's flow (an invoice line continues to its proofs page).</summary>
 internal sealed record ExpenseAddLineResult(bool Succeeded, ExpenseError? Error, Guid? LineId);
+
+/// <summary>Draft-creation outcome; <see cref="ReportId"/> is set on success so the caller can
+/// redirect into the new report's edit page.</summary>
+internal sealed record ExpenseCreateDraftResult(bool Succeeded, ExpenseError? Error, Guid? ReportId);
 
 /// <summary>A member resource key with format arguments, or feedback for an operator-only action.</summary>
 internal sealed record ExpenseError(string? ResourceKey, object[] Arguments, string? OperatorMessage = null);

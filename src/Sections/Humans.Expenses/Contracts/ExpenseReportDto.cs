@@ -13,6 +13,9 @@ public sealed record ExpenseReportDto
     /// <summary>Null when the account has no budget-category mapping (no coordinator route).</summary>
     public required Guid? BudgetCategoryId { get; init; }
     public required Guid? BudgetYearId { get; init; }
+    /// <summary>Pre-approval grant the report files against, or null. A pre-approved report books
+    /// to the grant's account with no budget category (no coordinator route).</summary>
+    public Guid? PreapprovalGrantId { get; init; }
     public required ExpenseReportStatus Status { get; init; }
     public string? Note { get; init; }
     public required string PayeeName { get; init; }

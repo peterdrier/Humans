@@ -36,6 +36,7 @@ public class ExpenseReportViewTests
             SubmitterNames = new Dictionary<Guid, string>(),
             BookingLabels = new Dictionary<Guid, string>(),
             FailedHoldedPushReportIds = new HashSet<Guid>(),
+            Grants = new Dictionary<Guid, Humans.Preapprovals.Contracts.GrantOption>(),
         } : new ExpensesIndexViewModel { Reports = [report] };
 
         var html = await RenderAsync(review ? "Review" : "Index", model);

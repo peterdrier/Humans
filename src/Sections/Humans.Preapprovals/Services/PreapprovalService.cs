@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Users.Contracts;

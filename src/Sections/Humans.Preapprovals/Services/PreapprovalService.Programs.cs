@@ -1,6 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Notifications.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 
 namespace Humans.Preapprovals.Services;

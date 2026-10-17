@@ -1,14 +1,13 @@
 using Humans.Base.Interfaces;
-using Humans.Preapprovals.Domain;
 
-namespace Humans.Preapprovals.Services;
+namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
-/// The grant reads an expense form needs: a member's claimable grants and one grant by id.
-/// Nothing here changes state. Internal — no other section consumes Preapprovals yet; when
-/// Expenses does, this is the face that becomes public in a Contracts folder.
+/// The public read contract: the grant reads an expense form needs, a member's claimable grants
+/// and one grant by id. Nothing here changes state; the transitions Expenses drives are on
+/// <see cref="IPreapprovalWrite"/>. Everything else the section does is internal.
 /// </summary>
-internal interface IPreapprovalService : IApplicationService
+public interface IPreapprovalService : IApplicationService
 {
     /// <summary>
     /// The grants <paramref name="userId"/> may file against today: <see cref="GrantStatus.Open"/>

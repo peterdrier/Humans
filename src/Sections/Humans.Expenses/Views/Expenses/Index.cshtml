@@ -28,6 +28,37 @@
     </div>
 </div>
 
+@if (Model.OpenGrants.Count > 0)
+{
+    @* Pre-approvals the member may file against today; each row leads to a pre-filled new form. *@
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary-subtle"><strong><i class="fa-solid fa-stamp me-1"></i>@Localizer["Expenses_Preapprovals_OpenTitle"]</strong></div>
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <tbody>
+            @foreach (var g in Model.OpenGrants)
+            {
+                var daysLeft = Period.DaysBetween(Model.Today, g.ClaimBy);
+                <tr>
+                    <td>
+                        @g.ProgramName
+                        @if (g.Label is not null)
+                        {
+                            <div class="small text-muted">@g.Label</div>
+                        }
+                    </td>
+                    <td class="text-nowrap">@Localizer["Expenses_Preapprovals_UpTo", g.MaxAmount.ToEuro()]</td>
+                    <td class="text-nowrap @(daysLeft <= 7 ? "text-danger fw-bold" : "")">@Localizer["Expenses_Preapprovals_ClaimBy", g.ClaimBy.ToDate()]</td>
+                    <td class="text-end">
+                        <a asp-action="New" asp-route-grant="@g.Id" class="btn btn-sm btn-primary">
+                            <i class="fa-solid fa-receipt me-1"></i>@Localizer["Expenses_Preapprovals_FileExpense"]
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
 
 @if (Model.AccountLedger is { } acct)
 {

@@ -69,6 +69,8 @@ public class ExpenseReportServiceGdprTests
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             _holdedFinance,
+            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
+            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));

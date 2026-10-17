@@ -279,6 +279,26 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Aún no hay nada registrado.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoría desconocida)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ej. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Preaprobaciones abiertas</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Presentar gasto</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Reclamar antes del {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>hasta {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Presentar contra una preaprobación</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Sin preaprobación</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Una preaprobación fija la cuenta y el máximo; la cuenta de abajo se toma de ella.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Preaprobado: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>Quedan {0} días para enviar (reclamar antes del {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Envíalo hoy: el plazo de reclamación termina el {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>El plazo de reclamación ({0}) ha vencido; este informe ya no puede enviarse contra la preaprobación.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentado a tiempo: el plazo ya no aplica. Vuelve a enviarlo cuando esté listo.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Esta preaprobación ha sido revocada. El informe no puede aprobarse con ella: una vez rechazado, la preaprobación puede quitarse o cambiarse en el borrador.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preaprobación</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocada</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No se puede presentar contra esa preaprobación: no es del miembro, no está abierta o su plazo ha vencido.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprobación y la cuenta de un informe enviado no se pueden cambiar.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprobación fue revocada; este informe no puede enviarse contra ella.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>El plazo de reclamación ({0}) ha vencido; este informe ya no puede enviarse contra la preaprobación.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preaprobación ya no está disponible: la reclamó otro informe o ya se usó.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puedes corregir este informe sin empezar de nuevo: abre cualquier línea de abajo para editarla, sustituir su recibo o eliminarla, y vuelve a enviarlo.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ir a las líneas</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Solicitante</value></data>

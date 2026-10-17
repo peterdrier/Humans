@@ -1,4 +1,4 @@
-namespace Humans.Preapprovals.Domain;
+namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
 /// Where one grant is in its life. <c>Applied</c> is the application; <c>Open</c> is the only
@@ -7,7 +7,7 @@ namespace Humans.Preapprovals.Domain;
 /// state: a grant past its program's claim deadline stays <c>Open</c> and is simply not claimable
 /// (docs/features/global/preapprovals.md).
 /// </summary>
-internal enum GrantStatus
+public enum GrantStatus
 {
     Applied = 0,
     Open = 1,

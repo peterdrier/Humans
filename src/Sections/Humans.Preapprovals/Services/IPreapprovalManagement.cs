@@ -1,43 +1,18 @@
 using Humans.Base.Interfaces;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 
 namespace Humans.Preapprovals.Services;
 
 /// <summary>
 /// The section's full surface: program and manager administration, issuing, applying, approving,
-/// declining and revoking, the reminder pass, and the grant transitions Expenses will drive as its
-/// report moves. Internal — no other section consumes Preapprovals yet. Authorization is the
-/// controllers' job: every method trusts its actor.
+/// declining and revoking, and the reminder pass, over the two public faces (the reads on
+/// <see cref="IPreapprovalService"/>, the grant transitions Expenses drives on
+/// <see cref="IPreapprovalWrite"/>). Internal. Authorization is the controllers' job: every
+/// method trusts its actor.
 /// </summary>
-internal interface IPreapprovalManagement : IPreapprovalService, IApplicationService
+internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite, IApplicationService
 {
-    // ── Expense-report transitions ────────────────────────────────────────
-    // Each runs inside the ambient TransactionScope the caller opens around its own status
-    // change, so the report and the grant commit together or not at all, and each is audited
-    // with the report id.
-
-    /// <summary>
-    /// <see cref="GrantStatus.Open"/> → <see cref="GrantStatus.Claimed"/> by
-    /// <paramref name="expenseReportId"/>, returning the stamp the report must carry. Idempotent
-    /// for the report already holding the grant (a rejected report resubmitting), which also
-    /// skips the deadline: it was filed in time. Throws <see cref="InvalidOperationException"/>
-    /// when the grant is not claimable, with the reason in the message.
-    /// </summary>
-    Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
-
-    /// <summary>
-    /// <see cref="GrantStatus.Claimed"/> → <see cref="GrantStatus.Open"/> when the holding report
-    /// is withdrawn before approval. The report id is kept on the grant for the trail.
-    /// </summary>
-    Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
-
-    /// <summary>
-    /// <see cref="GrantStatus.Claimed"/> → <see cref="GrantStatus.Consumed"/> when the holding
-    /// report is approved. Terminal; the amount and the report id are kept.
-    /// </summary>
-    Task ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
-
-
     // ── Reads ─────────────────────────────────────────────────────────────
 
     Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default);

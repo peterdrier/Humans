@@ -21,7 +21,9 @@ public interface IHoldedFinanceServiceRead
 
     /// <summary>Every expense account a report or a workgroup may book to — the category map's
     /// accounts plus Finance's managed registry. <paramref name="activeOnly"/> drops retired managed
-    /// accounts; category accounts are always active. Cache reads only.</summary>
+    /// accounts and orphaned category accounts (map rows whose category is not in the active budget
+    /// year); with it off they are listed as inactive, so old reports still get a label. Cache
+    /// reads only.</summary>
     Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
         bool activeOnly, CancellationToken ct = default);
 

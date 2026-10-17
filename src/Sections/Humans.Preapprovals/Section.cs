@@ -4,6 +4,7 @@ using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Preapprovals.Authorization;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Jobs;
@@ -40,6 +41,7 @@ public sealed class Section : ISection, ISectionAdminNav
         services.AddScoped<PreapprovalService>();
         services.AddScoped<IPreapprovalManagement>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IPreapprovalService>(sp => sp.GetRequiredService<PreapprovalService>());
+        services.AddScoped<IPreapprovalWrite>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<PreapprovalService>());
 

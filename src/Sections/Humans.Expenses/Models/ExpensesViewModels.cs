@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Base.Helpers;
+using NodaTime;
 
 namespace Humans.Expenses.Models;
 
@@ -13,6 +15,11 @@ internal sealed class ExpensesIndexViewModel
     /// <summary>Report id → the account (or legacy category) it books to, for display.</summary>
     public IReadOnlyDictionary<Guid, string> BookingLabels { get; init; } =
         new Dictionary<Guid, string>();
+
+    /// <summary>Pre-approvals the viewer may file an expense against today, soonest deadline first.</summary>
+    public IReadOnlyList<GrantOption> OpenGrants { get; init; } = [];
+    /// <summary>Today in Europe/Madrid, the zone claim deadlines are read in.</summary>
+    public LocalDate Today { get; init; }
 
     /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.
     /// Null both when unbound and when bound with no cached journal activity — <see cref="BoundAccountNum"/>
@@ -53,6 +60,14 @@ internal sealed class ExpenseNewViewModel
     /// <summary>The member the report will belong to. Defaults to the viewer; only a finance admin
     /// can post anything else, and the picker that changes it renders only for them.</summary>
     public Guid? SubmitterUserId { get; set; }
+
+    /// <summary>The pre-approval to file against, or null for an ordinary report. The service
+    /// takes the account from the grant; the posted account is ignored when this is set.</summary>
+    public Guid? PreapprovalGrantId { get; set; }
+    /// <summary>The grants the form offers: the viewer's claimable ones, plus the one <c>?grant=</c>
+    /// preselected when it is not among them (an admin filing on a member's behalf).</summary>
+    public IReadOnlyList<GrantOption> Grants { get; set; } = [];
+    public LocalDate Today { get; set; }
 }
 
 internal sealed class ExpenseEditViewModel
@@ -65,6 +80,14 @@ internal sealed class ExpenseEditViewModel
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
+
+    /// <summary>The pre-approval the report files against, or null. Changeable on a Draft only.</summary>
+    public Guid? PreapprovalGrantId { get; set; }
+    /// <summary>The submitter's claimable grants plus the one the report already holds.</summary>
+    public IReadOnlyList<GrantOption> Grants { get; set; } = [];
+    public LocalDate Today { get; set; }
+    /// <summary>The grant the report holds, for the deadline banner; null when none or missing.</summary>
+    public GrantOption? HeldGrant => Report?.PreapprovalGrantId is { } id ? Grants.FirstOrDefault(g => g.Id == id) : null;
 }
 
 internal sealed class ExpenseDetailViewModel
@@ -72,6 +95,9 @@ internal sealed class ExpenseDetailViewModel
     public required ExpenseReportDto Report { get; init; }
     /// <summary>The account (or, on a report that predates accounts, the category) it books to.</summary>
     public required string BookingLabel { get; init; }
+    /// <summary>The pre-approval the report files against, in whatever state it is now; null when none.</summary>
+    public GrantOption? PreapprovalGrant { get; init; }
+    public LocalDate Today { get; init; }
     public bool CanEdit { get; init; }
     public bool CanSubmit { get; init; }
     public bool CanWithdraw { get; init; }
@@ -219,6 +245,12 @@ internal sealed class ExpenseReviewViewModel
     /// <summary>Reports whose Holded push was written off and need a finance admin to look at them.
     /// Empty hides the banner and the Holded column.</summary>
     public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
+    /// <summary>Report id → the pre-approval it files against. Empty hides the column; a revoked
+    /// grant flags its row from the moment of revocation.</summary>
+    public required IReadOnlyDictionary<Guid, GrantOption> Grants { get; init; }
+
+    public bool IsRevoked(Guid reportId) =>
+        Grants.TryGetValue(reportId, out var grant) && grant.Status == GrantStatus.Revoked;
 
     /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
     public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>
@@ -270,3 +302,20 @@ internal sealed class ExpenseIbanViewModel
     [StringLength(34, ErrorMessage = "Validation_MaxLength")]
     public string? Iban { get; set; }
 }
+
+/// <summary>The pre-approval banner on the new, edit and detail pages: what the grant promises and,
+/// while the report is still a draft, how long it has to be submitted.</summary>
+internal sealed record PreapprovalBannerModel(GrantOption Grant, LocalDate Today, bool ShowDeadline)
+{
+    /// <summary>Days until the claim deadline; negative once it has passed.</summary>
+    public int DaysLeft => Period.DaysBetween(Today, Grant.ClaimBy);
+    /// <summary>The draft was filed in time and holds the grant: the deadline no longer applies.</summary>
+    public bool FiledInTime => Grant.Status == GrantStatus.Claimed;
+    /// <summary>Shown from the moment of revocation at every status: the report can no longer be
+    /// approved against the grant.</summary>
+    public bool Revoked => Grant.Status == GrantStatus.Revoked;
+    public bool Urgent => Revoked || (ShowDeadline && !FiledInTime && DaysLeft <= 7);
+}
+
+/// <summary>The pre-approval picker on the new and edit forms.</summary>
+internal sealed record PreapprovalSelectModel(IReadOnlyList<GrantOption> Grants, Guid? SelectedGrantId, string AccountSelectId);

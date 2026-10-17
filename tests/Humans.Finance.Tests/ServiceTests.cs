@@ -3598,6 +3598,8 @@ public class HoldedFinanceServiceTests
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
         {
             new() { Id = Guid.NewGuid(), BudgetCategoryId = catId, HoldedAccountNumber = 62900100, HoldedAccountId = "cat-0", Tag = "x" },
+            // Mapped to a category that is not in the active year: orphaned, labels old reports only.
+            new() { Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900101, HoldedAccountId = "cat-1", Tag = "y" },
         });
         _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
         {
@@ -3618,6 +3620,7 @@ public class HoldedFinanceServiceTests
         all.Select(o => (o.AccountNum, o.Label, o.IsBudgetCategory, o.IsActive)).Should().BeEquivalentTo(
         [
             (62900100, "Departments / Geeks", true, true),
+            (62900101, "Category 62900101", true, false),
             (62900150, "Workgroups / ALM 2027", false, true),
             (62900151, "Workgroups / ALM 2026", false, false),
         ]);
