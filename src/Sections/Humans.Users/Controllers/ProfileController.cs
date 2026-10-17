@@ -62,12 +62,13 @@ internal sealed class ProfileController(
     // The tier-application copy and the generic Common_/Validation_ strings this controller
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ICampaignServiceRead campaignService,
+    ICampaignService campaignService,
     IEmailOutboxService emailOutboxService,
     IClock clock,
-    IApplicationDecisionService applicationDecisionService,
+    IGovernanceService governanceService,
+    IGovernanceWrite governanceWrite,
     IAccountDeletionService accountDeletionService,
-    IMembershipCalculatorRead membershipCalculator) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
 {
     private readonly IUserServiceInternal _userService = userService;
 
@@ -104,7 +105,7 @@ internal sealed class ProfileController(
         var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
         var pendingConsentCount = snapshot.PendingConsentCount;
 
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(info.Id, ct);
+        var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
 
         var campaignGrants = await campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
@@ -159,7 +160,7 @@ internal sealed class ProfileController(
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         if (info is null) return NotFound();
 
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
+        var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await shiftProfiles.GetTagsAsync();
         // Tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
@@ -316,7 +317,7 @@ internal sealed class ProfileController(
         return null;
     }
 
-    // Maps IApplicationDecisionService's tier-application field rules onto localized,
+    // Maps IGovernanceWrite's tier-application field rules onto localized,
     // form-field-targeted ModelState errors — the same error keys, and the same mapping
     // shape, GovernanceApplicationsController uses on the submit path. The rules
     // themselves live in the service that owns tier-application state; this runs them
@@ -327,7 +328,7 @@ internal sealed class ProfileController(
         if (!isInitialSetup || model.SelectedTier == MembershipTier.Volunteer)
             return null;
 
-        var result = applicationDecisionService.ValidateSubmission(
+        var result = governanceWrite.ValidateSubmission(
             model.SelectedTier, model.ApplicationMotivation,
             model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding, model.ApplicationAdditionalInfo);
 
@@ -449,7 +450,7 @@ internal sealed class ProfileController(
         // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop.
         if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
         {
-            var existingApps = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
+            var existingApps = await governanceService.GetUserApplicationsAsync(user.Id);
             var existingDraft = existingApps.FirstOrDefault(a =>
                 a.Status == ApplicationStatus.Submitted);
             var hasApprovedApp = existingApps.Any(a =>
@@ -457,7 +458,7 @@ internal sealed class ProfileController(
 
             if (existingDraft is not null)
             {
-                await applicationDecisionService.UpdateDraftApplicationAsync(
+                await governanceWrite.UpdateDraftApplicationAsync(
                     existingDraft.Id,
                     model.SelectedTier,
                     model.ApplicationMotivation!,
@@ -467,7 +468,7 @@ internal sealed class ProfileController(
             }
             else if (!hasApprovedApp)
             {
-                await applicationDecisionService.SubmitAsync(
+                await governanceWrite.SubmitAsync(
                     user.Id, model.SelectedTier,
                     model.ApplicationMotivation!,
                     model.ApplicationAdditionalInfo,

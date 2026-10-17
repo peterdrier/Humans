@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Governance.Contracts;
 using System.Security.Claims;
@@ -5,9 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 
-public sealed class MyGoogleResourcesViewComponent(
-    ITeamResourceService teamResourceService,
-    IMembershipCalculatorRead membershipCalculatorRead,
+internal sealed class MyGoogleResourcesViewComponent(
+    ITeamResourceManagement teamResourceService,
+    IMembershipCalculator membershipCalculatorRead,
     ILogger<MyGoogleResourcesViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

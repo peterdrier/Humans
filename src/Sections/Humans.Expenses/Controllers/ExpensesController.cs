@@ -22,7 +22,7 @@ internal sealed class ExpensesController(
     IUserServiceRead userService,
     IExpenseReportManagement service,
     IBudgetService budgetService,
-    IHoldedFinanceServiceRead holdedFinance,
+    IHoldedFinanceService holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)

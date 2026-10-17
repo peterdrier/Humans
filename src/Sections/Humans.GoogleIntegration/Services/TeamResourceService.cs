@@ -23,11 +23,11 @@ internal sealed partial class TeamResourceService(
     IAuditLogService auditLogService,
     TeamResourceManagementOptions resourceOptions,
     IClock clock,
-    ILogger<TeamResourceService> logger) : ITeamResourceService
+    ILogger<TeamResourceService> logger) : ITeamResourceManagement
 {
     // Lazy resolution: eagerly injecting IRoleAssignmentServiceRead creates a
     // ctor cycle TeamResourceService → IRoleAssignmentServiceRead → ISystemTeamSync
-    // → IGoogleGroupSync → ITeamResourceService. Only one method uses it.
+    // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses it.
     private IRoleAssignmentServiceRead RoleAssignmentService
         => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
 

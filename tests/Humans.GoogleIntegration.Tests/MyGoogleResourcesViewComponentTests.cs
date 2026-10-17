@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Services;
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.ViewComponents;
@@ -18,7 +19,7 @@ public sealed class MyGoogleResourcesViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var membership = Substitute.For<IMembershipCalculatorRead>();
+        var membership = Substitute.For<IMembershipCalculator>();
         membership.GetMembershipSnapshotAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(Task.FromException<MembershipSnapshot>(new OperationCanceledException(aborted.Token)));
         var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };
@@ -26,7 +27,7 @@ public sealed class MyGoogleResourcesViewComponentTests
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
 
         var component = new MyGoogleResourcesViewComponent(
-            Substitute.For<ITeamResourceService>(), membership,
+            Substitute.For<ITeamResourceManagement>(), membership,
             NullLogger<MyGoogleResourcesViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext

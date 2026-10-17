@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using NodaTime;
 
 namespace Humans.Governance.Contracts;
@@ -7,9 +8,9 @@ namespace Humans.Governance.Contracts;
 /// consent-completeness checks, membership/consent snapshots, required-team
 /// resolution, and status-update batches. Returns are scalars, Guid
 /// sets/lists, and section read DTOs — no EF entities. See
-/// <c>memory/architecture/section-read-write-split.md</c>.
+/// <c>memory/architecture/section-public-contract.md</c>.
 /// </summary>
-public interface IMembershipCalculatorRead
+public interface IMembershipCalculator : IOrchestrator
 {
     /// <summary>
     /// Checks if a user has all required consents (for the Volunteers team).

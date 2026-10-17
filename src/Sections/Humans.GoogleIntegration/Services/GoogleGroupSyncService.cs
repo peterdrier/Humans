@@ -15,7 +15,7 @@ internal sealed class GoogleGroupSyncService(
     IGoogleGroupMembershipClient membershipClient,
     IGoogleGroupProvisioningClient provisioningClient,
     ITeamResourceGoogleClient teamResourceClient,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     ITeamServiceRead teamService,
     IUserService userService,
     IUserEmailService userEmailService,

@@ -49,7 +49,7 @@ public class TeamControllerPageContentTests
         });
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
-            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance);
@@ -123,7 +123,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
         {
@@ -266,7 +266,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -345,7 +345,7 @@ public class TeamControllerPageContentTests
             };
             var controller = new TeamController(
                 teams, Substitute.For<ITeamPageService>(), users,
-                Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
                 services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
                 new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
                 NullLogger<TeamController>.Instance)
@@ -407,7 +407,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -492,7 +492,7 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserServiceRead>(),
-            Substitute.For<ITeamResourceServiceRead>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)

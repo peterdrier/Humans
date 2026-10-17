@@ -29,7 +29,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<SectionThingsToDo>>();
         var profile = (await services.GetRequiredService<IUserServiceRead>().GetUserInfoAsync(userId))?.Profile;
-        var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculatorRead>()
+        var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculator>()
             .GetMembershipSnapshotAsync(userId)).IsVolunteerMember;
 
         var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId) };

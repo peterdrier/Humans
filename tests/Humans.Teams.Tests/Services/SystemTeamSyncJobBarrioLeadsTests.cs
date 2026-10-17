@@ -40,7 +40,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly ITeamManagementService _teamService = Substitute.For<ITeamManagementService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampLeadDirectory _campRepository = Substitute.For<ICampLeadDirectory>();
-    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IGoogleDriveActivityClient _googleClient = Substitute.For<IGoogleDriveActivityClient>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -49,12 +49,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    private SystemTeamSyncJob CreateJob(IMembershipCalculatorRead? membershipCalculator = null, ITeamResourceServiceRead? resources = null)
+    private SystemTeamSyncJob CreateJob(IMembershipCalculator? membershipCalculator = null, ITeamResourceService? resources = null)
     {
         _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
-        services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculatorRead>());
-        services.AddSingleton(resources ?? Substitute.For<ITeamResourceServiceRead>());
+        services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculator>());
+        services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(
@@ -138,11 +138,11 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { user });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
-        var calculator = Substitute.For<IMembershipCalculatorRead>();
+        var calculator = Substitute.For<IMembershipCalculator>();
         calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
-        var resources = Substitute.For<ITeamResourceServiceRead>();
+        var resources = Substitute.For<ITeamResourceService>();
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<GoogleResourceSnapshot>());
 
         await CreateJob(calculator, resources).SyncVolunteersTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);

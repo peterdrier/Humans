@@ -65,7 +65,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
+`IBudgetService`, `ICampaignService`, `ICampaignWrite`, `IUserServiceRead`,
 `IUserEmailService`, `ITeamServiceRead` (read-split surface),
 `ISettingsService`, plus `IClock`. Implements
 `IUserDataContributor` (the GDPR contributor is the inner, one per section):
@@ -147,7 +147,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserServiceRead`, `IUserService`, `ICampaignService`,
+`IUserServiceRead`, `IUserService`, `ICampaignWrite`,
 `ISettingsService`, `ITicketCacheInvalidator`. Implements
 `ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
 verified-email → user-id map by fanning out over `IUserServiceRead.GetAllUserInfosAsync`.

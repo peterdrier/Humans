@@ -25,7 +25,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
             return [];
         }
 
-        var snapshot = await services.GetRequiredService<IMembershipCalculatorRead>()
+        var snapshot = await services.GetRequiredService<IMembershipCalculator>()
             .GetMembershipSnapshotAsync(userId);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var complete = snapshot.PendingConsentCount == 0;

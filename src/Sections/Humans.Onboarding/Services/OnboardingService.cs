@@ -16,17 +16,17 @@ using Humans.Teams.Contracts;
 namespace Humans.Onboarding.Services;
 
 // Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
-// Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
+// Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IGovernanceManagement),
 // admin dashboard tiles (section-contributed chrome, nobodies-collective/Humans#1091), account
 // deletion (IAccountDeletionService, in Humans.Users).
 internal sealed class OnboardingService(
     IUserService userService,
-    IApplicationServiceRead applicationDecisionService,
+    IGovernanceService applicationDecisionService,
     IEmailService emailService,
     OnboardingEmails emailMessages,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,

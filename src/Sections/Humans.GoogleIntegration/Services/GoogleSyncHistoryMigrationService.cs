@@ -13,7 +13,7 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class GoogleSyncHistoryMigrationService(
     ILegacyGoogleSyncAuditReader legacyAudit,
     IGoogleSyncLogRepository repo,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     ILogger<GoogleSyncHistoryMigrationService> logger) : IGoogleSyncHistoryMigrationService
 {
     /// <summary>Rows listed on the screen. The counts are always the whole set.</summary>

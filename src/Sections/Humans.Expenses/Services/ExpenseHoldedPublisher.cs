@@ -18,6 +18,7 @@ internal sealed class ExpenseHoldedPublisher(
     IUserServiceRead userService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
+    IHoldedFinanceWrite holdedFinanceWrite,
     IAuditLogService auditLogService,
     ILogger logger) : IApplicationService
 {
@@ -57,7 +58,7 @@ internal sealed class ExpenseHoldedPublisher(
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }
 
-        var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
+        var holdedContactId = await holdedFinanceWrite.EnsureCreditorContactAsync(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
@@ -117,7 +118,7 @@ internal sealed class ExpenseHoldedPublisher(
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
         if (supplierAccountNum is not null)
-            await holdedFinance.SetCreditorAccountNumAsync(creditorUserId, supplierAccountNum.Value, ct);
+            await holdedFinanceWrite.SetCreditorAccountNumAsync(creditorUserId, supplierAccountNum.Value, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 

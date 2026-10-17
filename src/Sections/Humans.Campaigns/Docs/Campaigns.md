@@ -121,7 +121,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Campaign notice titles fit the 200-Unicode-character notification limit; an oversized title is shortened with an ellipsis and retained in full before the body text.
 - When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(CampaignsEmails.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant. Copy is rendered from Campaigns resources in each recipient’s supported preferred language (English fallback), grouped by language with isolated dispatch failures. The notice links to My Codes in `/Profile/Me`, where the persisted grant is available even if email enqueue failed; it never promises email delivery. Titles stay within 200 Unicode characters and preserve the full title in the body when truncated.
 - Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
-- When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
+- When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignWrite.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
 - When an enqueue throws during `SendWaveAsync`, `ResendToGrantAsync`, or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up. Single-grant resend also marks recipient lookup or message preparation failures as `Failed`, then propagates the error to the admin; it must not leave a queued status without an outbox entry.
 - When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Users section).
 
@@ -146,7 +146,16 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 **Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
-**Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`) — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
+**Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`).
+
+### Public contract
+
+| Public interface | Methods | Notes |
+|---|---:|---|
+| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets), `GetActiveOrCompletedGrantsForUserAsync` (Users `ProfileController`), `GetAllGrantsForUserAsync` (Users admin). DTOs only. |
+| `ICampaignWrite` | 2 | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes), `UpdateGrantEmailStatusAsync` (Email outbox records delivery state). Unavoidable: both are driven by another section's job. |
+
+`CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending, resend and retry are not public: the section's controller injects the concrete service.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.

@@ -7,7 +7,7 @@
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
+  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
 -->
 
@@ -51,7 +51,7 @@ Repository: `IWorkgroupRepository`.
 | workgroups_settings | R/W |
 
 Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentServiceRead`,
-`ISettingsService` (legacy root read only), `IGoogleSyncService`, `IHoldedFinanceService`,
+`ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IHoldedFinanceWrite`,
 `IHoldedClient`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).
 The inner service has no `IMemoryCache`. `ITeamServiceRead` is used by

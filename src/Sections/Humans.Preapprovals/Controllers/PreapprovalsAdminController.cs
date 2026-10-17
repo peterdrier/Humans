@@ -22,7 +22,7 @@ namespace Humans.Preapprovals.Controllers;
 internal sealed class PreapprovalsAdminController(
     IPreapprovalManagement preapprovals,
     IUserServiceRead users,
-    IHoldedFinanceServiceRead finance,
+    IHoldedFinanceService finance,
     IStringLocalizer<PreapprovalsResource> localizer,
     IAuthorizationService authorization,
     IClock clock,

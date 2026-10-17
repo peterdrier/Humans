@@ -1,190 +1,40 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Attributes;
-using Humans.Base.Enums;
+using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
-/// Service for provisioning and syncing Google resources. The cross-section
-/// read projections (outbox reads) live on
-/// <see cref="IGoogleSyncServiceRead"/>; this full surface adds the
-/// provisioning and sync mutations consumed inside the section.
+/// Cross-section read surface for the Google Integration sync service.
+/// External sections inject this interface; it exposes the outbox failure count and Drive
+/// probes needed cross-section, never EF entities or mutation methods. The few writes other
+/// sections make live on <see cref="IGoogleSyncWrite"/>.
+/// See <c>memory/architecture/section-public-contract.md</c>.
 /// </summary>
-public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationService
+public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
-    /// Drive sync entry point. Computes diff for all active Drive resources of the given
-    /// type, then optionally executes adds/removes based on the action. Google Group
-    /// membership is handled by <see cref="IGoogleGroupSync"/>.
+    /// Returns the count of unprocessed Google sync outbox events that have a
+    /// non-null <c>LastError</c>. Used by the notification meter to surface
+    /// failed sync events to Admin without letting the Notifications section
+    /// read <c>google_sync_outbox</c> directly (design-rules §2c).
     /// </summary>
-    /// <param name="resourceType">The kind of Drive resources to reconcile.</param>
-    /// <param name="action">Whether to preview the changes or execute them.</param>
-    /// <param name="cancellationToken">Token used to cancel the sync.</param>
-    /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
-    [ExternalWrite]
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
-        SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
+    Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Syncs a single Google resource by ID. Drive resources are reconciled here;
-    /// Google Group resources are routed through <see cref="IGoogleGroupSync"/>.
+    /// Whether the service account can read the Drive folder
+    /// <paramref name="folderId"/>. Lets a section refuse a folder setting that
+    /// <see cref="IGoogleSyncWrite.CreateSubfolderAsync"/> would later 404 on.
     /// </summary>
-    [ExternalWrite]
-    Task<ResourceSyncDiff> SyncSingleResourceAsync(
-        Guid resourceId,
-        SyncAction action,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Adds a user to all Google resources associated with a team. Only an accepted
-    /// Drive grant validates the address; queued group work and disabled sync are deferred.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="userId">The user ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
-    [ExternalWrite]
-    Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
-
-    /// <summary>
-    /// Removes a user from all Google resources associated with a team.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="userId">The user ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Ensures a team has a linked Google Group. If GoogleGroupPrefix is set but no Group
-    /// resource exists, creates or links the group. Called when prefix is set on a team.
-    /// </summary>
-    [ExternalWrite]
-    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks all active Google Groups for settings drift against the expected configuration.
-    /// Detect-only: does not modify any settings.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Drift results for all groups, or a skipped result if sync is disabled.</returns>
-    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Applies expected settings to a Google Group, fixing any drift.
-    /// Respects SyncSettings mode — returns without action if sync is disabled.
-    /// </summary>
-    [ExternalWrite]
-    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Lists all Google Groups on the domain and cross-references with the local database.
-    /// Returns drift status for each group relative to the expected settings.
-    /// </summary>
-    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Fetches the current Drive folder path for each active Drive resource
-    /// and updates GoogleResource.Name when the folder has been moved or renamed.
-    /// Called during nightly reconciliation.
-    /// </summary>
-    /// <returns>Number of resources whose name was updated.</returns>
-    Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sets inheritedPermissionsDisabled on a Google Drive folder.
-    /// When restrict is true, disables inherited permissions; when false, re-enables them.
-    /// </summary>
-    /// <param name="googleFileId">The Google Drive file/folder ID.</param>
-    /// <param name="restrict">True to disable inheritance, false to enable.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    [ExternalWrite]
-    Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks and corrects inherited access drift for all Drive folders that have
-    /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
-    /// </summary>
-    [ExternalWrite]
-    Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Requeues a single permanently-failed outbox event for retry.
-    /// Returns <c>true</c> if the event was found and reset.
-    /// </summary>
-    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Requeues all permanently-failed outbox events.
-    /// Returns the number of events reset.
-    /// </summary>
-    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Creates a new Drive subfolder named <paramref name="name"/> directly
-    /// under <paramref name="parentFolderId"/> and returns its Google file
-    /// id. Used by sections provisioning a Drive folder outside the
-    /// Teams-keyed <c>google_resources</c> path (e.g. Workgroups registering
-    /// a group). Respects the <c>GoogleDrive</c> <c>SyncMode</c> — throws
-    /// when sync is disabled or the Google API call fails, so a failed
-    /// creation is visible to the caller rather than returning a bogus id.
-    /// </summary>
-    [ExternalWrite]
-    Task<string> CreateSubfolderAsync(
-        string parentFolderId,
-        string name,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Requests an on-demand Drive access reconcile for one folder claimed
-    /// through the <see cref="IGoogleDriveAccessSource"/> fan-out (e.g.
-    /// Teams or Workgroups, after a membership or status change). Deferred: returns
-    /// once the reconcile is scheduled, not once it has run.
-    /// </summary>
-    Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Enqueues <see cref="GoogleSyncOutboxEventTypes.AddUserToTeamResources"/> events
-    /// for all teams the given user currently belongs to, bypassing the
-    /// <c>GoogleEmailStatus.Rejected</c> (Humans.Users.Contracts) guard so an admin can force a
-    /// re-attempt after fixing the user's email. Returns the number of events enqueued.
-    /// </summary>
-    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default);
 }
 
-public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
-{
-    public static GroupSettingsRemediationResult Success() => new(true, null);
-
-    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
-}
-
-/// <summary>Whether team provisioning actually established acceptance of the Google address.</summary>
-public enum GoogleResourceGrantOutcome
-{
-    /// <summary>No immediate vendor acceptance: no resources, disabled Drive sync or queued group work.</summary>
-    Deferred,
-    /// <summary>Google accepted at least one Drive grant and none failed.</summary>
-    Accepted,
-    /// <summary>A grant failed or the user has no eligible address.</summary>
-    Failed
-}
-
-/// <summary>Vendor acceptance and the exact email row attempted by team provisioning.</summary>
-/// <param name="Outcome">Accepted only when at least one Drive grant succeeds and none fail.</param>
-/// <param name="UserId">Resolved owner of the attempted address.</param>
-/// <param name="GoogleEmailId">Attempted verified email row; required for Accepted.</param>
-/// <param name="Retryable">Whether any failed grant can be retried; local refusals are permanent.</param>
-/// <param name="ErrorMessage">Failure details for the outbox and operator diagnostics.</param>
-public sealed record GoogleResourceGrantResult(
-    GoogleResourceGrantOutcome Outcome,
+public sealed record GoogleSyncOutboxEventSnapshot(
+    Guid Id,
+    string EventType,
+    Guid TeamId,
     Guid UserId,
-    Guid? GoogleEmailId = null,
-    bool Retryable = false,
-    string? ErrorMessage = null);
+    Instant OccurredAt,
+    Instant? ProcessedAt,
+    int RetryCount,
+    string? LastError,
+    bool FailedPermanently);

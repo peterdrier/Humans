@@ -36,6 +36,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
     private readonly IHoldedFinanceService _holdedFinance;
+    private readonly IHoldedFinanceWrite _holdedFinanceWrite;
     private readonly IFileStorage _fileStorage;
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock;
@@ -83,7 +84,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         // Contact enrichment is Finance's: ExpenseReportService delegates to
         // EnsureCreditorContactAsync for the contact id, then resolves its supplier-account number.
         _holdedFinance = Substitute.For<IHoldedFinanceService>();
-        _holdedFinance.EnsureCreditorContactAsync(
+        _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
+        _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("holded-contact-1");
@@ -111,7 +113,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
-            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _auditLog, _clock,
+            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, _auditLog, _clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
@@ -1255,7 +1257,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         // Use a logger that captures structured log args
         var logger = Substitute.For<ILogger<ExpenseReportBackgroundProcessor>>();
         var sut = new ExpenseReportBackgroundProcessor(
-            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance,
+            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite,
             Substitute.For<IAuditLogService>(), _clock, logger);
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
@@ -1300,7 +1302,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).GetForSubmitterAsync(survivorId, Arg.Any<CancellationToken>());

@@ -28,9 +28,9 @@ public class GoogleControllerSyncCancellationTests
 {
     private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
-    private readonly IGoogleSyncService _syncService = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
 
     [HumansFact]

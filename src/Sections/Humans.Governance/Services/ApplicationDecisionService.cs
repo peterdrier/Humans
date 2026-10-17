@@ -40,7 +40,7 @@ internal sealed class ApplicationDecisionService(
     IVotingBadgeCacheInvalidator votingBadge,
     IMemoryCache cache,
     IClock clock,
-    ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
+    ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
 

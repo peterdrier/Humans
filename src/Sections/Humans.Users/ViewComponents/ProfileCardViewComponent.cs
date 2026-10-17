@@ -20,7 +20,7 @@ public sealed class ProfileCardViewComponent(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IRoleAssignmentServiceRead roleAssignmentService,
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

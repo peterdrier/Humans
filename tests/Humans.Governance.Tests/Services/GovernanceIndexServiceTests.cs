@@ -17,7 +17,7 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class GovernanceIndexServiceTests
 {
-    private readonly IApplicationServiceRead Applications = Substitute.For<IApplicationServiceRead>();
+    private readonly IGovernanceService Applications = Substitute.For<IGovernanceService>();
     private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserServiceRead Users = Substitute.For<IUserServiceRead>();
 

@@ -9,7 +9,7 @@ namespace Humans.Teams.Services;
 
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
-    ITeamResourceServiceRead teamResourceService,
+    ITeamResourceService teamResourceService,
     IShiftManagementService shiftManagementService,
     ISettingsService settingsService,
     IUserServiceRead userService) : ITeamPageService

@@ -110,7 +110,7 @@ contract fold-inward).
   stamp on Users.
 - **Post-submit threshold check is a controller peer-call** (`ConsentController.Submit` →
   `IOnboardingIntake`), not a service call — avoids the inverted arrow into Onboarding.
-- **`ConsentService` takes `IServiceProvider`** to resolve `IMembershipCalculatorRead`
+- **`ConsentService` takes `IServiceProvider`** to resolve `IMembershipCalculator`
   lazily — Governance depends back on Consent, so the direct constructor arrow would cycle.
 - **`ConsentResource` must stay `namespace Humans.Consent`** and public (localization
   manifest naming + boot diagnostic via exported types).

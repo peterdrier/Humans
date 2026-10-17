@@ -28,37 +28,34 @@ public sealed record CampaignGrantSummary(
     Instant? RedeemedAt);
 
 /// <summary>
-/// Campaigns' full cross-assembly surface: the read side plus the writes
-/// other sections drive (Tickets marking codes redeemed, Email recording
-/// delivery state).
+/// Cross-section read surface for the Campaigns section. External sections
+/// inject this interface; only DTO projections (no EF entities). The writes they
+/// make live on <see cref="ICampaignWrite"/>. See
+/// <c>memory/architecture/section-public-contract.md</c>.
 /// </summary>
-/// <remarks>
-/// The section's own controller takes the internal <c>CampaignService</c>
-/// directly, so campaign/code CRUD, activation, wave sending, resend and
-/// retry are not public at all.
-/// </remarks>
-public interface ICampaignService : ICampaignServiceRead, IApplicationService
+public interface ICampaignService : IApplicationService
 {
     /// <summary>
-    /// Marks campaign grants as redeemed based on discovered discount-code redemptions.
-    /// Matches codes case-insensitively against active/completed campaigns' unredeemed grants.
-    /// When a code matches grants in multiple campaigns, the most recently created campaign wins.
-    /// Returns the number of grants marked as redeemed.
+    /// Returns code tracking data — campaign summaries and individual grant
+    /// details for campaigns that are Active or Completed — for the Tickets
+    /// admin dashboard. The returned <see cref="CampaignCodeTrackingData"/>
+    /// carries recipient user IDs and display names (resolved via the Users
+    /// section); the caller correlates discount-code redemptions against
+    /// ticket orders separately.
     /// </summary>
-    Task<int> MarkGrantsRedeemedAsync(
-        IReadOnlyCollection<DiscountCodeRedemption> redemptions,
-        CancellationToken ct = default);
+    Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a campaign grant's denormalized email delivery status
-    /// (<c>LatestEmailStatus</c>) and timestamp (<c>LatestEmailAt</c>).
-    /// Returns <c>true</c> if the grant was found and updated. Used by the
-    /// email outbox processor so the job can record Sent/Failed without
-    /// touching <c>campaign_grants</c> directly.
+    /// Returns campaign grants for a user where the campaign is Active or
+    /// Completed. Unordered — callers sort.
     /// </summary>
-    Task<bool> UpdateGrantEmailStatusAsync(
-        Guid grantId,
-        EmailOutboxStatus status,
-        Instant latestEmailAt,
-        CancellationToken ct = default);
+    Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all campaign grants for a user (any campaign status).
+    /// Unordered — callers sort. Used for admin detail views.
+    /// </summary>
+    Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default);
 }

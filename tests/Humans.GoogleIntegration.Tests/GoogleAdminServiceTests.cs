@@ -19,14 +19,14 @@ namespace Humans.GoogleIntegration.Tests;
 /// <see cref="GoogleAdminService"/>. After the §15 migration the service has
 /// no DbContext dependency — cross-section data access goes through
 /// <see cref="IUserService"/>, <see cref="IUserEmailService"/>,
-/// <see cref="ITeamService"/>, and <see cref="ITeamResourceService"/>. These
+/// <see cref="ITeamService"/>, and <see cref="ITeamResourceManagement"/>. These
 /// tests pin down both the Google Workspace orchestration contract and the
 /// owning-service delegation boundary.
 /// </summary>
 public class GoogleAdminServiceTests
 {
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleSyncManagement _googleSyncService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
@@ -39,9 +39,9 @@ public class GoogleAdminServiceTests
     public GoogleAdminServiceTests()
     {
         _workspaceUserService = Substitute.For<IGoogleWorkspaceUserService>();
-        _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleSyncService = Substitute.For<IGoogleSyncManagement>();
         _teamService = Substitute.For<ITeamService>();
-        var teamResourceService = Substitute.For<ITeamResourceService>();
+        var teamResourceService = Substitute.For<ITeamResourceManagement>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();

@@ -35,7 +35,7 @@ namespace Humans.Consent.Jobs;
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     ILegalDocumentSyncManagement legalDocService,
     IUserService userService,
     IEmailService emailService,

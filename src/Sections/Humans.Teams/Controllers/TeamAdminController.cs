@@ -21,7 +21,8 @@ namespace Humans.Teams.Controllers;
 internal sealed class TeamAdminController(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    IGoogleSyncService googleSyncService,
+    ITeamResourceWrite teamResourceWrite,
+    IGoogleSyncWrite googleSyncWrite,
     IUserServiceRead userService,
     IEmailProvisioningService emailProvisioningService,
     IAuthorizationService authorizationService,
@@ -462,7 +463,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel, actorUserId: user.Id);
+        var result = await teamResourceWrite.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel, actorUserId: user.Id);
         if (result.Success)
             SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
         else
@@ -498,7 +499,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail, actorUserId: user.Id);
+        var result = await teamResourceWrite.LinkGroupAsync(team.Id, model.GroupEmail, actorUserId: user.Id);
         if (result.Success)
             SetSuccess(string.Format(localizer["Teams_TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
         else
@@ -537,7 +538,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        await teamResourceService.UpdatePermissionLevelAsync(resourceId, level, actorUserId: user.Id);
+        await teamResourceWrite.UpdatePermissionLevelAsync(resourceId, level, actorUserId: user.Id);
         SetSuccess($"Permission level updated to {level}.");
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -573,7 +574,7 @@ internal sealed class TeamAdminController(
         if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
             return NotFound();
 
-        var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
+        var result = await teamResourceWrite.SetRestrictInheritedAccessWithResultAsync(
             resourceId,
             restrict,
             user.Id,
@@ -615,7 +616,7 @@ internal sealed class TeamAdminController(
         if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
             return NotFound();
 
-        await teamResourceService.UnlinkResourceAsync(resourceId, actorUserId: user.Id);
+        await teamResourceWrite.UnlinkResourceAsync(resourceId, actorUserId: user.Id);
         SetSuccess(localizer["Teams_TeamAdmin_ResourceUnlinked"].Value);
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -651,7 +652,7 @@ internal sealed class TeamAdminController(
             // navigating away mid-reconcile would abort partway through applying
             // Drive permissions, leaving the resource half-synced
             // (nobodies-collective/Humans#950).
-            var diff = await googleSyncService.SyncSingleResourceAsync(
+            var diff = await googleSyncWrite.SyncSingleResourceAsync(
                 resourceId,
                 SyncAction.Execute,
                 CancellationToken.None);

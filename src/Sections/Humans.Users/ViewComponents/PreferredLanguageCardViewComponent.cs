@@ -17,7 +17,7 @@ namespace Humans.Users.ViewComponents;
 /// </remarks>
 internal sealed class PreferredLanguageCardViewComponent(
     IUserServiceRead userService,
-    IMembershipCalculatorRead membershipCalculator) : ViewComponent
+    IMembershipCalculator membershipCalculator) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

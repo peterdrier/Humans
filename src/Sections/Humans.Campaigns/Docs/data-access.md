@@ -21,8 +21,8 @@ Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 `IUserServiceRead`, `INotificationEmitter`, `IAuditLogService`,
 `IEmailService`, the section's own `CampaignsEmails` builder,
 `ITicketDiscountCodes` (Tickets Contracts leaf — vendor discount code
-generation), plus `IClock`. Implements `ICampaignService` (which extends
-`ICampaignServiceRead`), `IUserDataContributor`, `IUserMerge`. No
+generation), plus `IClock`. Implements `ICampaignManagement` (internal; extends the public
+`ICampaignService` and `ICampaignWrite`), `IUserDataContributor`, `IUserMerge`. No
 `IMemoryCache`.
 
 ### CampaignsEmails (Scoped, internal)

@@ -39,8 +39,8 @@ The shapes imply what is already there, and nothing more:
 
 - A controller (admin routes only), a service, a repository, and a DbContext over
   `campaigns`, `campaign_codes`, `campaign_grants`.
-- A `Contracts/` folder with `ICampaignService : ICampaignServiceRead` and the cross-assembly
-  DTOs; everything else `internal`.
+- A `Contracts/` folder with the public `ICampaignService` (reads) and `ICampaignWrite` (the two writes) plus the
+  cross-assembly DTOs; everything else `internal`.
 - One code-loading path: CSV import and vendor generation both end in the same
   "append codes after the highest `ImportOrder`, skip ones already present, audit" step.
 - A pure email builder plus its gallery contributor; a resx set that carries only the

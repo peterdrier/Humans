@@ -9,7 +9,7 @@ namespace Humans.Holded.Services;
 /// ledger mirror pass.
 /// </summary>
 internal sealed class HoldedNightlySync(
-    IHoldedFinanceService finance,
+    IHoldedFinanceWrite finance,
     IHoldedService holded,
     IOptions<HoldedClientOptions> holdedOptions,
     ILogger<HoldedNightlySync> logger) : IHoldedNightlySync

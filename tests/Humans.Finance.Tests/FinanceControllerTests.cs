@@ -27,7 +27,7 @@ public class FinanceControllerTests
     private static readonly Guid Ana = Guid.NewGuid();
     private static readonly Guid Bo = Guid.NewGuid();
 
-    private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
+    private readonly IHoldedFinanceManagement _finance = Substitute.For<IHoldedFinanceManagement>();
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 

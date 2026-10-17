@@ -54,7 +54,7 @@ public sealed class GoogleCredentiallessProductionTests
 
         act.Should().NotThrow();
         services.Should().ContainSingle(descriptor =>
-            descriptor.ServiceType == typeof(IGoogleSyncService) &&
+            descriptor.ServiceType == typeof(IGoogleSyncManagement) &&
             descriptor.ImplementationType == typeof(StubGoogleSyncService));
     }
 

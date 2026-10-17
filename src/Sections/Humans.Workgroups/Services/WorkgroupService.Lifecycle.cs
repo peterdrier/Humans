@@ -306,7 +306,7 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            return new(await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
+            return new(await googleSyncWrite.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
         }
         catch (Exception ex)
         {

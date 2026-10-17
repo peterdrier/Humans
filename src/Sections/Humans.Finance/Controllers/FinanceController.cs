@@ -20,7 +20,7 @@ namespace Humans.Finance.Controllers;
 [Route("Finance")]
 internal sealed class FinanceController(
     IUserServiceRead userService,
-    IHoldedFinanceService holdedFinance,
+    IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {

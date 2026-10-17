@@ -36,7 +36,7 @@ through `IUserServiceRead`. Selection, retry/backoff, permanent-failure audit an
 gate belong to `ExpenseReportBackgroundProcessor`, registered under the existing
 `IExpenseReportBackgroundProcessor` job contract. It uses `IExpenseRepository` to read reports
 and update outbox events, with `IFileStorage`, `IUserServiceRead`, `IHoldedClient`,
-`IHoldedFinanceService` and `IAuditLogService` for publication.
+`IHoldedFinanceService`, `IHoldedFinanceWrite` and `IAuditLogService` for publication.
 
 Expense lines can be travel reimbursements (mileage / per-diem; an
 `ExpenseLineType` column on `ExpenseLines` — same table, no new DbSet).

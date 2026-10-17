@@ -20,7 +20,7 @@ internal sealed class GoogleSyncOutboxProcessor(
     IGoogleSyncOutboxRepository outboxRepository,
     IUserService userService,
     ITeamServiceRead teamService,
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncManagement googleSyncService,
     IGoogleDriveActivityClient googleClient,
     IHumansMetrics metrics,
     IClock clock,

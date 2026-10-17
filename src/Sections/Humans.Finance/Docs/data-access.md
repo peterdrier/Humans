@@ -44,7 +44,7 @@ account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
 API calls, plus `PayPurchaseDocumentAsync` for SEPA booking) and `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked).
-Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
+Implements `IHoldedFinanceManagement` (the public `IHoldedFinanceService` and `IHoldedFinanceWrite`), `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
 Injects `IMemoryCache` for the 2-minute Holded contact-list entry
 (`CacheKeys.HoldedContacts`) and `IOptions<SepaOptions>` for the organisation's

@@ -163,16 +163,21 @@ Every table is owned by exactly one repository; there are no HUM0025
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
    `ITeamServiceRead`, `IConsentService`,
-   `ICampService`, `ITicketService`, `IGoogleSyncServiceRead`
-   (consumed by `NotificationMeterProvider` for failed-sync-event counts),
-   `ICampaignServiceRead` (consumed by `TicketQueryService`),
+   `ICampService`, `ITicketService`, `IGoogleSyncService`
+   (consumed by `NotificationMeterProvider` for failed-sync-event counts;
+   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`
+   (writes via `ITeamResourceWrite`), `IHoldedFinanceService`
+   (writes via `IHoldedFinanceWrite`),
+   `ICampaignService` (consumed by `TicketQueryService`; writes via
+   `ICampaignWrite`),
    `IEventService` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
    `ICityPlanningService` (exposes `GetSettingsAsync` /
    `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
-   the Governance pair `IApplicationServiceRead` / `IMembershipCalculatorRead`.
+   the Governance pair `IGovernanceService` / `IMembershipCalculator`
+   (foreign writes via `IGovernanceWrite`).
    Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain
    read-only contracts the section's services implement directly. All keep
@@ -257,8 +262,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 9. **Notification meters are computed, not queried.**
    `NotificationMeterProvider` reads no tables directly — every counter
    fans out through an owning-service interface call (`IUserServiceRead`,
-   `ITeamServiceRead`, `IApplicationServiceRead`, `ITicketSync`,
-   `IGoogleSyncServiceRead`, `ICampService`). Cache invalidation goes
+   `ITeamServiceRead`, `IGovernanceService`, `ITicketSync`,
+   `IGoogleSyncService`, `ICampService`). Cache invalidation goes
    through `INotificationMeterCacheInvalidator`.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn

@@ -37,7 +37,7 @@ public sealed class SendReConsentReminderJobTests
         var first = MakeUser("first@example.com") with { PreferredLanguage = language };
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com", now);
-        var membership = Substitute.For<IMembershipCalculatorRead>();
+        var membership = Substitute.For<IMembershipCalculator>();
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id, cooling.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
@@ -102,7 +102,7 @@ public sealed class SendReConsentReminderJobTests
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var first = MakeUser("first@example.com");
         var next = MakeUser("next@example.com");
-        var membership = Substitute.For<IMembershipCalculatorRead>();
+        var membership = Substitute.For<IMembershipCalculator>();
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();

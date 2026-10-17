@@ -16,7 +16,7 @@ namespace Humans.Governance.Services;
 /// <see cref="IRoleAssignmentServiceRead"/> injects it, and <see cref="ITeamServiceRead"/>'s
 /// implementation resolves it lazily through <c>IServiceProvider</c> for this same reason —
 /// and its implementation (<c>SystemTeamSyncJob</c>) injects
-/// <see cref="Humans.Governance.Contracts.IMembershipCalculatorRead"/> back. Injecting the full team / role
+/// <see cref="Humans.Governance.Contracts.IMembershipCalculator"/> back. Injecting the full team / role
 /// services into the calculator closes that cycle and trips
 /// <c>ValidateOnBuild</c>.
 /// </para>

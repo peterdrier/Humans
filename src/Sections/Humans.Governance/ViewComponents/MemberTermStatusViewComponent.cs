@@ -12,8 +12,8 @@ namespace Humans.Governance.ViewComponents;
 /// </summary>
 public sealed class MemberTermStatusViewComponent(
     IUserServiceRead userService,
-    IMembershipCalculatorRead membershipCalculator,
-    IApplicationServiceRead applicationService,
+    IMembershipCalculator membershipCalculator,
+    IGovernanceService applicationService,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

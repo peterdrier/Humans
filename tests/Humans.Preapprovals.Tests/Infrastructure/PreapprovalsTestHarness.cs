@@ -62,7 +62,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
                 return Task.FromResult(dict);
             });
 
-        Finance = Substitute.For<IHoldedFinanceServiceRead>();
+        Finance = Substitute.For<IHoldedFinanceService>();
         Finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountOption>>(
             [
@@ -83,7 +83,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
     private protected FakeClock Clock { get; }
     private protected IUserServiceRead Users { get; }
     private protected IUserEmailService UserEmails { get; }
-    private protected IHoldedFinanceServiceRead Finance { get; }
+    private protected IHoldedFinanceService Finance { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationAutoResolve NotificationResolve { get; }
     private protected IEmailService Email { get; }

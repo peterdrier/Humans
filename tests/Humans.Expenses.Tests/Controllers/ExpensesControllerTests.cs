@@ -54,7 +54,7 @@ public sealed class ExpensesControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(users, reports,
-            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceServiceRead>(),
+            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
             authorization, NullLogger<ExpensesController>.Instance,
             Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
@@ -161,7 +161,7 @@ public sealed class ExpensesControllerTests
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
-            Substitute.For<IHoldedFinanceServiceRead>(), authorization, NullLogger<ExpensesController>.Instance, localizer)
+            Substitute.For<IHoldedFinanceService>(), authorization, NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -219,7 +219,7 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports,
-            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceServiceRead>(),
+            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
             Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
@@ -277,7 +277,7 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports, budget,
-            Substitute.For<IHoldedFinanceServiceRead>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext { HttpContext = context },

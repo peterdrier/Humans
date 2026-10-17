@@ -26,7 +26,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
 {
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
-    private readonly ICampaignService _campaignService;
+    private readonly ICampaignWrite _campaignService;
     private readonly IUserService _userService;
     private readonly ISettingsService _shiftManagementService;
     private readonly ITicketRepository _ticketRepository;
@@ -47,7 +47,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _userService = NewDbBackedUserService();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _campaignService = Substitute.For<ICampaignService>();
+        _campaignService = Substitute.For<ICampaignWrite>();
         _shiftManagementService = Substitute.For<ISettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);

@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -6,12 +7,12 @@ namespace Humans.Governance.Contracts;
 /// <summary>
 /// Cross-section read surface for the Governance section: tier-application
 /// counts, stats, snapshots, and active-tier eligibility lookups. External
-/// sections inject this interface instead of the full write service
-/// <see cref="IApplicationDecisionService"/>; returns are scalars, enums,
+/// sections inject this interface; the submit-path writes they make live on
+/// <see cref="IGovernanceWrite"/>. Returns are scalars, enums,
 /// Guid sets, and section read DTOs — no EF entities. See
-/// <c>memory/architecture/section-read-write-split.md</c>.
+/// <c>memory/architecture/section-public-contract.md</c>.
 /// </summary>
-public interface IApplicationServiceRead
+public interface IGovernanceService : IApplicationService
 {
     /// <summary>
     /// Returns a user's own applications, ordered by <c>SubmittedAt</c> desc.
@@ -35,14 +36,6 @@ public interface IApplicationServiceRead
 
     Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default);
-
-    Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of pending (Submitted) applications. Used by the
-    /// admin dashboard.
-    /// </summary>
-    Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the distinct user ids whose Approved application for

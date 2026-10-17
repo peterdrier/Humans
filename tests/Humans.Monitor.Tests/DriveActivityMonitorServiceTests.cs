@@ -19,7 +19,7 @@ namespace Humans.Monitor.Tests;
 public class DriveActivityMonitorServiceTests
 {
     private readonly IGoogleDriveActivityClient _client;
-    private readonly ITeamResourceServiceRead _teamResources;
+    private readonly ITeamResourceService _teamResources;
     private readonly ISettingsService _settingsStore;
     private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
@@ -33,7 +33,7 @@ public class DriveActivityMonitorServiceTests
     public DriveActivityMonitorServiceTests()
     {
         _client = Substitute.For<IGoogleDriveActivityClient>();
-        _teamResources = Substitute.For<ITeamResourceServiceRead>();
+        _teamResources = Substitute.For<ITeamResourceService>();
         _settingsStore = Substitute.For<ISettingsService>();
         _userService = Substitute.For<IUserServiceRead>();
         _auditLog = Substitute.For<IAuditLogService>();

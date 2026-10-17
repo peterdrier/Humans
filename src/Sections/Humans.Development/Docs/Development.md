@@ -87,7 +87,7 @@ Development is a pure consumer and depends on more sections than any other:
 | Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
 | Audit Log | `IAuditLogService` |
 | Consent | `IConsentSubmission` (`Contracts/` folder) |
-| Governance | `IMembershipCalculatorRead` (contracts leaf) |
+| Governance | `IMembershipCalculator` (contracts leaf) |
 | City Planning | `CityPlanningOptions` (contracts leaf) - the dev city-planning team slug |
 | Budget | `IBudgetDemoSeeder` (`Contracts/` folder) |
 
