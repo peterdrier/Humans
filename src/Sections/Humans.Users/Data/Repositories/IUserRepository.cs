@@ -139,6 +139,7 @@ internal partial interface IUserRepository : IRepository
     /// On (Year, UserId) collision, keeps the row with the highest
     /// <see cref="ParticipationStatus"/> per the precedence
     /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
+    /// Fills a missing target arrival from the source; a known target arrival is retained.
     /// Used by
     /// <c>AccountMergeService.AcceptAsync</c>.
     /// </summary>

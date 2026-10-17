@@ -110,7 +110,7 @@ Per-user, per-year record of event involvement. Derived from ticket sync, user s
 
 `Attended` is permanent: ticket sync cannot downgrade it. A later real scan fills a missing `CheckedInAt` without changing the existing status, source or declaration; a known arrival is never overwritten. The GDPR participation slice exports that timestamp as ISO 8601 (or null). `Ticketed` is removable when the last valid ticket is voided / transferred (`RemoveTicketSyncParticipationAsync`). `NotAttending` (with Source = `UserDeclared`) can only be undone by the same user via `UndoNotAttendingAsync`; ticket sync also overrides it when a ticket is purchased. `NoShow` is a post-event derivation for ticket holders who did not check in.
 
-On account-merge fold, an `(UserId, Year)` collision between source and target keeps the **highest-precedence status** — `Attended` > `Ticketed` > `NoShow` > `NotAttending` — copying the winning row's `Status`/`Source`/`DeclaredAt` onto the target row and deleting the source row (`UserRepository.ReassignEventParticipationToUserAsync`).
+On account-merge fold, an `(UserId, Year)` collision between source and target keeps the **highest-precedence status** — `Attended` > `Ticketed` > `NoShow` > `NotAttending` — copying the winning row's `Status`/`Source`/`DeclaredAt` onto the target row and deleting the source row (`UserRepository.ReassignEventParticipationToUserAsync`). A missing target `CheckedInAt` is filled from the source before deletion; a known target arrival is retained.
 
 ### AccountMergeRequest
 

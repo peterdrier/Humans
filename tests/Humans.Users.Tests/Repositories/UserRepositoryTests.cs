@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -323,6 +324,48 @@ public sealed class UserRepositoryTests : IDisposable
             .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.Status.Should().Be(ParticipationStatus.Attended);
         persisted.Source.Should().Be(ParticipationSource.TicketSync);
+    }
+
+    [HumansTheory]
+    [InlineData(ParticipationStatus.Ticketed, false)]
+    [InlineData(ParticipationStatus.Attended, false)]
+    [InlineData(ParticipationStatus.Attended, true)]
+    public async Task ReassignEventParticipationToUserAsync_PreservesKnownArrival(
+        ParticipationStatus targetStatus, bool targetHasArrival)
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetRowId = Guid.NewGuid();
+        var sourceArrival = _clock.GetCurrentInstant();
+        var targetArrival = targetHasArrival ? sourceArrival + Duration.FromHours(1) : (Instant?)null;
+        await _dbContext.EventParticipations.AddRangeAsync(new[]
+        {
+            new EventParticipation
+            {
+                Id = Guid.NewGuid(), UserId = sourceUserId, Year = 2026,
+                Status = ParticipationStatus.Attended, Source = ParticipationSource.TicketSync,
+                CheckedInAt = sourceArrival,
+            },
+            new EventParticipation
+            {
+                Id = targetRowId, UserId = targetUserId, Year = 2026,
+                Status = targetStatus, Source = ParticipationSource.AdminBackfill,
+                CheckedInAt = targetArrival,
+            }
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.ReassignEventParticipationToUserAsync(sourceUserId, targetUserId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        persisted.Id.Should().Be(targetRowId);
+        persisted.UserId.Should().Be(targetUserId);
+        persisted.Status.Should().Be(ParticipationStatus.Attended);
+        persisted.Source.Should().Be(targetStatus == ParticipationStatus.Ticketed
+            ? ParticipationSource.TicketSync : ParticipationSource.AdminBackfill);
+        persisted.CheckedInAt.Should().Be(targetArrival ?? sourceArrival);
     }
 
     // ==========================================================================

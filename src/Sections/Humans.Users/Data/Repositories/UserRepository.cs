@@ -341,6 +341,7 @@ internal sealed partial class UserRepository : IUserRepository
                 targetRow.Source = sourceRow.Source;
                 targetRow.DeclaredAt = sourceRow.DeclaredAt;
             }
+            targetRow.CheckedInAt ??= sourceRow.CheckedInAt;
             ctx.EventParticipations.Remove(sourceRow);
         }
 
