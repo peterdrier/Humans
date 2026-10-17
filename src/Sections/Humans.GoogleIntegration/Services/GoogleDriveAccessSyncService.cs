@@ -48,7 +48,7 @@ internal sealed class GoogleDriveAccessSyncService(
 
         foreach (var claim in claims)
         {
-            diffs.Add(await ReconcileClaimSafelyAsync(claim, action, syncSource, ct));
+            diffs.Add(await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, ct));
         }
 
         if (load.Partial)
@@ -90,7 +90,25 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             Resources = resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()
         };
-        return await ReconcileClaimSafelyAsync(claim, action, syncSource, ct);
+        return await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, ct);
+    }
+
+    /// <summary>
+    /// A registered resource already carries its full path as its name; a folder no section
+    /// registered (a Workgroup's) gets the same path from Drive so nobody is shown a raw file id.
+    /// </summary>
+    private async Task<FolderClaim> WithPathAsync(FolderClaim claim, CancellationToken ct)
+    {
+        if (claim.Resources.Count > 0) return claim;
+        try
+        {
+            return claim with { Path = await DriveFolderPath.ResolveAsync(drivePermissions, claim.FolderId, logger, ct) };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not resolve the Drive path for {FolderId}; falling back to the source's name", claim.FolderId);
+            return claim;
+        }
     }
 
     /// <summary>
@@ -592,13 +610,13 @@ internal sealed class GoogleDriveAccessSyncService(
     internal sealed record ClaimLoad(IReadOnlyList<FolderClaim> Claims, bool Partial);
 
     internal sealed record FolderClaim(string FolderId,
-        GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources, bool Partial = false)
+        GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources, bool Partial = false, string? Path = null)
     {
         public Dictionary<Guid, DrivePermissionLevel> Access => Claim.Access;
         public Guid ResourceId => Resources.FirstOrDefault()?.Id ?? Guid.Empty;
 
-        /// <summary>Registered resource name, else the source's name, else the raw file id.</summary>
-        public string DisplayName => Resources.FirstOrDefault()?.Name ?? Claim.ResourceName ?? FolderId;
+        /// <summary>Registered resource name (its full path), else the path Drive gave, else the source's name, else the raw file id.</summary>
+        public string DisplayName => Resources.FirstOrDefault()?.Name ?? Path ?? Claim.ResourceName ?? FolderId;
     }
 
     private sealed record DriveExpectedMember(
