@@ -162,13 +162,13 @@ Every table is owned by exactly one repository; there are no HUM0025
 2. **Read/write surface split (read-split interfaces).** Several sections
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
-   `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
+   `ITeamServiceRead`, `IConsentService`,
    `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
    `IEventServiceRead` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
-   `ICityPlanningServiceRead` (exposes `GetSettingsAsync` /
+   `ICityPlanningService` (exposes `GetSettingsAsync` /
    `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and

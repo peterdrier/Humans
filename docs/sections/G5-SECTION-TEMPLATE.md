@@ -1247,7 +1247,7 @@ Git Bash.)
      went down to `Humans.UI/Models` with the view model it builds. "Move the test with the
      helper" is right only when the test is about the helper (proven: Debug).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
-     surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
+     surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportService`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
      serve one handler — a handler that this step moves into the section anyway (proven:
      Expenses; its `Contracts` project ended up one interface wide).
