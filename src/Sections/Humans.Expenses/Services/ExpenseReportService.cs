@@ -396,7 +396,28 @@ internal sealed class ExpenseReportService(
                 Note = note,
                 UpdatedAt = clock.GetCurrentInstant()
             };
-            await repo.UpdateDraftAsync(updated, ct);
+
+            // A rejected draft still holds the grant it was submitted against (Claimed). Dropping or
+            // swapping it releases that claim in the same transaction as the header, so no grant stays
+            // claimed by a report that no longer names it. A grant revoked meanwhile is left behind.
+            var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
+                && (await preapprovals.GetGrantAsync(held, ct))?.Status == GrantStatus.Claimed
+                ? held
+                : (Guid?)null;
+            if (released is { } releasedId)
+            {
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Required,
+                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                    TransactionScopeAsyncFlowOption.Enabled);
+                await preapprovals.ReleaseAsync(releasedId, reportId, actorUserId, ct);
+                await repo.UpdateDraftAsync(updated, ct);
+                scope.Complete();
+            }
+            else
+            {
+                await repo.UpdateDraftAsync(updated, ct);
+            }
 
             await AuditOnBehalfEditAsync(report, actorUserId,
                 $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})"
@@ -951,7 +972,13 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
 
             var now = clock.GetCurrentInstant();
-            var releasesGrant = report.PreapprovalGrantId is not null && IsPendingApproval(report.Status);
+            // Withdrawn before approval, a held pre-approval goes back to the member to file again;
+            // after approval it was consumed and stays so. A grant revoked while the report was
+            // pending is not held any more and is left alone, so the withdrawal still goes through.
+            var heldGrant = report.PreapprovalGrantId is { } grantId && IsPendingApproval(report.Status)
+                ? await preapprovals.GetGrantAsync(grantId, ct)
+                : null;
+            var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
             if (!releasesGrant)
             {
                 var ok = await repo.WithdrawAsync(reportId, now, ct);
@@ -959,8 +986,6 @@ internal sealed class ExpenseReportService(
             }
             else
             {
-                // Withdrawn before approval, the pre-approval goes back to the member to file again;
-                // after approval it was consumed and stays so.
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
@@ -974,7 +999,10 @@ internal sealed class ExpenseReportService(
             await auditLogService.LogAsync(
                 AuditAction.ExpenseWithdraw,
                 AuditEntityTypes.Report, reportId,
-                "Withdrew expense report." + (releasesGrant ? $" Released pre-approval {report.PreapprovalGrantId}." : ""),
+                "Withdrew expense report."
+                + (releasesGrant
+                    ? $" Released pre-approval {report.PreapprovalGrantId}."
+                    : heldGrant is not null ? $" Pre-approval {report.PreapprovalGrantId} is {heldGrant.Status}; left as is." : ""),
                 submitterUserId);
 
             return ExpenseMutationResult.Success;

@@ -451,9 +451,10 @@ public sealed partial class ExpenseReportServiceTests
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var grant = MakeGrant();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
         var id = Guid.NewGuid();
         await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
 
         var result = await _sut.WithdrawWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
 
@@ -482,9 +483,10 @@ public sealed partial class ExpenseReportServiceTests
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
-        var grant = MakeGrant();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
         var id = Guid.NewGuid();
         await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
         _preapprovals.ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Grant is not held by this report."));
 
@@ -492,5 +494,117 @@ public sealed partial class ExpenseReportServiceTests
 
         result.Succeeded.Should().BeFalse();
         (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task Withdraw_AfterTheGrantWasRevoked_StillWithdraws_WithoutReleasing()
+    {
+        // Revoke keeps the report pending; the member must still be able to take it back.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Revoked);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+
+        var result = await _sut.WithdrawWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+        await _preapprovals.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ─── Rejected draft: the grant it still holds ───────────────────────────────
+
+    [HumansFact]
+    public async Task UpdateDraft_RejectedDraft_DroppingTheClaimedGrant_ReleasesIt()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        _preapprovals.ListClaimableForUserAsync(submitter, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, CategoryAccountNumber, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().BeNull();
+        await _preapprovals.Received(1).ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_RejectedDraft_SwappingTheClaimedGrant_ReleasesTheOldOne()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var old = MakeGrant(status: GrantStatus.Claimed);
+        var other = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, old.Id, ExpenseReportStatus.Draft);
+        StubClaimable(submitter, other);
+        _preapprovals.GetGrantAsync(old.Id, Arg.Any<CancellationToken>()).Returns(old);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, 0, null, other.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().Be(other.Id);
+        await _preapprovals.Received(1).ReleaseAsync(old.Id, id, submitter, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_RejectedDraft_KeepingTheClaimedGrant_ReleasesNothing()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        _preapprovals.ListClaimableForUserAsync(submitter, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, 0, "Fixed the receipt", grant.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        await _preapprovals.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_DraftWithARevokedGrant_DropsItWithoutRelease()
+    {
+        // docs/features/global/preapprovals.md: a draft whose grant was revoked is not stranded.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Revoked);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        _preapprovals.ListClaimableForUserAsync(submitter, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, CategoryAccountNumber, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().BeNull();
+        await _preapprovals.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_RejectedDraft_WhenTheReleaseIsRefused_KeepsTheGrant()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        _preapprovals.ListClaimableForUserAsync(submitter, Arg.Any<CancellationToken>()).Returns([]);
+        _preapprovals.ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Grant is not held by this report."));
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, false, CategoryAccountNumber, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().Be(grant.Id);
     }
 }
