@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Workgroups.Authorization;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -36,6 +37,7 @@ namespace Humans.Workgroups.Tests.Controllers;
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
+    private readonly IApplicationServiceRead _applications = Substitute.For<IApplicationServiceRead>();
     private readonly IStringLocalizer<WorkgroupsResource> _localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
@@ -422,7 +424,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
-            service ?? NewService(), Users, Teams,
+            service ?? NewService(), Users, Teams, _applications,
             _localizer,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),
@@ -457,15 +459,22 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansTheory]
-    [Xunit.InlineData(nameof(MembershipTier.Volunteer), false)]
-    [Xunit.InlineData(nameof(MembershipTier.Colaborador), true)]
-    [Xunit.InlineData(nameof(MembershipTier.Asociado), true)]
-    public async Task Details_BudgetBlockVisibility_FollowsMembershipTier(string tierName, bool expected)
+    [InlineData(nameof(MembershipTier.Volunteer), null, false, false)]
+    [InlineData(nameof(MembershipTier.Colaborador), null, false, false)]
+    [InlineData(nameof(MembershipTier.Asociado), null, false, false)]
+    [InlineData(nameof(MembershipTier.Volunteer), nameof(MembershipTier.Colaborador), false, true)]
+    [InlineData(nameof(MembershipTier.Volunteer), nameof(MembershipTier.Asociado), false, true)]
+    [InlineData(nameof(MembershipTier.Colaborador), nameof(MembershipTier.Colaborador), false, true)]
+    [InlineData(nameof(MembershipTier.Volunteer), null, true, true)]
+    public async Task Details_BudgetVisibility_UsesActiveTermsInsteadOfTheProfileCache(
+        string cachedTier, string? activeTier, bool isBoard, bool expected)
     {
-        var tier = Enum.Parse<MembershipTier>(tierName);
         var workgroup = await SeedWorkgroupAsync();
-        var viewer = SeedUser("Viewer", tier: tier);
-        var controller = BuildController(viewer, isBoard: false);
+        var viewer = SeedUser("Viewer", tier: Enum.Parse<MembershipTier>(cachedTier));
+        if (activeTier is not null)
+            _applications.HasActiveApprovedTierAsync(viewer, Enum.Parse<MembershipTier>(activeTier),
+                Clock.GetCurrentInstant().InUtc().Date, Ct).Returns(true);
+        var controller = BuildController(viewer, isBoard);
 
         var result = await controller.Details(workgroup.Slug, Ct);
 
