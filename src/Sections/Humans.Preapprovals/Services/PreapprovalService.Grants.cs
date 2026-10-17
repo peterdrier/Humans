@@ -247,8 +247,8 @@ internal sealed partial class PreapprovalService
             $"{(grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);
         var info = ToInfo(grant, program);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", Euros(old), ct);
-        await EmailAsync(info, PreapprovalNoticeKind.AmountChanged, Euros(old), ct);
+        await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);
+        await EmailAsync(info, PreapprovalNoticeKind.AmountChanged, null, ct, previousAmount: old);
         return PreapprovalMutationResult.Ok;
     }
 

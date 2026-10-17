@@ -63,7 +63,8 @@ internal sealed partial class PreapprovalService
             FileBySourceKey(info.Id), ct);
 
     /// <summary>Declined, revoked, amount changed: informational, no source key.</summary>
-    private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct) =>
+    private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
+        decimal? previousAmount = null) =>
         NotifyAsync([info.BeneficiaryUserId], NotificationSource.PreapprovalGrantDecided,
             info.Status == GrantStatus.Revoked && info.ExpenseReportId is not null
                 ? NotificationClass.Actionable
@@ -72,7 +73,7 @@ internal sealed partial class PreapprovalService
             info.Status == GrantStatus.Revoked && info.ExpenseReportId is { } reportId
                 ? $"/Expenses/{reportId}"
                 : MemberUrl(info.ProgramId),
-            sourceKey: null, ct, detail);
+            sourceKey: null, ct, detail, previousAmount);
 
     /// <summary>To every manager of the program: someone applied. Resolved on decision.</summary>
     private async Task NotifyManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
@@ -87,7 +88,7 @@ internal sealed partial class PreapprovalService
     private async Task NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSource source, NotificationClass notificationClass,
         NotificationPriority priority, string titleKey, GrantInfo info, string bodyKey, string actionUrl,
-        string? sourceKey, CancellationToken ct, string? detail = null)
+        string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null)
     {
         if (recipientUserIds.Count == 0) return;
         try
@@ -103,10 +104,11 @@ internal sealed partial class PreapprovalService
             foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
             {
                 var culture = CultureInfo.GetCultureInfo(group.Key);
+                using var cultureScope = new CultureScope(culture.Name, logger);
                 var title = $"{NoticeResources.GetString(titleKey, culture)}: {info.ProgramName}";
                 var body = string.Format(culture, NoticeResources.GetString(bodyKey, culture) ?? bodyKey,
-                    info.ProgramName, info.Label ?? "", Euros(info.MaxAmount), info.ClaimBy.ToInvariantDate(),
-                    detail ?? "");
+                    info.ProgramName, info.Label ?? "", info.MaxAmount.ToEuro(), info.ClaimBy.ToDate(),
+                    previousAmount?.ToEuro() ?? detail ?? "");
                 await notifications.SendAsync(source, notificationClass, priority, title,
                     group.Select(person => person.Id).ToList(), body.Trim(),
                     actionUrl: actionUrl, sourceKey: sourceKey, cancellationToken: ct);
@@ -125,8 +127,9 @@ internal sealed partial class PreapprovalService
     // ── Email ─────────────────────────────────────────────────────────────
 
     /// <summary>One email to the beneficiary in their language.</summary>
-    private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct) =>
-        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct);
+    private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
+        decimal? previousAmount = null) =>
+        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount);
 
     /// <summary>One email per manager: who applied and for what.</summary>
     private async Task EmailManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
@@ -140,7 +143,7 @@ internal sealed partial class PreapprovalService
 
     private async Task EmailAsync(
         IReadOnlyList<Guid> recipientUserIds, GrantInfo info, PreapprovalNoticeKind kind, string? detail,
-        string url, CancellationToken ct)
+        string url, CancellationToken ct, decimal? previousAmount = null)
     {
         var ids = recipientUserIds.Distinct().ToList();
         if (ids.Count == 0) return;
@@ -160,7 +163,7 @@ internal sealed partial class PreapprovalService
                 var language = person?.PreferredLanguage;
                 await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
                     address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
-                    url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode)), ct);
+                    url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

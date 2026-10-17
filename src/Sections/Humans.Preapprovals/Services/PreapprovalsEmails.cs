@@ -35,7 +35,8 @@ internal sealed class PreapprovalsEmails(
             var program = request.ProgramName;
             var programHtml = Encode(request.ProgramName);
             var label = string.IsNullOrEmpty(request.Label) ? "" : Lf("Preapprovals_Email_LabelLine", Encode(request.Label));
-            var amount = Euros(request.Amount);
+            var amount = request.Amount.ToEuro();
+            var previousAmount = request.PreviousAmount.ToEuro();
             var date = request.ClaimBy.ToDate();
             var url = $"{_settings.BaseUrl.TrimEnd('/')}/{request.Url.TrimStart('/')}";
             var detail = string.IsNullOrEmpty(request.Detail) ? "" : Lf("Preapprovals_Email_DetailLine", Encode(request.Detail));
@@ -60,7 +61,7 @@ internal sealed class PreapprovalsEmails(
                     "preapproval_deadline_reminder"),
                 PreapprovalNoticeKind.AmountChanged => (
                     Lf("Preapprovals_Email_AmountChanged_Subject", program),
-                    Lf("Preapprovals_Email_AmountChanged_Body", greeting, programHtml, label, detail, amount, url),
+                    Lf("Preapprovals_Email_AmountChanged_Body", greeting, programHtml, label, previousAmount, amount, url),
                     "preapproval_amount_changed"),
                 PreapprovalNoticeKind.Revoked => (
                     Lf("Preapprovals_Email_Revoked_Subject", program),
@@ -77,9 +78,6 @@ internal sealed class PreapprovalsEmails(
                 templateName, MessageCategory.System, Culture: CultureInfo.CurrentUICulture.Name);
         }
     }
-
-    /// <summary>Amount in the recipient's own number format — "1.234,56 €" in es, "1,234.56 €" in en.</summary>
-    private static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.CurrentCulture) + " €";
 
     private string L(string key) => localizer[key].Value;
 

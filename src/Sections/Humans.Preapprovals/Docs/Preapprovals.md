@@ -168,6 +168,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`AuditAction.Preapproval*`), related to the program, the expense report, or the
   affected user.
+- Member notices and emails format amounts and claim deadlines in the recipient’s culture.
+  Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the
   notification; release re-raises it.

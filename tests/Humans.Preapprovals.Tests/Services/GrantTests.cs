@@ -1,3 +1,7 @@
+using System.Net;
+using AwesomeAssertions.Execution;
+using Humans.Base.Extensions;
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Xunit;
 using Humans.AuditLog.Contracts;
@@ -340,6 +344,55 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     // ── Change amount ─────────────────────────────────────────────────────
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture(string language)
+    {
+        using var callerCulture = new CultureScope("en");
+        const decimal oldAmount = 1234.56m;
+        const decimal newAmount = 2345.67m;
+        var person = SeedUser("Person", language: language);
+        var actor = SeedUser("Manager");
+        var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null, ceiling: 10000m);
+        var service = NewService(TestPreapprovalsEmails.CreateReal());
+
+        var issued = await service.IssueAsync(program.Id, person, oldAmount, "Art", actor, Ct);
+        issued.Refusal.Should().BeNull();
+        (await service.ChangeAmountAsync(issued.Value, newAmount, actor, Ct)).Refusal.Should().BeNull();
+
+        string oldText;
+        string newText;
+        string date;
+        using (new CultureScope(language))
+        {
+            oldText = oldAmount.ToEuro();
+            newText = newAmount.ToEuro();
+            date = program.ClaimBy.ToDate();
+        }
+        var notices = Notifications.ReceivedCalls().Where(c =>
+            string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal)).ToArray();
+        var issuedNotice = (string)notices.Single(c =>
+            (NotificationSource)c.GetArguments()[0]! == NotificationSource.PreapprovalFileBy).GetArguments()[5]!;
+        var changedNotice = (string)notices.Single(c =>
+            (NotificationSource)c.GetArguments()[0]! == NotificationSource.PreapprovalGrantDecided).GetArguments()[5]!;
+        var emails = Email.ReceivedCalls().Select(c => (EmailMessage)c.GetArguments()[0]!).ToArray();
+        var issuedEmail = WebUtility.HtmlDecode(emails.Single(m =>
+            string.Equals(m.TemplateName, "preapproval_issued", StringComparison.Ordinal)).HtmlBody);
+        var changedEmail = WebUtility.HtmlDecode(emails.Single(m =>
+            string.Equals(m.TemplateName, "preapproval_amount_changed", StringComparison.Ordinal)).HtmlBody);
+
+        using var assertions = new AssertionScope();
+        issuedNotice.Should().Contain(oldText).And.Contain(date);
+        issuedEmail.Should().Contain(oldText).And.Contain(date);
+        changedNotice.Should().Contain(oldText).And.Contain(newText);
+        changedEmail.Should().Contain(oldText).And.Contain(newText);
+    }
 
     [HumansFact]
     public async Task ChangeAmount_CeilingChecked_AuditedWithOldAndNew_Notifies()
