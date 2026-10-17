@@ -38,7 +38,7 @@ namespace Humans.Backdoor.Controllers;
 internal sealed class BackdoorFinanceController(
     IExpenseReportServiceRead expenses,
     IHoldedFinanceServiceRead finance,
-    IBudgetServiceRead budget,
+    IBudgetService budget,
     IAuthorizationService authService,
     IUserServiceRead users) : ApiControllerBase(users), IResultFilter
 {

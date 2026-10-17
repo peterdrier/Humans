@@ -92,10 +92,10 @@ public sealed class BudgetServiceTests
         else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
     }
 
-    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
     {
         var viewerId = Guid.NewGuid();
-        var budget = Substitute.For<IBudgetService>();
+        var budget = Substitute.For<IBudgetManagement>();
         var users = Substitute.For<IUserServiceRead>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(

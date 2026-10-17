@@ -37,7 +37,7 @@ public class HoldedFinanceServiceTests
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());

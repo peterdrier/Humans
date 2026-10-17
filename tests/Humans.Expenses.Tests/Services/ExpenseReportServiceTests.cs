@@ -65,7 +65,7 @@ public sealed class ExpenseReportServiceTests
 
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
-    private readonly IBudgetServiceRead _budgetService;
+    private readonly IBudgetService _budgetService;
     private readonly ITeamServiceRead _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -94,7 +94,7 @@ public sealed class ExpenseReportServiceTests
         _holdedClient.IsConfigured.Returns(true);
 
         _fileStorage = Substitute.For<IFileStorage>();
-        _budgetService = Substitute.For<IBudgetServiceRead>();
+        _budgetService = Substitute.For<IBudgetService>();
         _teamService = Substitute.For<ITeamServiceRead>();
         _userService = Substitute.For<IUserService>();
 
@@ -3468,7 +3468,7 @@ public sealed class ExpenseReportServiceTests
     // ─────────────────────────── Helpers ─────────────────────────────────────
 
     /// <summary>
-    /// Stubs the active budget year and one category on <c>IBudgetServiceRead</c>. Builds the
+    /// Stubs the active budget year and one category on <c>IBudgetService</c>. Builds the
     /// contract DTOs directly: Budget's entities are internal to <c>Humans.Budget</c> since its
     /// own-project move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
     /// </summary>

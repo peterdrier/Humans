@@ -21,7 +21,7 @@ namespace Humans.Expenses.Controllers;
 internal sealed class ExpensesController(
     IUserServiceRead userService,
     IExpenseReportService service,
-    IBudgetServiceRead budgetService,
+    IBudgetService budgetService,
     IHoldedFinanceServiceRead holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger,

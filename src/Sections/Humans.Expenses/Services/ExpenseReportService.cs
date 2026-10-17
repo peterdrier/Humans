@@ -28,7 +28,7 @@ namespace Humans.Expenses.Services;
 internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,
-    IBudgetServiceRead budgetService,
+    IBudgetService budgetService,
     ITeamServiceRead teamService,
     IUserService userService,
     IUserEmailService userEmailService,

@@ -39,7 +39,7 @@ public class BackdoorFinanceControllerTests
 {
     private readonly IExpenseReportServiceRead _expenses = Substitute.For<IExpenseReportServiceRead>();
     private readonly IHoldedFinanceServiceRead _finance = Substitute.For<IHoldedFinanceServiceRead>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly BackdoorFinanceController _sut;

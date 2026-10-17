@@ -18,7 +18,7 @@ internal sealed class BudgetService(
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<BudgetService> logger) : IBudgetService, IUserDataContributor
+    ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";

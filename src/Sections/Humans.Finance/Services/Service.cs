@@ -30,7 +30,7 @@ internal sealed class Service(
     IHoldedRepository repo,
     IHoldedClient client,
     // Cross-section read via the Budget section's read/write split contract.
-    IBudgetServiceRead budget,
+    IBudgetService budget,
     // The ledger mirror is the Holded section's; all line/balance reads go through its contract.
     IHoldedService holded,
     IClock clock,

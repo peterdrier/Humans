@@ -32,7 +32,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private const int BatchSize = 100;
 
     private readonly IExpenseRepository _repo;
-    private readonly IBudgetServiceRead _budgetService;
+    private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
     private readonly IHoldedFinanceService _holdedFinance;
@@ -63,7 +63,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             []);
 
         _repo = Substitute.For<IExpenseRepository>();
-        _budgetService = Substitute.For<IBudgetServiceRead>();
+        _budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so every test

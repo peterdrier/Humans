@@ -19,7 +19,7 @@ namespace Humans.Expenses.Tests.Authorization;
 /// </summary>
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
-    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
