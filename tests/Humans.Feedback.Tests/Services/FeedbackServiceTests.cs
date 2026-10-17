@@ -459,24 +459,47 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
-    [InlineData("Browser/1.0", "Roles: Volunteer")]
-    [InlineData(null, null)]
-    public async Task ContributeForUserAsync_ExportsStoredSubmissionContext(string? userAgent, string? context)
+    [InlineData("Browser/1.0", "Roles: Volunteer", false)]
+    [InlineData(null, null, false)]
+    [InlineData("Browser/1.0", "Roles: Volunteer", true)]
+    public async Task ContributeForUserAsync_ExportsStoredSubmissionContext(
+        string? userAgent, string? context, bool requestArchivedId)
     {
         var userId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var info = SeedUser(userId, "Reporter") with { MergedUserIds = [archivedId] };
+        _people[userId] = info;
+        _people[archivedId] = info;
         var report = await SeedReportAsync(userId, "Historical bug", "/profile");
+        await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
+        await FeedbackDb.FeedbackMessages.AddRangeAsync(
+            [new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = userId,
+                Content = "Member response", CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = Guid.NewGuid(),
+                Content = "Staff response", CreatedAt = Clock.GetCurrentInstant()
+            }], Xunit.TestContext.Current.CancellationToken);
         report.UserAgent = userAgent;
         report.AdditionalContext = context;
         await FeedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? archivedId : userId, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(s.SectionName, FeedbackServiceImpl.FeedbackReports, StringComparison.Ordinal));
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
-        var exportedReport = json.RootElement[0];
+        json.RootElement.GetArrayLength().Should().Be(1);
+        var exportedReport = json.RootElement.EnumerateArray().Single();
         exportedReport.GetProperty("UserAgent").GetString().Should().Be(userAgent);
         exportedReport.GetProperty("AdditionalContext").GetString().Should().Be(context);
         exportedReport.GetProperty("Description").GetString().Should().Be("Historical bug");
+        var messages = exportedReport.GetProperty("Messages").EnumerateArray().ToDictionary(
+            m => m.GetProperty("Content").GetString()!, m => m.GetProperty("IsFromUser").GetBoolean(), StringComparer.Ordinal);
+        messages["Member response"].Should().BeTrue();
+        messages["Staff response"].Should().BeFalse();
     }
 
     [HumansFact]

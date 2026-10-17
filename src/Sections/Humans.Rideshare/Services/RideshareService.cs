@@ -384,6 +384,7 @@ internal sealed class RideshareService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await users.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var trips = await repository.GetTripsForUserAsync(userId, ct);
         var requests = await repository.GetRequestsForUserAsync(userId, ct);
         var interests = await repository.GetInterestsForUserAsync(userId, ct);

@@ -959,10 +959,16 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         }
     }
 
-    [HumansFact]
-    public async Task Export_ListsOnlyTheHumansOwnRows()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Export_ListsOnlyTheHumansOwnRows(bool requestArchivedId)
     {
         var me = SeedUser("Me");
+        var archived = SeedUser("Archived");
+        var info = (await Users.GetUserInfoAsync(me, Ct))! with { MergedUserIds = [archived] };
+        Users.GetUserInfoAsync(me, Arg.Any<CancellationToken>()).Returns(info);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(info);
         var other = SeedUser("Other");
         var mine = await SeedTripAsync(me);
         var theirs = await SeedTripAsync(other);
@@ -971,7 +977,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await SeedInterestAsync(me, theirs.Id);
         await SeedInterestAsync(other, mine.Id);
 
-        var slices = await NewService().ContributeForUserAsync(me, Ct);
+        var slices = await NewService().ContributeForUserAsync(requestArchivedId ? archived : me, Ct);
 
         foreach (var slice in slices)
             ((IEnumerable)slice.Data!).Cast<object>().Should().HaveCount(1, because: $"{slice.SectionName} holds one row of mine");

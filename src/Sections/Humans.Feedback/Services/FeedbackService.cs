@@ -358,6 +358,7 @@ internal sealed class FeedbackService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await userService.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var reports = await repository.GetForUserExportAsync(userId, ct);
 
         var shaped = reports

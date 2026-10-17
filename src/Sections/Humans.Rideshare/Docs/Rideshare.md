@@ -299,8 +299,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
   notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
-- **Gdpr**: `IUserDataContributor` — exports three slices (`RideshareTrips`,
-  `RideshareRequests`, `RideshareInterests`); erasure deletes the user's interests, then their
+- **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
+  `RideshareInterests` for the resolved survivor, including requests under archived account IDs;
+  erasure deletes the user's interests, then their
   trips (cascades the trips' interests), then other drivers' answers to their requests and the
   requests themselves — idempotent. (The FK's `SetNull` is a database safety net, never the
   intended path: an orphaned answer would read as the driver riding their own trip.)
