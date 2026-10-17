@@ -20,7 +20,7 @@ render happened; the preview deploy is where a page is checked.
 Independence check: pass — the refusal-to-flash map, the guard preamble and the sensitive-comment question came from the target's structure and invariants; the join and refusal drift came from the spec-versus-code delta.
 
 Run note: the branch is `section-doctor/2026-10-17T011628Z`, not the routine's
-`claude/dreamy-gates-ddas51`, because `doctor.py` requires the section-doctor branch pattern.
+claude/dreamy-gates-ddas51, because `doctor.py` requires the section-doctor branch pattern.
 
 ## Findings
 
