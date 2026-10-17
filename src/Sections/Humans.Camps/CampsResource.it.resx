@@ -248,6 +248,7 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Stagione ritirata.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Stagione contrassegnata come piena.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Il nome non può essere vuoto.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>I nomi storici non possono superare i 256 caratteri.</value></data>
   <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>Il nome '{0}' genera uno slug riservato.</value></data>
   <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La stagione {0} non è aperta alle iscrizioni.</value></data>
   <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Il camp ha già una stagione per {0}.</value></data>

@@ -59,7 +59,7 @@ internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyE
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
 
     // Historical names
-    Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
 

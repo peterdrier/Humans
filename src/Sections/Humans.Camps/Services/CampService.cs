@@ -47,6 +47,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
     private static readonly HashSet<string> AllowedImageExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+    private const int MaxHistoricalNameLength = 256;
     private const int MaxImageFileNameLength = 256;
     private const int MaxCampSlugLength = 256;
 
@@ -88,6 +89,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         CampSeasonData seasonData, List<string>? historicalNames, int year,
         CancellationToken cancellationToken = default)
     {
+        if (historicalNames?.Any(string.IsNullOrWhiteSpace) == true)
+            return new(null, "Camps_Flash_NameRequired");
+        if (historicalNames?.Any(n => n.Trim().Length > MaxHistoricalNameLength) == true)
+            return new(null, "Camps_Validation_HistoricalNameLength");
+
         var slug = SlugHelper.GenerateSlug(name);
         if (slug.Length == 0)
             slug = "camp";
@@ -163,7 +169,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
             {
                 Id = Guid.NewGuid(),
                 CampId = camp.Id,
-                Name = oldName,
+                Name = oldName.Trim(),
                 Source = CampNameSource.Manual,
                 CreatedAt = now
             }).ToList();
@@ -941,19 +947,26 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
     }
 
-    public async Task AddHistoricalNameAsync(
+    public async Task<CampUpdateResult> AddHistoricalNameAsync(
         Guid campId, string name, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(name))
+            return CampUpdateResult.Failure("Camps_Flash_NameRequired");
+        name = name.Trim();
+        if (name.Length > MaxHistoricalNameLength)
+            return CampUpdateResult.Failure("Camps_Validation_HistoricalNameLength");
+
         var entry = new CampHistoricalName
         {
             Id = Guid.NewGuid(),
             CampId = campId,
-            Name = name.Trim(),
+            Name = name,
             Source = CampNameSource.Manual,
             CreatedAt = _clock.GetCurrentInstant()
         };
 
         await _repo.AddHistoricalNameAsync(entry, cancellationToken);
+        return CampUpdateResult.Success();
     }
 
     public async Task<CampUpdateResult> RemoveHistoricalNameAsync(

@@ -197,6 +197,7 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Season withdrawn.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Season marked as full.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Name cannot be empty.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>Historical names cannot exceed 256 characters.</value></data>
   <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>The name '{0}' generates a reserved slug.</value></data>
   <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>Season {0} is not open for registration.</value></data>
   <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Camp already has a season for {0}.</value></data>

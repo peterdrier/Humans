@@ -85,6 +85,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Leads can edit their own camp; CampAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
+- Manual historical names must contain 1–256 characters after trimming, both during registration and when added later. Invalid entries are refused before saving.
 - Can manually add or remove historical names from the Edit page, independent of the rename auto-log (`/Camps/{slug}/HistoricalNames/Add`, `/Camps/{slug}/HistoricalNames/Remove/{nameId}`)
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images

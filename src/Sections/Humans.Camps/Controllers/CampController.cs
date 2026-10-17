@@ -704,14 +704,16 @@ internal sealed class CampController(
         if (errorResult is not null)
             return errorResult;
 
-        if (string.IsNullOrWhiteSpace(name))
+        var result = await _campService.AddHistoricalNameAsync(camp.Id, name);
+        if (result.ErrorKey is { } key)
         {
-            SetError(campsLocalizer["Camps_Flash_NameRequired"].Value);
-            return RedirectToAction(nameof(Edit), new { slug });
+            logger.LogWarning("Adding a historical name failed for camp {CampId}: {Reason}", camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-
-        await _campService.AddHistoricalNameAsync(camp.Id, name);
-        SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
+        else
+        {
+            SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
+        }
 
         return RedirectToAction(nameof(Edit), new { slug });
     }

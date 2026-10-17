@@ -399,6 +399,8 @@ public class CampControllerTests
             ("Approve", "Camps_Flash_RoleMemberNotFound"),
             ("Reject", "Camps_Flash_RoleMemberNotFound"),
             ("Remove", "Camps_Flash_RoleMemberNotFound"),
+            ("AddHistoricalName", "Camps_Flash_NameRequired"),
+            ("AddHistoricalName", "Camps_Validation_HistoricalNameLength"),
             ("RemoveHistoricalName", "Camps_Flash_CampNotFound"),
             ("RemoveHistoricalName", "Camps_Flash_HistoricalNameNotFound"),
             ("RemoveHistoricalName", "Camps_Flash_HistoricalNameWrongCamp"),
@@ -419,6 +421,9 @@ public class CampControllerTests
                 case "Remove":
                     _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.RemoveMembership(camp.Slug, targetId); break;
+                case "AddHistoricalName":
+                    _camps.AddHistoricalNameAsync(camp.Id, "Previous Name").Returns(CampUpdateResult.Failure(key));
+                    result = controller.AddHistoricalName(camp.Slug, "Previous Name"); break;
                 case "RemoveHistoricalName":
                     _camps.RemoveHistoricalNameAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
                     result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
@@ -427,14 +432,16 @@ public class CampControllerTests
                     result = controller.DeleteImage(camp.Slug, targetId); break;
                 default: throw new InvalidOperationException("Unknown test action");
             }
-            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action is "RemoveHistoricalName" or "DeleteImage" ? "Edit" : "Members");
+            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action is "AddHistoricalName" or "RemoveHistoricalName" or "DeleteImage" ? "Edit" : "Members");
             var expected = localizer[key];
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
             var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
             args[0].Should().Be(LogLevel.Warning);
             args[3].Should().BeNull();
-            args[2]!.ToString().Should().Contain(targetId.ToString()).And.Contain(camp.Id.ToString()).And.Contain(key);
+            args[2]!.ToString().Should().Contain(camp.Id.ToString()).And.Contain(key);
+            if (!string.Equals(action, "AddHistoricalName", StringComparison.Ordinal))
+                args[2]!.ToString().Should().Contain(targetId.ToString());
         }
     }
 

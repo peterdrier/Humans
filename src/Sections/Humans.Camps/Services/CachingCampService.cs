@@ -283,12 +283,13 @@ internal sealed class CachingCampService(
             DeleteKey(campId);
         });
 
-    public Task AddHistoricalNameAsync(
+    public Task<CampUpdateResult> AddHistoricalNameAsync(
         Guid campId, string name, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
+            var result = await WithInner(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
+            return result;
         });
 
     public Task<CampUpdateResult> RemoveHistoricalNameAsync(

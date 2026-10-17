@@ -2040,6 +2040,55 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(5);
     }
 
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(257)]
+    public async Task AddHistoricalNameAsync_InvalidTrimmedName_DoesNotPersist(int length)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+
+        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {new string('a', length)}  ", ct);
+
+        result.ErrorKey.Should().Be(length == 0 ? "Camps_Flash_NameRequired" : "Camps_Validation_HistoricalNameLength");
+        (await CampsDb.CampHistoricalNames.CountAsync(ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AddHistoricalNameAsync_MaximumTrimmedLength_PersistsTrimmedName()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var name = new string('a', 256);
+
+        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {name}  ", ct);
+
+        result.Succeeded.Should().BeTrue();
+        (await CampsDb.CampHistoricalNames.SingleAsync(ct)).Name.Should().Be(name);
+    }
+
+    [HumansTheory]
+    [InlineData(0, "Camps_Flash_NameRequired")]
+    [InlineData(257, "Camps_Validation_HistoricalNameLength")]
+    public async Task CreateCampAsync_InvalidHistoricalName_RefusesBeforeRegistration(int length, string errorKey)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
+            null, null, false, 1, MakeSeasonData(), [$"  {new string('a', length)}  "], 2026, ct);
+
+        result.ErrorKey.Should().Be(errorKey);
+        (await CampsDb.Camps.CountAsync(ct)).Should().Be(0);
+        (await CampsDb.CampSeasons.CountAsync(ct)).Should().Be(0);
+        (await CampsDb.CampHistoricalNames.CountAsync(ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RemoveHistoricalNameAsync_WrongCamp_ReturnsRefusal()
     {
