@@ -35,6 +35,8 @@ The member panel currently shows only the Email control. Its updates preserve th
 
 Guest updates serialize per row by disabling both editable channels and the matching one-click unsubscribe control while a save is pending. Success/failure unlocks the row; failures revert the edited value. Other categories stay independent.
 
+Tokens minted before an account merge resolve to the surviving account for both Guest preference reads and writes, as in the one-click unsubscribe flow.
+
 Signed-in Profile and Guest updates audit the authenticated actor. Magic-link, one-click and imported changes keep service attribution; a stale token on a signed-in Guest request does not change its source or actor. Both channel-update overloads share one service write path, preserving the inbox channel on email-only writes, the first subscription date and no-op metadata.
 
 Each checkbox has an accessible name combining the localized channel and category, including locked and read-only controls.

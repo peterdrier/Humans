@@ -161,9 +161,9 @@ internal sealed class GuestAccountController(
         if (result.Status != TokenValidationStatus.Valid)
             return (null, null, false);
 
-        var exists = await FindUserInfoByIdAsync(result.UserId, ct);
-        return exists is not null
-            ? (result.UserId, result.Category, true)
+        var userInfo = await FindUserInfoByIdAsync(result.UserId, ct);
+        return userInfo is not null
+            ? (userInfo.Id, result.Category, true)
             : (null, null, false);
     }
 

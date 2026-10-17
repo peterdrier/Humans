@@ -133,6 +133,45 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommunicationPreferences_PreMergeToken_UsesTheSurvivingAccount(bool update)
+    {
+        var archivedId = Guid.NewGuid();
+        var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Survivor" };
+        var controller = BuildSut(survivor);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var resolvedUser = await _userService.GetUserInfoAsync(survivor.Id);
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(resolvedUser));
+        _commPrefService.ValidateUnsubscribeToken("pre-merge-token")
+            .Returns((TokenValidationStatus.Valid, archivedId, MessageCategory.Marketing));
+        _commPrefService.GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
+        _ticketQueryService.GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+
+        if (update)
+        {
+            Assert.IsType<OkResult>(await controller.UpdatePreference(
+                MessageCategory.Marketing, false, false, "pre-merge-token"));
+            await _commPrefService.Received(1).UpdatePreferenceAsync(survivor.Id,
+                MessageCategory.Marketing, true, false, "MagicLink", actorUserId: null,
+                cancellationToken: Arg.Any<CancellationToken>());
+            await _commPrefService.DidNotReceive().UpdatePreferenceAsync(archivedId,
+                Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            Assert.IsType<ViewResult>(await controller.CommunicationPreferences("pre-merge-token"));
+            await _commPrefService.Received(1).GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>());
+            await _ticketQueryService.Received(1).GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>());
+            await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(archivedId, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
     [InlineData("Viewer")]
     [InlineData("TokenViewer")]
     [InlineData("Preferences")]
