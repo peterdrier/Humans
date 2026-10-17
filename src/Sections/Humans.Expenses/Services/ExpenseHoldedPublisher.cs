@@ -222,7 +222,13 @@ internal sealed class ExpenseHoldedPublisher(
         // AuditLogEntry.Description caps at 4,000 chars (job-name prefix included) and a failed
         // insert is swallowed, so an oversized summary loses the audit entry entirely.
         const int maxSummaryLength = 3500;
-        return full.Length <= maxSummaryLength ? full : full[..(maxSummaryLength - 1)] + "…";
+        if (full.Length <= maxSummaryLength)
+            return full;
+
+        var length = maxSummaryLength - 1;
+        if (char.IsHighSurrogate(full[length - 1]) && char.IsLowSurrogate(full[length]))
+            length--;
+        return full[..length] + "…";
     }
 
     /// <summary>
