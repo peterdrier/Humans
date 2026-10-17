@@ -452,11 +452,14 @@ internal sealed class IssuesService(
         var statusChangedToOpen = false;
         if (senderIsReporter && issue.Status.IsTerminal())
         {
-            issue.Status = IssueStatus.Open;
-            issue.ResolvedAt = null;
-            issue.ResolvedByUserId = null;
+            SetStatusFields(issue, IssueStatus.Open, senderUserId, now);
             statusChangedToOpen = true;
         }
+
+        var statusBeforeResolution = issue.Status;
+        var resolveWithComment = resolveOnPost && viewerCanHandle && !issue.Status.IsTerminal();
+        if (resolveWithComment)
+            SetStatusFields(issue, IssueStatus.Resolved, senderUserId, now);
 
         issue.UpdatedAt = now;
         await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
@@ -468,9 +471,22 @@ internal sealed class IssuesService(
                 "reopened (reporter comment on terminal)");
         }
 
+        if (resolveWithComment)
+        {
+            await LogAuditAsync(AuditAction.IssueStatusChanged, issueId, senderUserId,
+                $"status: {statusBeforeResolution} → {IssueStatus.Resolved}");
+        }
+
         await DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
+        if (resolveWithComment)
+        {
+            await DispatchStatusChangedNotificationAsync(
+                issue, statusBeforeResolution, IssueStatus.Resolved, senderUserId, ct);
+            await ResolveSubmittedNotificationsAsync(issue, senderUserId, ct);
+        }
+
         navBadge.Invalidate();
-        if (statusChangedToOpen)
+        if (statusChangedToOpen || resolveWithComment)
         {
             issuesBadge.InvalidateMany(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
@@ -479,13 +495,6 @@ internal sealed class IssuesService(
         logger.LogInformation(
             "Comment posted on issue {IssueId} by {UserId} (reporter: {Reporter})",
             issueId, senderUserId, senderIsReporter);
-
-        if (resolveOnPost && viewerCanHandle && !issue.Status.IsTerminal())
-        {
-            var resolution = await UpdateStatusAsync(issueId, viewer, IssueStatus.Resolved, senderUserId, ct);
-            if (!resolution.Succeeded)
-                return new IssueCommentResult(null, resolution.NotFound);
-        }
 
         return new IssueCommentResult(new IssueCommentInfo(comment.Id, comment.Content, comment.CreatedAt));
     }
@@ -519,6 +528,23 @@ internal sealed class IssuesService(
         return issue.Id;
     }
 
+    private static void SetStatusFields(Issue issue, IssueStatus newStatus, Guid? actorUserId, Instant now)
+    {
+        var oldStatus = issue.Status;
+        issue.Status = newStatus;
+        issue.UpdatedAt = now;
+        if (newStatus.IsTerminal())
+        {
+            issue.ResolvedAt = now;
+            issue.ResolvedByUserId = actorUserId;
+        }
+        else if (oldStatus.IsTerminal())
+        {
+            issue.ResolvedAt = null;
+            issue.ResolvedByUserId = null;
+        }
+    }
+
     public Task<IssueMutationResult> UpdateStatusAsync(
         Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
         CancellationToken ct = default)
@@ -534,20 +560,7 @@ internal sealed class IssuesService(
             var oldStatus = issue.Status;
             if (oldStatus == newStatus) return IssueMutationResult.Success();
 
-            var now = clock.GetCurrentInstant();
-            issue.Status = newStatus;
-            issue.UpdatedAt = now;
-
-            if (newStatus.IsTerminal())
-            {
-                issue.ResolvedAt = now;
-                issue.ResolvedByUserId = actorUserId;
-            }
-            else if (oldStatus.IsTerminal())
-            {
-                issue.ResolvedAt = null;
-                issue.ResolvedByUserId = null;
-            }
+            SetStatusFields(issue, newStatus, actorUserId, clock.GetCurrentInstant());
 
             await repo.SaveTrackedIssueAsync(issue, ct);
             await LogAuditAsync(
@@ -924,29 +937,37 @@ internal sealed class IssuesService(
 
     private async Task SendCommentEmailAsync(Issue issue, IssueComment comment, CancellationToken ct)
     {
-        var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
-        var emails = await userEmails.GetNotificationTargetEmailsAsync(
-            [issue.ReporterUserId], ct);
+        try
+        {
+            var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
+            var emails = await userEmails.GetNotificationTargetEmailsAsync(
+                [issue.ReporterUserId], ct);
 
-        if (reporter is not null &&
-            emails.TryGetValue(issue.ReporterUserId, out var to) &&
-            !string.IsNullOrWhiteSpace(to))
-        {
-            var language = reporter.PreferredLanguage;
-            await email.SendAsync(emailMessages.IssueComment(
-                to,
-                reporter.BurnerName,
-                issue.Title,
-                comment.Content,
-                $"/Issues/{issue.Id}",
-                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
-                ct);
+            if (reporter is not null &&
+                emails.TryGetValue(issue.ReporterUserId, out var to) &&
+                !string.IsNullOrWhiteSpace(to))
+            {
+                var language = reporter.PreferredLanguage;
+                await email.SendAsync(emailMessages.IssueComment(
+                    to,
+                    reporter.BurnerName,
+                    issue.Title,
+                    comment.Content,
+                    $"/Issues/{issue.Id}",
+                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
+                    ct);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Skipping issue comment email for issue {IssueId} — reporter {UserId} has no effective email",
+                    issue.Id, issue.ReporterUserId);
+            }
         }
-        else
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(
-                "Skipping issue comment email for issue {IssueId} — reporter {UserId} has no effective email",
-                issue.Id, issue.ReporterUserId);
+            logger.LogError(ex, "Issue comment {CommentId} saved but its reporter email failed for issue {IssueId}",
+                comment.Id, issue.Id);
         }
     }
 

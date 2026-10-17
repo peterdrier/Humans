@@ -882,6 +882,67 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task HandlerReply_RequestedResolutionIsDurableBeforeEmailStarts()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        IssueStatus? observedStatus = null;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                observedStatus = (await _issuesDb.Issues.AsNoTracking().SingleAsync(
+                    i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Status;
+            });
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Comment.Should().NotBeNull();
+        observedStatus.Should().Be(IssueStatus.Resolved);
+    }
+
+    [HumansTheory]
+    [InlineData("name")]
+    [InlineData("address")]
+    [InlineData("enqueue")]
+    public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(string failure)
+    {
+        var reporterId = Guid.NewGuid();
+        var reporter = SeedUser(reporterId, "Reporter");
+        reporter.Email = "reporter@test.com";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        var error = new IOException("Email preparation unavailable");
+        if (string.Equals(failure, "name", StringComparison.Ordinal))
+            _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
+                .Returns(_ => ValueTask.FromException<UserInfo?>(error));
+        else if (string.Equals(failure, "address", StringComparison.Ordinal))
+            _userEmailService.GetNotificationTargetEmailsAsync(
+                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(error));
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(error));
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Comment.Should().NotBeNull();
+        result.Comment.Content.Should().Be("Fixed this");
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(
+            i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(IssueStatus.Resolved);
+        (await _issuesDb.IssueComments.CountAsync(c => c.IssueId == issueId,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        await _notificationService.Received().SendAsync(
+            NotificationSource.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        _navBadge.Received().Invalidate();
+    }
+
+    [HumansFact]
     public async Task PostCommentAsync_resolve_on_post_marks_issue_resolved()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
