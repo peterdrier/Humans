@@ -7,7 +7,3 @@ inbox:
     id: CAMPS-8
     what: "CampController.AddHistoricalName / CampService.AddHistoricalNameAsync check only for blank input; camp_historical_names.name carries a max length (CampHistoricalNameConfiguration.cs:12), so an overlong name fails at save as an unhandled DbUpdateException instead of a localized refusal. Fix: bound the trimmed name in the service and return a refusal key like the other guarded writes. Found by section-doctor 2026-10-12 (docs/health/runs/2026-10-12-Camps.md)."
     review: light
-  - added: 2026-10-12
-    id: CAMPS-9
-    what: "No deny-path test pins CampAdminController's class policy (CampAdminOrAdmin, CampAdminController.cs:10) or Delete's AdminOnly (CampAdminController.cs:224): a plain member or a CampAdmin hitting Delete is refused only by attributes no test asserts. Fix: policy-attribute tests in tests/Humans.Camps.Tests. Found by section-doctor 2026-10-12 (Tests thread)."
-    review: light
