@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const script = readFileSync(resolve(__dirname,
     '../../../src/Sections/Humans.Rideshare/wwwroot/js/rideshare/pick-point.js'), 'utf8');
 
-function picker(latitude = '', longitude = '') {
+function picker(latitude = '', longitude = '', mapFailure = null) {
     const elements = {
         Latitude: { value: latitude }, Longitude: { value: longitude }, Place: { value: 'Madrid' },
         'pick-map': { dataset: { latInput: 'Latitude', lngInput: 'Longitude', placeInput: 'Place' } },
@@ -18,7 +18,10 @@ function picker(latitude = '', longitude = '') {
     const markers = [];
     let map;
     class Map {
-        constructor(options) { this.options = options; this.handlers = {}; map = this; }
+        constructor(options) {
+            if (mapFailure === 'webgl') throw new Error('WebGL unavailable');
+            this.options = options; this.handlers = {}; map = this;
+        }
         addControl() {}
         on(event, handler) { this.handlers[event] = handler; }
         easeTo(options) { this.center = options.center; }
@@ -31,7 +34,8 @@ function picker(latitude = '', longitude = '') {
     }
     vm.runInNewContext(script, {
         document: { getElementById: id => elements[id] },
-        maplibregl: { Map, Marker, NavigationControl: class {} },
+        maplibregl: mapFailure === 'library' ? undefined : { Map, Marker, NavigationControl: class {} },
+        console: { error() {} },
     });
     return { elements, map, markers };
 }
@@ -79,3 +83,14 @@ test('changing the place label still clears coordinates and removes the pin', ()
     assert.equal(ui.elements.Longitude.value, '');
     assert.equal(ui.markers[0].removed, true);
 });
+
+for (const failure of ['library', 'webgl']) {
+    test(`changing the place label clears stale coordinates when ${failure} fails`, () => {
+        const ui = picker('40', '-3', failure);
+        ui.elements.Place.value = 'Barcelona';
+        ui.elements.Place.change();
+        assert.equal(ui.elements.Latitude.value, '');
+        assert.equal(ui.elements.Longitude.value, '');
+        assert.equal(ui.markers.length, 0);
+    });
+}
