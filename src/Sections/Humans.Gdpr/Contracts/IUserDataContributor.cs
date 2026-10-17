@@ -26,7 +26,10 @@ public interface IUserDataContributor : IFanout
 {
     /// <summary>
     /// Returns every personal-data slice this contributor owns for
-    /// <paramref name="userId"/>. Implementations must be read-only.
+    /// <paramref name="userId"/>. The export orchestrator resolves merged accounts
+    /// to the survivor before calling contributors. Contributors whose rows stay
+    /// on archived accounts still expand the survivor's merge chain.
+    /// Implementations must be read-only.
     /// A slice whose <see cref="UserDataSlice.Data"/> is <c>null</c> is dropped
     /// from the final export by the orchestrator. Every
     /// <see cref="UserDataSlice.SectionName"/> returned here must be a key of

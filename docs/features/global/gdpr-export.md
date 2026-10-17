@@ -142,11 +142,13 @@ rows on the archived id (audit entries, consent records, assembly-vote rosters
 and ballots), so without this header a row reading `UserId: 3` inside an export
 for account 5 looks like somebody else's data.
 
-Each contributor resolves the merge for itself, and the two directions are both
-correct: a slice over rows the merge **left behind** reads every id in
+The orchestrator passes the resolved survivor's ID to every export contributor,
+so requests under either ID reach the same record without making crosscuts call
+Users. A slice over rows the merge **left behind** still reads every ID in
 `UserInfo.AllUserIds`, while a slice over columns the merge **moved** (Governance's
 assembly-vote actor columns, reassigned by `ReassignAsync`) reads the survivor's
-id alone. Asking with either id has to reach the same record.
+ID alone. Erasure keeps its per-ID input: Users separately calls it for each
+archived account and the survivor.
 
 | Section | Contributor | Shape |
 |---------|-------------|-------|
