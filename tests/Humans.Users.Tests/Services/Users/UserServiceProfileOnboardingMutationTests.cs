@@ -18,6 +18,7 @@ namespace Humans.Users.Tests.Services.Users;
 public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarness
 {
     private readonly UserService _service;
+    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
         Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
@@ -37,7 +38,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _communicationPreferenceRepository,
             AdminAuthorization,
             _claimsCacheInvalidator,
-            Substitute.For<IFileStorage>(),
+            _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
     }
@@ -888,6 +889,59 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         updated.Should().BeFalse();
         var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId, TestContext.Current.CancellationToken);
         profileExists.Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    public async Task ReassignAsync_CleansFoldedProfilePictureWithoutTouchingSurvivor(
+        bool versioned, bool cleanupFails, bool targetHasProfile)
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceProfileId = await SeedUserWithProfileAsync(sourceUserId);
+        Guid? targetProfileId = targetHasProfile ? await SeedUserWithProfileAsync(targetUserId) : null;
+        if (!targetHasProfile)
+            SeedUser(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceProfileId, TestContext.Current.CancellationToken);
+        source.ProfilePictureContentType = "image/png";
+        source.ProfilePictureStorageKey = versioned ? $"uploads/profile-pictures/{sourceProfileId}-old.png" : null;
+        var previousKey = source.ProfilePictureStorageKey
+            ?? ProfilePictureStorageKeys.ProfilePictureKey(sourceProfileId, "image/png");
+        const string survivorKey = "uploads/profile-pictures/survivor.png";
+        if (targetHasProfile)
+        {
+            var target = await Db.Profiles.SingleAsync(p => p.Id == targetProfileId, TestContext.Current.CancellationToken);
+            target.ProfilePictureContentType = "image/png";
+            target.ProfilePictureStorageKey = survivorKey;
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        if (cleanupFails)
+            _fileStorage.DeleteAsync(previousKey, CancellationToken.None)
+                .Returns(Task.FromException(new IOException("Storage unavailable")));
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(),
+            TestContext.Current.CancellationToken);
+
+        var freshSource = await Db.Profiles.AsNoTracking().SingleAsync(
+            p => p.Id == sourceProfileId, TestContext.Current.CancellationToken);
+        if (targetHasProfile)
+        {
+            freshSource.ProfilePictureContentType.Should().BeNull();
+            freshSource.ProfilePictureStorageKey.Should().BeNull();
+            await _fileStorage.Received(1).DeleteAsync(previousKey, CancellationToken.None);
+            var target = await Db.Profiles.AsNoTracking().SingleAsync(
+                p => p.Id == targetProfileId, TestContext.Current.CancellationToken);
+            target.ProfilePictureStorageKey.Should().Be(survivorKey);
+        }
+        else
+        {
+            freshSource.ProfilePictureContentType.Should().Be("image/png");
+            await _fileStorage.DidNotReceive().DeleteAsync(previousKey, Arg.Any<CancellationToken>());
+        }
+        await _fileStorage.DidNotReceive().DeleteAsync(survivorKey, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

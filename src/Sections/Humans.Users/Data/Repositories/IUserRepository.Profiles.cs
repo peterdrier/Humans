@@ -189,7 +189,8 @@ internal partial interface IUserRepository
     /// touch <c>ContactField</c> rows.
     /// No-op if either user has no profile.
     /// </remarks>
-    Task ReassignSubAggregatesToUserAsync(
+    /// <returns>The source picture metadata after the fold commits, or null when no profiles were folded.</returns>
+    Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 

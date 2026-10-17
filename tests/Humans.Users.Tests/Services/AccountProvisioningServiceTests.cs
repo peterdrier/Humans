@@ -204,7 +204,7 @@ public class AccountProvisioningServiceTests
             Instant now,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task ReassignSubAggregatesToUserAsync(
+        public Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReconcileCVEntriesAsync(

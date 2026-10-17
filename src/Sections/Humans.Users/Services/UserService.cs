@@ -1370,7 +1370,12 @@ internal sealed class UserService(
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
         await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        if (previousPicture is { } picture &&
+            ProfilePictureKeys.Resolve(picture.ProfileId, picture.ContentType, picture.StorageKey) is { } key)
+        {
+            await DeleteSupersededPictureAsync(picture.ProfileId, key);
+        }
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
