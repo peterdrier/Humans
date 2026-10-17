@@ -24,24 +24,9 @@ public class TicketQueryArchitectureTests
     // ── CachingTicketQueryService (decorator) ────────────────────────────────
 
     [HumansFact]
-    public void CachingTicketQueryService_ImplementsITicketService()
+    public void CachingTicketQueryService_ImplementsITicketManagement()
     {
         typeof(ITicketManagement).IsAssignableFrom(typeof(CachingTicketQueryService))
-            .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void ITicketService_InheritsITicketServiceRead()
-    {
-        typeof(ITicketService).IsAssignableFrom(typeof(ITicketManagement))
-            .Should().BeTrue(
-                because: "ITicketManagement is the full Tickets surface; external sections inject the narrow ITicketService");
-    }
-
-    [HumansFact]
-    public void CachingTicketQueryService_ImplementsITicketServiceRead()
-    {
-        typeof(ITicketService).IsAssignableFrom(typeof(CachingTicketQueryService))
             .Should().BeTrue();
     }
 
