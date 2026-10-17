@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Consent.Contracts;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace Humans.Consent.Contracts;
 /// this interface; only Consent projections (RequiredConsentRow, ConsentReviewDetail)
 /// and value-type reads, no EF entities and no writes/cache hooks.
 /// </summary>
-public interface IConsentService
+public interface IConsentService : IApplicationService
 {
     Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default);

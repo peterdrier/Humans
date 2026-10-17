@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using NodaTime;
 
 namespace Humans.CityPlanning.Contracts;
@@ -8,7 +9,7 @@ namespace Humans.CityPlanning.Contracts;
 /// (<see cref="CityPlanningSettingsDto"/>), the registration-info scalar, and the
 /// City Planning team-membership check — no EF entities, no writes.
 /// </summary>
-public interface ICityPlanningService
+public interface ICityPlanningService : IApplicationService
 {
     /// <summary>
     /// Gets the per-year City Planning settings (creates the row on demand for

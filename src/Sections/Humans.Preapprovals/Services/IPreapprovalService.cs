@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Preapprovals.Domain;
 
 namespace Humans.Preapprovals.Services;
@@ -7,7 +8,7 @@ namespace Humans.Preapprovals.Services;
 /// Nothing here changes state. Internal — no other section consumes Preapprovals yet; when
 /// Expenses does, this is the face that becomes public in a Contracts folder.
 /// </summary>
-internal interface IPreapprovalService
+internal interface IPreapprovalService : IApplicationService
 {
     /// <summary>
     /// The grants <paramref name="userId"/> may file against today: <see cref="GrantStatus.Open"/>

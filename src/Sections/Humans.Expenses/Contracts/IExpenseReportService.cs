@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+
 namespace Humans.Expenses.Contracts;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace Humans.Expenses.Contracts;
 /// (peterdrier/Humans#1838) consumes it; it exposes exactly what <c>IExpenseReportManagement</c>
 /// exposes internally.
 /// </summary>
-public interface IExpenseReportService
+public interface IExpenseReportService : IApplicationService
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
 

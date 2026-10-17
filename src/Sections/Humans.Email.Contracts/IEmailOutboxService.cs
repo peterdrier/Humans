@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Base.Enums;
 using NodaTime;
 
@@ -8,7 +9,7 @@ namespace Humans.Email.Contracts;
 /// this interface: per-user outbox history projections
 /// (<see cref="EmailOutboxMessageDto"/> / counts). No admin writes, stats or pause state.
 /// </summary>
-public interface IEmailOutboxService
+public interface IEmailOutboxService : IApplicationService
 {
     /// <summary>
     /// Gets outbox messages for a specific user, ordered by CreatedAt descending.
