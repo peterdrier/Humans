@@ -534,36 +534,10 @@ internal sealed class TicketQueryService(
             return rows.ToList();
 
         var users = await userService.GetUserInfosAsync(matchedIds);
-        return rows.Select(r =>
-        {
-            if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
-            {
-                return new OrderRow
-                {
-                    Id = r.Id,
-                    VendorOrderId = r.VendorOrderId,
-                    PurchasedAt = r.PurchasedAt,
-                    BuyerName = r.BuyerName,
-                    BuyerEmail = r.BuyerEmail,
-                    AttendeeCount = r.AttendeeCount,
-                    TotalAmount = r.TotalAmount,
-                    Currency = r.Currency,
-                    DiscountCode = r.DiscountCode,
-                    DiscountAmount = r.DiscountAmount,
-                    DonationAmount = r.DonationAmount,
-                    VatAmount = r.VatAmount,
-                    PaymentMethod = r.PaymentMethod,
-                    PaymentMethodDetail = r.PaymentMethodDetail,
-                    StripeFee = r.StripeFee,
-                    ApplicationFee = r.ApplicationFee,
-                    PaymentStatus = r.PaymentStatus,
-                    VendorDashboardUrl = r.VendorDashboardUrl,
-                    MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.BurnerName,
-                };
-            }
-            return r;
-        }).ToList();
+        return rows.Select(row =>
+            row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
+                ? row with { MatchedUserName = user.BurnerName }
+                : row).ToList();
     }
 
     private async Task<List<AttendeeRow>> HydrateAttendeeMatchedUserNamesAsync(IReadOnlyList<AttendeeRow> rows)
@@ -577,25 +551,10 @@ internal sealed class TicketQueryService(
             return rows.ToList();
 
         var users = await userService.GetUserInfosAsync(matchedIds);
-        return rows.Select(r =>
-        {
-            if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
-            {
-                return new AttendeeRow
-                {
-                    Id = r.Id,
-                    AttendeeName = r.AttendeeName,
-                    AttendeeEmail = r.AttendeeEmail,
-                    TicketTypeName = r.TicketTypeName,
-                    Price = r.Price,
-                    Status = r.Status,
-                    MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.BurnerName,
-                    VendorOrderId = r.VendorOrderId,
-                };
-            }
-            return r;
-        }).ToList();
+        return rows.Select(row =>
+            row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
+                ? row with { MatchedUserName = user.BurnerName }
+                : row).ToList();
     }
 
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(

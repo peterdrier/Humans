@@ -636,12 +636,17 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task GetOrdersPageAsync_ReturnsPagedResults()
     {
+        var buyer = CreateUser("Buyer Human", "buyer-human@example.com");
+        buyer.BurnerName = "Buyer Human";
+        Db.Users.Add(buyer);
         for (var i = 0; i < 5; i++)
         {
-            TicketsDb.TicketOrders.Add(MakeOrder(
+            var order = MakeOrder(
                 $"ord_{i}", TicketPaymentStatus.Paid,
                 Instant.FromUtc(2026, 3, 1 + i, 10, 0),
-                100m, 0m, 9.09m, 1, 0m));
+                100m, 0m, 9.09m, 1, 0m);
+            if (i == 4) order.MatchedUserId = buyer.Id;
+            TicketsDb.TicketOrders.Add(order);
         }
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -651,6 +656,11 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.TotalCount.Should().Be(5);
         result.Rows.Should().HaveCount(2);
+        result.Rows[0].VendorOrderId.Should().Be("ord_4");
+        result.Rows[0].MatchedUserName.Should().Be("Buyer Human");
+        result.Rows[0].TotalAmount.Should().Be(100m);
+        result.Rows[0].VatAmount.Should().Be(9.09m);
+        result.Rows[1].MatchedUserName.Should().BeNull();
     }
 
     [HumansFact(Timeout = 10000)]
@@ -692,8 +702,12 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task GetAttendeesPageAsync_ReturnsPagedResults()
     {
+        var human = CreateUser("Attendee Human", "attendee-human@example.com");
+        human.BurnerName = "Attendee Human";
+        Db.Users.Add(human);
         var order = MakeOrder("ord_1", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 1, 10, 0), 300m, 0m, 0m, 3, 0m);
+        foreach (var attendee in order.Attendees) attendee.MatchedUserId = human.Id;
         TicketsDb.TicketOrders.Add(order);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -702,6 +716,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.TotalCount.Should().Be(3);
         result.Rows.Should().HaveCount(2);
+        result.Rows.Should().OnlyContain(row => string.Equals(row.MatchedUserName, "Attendee Human", StringComparison.Ordinal)
+            && string.Equals(row.TicketTypeName, "Full Week", StringComparison.Ordinal) && row.Price == TicketConstants.VipThresholdEuros);
     }
 
     [HumansFact]
