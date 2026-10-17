@@ -431,16 +431,8 @@ internal sealed class VolunteerTrackingService(
         var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
-        var daySignups = signups
-            .Where(s => s.UserId == userId)
-            .GroupBy(s => s.DayOffset)
-            .ToDictionary(
-                g => g.Key,
-                g => (
-                    Status: g.Any(x => x.Status == SignupStatus.Confirmed)
-                        ? SignupStatus.Confirmed : SignupStatus.Pending,
-                    RotaNames: (IReadOnlyList<string>)g.Select(x => x.RotaName)
-                        .Distinct(StringComparer.Ordinal).ToList()));
+        var daySignups = BuildPerUserSignupMap(signups.Where(s => s.UserId == userId))
+            .GetValueOrDefault(userId) ?? [];
 
         var bs = (await trackingRepo.GetBuildStatusesForEventAsync(es.Id, [userId], ct).ConfigureAwait(false))
             .FirstOrDefault(r => r.UserId == userId);
