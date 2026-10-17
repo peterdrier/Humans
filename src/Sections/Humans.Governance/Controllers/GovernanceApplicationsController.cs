@@ -10,6 +10,7 @@ using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Governance.Controllers;
 
@@ -19,7 +20,8 @@ internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
     IUserServiceRead userService,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ILogger<GovernanceApplicationsController> logger) : HumansControllerBase(userService)
+    ILogger<GovernanceApplicationsController> logger,
+    IClock clock) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -33,8 +35,8 @@ internal sealed class GovernanceApplicationsController(
         var hasPendingApplication = applications.Any(a =>
             a.Status == ApplicationStatus.Submitted);
 
-        var isApprovedColaborador = applications.Any(a =>
-            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+            user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         var viewModel = new ApplicationIndexViewModel
         {

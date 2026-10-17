@@ -27,7 +27,28 @@ public sealed class GovernanceIndexServiceTests
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
         Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserInfo>)[]);
-        return new GovernanceIndexService(Applications, LegalDocuments, Users);
+        return new GovernanceIndexService(Applications, LegalDocuments,
+            new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 10, 17, 12, 0)));
+    }
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_CountsActiveTermsInsteadOfCachedProfileTiers()
+    {
+        var userId = Guid.NewGuid();
+        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<UserApplicationSnapshot>)[]);
+        Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Colaborador, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Guid>)[userId]);
+        Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Guid>)[userId, Guid.NewGuid()]);
+
+        var data = await CreateService().GetIndexDataAsync(userId);
+
+        data.ColaboradorCount.Should().Be(1);
+        data.AsociadoCount.Should().Be(2);
+        data.IsApprovedColaborador.Should().BeTrue();
     }
 
     [HumansFact]

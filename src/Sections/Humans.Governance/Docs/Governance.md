@@ -10,7 +10,9 @@
 
 Colaborador and Asociado tier applications, Board voting workflow, term lifecycle, and the association's binding assembly votes. **Not** volunteer onboarding — that lives under `src/Sections/Humans.Onboarding/Docs/Onboarding.md` and is explicitly a separate track.
 
-The `humans.asociados` gauge counts distinct humans with an active approved Asociado term on the current UTC date, including terms expiring today. Colaborador approvals, expired terms, and duplicate renewal applications do not inflate it.
+The `humans.asociados` gauge counts distinct humans with active approved Asociado terms on the current UTC date, including terms expiring today. Colaborador approvals, expired terms, and duplicate renewals do not inflate it.
+
+The Governance page’s tier totals and Colaborador prompts use active approved terms, not cached profile tiers or historical approvals. A human with both commitments counts in each tier. The application-history page uses the same active-term rule for its Colaborador prompt.
 
 ## Concepts
 

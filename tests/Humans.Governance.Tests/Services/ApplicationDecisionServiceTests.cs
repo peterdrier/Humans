@@ -286,7 +286,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo()));
         var controller = new GovernanceApplicationsController(_service, _userService, localizer,
-            NullLogger<GovernanceApplicationsController>.Instance)
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1111,6 +1111,37 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    public async Task ApplicationIndex_ColaboradorPromptRequiresAnActiveTerm(int expiryOffset, bool expectedPrompt)
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        app.MembershipTier = MembershipTier.Colaborador;
+        app.Approve(Guid.NewGuid(), null, Clock);
+        app.TermExpiresAt = Clock.GetCurrentInstant().InUtc().Date.PlusDays(expiryOffset);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test"))
+                }
+            }
+        };
+
+        var result = (await controller.Index()).Should().BeOfType<ViewResult>().Subject;
+        result.Model.Should().BeOfType<ApplicationIndexViewModel>().Subject
+            .IsApprovedColaborador.Should().Be(expectedPrompt);
+    }
+
+    [HumansTheory]
     [InlineData("Index")]
     [InlineData("Create")]
     [InlineData("Details")]
@@ -1129,7 +1160,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
         });
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1239,7 +1270,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.Motivation = motivation;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

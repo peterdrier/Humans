@@ -1,13 +1,14 @@
 using Humans.Governance.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Governance.Services;
 
 internal sealed class GovernanceIndexService(
     IApplicationServiceRead applicationDecisionService,
     ILegalDocumentService legalDocService,
-    IUserServiceRead userService) : IGovernanceIndexService
+    IClock clock) : IGovernanceIndexService
 {
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -15,12 +16,10 @@ internal sealed class GovernanceIndexService(
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
         var statutesContent = await legalDocService.GetDocumentContentAsync("statutes", ct);
 
-        var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
-        var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
-
-        var isApprovedColaborador = applications.Any(a =>
-            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+        var today = clock.GetCurrentInstant().InUtc().Date;
+        var colaboradores = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Colaborador, today, ct);
+        var asociados = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today, ct);
+        var isApprovedColaborador = colaboradores.Contains(userId);
 
         return new GovernanceIndexData(
             statutesContent,
@@ -32,7 +31,7 @@ internal sealed class GovernanceIndexService(
             latestApplication?.TermExpiresAt,
             latestApplication is null || latestApplication.Status != ApplicationStatus.Submitted,
             isApprovedColaborador,
-            colaboradorCount,
-            asociadoCount);
+            colaboradores.Count,
+            asociados.Count);
     }
 }
