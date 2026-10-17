@@ -87,4 +87,15 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// reason.</summary>
     [ExternalWrite]
     Task<SepaBookingResult> BookSepaFileAsync(Guid fileId, string bankMovementId, Guid actorUserId);
+
+    /// <summary>Books every unbooked transfer of one payout file, each against the Sabadell line
+    /// <see cref="GetSepaPayoutsAsync"/> paired it with — the approval for lines Sabadell booked one
+    /// per transfer with no remittance text, matched on amount and date alone. Refuses the whole
+    /// file, posting nothing, unless every unbooked transfer in it has exactly one line; each then
+    /// books as <see cref="BookSepaTransferAsync"/> would, re-validating its own pairing. Only ever
+    /// a finance admin's click, never the sweep. A refusal part-way leaves the booked ones booked,
+    /// and approving the file again finishes the rest. Takes no <c>CancellationToken</c>, for the
+    /// same reason.</summary>
+    [ExternalWrite]
+    Task<SepaBookingResult> BookSepaFileMatchesAsync(Guid fileId, Guid actorUserId);
 }

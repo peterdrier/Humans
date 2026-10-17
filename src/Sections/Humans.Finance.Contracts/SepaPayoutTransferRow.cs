@@ -30,6 +30,9 @@ namespace Humans.Finance.Contracts;
 /// <param name="CandidateBankMovementAmount">The candidate bank movement's amount, when matched.</param>
 /// <param name="CandidateBankMovementDescription">The candidate bank movement's description, when matched.</param>
 /// <param name="BatchLine">The candidate whole-file bank movement, when one is identified.</param>
+/// <param name="CandidateMatchedByText">True when the candidate line's text names this transfer's
+/// creditor account; false when it was matched on amount and date alone, because Sabadell dropped
+/// the remittance text.</param>
 public sealed record SepaPayoutTransferRow(
     Guid TransferId,
     Guid FileId,
@@ -51,7 +54,8 @@ public sealed record SepaPayoutTransferRow(
     LocalDate? CandidateBankMovementDate = null,
     decimal? CandidateBankMovementAmount = null,
     string? CandidateBankMovementDescription = null,
-    SepaBatchLineVm? BatchLine = null)
+    SepaBatchLineVm? BatchLine = null,
+    bool CandidateMatchedByText = false)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;

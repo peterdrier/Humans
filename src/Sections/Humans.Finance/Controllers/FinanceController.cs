@@ -212,6 +212,21 @@ internal sealed class FinanceController(
         return RedirectToAction(nameof(Sepa));
     }
 
+    /// <summary>Approves a file whose every unbooked transfer is matched to its own Sabadell line,
+    /// booking them all — the Book file button. No <c>CancellationToken</c>, as for a single
+    /// booking.</summary>
+    [HttpPost("Sepa/BookMatches")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookSepaFileMatches(Guid fileId)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa));
+    }
+
     /// <summary>Every column on /Finance/Creditors is sortable; ties resolve on the account number
     /// so the order is stable across reloads.</summary>
     private static List<CreditorAccountRowVm> SortCreditorRows(

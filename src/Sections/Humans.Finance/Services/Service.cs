@@ -1351,13 +1351,16 @@ internal sealed class Service(
         {
             // The page still lists everything it lists; it just cannot offer a line to book against.
             logger.LogWarning(ex, "The Sabadell bank feed could not be read for /Finance/Sepa.");
+            // Admin-only page: the Holded message names the line or the call that failed, which is
+            // what the treasurer needs to fix it.
             return (withReasons, null, [],
-                "The Sabadell bank feed could not be read, so no transfer can be booked right now.");
+                "The Sabadell bank feed could not be read, so no transfer can be booked right now: "
+                + ex.Message);
         }
 
         var bookable = withReasons.Where(r => r.NotBookableReason is null).ToList();
         var unmatched = new List<SepaBankMovementVm>();
-        var candidateByTransfer = new Dictionary<Guid, HoldedBankMovementDto>();
+        var candidateByTransfer = new Dictionary<Guid, (HoldedBankMovementDto Line, bool ByText)>();
         var considered = movements
             .Where(NeedsAMatch)
             // A line this section already booked is nobody's problem — it renders on its own row.
@@ -1368,10 +1371,12 @@ internal sealed class Service(
                 var account = RemittanceAccountNum(m.Description);
                 // Only rows that could actually be booked can claim a line; letting a not-bookable
                 // row claim one would hide the line from the "needs a human" panel as well as from
-                // the row.
-                return (Movement: m, Account: account, Matches: account is null
-                    ? []
-                    : UnbookedMatches(bookable, account.Value, Math.Abs(m.Amount), m.Date));
+                // the row. A textless line (Sabadell drops the remittance text) matches on amount
+                // and date alone — and never while it could also be a whole file's debit.
+                return (Movement: m, Account: account, Matches:
+                    account is null && TextlessLineFitsAFile(withReasons, m)
+                        ? []
+                        : UnbookedMatches(bookable, account, Math.Abs(m.Amount), m.Date));
             })
             .ToList();
 
@@ -1406,7 +1411,7 @@ internal sealed class Service(
         {
             if (matches.Count == 1 && claimants[matches[0].TransferId] == 1)
             {
-                candidateByTransfer[matches[0].TransferId] = m;
+                candidateByTransfer[matches[0].TransferId] = (m, account is not null);
                 continue;
             }
 
@@ -1422,12 +1427,17 @@ internal sealed class Service(
                     ? $"{files.Count} payout files total {Euros(Math.Abs(m.Amount))} — settle it in Holded by hand"
                     : files.Count == 1
                         ? "another bank line matches that file's total too — settle it in Holded by hand"
-                        : account is null
-                            ? "its text names no creditor account"
+                        : account is null && TextlessLineFitsAFile(withReasons, m)
+                            ? "its text names no creditor account, and it could be one transfer's line or "
+                              + "a whole file's — settle it in Holded by hand"
                             : matches.Count == 0
-                                ? $"no unbooked transfer of {Euros(Math.Abs(m.Amount))} on account {account}"
+                                ? account is null
+                                    ? $"its text names no creditor account, and no unbooked transfer is for {Euros(Math.Abs(m.Amount))}"
+                                    : $"no unbooked transfer of {Euros(Math.Abs(m.Amount))} on account {account}"
                                 : matches.Count > 1
-                                    ? $"{matches.Count} unbooked transfers match it — settle it in Holded by hand"
+                                    ? account is null
+                                        ? $"{matches.Count} unbooked transfers are for {Euros(Math.Abs(m.Amount))} and its text names no creditor account — book it by hand"
+                                        : $"{matches.Count} unbooked transfers match it — settle it in Holded by hand"
                                     : "another bank line matches that transfer too — settle it in Holded by hand"));
         }
 
@@ -1435,13 +1445,14 @@ internal sealed class Service(
 
         return (
             withReasons
-                .Select(r => candidateByTransfer.TryGetValue(r.TransferId, out var line)
+                .Select(r => candidateByTransfer.TryGetValue(r.TransferId, out var c)
                     ? r with
                     {
-                        CandidateBankMovementId = line.Id,
-                        CandidateBankMovementDate = line.Date,
-                        CandidateBankMovementAmount = line.Amount,
-                        CandidateBankMovementDescription = line.Description,
+                        CandidateBankMovementId = c.Line.Id,
+                        CandidateBankMovementDate = c.Line.Date,
+                        CandidateBankMovementAmount = c.Line.Amount,
+                        CandidateBankMovementDescription = c.Line.Description,
+                        CandidateMatchedByText = c.ByText,
                     }
                     : r)
                 .Select(r => batchVmByFile.TryGetValue(r.FileId, out var batch) ? r with { BatchLine = batch } : r)
@@ -1566,6 +1577,8 @@ internal sealed class Service(
             if (rows.Any(r => string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 continue;
 
+            // A textless line is matched on amount and date by /Finance/Sepa, where a human approves
+            // it; the sweep books only a line whose text names the account.
             var account = RemittanceAccountNum(m.Description);
             if (account is null) continue;
 
@@ -1657,6 +1670,50 @@ internal sealed class Service(
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId) =>
         RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId));
+
+    public Task<SepaBookingResult> BookSepaFileMatchesAsync(Guid fileId, Guid actorUserId) =>
+        RunBookingAsync(() => BookFileMatchesAsync(fileId, actorUserId));
+
+    /// <summary>The page's pairing, re-run now, and the all-or-nothing gate: a file whose rows are
+    /// not all matched is not approved at all, so a treasurer never books half a file and hunts the
+    /// other half by hand. Each row then goes through <see cref="BookOneTransferAsync"/>, which
+    /// re-validates its own line; the first refusal stops the run, booked rows stay booked.</summary>
+    private async Task<SepaBookingResult> BookFileMatchesAsync(Guid fileId, Guid actorUserId)
+    {
+        var (rows, unavailable, _, feedError) = await GetSepaPayoutsAsync(CancellationToken.None);
+        if (unavailable is not null) return new SepaBookingResult(false, unavailable);
+        if (feedError is not null) return new SepaBookingResult(false, feedError + " Nothing was posted.");
+
+        var file = rows.Where(r => r.FileId == fileId).ToList();
+        if (file.Count == 0)
+            return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
+        var unbooked = file.Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
+        if (unbooked.Count == 0)
+            return new SepaBookingResult(false, "Every transfer in that file is already booked — nothing was posted.");
+        var unmatched = unbooked.Where(r => !r.CanBook).ToList();
+        if (unmatched.Count > 0)
+            return new SepaBookingResult(false,
+                $"{unmatched.Count} of the file's {unbooked.Count} unbooked transfers have no Sabadell line "
+                + $"(creditor account{(unmatched.Count == 1 ? "" : "s")} "
+                + string.Join(", ", unmatched.Select(r => r.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)))
+                + ") — the file is approved only when every transfer in it is matched. Nothing was posted.");
+
+        var booked = 0;
+        foreach (var row in unbooked)
+        {
+            var result = await BookOneTransferAsync(row.TransferId, row.CandidateBankMovementId!, actorUserId);
+            if (!result.Succeeded)
+                return new SepaBookingResult(false,
+                    $"{booked} of {unbooked.Count} transfers booked; the one on creditor account "
+                    + $"{row.SupplierAccountNum} was not: {result.Message} Approve the file again to "
+                    + "book the rest.");
+            booked++;
+        }
+
+        return new SepaBookingResult(true,
+            $"Booked all {booked} transfer{(booked == 1 ? "" : "s")} of {file[0].FileName} against "
+            + "their Sabadell lines.");
+    }
 
     private async Task<SepaBookingResult> RunBookingAsync(Func<Task<SepaBookingResult>> booking)
     {
@@ -2138,32 +2195,39 @@ internal sealed class Service(
                 return $"That Sabadell line is already {m.Status} in Holded — settle it there by hand. "
                        + "Nothing was posted.";
 
+            // Text naming another account is another transfer's line. No text at all is how
+            // Sabadell books these, so the line is matched on amount and date instead.
             var account = RemittanceAccountNum(m.Description);
-            if (account is null || account.Value != transfer.SupplierAccountNum)
-                return $"That Sabadell line's text does not name creditor account "
+            if (account is not null && account.Value != transfer.SupplierAccountNum)
+                return $"That Sabadell line's text names creditor account {account.Value}, not "
                        + $"{transfer.SupplierAccountNum} — nothing was posted.";
+            if (account is null && TextlessLineFitsAFile(all, m))
+                return "That Sabadell line names no creditor account and could be a whole file's debit "
+                       + "as well as this transfer's — settle it in Holded by hand. Nothing was posted.";
 
             // One bank line settles one transfer.
             if (all.Any(r => r.TransferId != transfer.Id
                              && string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 return "That Sabadell line already booked another transfer — nothing was posted.";
 
-            var matches = UnbookedMatches(all, account.Value, transfer.Amount, m.Date);
+            var matches = UnbookedMatches(all, account, transfer.Amount, m.Date);
             if (matches.Count > 1)
                 return $"{matches.Count} unbooked transfers match that Sabadell line — Humans cannot tell "
                        + "which it paid; settle it in Holded by hand. Nothing was posted.";
             if (matches.Count != 1 || matches[0].TransferId != transfer.Id)
                 return "That Sabadell line does not match this transfer — nothing was posted.";
 
-            // The mirror: another unreconciled line of the same amount on the same account, dated
-            // no earlier than this file, could equally be the one that paid it.
+            // The mirror: another unreconciled line of the same amount, dated no earlier than this
+            // file, that names this account or no account at all, could equally be the one that
+            // paid it.
             var rivals = lines.Count(x =>
                 !string.Equals(x.Id, m.Id, StringComparison.Ordinal)
                 && NeedsAMatch(x)
                 && Math.Abs(x.Amount) == transfer.Amount
-                && RemittanceAccountNum(x.Description) == account.Value
+                && RemittanceAccountNum(x.Description) is var xAccount
+                && (xAccount is null || xAccount == transfer.SupplierAccountNum)
                 && !all.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal))
-                && UnbookedMatches(all, account.Value, transfer.Amount, x.Date)
+                && UnbookedMatches(all, xAccount, transfer.Amount, x.Date)
                     .Any(r => r.TransferId == transfer.Id));
             return rivals == 0
                 ? null
@@ -2299,17 +2363,26 @@ internal sealed class Service(
     }
 
     /// <summary>The unbooked transfers a bank line dated <paramref name="lineDate"/> for
-    /// <paramref name="account"/> and <paramref name="amount"/> could be paying. More than one is
-    /// ambiguous and waits for a human. Only files generated inside the feed window count: a stale
+    /// <paramref name="account"/> and <paramref name="amount"/> could be paying — any account when
+    /// the line's text names none, since Sabadell drops the remittance text and the amount and date
+    /// are all a line carries. More than one is ambiguous and waits for a human. Only files generated inside the feed window count: a stale
     /// row from an old file would otherwise make every later transfer of the same amount permanently
     /// ambiguous, and no live bank line can be paying it anyway. A line dated before the file that
     /// asked for it cannot be paying it either — that one is some older payment of the same amount,
     /// still unreconciled on the feed.</summary>
     private List<SepaPayoutTransferRow> UnbookedMatches(
-        IReadOnlyList<SepaPayoutTransferRow> rows, int account, decimal amount, LocalDate lineDate) =>
-        rows.Where(r => r.BookedAt is null && r.SupplierAccountNum == account && r.Amount == amount
-                        && !IsStale(r) && lineDate >= FirstPayableDate(r))
+        IReadOnlyList<SepaPayoutTransferRow> rows, int? account, decimal amount, LocalDate lineDate) =>
+        rows.Where(r => r.BookedAt is null && (account is null || r.SupplierAccountNum == account)
+                        && r.Amount == amount && !IsStale(r) && lineDate >= FirstPayableDate(r))
             .ToList();
+
+    /// <summary>A textless line whose amount is also some multi-transfer file's total, dated inside
+    /// that file's window with transfers still unbooked: Humans cannot tell one transfer's debit from
+    /// a whole file's, so neither path takes it.</summary>
+    private bool TextlessLineFitsAFile(IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m) =>
+        rows.GroupBy(r => r.FileId).Any(f =>
+            f.Count() >= 2 && f.Sum(r => r.Amount) == Math.Abs(m.Amount)
+            && f.Any(r => !r.IsBooked) && !IsStale(f.First()) && m.Date >= FirstPayableDate(f.First()));
 
     /// <summary>The files whose whole total <paramref name="m"/> could be the one debit of. More than
     /// one is ambiguous and waits for a human.</summary>
@@ -2354,10 +2427,16 @@ internal sealed class Service(
                           && string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
             return "That Sabadell line already booked a transfer from another file — nothing was posted.";
         // A line whose text names one transfer's account and amount is that transfer's own line.
-        if (RemittanceAccountNum(m.Description) is { } account
-            && UnbookedMatches(rows, account, Math.Abs(m.Amount), m.Date).Count > 0)
-            return "That Sabadell line names a single transfer — book it on that transfer's row. "
-                   + "Nothing was posted.";
+        if (RemittanceAccountNum(m.Description) is { } account)
+        {
+            if (UnbookedMatches(rows, account, Math.Abs(m.Amount), m.Date).Count > 0)
+                return "That Sabadell line names a single transfer — book it on that transfer's row. "
+                       + "Nothing was posted.";
+        }
+        // A textless one that is also some single transfer's amount could be either.
+        else if (UnbookedMatches(rows, null, Math.Abs(m.Amount), m.Date).Count > 0)
+            return "That Sabadell line names no creditor account and could be a single transfer's "
+                   + "debit as well as this file's — settle it in Holded by hand. Nothing was posted.";
         // And the mirror: a transfer of this file with a line of its own was not debited as part of
         // one total, so a total-sized line is some other payment.
         if (feed.Any(x => NeedsAMatch(x)

@@ -10,11 +10,13 @@ download a Norma 34-14 / **pain.001.001.09** SEPA Credit Transfer file to upload
 "Enviar ficheros". Payouts operate on **creditor balances**, never on expense reports — no report
 status, no member flag and no `Paid` state exists or moves.
 
-`/Finance/Sepa` is the other half: every generated file with its transfers, and per transfer either
-a **Book** button — once the outgoing Sabadell line has appeared on the bank feed — or a wait state.
-Booking no longer "settles it now": it settles **against that bank line**, and a recurring sweep
-does the same thing unattended every two hours, so most transfers book without anyone touching the
-button. Booking pays the member's open purchase documents and posts one journal entry for whatever
+`/Finance/Sepa` is the other half: every generated file with its transfers, each paired with the
+outgoing Sabadell line that paid it once that line is on the bank feed. Sabadell debits one line
+per transfer but drops the remittance text, so the pairing is on **amount and date**; when the text
+does name the creditor account, on that too. Booking settles the transfer **against that bank
+line**. A text-matched line books unattended in the two-hourly sweep or from the row's **Book**
+button; an amount-matched one waits for the file's **Book file** approval, offered only when every
+unbooked transfer in the file has exactly one line, and booking them all in one go. Booking pays the member's open purchase documents and posts one journal entry for whatever
 those do not cover. The next ledger sync then zeroes the creditor balance. Booking is the only thing
 that moves a transfer out of `Generated`.
 
@@ -92,9 +94,12 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
 1. **Find the line.** `client.ListBankMovementsAsync` over the last 92 days (the 90-day feed window
    plus the 2-day generation slack a line may precede its file by) on `Sepa:TreasuryAccountId`; the posted `bankMovementId` must be in it or the booking refuses.
 2. **Validate the pairing, server-side** — never trust the posted id: the line is outgoing and its
-   amount matches the transfer exactly; it is not already `reconciled`; its description names this
-   transfer's `SupplierAccountNum` (the `<account> - NCA - <name>` remittance text); exactly one
-   unbooked transfer matches it; no other row already carries this movement id.
+   amount matches the transfer exactly; it is `pending` in Holded; if its description names a
+   creditor account (the `<account> - NCA - <name>` remittance text) it is this transfer's
+   `SupplierAccountNum`; a textless line is not also some multi-transfer file's total; exactly one
+   unbooked transfer (of that account, or of any account for a textless line) matches it on amount
+   and date; no other pending line could have paid this transfer; no other row already carries this
+   movement id.
 3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
    `owedNow = -Balance` — the account's live total, not a windowed reconstruction.
 4. **What is already posted**, from the ledger entries on the creditor account tagged with this
@@ -161,7 +166,9 @@ ledger, so paying one would post against a document that does not exist for acco
 | `Sepa:*` identity, `Sepa:TreasuryAccountId` or `Sepa:TreasuryLedgerAccount` unset | one banner for the whole screen; no buttons |
 | Already booked | the row renders as `Booked`; a re-POST pays nothing and says so |
 | No bank line yet | no button; "waiting for the Sabadell line" |
-| Ambiguous match (two unbooked transfers generated inside the feed window fit one line) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
+| Ambiguous match (two unbooked transfers generated inside the feed window fit one line — of its account, or of any account when its text names none) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
+| A textless line whose amount is also a multi-transfer file's total | neither the transfer nor the file takes it; the panel says so |
+| A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
 | The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | refused; nothing posted |
@@ -187,10 +194,11 @@ now only reaches the audit entry — nothing is stored on the row for it.
 
 ## The sweep
 
-`SepaBankBookingJob` (Hangfire id `sepa-bank-booking`, `17 */2 * * *` — every 2 hours) is the normal
-trigger: it lists unbooked transfers, reads the bank feed once over a window covering every
-candidate file, matches lines to transfers with the same rules as the button, and books every unique
-match. A line matching no transfer, or matching more than one, is skipped and surfaced on
+`SepaBankBookingJob` (Hangfire id `sepa-bank-booking`, `17 */2 * * *` — every 2 hours) lists
+unbooked transfers, reads the bank feed once over a window covering every candidate file, matches
+lines **whose text names a creditor account** to transfers with the same rules as the button, and
+books every unique match. A textless line is never booked by the sweep: Sabadell's lines carry no
+text, so until that matching has earned trust a human approves each file on `/Finance/Sepa`. A line matching no transfer, or matching more than one, is skipped and surfaced on
 `/Finance/Sepa`'s "bank lines needing a human" panel. The sweep also retries the reconcile for every
 row still `ReconcilePending`, by checking whether the stored bank line now reads `reconciled` in
 Holded. Every reconcile-pending row's line lies inside the window read for it: the read's lower
@@ -198,6 +206,28 @@ bound drops to the oldest pending row's first payable day with no feed floor, so
 never ages out of its own re-check. The floor (90 days plus the 2-day generation slack) still bounds
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
 is logged at Warning. One bad line or one Holded exception never aborts the rest of the run.
+
+## One line per transfer, no text — Book file
+
+Sabadell's live behaviour: one outgoing line per transfer, dated the execution day, with no
+remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked, bookable
+transfer of exactly its amount whose file was generated no later than the line (less the 2-day
+slack), inside the feed window. Nothing else is inferred:
+
+- two unbooked transfers of that amount, in any files, make the line ambiguous — the panel names
+  the count and a human books it in Holded;
+- two pending lines of that amount that could each have paid one transfer leave it unpaired, both in
+  the panel;
+- a line whose amount is also a multi-transfer file's total is left to a human, since it could be
+  the file's single debit instead.
+
+A paired row shows the line (date, amount, id, text) with a "matched on amount and date only"
+badge and **no button of its own**. The file's card offers **Book file**
+(`POST /Finance/Sepa/BookMatches` → `BookSepaFileMatchesAsync`) only when every unbooked transfer
+in the file is paired; otherwise it says how many are. Book file re-runs the pairing, refuses the
+whole file if any transfer is unmatched, and then books each row through the single-transfer path,
+which re-validates its own line. A refusal part-way stops the run with the booked rows booked;
+approving the file again books the rest. A file whose rows are all booked shows **Done**.
 
 ## One bank line for a whole file — Process
 
