@@ -21,6 +21,7 @@ internal static class TestGovernanceEmails
 
     private static readonly Dictionary<string, string> Formats = new(StringComparer.Ordinal)
     {
+        ["Governance_Email_TermRenewalReminder_Body"] = "<p>Hi {0}</p><p>{1}: {2}</p><a href=\"{3}\">Renew</a>",
         ["Governance_Email_AssemblyVoteOpened_Body"] = "<p>Hi {0}</p><h2>{1}</h2><p>{2}</p><a href=\"{3}\">Vote</a>{4}",
     };
 

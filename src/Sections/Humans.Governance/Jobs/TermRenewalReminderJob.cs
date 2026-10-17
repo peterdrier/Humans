@@ -97,7 +97,6 @@ internal sealed class TermRenewalReminderJob(
 
                 try
                 {
-                    var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantLongDate();
                     var language = applicant.PreferredLanguage.IsSupportedCultureCode()
                         ? applicant.PreferredLanguage : CultureCatalog.DefaultCultureCode;
 
@@ -105,7 +104,7 @@ internal sealed class TermRenewalReminderJob(
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
-                        expiresFormatted,
+                        application.TermExpiresAt!.Value,
                         language),
                         cancellationToken);
 

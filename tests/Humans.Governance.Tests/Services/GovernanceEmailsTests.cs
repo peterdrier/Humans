@@ -1,4 +1,6 @@
 using Xunit;
+using System.Net;
+using Humans.Base.Extensions;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -48,13 +50,27 @@ public sealed class GovernanceEmailsTests
         rejected.Category.Should().Be(MessageCategory.Governance);
     }
 
-    [HumansFact]
-    public void TermRenewalReminder_StampsGovernanceCategory()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void TermRenewalReminder_FormatsExpiryInTheRecipientCulture(string culture)
     {
-        var msg = Create().TermRenewalReminder("a@x.com", "Alice", "Colaborador", "April 1, 2026", "en");
+        using var callerCulture = new CultureScope("en");
+        var expiry = new LocalDate(2026, 4, 1);
+        string expectedDate;
+        using (new CultureScope(culture))
+            expectedDate = WebUtility.HtmlEncode(expiry.ToDate());
+
+        var msg = Create().TermRenewalReminder("a@x.com", "Alice", "Colaborador", expiry, culture);
 
         msg.TemplateName.Should().Be("term_renewal_reminder");
         msg.Category.Should().Be(MessageCategory.Governance);
+        msg.Culture.Should().Be(culture);
+        msg.HtmlBody.Should().Contain(expectedDate);
     }
 
     [HumansFact]
@@ -126,6 +142,7 @@ public sealed class GovernanceEmailsTests
         if (type == typeof(bool)) return true;
         if (type == typeof(MembershipTier)) return MembershipTier.Colaborador;
         if (type == typeof(LocalDateTime)) return ClosesAt;
+        if (type == typeof(LocalDate)) return ClosesAt.Date;
         throw new NotSupportedException(
             $"GovernanceEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
     }

@@ -40,15 +40,11 @@ internal sealed class UsersEmails(
             TimeSensitiveTemplates.EmailVerification));
 
     public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
-    {
-        // Invariant long date, as the factory formatted it — deliberately not culture-sensitive.
-        var formattedDate = deletionDate.InUtc().Date.ToInvariantLongDate();
-        return Localized(culture, () => new EmailMessage(
+        => Localized(culture, () => new EmailMessage(
             userEmail, userName,
             L("Users_Email_DeletionRequested_Subject"),
-            Lf("Users_Email_AccountDeletionRequested_Body", Encode(userName), formattedDate, _settings.BaseUrl),
+            Lf("Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl),
             "deletion_requested"));
-    }
 
     /// <summary>
     /// Erasure confirmation. <c>DoNotPersist</c>: the recipient has just been erased, so an
@@ -79,7 +75,7 @@ internal sealed class UsersEmails(
     {
         using (new CultureScope(culture, logger))
         {
-            return build();
+            return build() with { Culture = CultureInfo.CurrentUICulture.Name };
         }
     }
 }

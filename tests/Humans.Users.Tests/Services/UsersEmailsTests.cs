@@ -1,4 +1,6 @@
+using Xunit;
 using System.Reflection;
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
@@ -47,14 +49,26 @@ public sealed class UsersEmailsTests
             .HtmlBody.Should().Contain("Users_Email_EmailVerification_Merge_Body");
     }
 
-    [HumansFact]
-    public void AccountDeletionRequested_FormatsTheDateAsAnInvariantLongDate()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void AccountDeletionRequested_FormatsTheDateInTheRecipientCulture(string culture)
     {
-        var msg = Create().AccountDeletionRequested("a@x.com", "Alice", DeletionDate, "en");
+        using var callerCulture = new CultureScope("en");
+        string expectedDate;
+        using (new CultureScope(culture))
+            expectedDate = DeletionDate.InUtc().Date.ToDate();
+
+        var msg = Create().AccountDeletionRequested("a@x.com", "Alice", DeletionDate, culture);
 
         msg.TemplateName.Should().Be("deletion_requested");
         msg.Category.Should().BeNull();
-        msg.HtmlBody.Should().Contain("15 March 2026");
+        msg.Culture.Should().Be(culture);
+        msg.HtmlBody.Should().Contain(expectedDate);
     }
 
     [HumansFact]
