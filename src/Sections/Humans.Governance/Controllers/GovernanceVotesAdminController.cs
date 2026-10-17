@@ -46,6 +46,9 @@ internal sealed class GovernanceVotesAdminController(
     {
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
+        if (!ModelState.IsValid)
+            return View("~/Views/Governance/Votes/Admin/Create.cshtml", model);
+
         var voteId = await voteService.CreateDraftAsync(model.ToDraft(), actorId, ct);
         if (voteId is null)
         {
@@ -80,6 +83,9 @@ internal sealed class GovernanceVotesAdminController(
         Guid voteId, AssemblyVoteDraftFormViewModel model, string? submitAction, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorId) return Challenge();
+
+        if (!ModelState.IsValid)
+            return RedisplayEdit(voteId, model, "That draft was rejected — check the required fields and options.");
 
         var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(), actorId, ct);
         if (result == AssemblyVoteActionResult.Ok && IsTranslate(submitAction))

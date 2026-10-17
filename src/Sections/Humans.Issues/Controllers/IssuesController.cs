@@ -83,7 +83,7 @@ internal sealed class IssuesController(
             : routing.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
-            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s, localizer) })
+            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s, localizer, routing) })
             .OrderBy(o => o.Label, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
@@ -153,12 +153,12 @@ internal sealed class IssuesController(
             return View("New", model);
         }
 
-        var section = model.Section ?? IssueSectionInference.FromPath(model.PageUrl);
+        var section = model.Section ?? IssueSectionInference.FromPath(model.PageUrl, routing);
 
         try
         {
             var roles = ClaimsRoles();
-            var issue = await issues.SubmitIssueAsync(
+            var submission = await issues.SubmitIssueAsync(
                 reporterUserId: user.Id,
                 category: model.Category,
                 title: model.Title,
@@ -171,6 +171,15 @@ internal sealed class IssuesController(
                 dueDate: model.DueDate,
                 reporterRoles: roles);
 
+            if (submission.ErrorKey is { } errorKey)
+            {
+                logger.LogWarning("Rejected screenshot upload for user {UserId}: {ErrorKey}", user.Id, errorKey);
+                var message = localizer[errorKey].Value;
+                if (isAjax) return BadRequest(new { error = message });
+                ModelState.AddModelError(string.Empty, message);
+                return View("New", model);
+            }
+            var issue = submission.Issue!;
             if (isAjax) return Json(new { id = issue.Id });
 
             SetSuccess(localizer["Issue_Submitted"].Value);
@@ -179,7 +188,7 @@ internal sealed class IssuesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to submit issue for user {UserId}", user.Id);
-            if (isAjax) return StatusCode(500, new { error = "Failed to file issue" });
+            if (isAjax) return StatusCode(500, new { error = localizer["Issue_Error"].Value });
             SetError(localizer["Issue_Error"].Value);
             return View("New", model);
         }
@@ -461,7 +470,7 @@ internal sealed class IssuesController(
         Id = i.Id,
         Status = i.Status,
         Category = i.Category,
-        AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
+        AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer, routing),
         Title = i.Title,
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
@@ -483,7 +492,7 @@ internal sealed class IssuesController(
             Status = i.Status,
             Category = i.Category,
             Section = i.Section,
-            AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
+            AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer, routing),
             Title = i.Title,
             Description = i.Description,
             PageUrl = i.PageUrl,

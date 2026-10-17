@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Read-only supplier for the event-cycle ("burn") settings (Nowhere 2026,
+/// Read-only supplier for the event-cycle ("burn") settings (Elsewhere 2026,
 /// etc.) as a <see cref="BurnSettingsInfo"/> DTO, without touching
 /// <c>DbContext.EventSettings</c> directly (design-rules §2c,
 /// <c>memory/architecture/no-cross-section-ef-joins.md</c>). The app-wide

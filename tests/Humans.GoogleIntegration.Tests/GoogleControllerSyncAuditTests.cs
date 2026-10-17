@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Xunit;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Controllers;
 using Humans.GoogleIntegration.Services;
@@ -35,6 +38,37 @@ public sealed class GoogleControllerSyncAuditTests
 
         result.Should().BeOfType<NotFoundResult>();
         await _users.Received(1).GetUserInfoAsync(id, cancellation.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateSyncSetting_OnlyValidBindingsReachTheActorAttributedWrite(bool malformed)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = BuildSut(Xunit.TestContext.Current.CancellationToken);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
+        var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(actor);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var settings = Substitute.For<ISyncSettingsService>();
+        if (malformed)
+            controller.ModelState.AddModelError("mode", "Not a sync mode.");
+
+        var result = await controller.UpdateSyncSetting(settings, SyncServiceType.GoogleDrive, SyncMode.None);
+
+        if (malformed)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            settings.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#google-sync");
+            await settings.Received(1).UpdateModeAsync(SyncServiceType.GoogleDrive, SyncMode.None,
+                actorId, Arg.Any<CancellationToken>());
+        }
     }
 
     private GoogleController BuildSut(CancellationToken token) => new(

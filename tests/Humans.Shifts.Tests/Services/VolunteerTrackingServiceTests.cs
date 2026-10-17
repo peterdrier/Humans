@@ -1,4 +1,5 @@
 using Humans.Shifts.Data;
+using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
@@ -769,7 +770,8 @@ public class VolunteerTrackingServiceTests
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, calendarResolver, userService, Substitute.For<IShiftViewInvalidator>(), clock);
+            trackingRepo, shiftMgmt, calendarResolver, userService, Substitute.For<IShiftViewInvalidator>(), clock,
+            Substitute.For<IAuditLogService>());
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

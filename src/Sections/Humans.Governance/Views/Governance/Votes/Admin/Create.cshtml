@@ -16,7 +16,7 @@
     Extend and Cancel remain available.
 </div>
 
-<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
+<div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
 <form asp-action="Create" method="post">
     @Html.AntiForgeryToken()

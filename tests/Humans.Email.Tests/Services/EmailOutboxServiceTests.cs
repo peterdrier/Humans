@@ -175,6 +175,19 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
+    public async Task ReassignAsync_DelegatesMergeToOutboxRepository()
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, _actorId, _now,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).ReassignToUserAsync(sourceUserId, targetUserId,
+            Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
     public async Task EraseForUserAsync_DropsEveryRowForTheHuman()
     {
         // Not just the Sent ones the retention sweep reaches — failed and queued

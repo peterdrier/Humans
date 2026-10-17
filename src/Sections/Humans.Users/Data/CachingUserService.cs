@@ -299,6 +299,7 @@ internal sealed class CachingUserService(
             // A pasted id from an audit trail may be a merged-away one: jump to its survivor.
             if (TryGet(idGuid, out var byIdRow)
                 && Resolve(byIdRow) is { Profile: not null } byId
+                && !byId.IsTombstone
                 && byId.Profile.RejectedAt is null)
             {
                 return [
@@ -785,7 +786,8 @@ internal sealed class CachingUserService(
         CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner => inner.AddUserEmailAsync(userId, command, ct));
-        if (result.Added) await RefreshUserEmailsAsync(userId, ct);
+        // The email row committed; finish refresh so cancellation cannot skip the caller's audit/notice.
+        if (result.Added) await RefreshUserEmailsAsync(userId, CancellationToken.None);
         return result;
     }
 
@@ -796,7 +798,8 @@ internal sealed class CachingUserService(
         CancellationToken ct = default)
     {
         var updated = await WithInnerAsync(inner => inner.UpdateUserEmailAsync(userId, emailId, command, ct));
-        if (updated.Succeeded) await RefreshUserEmailsAsync(userId, ct);
+        // The flag change committed; finish the read-through refresh before returning to its caller.
+        if (updated.Succeeded) await RefreshUserEmailsAsync(userId, CancellationToken.None);
         return updated;
     }
 
@@ -807,7 +810,8 @@ internal sealed class CachingUserService(
         CancellationToken ct = default)
     {
         var removed = await WithInnerAsync(inner => inner.RemoveUserEmailAsync(userId, emailId, command, ct));
-        if (removed) await RefreshUserEmailsAsync(userId, ct);
+        // The removal committed; do not leave a stale address cached or skip the caller's audit.
+        if (removed) await RefreshUserEmailsAsync(userId, CancellationToken.None);
         return removed;
     }
 

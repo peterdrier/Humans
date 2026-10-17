@@ -39,13 +39,16 @@ internal sealed class CantinaController : HumansControllerBase
     {
         // No sort: the weekly page is overview-only and renders none of People.
         // The CSV below is the one surface that reads it, and sorts for itself.
-        return View(await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false));
+        return View(await _roster.GetWeeklyRosterAsync(weekStartOffset, ct: ct).ConfigureAwait(false));
     }
 
     [HttpGet("Roster/Csv")]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false);
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
+        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, exportActorUserId: actorUserId.Value, ct: ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People in
         // unspecified order (memory/architecture/display-sort-in-controllers.md).
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
@@ -67,7 +70,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Day")]
     public async Task<IActionResult> Day(int? dayOffset = null, CancellationToken ct = default)
     {
-        var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct).ConfigureAwait(false);
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct: ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People
         // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
         return View(CantinaRosterAssembler.WithSortedPeople(matrix));
@@ -80,7 +83,10 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Day/Csv")]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {
-        var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct).ConfigureAwait(false);
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, exportActorUserId: actorUserId.Value, ct: ct).ConfigureAwait(false);
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
 
         var bytes = CantinaDailyMatrixCsvWriter.Write(matrix);

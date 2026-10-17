@@ -19,8 +19,8 @@ public sealed class LegalControllerTests
             new[] { new LegalDocumentDefinition("statutes", "Statutes", "Estatutos", "ESTATUTOS") });
         documents.GetDocumentContentAsync("statutes", Arg.Any<CancellationToken>()).Returns(new Dictionary<string, string>(StringComparer.Ordinal));
         var localizer = Substitute.For<IStringLocalizer<ConsentResource>>();
-        localizer["ConsentReview_ContentNotAvailable"].Returns(
-            new LocalizedString("ConsentReview_ContentNotAvailable", "Contenido no disponible."));
+        localizer["Consent_Review_ContentNotAvailable"].Returns(
+            new LocalizedString("Consent_Review_ContentNotAvailable", "Contenido no disponible."));
         using var cancellation = new CancellationTokenSource();
         var controller = new LegalController(documents, localizer)
         {

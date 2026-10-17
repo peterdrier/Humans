@@ -20,6 +20,69 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 {
     [HumansTheory]
+    [Xunit.InlineData("apply-second", false)]
+    [Xunit.InlineData("apply-second", true)]
+    [Xunit.InlineData("existing-primary", false)]
+    [Xunit.InlineData("existing-primary", true)]
+    [Xunit.InlineData("existing-second", false)]
+    [Xunit.InlineData("existing-second", true)]
+    public async Task Registration_InvalidCoordinator_RefusesBeforeWrites(string path, bool terminal)
+    {
+        var actor = SeedUser();
+        var target = Guid.NewGuid();
+        if (terminal)
+        {
+            var person = (await Users.GetUserInfoAsync(actor, Ct))! with
+            { Id = target, State = UserState.Deleted, MergedAt = Clock.GetCurrentInstant() };
+            Users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(person));
+        }
+        var application = new WorkgroupApplication("People check", "Purpose", "Report", WorkgroupDeliverableKind.Report,
+            WorkgroupAudience.Board, null, null, string.Equals(path, "existing-primary", StringComparison.Ordinal) ? null : target);
+        var service = NewService();
+        var result = string.Equals(path, "apply-second", StringComparison.Ordinal)
+            ? await service.ApplyAsync(actor, application, Ct)
+            : await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(application,
+                string.Equals(path, "existing-primary", StringComparison.Ordinal) ? target : actor,
+                Clock.GetCurrentInstant(), new WorkgroupBudgetSave(100m, null)), Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var ctx = OpenContext();
+        (await ctx.Workgroups.CountAsync(Ct)).Should().Be(0);
+        (await ctx.Members.CountAsync(Ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        await GoogleSync.DidNotReceive().CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Finance.DidNotReceive().CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("apply-second")]
+    [Xunit.InlineData("apply-self-alias")]
+    [Xunit.InlineData("existing-primary")]
+    [Xunit.InlineData("existing-second")]
+    public async Task Registration_MergeAlias_UsesCanonicalCoordinator(string path)
+    {
+        var actor = SeedUser();
+        var survivor = string.Equals(path, "apply-self-alias", StringComparison.Ordinal) ? actor : SeedUser("Survivor");
+        var source = Guid.NewGuid();
+        var survivorInfo = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(survivorInfo));
+        var primary = string.Equals(path, "existing-primary", StringComparison.Ordinal);
+        var application = new WorkgroupApplication("People check", "Purpose", "Report", WorkgroupDeliverableKind.Report,
+            WorkgroupAudience.Board, null, null, primary ? null : source);
+        var result = path.StartsWith("apply", StringComparison.Ordinal)
+            ? await NewService().ApplyAsync(actor, application, Ct)
+            : await NewService().RegisterExistingAsync(actor, new WorkgroupBootstrap(application,
+                primary ? source : actor, Clock.GetCurrentInstant()), Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var ctx = OpenContext();
+        var members = await ctx.Members.AsNoTracking().ToListAsync(Ct);
+        members.Select(m => m.UserId).Should().Contain(survivor).And.NotContain(source);
+        members.Count.Should().Be(primary || survivor == actor ? 1 : 2);
+        (await ctx.Workgroups.SingleAsync(Ct)).AppliedByUserId.Should().Be(primary ? survivor : actor);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Registration_CompletesWhenTheRequestDisconnectsDuringFolderCreation(bool existing)

@@ -18,7 +18,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// anonymous token-driven POSTs must record <c>"MagicLink"</c>, while
 /// session-driven POSTs must record <c>"Guest"</c>. The previous in-flight
 /// version of these tests went green on a no-op flip — the seed row already
-/// matched the POST body, so <see cref="ICommunicationPreferenceService.UpdatePreferenceAsync(Guid, MessageCategory, bool, bool, string, System.Threading.CancellationToken)"/>
+/// matched the POST body, so <see cref="ICommunicationPreferenceService.UpdatePreferenceAsync(Guid, MessageCategory, bool, bool, string, Guid?, System.Threading.CancellationToken)"/>
 /// short-circuited as idempotent and the row stayed at <c>UpdateSource = "Default"</c>
 /// while the controller still returned 200 OK. The fix is to drive the POST
 /// against <see cref="MessageCategory.VolunteerUpdates"/> (default OptedOut=false)

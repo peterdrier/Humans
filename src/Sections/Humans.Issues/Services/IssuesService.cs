@@ -53,6 +53,7 @@ internal sealed class IssuesService(
     };
 
     private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
+    private const int MaxScreenshotFileNameLength = 256;
 
     /// <summary>The <c>issues.section</c> column width. Nothing legitimate reaches it.</summary>
     private const int MaxSectionLength = 64;
@@ -112,7 +113,7 @@ internal sealed class IssuesService(
 
     // ─── Submission ───
 
-    public async Task<Issue> SubmitIssueAsync(
+    public async Task<IssueSubmissionResult> SubmitIssueAsync(
         Guid reporterUserId,
         IssueCategory category,
         string title,
@@ -154,12 +155,17 @@ internal sealed class IssuesService(
         if (screenshot is { Length: > 0 })
         {
             if (screenshot.Length > MaxScreenshotBytes)
-                throw new InvalidOperationException("Screenshot must be under 10MB.");
+                return new(null, "Issue_ScreenshotTooLarge");
 
-            if (!AllowedContentTypes.Contains(screenshot.ContentType))
-                throw new InvalidOperationException("Screenshot must be JPEG, PNG, or WebP.");
+            var contentType = screenshot.ContentType.ToLowerInvariant();
+            if (!AllowedContentTypes.Contains(contentType))
+                return new(null, "Issue_ScreenshotTypeInvalid");
 
-            var ext = screenshot.ContentType switch
+            var fileName = screenshot.FileName.Split('/', '\\').Last();
+            if (fileName.Length > MaxScreenshotFileNameLength)
+                return new(null, "Issue_ScreenshotFileNameTooLong");
+
+            var ext = contentType switch
             {
                 "image/jpeg" => ".jpg",
                 "image/png" => ".png",
@@ -173,9 +179,9 @@ internal sealed class IssuesService(
                 await fileStorage.SaveAsync(key, stream, ct);
             }
 
-            issue.ScreenshotFileName = screenshot.FileName;
+            issue.ScreenshotFileName = fileName;
             issue.ScreenshotStoragePath = key;
-            issue.ScreenshotContentType = screenshot.ContentType;
+            issue.ScreenshotContentType = contentType;
         }
 
         try
@@ -204,7 +210,7 @@ internal sealed class IssuesService(
         logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
             issueId, reporterUserId, category, section ?? "(unknown)");
-        return issue;
+        return new(issue);
     }
 
     private static string? BuildAdditionalContext(string? userContext, IReadOnlyList<string>? reporterRoles)
@@ -494,10 +500,12 @@ internal sealed class IssuesService(
         Guid? actorUserId = null,
         CancellationToken ct = default)
     {
-        var issue = await SubmitIssueAsync(
+        var submission = await SubmitIssueAsync(
             reporterUserId, category, title, description, section,
             pageUrl: null, userAgent: null, additionalContext: null, screenshot: null,
             dueDate: dueDate, ct: ct);
+        // This machine path supplies no screenshot, so upload refusals cannot occur.
+        var issue = submission.Issue!;
 
         // The in-app reporter is their own actor, so the issue row's ReporterUserId is the
         // whole story there and creation goes unaudited. Here the two can differ, and the
@@ -775,7 +783,11 @@ internal sealed class IssuesService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var issues = await repo.GetForUserExportAsync(userId, ct);
+        var user = await users.GetUserInfoAsync(userId, ct);
+        var userIds = (user?.AllUserIds ?? [userId]).ToHashSet();
+        var issues = new List<Issue>();
+        foreach (var id in userIds)
+            issues.AddRange(await repo.GetForUserExportAsync(id, ct));
         var shaped = issues.Select(i => new
         {
             i.Title,
@@ -791,7 +803,7 @@ internal sealed class IssuesService(
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
             {
                 c.Content,
-                IsFromUser = c.SenderUserId == userId,
+                IsFromUser = c.SenderUserId is { } senderId && userIds.Contains(senderId),
                 CreatedAt = c.CreatedAt.ToIso8601()
             })
         }).ToList();

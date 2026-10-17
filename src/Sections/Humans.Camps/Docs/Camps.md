@@ -190,17 +190,24 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- Admin camp CSV downloads record `CampsExported` with the authenticated actor, public year and emitted data-row count, including empty/repeated downloads. Camps without a season produce no row and are not counted; existing contact/lead columns and CampAdmin/Admin access are preserved.
+
+Admin EE slot-cap updates reject malformed number binding with HTTP 400 before mutation; an explicitly submitted zero remains a valid cap.
+
+- Existing browser mutation audits in `CampService` record the authenticated actor, including nested season and name changes during an edit. Dev-persona season opt-in runs before sign-in and explicitly retains job attribution.
+
 - Each camp has a unique slug used for URL routing.
-- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
+- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.MarkSeasonFullAsync` → `CampSeason.MarkFull`, both guarded to accept only Active seasons); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending. Pending, Rejected, Withdrawn and already-Full seasons return a localized refusal without changing timestamps or writing a status audit; the camp scope is checked first.
 - **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.
 - Only camp leads or CampAdmin can edit a camp.
 - Registration, opt-in, scoped season/name/image changes and managed membership mutations return internal refusal results. Guard refusals precede the writes and audit entries they protect; failure invalidation still refreshes partially committed updates. Unexpected dependency exceptions propagate; camp updates never wrap diagnostic messages in member feedback.
-- **Lead-facing mutations are camp-scoped.** Ids arriving from a form (seasonId, imageId, nameId) are proven to belong to the slug-resolved camp in `CampService` (`UpdateSeasonAsync`, `WithdrawSeasonAsync`, `ChangeSeasonNameAsync`, `DeleteImageAsync`, `RemoveHistoricalNameAsync`, `SetSeasonStatusAsync` all take a `scopedCampId` and return a refusal on mismatch) — a lead of camp A cannot mutate camp B by crafting an id.
+- **Lead-facing mutations are camp-scoped.** Ids arriving from a form (seasonId, imageId, nameId) are proven to belong to the slug-resolved camp in `CampService` (`UpdateSeasonAsync`, `WithdrawSeasonAsync`, `ChangeSeasonNameAsync`, `DeleteImageAsync`, `RemoveHistoricalNameAsync`, `MarkSeasonFullAsync` all take a `scopedCampId` and return a refusal on mismatch) — a lead of camp A cannot mutate camp B by crafting an id.
 - New camp images append after the highest remaining display position (zero for an empty gallery). Deletion leaves surviving positions intact, and later uploads preserve their relative order. Explicit reordering still assigns the requested positions.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp. The upload route permits 11 MB for one 10 MB image plus multipart overhead; the service enforces the image cap.
 - Camp and image deletions commit their metadata and audit before cleaning up image files. Cleanup ignores caller cancellation and logs storage failures without failing the committed deletion.
+- Manually supplied historical names are trimmed and must contain 1–256 characters. Registration validates every supplied historical name before creating any camp rows; later additions return localized refusals without persisting invalid names.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
-- Camp settings control which seasons accept registrations.
+- Camp settings control which seasons accept registrations. Opening/closing registration and changing the yearly name-lock date audit the acting admin, target year and saved change against `CampSettings`. No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
 - Membership mutations (approve, reject, remove) are **scoped to the authorizing camp**. A lead or CampAdmin operating on camp A cannot mutate a member row whose season belongs to camp B even if they know the row id.
@@ -251,6 +258,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Facilitated contact messages notify camp leads in each recipient’s supported saved language, across all six cultures. Missing/unsupported language or a failed lookup falls back to English; delivery failures in one language group do not prevent the others. Long titles fit the notification storage limit while preserving the full copy in the body.
 - Camp leads do **not** receive a per-request stored notification when humans request to join. Instead a `NotificationMeter` ("N humans want to join your camp") shows the live pending count; it updates immediately on approve/reject/withdraw and drops to zero when the season is closed.
 - When a CampMember is removed (Leave / Withdraw / Remove paths set `RemovedAt`), `ICampService` calls `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete to clear any role assignments held by that member.
+- Add-member and search-driven role-assignment shortcuts resolve the selected person through Users before creating membership: missing or terminal accounts are refused without membership, role or audit writes; merge aliases use the live survivor. Live accounts do not acquire a new admission-state restriction.
 - When a lead uses the "add active member" shortcut at `/Camps/{slug}/Members/Add`, `ICampService.AddCampMemberToActiveSeasonAsync` creates `CampMember(Status=Active)` directly and writes a `CampMemberAddedByLead` audit entry.
 - Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. The notice uses the assignee’s supported saved language across all six cultures, with English fallback for missing/unsupported language or a failed lookup. Unexpected lookup and delivery failures are logged as errors, while caller cancellation propagates. Unassign writes `CampRoleUnassigned` and does **not** notify.
 - Role-definition create/edit refusals (duplicate names/slugs, reserved slug, protected system-role edits) log Warning with actor, role id where present and guard reason, without an exception, and retain form feedback. An unexpected edit result logs Error with its exception and uses the existing generic failure feedback.
@@ -313,6 +321,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
   `src/Sections/Humans.Camps/Data/Configurations/` with the rest of the Camps entity configuration.
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Camps owns the `Camps` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

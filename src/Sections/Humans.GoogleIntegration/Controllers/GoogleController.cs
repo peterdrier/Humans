@@ -64,6 +64,7 @@ internal sealed class GoogleController(
     {
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
 

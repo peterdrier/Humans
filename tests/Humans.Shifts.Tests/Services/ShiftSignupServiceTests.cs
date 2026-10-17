@@ -645,6 +645,68 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // Voluntell
     // ============================================================
 
+    [HumansTheory]
+    [InlineData(false, "missing")]
+    [InlineData(true, "missing")]
+    [InlineData(false, "deleted")]
+    [InlineData(true, "deleted")]
+    [InlineData(false, "merged")]
+    [InlineData(true, "merged")]
+    public async Task Voluntell_InvalidPerson_DoesNotCreateSignup(bool range, string kind)
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        if (range)
+        {
+            rota.Period = RotaPeriod.Build;
+            SeedAllDayShift(rota, -3);
+        }
+        var targetId = Guid.NewGuid();
+        UserInfo? target = string.Equals(kind, "missing", StringComparison.Ordinal) ? null
+            : UserInfoStubHelpers.MakeUserInfo(targetId) with
+            {
+                State = string.Equals(kind, "deleted", StringComparison.Ordinal) ? UserState.Deleted : UserState.Merged,
+                MergedAt = Clock.GetCurrentInstant(),
+            };
+        _users.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(target));
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = range
+            ? await _service.VoluntellRangeAsync(targetId, rota.Id, -3, -3, Guid.NewGuid())
+            : await _service.VoluntellAsync(targetId, shift.Id, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("Shifts_AccountCannotSignUp");
+        (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Voluntell_MergeAlias_UsesSurvivorWithoutNewAdmissionRestriction(bool range)
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        if (range)
+        {
+            rota.Period = RotaPeriod.Build;
+            SeedAllDayShift(rota, -3);
+        }
+        var sourceId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
+            UserInfoStubHelpers.MakeUserInfo(survivorId) with { State = UserState.Bare });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = range
+            ? await _service.VoluntellRangeAsync(sourceId, rota.Id, -3, -3, Guid.NewGuid())
+            : await _service.VoluntellAsync(sourceId, shift.Id, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        var signup = await ShiftsDb.ShiftSignups.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        signup.UserId.Should().Be(survivorId);
+        signup.Status.Should().Be(SignupStatus.Confirmed);
+    }
+
     [HumansFact]
     public async Task Voluntell_CreatesConfirmedWithEnrolledFlag()
     {
@@ -720,7 +782,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
         if (lookupFailure)
             _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
+                // Identity validation succeeds; the later best-effort language lookup fails.
+                .Returns(new ValueTask<UserInfo?>(UserInfoStubHelpers.MakeUserInfo(volunteerId)),
+                    ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = range

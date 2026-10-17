@@ -20,7 +20,7 @@ internal sealed class UnsubscribeService(
             // the survivor, so the returned id (and the preference ConfirmUnsubscribeAsync writes)
             // is the resolved record's, never the token's.
             var info = await userService.GetUserInfoAsync(result.UserId, ct);
-            if (info is null)
+            if (info is null || info.IsGdprAnonymized)
                 return UnsubscribeTokenResult.Invalid();
 
             return UnsubscribeTokenResult.Valid(info.Id, info.BurnerName, result.Category);
@@ -52,7 +52,7 @@ internal sealed class UnsubscribeService(
             return UnsubscribeTokenResult.Invalid();
 
         var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
-        if (legacyInfo is null)
+        if (legacyInfo is null || legacyInfo.IsGdprAnonymized)
             return UnsubscribeTokenResult.Invalid();
 
         return UnsubscribeTokenResult.Valid(legacyInfo.Id, legacyInfo.BurnerName, MessageCategory.Marketing, isLegacy: true);

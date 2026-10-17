@@ -808,6 +808,47 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     // A ranked draft can be edited more than once
     // ==========================================================================
 
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task DraftForm_MalformedKind_DoesNotCreateOrReplaceRankedOptions(bool edit, bool malformed)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft,
+            kind: AssemblyVoteKind.RankedChoice, options: [("a", 0), ("b", 1)]);
+        var model = AssemblyVoteDraftFormViewModel.FromDraft(vote.Id,
+            _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["a", "b"]));
+        model.Kind = AssemblyVoteKind.YesNo; // The default left by a failed Kind binding is itself valid.
+        var actorId = Guid.NewGuid();
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        if (malformed) controller.ModelState.AddModelError(nameof(model.Kind), "Invalid value.");
+        _fx.Audit.ClearReceivedCalls();
+
+        var result = edit
+            ? await controller.Edit(vote.Id, model, null, ct)
+            : await controller.Create(model, null, ct);
+
+        if (malformed) result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        else result.Should().BeOfType<RedirectToActionResult>();
+        (await _fx.Db.AssemblyVotes.CountAsync(ct)).Should().Be(1);
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking().SingleAsync(ct);
+        stored.Kind.Should().Be(malformed ? AssemblyVoteKind.RankedChoice : AssemblyVoteKind.YesNo);
+        var keys = await _fx.Db.AssemblyVoteOptions.AsNoTracking().Where(o => o.VoteId == vote.Id)
+            .Select(o => o.Key).ToListAsync(ct);
+        keys.Should().BeEquivalentTo(malformed ? ["a", "b"] : Array.Empty<string>());
+        if (malformed) _fx.Audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task UpdateDraftAsync_OnARankedDraft_ReplacesTheOptions()
     {

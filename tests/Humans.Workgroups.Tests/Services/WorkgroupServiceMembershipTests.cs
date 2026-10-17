@@ -425,6 +425,46 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.NoPendingRequest);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task AddMember_TerminalAccount_DoesNotCreateMembership(UserState state)
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var target = SeedUser("Terminal");
+        var person = (await Users.GetUserInfoAsync(target, Ct))! with { State = state, MergedAt = Clock.GetCurrentInstant() };
+        Users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(person));
+
+        var result = await NewService().AddMemberAsync(group.Id, coordinator, target, ct: Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var ctx = OpenContext();
+        (await ctx.Members.CountAsync(m => m.UserId == target, Ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AddMember_MergeAlias_ApprovesSurvivorPendingRequest()
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var survivor = SeedUser("Survivor");
+        await AddMemberAsync(group.Id, survivor, isPending: true);
+        var source = Guid.NewGuid();
+        var survivorInfo = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(survivorInfo));
+
+        (await NewService().AddMemberAsync(group.Id, coordinator, source, ct: Ct)).Refusal.Should().BeNull();
+
+        await using var ctx = OpenContext();
+        var member = await ctx.Members.SingleAsync(m => m.UserId == survivor, Ct);
+        member.IsPending.Should().NotBe(true);
+        (await ctx.Members.CountAsync(m => m.UserId == source, Ct)).Should().Be(0);
+        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), group.Id,
+            Arg.Any<string>(), coordinator, survivor, "User");
+    }
+
     [HumansFact]
     public async Task AddMember_ByACoordinator_AdmitsDirectly()
     {

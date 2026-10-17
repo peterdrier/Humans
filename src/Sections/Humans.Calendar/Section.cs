@@ -39,9 +39,9 @@ public sealed class Section : ISection
 
         // The feed credential: Calendar's own table, so its whole lifecycle — mint,
         // rotate, GDPR erase, merge — is registered here and nothing outside the
-        // section writes it. Singleton to match the repository it wraps.
-        services.AddSingleton<CalendarFeedTokenService>();
-        services.AddSingleton<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
+        // section writes it. Scoped to match the audit writer it consumes.
+        services.AddScoped<CalendarFeedTokenService>();
+        services.AddScoped<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 

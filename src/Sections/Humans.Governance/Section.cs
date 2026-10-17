@@ -101,5 +101,9 @@ public sealed class Section : ISection, IIssueQueueOwner
     // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Governance";
 
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Governance";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["board", "voting"];
+
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.Board];
 }
