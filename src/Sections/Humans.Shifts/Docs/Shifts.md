@@ -343,17 +343,17 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 
 ## Cross-Section Dependencies
 
-### Inbound — the read boundary (`Humans.Shifts.Contracts`)
+### Inbound — the public contract (`Humans.Shifts.Contracts`)
 
 Everything outside the section reaches Shifts through the `Humans.Shifts.Contracts`
 leaf project, never through `IShiftManagement` / `IShiftSignupService` (both
-declared `internal`; they serve the section's own call sites by inheriting the leaf):
+declared `internal`; they serve the section's own call sites by inheriting the contract):
 
 | Leaf interface | What it carries |
 |---|---|
 | `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate`, the build calendar (all Settings-sourced) and `IsShiftBrowsingOpen` (Shifts-owned, defaults to `false` if no knobs row exists yet for that event id); never the `EventSettings` entity. Kept intact for external consumers (nobodies-collective/Humans#1630); internally, Shifts itself resolves the calendar via `ISettingsService`/`EventCalendarResolver`, not this service. |
-| `IShiftManagementService` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
-| `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes — hence not a `…Read` name). |
+| `IShiftManagementService` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, rota search, and one rota by id. |
+| `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes). |
 | `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
 | `IShiftView` + `IShiftViewInvalidator` | The cached per-user / per-rota projections (issue #720). |
 | `IVolunteerTrackingService` | One member, `[SurfaceBudget(1)]` — the profile build strip. |

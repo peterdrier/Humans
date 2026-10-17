@@ -22,6 +22,29 @@ namespace Humans.Shifts.Services;
 internal interface IShiftManagement
     : IShiftManagementService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    // === Dashboard / staffing reads (section-internal — no caller outside the section) ===
+
+    /// <summary>
+    /// Gets the per-day staffing chart snapshot for all periods.
+    /// </summary>
+    Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null);
+
+    /// <summary>
+    /// Gets all parent teams that have active rotas in the given event.
+    /// </summary>
+    Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns overall shift coverage for the active event:
+    /// (filled signups / total slots, plus the ratio).
+    /// Returns (0, 0, 0d) if no event is active.
+    /// Used by the admin dashboard's shift-coverage stat tile.
+    /// </summary>
+    Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default);
+
     // === Event settings ===
 
     /// <summary>

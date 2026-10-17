@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Base.Interfaces;
-using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Shifts;
@@ -15,7 +15,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> CoverageAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var (filled, total, ratio) = await sp.GetRequiredService<IShiftManagementService>().GetOverallCoverageAsync(ct);
+        var (filled, total, ratio) = await sp.GetRequiredService<IShiftManagement>().GetOverallCoverageAsync(ct);
         var percent = total > 0 ? (int)Math.Round(ratio * 100) : 0;
         return total > 0
             ? new AdminTileValue(

@@ -1,10 +1,10 @@
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Cross-section read surface for Volunteer Tracking. External sections inject
+/// Public contract for Volunteer Tracking. External sections inject
 /// this (not the full <c>IVolunteerTrackingManagement</c>); returns only
-/// the <see cref="VolunteerBuildStripDto"/> projection. See
-/// <c>memory/architecture/section-read-write-split.md</c>.
+/// the <see cref="VolunteerBuildStripDto"/> projection, which
+/// backs <c>&lt;vc:volunteer-build-strip&gt;</c>.
 /// </summary>
 public interface IVolunteerTrackingService
 {

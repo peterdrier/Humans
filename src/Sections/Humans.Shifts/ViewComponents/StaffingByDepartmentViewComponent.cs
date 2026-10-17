@@ -1,4 +1,4 @@
-using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Shifts.ViewComponents;
@@ -15,7 +15,7 @@ namespace Humans.Shifts.ViewComponents;
 /// <c>Departments</c> is always empty, so the card renders the "no data yet" copy and
 /// points at Shifts.
 /// </remarks>
-internal sealed class StaffingByDepartmentViewComponent(IShiftManagementService shifts) : ViewComponent
+internal sealed class StaffingByDepartmentViewComponent(IShiftManagement shifts) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
