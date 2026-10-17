@@ -60,11 +60,8 @@ internal sealed partial class WorkgroupService(
         return graph.Workgroups.Select(ToInfo).ToList();
     }
 
-    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default)
-    {
-        var workgroup = await repository.GetWorkgroupBySlugAsync(slug, ct);
-        return workgroup is null ? null : ToInfo(workgroup);
-    }
+    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
+        (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
 
     public async Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
