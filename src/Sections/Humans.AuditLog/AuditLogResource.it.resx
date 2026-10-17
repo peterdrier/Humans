@@ -373,4 +373,5 @@
   <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Riepilogo della versione del documento legale aggiornato</value></data>
   <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guida degli eventi esportata</value></data>
   <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camp esportati</value></data>
+  <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Elenco della mensa esportato</value></data>
 </root>

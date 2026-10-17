@@ -397,4 +397,5 @@ public enum AuditAction
     LegalDocumentVersionSummaryUpdated,
     EventGuideExported,
     CampsExported,
+    CantinaRosterExported,
 }
