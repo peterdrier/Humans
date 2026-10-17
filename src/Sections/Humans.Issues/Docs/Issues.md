@@ -129,7 +129,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - Submission categories and status updates must be defined enum values; invalid service inputs fail before persistence or notifications.
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
-- The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.
+- The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments across `UserInfo.AllUserIds`. Source-account reports remain exportable after a merge, and comments from any account in that identity chain are marked as the reporter’s. Issues reported by other people stay excluded.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
 - A reporter posting a comment on a terminal issue **auto-reopens** it to `Open` (audit-logged as `AuditAction.IssueStatusChanged` with actor = the reporter).
 - A handler may post a comment and atomically mark the issue resolved in the same request ("Comment & mark resolved"). The status change is audit-logged after the comment is persisted.

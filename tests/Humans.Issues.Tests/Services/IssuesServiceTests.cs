@@ -1563,6 +1563,49 @@ public sealed class IssuesServiceTests
     // GDPR contributor
     // ==========================================================================
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ContributeForUserAsync_includes_merged_reports_and_recognizes_both_comment_authors(bool archivedId)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        SeedUser(survivorId, "Survivor");
+        SeedUser(sourceId, "Source");
+        SeedUser(strangerId, "Stranger");
+        var requestedId = archivedId ? sourceId : survivorId;
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+            .Returns(Info(survivorId)! with { MergedUserIds = [sourceId] });
+        var sourceIssueId = await SeedIssueRowAsync(sourceId, IssueStatus.Open, "Source issue");
+        await SeedIssueRowAsync(survivorId, IssueStatus.Open, "Survivor issue");
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
+        foreach (var (sender, content) in new[]
+        {
+            (sourceId, "Before merge"), (survivorId, "After merge"), (strangerId, "Another person")
+        })
+            _issuesDb.IssueComments.Add(new IssueComment
+            {
+                Id = Guid.NewGuid(), IssueId = sourceIssueId, SenderUserId = sender,
+                Content = content, CreatedAt = Clock.GetCurrentInstant()
+            });
+        await _issuesDb.SaveChangesAsync(ct);
+
+        var slices = await _service.ContributeForUserAsync(requestedId, ct);
+
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single().Data);
+        exported.EnumerateArray().Select(issue => issue.GetProperty("Title").GetString())
+            .Should().BeEquivalentTo(["Source issue", "Survivor issue"]);
+        var comments = exported.EnumerateArray()
+            .Single(issue => string.Equals(issue.GetProperty("Title").GetString(), "Source issue", StringComparison.Ordinal))
+            .GetProperty("Comments").EnumerateArray()
+            .ToDictionary(comment => comment.GetProperty("Content").GetString()!, comment => comment.GetProperty("IsFromUser").GetBoolean(), StringComparer.Ordinal);
+        comments["Before merge"].Should().BeTrue();
+        comments["After merge"].Should().BeTrue();
+        comments["Another person"].Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_returns_only_user_own_issues()
     {

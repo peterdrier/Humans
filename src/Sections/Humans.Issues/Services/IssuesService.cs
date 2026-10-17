@@ -775,7 +775,11 @@ internal sealed class IssuesService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var issues = await repo.GetForUserExportAsync(userId, ct);
+        var user = await users.GetUserInfoAsync(userId, ct);
+        var userIds = (user?.AllUserIds ?? [userId]).ToHashSet();
+        var issues = new List<Issue>();
+        foreach (var id in userIds)
+            issues.AddRange(await repo.GetForUserExportAsync(id, ct));
         var shaped = issues.Select(i => new
         {
             i.Title,
@@ -791,7 +795,7 @@ internal sealed class IssuesService(
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
             {
                 c.Content,
-                IsFromUser = c.SenderUserId == userId,
+                IsFromUser = c.SenderUserId is { } senderId && userIds.Contains(senderId),
                 CreatedAt = c.CreatedAt.ToIso8601()
             })
         }).ToList();
