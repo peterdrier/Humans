@@ -119,7 +119,11 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
   it live over a bounded window. A follow-up reconciliation panel is where a
   `holded_bank_movements` mirror table would land; see
   `2026-08-10-holded-v2-migration-design.md`.
-  A line with no readable `date` is skipped and logged, except a **pending outgoing** one — it could
+  A line's date is `booking_date` (what Holded stamps on the payment leg and ledger entry at
+  reconciliation), falling back to `value_date`; both are ISO 8601 with an offset and the date part
+  is taken as given, never shifted to Europe/Madrid. The feed has no `date` key — reading one is why
+  every Sabadell line failed until 2026-10-17 (peterdrier/Humans#1861, #1946).
+  A line with neither date is skipped and logged, except a **pending outgoing** one — it could
   be a SEPA rival, so it fails the read closed with a `HoldedPermanentException` whose
   `BankMovementId` names it, unless the caller passes that id in `skipUnreadableDateIds`
   (peterdrier/Humans#1946: Finance does so after three stuck sweep runs).

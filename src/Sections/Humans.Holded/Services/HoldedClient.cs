@@ -619,13 +619,12 @@ internal sealed class HoldedClient : IHoldedClient
                 LocalDate date;
                 try
                 {
-                    date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? "");
+                    date = ParseBankMovementDate(n);
                 }
                 catch (Exception ex) when (ex is HoldedPermanentException or InvalidOperationException
                     or FormatException)
                 {
-                    // A line with no readable date (an empty string on a Sabadell line,
-                    // peterdrier/Humans#1861) cannot be placed in the from/to window. Leaving it out is
+                    // A line with no readable date cannot be placed in the from/to window. Leaving it out is
                     // safe only if it can never be a SEPA candidate: Finance's rival checks count every
                     // pending outgoing line, so dropping one of those would hide a rival and let an
                     // ambiguous booking through. Those still fail the page, unless the caller named
@@ -711,16 +710,21 @@ internal sealed class HoldedClient : IHoldedClient
         using var resp = await SendAsync(req, ct);
     }
 
-    /// <summary>Bank-movement dates are unverified against the probe's ledger-entry finding
-    /// (`DD/MM/YYYY`), so both that shape and ISO are accepted; neither parsing throws
-    /// <c>HoldedPermanentException</c>, which the caller skips a non-candidate line on.</summary>
-    private static LocalDate ParseBankMovementDate(string s)
+    /// <summary>A bank-movement line carries no <c>date</c> key (verified against the live v2 feed,
+    /// 2026-10-17): its dates are <c>booking_date</c> and <c>value_date</c>, ISO 8601 with an offset
+    /// (<c>2026-10-16T00:00:00+00:00</c> on a Sabadell line, a real time on a Stripe one). Booking is
+    /// what Holded stamps on the payment leg and the ledger entry when the line is reconciled, so it
+    /// is the date; value is the fallback when booking is absent or blank. The date part is taken as
+    /// given, never shifted to Europe/Madrid: a midnight-UTC Sabadell line would otherwise move a
+    /// day. Throws <c>HoldedPermanentException</c> when neither parses, which the caller skips a
+    /// non-candidate line on.</summary>
+    private static LocalDate ParseBankMovementDate(JsonNode line)
     {
-        var iso = LocalDatePattern.Iso.Parse(s);
-        if (iso.Success) return iso.Value;
+        var s = Prop(line, "booking_date")?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(s)) s = Prop(line, "value_date")?.GetValue<string>() ?? "";
 
-        var ledger = DateFormattingExtensions.HoldedLedgerDatePattern.Parse(s);
-        if (ledger.Success) return ledger.Value;
+        var parsed = OffsetDateTimePattern.ExtendedIso.Parse(s);
+        if (parsed.Success) return parsed.Value.Date;
 
         throw new HoldedPermanentException($"Holded bank movement date '{s}' could not be parsed.");
     }

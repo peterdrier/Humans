@@ -49,9 +49,8 @@ public class HoldedClientTreasuryTests
     [HumansFact]
     public async Task ListBankMovementsAsync_ParsesFields_AndLowercasesStatus()
     {
-        var json = """
-        {"items":[{"id":"m1","account":"tr-1","date":"2026-08-18","amount":"-120.00",
-          "description":"12345678 - NCA - Alice","status":"PENDING","origin":"bank"}],
+        var json = $$"""
+        {"items":[{{Line("m1", "-120.00", "PENDING", booking: "2026-08-18T00:00:00+00:00", description: "12345678 - NCA - Alice", origin: "bank")}}],
          "cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -71,31 +70,72 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_ParsesBothDateShapes()
+    public async Task ListBankMovementsAsync_ReadsBookingDate_TheFeedHasNoDateKey()
     {
-        var json = """
+        // The real record behind every "undated" Sabadell line (peterdrier/Humans#1861, #1946): the
+        // v2 feed has no `date` key at all, only booking_date and value_date, ISO 8601 with an offset.
+        var json = $$"""
         {"items":[
-          {"id":"m1","account":"tr-1","date":"18/09/2026","amount":"-10.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"2026-09-18","amount":"-10.00","status":"pending"}
+          {{Line("6ad250e8219fce7fbb0c18d3", "-17.00", "pending",
+              booking: "2026-10-16T00:00:00+00:00", value: "2026-10-16T00:00:00+00:00")}},
+          {{Line("stripe-1", "40.00", "reconciled",
+              booking: "2026-10-20T16:13:31+00:00", value: "2026-10-20T16:13:31+00:00", origin: "gateway")}}
+        ],"cursor":null,"has_more":false}
+        """;
+        var logger = new CapturingLogger<HoldedClient>();
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)), logger);
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 10, 1), new LocalDate(2026, 10, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        movements.Select(m => m.Date).Should().Equal(new LocalDate(2026, 10, 16), new LocalDate(2026, 10, 20));
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_FallsBackToValueDate_WhenBookingDateIsAbsentOrBlank()
+    {
+        var json = $$"""
+        {"items":[
+          {{Line("m1", "-10.00", "pending", booking: null, value: "2026-10-13T00:00:00+00:00")}},
+          {{Line("m2", "-10.00", "pending", booking: "", value: "2026-10-14T00:00:00+00:00")}}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var movements = await client.ListBankMovementsAsync(
-            "tr-1", new LocalDate(2026, 9, 1), new LocalDate(2026, 9, 30),
+            "tr-1", new LocalDate(2026, 10, 1), new LocalDate(2026, 10, 31),
             Xunit.TestContext.Current.CancellationToken);
 
-        movements.Should().HaveCount(2);
-        movements.Should().OnlyContain(m => m.Date == new LocalDate(2026, 9, 18));
+        movements.Select(m => m.Date).Should().Equal(new LocalDate(2026, 10, 13), new LocalDate(2026, 10, 14));
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_TakesTheDatePartAsGiven_NotShiftedToMadrid()
+    {
+        // A Sabadell line is midnight UTC; shifting it to Europe/Madrid would not move the day, but a
+        // late-evening gateway line would land on the next day, and Holded books it on the UTC date.
+        var json = $$"""
+        {"items":[{{Line("m1", "40.00", "pending", booking: "2026-07-20T23:30:00+00:00", value: null)}}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 7, 1), new LocalDate(2026, 7, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        movements.Single().Date.Should().Be(new LocalDate(2026, 7, 20));
     }
 
     [HumansFact]
     public async Task ListBankMovementsAsync_FiltersOutsideTheWindow_ClientSide()
     {
-        var json = """
+        var json = $$"""
         {"items":[
-          {"id":"m1","account":"tr-1","date":"2026-07-31","amount":"-10.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"2026-08-15","amount":"-10.00","status":"pending"}
+          {{Line("m1", "-10.00", "pending", booking: "2026-07-31T00:00:00+00:00")}},
+          {{Line("m2", "-10.00", "pending", booking: "2026-08-15T00:00:00+00:00")}}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -113,10 +153,10 @@ public class HoldedClientTreasuryTests
     {
         // The feed is already scoped to one account by its URL, and nothing reads a line's
         // `account`. One Sabadell line without it failed every SEPA sweep (peterdrier/Humans#1853).
-        var json = """
+        var json = $$"""
         {"items":[
-          {"id":"m1","date":"2026-08-18","amount":"-10.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+          {{Line("m1", "-10.00", "pending", booking: "2026-08-18T00:00:00+00:00")}},
+          {{Line("m2", "-20.00", "pending", booking: "2026-08-18T00:00:00+00:00")}}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -131,13 +171,13 @@ public class HoldedClientTreasuryTests
     [HumansFact]
     public async Task ListBankMovementsAsync_NonCandidateLineWithUnreadableDate_IsSkipped_AndLogged()
     {
-        // An empty `date` on one Sabadell line failed every SEPA sweep (peterdrier/Humans#1861).
+        // A line with neither booking_date nor value_date, or an unparsable one, cannot be windowed.
         // Incoming or already-touched lines can never be a SEPA candidate, so they are skipped.
-        var json = """
+        var json = $$"""
         {"items":[
-          {"id":"m1","account":"tr-1","date":"","amount":"10.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"not-a-date","amount":"-10.00","status":"reconciled"},
-          {"id":"m3","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+          {{Line("m1", "10.00", "pending", booking: null, value: null)}},
+          {{Line("m2", "-10.00", "reconciled", booking: "not-a-date", value: "not-a-date")}},
+          {{Line("m3", "-20.00", "pending", booking: "2026-08-18T00:00:00+00:00")}}
         ],"cursor":null,"has_more":false}
         """;
         var logger = new CapturingLogger<HoldedClient>();
@@ -157,10 +197,10 @@ public class HoldedClientTreasuryTests
     {
         // Dropping the undated line would leave m2 with no visible rival, so the sweep could book the
         // transfer against the wrong one of two same-amount lines. The page fails instead.
-        var json = """
+        var json = $$"""
         {"items":[
-          {"id":"m1","account":"tr-1","date":"","amount":"-20.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+          {{Line("m1", "-20.00", "pending", booking: null, value: null)}},
+          {{Line("m2", "-20.00", "pending", booking: "2026-08-18T00:00:00+00:00")}}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -176,13 +216,13 @@ public class HoldedClientTreasuryTests
     [HumansFact]
     public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsSkipped_WhenTheCallerNamesIt()
     {
-        // A line stuck for days blocked every SEPA booking (peterdrier/Humans#1946); once Finance has
-        // surfaced it, it asks for that one id to be skipped. Another undated pending line still fails.
-        var json = """
+        // Once Finance has given up on a genuinely undated line (peterdrier/Humans#1946), it asks for
+        // that one id to be skipped. Another undated pending line still fails.
+        var json = $$"""
         {"items":[
-          {"id":"m1","account":"tr-1","date":"","amount":"-20.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"},
-          {"id":"m3","account":"tr-1","date":"","amount":"-5.00","status":"pending"}
+          {{Line("m1", "-20.00", "pending", booking: null, value: null)}},
+          {{Line("m2", "-20.00", "pending", booking: "2026-08-18T00:00:00+00:00")}},
+          {{Line("m3", "-5.00", "pending", booking: null, value: null)}}
         ],"cursor":null,"has_more":false}
         """;
         var logger = new CapturingLogger<HoldedClient>();
@@ -210,8 +250,8 @@ public class HoldedClientTreasuryTests
     {
         // "pending" is the one status the SEPA sweep reads as bookable, so a manufactured one could
         // book a transfer against a line Holded has already settled. Absent means unreadable.
-        var json = """
-        {"items":[{"id":"m1","account":"tr-1","date":"2026-08-18","amount":"-10.00"}],
+        var json = $$"""
+        {"items":[{{Line("m1", "-10.00", null, booking: "2026-08-18T00:00:00+00:00")}}],
          "cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -229,8 +269,8 @@ public class HoldedClientTreasuryTests
     {
         // A blank id would still pass a null check, persist as HoldedBankMovementId, and send the
         // sweep's reconcile call to an invalid URL — same bug class as an absent status.
-        var json = """
-        {"items":[{"id":"","account":"tr-1","date":"2026-08-18","amount":"-10.00","status":"pending"}],
+        var json = $$"""
+        {"items":[{{Line("", "-10.00", "pending", booking: "2026-08-18T00:00:00+00:00")}}],
          "cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -249,7 +289,7 @@ public class HoldedClientTreasuryTests
     public async Task ListBankMovementsAsync_RejectsNullRowsRatherThanReturningAnIncompleteFeed(bool mixed)
     {
         var rows = mixed
-            ? """{"id":"m1","account":"tr-1","date":"2026-08-18","amount":"-10.00","status":"pending"},null"""
+            ? $$"""{{Line("m1", "-10.00", "pending", booking: "2026-08-18T00:00:00+00:00")}},null"""
             : "null";
         var json = "{\"items\":[" + rows + "],\"has_more\":false}";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -300,14 +340,14 @@ public class HoldedClientTreasuryTests
             callCount++;
             if (callCount == 1)
             {
-                return Respond(HttpStatusCode.OK, """
-                {"items":[{"id":"m1","account":"tr-1","date":"2026-08-01","amount":"-10.00","status":"pending"}],
+                return Respond(HttpStatusCode.OK, $$"""
+                {"items":[{{Line("m1", "-10.00", "pending", booking: "2026-08-01T00:00:00+00:00")}}],
                  "cursor":"c1","has_more":true}
                 """);
             }
             secondQuery = req.RequestUri!.Query;
-            return Respond(HttpStatusCode.OK, """
-            {"items":[{"id":"m2","account":"tr-1","date":"2026-08-02","amount":"-20.00","status":"pending"}],
+            return Respond(HttpStatusCode.OK, $$"""
+            {"items":[{{Line("m2", "-20.00", "pending", booking: "2026-08-02T00:00:00+00:00")}}],
              "cursor":null,"has_more":false}
             """);
         });
@@ -361,6 +401,23 @@ public class HoldedClientTreasuryTests
             Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    /// <summary>One feed line in the exact 15-key shape the live v2 API returns (checked 2026-10-17;
+    /// there is no <c>date</c> key). A null <paramref name="status"/> omits the key; a null date is a
+    /// JSON null, the shape Holded uses for an absent value.</summary>
+    private static string Line(
+        string id, string amount, string? status, string? booking = "2026-08-18T00:00:00+00:00",
+        string? value = "2026-08-18T00:00:00+00:00",
+        string description = "Transferencia nobodies collective asociacion", string origin = "afterbanks")
+    {
+        static string J(string? v) => v is null ? "null" : $"\"{v}\"";
+        var statusKey = status is null ? "" : $"\"status\":{J(status)},";
+        return $"{{\"id\":{J(id)},\"banking_account_id\":\"tr-1\",\"description\":{J(description)},"
+            + $"\"note\":\"\",\"amount\":{J(amount)},\"currency\":\"EUR\",\"balance\":\"251861.05\","
+            + "\"accounting_amount\":null,\"accounting_currency\":null,"
+            + $"\"booking_date\":{J(booking)},\"value_date\":{J(value)},{statusKey}"
+            + $"\"reconciled_amount\":\"0.00\",\"origin\":{J(origin)},\"flagged_at\":null}}";
     }
 
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>

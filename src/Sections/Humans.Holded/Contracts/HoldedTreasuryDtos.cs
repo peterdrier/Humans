@@ -8,7 +8,8 @@ namespace Humans.Holded.Contracts;
 public sealed record HoldedBankMovementDto
 {
     public required string Id { get; init; }
-    /// <summary>Booking date, Europe/Madrid. A <c>LocalDate</c> rather than the <c>Instant</c> the
+    /// <summary>Holded's <c>booking_date</c> (falling back to <c>value_date</c>), its date part as Holded sends it,
+    /// never zone-shifted. A <c>LocalDate</c> rather than the <c>Instant</c> the
     /// ledger DTOs carry: this date is fed straight back into a posting date
     /// (<see cref="IHoldedClient.PayPurchaseDocumentAsync"/> takes a <c>LocalDate</c>), and a
     /// round-trip through a midnight instant can only lose in a zone conversion.</summary>
