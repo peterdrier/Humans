@@ -1876,6 +1876,42 @@ public class HoldedFinanceServiceTests
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
         json.Should().NotContain("CreatedAt").And.NotContain("UpdatedAt");
+        JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUser_IncludesBindingsAndPayoutsAcrossMergedAccounts(bool archivedId)
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var requestedId = archivedId ? sourceId : survivorId;
+        var info = UserInfo.Create(
+            new User { Id = survivorId, BurnerName = "Survivor", CreatedAt = FixedNow },
+            [], [], [], null, []) with { MergedUserIds = [sourceId] };
+        _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
+        foreach (var (id, contact) in new[] { (survivorId, "survivor-contact"), (sourceId, "source-contact") })
+        {
+            _repo.GetCreditorContactByUserAsync(id, Arg.Any<CancellationToken>()).Returns(
+                new HoldedCreditorContact { UserId = id, HoldedContactId = contact, SupplierAccountNum = 40000004 });
+            _repo.GetSepaPayoutsForUserAsync(id, Arg.Any<CancellationToken>()).Returns(
+                new List<SepaPayoutExportRow>
+                {
+                    new(FixedNow, contact + ".xml", 40000004, contact, "Payee", "ES79****789", 12.34m, null, null, null)
+                });
+        }
+
+        var slices = await MakeService().ContributeForUserAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+
+        var bindings = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.HoldedCreditorAccount, StringComparison.Ordinal)).Data);
+        bindings.GetArrayLength().Should().Be(2);
+        bindings.EnumerateArray().Select(b => b.GetProperty("HoldedContactId").GetString())
+            .Should().BeEquivalentTo("survivor-contact", "source-contact");
+        var payouts = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.SepaPayouts, StringComparison.Ordinal)).Data);
+        payouts.GetArrayLength().Should().Be(2);
+        payouts.EnumerateArray().Select(b => b.GetProperty("HoldedContactId").GetString())
+            .Should().BeEquivalentTo("survivor-contact", "source-contact");
     }
 
     [HumansFact]

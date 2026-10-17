@@ -2410,23 +2410,28 @@ internal sealed class Service(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
-        var payouts = await repo.GetSepaPayoutsForUserAsync(userId, ct);
+        var info = await users.GetUserInfoAsync(userId, ct);
+        var bindings = new List<HoldedCreditorContact>();
+        var payouts = new List<SepaPayoutExportRow>();
+        foreach (var id in info?.AllUserIds ?? [userId])
+        {
+            if (await repo.GetCreditorContactByUserAsync(id, ct) is { } binding)
+                bindings.Add(binding);
+            payouts.AddRange(await repo.GetSepaPayoutsForUserAsync(id, ct));
+        }
         return
         [
             new UserDataSlice(HoldedCreditorAccount,
-                binding is null
-                    ? null
-                    : new
-                    {
-                        binding.SupplierAccountNum,
-                        binding.HoldedContactId,
-                        Source = binding.Source.ToString(),
-                    }),
+                bindings.Count == 0 ? null : bindings.Select(binding => new
+                {
+                    binding.SupplierAccountNum,
+                    binding.HoldedContactId,
+                    Source = binding.Source.ToString(),
+                }).ToList()),
 
             // Every credit transfer paid to them. The IBAN is the masked one, as everywhere
             // outside the file and the payout row itself.
-            new UserDataSlice(SepaPayouts, payouts.Select(p => new
+            new UserDataSlice(SepaPayouts, payouts.OrderBy(p => p.GeneratedAt).Select(p => new
             {
                 GeneratedAt = p.GeneratedAt.ToIso8601(),
                 p.FileName,
