@@ -31,8 +31,9 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();
 
         services.AddScoped<ApplicationDecisionService>();
-        services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<ApplicationDecisionService>());
-        services.AddScoped<IApplicationServiceRead>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddScoped<IGovernanceWrite>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ApplicationDecisionService>());
 
@@ -52,10 +53,10 @@ public sealed class Section : ISection, IIssueQueueOwner
         // ITeamService / IRoleAssignmentService, both of which reach ISystemTeamSync —
         // RoleAssignmentService injects it, TeamService resolves it lazily through
         // IServiceProvider for this same reason — and whose implementation injects
-        // IMembershipCalculatorRead back. Only MembershipCalculator depends on the adapter.
+        // IMembershipCalculator back. Only MembershipCalculator depends on the adapter.
         services.AddScoped<IMembershipQuery, MembershipQuery>();
         services.AddScoped<MembershipCalculator>();
-        services.AddScoped<IMembershipCalculatorRead>(sp => sp.GetRequiredService<MembershipCalculator>());
+        services.AddScoped<IMembershipCalculator>(sp => sp.GetRequiredService<MembershipCalculator>());
 
         // Base cannot name a moved section's enums, so the section pushes its badge rows into
         // the Humans.UI registry rather than Humans.UI referencing this section

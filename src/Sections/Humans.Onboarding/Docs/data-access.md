@@ -8,9 +8,9 @@ section — owns no DB tables, holds no `IMemoryCache` injection.
 ### OnboardingService (Scoped)
 
 No repository injected. Cross-section calls via `IUserService`,
-`IApplicationServiceRead`, `IEmailService`, the section's own
+`IGovernanceService`, `IEmailService`, the section's own
 `OnboardingEmails` builder,
-`INotificationEmitter`, `ISystemTeamSync`, `IMembershipCalculatorRead`,
+`INotificationEmitter`, `ISystemTeamSync`, `IMembershipCalculator`,
 `IConsentService`, `IHumanLifecycleService`, `IAuditLogService`. No
 `IMemoryCache`, no `IClock`. State changes flow through the owning
 services so cache invalidation happens at the boundary they each own.
@@ -20,7 +20,7 @@ services so cache invalidation happens at the boundary they each own.
 Not a DTO — this is where the widget's step-resolution algorithm lives
 (`GetCurrentStepAsync`), and it is the section's most-branched method. No
 repository: it answers from `IUserService`, `IShiftView`,
-`IMembershipCalculatorRead`, `ISettingsService`, `IConsentService`
+`IMembershipCalculator`, `ISettingsService`, `IConsentService`
 and the session seam `IOnboardingWidgetSessionState`. The step is derived
 on every call rather than stored, so there is nothing to invalidate.
 

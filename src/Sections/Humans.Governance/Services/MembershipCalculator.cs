@@ -15,11 +15,11 @@ internal sealed class MembershipCalculator(
     IUserService userService,
     ILegalDocumentSyncService legalDocumentSyncService,
     IServiceProvider serviceProvider,
-    IClock clock) : IMembershipCalculatorRead, IOrchestrator
+    IClock clock) : IMembershipCalculator, IOrchestrator
 {
     // IMembershipQuery (not ITeamService/IRoleAssignmentService) breaks DI cycle through ISystemTeamSync.
 
-    // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculatorRead.
+    // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculator.
 
     private IConsentService ConsentService => serviceProvider.GetRequiredService<IConsentService>();
 

@@ -9,7 +9,7 @@ namespace Humans.Governance.ViewComponents;
 /// (Colaborador/Asociado). Volunteer-only — renders nothing for a guest/non-member.
 /// </summary>
 public sealed class GovernanceApplicationsTileViewComponent(
-    IMembershipCalculatorRead membershipCalculator) : ViewComponent
+    IMembershipCalculator membershipCalculator) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

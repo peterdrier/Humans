@@ -317,19 +317,21 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 **Status:** (A) — own project (`src/Sections/Humans.Finance` + `src/Sections/Humans.Finance.Contracts`), own service, owned repository, own `FinanceDbContext`.
 
-**Owning service:** `Service` (`Humans.Finance.Services`), exposed as `IHoldedFinanceService` from the contracts leaf. `IHoldedFinanceServiceRead` carries the read-only subset for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Backdoor.BackdoorFinanceController`); the write-capable `ExpenseReportService`, `Holded.HoldedNightlySync` and `Holded.HoldedController` are `[CrossSectionWrite]` and inject the full `IHoldedFinanceService` instead.
+**Owning service:** `Service` (`Humans.Finance.Services`), implements the internal `IHoldedFinanceManagement` (`Services/IHoldedFinanceManagement.cs`), which composes two faces published from the contracts leaf. `IHoldedFinanceService` is the read-only surface for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Preapprovals`, `Backdoor.BackdoorFinanceController`); `IHoldedFinanceWrite` is the narrow write surface (`Holded.HoldedNightlySync` and `Holded.HoldedController` for `SyncAsync`, the Expenses publisher for the creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). Finance's own `FinanceController` injects `IHoldedFinanceManagement`.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
-**Job:** `HoldedSyncJob` — **not this section's.** It is Holded's (`src/Sections/Humans.Holded/Jobs/`, cron in `Humans.Holded/SectionJobs.cs`); its body `HoldedNightlySync` calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror.
+**Job:** `HoldedSyncJob` — **not this section's.** It is Holded's (`src/Sections/Humans.Holded/Jobs/`, cron in `Humans.Holded/SectionJobs.cs`); its body `HoldedNightlySync` calls this section's `IHoldedFinanceWrite.SyncAsync` first and then the ledger mirror.
 **Migrations:** `Data/Migrations/`, on `FinanceDbContext` with its own history table `__EFMigrationsHistory_Finance`.
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
-### Cross-section read interface
+### Public contract
 
-| Read interface | Methods | Notes |
+| Interface | Methods | Notes |
 |---|---|---|
-| `IHoldedFinanceServiceRead` | [`IHoldedFinanceServiceRead.cs`](../../Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). `IHoldedFinanceService` inherits it and adds the writes. `ListExpenseAccountsAsync` (read) plus `IHoldedFinanceService.CreateOrLinkExpenseAccountAsync` and `SetExpenseAccountActiveAsync` (writes) resolve, and retire/restore, an expense account for a caller with no budget category — the managed registry. |
+| `IHoldedFinanceService` (read) | [`IHoldedFinanceService.cs`](../../Humans.Finance.Contracts/IHoldedFinanceService.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). |
+| `IHoldedFinanceWrite` | [`IHoldedFinanceWrite.cs`](../../Humans.Finance.Contracts/IHoldedFinanceWrite.cs) | `SyncAsync` (Holded), `EnsureCreditorContactAsync` / `SetCreditorAccountNumAsync` (Expenses), `CreateOrLinkExpenseAccountAsync` / `SetExpenseAccountActiveAsync` (Workgroups) — resolve, and retire/restore, an expense account for a caller with no budget category, the managed registry. |
+| `IHoldedFinanceManagement` | internal | Finance's own full surface (`IHoldedFinanceService` + `IHoldedFinanceWrite`), injected by `FinanceController`. |
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
 

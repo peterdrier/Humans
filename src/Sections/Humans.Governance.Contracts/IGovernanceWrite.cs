@@ -1,13 +1,14 @@
-using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Contracts;
 
 /// <summary>
 /// The write half of the tier-application lifecycle with a consumer outside the section:
-/// Users' <c>ProfileController</c> submit path. <c>TermRenewalReminderJob</c> drives the
-/// renewal members from inside the section.
+/// Users' <c>ProfileController</c> submit path, alongside the read-only
+/// <see cref="IGovernanceService"/>. <c>TermRenewalReminderJob</c> drives the renewal members
+/// from inside the section.
 /// </summary>
 /// <remarks>
 /// Approve, reject, withdraw, board voting and the admin reads have no consumer outside the
@@ -15,7 +16,7 @@ namespace Humans.Governance.Contracts;
 /// controllers inject by concrete type. Carve the leaf from the *call sites*, not from the
 /// interface.
 /// </remarks>
-public interface IApplicationDecisionService : IApplicationServiceRead, IApplicationService
+public interface IGovernanceWrite : IApplicationService
 {
     /// <summary>
     /// The tier-application field rules, evaluated without touching storage: a Colaborador or Asociado
@@ -49,29 +50,6 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
         Guid applicationId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns every <see cref="ApplicationStatus.Approved"/> application
-    /// whose <c>TermExpiresAt</c> falls between <paramref name="today"/>
-    /// (inclusive) and <paramref name="reminderThreshold"/> (inclusive) and
-    /// whose <c>RenewalReminderSentAt</c> is still null. Used by the term
-    /// renewal reminder job so it can enumerate candidates without reading
-    /// <c>applications</c> directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
-        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
-
-    /// <summary>
-    /// Lets the renewal job exclude users who have already filed a renewal.
-    /// </summary>
-    Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// No-op if the application does not exist.
-    /// </summary>
-    Task MarkRenewalReminderSentAsync(
-        Guid applicationId, Instant sentAt, CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

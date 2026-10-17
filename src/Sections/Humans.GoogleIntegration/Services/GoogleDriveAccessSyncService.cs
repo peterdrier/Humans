@@ -21,7 +21,7 @@ internal sealed class GoogleDriveAccessSyncService(
     IGoogleRemovalNotificationService removalNotifications,
     IGoogleResourceRepository resourceRepository,
     ITeamService teamService,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     IClock clock,
     ILogger<GoogleDriveAccessSyncService> logger) : IGoogleDriveSync
 {

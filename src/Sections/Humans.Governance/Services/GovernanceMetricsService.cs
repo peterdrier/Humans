@@ -51,8 +51,8 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculatorRead>();
-        var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationServiceRead>();
+        var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
+        var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IGovernanceManagement>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);

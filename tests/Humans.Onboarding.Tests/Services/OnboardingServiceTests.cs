@@ -21,11 +21,11 @@ public sealed class OnboardingServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
-    private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
+    private readonly IGovernanceService _applicationDecisionService = Substitute.For<IGovernanceService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
-    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();

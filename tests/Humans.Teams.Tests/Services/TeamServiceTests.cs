@@ -51,8 +51,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly RoleAssignmentService _roleAssignmentService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly ITeamResourceManagement _teamResourceService;
+    private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
@@ -68,7 +68,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        _teamResourceService = Substitute.For<ITeamResourceService>();
+        _teamResourceService = Substitute.For<ITeamResourceManagement>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
@@ -87,7 +87,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
-            .With<ITeamResourceServiceRead>(_teamResourceService)
+            .With<ITeamResourceService>(_teamResourceService)
             .With(userService)
             .With<IUserService>(userService)
             .Build();

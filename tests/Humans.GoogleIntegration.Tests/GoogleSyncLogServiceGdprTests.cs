@@ -25,7 +25,7 @@ namespace Humans.GoogleIntegration.Tests;
 public sealed class GoogleSyncLogServiceGdprTests
 {
     private readonly IGoogleSyncLogRepository _repo = Substitute.For<IGoogleSyncLogRepository>();
-    private readonly ITeamResourceService _teamResources = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _teamResources = Substitute.For<ITeamResourceManagement>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();

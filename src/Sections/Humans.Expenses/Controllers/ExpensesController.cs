@@ -24,7 +24,7 @@ internal sealed class ExpensesController(
     IUserService userService,
     IExpenseReportManagement service,
     IBudgetService budgetService,
-    IHoldedFinanceServiceRead holdedFinance,
+    IHoldedFinanceService holdedFinance,
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
     IClock clock,

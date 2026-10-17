@@ -1785,7 +1785,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     /// <summary>
     /// True when the user has an Attended participation row for the season's
     /// year (gate check-in via ticket sync). Cross-section read off the cached
-    /// <see cref="UserInfo"/> per the I*ServiceRead pattern.
+    /// <see cref="UserInfo"/> per the I{Section}Service read pattern.
     /// </summary>
     private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct)
     {

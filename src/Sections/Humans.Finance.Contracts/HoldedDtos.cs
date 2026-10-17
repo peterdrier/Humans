@@ -25,7 +25,7 @@ public sealed record HoldedDocSyncInfo(
     Instant? LastSyncAt, string Status, string? LastError, int LastSyncedDocCount,
     int CreditorBindingCount);
 
-/// <summary>The outcome of <see cref="IHoldedFinanceService.CreateOrLinkExpenseAccountAsync"/>:
+/// <summary>The outcome of <see cref="IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync"/>:
 /// the account the caller should book to, and whether this call created it.</summary>
 public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created);
 

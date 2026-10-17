@@ -102,9 +102,10 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
-            Substitute.For<IApplicationDecisionService>(),
+            Substitute.For<IGovernanceService>(),
+            Substitute.For<IGovernanceWrite>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>());
+            Substitute.For<IMembershipCalculator>());
 
         var identity = new ClaimsIdentity(new[]
         {

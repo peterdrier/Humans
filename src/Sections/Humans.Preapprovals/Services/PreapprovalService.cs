@@ -26,7 +26,7 @@ internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
     IUserEmailService userEmails,
-    IHoldedFinanceServiceRead finance,
+    IHoldedFinanceService finance,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
     IEmailService email,

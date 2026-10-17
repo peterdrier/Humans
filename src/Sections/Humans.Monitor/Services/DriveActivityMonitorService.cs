@@ -10,7 +10,7 @@ namespace Humans.Monitor.Services;
 
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
-    ITeamResourceServiceRead teamResourceService,
+    ITeamResourceService teamResourceService,
     ISettingsService settingsStore,
     IUserService userService,
     IAuditLogService auditLogService,

@@ -10,14 +10,14 @@ namespace Humans.GoogleIntegration.Services;
 /// Workspace admin operations: account provisioning, suspend/reactivate, credential
 /// recovery, group linking, rename detection. All cross-section reads go through the owning
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
-/// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
+/// <see cref="ITeamService"/>, <see cref="ITeamResourceManagement"/>).
 /// </summary>
 internal sealed class GoogleAdminService(
     IGoogleWorkspaceUserService workspaceUserService,
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncManagement googleSyncService,
     ITeamService teamService,
     ITeamWrite teamWrite,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     IUserService userService,
     IUserWrite userWrite,
     IUserEmailService userEmailService,

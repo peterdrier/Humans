@@ -80,15 +80,17 @@ public sealed class Section : ISection
             return opts;
         });
 
-        services.AddScoped<ITeamResourceService, TeamResourceService>();
-        services.AddScoped<ITeamResourceServiceRead>(sp => sp.GetRequiredService<ITeamResourceService>());
+        services.AddScoped<ITeamResourceManagement, TeamResourceService>();
+        services.AddScoped<ITeamResourceService>(sp => sp.GetRequiredService<ITeamResourceManagement>());
+        services.AddScoped<ITeamResourceWrite>(sp => sp.GetRequiredService<ITeamResourceManagement>());
 
         // Real Google clients when a service-account key is configured, stubs otherwise.
         // The health check reports the missing configuration as Degraded in every environment.
         if (hasGoogleCredentials)
         {
-            services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
-            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
+            services.AddScoped<IGoogleSyncManagement, GoogleWorkspaceSyncService>();
+            services.AddScoped<IGoogleSyncService>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
+            services.AddScoped<IGoogleSyncWrite>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
             services.AddScoped<IGoogleDriveActivityClient, GoogleDriveActivityClient>();
 
@@ -104,8 +106,9 @@ public sealed class Section : ISection
         }
         else
         {
-            services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
-            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
+            services.AddScoped<IGoogleSyncManagement, StubGoogleSyncService>();
+            services.AddScoped<IGoogleSyncService>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
+            services.AddScoped<IGoogleSyncWrite>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
             services.AddScoped<IGoogleDriveActivityClient, StubGoogleDriveActivityClient>();
 

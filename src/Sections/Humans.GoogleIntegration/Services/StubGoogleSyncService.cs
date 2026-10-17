@@ -6,14 +6,14 @@ using Humans.Base.Enums;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Stub implementation of IGoogleSyncService that logs actions without calling Google APIs.
+/// Stub implementation of IGoogleSyncManagement that logs actions without calling Google APIs.
 /// Replace with real implementation when Google Workspace API integration is ready.
 /// </summary>
 internal sealed class StubGoogleSyncService(
     ILogger<StubGoogleSyncService> logger,
     IGoogleSyncOutboxRepository outboxRepository,
     IGoogleDrivePermissionsClient drivePermissions,
-    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler) : IGoogleSyncService
+    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler) : IGoogleSyncManagement
 {
     public async Task<string> CreateSubfolderAsync(
         string parentFolderId,
@@ -135,7 +135,7 @@ internal sealed class StubGoogleSyncService(
         // NOT stubbed. The outbox is real in this configuration — GoogleSyncOutboxService is
         // registered unconditionally and team changes enqueue events — only the Google writes
         // are stubbed. Reading the pending count needs no credentials, and before the metrics
-        // gauge moved onto IGoogleSyncServiceRead it read this repository directly, so
+        // gauge moved onto IGoogleSyncService it read this repository directly, so
         // returning 0 here would silently make humans.google_sync_outbox_pending wrong in
         // every environment without Google credentials.
         return outboxRepository.CountPendingAsync(cancellationToken);

@@ -23,7 +23,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     private readonly IUserService _userService;
     private readonly IUserWrite _userServiceWrite;
     private readonly ITeamService _teamService;
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleSyncManagement _googleSyncService;
     private readonly IGoogleDriveActivityClient _googleClient;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
@@ -51,7 +51,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleSyncService = Substitute.For<IGoogleSyncManagement>();
         _googleSyncService.AddUserToTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<Guid>(),
                 Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
             .Returns(call => new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Deferred, call.ArgAt<Guid>(1)));

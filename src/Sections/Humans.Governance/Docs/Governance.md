@@ -316,7 +316,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - Board vote and finalization forms require an explicit valid choice. Missing or malformed vote/approval values return HTTP 400 with a Warning before any vote, decision, audit or notification is written. Explicit `Yay`/zero and rejection/false remain valid; BoardOnly and AdminOnly gates are unchanged.
 - Renewal in-app notices use the applicant’s supported saved language (English fallback), including the shared culture-aware expiry-date display; the recipient culture scope is restored afterward.
 - Renewal reminder email and in-app notice share the recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences. Email expiry-date formatting, reminder stamps and best-effort notice handling are unchanged.
-- A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IApplicationDecisionService`.
+- A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IGovernanceManagement`.
 - On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`) and calls `IUserWrite.DowngradeMembershipTierForExpiredAsync`, which **resets the profile's `MembershipTier`** — to another still-active tier the human holds, otherwise to `Volunteer` — and writes an `AuditAction.TierDowngraded` entry per downgrade.
 - The member-dashboard term card passes `HttpContext.RequestAborted` through its profile, membership, and application reads, so a disconnected browser cancels all of its advisory rendering work.
 - The Board voting grid links row content to the application detail. Applicant profile links retain their own destination, including modified clicks that open another tab without navigating the grid.
@@ -351,7 +351,17 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 
 **Owning services:** `ApplicationDecisionService`, `MembershipCalculator`, `MembershipQuery`, `AssemblyVoteService`
 **Owned tables:** `applications`, `application_state_history`, `board_votes`, `assembly_votes`, `assembly_vote_options`, `assembly_vote_roster`, `assembly_ballots`, `assembly_ballot_history`, `assembly_vote_peeks`
-**Public surface:** the cross-section surface — `IApplicationServiceRead` (including `GetUnvotedApplicationCountAsync` for the admin nav badge), `IMembershipCalculatorRead`, `IApplicationDecisionService` (validate-submission / submit / update-draft / the two renewal-reminder reads / mark-reminder-sent), `ApplicationStatus` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
+**Public surface:** the cross-section surface — `IGovernanceService`, `IGovernanceWrite`, `IMembershipCalculator`, `ApplicationStatus` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
+
+### Public contract
+
+| Public interface | Methods | Notes |
+|---|---:|---|
+| `IGovernanceService` | 7 | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), and the three active-tier eligibility lookups `SystemTeamSyncJob` uses. DTOs only. |
+| `IGovernanceWrite` | 3 | `ValidateSubmission`, `SubmitAsync`, `UpdateDraftApplicationAsync` — Users' `ProfileController` submit path (the profile edit form validates and submits in one post). |
+| `IMembershipCalculator` | 9 | Membership and consent-completeness reads. |
+
+`ApplicationDecisionService` implements the internal `IGovernanceManagement` (`IGovernanceService` + `IGovernanceWrite` + the renewal-reminder members `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync` and the admin reads `GetAdminStatsAsync`, `GetPendingApplicationCountAsync`); DI registers each face to the same instance. Approve, reject, withdraw and board voting stay on the concrete service, injected by the section's own controllers.
 
 - **Architecture tests:** this section has no architecture test project of its own; the solution-wide rules in `tests/Humans.Web.Tests/Architecture/` cover it, including `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.
 - `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` and `MembershipQuery` hold no cache.
@@ -366,8 +376,8 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 
 ### Touch-and-clean guidance
 
-- Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IApplicationServiceRead`.
-- The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IApplicationServiceRead` (this section's own `SectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
+- Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IGovernanceService`.
+- The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IGovernanceService` (this section's own `SectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
 

@@ -31,7 +31,7 @@ internal sealed class SystemTeamSyncJob(
     IUserWrite userWrite,
     ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncWrite googleSyncService,
     IGoogleGroupSync googleGroupSync,
     IGoogleDriveActivityClient googleClient,
     IAuditLogService auditLogService,
@@ -44,17 +44,17 @@ internal sealed class SystemTeamSyncJob(
 {
     // Lazy via IServiceProvider to break DI cycles (these services depend on ISystemTeamSync).
 
-    private IApplicationServiceRead ApplicationDecisionService =>
-        serviceProvider.GetRequiredService<IApplicationServiceRead>();
+    private IGovernanceService ApplicationDecisionService =>
+        serviceProvider.GetRequiredService<IGovernanceService>();
 
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
-    private ITeamResourceServiceRead TeamResourceService =>
-        serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
+    private ITeamResourceService TeamResourceService =>
+        serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    private IMembershipCalculatorRead MembershipCalculator =>
-        serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
+    private IMembershipCalculator MembershipCalculator =>
+        serviceProvider.GetRequiredService<IMembershipCalculator>();
 
     /// <summary>
     /// Executes the system team sync job and returns a report of what changed.

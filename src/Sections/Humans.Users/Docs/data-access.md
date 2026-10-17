@@ -124,7 +124,7 @@ No repository, no cache, no direct DB access. Section-internal
 `ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
 for — active teams the viewer coordinates whose linked Google Group is synced.
 Cross-section reads via `ITeamService.GetTeamsAsync` and
-`ITeamResourceServiceRead.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
+`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
 neither section's tables.
 
 ## Human Lifecycle
@@ -146,7 +146,7 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 (`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
-`ITeamService`, `IMembershipCalculatorRead`, `IGoogleSyncService`,
+`ITeamService`, `IMembershipCalculator`, `IGoogleSyncWrite`,
 `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
 `IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`

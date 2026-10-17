@@ -939,7 +939,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _removalNotifications,
         _resources,
         Substitute.For<ITeamService>(),
-        Substitute.For<ITeamResourceService>(),
+        Substitute.For<ITeamResourceManagement>(),
         new FakeClock(_now),
         _logger);
 

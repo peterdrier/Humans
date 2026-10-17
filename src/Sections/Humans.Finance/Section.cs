@@ -19,7 +19,7 @@ namespace Humans.Finance;
 /// Holded section, which registers it; Finance consumes it through
 /// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> is not registered here either, and is
 /// not this section's: it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
-/// section's <c>IHoldedFinanceService.SyncAsync</c> first, and it lives in
+/// section's <c>IHoldedFinanceWrite.SyncAsync</c> first, and it lives in
 /// <c>src/Sections/Humans.Holded/Jobs/</c>.
 /// </remarks>
 public sealed class Section : ISection
@@ -45,8 +45,9 @@ public sealed class Section : ISection
 
         services.AddScoped<IHoldedRepository, Repository>();
         services.AddScoped<Service>();
+        services.AddScoped<IHoldedFinanceManagement>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceServiceRead>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IHoldedFinanceWrite>(sp => sp.GetRequiredService<Service>());
         // /Finance/Holded's read model. Internal — this section's own screen is the only consumer.
         services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
         // The SEPA bank-line sweep's body; its Hangfire target is SepaBankBookingJob, in this

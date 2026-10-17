@@ -189,7 +189,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
   display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
-- **Finance**: `IHoldedFinanceServiceRead.ListExpenseAccountsAsync` to resolve the program's
+- **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
 - **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`.
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
@@ -228,7 +228,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 - **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
   `<vc:human>` and `<vc:human-search>` for people.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
-  `IHoldedFinanceServiceRead`, `INotificationEmitter`, `INotificationAutoResolve`,
+  `IHoldedFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   for the six cultures; `GdprExportDependencyInjectionTests` for the contributor.

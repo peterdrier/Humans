@@ -239,7 +239,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Coordinator notifications after a saved join request or direct join are best-effort, including display-name lookup. Notification preparation failures are logged and do not fail the committed operation.
 - Coordinators can approve/reject join requests for their own department and any sub-teams within that department (enforced by `IsUserCoordinatorOfTeamAsync`).
 - All member additions and removals are audit-logged via `AuditLogEntry`. Direct addition resolves an existing pending join request on the reloaded request, saving its review fields together with the membership.
-- Team pages, membership email preparation and system-team sync read Google resources through `ITeamResourceServiceRead`; resource administration retains the full mutation interface.
+- Team pages, membership email preparation and system-team sync read Google resources through `ITeamResourceService`; resource administration mutates through `ITeamResourceWrite`.
 - Google resource access changes triggered by membership changes (Drive folder permissions, Group memberships) are logged in the audit trail.
 - Removing a member from a team also removes all their role assignments on that team.
 - Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one. Team creation retries only slug/custom-slug constraint collisions; unrelated failures, including a duplicate Google group prefix, propagate.
@@ -289,7 +289,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - **Users.Contracts** (also the leaf's one reference, for `GoogleEmailStatus`): `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
 - **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
-- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncService.AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` (per-user removals are no-ops, handled by daily reconciliation); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` for the Resources page and the Google-group reconciliation.
+- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` (per-user removals are no-ops, handled by daily reconciliation); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page and the Google-group reconciliation.
 - **Shifts.Contracts:** `IShiftManagementService` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.
 - **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.
@@ -297,7 +297,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **Gdpr:** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
-- **Governance.Contracts:** `IMembershipCalculatorRead` decides Asociados / Colaboradors eligibility.
+- **Governance.Contracts:** `IMembershipCalculator` decides Asociados / Colaboradors eligibility.
 - **Tickets.Contracts:** the EE page delegates exact, current-event barcode matching to `ITicketService.FindCurrentEventAttendeeByBarcodeAsync`; it formats the matched active human for the picker.
 
 **Inbound** — sections that reference Teams and are not dependencies of it:

@@ -21,7 +21,7 @@ internal sealed record ShiftAdminPageRequest(
 
 internal sealed class ShiftAdminPageBuilder(
     IShiftManagement shiftManagement,
-    IMembershipCalculatorRead membership,
+    IMembershipCalculator membership,
     IUserService userService,
     ITeamService teamService)
 {

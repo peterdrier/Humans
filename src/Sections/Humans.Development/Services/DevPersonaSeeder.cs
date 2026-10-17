@@ -47,7 +47,7 @@ internal sealed class DevPersonaSeeder(
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
     IConsentSubmission consentService,
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IMemoryCache cache,

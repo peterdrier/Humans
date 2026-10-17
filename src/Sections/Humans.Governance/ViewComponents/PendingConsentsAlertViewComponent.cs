@@ -9,7 +9,7 @@ namespace Humans.Governance.ViewComponents;
 /// awaiting the member's signature. Renders nothing when none are pending.
 /// </summary>
 public sealed class PendingConsentsAlertViewComponent(
-    IMembershipCalculatorRead membershipCalculator) : ViewComponent
+    IMembershipCalculator membershipCalculator) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

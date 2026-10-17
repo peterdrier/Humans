@@ -33,7 +33,7 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly DbContextOptions<EmailDbContext> _options;
     private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
-    private readonly ICampaignService _campaignService;
+    private readonly ICampaignWrite _campaignService;
     private readonly FakeClock _clock;
     // Substituted rather than built: the concrete HumansMetricsService moved to Humans.Web at
     // G5 lane 5b-6 and this section may not reference it. Nothing here asserts on metrics —
@@ -54,7 +54,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
         _dbContext = new EmailDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();
-        _campaignService = Substitute.For<ICampaignService>();
+        _campaignService = Substitute.For<ICampaignWrite>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
         _metrics = Substitute.For<IHumansMetrics>();
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());

@@ -471,7 +471,7 @@ public class ShiftAdminControllerTests
             _userService,
             Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
-            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
+            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
             _logger,

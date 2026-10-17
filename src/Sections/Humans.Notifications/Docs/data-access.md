@@ -69,8 +69,8 @@ No repository. Pure read-aggregation over owning services.
 | `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
-Cross-section calls via `IUserService`, `IGoogleSyncServiceRead`,
-`ITeamService`, `ITicketSync`, `IApplicationServiceRead`,
+Cross-section calls via `IUserService`, `IGoogleSyncService`,
+`ITeamService`, `ITicketSync`, `IGovernanceService`,
 `ICampService`. **No direct DB access** — every counter fans out
 through an owning-service interface call.
 

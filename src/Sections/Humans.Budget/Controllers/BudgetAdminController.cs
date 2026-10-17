@@ -20,7 +20,7 @@ namespace Humans.Budget.Controllers;
 /// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
 /// </summary>
 /// <remarks>
-/// It still calls <c>IHoldedFinanceServiceRead</c> for one thing: the per-category actuals shown on
+/// It still calls <c>IHoldedFinanceService</c> for one thing: the per-category actuals shown on
 /// the year overview. That is an ordinary cross-section service call through the Finance
 /// section's read contract, not a reason to keep the controllers merged.
 /// </remarks>
@@ -32,7 +32,7 @@ internal sealed class BudgetAdminController(
     TicketingBudgetService ticketingBudgetService,
     IClock clock,
     IUserService userService,
-    IHoldedFinanceServiceRead holdedFinance,
+    IHoldedFinanceService holdedFinance,
     ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

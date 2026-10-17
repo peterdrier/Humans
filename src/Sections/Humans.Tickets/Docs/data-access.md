@@ -65,7 +65,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserService`,
+`IBudgetService`, `ICampaignService`, `ICampaignWrite`, `IUserService`,
 `IUserEmailService`, `ITeamService` (read-split surface),
 `ISettingsService`, plus `IClock`. Implements
 `IUserDataContributor` (the GDPR contributor is the inner, one per section):
@@ -147,7 +147,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserService`, `IUserWrite`, `ICampaignService`,
+`IUserService`, `IUserWrite`, `ICampaignWrite`,
 `ISettingsService`, `ITicketCacheInvalidator`. Implements
 `ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
 verified-email → user-id map by fanning out over `IUserService.GetAllUserInfosAsync`.
@@ -225,7 +225,7 @@ No repository, no `IApplicationService`-derived interface (plain class, not
 part of the verifier's service inventory). Provisions and manages the shared
 gate-terminal account (`SystemUserIds.GateTerminal` — a real `User` row, not
 a person) the first time a ticket admin sets its password from
-`/Tickets/Admin/Gate`. `[CrossSectionWrite]`-marked: creates the Identity
+`/Tickets/Admin/Gate`. Creates the Identity
 user via `UserManager<User>`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
 `IUserWrite.ApplyProfileOnboardingMutationAsync`, invalidates user-access

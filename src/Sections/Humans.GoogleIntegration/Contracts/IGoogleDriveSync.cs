@@ -39,7 +39,7 @@ public interface IGoogleDriveSync
 
     /// <summary>
     /// Reconciles one Drive resource. Called by scoped on-demand sync requests
-    /// (<see cref="IGoogleSyncService.RequestSyncAsync"/>).
+    /// (<see cref="IGoogleSyncWrite.RequestSyncAsync"/>).
     /// </summary>
     [ExternalWrite]
     Task<ResourceSyncDiff> ReconcileOneAsync(

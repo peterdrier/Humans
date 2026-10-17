@@ -14,11 +14,11 @@ repository under `Data/`. **DbContext:**
 Both repositories are registered **Singleton** (`Section.cs:28`, `:41`); they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
-`IApplicationDecisionService` extends `IApplicationServiceRead`, and every reader outside
-this section injects the narrow read surface rather than the full decision service —
-`OnboardingService`, `NotificationMeterProvider`, `SystemTeamSyncJob` and
-`UsersAdminController`. `ProfileController` is the one exception: it injects
-`IApplicationDecisionService` because it submits and updates drafts.
+`IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads)
+and `IGovernanceWrite` (validate-submission, submit, update-draft). Every reader outside
+this section injects `IGovernanceService` — `OnboardingService`, `NotificationMeterProvider`,
+`SystemTeamSyncJob` and `UsersAdminController`. `ProfileController` is the one writer: it
+injects `IGovernanceService` and `IGovernanceWrite` because it submits and updates drafts.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).
@@ -45,8 +45,8 @@ Repository: `IApplicationRepository`.
 Cross-section calls via `IUserService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
-and the section's own `GovernanceEmails` builder. Implements `IApplicationDecisionService` (which
-extends `IApplicationServiceRead`), `IUserDataContributor`, `IUserMerge`.
+and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
+extends `IGovernanceService` and `IGovernanceWrite`), `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
 which clears the applicant's own free text (motivation, additional info,
 contribution, role understanding) and reviewer prose on `Applications` and
@@ -112,7 +112,7 @@ output.
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
+Polls `IMembershipCalculator`, `IGovernanceManagement`,
 `IUserService` on a timer to publish `humans.asociados`,
 `humans.applications_pending`, `humans.pending_consents`,
 `humans.consent_deadline_approaching`.
@@ -122,7 +122,7 @@ Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
 No repository. Pure read computation over `IMembershipQuery`,
 `IUserService`, `ILegalDocumentSyncService`, `IConsentService`
 (resolved lazily via `IServiceProvider` to break a DI cycle), and
-`IClock`. Implements `IMembershipCalculatorRead`. No DB access, no cache.
+`IClock`. Implements `IMembershipCalculator`. No DB access, no cache.
 
 ### MembershipQuery (Scoped)
 
@@ -133,7 +133,7 @@ No repository. Read-only fan-out over `ITeamService`,
 ### GovernanceIndexService (Scoped)
 
 No repository. Read-only assembly of the governance index view over
-`IApplicationServiceRead`, `ILegalDocumentService`, `IUserService`.
+`IGovernanceService`, `ILegalDocumentService`, `IUserService`.
 No DB access, no cache.
 
 ### GovernanceEmails (Scoped, internal)

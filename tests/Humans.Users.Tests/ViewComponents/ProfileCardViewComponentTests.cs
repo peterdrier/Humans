@@ -94,7 +94,7 @@ public sealed class ProfileCardViewComponentTests
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
-            Substitute.For<IMembershipCalculatorRead>(), Substitute.For<ICommunicationPreferenceService>())
+            Substitute.For<IMembershipCalculator>(), Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {

@@ -27,7 +27,7 @@ internal sealed class TicketSyncService(
     ITicketVendorCacheInvalidator vendorCache,
     IUserService userServiceRead,
     IUserWrite userService,
-    ICampaignService campaignService,
+    ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService, IUserMerge
 {
     private readonly TicketVendorSettings _settings = settings.Value;

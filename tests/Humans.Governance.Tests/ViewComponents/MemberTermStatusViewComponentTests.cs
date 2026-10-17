@@ -27,7 +27,7 @@ public sealed class MemberTermStatusViewComponentTests
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
 
         var component = new MemberTermStatusViewComponent(
-            users, Substitute.For<IMembershipCalculatorRead>(), Substitute.For<IApplicationServiceRead>(),
+            users, Substitute.For<IMembershipCalculator>(), Substitute.For<IGovernanceService>(),
             SystemClock.Instance)
         {
             ViewComponentContext = new ViewComponentContext

@@ -157,9 +157,9 @@ Services are cached by **wrapping them in a decorator**, not by inlining `IMemor
 
 ```
 Controllers / other services
-          ↓ IApplicationDecisionService
+          ↓ IGovernanceManagement
 CachingApplicationDecisionService (decorator)   [Infrastructure]
-          ↓ IApplicationDecisionService
+          ↓ IGovernanceManagement
 ApplicationDecisionService (business logic)     [Application]
           ↓ IApplicationRepository, IApplicationStore
 ApplicationRepository, ApplicationStore         [Infrastructure]

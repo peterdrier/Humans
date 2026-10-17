@@ -30,9 +30,9 @@ public sealed class NotificationsControllerTests
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var meterProvider = new NotificationMeterProvider(
-            Substitute.For<IUserService>(), Substitute.For<IGoogleSyncServiceRead>(),
+            Substitute.For<IUserService>(), Substitute.For<IGoogleSyncService>(),
             Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IApplicationServiceRead>(), Substitute.For<ICampService>(), cache,
+            Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,
             localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var controller = new NotificationsController(inbox, Substitute.For<IUserService>(), meterProvider)

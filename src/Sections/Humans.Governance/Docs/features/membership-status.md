@@ -15,7 +15,7 @@
 
 ## Overview
 
-Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculatorRead.PartitionUsersAsync()`. [Shared Logic](#shared-logic) lists who consumes it and who computes their own buckets instead.
+Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()`. [Shared Logic](#shared-logic) lists who consumes it and who computes their own buckets instead.
 
 ## The 6 Buckets
 
@@ -48,7 +48,7 @@ Pending Deletion → (30 days) → Deleted
 
 ## Shared Logic
 
-`IMembershipCalculatorRead.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
+`IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
 
 - **Admin dashboard** (`AdminDashboardService`) — shows count per category
 - **`PreferredLanguageCardViewComponent`** (`Humans.Users`) — the per-status language breakdown

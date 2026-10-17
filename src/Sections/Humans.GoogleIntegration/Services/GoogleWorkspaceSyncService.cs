@@ -12,7 +12,7 @@ using Humans.GoogleIntegration.Services.Workspace;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// <see cref="IGoogleSyncService"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
+/// <see cref="IGoogleSyncManagement"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
 /// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
 /// </summary>
 internal sealed class GoogleWorkspaceSyncService(
@@ -33,7 +33,7 @@ internal sealed class GoogleWorkspaceSyncService(
     IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler,
     IOptions<GoogleWorkspaceOptions> options,
     IClock clock,
-    ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncService
+    ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncManagement
 {
     private readonly GoogleWorkspaceOptions _options = options.Value;
 

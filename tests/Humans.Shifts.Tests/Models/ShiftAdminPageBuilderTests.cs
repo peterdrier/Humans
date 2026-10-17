@@ -18,7 +18,7 @@ namespace Humans.Shifts.Tests.Models;
 /// Pending-list filter, reached only through <see cref="ShiftAdminPageBuilder.BuildAsync"/>
 /// when <see cref="ShiftAdminPageRequest.IncompleteOnboarding"/> is true. The filter keeps
 /// only pending signups whose user is NOT in the "has all required consents" set returned by
-/// <see cref="IMembershipCalculatorRead.GetUsersWithAllRequiredConsentsForTeamAsync"/>.
+/// <see cref="IMembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync"/>.
 ///
 /// Ported from the deleted
 /// tests/Humans.Application.Tests/Services/Shifts/ShiftSignupServiceFilterIncompleteOnboardingTests.cs
@@ -29,7 +29,7 @@ public sealed class ShiftAdminPageBuilderTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
-    private readonly IMembershipCalculatorRead _membership = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 

@@ -20,7 +20,7 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly IGoogleGroupMembershipClient _membershipClient = Substitute.For<IGoogleGroupMembershipClient>();
     private readonly IGoogleGroupProvisioningClient _provisioningClient = Substitute.For<IGoogleGroupProvisioningClient>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
-    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();

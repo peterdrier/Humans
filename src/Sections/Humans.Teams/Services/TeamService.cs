@@ -48,8 +48,8 @@ internal sealed class TeamService(
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
     // Lazy resolution — UserService injects ITeamManagement, closing the cycle.
-    private ITeamResourceServiceRead TeamResourceService
-        => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
+    private ITeamResourceService TeamResourceService
+        => serviceProvider.GetRequiredService<ITeamResourceService>();
 
     private IRoleAssignmentService RoleAssignmentService
         => serviceProvider.GetRequiredService<IRoleAssignmentService>();
@@ -69,8 +69,8 @@ internal sealed class TeamService(
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
 
-    private IGoogleSyncService GoogleSyncService
-        => serviceProvider.GetRequiredService<IGoogleSyncService>();
+    private IGoogleSyncWrite GoogleSyncService
+        => serviceProvider.GetRequiredService<IGoogleSyncWrite>();
 
     public async Task<Team> CreateTeamAsync(
         string name,

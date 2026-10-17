@@ -20,7 +20,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 {
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
-    private readonly ICampaignService _campaignService;
+    private readonly ICampaignWrite _campaignService;
     private readonly IUserService _userService;
     private readonly IUserWrite _userServiceWrite;
     private readonly ISettingsService _shiftManagementService;
@@ -47,7 +47,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _userServiceWrite = Substitute.For<IUserWrite>();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _campaignService = Substitute.For<ICampaignService>();
+        _campaignService = Substitute.For<ICampaignWrite>();
         _shiftManagementService = Substitute.For<ISettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);
@@ -231,7 +231,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     public async Task SyncOrdersAndAttendeesAsync_ForwardsDiscountCodesToCampaignService()
     {
         // Order uses a discount code — TicketSyncService is expected to aggregate
-        // these into DiscountCodeRedemption instances and delegate to ICampaignService
+        // these into DiscountCodeRedemption instances and delegate to ICampaignWrite
         // (which owns CampaignGrants) for the actual RedeemedAt updates.
         var orders = new List<VendorOrderDto>
         {
@@ -377,7 +377,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Substitute.For<ITicketVendorCacheInvalidator>(),
             _userService,
             Substitute.For<IUserWrite>(),
-            Substitute.For<ICampaignService>(),
+            Substitute.For<ICampaignWrite>(),
             Substitute.For<ISettingsService>());
 
         var result = await service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);

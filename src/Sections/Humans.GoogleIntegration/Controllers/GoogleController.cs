@@ -16,9 +16,9 @@ namespace Humans.GoogleIntegration.Controllers;
 [Route("Google")]
 internal sealed class GoogleController(
     IUserService userService,
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncManagement googleSyncService,
     IGoogleGroupSync googleGroupSync,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
     IGoogleSyncLogService syncLog,

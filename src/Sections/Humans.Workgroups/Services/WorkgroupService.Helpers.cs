@@ -513,7 +513,7 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            await googleSync.RequestSyncAsync(w.DriveFolderId, ct);
+            await googleSyncWrite.RequestSyncAsync(w.DriveFolderId, ct);
         }
         catch (Exception ex)
         {

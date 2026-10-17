@@ -5,7 +5,7 @@
   src/Sections/Humans.Users.Contracts/IUserEmailService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
+  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
@@ -435,7 +435,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
   folders → ContentManager (`fileOrganizer`) for current members (never a pending request), Dormant → Viewer,
   root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when GoogleIntegration cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
-  Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
+  Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncWrite.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
@@ -445,7 +445,7 @@ should end is the Board's decision, taken on the register in front of them.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
-- **Finance**: `IHoldedFinanceService.CreateOrLinkExpenseAccountAsync` /
+- **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedClient.ListExpenseAccountsAsync`
   for the admin picker only.
 
@@ -502,9 +502,9 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
-  `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`,
+  `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
+  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedClient`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
   builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own

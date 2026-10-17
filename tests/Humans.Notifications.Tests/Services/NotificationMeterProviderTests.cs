@@ -28,10 +28,10 @@ namespace Humans.Notifications.Tests.Services;
 public class NotificationMeterProviderTests : IDisposable
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IGoogleSyncServiceRead _googleSyncService = Substitute.For<IGoogleSyncServiceRead>();
+    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
-    private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
+    private readonly IGovernanceService _applicationDecisionService = Substitute.For<IGovernanceService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly IMemoryCache _cache;

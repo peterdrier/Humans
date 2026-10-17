@@ -15,7 +15,7 @@ public class TeamMessageOptionsProviderTests
     private static readonly Instant Now = Instant.FromUtc(2026, 9, 1, 12, 0);
 
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ITeamResourceServiceRead _teamResourceService = Substitute.For<ITeamResourceServiceRead>();
+    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
     private readonly Guid _viewerId = Guid.NewGuid();
     private readonly Guid _teamId = Guid.NewGuid();
     private readonly TeamMessageOptionsProvider _provider;

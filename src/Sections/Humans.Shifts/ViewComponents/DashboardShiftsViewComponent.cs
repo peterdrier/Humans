@@ -15,7 +15,7 @@ public sealed class DashboardShiftsViewComponent(
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     IClock clock,
     ILogger<DashboardShiftsViewComponent> logger) : ViewComponent
 {
