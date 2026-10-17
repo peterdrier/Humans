@@ -779,6 +779,11 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
             if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
+            // The Subject carries the project name; reviewers cannot tell what was paid for without it.
+            // Expenses has no link to a Preapprovals grant, so this applies to every report.
+            if (string.IsNullOrWhiteSpace(report.Note))
+                return ExpenseMutationResult.Failure("Expenses_Validation_SubjectRequired");
+
             if (!report.Lines.Any())
                 return ExpenseMutationResult.Failure("Expenses_Validation_ReportNeedsLine");
 

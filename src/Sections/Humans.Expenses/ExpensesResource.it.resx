@@ -276,4 +276,10 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Non è stato ancora registrato nulla.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria sconosciuta)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>ad es. ES7921000813610123456789</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puoi correggere questo rendiconto senza ricominciare: apri una qualsiasi riga qui sotto per modificarla, sostituire la ricevuta o rimuoverla, poi invia di nuovo.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Vai alle righe</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Richiedente</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nome legale</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obbligatorio. Indica il nome del progetto a cui si riferisce la spesa, ad es. il tuo progetto artistico.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Aggiungi un oggetto (il nome del progetto) prima di inviare.</value></data>
 </root>

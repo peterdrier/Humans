@@ -276,4 +276,10 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Noch nichts aufgezeichnet.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(unbekannte Kategorie)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>z. B. ES7921000813610123456789</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Du musst den Bericht nicht neu anlegen: Öffne unten eine beliebige Zeile, um sie zu bearbeiten, den Beleg zu ersetzen oder sie zu entfernen, und sende den Bericht dann erneut ab.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Zu den Zeilen</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Einreicher/in</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Rechtlicher Name</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Pflichtfeld. Gib den Namen des Projekts an, für das die Ausgabe anfällt, z. B. deines Kunstprojekts.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Bitte gib vor dem Absenden einen Betreff (den Projektnamen) an.</value></data>
 </root>

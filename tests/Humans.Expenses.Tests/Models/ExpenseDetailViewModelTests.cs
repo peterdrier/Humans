@@ -35,9 +35,12 @@ public class ExpenseDetailViewModelTests
         };
 
     private static ExpenseDetailViewModel Vm(
-        ExpenseReportDto report, bool isSubmitter, bool isFinanceAdmin, bool canEdit = false) =>
+        ExpenseReportDto report, bool isSubmitter, bool isFinanceAdmin, bool canEdit = false, bool canSeeNames = false) =>
         new()
         {
+            CanSeeNames = canSeeNames,
+            SubmitterBurnerName = "Ada B",
+            SubmitterLegalName = "Ada Lovelace",
             Report = report,
             BookingLabel = "Ops / Fuel",
             IsSubmitter = isSubmitter,
@@ -72,6 +75,36 @@ public class ExpenseDetailViewModelTests
 
         vm.CanSeePayee.Should().BeFalse();
         vm.PayeeName.Should().BeNull();
+        vm.PayeeMaskedIban.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void A_coordinator_sees_the_submitters_names_but_never_the_iban()
+    {
+        var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false, canSeeNames: true);
+
+        vm.VisibleBurnerName.Should().Be("Ada B");
+        vm.VisibleLegalName.Should().Be("Ada Lovelace");
+        vm.PayeeMaskedIban.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void The_submitter_sees_their_names_and_masked_iban()
+    {
+        var vm = Vm(Report(), isSubmitter: true, isFinanceAdmin: false, canSeeNames: true);
+
+        vm.VisibleBurnerName.Should().Be("Ada B");
+        vm.VisibleLegalName.Should().Be("Ada Lovelace");
+        vm.PayeeMaskedIban.Should().NotBeNullOrEmpty().And.NotContain("0200051332");
+    }
+
+    [HumansFact]
+    public void An_unrelated_member_sees_neither_names_nor_iban()
+    {
+        var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false);
+
+        vm.VisibleBurnerName.Should().BeNull();
+        vm.VisibleLegalName.Should().BeNull();
         vm.PayeeMaskedIban.Should().BeNull();
     }
 

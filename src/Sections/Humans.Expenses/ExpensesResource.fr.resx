@@ -276,4 +276,10 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Rien n’a encore été enregistré.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(catégorie inconnue)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ex. ES7921000813610123456789</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Vous pouvez corriger ce rapport sans repartir de zéro : ouvrez n’importe quelle ligne ci-dessous pour la modifier, remplacer son justificatif ou la supprimer, puis soumettez à nouveau.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Aller aux lignes</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Demandeur</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nom légal</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatoire. Indiquez le nom du projet concerné par cette dépense, p. ex. votre projet artistique.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Ajoutez un objet (le nom du projet) avant de soumettre.</value></data>
 </root>

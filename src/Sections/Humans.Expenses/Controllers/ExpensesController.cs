@@ -185,6 +185,12 @@ internal sealed class ExpensesController(
                 : null;
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
 
+            // View is held only by the submitter, the category coordinator and finance admins, so
+            // reaching this page already proves the viewer may see who the submitter is. IBAN stays
+            // behind CanSeePayee.
+            var submitterInfo = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
+            var profileLegalName = $"{submitterInfo?.Profile?.FirstName} {submitterInfo?.Profile?.LastName}".Trim();
+
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
@@ -193,6 +199,11 @@ internal sealed class ExpensesController(
                 CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
                 CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
                 IsSubmitter = isSubmitter,
+                CanSeeNames = true,
+                SubmitterBurnerName = string.IsNullOrWhiteSpace(submitterInfo?.BurnerName) ? null : submitterInfo!.BurnerName,
+                SubmitterLegalName = !string.IsNullOrWhiteSpace(report.PayeeName)
+                    ? report.PayeeName
+                    : (profileLegalName.Length > 0 ? profileLegalName : null),
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
                 HoldedTimeline = timeline,

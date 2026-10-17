@@ -40,6 +40,13 @@
 {
     <div class="alert alert-warning mb-4">
         <strong>@Localizer["Expenses_Detail_ReturnedForRevision"]</strong> @Model.LastRejectionReason
+        @if (Model.CanEdit && r.Status == ExpenseReportStatus.Draft && Model.IsSubmitter)
+        {
+            <div class="mt-2 mb-0">
+                @Localizer["Expenses_Detail_RejectedGuidance"]
+                <a href="#lines" class="alert-link">@Localizer["Expenses_Detail_RejectedGuidanceLink"]</a>
+            </div>
+        }
     </div>
 }
 
@@ -79,7 +86,7 @@
             </div>
         </div>
 
-        <div class="card mb-3">
+        <div class="card mb-3" id="lines">
             <div class="card-header"><strong>@Localizer["Expenses_ExpenseLines"]</strong></div>
             @if (r.Lines.Count == 0)
             {
@@ -306,6 +313,23 @@
                                 data-bs-toggle="modal" data-bs-target="#rejectModal">
                             <i class="fa-solid fa-xmark me-1"></i>@Localizer["Expenses_Reject"]
                         </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Model.VisibleBurnerName is not null || Model.VisibleLegalName is not null)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong>@Localizer["Expenses_Submitter"]</strong></div>
+                <div class="card-body">
+                    @if (Model.VisibleBurnerName is not null)
+                    {
+                        <p class="mb-1">@Model.VisibleBurnerName</p>
+                    }
+                    @if (Model.VisibleLegalName is not null)
+                    {
+                        <p class="mb-1 text-muted small">@Localizer["Expenses_LegalName"]: @Model.VisibleLegalName</p>
                     }
                 </div>
             </div>

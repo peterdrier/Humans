@@ -276,4 +276,10 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Aún no hay nada registrado.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoría desconocida)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ej. ES7921000813610123456789</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puedes corregir este informe sin empezar de nuevo: abre cualquier línea de abajo para editarla, sustituir su recibo o eliminarla, y vuelve a enviarlo.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ir a las líneas</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Solicitante</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nombre legal</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatorio. Indica el nombre del proyecto al que corresponde este gasto, p. ej. el de tu proyecto artístico.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Añade un asunto (el nombre del proyecto) antes de enviar.</value></data>
 </root>

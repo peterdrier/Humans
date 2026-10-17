@@ -276,4 +276,10 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Encara no hi ha res registrat.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria desconeguda)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ex. ES7921000813610123456789</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Pots corregir aquest informe sense començar de nou: obre qualsevol línia de sota per editar-la, substituir-ne el rebut o eliminar-la, i torna a enviar-lo.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ves a les línies</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Sol·licitant</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Nom legal</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatori. Indica el nom del projecte al qual correspon aquesta despesa, p. ex. el del teu projecte artístic.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Afegeix un assumpte (el nom del projecte) abans d'enviar.</value></data>
 </root>
