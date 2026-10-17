@@ -657,6 +657,7 @@ internal sealed class EventService(
         }
         var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
             .Where(e => userIds.Contains(e.SubmitterUserId));
+        var requestedPreference = preferences.FirstOrDefault(p => p.UserId == userId);
 
         var shaped = new
         {
@@ -690,10 +691,16 @@ internal sealed class EventService(
                     f.DayOffset,
                     CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
-            Preferences = preferences.OrderBy(p => p.UpdatedAt).Select(preference => new
+            Preference = requestedPreference is null ? null : new
             {
-                preference.ExcludedCategorySlugs,
-                UpdatedAt = preference.UpdatedAt.ToIso8601()
+                requestedPreference.ExcludedCategorySlugs,
+                UpdatedAt = requestedPreference.UpdatedAt.ToIso8601()
+            },
+            AdditionalPreferences = preferences.Where(p => p.UserId != userId).OrderBy(p => p.UpdatedAt).Select(p => new
+            {
+                p.UserId,
+                p.ExcludedCategorySlugs,
+                UpdatedAt = p.UpdatedAt.ToIso8601()
             }).ToList()
         };
 

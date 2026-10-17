@@ -787,7 +787,8 @@ public sealed class EventServiceTests
         campExport.GetProperty("CampId").GetGuid().Should().Be(camp.CampId!.Value);
         campExport.GetProperty("RecurrenceDays").GetString().Should().Be("0,2");
         json.GetProperty("Favourites").GetArrayLength().Should().Be(0);
-        json.GetProperty("Preferences").GetArrayLength().Should().Be(0);
+        json.GetProperty("Preference").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        json.GetProperty("AdditionalPreferences").GetArrayLength().Should().Be(0);
     }
 
     [HumansTheory]
@@ -823,8 +824,15 @@ public sealed class EventServiceTests
             .Should().BeEquivalentTo([survivorId.ToString(), sourceId.ToString()]);
         payload.GetProperty("Favourites").EnumerateArray().Select(e => e.GetProperty("GuideEventId").GetGuid())
             .Should().BeEquivalentTo([survivorId, sourceId]);
-        payload.GetProperty("Preferences").EnumerateArray().Select(e => e.GetProperty("ExcludedCategorySlugs").GetString())
-            .Should().BeEquivalentTo(["[\"adults\"]"]);
+        var preference = payload.GetProperty("Preference");
+        preference.ValueKind.Should().Be(archivedId
+            ? System.Text.Json.JsonValueKind.Object : System.Text.Json.JsonValueKind.Null);
+        var additional = payload.GetProperty("AdditionalPreferences").EnumerateArray().ToList();
+        additional.Select(e => e.GetProperty("UserId").GetGuid()).Should().BeEquivalentTo(archivedId ? [] : new[] { sourceId });
+        var exported = additional.Select(e => e.GetProperty("ExcludedCategorySlugs").GetString()).ToList();
+        if (preference.ValueKind == System.Text.Json.JsonValueKind.Object)
+            exported.Add(preference.GetProperty("ExcludedCategorySlugs").GetString());
+        exported.Should().BeEquivalentTo(["[\"adults\"]"]);
     }
 
     [HumansFact]
