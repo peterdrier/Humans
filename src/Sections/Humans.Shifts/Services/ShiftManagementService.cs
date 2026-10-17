@@ -1087,7 +1087,7 @@ internal sealed class ShiftManagementService(
         if (remainingSlots == 0) return 0;
 
         var priorityWeight = PriorityWeights.GetValueOrDefault(shift.Rota?.Priority ?? ShiftPriority.Normal, 1);
-        var durationHours = shift.Duration.TotalHours;
+        var durationHours = shift.IsAllDay ? Shift.AllDayWindowHours : shift.Duration.TotalHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
         // Proximity boost: 1 + 10/(1+daysUntilStart). Today→11x, tomorrow→6x, 7d→2.25x, 30d→1.32x.
