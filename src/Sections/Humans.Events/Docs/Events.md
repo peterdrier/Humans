@@ -24,6 +24,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - An **EventVenue** is a named on-site location available as a venue selection for events.
 - An **EventModerationAction** is an append-only audit record of a single moderation decision on an Event.
 - An **EventFavourite** records that a user has bookmarked an Event for their personal schedule.
+- Schedule, favourites API and calendar reads share the same favourite projection. If an event becomes non-recurring, retained day bookmarks project as one whole-event target: one schedule entry, no self-conflict, one calendar UID, and removal clears all its bookmarks. Stored favourite history and GDPR exports remain intact.
 - Favourite mutations are same-origin, cookie-authenticated requests protected by an antiforgery token rendered with each favourite control.
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date.
