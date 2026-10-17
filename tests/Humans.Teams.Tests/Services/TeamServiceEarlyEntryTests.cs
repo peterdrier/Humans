@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
@@ -52,6 +53,7 @@ public sealed class TeamServiceEarlyEntryTests
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
                 .With<ITeamResourceServiceRead>()
+                .With<IUserServiceRead>()
                 .Build(),
             _clock,
             NullLogger<TeamService>.Instance);

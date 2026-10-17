@@ -38,7 +38,7 @@ internal sealed partial class PreapprovalService : IUserDataContributor, IUserMe
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = await repository.GetRowsForUsersAsync([userId], ct);
+        var rows = await repository.GetRowsForUsersAsync(await AllIdsAsync(userId, ct), ct);
         var programs = (await repository.GetProgramsAsync(ct)).ToDictionary(p => p.Id, p => p.Name);
         string NameOf(Guid programId) => programs.TryGetValue(programId, out var name) ? name : "(unknown)";
 

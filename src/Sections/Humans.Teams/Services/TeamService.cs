@@ -2115,9 +2115,16 @@ internal sealed class TeamService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var memberships = await repo.GetAllMembershipsForUserAsync(userId, ct);
-        var joinRequests = await repo.GetAllJoinRequestsForUserAsync(userId, ct);
-        var eeGrants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
+        var info = await UserService.GetUserInfoAsync(userId, ct);
+        List<TeamMember> memberships = [];
+        List<TeamJoinRequest> joinRequests = [];
+        List<TeamEarlyEntryGrant> eeGrants = [];
+        foreach (var id in info?.AllUserIds ?? [userId])
+        {
+            memberships.AddRange(await repo.GetAllMembershipsForUserAsync(id, ct));
+            joinRequests.AddRange(await repo.GetAllJoinRequestsForUserAsync(id, ct));
+            eeGrants.AddRange(await repo.GetEarlyEntryGrantsForUserAsync(id, ct));
+        }
         var teamIds = memberships.Select(tm => tm.TeamId)
             .Concat(joinRequests.Select(tjr => tjr.TeamId))
             .Concat(eeGrants.Select(g => g.TeamId))

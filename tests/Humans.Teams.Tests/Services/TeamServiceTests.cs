@@ -130,6 +130,39 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // CreateTeamAsync
     // ==========================================================================
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesArchivedMembershipHistory(bool requestArchivedId)
+    {
+        var survivor = SeedUser();
+        var archived = SeedUser();
+        var unrelated = SeedUser();
+        var currentTeam = SeedTeam("Current team");
+        var previousTeam = SeedTeam("Previous team");
+        var unrelatedTeam = SeedTeam("Unrelated team");
+        SeedTeamMember(currentTeam.Id, survivor.Id);
+        var previous = SeedTeamMember(previousTeam.Id, archived.Id, leftAt: Clock.GetCurrentInstant());
+        SeedTeamMember(unrelatedTeam.Id, unrelated.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        TeamsDb.ChangeTracker.Clear();
+        var info = (await _userService.GetUserInfoAsync(survivor.Id, Xunit.TestContext.Current.CancellationToken))!
+            with { MergedUserIds = [archived.Id] };
+        _userService.GetUserInfoAsync(survivor.Id, Arg.Any<CancellationToken>()).Returns(info);
+        _userService.GetUserInfoAsync(archived.Id, Arg.Any<CancellationToken>()).Returns(info);
+
+        var slices = await _service.ContributeForUserAsync(
+            requestArchivedId ? archived.Id : survivor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single(s =>
+                string.Equals(s.SectionName, TeamService.TeamMemberships, StringComparison.Ordinal)).Data)
+            .EnumerateArray().ToArray();
+        rows.Select(r => r.GetProperty("TeamName").GetString())
+            .Should().BeEquivalentTo(["Current team", "Previous team"]);
+        rows.Single(r => string.Equals(r.GetProperty("TeamName").GetString(), "Previous team", StringComparison.Ordinal))
+            .GetProperty("LeftAt").GetString().Should().Be(previous.LeftAt.ToIso8601());
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_IncludesJoinRequestReviewAndOrderedStateHistory()
     {

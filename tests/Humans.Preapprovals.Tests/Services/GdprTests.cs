@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
@@ -23,15 +24,20 @@ public sealed class GdprTests : PreapprovalsTestHarness
         contributor.ErasureDeclaration.Values.Should().AllSatisfy(v => v.Should().Contain("Art. 17(3)(b)"));
     }
 
-    [HumansFact]
-    public async Task Export_GrantsAlwaysAList_DecisionsNullWhenNone()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Export_GrantsAlwaysAList_DecisionsNullWhenNone(bool requestArchivedId)
     {
         var program = await SeedProgramAsync();
-        var person = SeedUser("Person");
+        var archived = SeedUser("Archived");
+        var person = SeedUser("Person", mergedIds: [archived]);
+        var info = await Users.GetUserInfoAsync(person, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(info);
         await SeedGrantAsync(program, person, label: "Fire Lotus");
         IUserDataContributor contributor = NewService();
 
-        var slices = await contributor.ContributeForUserAsync(person, Ct);
+        var slices = await contributor.ContributeForUserAsync(requestArchivedId ? archived : person, Ct);
 
         slices.Select(s => s.SectionName).Should().Equal(PreapprovalService.Preapprovals, PreapprovalService.PreapprovalDecisions);
         ((System.Collections.IEnumerable)slices[0].Data!).Cast<object>().Should().HaveCount(1);
