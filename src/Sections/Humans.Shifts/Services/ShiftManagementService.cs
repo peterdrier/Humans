@@ -1188,10 +1188,9 @@ internal sealed class ShiftManagementService(
 
             foreach (var shift in overlapping)
             {
-                var hours = shift.IsAllDay
-                    ? Duration.FromTicks(Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours
-                    : shift.Duration.TotalHours;
-                var totalHours = hours * shift.MaxVolunteers;
+                var overlapStart = Instant.Max(dayStart, shift.GetAbsoluteStart(es));
+                var overlapEnd = Instant.Min(dayEnd, shift.GetAbsoluteEnd(es));
+                var totalHours = (overlapEnd - overlapStart).TotalHours * shift.MaxVolunteers;
 
                 switch (shift.Rota.Priority)
                 {
