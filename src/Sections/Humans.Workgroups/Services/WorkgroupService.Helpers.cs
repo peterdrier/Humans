@@ -378,10 +378,10 @@ internal sealed partial class WorkgroupService
             try
             {
                 var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
-                var copy = PrepareNoticeCopy($"{NoticeResources.GetString(titleKey, culture)}: {w.Name}", body);
+                var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
                 var ids = group.Select(person => person.Id).ToList();
                 await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
-                    copy.Title, ids, copy.Body,
+                    title, ids, body,
                     actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
                 dispatched += ids.Count;
             }
@@ -403,9 +403,8 @@ internal sealed partial class WorkgroupService
     {
         try
         {
-            var copy = PrepareNoticeCopy(title, body);
             await notifications.SendToRoleAsync(source, NotificationClass.Actionable,
-                NotificationPriority.Normal, copy.Title, RoleNames.Board, copy.Body,
+                NotificationPriority.Normal, title, RoleNames.Board, body,
                 actionUrl: "/Workgroups/Admin", cancellationToken: ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -416,19 +415,6 @@ internal sealed partial class WorkgroupService
         {
             logger.LogError(ex, "Failed to send workgroup {Source} notification to the Board for {WorkgroupId}", source, w.Id);
         }
-    }
-
-    // Preview limits belong at both notification boundaries; full details stay in the register/log.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body)
-    {
-        if (title.EnumerateRunes().Count() > 200)
-        {
-            body = body is null ? title : string.Concat(title, "\n\n", body);
-            title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-        }
-        if (body is not null && body.EnumerateRunes().Count() > 2000)
-            body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
-        return (title, body);
     }
 
     /// <summary>

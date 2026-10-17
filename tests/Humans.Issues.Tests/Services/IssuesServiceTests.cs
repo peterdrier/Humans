@@ -720,7 +720,7 @@ public sealed class IssuesServiceTests
     [Xunit.InlineData(NotificationSource.IssueComment)]
     [Xunit.InlineData(NotificationSource.IssueStatusChanged)]
     [Xunit.InlineData(NotificationSource.IssueAssigned)]
-    public async Task IssueNotices_LongTitleAndDetail_FitStorageAndLinkToFullContent(NotificationSource source)
+    public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSource source)
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
@@ -763,17 +763,22 @@ public sealed class IssuesServiceTests
         }
 
         var args = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        var noticeTitle = (string)args[3]!;
-        var body = (string)args[5]!;
-        noticeTitle.EnumerateRunes().Count().Should().Be(200);
-        noticeTitle.Should().EndWith("…");
-        body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(2000);
-        body.Should().Contain(title);
-        if (source != NotificationSource.IssueStatusChanged)
+        var titlePrefix = source switch
         {
-            body.EnumerateRunes().Count().Should().Be(2000);
-            body.Should().EndWith("…");
-        }
+            NotificationSource.IssueSubmitted => "Se presentó un asunto nuevo: ",
+            NotificationSource.IssueComment => "Nuevo comentario sobre el asunto: ",
+            NotificationSource.IssueStatusChanged => "El estado del asunto cambió: ",
+            NotificationSource.IssueAssigned => "Se te asignó un asunto: ",
+            _ => throw new ArgumentOutOfRangeException(nameof(source))
+        };
+        args[3].Should().Be(titlePrefix + title);
+        var resources = new System.Resources.ResourceManager(typeof(IssuesResource));
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("es");
+        args[5].Should().Be(source == NotificationSource.IssueStatusChanged
+            ? string.Format(culture, resources.GetString("Issue_Notice_StatusChangedBody", culture)!,
+                resources.GetString("Enum_IssueStatus_Open", culture),
+                resources.GetString("Enum_IssueStatus_InProgress", culture))
+            : detail);
         args[0].Should().Be(source);
         args[6].Should().Be($"/Issues/{issueId}");
         ((IReadOnlyList<Guid>)args[4]!).Should().Equal(recipientId);

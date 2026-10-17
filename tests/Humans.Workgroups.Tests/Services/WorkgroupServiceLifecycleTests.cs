@@ -156,7 +156,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData("apply")]
     [InlineData("refer")]
     [InlineData("refuse")]
-    public async Task Notices_LongGroupNameAndDetail_FitStorageAndKeepFullRecords(string action)
+    public async Task Notices_LongGroupNameAndDetail_DispatchFullCopyAndKeepFullRecords(string action)
     {
         var name = new string('x', 200);
         var detail = string.Concat(Enumerable.Repeat("🚀", 1998)) + "tail";
@@ -188,18 +188,14 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         }
 
         var args = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        ((string)args[3]!).Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
-        var body = (string)args[5]!;
-        body.Should().StartWith(fullTitle + "\n\n");
-        body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(2000);
-        body.Should().NotContain("�");
+        args[3].Should().Be(fullTitle);
+        args[5].Should().Be(string.Equals(action, "apply", StringComparison.Ordinal)
+            ? "A new working group is waiting on the Secretary." : detail);
         await using var ctx = OpenContext();
         var stored = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
         stored.Name.Should().Be(name);
         if (!string.Equals(action, "apply", StringComparison.Ordinal))
         {
-            body.EnumerateRunes().Count().Should().Be(2000);
-            body.Should().EndWith("…");
             (await ctx.LogEntries.SingleAsync(e => e.WorkgroupId == id, Ct)).Body.Should().Be(detail);
         }
         if (string.Equals(action, "refuse", StringComparison.Ordinal))
