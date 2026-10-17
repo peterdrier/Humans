@@ -330,25 +330,25 @@ internal sealed class CachingCampService(
             await InvalidateCampAsync(campId, cancellationToken);
         });
 
-    public Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default) =>
+    public Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.OpenSeasonAsync(year, cancellationToken));
+            await WithInner(inner => inner.OpenSeasonAsync(year, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 
-    public Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default) =>
+    public Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.CloseSeasonAsync(year, cancellationToken));
+            await WithInner(inner => inner.CloseSeasonAsync(year, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 
     public Task SetNameLockDateAsync(
-        int year, LocalDate lockDate, CancellationToken cancellationToken = default) =>
+        int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
+            await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, actorUserId, cancellationToken));
             // Touches every season in the year — RefreshAll.
             RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);

@@ -545,7 +545,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampService.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, ct) },
         { nameof(ICampService.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), ct) },
         { nameof(ICampService.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampService.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
         { nameof(ICampService.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
         { nameof(ICampService.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampService.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
@@ -674,7 +674,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         using var mutationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         await SeedSettingsAsync(2026, [2026]);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
-        _innerSubstitute.OpenSeasonAsync(2027, mutationCancellation.Token).Returns(async _ =>
+        _innerSubstitute.OpenSeasonAsync(2027, Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
         {
             var settings = await CampsDb.CampSettings.SingleAsync(ct);
             settings.OpenSeasons = [2026, 2027];
@@ -682,7 +682,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             await mutationCancellation.CancelAsync();
         });
 
-        Func<Task> open = () => _service.OpenSeasonAsync(2027, mutationCancellation.Token);
+        Func<Task> open = () => _service.OpenSeasonAsync(2027, Guid.NewGuid(), mutationCancellation.Token);
         (await open.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken
             .Should().Be(mutationCancellation.Token);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
@@ -690,9 +690,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
-        { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },
-        { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, Guid.NewGuid(), ct) },
+        { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, Guid.NewGuid(), ct) },
+        { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
     };
 
     [HumansTheory]

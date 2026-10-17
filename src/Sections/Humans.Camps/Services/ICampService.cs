@@ -70,9 +70,9 @@ internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyE
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
     // Settings (CampAdmin)
-    Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default);
-    Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default);
-    Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
+    Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task SetNameLockDateAsync(int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
     // Name change (handles historical name logging)
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>

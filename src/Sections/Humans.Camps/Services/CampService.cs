@@ -1120,20 +1120,42 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
     }
 
-    public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
+    public async Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        await _repo.OpenSeasonAsync(year, cancellationToken);
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
+        // Complete the save and audit together even if the caller stops waiting.
+        if (await _repo.OpenSeasonAsync(year, CancellationToken.None))
+        {
+            await _auditLog.LogAsync(AuditAction.CampRegistrationOpened, nameof(CampSettings), settings.Id,
+                $"Opened camp registration for {year}", actorUserId);
+        }
     }
 
-    public async Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default)
+    public async Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        await _repo.CloseSeasonAsync(year, cancellationToken);
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
+        // Complete the save and audit together even if the caller stops waiting.
+        if (await _repo.CloseSeasonAsync(year, CancellationToken.None))
+        {
+            await _auditLog.LogAsync(AuditAction.CampRegistrationClosed, nameof(CampSettings), settings.Id,
+                $"Closed camp registration for {year}", actorUserId);
+        }
     }
 
     public async Task SetNameLockDateAsync(
-        int year, LocalDate lockDate, CancellationToken cancellationToken = default)
+        int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
+        // Complete the save and audit together even if the caller stops waiting.
+        var changed = await _repo.SetNameLockDateForYearAsync(year, lockDate, CancellationToken.None);
+        if (changed > 0)
+        {
+            await _auditLog.LogAsync(AuditAction.CampNameLockDateChanged, nameof(CampSettings), settings.Id,
+                $"Set name lock date for {year} to {lockDate.ToInvariantDate()} on {changed} camp seasons", actorUserId);
+        }
     }
 
     public async Task<CampUpdateResult> ChangeSeasonNameAsync(

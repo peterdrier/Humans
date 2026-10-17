@@ -119,6 +119,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** the camp registration lifecycle is controlled
 
 **Acceptance Criteria:**
+- Season registration toggles and name-lock changes record the acting admin and target year after saving, with no audit for unchanged values.
 - Open a season by year (adds to OpenSeasons list), from the Barrios tab on `/Settings`
 - Close a season by year (removes from OpenSeasons list), from the same tab
 - Set name lock date per year (prevents name changes after date)

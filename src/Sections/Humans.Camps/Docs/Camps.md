@@ -201,7 +201,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Camp and image deletions commit their metadata and audit before cleaning up image files. Cleanup ignores caller cancellation and logs storage failures without failing the committed deletion.
 - Manually supplied historical names are trimmed and must contain 1–256 characters. Registration validates every supplied historical name before creating any camp rows; later additions return localized refusals without persisting invalid names.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
-- Camp settings control which seasons accept registrations.
+- Camp settings control which seasons accept registrations. Opening/closing registration and changing the yearly name-lock date audit the acting admin, target year and saved change against `CampSettings`. No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
 - Membership mutations (approve, reject, remove) are **scoped to the authorizing camp**. A lead or CampAdmin operating on camp A cannot mutate a member row whose season belongs to camp B even if they know the row id.

@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Camp updated</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Camp deleted</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Camp season created</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Camp registration opened</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Camp registration closed</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Camp name lock date changed</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Camp season approved</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Camp season rejected</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Camp season withdrawn</value></data>

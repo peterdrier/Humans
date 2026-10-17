@@ -19,6 +19,47 @@ namespace Humans.Camps.Tests.Controllers;
 public class CampAdminControllerTests
 {
     [HumansTheory]
+    [InlineData("Open", true)]
+    [InlineData("Close", true)]
+    [InlineData("LockDate", true)]
+    [InlineData("Open", false)]
+    [InlineData("Close", false)]
+    [InlineData("LockDate", false)]
+    public async Task SeasonSettingsAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        if (userExists)
+            users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+        var lockDate = new LocalDate(2026, 3, 1);
+
+        var result = action switch
+        {
+            "Open" => await controller.OpenSeason(2027),
+            "Close" => await controller.CloseSeason(2026),
+            "LockDate" => await controller.SetNameLockDate(2026, "2026-03-01"),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        if (!userExists)
+        {
+            result.Should().BeOfType<UnauthorizedResult>();
+            camps.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        switch (action)
+        {
+            case "Open": await camps.Received(1).OpenSeasonAsync(2027, actorId); break;
+            case "Close": await camps.Received(1).CloseSeasonAsync(2026, actorId); break;
+            case "LockDate": await camps.Received(1).SetNameLockDateAsync(2026, lockDate, actorId); break;
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, "settings")]
     [InlineData(false, "camps")]
     [InlineData(false, "users")]

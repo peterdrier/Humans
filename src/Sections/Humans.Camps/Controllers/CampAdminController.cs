@@ -89,9 +89,12 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OpenSeason([FromForm] int year)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
         try
         {
-            await campService.OpenSeasonAsync(year);
+            await campService.OpenSeasonAsync(year, user.Id);
             SetSuccess($"Season {year} opened for registration.");
         }
         catch (Exception ex)
@@ -108,9 +111,12 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CloseSeason(int year)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
         try
         {
-            await campService.CloseSeasonAsync(year);
+            await campService.CloseSeasonAsync(year, user.Id);
             SetSuccess($"Season {year} closed for registration.");
         }
         catch (Exception ex)
@@ -127,6 +133,9 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetNameLockDate(int year, string lockDate)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
         var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(lockDate);
         if (!parseResult.Success)
         {
@@ -136,7 +145,7 @@ internal sealed class CampAdminController(
 
         try
         {
-            await campService.SetNameLockDateAsync(year, parseResult.Value);
+            await campService.SetNameLockDateAsync(year, parseResult.Value, user.Id);
             SetSuccess($"Name lock date for {year} set to {parseResult.Value}.");
         }
         catch (Exception ex)

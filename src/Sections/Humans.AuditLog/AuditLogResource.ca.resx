@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Campament actualitzat</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Campament suprimit</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Temporada de colònies creada</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Inscripcions als campaments obertes</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Inscripcions als campaments tancades</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Data de bloqueig dels noms de campament modificada</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Temporada de colònies aprovada</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Temporada de colònies rebutjada</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Temporada de colònies retirada</value></data>

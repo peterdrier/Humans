@@ -808,6 +808,88 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.PublicYear.Should().Be(Clock.GetCurrentInstant().InUtc().Year);
     }
 
+    [HumansTheory]
+    [InlineData("Open")]
+    [InlineData("Close")]
+    [InlineData("LockDate")]
+    public async Task SeasonSettingsWrites_AuditCommittedState(string action)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        await CreateTestCamp();
+        var actorId = Guid.NewGuid();
+        var lockDate = new LocalDate(2026, 3, 1);
+        AuditLog.ClearReceivedCalls();
+        var observedSave = false;
+        AuditLog.When(a => a.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
+            .Do(_ => observedSave = action switch
+            {
+                "Open" => CampsDb.CampSettings.AsNoTracking().Single().OpenSeasons.Contains(2027),
+                "Close" => !CampsDb.CampSettings.AsNoTracking().Single().OpenSeasons.Contains(2026),
+                "LockDate" => CampsDb.CampSeasons.AsNoTracking().Single().NameLockDate == lockDate,
+                _ => false
+            });
+
+        switch (action)
+        {
+            case "Open": await _service.OpenSeasonAsync(2027, actorId, ct); break;
+            case "Close": await _service.CloseSeasonAsync(2026, actorId, ct); break;
+            case "LockDate": await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action));
+        }
+
+        var expectedAction = action switch
+        {
+            "Open" => AuditAction.CampRegistrationOpened,
+            "Close" => AuditAction.CampRegistrationClosed,
+            "LockDate" => AuditAction.CampNameLockDateChanged,
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+        var arguments = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        arguments[0].Should().Be(expectedAction);
+        arguments[1].Should().Be(nameof(CampSettings));
+        arguments[2].Should().Be((await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).Id);
+        arguments[3]!.ToString().Should().Contain(string.Equals(action, "Open", StringComparison.Ordinal) ? "2027" : "2026");
+        arguments[4].Should().Be(actorId);
+        observedSave.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task SeasonSettingsWrites_UnchangedValues_LeaveNoAudit()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        await CreateTestCamp();
+        var actorId = Guid.NewGuid();
+        var lockDate = new LocalDate(2026, 3, 1);
+        await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
+        AuditLog.ClearReceivedCalls();
+
+        await _service.OpenSeasonAsync(2026, actorId, ct);
+        await _service.CloseSeasonAsync(2027, actorId, ct);
+        await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
+        await _service.SetNameLockDateAsync(2027, lockDate, actorId, ct);
+
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task OpenSeasonAsync_AlreadyCancelled_LeavesSettingsAndAuditUnchanged()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        AuditLog.ClearReceivedCalls();
+
+        var open = () => _service.OpenSeasonAsync(2027, Guid.NewGuid(), cancellation.Token);
+
+        await open.Should().ThrowAsync<OperationCanceledException>();
+        (await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).OpenSeasons.Should().NotContain(2027);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task GetSettingsAsync_IncludesOpenSeasonNameLockDates()
     {
@@ -815,7 +897,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await CreateTestCamp();
         var lockDate = new LocalDate(2026, 3, 1);
 
-        await _service.SetNameLockDateAsync(2026, lockDate, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetNameLockDateAsync(2026, lockDate, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var settings = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
 

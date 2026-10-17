@@ -383,4 +383,7 @@ public enum AuditAction
     UserNamesBackfilled,
     ParticipationBackfilled,
     StubProfileBackfilled,
+    CampRegistrationOpened,
+    CampRegistrationClosed,
+    CampNameLockDateChanged,
 }
