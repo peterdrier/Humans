@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Feedback. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 2
-inbox: []
+next_id: 3
+inbox:
+  - added: 2026-10-17
+    id: FEEDBACK-2
+    what: "FeedbackService.PostMessageAsync enqueues FeedbackResponse email before AddMessageAndSaveReportAsync. OutboxEmailService.SendAsync commits its own durable queue row, so a subsequent Feedback save failure can deliver a reply absent from the report; retrying enqueues it again. Reordering alone trades that for a committed reply with no guaranteed email. Persist pending reply delivery with the message in Feedback and dispatch/retry through the Email contract after commit. Found by tracing both reply controllers, FeedbackService and OutboxEmailService; the existing SMTP-before-save comment and invariant assume immediate transport rather than the durable outbox."
+    review: panel
