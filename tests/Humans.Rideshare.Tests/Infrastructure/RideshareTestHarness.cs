@@ -86,8 +86,8 @@ public abstract class RideshareTestHarness : IDisposable
     private protected static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
-    private protected RideshareService NewService() => new(
-        new RideshareRepository(DbFactory), RouteProvider, BurnSettings, Users,
+    private protected RideshareService NewService(IRideshareRepository? repository = null) => new(
+        repository ?? new RideshareRepository(DbFactory), RouteProvider, BurnSettings, Users,
         Notifications, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through, so it never sees <see cref="Db"/>'s stale tracked rows.</summary>
