@@ -210,6 +210,37 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UpsertParticipationAsync_FillsMissingArrivalOnExistingAttendedRow()
+    {
+        var userId = Guid.NewGuid();
+        var participationId = Guid.NewGuid();
+        _dbContext.EventParticipations.Add(new EventParticipation
+        {
+            Id = participationId,
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.AdminBackfill,
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var arrival = _clock.GetCurrentInstant() + Duration.FromHours(1);
+
+        var result = await _repo.UpsertParticipationAsync(
+            userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: arrival, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .SingleAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
+        persisted.Id.Should().Be(participationId);
+        persisted.Status.Should().Be(ParticipationStatus.Attended);
+        persisted.Source.Should().Be(ParticipationSource.AdminBackfill);
+        persisted.DeclaredAt.Should().BeNull();
+        persisted.CheckedInAt.Should().Be(arrival);
+        result.CheckedInAt.Should().Be(arrival);
+    }
+
+    [HumansFact]
     public async Task UpsertParticipationAsync_NeverOverwritesNonNullCheckedInAt()
     {
         // Pre-existing Attended row with CheckedInAt set. Repo's Attended-is-

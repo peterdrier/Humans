@@ -497,16 +497,19 @@ internal sealed partial class UserRepository : IUserRepository
         EventParticipation persisted;
         if (existing is not null)
         {
-            // Attended is permanent — never revert.
+            // Preserve attended metadata; a later real scan may fill a missing arrival.
             if (existing.Status == ParticipationStatus.Attended)
-                return null;
-
-            existing.Status = status;
-            existing.Source = source;
-            existing.DeclaredAt = declaredAt;
-            // CheckedInAt is set on the first transition into Attended and is
-            // permanent afterwards. Don't overwrite an already-non-null value
-            // (issue nobodies-collective/Humans#736).
+            {
+                if (status != ParticipationStatus.Attended || existing.CheckedInAt is not null || checkedInAt is null)
+                    return null;
+            }
+            else
+            {
+                existing.Status = status;
+                existing.Source = source;
+                existing.DeclaredAt = declaredAt;
+            }
+            // Arrival is write-once, including when attendance was known before its timestamp.
             if (existing.CheckedInAt is null)
                 existing.CheckedInAt = checkedInAt;
             persisted = existing;

@@ -49,7 +49,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
     /// <para>
     /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
     /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
-    /// Attended row is being created or upgraded. Never overwritten once
+    /// Attended row is created, upgraded, or has no arrival timestamp yet. Never overwritten once
     /// non-null — matches the "Attended is permanent" invariant (issue
     /// nobodies-collective/Humans#736).
     /// </para>

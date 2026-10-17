@@ -1030,7 +1030,8 @@ internal sealed class UserService(
                 ep.Year,
                 Status = ep.Status.ToString(),
                 Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToIso8601()
+                DeclaredAt = ep.DeclaredAt.ToIso8601(),
+                CheckedInAt = ep.CheckedInAt.ToIso8601()
             })
             .ToList();
 

@@ -221,7 +221,8 @@ internal partial interface IUserRepository : IRepository
     /// Upserts a participation record. If a record exists for (userId, year):
     /// <list type="bullet">
     ///   <item>if its <see cref="ParticipationStatus"/> is <see cref="ParticipationStatus.Attended"/>,
-    ///     the call is a no-op (Attended is permanent) — returns null;</item>
+    ///     only a missing arrival may be filled by an incoming Attended scan;
+    ///     otherwise the call is a no-op and returns null;</item>
     ///   <item>otherwise, the status, source, and declaredAt are overwritten with
     ///     the provided values — returns the updated row.</item>
     /// </list>
@@ -231,7 +232,7 @@ internal partial interface IUserRepository : IRepository
     /// <para>
     /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
     /// instant carried from <see cref="ParticipationSource.TicketSync"/>. Set
-    /// on row creation, and on the no-existing-row → Attended path. NEVER
+    /// on row creation or filled by an incoming Attended scan when missing. Never
     /// overwritten once non-null — Attended-permanence applies to the
     /// timestamp as well (issue nobodies-collective/Humans#736).
     /// </para>

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -135,6 +136,13 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             ProviderKey = "sub-1",
             IsGoogle = false,
         });
+        var arrival = Clock.GetCurrentInstant();
+        Db.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(), UserId = userId, Year = 2026,
+            Status = ParticipationStatus.Attended, Source = ParticipationSource.TicketSync,
+            CheckedInAt = arrival,
+        });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
@@ -160,6 +168,13 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             string.Equals(s.SectionName, UserService.Account, StringComparison.Ordinal));
         var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
+
+        var participationSlice = slices.Single(s =>
+            string.Equals(s.SectionName, UserService.EventParticipations, StringComparison.Ordinal));
+        using var participationJson = System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(participationSlice.Data));
+        participationJson.RootElement.EnumerateArray().Single().GetProperty("CheckedInAt")
+            .GetString().Should().Be(arrival.ToIso8601());
     }
 
     [HumansFact]
