@@ -18,7 +18,7 @@ internal sealed class AgentUserSnapshotProvider(
     IRoleAssignmentServiceRead roles,
     ITeamServiceRead teams,
     IConsentService consents,
-    IFeedbackServiceRead feedback,
+    IFeedbackService feedback,
     ITicketServiceRead tickets,
     IShiftView shiftView,
     ISettingsService settingsService,

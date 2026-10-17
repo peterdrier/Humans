@@ -1,6 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Humans.Feedback.Contracts;
+using Humans.Feedback.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Feedback;
@@ -21,7 +21,7 @@ internal static class PillCounts
 {
     public static async ValueTask<int?> FeedbackQueue(IServiceProvider sp)
     {
-        var feedback = sp.GetRequiredService<IFeedbackServiceRead>();
+        var feedback = sp.GetRequiredService<FeedbackService>();
         var count = await feedback.GetActionableCountAsync(CancellationToken.None);
         return count > 0 ? count : null;
     }

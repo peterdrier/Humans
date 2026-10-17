@@ -31,7 +31,7 @@ public sealed class Section : ISection
         services.AddScoped<IEmailPreviewContributor, FeedbackEmailPreviews>();
 
         services.AddScoped<FeedbackService>();
-        services.AddScoped<IFeedbackServiceRead>(sp => sp.GetRequiredService<FeedbackService>());
+        services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackService>());
         services.AddScoped<IFeedbackTriage>(sp => sp.GetRequiredService<FeedbackService>());
         // Owns the user-scoped feedback_reports / feedback_messages tables → GDPR export
         // contributor and account-merge fold participant (design-rules §8a).

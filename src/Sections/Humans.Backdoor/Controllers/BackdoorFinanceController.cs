@@ -36,7 +36,7 @@ namespace Humans.Backdoor.Controllers;
 [Route("api/backdoor/finance")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
 internal sealed class BackdoorFinanceController(
-    IExpenseReportServiceRead expenses,
+    IExpenseReportService expenses,
     IHoldedFinanceServiceRead finance,
     IBudgetService budget,
     IAuthorizationService authService,

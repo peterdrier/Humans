@@ -859,7 +859,7 @@ public sealed class ExpenseReportServiceTests
             var reportId = Guid.NewGuid();
             _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
-            var reports = Substitute.For<IExpenseReportService>();
+            var reports = Substitute.For<IExpenseReportManagement>();
             reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
             {
                 Id = reportId,

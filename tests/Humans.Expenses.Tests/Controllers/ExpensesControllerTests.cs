@@ -48,7 +48,7 @@ public sealed class ExpensesControllerTests
         var actorId = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var users = Substitute.For<IUserServiceRead>();
-        var reports = Substitute.For<IExpenseReportService>();
+        var reports = Substitute.For<IExpenseReportManagement>();
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -97,7 +97,7 @@ public sealed class ExpensesControllerTests
 
         (await InvokeAsync(controller, action, reportId)).Should().BeOfType<ForbidResult>();
         reports.ReceivedCalls().Should().ContainSingle(call =>
-            call.GetMethodInfo().Name == nameof(IExpenseReportService.GetAsync));
+            call.GetMethodInfo().Name == nameof(IExpenseReportManagement.GetAsync));
         var operations = authorization.ReceivedCalls()
             .SelectMany(call => call.GetArguments().OfType<IEnumerable<IAuthorizationRequirement>>()
                 .SelectMany(requirements => requirements))
@@ -137,7 +137,7 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = []
         };
-        var reports = Substitute.For<IExpenseReportService>();
+        var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetAsync(reportId).Returns(report);
         reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
@@ -193,7 +193,7 @@ public sealed class ExpensesControllerTests
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
-        var reports = Substitute.For<IExpenseReportService>();
+        var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetAsync(reportId).Returns(new ExpenseReportDto
         {
             Id = reportId,

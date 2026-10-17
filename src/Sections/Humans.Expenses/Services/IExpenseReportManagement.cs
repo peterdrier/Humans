@@ -11,11 +11,11 @@ namespace Humans.Expenses.Services;
 /// report, and differ when a finance admin files or fixes one on a member's behalf. Every mutation
 /// therefore takes <c>actorUserId</c> plus <c>actorIsFinanceAdmin</c> — the caller's authority,
 /// resolved at the controller (design-rules §6), mirroring
-/// <see cref="IExpenseReportServiceRead.GetReviewQueueAsync"/>. Set it and the ownership match is
+/// <see cref="IExpenseReportService.GetReviewQueueAsync"/>. Set it and the ownership match is
 /// waived and the editable window widens from Draft to Draft/Submitted/CoordinatorEndorsed; the
 /// checks are defence in depth behind the resource-based handler, not the primary gate.</para>
 /// </remarks>
-internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
+internal interface IExpenseReportManagement : IExpenseReportService, IApplicationService
 {
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);

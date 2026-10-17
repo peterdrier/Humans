@@ -18,15 +18,15 @@ two accounts merge.
 |---|---|---|
 | Triage read | UI `GET /Feedback`, `GET /Feedback/{id}`; `IFeedbackTriage.GetFeedbackListAsync` / `GetFeedbackByIdAsync` | One question ("show me the queue / this report") with two skins: admin UI and key-authed Backdoor API |
 | Triage write | UI `POST /Feedback/{id}/{Message,Status,Assignment,GitHubIssue}`; matching `IFeedbackTriage` methods | Same four verbs in both skins; every one audited, attributed to the acting human |
-| Actionable-count signal | `IFeedbackServiceRead.GetActionableCountAsync` | Feeds nav pill + `/Admin` tile; cached 2 min in-service |
-| Per-user open ids | `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` | Agent user snapshot only |
+| Actionable-count signal | `FeedbackService.GetActionableCountAsync` (section-internal) | Feeds nav pill + `/Admin` tile; cached 2 min in-service |
+| Per-user open ids | `IFeedbackService.GetOpenFeedbackIdsForUserAsync` | Agent user snapshot only |
 | GDPR | `IUserDataContributor` export + erase | Erase deletes own reports (+screenshots), detaches authorship elsewhere |
 | Merge fold | `IUserMerge.ReassignAsync` | Re-FK both tables, called inside Profiles' merge transaction |
 
 ## 3. Structure
 
 These shapes need exactly: one admin controller + two views (queue with detail partial), one
-service implementing the four outward roles (`IFeedbackServiceRead`, `IFeedbackTriage`,
+service implementing the four outward roles (`IFeedbackService`, `IFeedbackTriage`,
 `IUserDataContributor`, `IUserMerge`), one repository over the two owned tables
 (`feedback_reports`, `feedback_messages`), the nav/tile contributions, and the resx set. No
 caching decorator, no orchestration, no jobs. The section is already this shape; the target is
@@ -62,8 +62,8 @@ None. The section is retired and closed; no specified-but-unbuilt work reserves 
   in-service via `IUserServiceRead`/`ITeamServiceRead` (#996).
 - No purge/delete of historical rows — the archive is the point; GDPR erasure is the only remover.
 - No reporter-facing view and no un-retiring — new reporting is Issues' lane (#977).
-- No `IFeedbackService` interface for the section's own controllers — they take the concrete
-  service; only the two `Contracts/` interfaces leave the section.
+- No internal interface for the section's own controllers, nav pill or tile — they take the
+  concrete service; only the two `Contracts/` interfaces leave the section.
 
 ## Load-bearing weirdness
 

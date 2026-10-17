@@ -185,7 +185,7 @@ public class AgentUserSnapshotProviderTests
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var feedback = Substitute.For<IFeedbackServiceRead>();
+        var feedback = Substitute.For<IFeedbackService>();
         feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

@@ -39,7 +39,7 @@ internal sealed class ExpenseReportService(
     IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger,
-    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
+    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
         IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";

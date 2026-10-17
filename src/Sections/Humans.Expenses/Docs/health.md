@@ -39,7 +39,7 @@ Every question the section answers, and how it answers it.
 | Did this claim reach the accounting system? | finance | Holded sync card + `HoldedRetry` |
 | Push approved claims into accounting | nobody — the clock | `HoldedExpenseOutboxJob` → outbox drain |
 | Everything this member's claims hold | GDPR export | `IUserDataContributor` |
-| A claim, its files and its push state, read by an API client | Backdoor's finance read API | `IExpenseReportServiceRead` + the `ExpenseReportView` policy |
+| A claim, its files and its push state, read by an API client | Backdoor's finance read API | `IExpenseReportService` + the `ExpenseReportView` policy |
 
 Structural facts follow from the table. **Every decision is taken from the claim's own
 page**, never from a queue row — the queue lists and links, it does not decide. **The
@@ -66,7 +66,7 @@ What the shapes imply, written fresh:
   with **one cap allocation** (`PayableAllocation`) that the push, the detail page and the audit
   text all read.
 - **The public surface is what another section consumes:** `Section`, the background-processor
-  seam the job calls, and `IExpenseReportServiceRead` — exactly the reads Backdoor makes, each
+  seam the job calls, and `IExpenseReportService` — exactly the reads Backdoor makes, each
   already one the section's own pages use. A read with no outside caller stays on the internal
   interface.
 - **One answer to "does this person coordinate this claim's category?"** The handler, the

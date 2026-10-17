@@ -22,7 +22,7 @@ Holded bookkeeping cleanup keeps turning up breaks that start in Humans: an expe
 
 ## Data Model
 
-No new tables. Backdoor reads Expenses through `IExpenseReportServiceRead` and Finance through `IHoldedFinanceServiceRead`; the category-map row and `SepaPayoutTransferRow` became public DTOs in `Humans.Finance.Contracts` for this.
+No new tables. Backdoor reads Expenses through `IExpenseReportService` and Finance through `IHoldedFinanceServiceRead`; the category-map row and `SepaPayoutTransferRow` became public DTOs in `Humans.Finance.Contracts` for this.
 
 ## Related
 

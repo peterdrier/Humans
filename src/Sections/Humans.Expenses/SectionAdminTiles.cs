@@ -21,7 +21,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> ReportsAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var reports = await sp.GetRequiredService<IExpenseReportService>().GetAllAsync(ct);
+        var reports = await sp.GetRequiredService<IExpenseReportManagement>().GetAllAsync(ct);
         return new AdminTileValue(
             reports.Count.ToString("N0", CultureInfo.CurrentCulture),
             Detail: $"€{reports.Sum(r => r.Total):N0} total, all statuses");
