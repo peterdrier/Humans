@@ -366,4 +366,9 @@
   <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Token del calendari renovat</value></data>
   <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Mode de sincronització canviat</value></data>
   <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Configuració de l’assistent actualitzada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Document legal creat</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Configuració del document legal actualitzada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Document legal arxivat</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Versió del document legal publicada</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Resum de la versió del document legal actualitzat</value></data>
 </root>

@@ -390,4 +390,9 @@ public enum AuditAction
     CalendarFeedTokenRotated,
     SyncModeChanged,
     AgentSettingsUpdated,
+    LegalDocumentCreated,
+    LegalDocumentUpdated,
+    LegalDocumentArchived,
+    LegalDocumentVersionPublished,
+    LegalDocumentVersionSummaryUpdated,
 }

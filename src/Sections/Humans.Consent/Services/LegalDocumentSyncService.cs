@@ -1,4 +1,5 @@
 using System.Text;
+using Humans.AuditLog.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
@@ -32,6 +33,7 @@ internal sealed partial class LegalDocumentSyncService(
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     ILegalDocumentCacheInvalidator invalidator,
+    IAuditLogService audit,
     IOptions<GitHubSettings> githubSettings,
     IClock clock,
     ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService, IAdminLegalDocumentService
@@ -181,9 +183,14 @@ internal sealed partial class LegalDocumentSyncService(
 
     public async Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
+        Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var document = await CreateLegalDocumentAsync(request, cancellationToken);
+        await audit.LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", document.Id,
+            $"Created '{document.Name}': team {document.TeamId}, required {document.IsRequired}, " +
+            $"active {document.IsActive}, grace period {document.GracePeriodDays} days, folder '{document.GitHubFolderPath}'.",
+            actorUserId);
 
         if (string.IsNullOrWhiteSpace(document.GitHubFolderPath))
         {
@@ -194,7 +201,7 @@ internal sealed partial class LegalDocumentSyncService(
 
         try
         {
-            var syncMessage = await SyncDocumentAsync(document.Id, cancellationToken);
+            var syncMessage = await SyncDocumentCoreAsync(document.Id, actorUserId, cancellationToken);
             return new AdminLegalDocumentCreateResult(
                 document,
                 syncMessage is null
@@ -214,6 +221,7 @@ internal sealed partial class LegalDocumentSyncService(
     public async Task<LegalDocument?> UpdateLegalDocumentAsync(
         Guid documentId,
         AdminLegalDocumentUpsertRequest request,
+        Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var updated = await repository.UpdateAsync(
@@ -230,33 +238,49 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
 
         invalidator.InvalidateAll();
+        await audit.LogAsync(AuditAction.LegalDocumentUpdated, "LegalDocument", documentId,
+            $"Updated '{request.Name}': team {request.TeamId}, required {request.IsRequired}, " +
+            $"active {request.IsActive}, grace period {request.GracePeriodDays} days, folder '{request.GitHubFolderPath}'.",
+            actorUserId);
         return await repository.GetByIdAsync(documentId, cancellationToken);
     }
 
     public async Task<LegalDocument?> ArchiveLegalDocumentAsync(
         Guid documentId,
+        Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var archived = await repository.ArchiveAsync(documentId, cancellationToken);
         if (archived is not null)
+        {
             invalidator.InvalidateAll();
+            await audit.LogAsync(AuditAction.LegalDocumentArchived, "LegalDocument", documentId,
+                $"Archived '{archived.Name}'.", actorUserId);
+        }
         return archived;
     }
 
-    public Task<string?> SyncLegalDocumentAsync(Guid documentId, CancellationToken cancellationToken = default) =>
-        SyncDocumentAsync(documentId, cancellationToken);
+    public Task<string?> SyncLegalDocumentAsync(
+        Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        SyncDocumentCoreAsync(documentId, actorUserId, cancellationToken);
 
     public async Task<bool> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
+        Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var updated = await repository.UpdateVersionSummaryAsync(
             documentId, versionId, changesSummary, cancellationToken);
 
         if (updated)
+        {
             invalidator.InvalidateAll();
+            await audit.LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
+                $"Updated summary of version {versionId} to '{changesSummary?.Trim()}'.", actorUserId,
+                relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
+        }
 
         return updated;
     }
@@ -282,7 +306,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             try
             {
-                var result = await SyncSingleDocumentAsync(document, cancellationToken);
+                var result = await SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken);
                 if (result is not null)
                 {
                     updatedDocuments.Add(document);
@@ -315,7 +339,11 @@ internal sealed partial class LegalDocumentSyncService(
         return updatedDocuments;
     }
 
-    public async Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
+    public Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        SyncDocumentCoreAsync(documentId, actorUserId: null, cancellationToken);
+
+    private async Task<string?> SyncDocumentCoreAsync(
+        Guid documentId, Guid? actorUserId, CancellationToken cancellationToken)
     {
         var document = await repository.GetByIdAsync(documentId, cancellationToken);
         if (document is null)
@@ -324,7 +352,7 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
         }
 
-        return await SyncSingleDocumentAsync(document, cancellationToken);
+        return await SyncSingleDocumentAsync(document, actorUserId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
@@ -439,6 +467,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
+        Guid? actorUserId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(document.GitHubFolderPath))
@@ -447,11 +476,12 @@ internal sealed partial class LegalDocumentSyncService(
                 $"Document '{document.Name}' has no GitHub Folder Path configured.");
         }
 
-        return await SyncFolderBasedDocumentAsync(document, cancellationToken);
+        return await SyncFolderBasedDocumentAsync(document, actorUserId, cancellationToken);
     }
 
     private async Task<string?> SyncFolderBasedDocumentAsync(
         LegalDocument document,
+        Guid? actorUserId,
         CancellationToken cancellationToken)
     {
         logger.LogDebug("Syncing document {Name} from folder {Folder}",
@@ -550,6 +580,15 @@ internal sealed partial class LegalDocumentSyncService(
         document.LastSyncedAt = now;
 
         var languages = string.Join(", ", content.Keys.Order(StringComparer.Ordinal));
+        var description = $"Published '{document.Name}' {versionNumber}: commit {commitSha}, " +
+            $"requires re-consent {newVersion.RequiresReConsent}, languages {languages}.";
+        if (actorUserId is { } actor)
+            await audit.LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+                description, actor, relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
+        else
+            await audit.LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+                description, nameof(LegalDocumentSyncService),
+                relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
 
         logger.LogInformation(
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",

@@ -366,4 +366,9 @@
   <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Kalender-Feed-Token erneuert</value></data>
   <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Synchronisierungsmodus geändert</value></data>
   <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Assistenteneinstellungen aktualisiert</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Rechtsdokument erstellt</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Einstellungen des Rechtsdokuments aktualisiert</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Rechtsdokument archiviert</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Version des Rechtsdokuments veröffentlicht</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Versionszusammenfassung des Rechtsdokuments aktualisiert</value></data>
 </root>
