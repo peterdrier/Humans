@@ -22,7 +22,7 @@ internal sealed record DevelopmentBudgetSeedResult(
 }
 
 internal sealed class DevelopmentBudgetSeeder(
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     ITeamServiceRead teamService,
     ITeamSeeding teamSeeding,
     ICampService campService,

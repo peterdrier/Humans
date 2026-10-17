@@ -8,7 +8,7 @@
   src/Sections/Humans.Notifications/Contracts/INotificationInboxRead.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Store/Contracts/IStoreAccountingRead.cs
-  src/Sections/Humans.Expenses/Contracts/IExpenseReportServiceRead.cs
+  src/Sections/Humans.Expenses/Contracts/IExpenseReportService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs
 -->
 <!-- freshness:flag-on-change
@@ -54,12 +54,12 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 |-------|--------|--------|
 | `/api/backdoor/logs` | read | The in-memory log ring (`InMemoryLogSink`, Base) |
 | `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages; list previews retain a 200 UTF-16 code-unit cap without splitting Unicode surrogate pairs — via `IAgentTranscriptRead` |
-| `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage` |
+| `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage`; `GET /{id}/screenshot` streams the screenshot (the payload's `ScreenshotUrl`) behind the same reach check |
 | `/api/backdoor/feedback` | read + write | The feedback queue, via `IFeedbackTriage` |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |
 | `/api/backdoor/store/order-lines?year=` | read | One row per Store order line of the year — camp and team orders — with effective price, VAT, revenue account and invoice number, via `IStoreAccountingRead` |
 | `/api/backdoor/store/payments?year=` | read | One row per `Paid` Store payment of the year (refunds negative) with its Stripe payment intent id, via `IStoreAccountingRead` |
-| `/api/backdoor/finance/expense-reports?year=&status=` | read | The key owner's expense-report review queue — everything `/Expenses/Review` would show them, filterable by budget year and status — via `IExpenseReportServiceRead.GetReviewQueueAsync` |
+| `/api/backdoor/finance/expense-reports?year=&status=` | read | The key owner's expense-report review queue — everything `/Expenses/Review` would show them, filterable by budget year and status — via `IExpenseReportService.GetReviewQueueAsync` |
 | `/api/backdoor/finance/expense-reports/{id}` | read | One report in full, including its lines, gated by the same `View` check `/Expenses` uses. The payee name, masked IBAN and Holded timeline fields are further narrowed to the report's submitter (payment half) or a finance admin (push half); the Holded contact/supplier-account/doc ids are finance-admin only — the same split `/Expenses` shows in the browser; a viewer whose `View` passes on another ground (e.g. a category coordinator) gets none of them |
 | `/api/backdoor/finance/expense-reports/{id}/attachments/{attachmentId}` | read | The stored bytes of one attachment, same `View` gate as the owning report |
 | `/api/backdoor/finance/creditor-accounts` | read | Every 400000xx creditor account, its bindings (all of them) and the bindings with no account at all, via `IHoldedFinanceServiceRead.ListCreditorAccountsAsync` |
@@ -126,9 +126,9 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Issues**: reads and triages via `IIssueTriage` (`Humans.Issues.Contracts`).
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
 - **Store**: reads the accounting export — order lines and settled payments per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read; there is no role scoping.
-- **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportServiceRead` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportServiceRead` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
+- **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportService` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportService` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
 - **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceServiceRead` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
-- **Budget**: `IBudgetServiceRead.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
+- **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (`Humans.Notifications/Contracts`, not the contracts leaf: Backdoor is its only consumer). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `IRoleAssignmentServiceRead.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.

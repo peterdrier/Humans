@@ -50,6 +50,9 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleSyncService.AddUserToTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(call => new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Deferred, call.ArgAt<Guid>(1)));
         _googleClient = Substitute.For<IGoogleDriveActivityClient>();
         _googleClient.IsConfigured.Returns(true);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
@@ -71,6 +74,44 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     {
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_FailedGrant_RemainsPending()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, outboxEvent.UserId,
+                Retryable: true, ErrorMessage: "HTTP 503 — vendor unavailable"));
+
+        await _processor.ProcessQueuedAsync(ct);
+
+        var pending = await _outboxRepository.GetProcessingBatchAsync(10, 10, ct);
+        pending.Should().ContainSingle().Which.Id.Should().Be(outboxEvent.Id);
+        pending[0].RetryCount.Should().Be(1);
+        _metrics.DidNotReceive().RecordSyncOperation("success");
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_PermanentGrantFailure_RecordsFailureWithoutRejectingAGuessedAddress()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, outboxEvent.UserId,
+                ErrorMessage: "HTTP 403 — service account lacks access"));
+
+        await _processor.ProcessQueuedAsync(ct);
+
+        (await _outboxRepository.GetProcessingBatchAsync(10, 10, ct)).Should().BeEmpty();
+        _metrics.Received(1).RecordSyncOperation("permanent_failure");
+        _metrics.DidNotReceive().RecordSyncOperation("success");
+        await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default, default);
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(ct);
+        stored.LastError.Should().Be("HTTP 403 — service account lacks access");
     }
 
     [HumansFact]
@@ -118,9 +159,9 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         var failure = new DbUpdateException("Email status persistence unavailable");
         _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
                 Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
-            .Returns(_ => fail && grantFails ? throw failure : GoogleResourceGrantOutcome.Accepted);
+            .Returns(_ => fail && grantFails ? throw failure : new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, outboxEvent.UserId, Guid.NewGuid()));
         _userService.TrySetGoogleEmailStatusFromSyncAsync(
-                outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>())
+                outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>())
             .Returns(_ => fail ? throw failure : Task.FromResult(true));
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
@@ -140,7 +181,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         stored.LastError.Should().BeNull();
         _metrics.Received(1).RecordSyncOperation("success");
         await _userService.Received(grantFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
-            outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>());
+            outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansFact]
@@ -252,13 +293,13 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     {
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
         _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
-                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>()).Returns(outcome);
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>()).Returns(new GoogleResourceGrantResult(outcome, outboxEvent.UserId, Guid.NewGuid()));
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(outcome == GoogleResourceGrantOutcome.Accepted ? 1 : 0)
             .TrySetGoogleEmailStatusFromSyncAsync(outboxEvent.UserId, GoogleEmailStatus.Valid,
-                Arg.Any<CancellationToken>());
+                Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         (await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .ProcessedAt.Should().NotBeNull();
     }
@@ -289,13 +330,13 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
                 }));
         _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
                 Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
-            .Returns(GoogleResourceGrantOutcome.Accepted);
+            .Returns(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, survivorId, Guid.NewGuid()));
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
-            survivorId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>());
+            survivorId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _userService.DidNotReceive().TrySetGoogleEmailStatusFromSyncAsync(
-            outboxEvent.UserId, Arg.Any<GoogleEmailStatus>(), Arg.Any<CancellationToken>());
+            outboxEvent.UserId, Arg.Any<GoogleEmailStatus>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 }

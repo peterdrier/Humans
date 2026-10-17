@@ -18,7 +18,7 @@ namespace Humans.Email.Controllers;
 [Route("Email")]
 internal sealed class EmailController(
     IUserServiceRead userService,
-    IEmailOutboxService outboxService,
+    IEmailOutboxManagement outboxService,
     IAuditLogService audit,
     ILogger<EmailController> logger,
     IOptions<EmailSettings> emailSettings) : HumansControllerBase(userService)
@@ -88,7 +88,10 @@ internal sealed class EmailController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
     {
-        await outboxService.SetEmailPausedAsync(true);
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        await outboxService.SetEmailPausedAsync(true, actorId.Value);
         logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
         SetSuccess("Email sending paused.");
         return Redirect("/Settings#email");
@@ -99,7 +102,10 @@ internal sealed class EmailController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
     {
-        await outboxService.SetEmailPausedAsync(false);
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        await outboxService.SetEmailPausedAsync(false, actorId.Value);
         logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
         SetSuccess("Email sending resumed.");
         return Redirect("/Settings#email");
@@ -109,7 +115,10 @@ internal sealed class EmailController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
     {
-        var recipient = await outboxService.RetryMessageAsync(id);
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        var recipient = await outboxService.RetryMessageAsync(id, actorId.Value);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} queued for retry.");
@@ -120,7 +129,10 @@ internal sealed class EmailController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
     {
-        var recipient = await outboxService.DiscardMessageAsync(id);
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        var recipient = await outboxService.DiscardMessageAsync(id, actorId.Value);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} discarded.");

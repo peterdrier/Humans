@@ -17,8 +17,8 @@ namespace Humans.Events.Data;
 /// Internal-sealed like every section context: repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
-/// The Shifts-owned <c>event_settings</c> and <c>event_participations</c> tables
-/// stay in the Shifts context and are deliberately absent here.
+/// The Settings-owned <c>settings_event</c> table (read through <c>ISettingsService</c>)
+/// and the Users-owned <c>event_participations</c> table are deliberately absent here.
 /// </remarks>
 internal sealed class EventGuideDbContext(DbContextOptions<EventGuideDbContext> options)
     : DbContext(options)

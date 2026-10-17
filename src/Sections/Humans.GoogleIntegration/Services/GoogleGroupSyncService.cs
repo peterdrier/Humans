@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -11,7 +10,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
-[CrossSectionWrite("Group sync writes Google email status back to the user.")]
 internal sealed class GoogleGroupSyncService(
     IEnumerable<IGoogleGroupMembershipSource> sources,
     IGoogleGroupMembershipClient membershipClient,
@@ -35,7 +33,7 @@ internal sealed class GoogleGroupSyncService(
 
     private readonly GoogleWorkspaceOptions _options = options.Value;
 
-    public Task RequestSyncAsync(string groupKey, CancellationToken ct = default)
+    public Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         if (string.IsNullOrWhiteSpace(groupKey))
         {
@@ -43,18 +41,19 @@ internal sealed class GoogleGroupSyncService(
             return Task.CompletedTask;
         }
 
-        syncScheduler.Enqueue(groupKey.Trim());
+        syncScheduler.Enqueue(groupKey.Trim(), syncSource);
         return Task.CompletedTask;
     }
 
     public async Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(groupKey: null, ct);
+        var claims = await LoadClaimsAsync(groupKey: null, ct, syncSource);
         var resourcesByGroup = await LoadActiveGroupResourcesByEmailAsync(ct);
         var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
-            claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, userEmailService, ct);
+            claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, ct);
         var diffs = new List<ResourceSyncDiff>();
 
         foreach (var claim in claims)
@@ -78,21 +77,15 @@ internal sealed class GoogleGroupSyncService(
         return new SyncPreviewResult { Diffs = diffs };
     }
 
-    public Task<ResourceSyncDiff> ReconcileOneAsync(
-        string groupKey,
-        SyncAction action,
-        CancellationToken ct,
-        int retryAttempt)
-        => ReconcileOneAsync(groupKey, action, ct, retryAttempt, scheduleRetries: true);
-
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,
         CancellationToken ct = default,
         int retryAttempt = 0,
-        bool scheduleRetries = true)
+        bool scheduleRetries = true,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(groupKey, ct);
+        var claims = await LoadClaimsAsync(groupKey, ct, syncSource);
         var claim = claims.SingleOrDefault(c =>
             string.Equals(c.GroupKey, groupKey, StringComparison.OrdinalIgnoreCase));
 
@@ -124,7 +117,8 @@ internal sealed class GoogleGroupSyncService(
 
     private async Task<IReadOnlyList<GroupClaim>> LoadClaimsAsync(
         string? groupKey,
-        CancellationToken ct)
+        CancellationToken ct,
+        GoogleSyncSource syncSource)
     {
         var claims = new List<(string SourceName, string GroupKey, Guid[] UserIds)>();
 
@@ -146,7 +140,8 @@ internal sealed class GoogleGroupSyncService(
                 g.Key,
                 g.Count(),
                 g.Select(c => c.SourceName).Distinct(StringComparer.Ordinal).ToArray(),
-                g.SelectMany(c => c.UserIds).Distinct().ToArray()))
+                g.SelectMany(c => c.UserIds).Distinct().ToArray(),
+                syncSource))
             .ToList();
     }
 
@@ -173,13 +168,13 @@ internal sealed class GoogleGroupSyncService(
                 ct);
         }
 
-        expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, userEmailService, ct);
-        var expectedMembers = new Dictionary<string, GoogleSyncMember>(NormalizingEmailComparer.Instance);
-        foreach (var userId in claim.UserIds)
+        expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, ct);
+        var expectedMembers = new Dictionary<string, GoogleSyncMember>(GmailAliasEmailComparer.Instance);
+        foreach (var userId in claim.UserIds.Order())
         {
             if (expectedMembersByUserId.TryGetValue(userId, out var member))
             {
-                expectedMembers[member.Email] = member;
+                expectedMembers.TryAdd(member.Email, member);
             }
         }
 
@@ -259,6 +254,10 @@ internal sealed class GoogleGroupSyncService(
             }
 
             logger.LogInformation("Auto-provisioned Google Group for {GroupKey}", groupKey);
+            await auditLogService.LogAsync(
+                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), Guid.Empty,
+                $"Auto-provisioned Google Group '{groupKey}' ({create.GroupNumericId})",
+                nameof(GoogleGroupSyncService));
             await TryApplyProvisionedGroupSettingsAsync(groupKey, ct);
             return await provisioningClient.LookupGroupIdAsync(groupKey, ct);
         }
@@ -311,7 +310,7 @@ internal sealed class GoogleGroupSyncService(
         await RecordGroupErrorAsync(resource, error, ct);
         logger.LogWarning("Google group sync failed for {GroupKey}: {Error}", claim.GroupKey, error);
         if (scheduleRetryOnFailure)
-            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);
+            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
 
         return BuildErrorDiff(claim.GroupKey, resource, error);
     }
@@ -323,8 +322,8 @@ internal sealed class GoogleGroupSyncService(
     {
         var currentByEmail = memberships
             .Where(member => !string.IsNullOrWhiteSpace(member.MemberEmail))
-            .GroupBy(member => member.MemberEmail!, NormalizingEmailComparer.Instance)
-            .ToDictionary(group => group.Key, group => group.First().ResourceName, NormalizingEmailComparer.Instance);
+            .GroupBy(member => member.MemberEmail!, GmailAliasEmailComparer.Instance)
+            .ToDictionary(group => group.Key, group => group.First().ResourceName, GmailAliasEmailComparer.Instance);
         var members = new List<MemberSyncStatus>();
         foreach (var (email, expected) in expectedMembers)
         {
@@ -338,7 +337,7 @@ internal sealed class GoogleGroupSyncService(
         }
 
         var serviceAccountEmail = await teamResourceClient.GetServiceAccountEmailAsync(ct);
-        var expectedEmailSet = expectedMembers.Keys.ToHashSet(NormalizingEmailComparer.Instance);
+        var expectedEmailSet = expectedMembers.Keys.ToHashSet(GmailAliasEmailComparer.Instance);
         var extraEmails = currentByEmail.Keys.Where(email =>
                 !expectedEmailSet.Contains(email) &&
                 !string.Equals(email, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
@@ -356,7 +355,7 @@ internal sealed class GoogleGroupSyncService(
                 UserId: extraUserIdByEmail.TryGetValue(email, out var userId) ? userId : null));
         }
 
-        return new GroupMembershipPlan(members, currentByEmail);
+        return new GroupMembershipPlan(members, currentByEmail, expectedMembers);
     }
 
     /// <summary>Extra-member email → human, for addresses a user row still claims.</summary>
@@ -383,7 +382,7 @@ internal sealed class GoogleGroupSyncService(
         if (mode != SyncMode.None)
         {
             var addError = await ApplyMissingGroupMembersAsync(
-                claim, resource, groupNumericId, plan.Members, scheduleRetryOnFailure, nextRetryAttempt, ct);
+                claim, resource, groupNumericId, plan, scheduleRetryOnFailure, nextRetryAttempt, ct);
             if (addError is not null)
                 return addError;
         }
@@ -406,39 +405,53 @@ internal sealed class GoogleGroupSyncService(
         GroupClaim claim,
         GoogleResourceSnapshot? resource,
         string groupNumericId,
-        List<MemberSyncStatus> members,
+        GroupMembershipPlan plan,
         bool scheduleRetryOnFailure,
         int nextRetryAttempt,
         CancellationToken ct)
     {
+        var members = plan.Members;
         foreach (var member in members.Where(m => m.State == MemberSyncState.Missing))
         {
             var add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, ct);
             if (add.Outcome == GroupMembershipMutationOutcome.Failed)
             {
-                return await BuildMemberMutationErrorDiffAsync(
+                var failure = DescribeGroupAddFailure(resource, claim.GroupKey, member.Email, add.Error);
+                // Preserve the vendor failure and its retry before the separate Users write.
+                var diff = await BuildMemberMutationErrorDiffAsync(
                     claim,
                     resource,
                     member.Email,
-                    await HandleGroupAddFailureAsync(resource, claim.GroupKey, member.Email, add.Error, ct),
+                    failure.Error,
                     GoogleSyncLogAction.AccessGranted,
                     members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
                     member.UserId,
                     ct);
+                if (failure.RejectTarget)
+                {
+                    var target = plan.ExpectedByEmail[member.Email];
+                    await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                        target.UserId, GoogleEmailStatus.Rejected, ct, target.GoogleEmailId);
+                    logger.LogWarning(
+                        "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
+                        "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
+                        member.Email, claim.GroupKey, resource?.GoogleId, add.Error?.StatusCode, add.Error?.RawMessage);
+                }
+                return diff;
             }
 
-            if (resource is not null && add.Outcome == GroupMembershipMutationOutcome.Added)
+            if (add.Outcome == GroupMembershipMutationOutcome.Added)
             {
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessGranted,
-                    resource.Id,
-                    $"Granted Google Group access to {member.Email} ({resource.Name})",
+                    resource?.Id ?? Guid.Empty,
+                    $"Granted Google Group access to {member.Email} ({resource?.Name ?? claim.GroupKey})",
                     nameof(GoogleGroupSyncService),
                     member.Email,
                     "MEMBER",
-                    GoogleSyncSource.ScheduledSync,
+                    claim.SyncSource,
                     success: true,
                     userId: member.UserId,
                     ct: ct);
@@ -477,20 +490,17 @@ internal sealed class GoogleGroupSyncService(
                     ct);
             }
 
-            if (resource is not null)
-            {
-                await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessRevoked,
-                    resource.Id,
-                    $"Removed {member.Email} from Google Group ({resource.Name})",
-                    nameof(GoogleGroupSyncService),
-                    member.Email,
-                    "MEMBER",
-                    GoogleSyncSource.ScheduledSync,
-                    success: true,
-                    userId: member.UserId,
-                    ct: ct);
-            }
+            await googleSyncLog.LogAsync(
+                GoogleSyncLogAction.AccessRevoked,
+                resource?.Id ?? Guid.Empty,
+                $"Removed {member.Email} from Google Group ({resource?.Name ?? claim.GroupKey})",
+                nameof(GoogleGroupSyncService),
+                member.Email,
+                "MEMBER",
+                claim.SyncSource,
+                success: true,
+                userId: member.UserId,
+                ct: ct);
 
             await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, ct);
         }
@@ -516,24 +526,23 @@ internal sealed class GoogleGroupSyncService(
             email,
             error);
         if (resource is not null)
-        {
             await teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
-            await googleSyncLog.LogAsync(
-                syncAction,
-                resource.Id,
-                error,
-                nameof(GoogleGroupSyncService),
-                email,
-                "MEMBER",
-                GoogleSyncSource.ScheduledSync,
-                success: false,
-                errorMessage: error,
-                userId: userId,
-                ct: ct);
-        }
+
+        await googleSyncLog.LogAsync(
+            syncAction,
+            resource?.Id ?? Guid.Empty,
+            $"{error} (group {claim.GroupKey})",
+            nameof(GoogleGroupSyncService),
+            email,
+            "MEMBER",
+            claim.SyncSource,
+            success: false,
+            errorMessage: error,
+            userId: userId,
+            ct: ct);
 
         if (scheduleRetryOnFailure)
-            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt);
+            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
 
         return BuildErrorDiff(claim.GroupKey, resource, error, members);
     }
@@ -604,12 +613,11 @@ internal sealed class GoogleGroupSyncService(
         return teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
     }
 
-    private async Task<string> HandleGroupAddFailureAsync(
+    private (string Error, bool RejectTarget) DescribeGroupAddFailure(
         GoogleResourceSnapshot? resource,
         string groupKey,
         string email,
-        GoogleClientError? error,
-        CancellationToken ct)
+        GoogleClientError? error)
     {
         var statusCode = error?.StatusCode ?? 0;
         var rawMessage = error?.RawMessage ?? string.Empty;
@@ -620,7 +628,7 @@ internal sealed class GoogleGroupSyncService(
         // map to a permanent target rejection.
         if (statusCode != 403 && statusCode != 400)
         {
-            return FormatGoogleError($"Google group add failed for {email}", error);
+            return (FormatGoogleError($"Google group add failed for {email}", error), false);
         }
 
         if (statusCode == 403)
@@ -636,34 +644,16 @@ internal sealed class GoogleGroupSyncService(
                     groupKey,
                     resource?.GoogleId,
                     rawMessage);
-                return FormatGoogleError($"Google group add failed for {email}", error);
+                return (FormatGoogleError($"Google group add failed for {email}", error), false);
             }
         }
 
         if (IsTargetMemberRejection(rawMessage))
         {
-            var user = await userService.GetByEmailOrAlternateAsync(email, ct);
-            if (user is not null && user.GoogleEmailStatus != GoogleEmailStatus.Rejected)
-            {
-                await userService.TrySetGoogleEmailStatusFromSyncAsync(
-                    user.Id,
-                    GoogleEmailStatus.Rejected,
-                    ct);
-            }
-
-            logger.LogWarning(
-                "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
-                "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
-                email,
-                groupKey,
-                resource?.GoogleId,
-                statusCode,
-                rawMessage);
-
-            return $"Google rejected {email} for group membership - no Google account for this address (HTTP {statusCode})";
+            return ($"Google rejected {email} for group membership - no Google account for this address (HTTP {statusCode})", true);
         }
 
-        return FormatGoogleError($"Google group add failed for {email}", error);
+        return (FormatGoogleError($"Google group add failed for {email}", error), false);
     }
 
     /// <summary>Cloud Identity group-membership "no Google account" detector. Group-specific — Drive path has its own predicate (#677).</summary>
@@ -680,7 +670,7 @@ internal sealed class GoogleGroupSyncService(
             || rawMessage.Contains("error(4002)", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("membership cannot be created", StringComparison.OrdinalIgnoreCase);
 
-    private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt)
+    private async Task ScheduleRetryAsync(string groupKey, string error, int retryAttempt, GoogleSyncSource syncSource)
     {
         logger.LogWarning(
             "Scheduling scoped Google Group membership retry {RetryAttempt}/{MaxRetryAttempts} for {GroupKey} in {DelayMinutes} minutes after failure: {Error}",
@@ -690,7 +680,7 @@ internal sealed class GoogleGroupSyncService(
             ScopedRetryDelay.TotalMinutes,
             error);
 
-        syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt);
+        syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt, syncSource);
 
         await auditLogService.LogAsync(
             AuditAction.GoogleSyncRetryScheduled,
@@ -757,12 +747,13 @@ internal sealed class GoogleGroupSyncService(
     private static bool IsGroupNotFound(GoogleClientError? error)
         => error is { StatusCode: 404 } || error is { StatusCode: 403 };
 
-    private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds)
+    private sealed record GroupClaim(string GroupKey, int ClaimCount, string[] SourceNames, Guid[] UserIds, GoogleSyncSource SyncSource)
     {
         public bool IsCollision => ClaimCount > 1;
     }
 
     private sealed record GroupMembershipPlan(
         List<MemberSyncStatus> Members,
-        Dictionary<string, string> CurrentByEmail);
+        Dictionary<string, string> CurrentByEmail,
+        IReadOnlyDictionary<string, GoogleSyncMember> ExpectedByEmail);
 }

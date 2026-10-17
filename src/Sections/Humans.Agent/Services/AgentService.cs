@@ -11,6 +11,7 @@ using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Users.Contracts;
 using Humans.Agent.Services.Anthropic;
 
 namespace Humans.Agent.Services;
@@ -32,6 +33,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     private readonly AnthropicOptions _anthropicOptions;
     private readonly IClock _clock;
     private readonly ILogger<AgentService> _logger;
+    private readonly IUserServiceRead _users;
 
     public AgentService(
         IAgentSettingsService settings,
@@ -46,13 +48,14 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         IAnthropicClient client,
         IOptions<AnthropicOptions> anthropicOptions,
         IClock clock,
-        ILogger<AgentService> logger)
+        ILogger<AgentService> logger,
+        IUserServiceRead users)
     {
         _settings = settings; _rateLimit = rateLimit; _abuse = abuse;
         _repo = repo; _retentionRuns = retentionRuns; _snapshots = snapshots; _preload = preload;
         _assembler = assembler; _tools = tools; _client = client;
         _anthropicOptions = anthropicOptions.Value;
-        _clock = clock; _logger = logger;
+        _clock = clock; _logger = logger; _users = users;
     }
 
     /// <summary>
@@ -642,8 +645,11 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var conversations = await _repo.ListConversationsForUserWithMessagesAsync(userId, ct);
-        var shaped = conversations.Select(c => new
+        var info = await _users.GetUserInfoAsync(userId, ct);
+        var conversations = new List<AgentConversation>();
+        foreach (var id in info?.AllUserIds ?? [userId])
+            conversations.AddRange(await _repo.ListConversationsForUserWithMessagesAsync(id, ct));
+        var shaped = conversations.OrderBy(c => c.StartedAt).Select(c => new
         {
             c.Id,
             StartedAt = c.StartedAt.ToIso8601(),

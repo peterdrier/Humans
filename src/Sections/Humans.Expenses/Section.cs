@@ -34,8 +34,8 @@ public sealed class Section : ISection
 
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<ExpenseReportService>();
+        services.AddScoped<IExpenseReportManagement>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
-        services.AddScoped<IExpenseReportServiceRead>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportBackgroundProcessor, ExpenseReportBackgroundProcessor>();
         // Owns the user-scoped expense_reports table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpenseReportService>());
@@ -47,12 +47,8 @@ public sealed class Section : ISection
         services.AddScoped<ExpensesEmails>();
         services.AddScoped<IEmailPreviewContributor, ExpensesEmailPreviews>();
 
-        // The resource-based handler lives here; ExpensesController authorizes against it directly.
-        // Its one named policy, ExpenseReportView (for Backdoor, peterdrier/Humans#1838), also
-        // registers here rather than in the consumer's SectionPolicies (Backdoor's), because the
-        // requirement it wraps stays internal to Expenses and Backdoor already hard-depends on this
-        // section via its project reference and IExpenseReportServiceRead — no risk of a 500 if
-        // Backdoor is ever deactivated on its own.
+        // The resource-based handler; ExpensesController authorizes against it directly, Backdoor
+        // through PolicyNames.ExpenseReportView (SectionPolicies).
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
 
         // The section owns its badge colours rather than Base holding a literal row per section

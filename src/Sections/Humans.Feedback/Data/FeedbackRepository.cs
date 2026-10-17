@@ -188,11 +188,17 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var reports = await ctx.FeedbackReports
-            .Where(r => r.UserId == sourceUserId)
+            .Where(r => r.UserId == sourceUserId || r.AssignedToUserId == sourceUserId
+                || r.ResolvedByUserId == sourceUserId)
             .ToListAsync(ct);
         foreach (var r in reports)
         {
-            ctx.Entry(r).Property(nameof(FeedbackReport.UserId)).CurrentValue = targetUserId;
+            if (r.UserId == sourceUserId)
+                ctx.Entry(r).Property(nameof(FeedbackReport.UserId)).CurrentValue = targetUserId;
+            if (r.AssignedToUserId == sourceUserId)
+                r.AssignedToUserId = targetUserId;
+            if (r.ResolvedByUserId == sourceUserId)
+                r.ResolvedByUserId = targetUserId;
             r.UpdatedAt = updatedAt;
         }
 

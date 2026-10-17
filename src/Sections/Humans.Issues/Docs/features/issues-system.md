@@ -28,7 +28,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
-- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot directory. The job is a scheduler shim — the policy lives behind `IIssuesRetention.PurgeExpiredAsync` inside the section
+- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot file. The job is a scheduler shim — the policy lives behind `IIssuesRetention.PurgeExpiredAsync` inside the section
 - Success/error feedback via TempData toast
 - Submission lands at `Status = Triage` with `Section` from the form (or auto-inferred, or null → Admin queue)
 
@@ -93,7 +93,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 **As** the org **and** as the system, **I want** issues to land in the right queue automatically based on which section they're about, **so that** triage scales as we add coordinators per section.
 
 **Acceptance Criteria:**
-- `Issue.Section` is one of the queue keys sections declared through `IIssueQueueOwner` — `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning, Scanner) — or null
+- `Issue.Section` is one of the queue keys sections declared through `IIssueQueueOwner` — `IssueSectionRouting.AllKnownSections` — or null
 - `IssueSectionRouting.RolesFor(section)` is the routing table mapping section → role(s) whose holders see that section; Admin is always implicit
 - Null `Section` falls to the Admin queue only
 - Routing is data-driven: a change to `IssueSectionRouting.RolesFor` takes effect immediately (sections are stored as strings; no migration needed)
@@ -104,7 +104,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 
 See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` are bare columns with no FK and no nav property at all (nobodies-collective/Humans#1188), and display data is stitched in `IssuesService` via `IUserServiceRead.GetUserInfosAsync`.
 
-**Screenshot storage:** `wwwroot/uploads/issues/{issueId}/{guid}.{ext}`
+**Screenshot storage:** `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (the store is rooted at wwwroot, so legacy rows keep resolving unchanged). The static `/uploads/issues/` path is blocked in the Shell; `GET /Issues/{id}/Screenshot` (cookie) and `GET /api/backdoor/issues/{id}/screenshot` (API key; the Backdoor payload's `ScreenshotUrl`) stream the file after the same reach check as Detail.
 
 Uploads use atomic `IFileStorage.SaveAsync`. If saving the Issue row fails, the upload is deleted; cleanup failures are logged and the original persistence failure propagates.
 
@@ -118,6 +118,7 @@ Direct screenshot reads reuse the viewer-scoped issue read before static-file se
 |----------|------|
 | `GET /Issues` | `[Authorize]` — Admin sees all; section role-holders see issues whose `Section` maps to one of their roles; regular humans see only their own |
 | `GET /Issues/{id}` | `[Authorize]` — handler (Admin or section role-holder) **or** the reporter |
+| `GET /Issues/{id}/Screenshot` | `[Authorize]` — handler **or** the reporter; otherwise 404 |
 | `GET /Issues/New` | `[Authorize]` (any authenticated user) |
 | `POST /Issues` (Submit) | `[Authorize]` (any authenticated user) |
 | `POST /Issues/{id}/Comments` | `[Authorize]` — handler **or** reporter (reporter comment on terminal status auto-reopens) |
@@ -144,6 +145,7 @@ Two places read it, for different reasons:
 | `GET /Issues/New` | IssuesController | New |
 | `POST /Issues` | IssuesController | Submit |
 | `GET /Issues/{id}` | IssuesController | Detail |
+| `GET /Issues/{id}/Screenshot` | IssuesController | Screenshot |
 | `POST /Issues/{id}/Comments` | IssuesController | PostComment |
 | `POST /Issues/{id}/Status` | IssuesController | UpdateStatus |
 | `POST /Issues/{id}/Assignee` | IssuesController | UpdateAssignee |

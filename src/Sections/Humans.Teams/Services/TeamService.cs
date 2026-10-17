@@ -1387,6 +1387,7 @@ internal sealed class TeamService(
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Cannot add members to system teams manually");
 
+        targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         var isExisting = await repo.IsActiveMemberAsync(teamId, targetUserId, cancellationToken);
         if (isExisting)
             throw new InvalidOperationException("User is already a member of this team");
@@ -1796,6 +1797,7 @@ internal sealed class TeamService(
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
 
+        targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
         var now = clock.GetCurrentInstant();
 
@@ -2396,6 +2398,14 @@ internal sealed class TeamService(
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
 #pragma warning restore CS0618
+
+    private async Task<Guid> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await UserService.GetUserInfoAsync(userId, ct);
+        if (user is null || user.IsTombstone)
+            throw new InvalidOperationException("Cannot add a missing, deleted or merged account to a team.");
+        return user.Id;
+    }
 
     private async Task<GoogleSyncOutboxEvent?> BuildOutboxEventAsync(
         Guid teamMemberId,

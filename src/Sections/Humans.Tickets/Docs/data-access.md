@@ -65,7 +65,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetServiceRead`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
+`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
 `IUserEmailService`, `ITeamServiceRead` (read-split surface),
 `ISettingsService`, plus `IClock`. Implements
 `IUserDataContributor` (the GDPR contributor is the inner, one per section):

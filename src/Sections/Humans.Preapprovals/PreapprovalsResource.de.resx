@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+      <data name="Enum_GrantStatus_Applied" xml:space="preserve"><value>Beantragt</value></data>
+  <data name="Enum_GrantStatus_Open" xml:space="preserve"><value>Offen</value></data>
+  <data name="Enum_GrantStatus_Claimed" xml:space="preserve"><value>Eingereicht</value></data>
+  <data name="Enum_GrantStatus_Consumed" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="Enum_GrantStatus_Declined" xml:space="preserve"><value>Abgelehnt</value></data>
+  <data name="Enum_GrantStatus_Revoked" xml:space="preserve"><value>Widerrufen</value></data>
+  <data name="Preapprovals_Title" xml:space="preserve"><value>Vorabgenehmigungen</value></data>
+  <data name="Preapprovals_Intro" xml:space="preserve"><value>Eine Vorabgenehmigung ist die Zusage des Vereins, dir bis zu einem Betrag für einen Zweck zu erstatten, wenn du deine Spesenabrechnung bis zur Frist einreichst. Reiche rechtzeitig ein: danach wird nichts mehr gezahlt.</value></data>
+  <data name="Preapprovals_Manage" xml:space="preserve"><value>Vorabgenehmigungen verwalten</value></data>
+  <data name="Preapprovals_Mine" xml:space="preserve"><value>Meine Vorabgenehmigungen</value></data>
+  <data name="Preapprovals_NoneActive" xml:space="preserve"><value>Du hast keine offenen Vorabgenehmigungen.</value></data>
+  <data name="Preapprovals_Program" xml:space="preserve"><value>Programm</value></data>
+  <data name="Preapprovals_ClaimBy" xml:space="preserve"><value>Einreichen bis</value></data>
+  <data name="Preapprovals_DeadlinePassed" xml:space="preserve"><value>Frist abgelaufen</value></data>
+  <data name="Preapprovals_DaysLeft" xml:space="preserve"><value>Noch {0} Tage</value></data>
+  <data name="Preapprovals_FileExpense" xml:space="preserve"><value>Spesenabrechnung einreichen</value></data>
+  <data name="Preapprovals_ViewReport" xml:space="preserve"><value>Abrechnung ansehen</value></data>
+  <data name="Preapprovals_OpenPrograms" xml:space="preserve"><value>Programme, die Anträge annehmen</value></data>
+  <data name="Preapprovals_PerPerson" xml:space="preserve"><value>{0} pro Person</value></data>
+  <data name="Preapprovals_AmountOnRequest" xml:space="preserve"><value>Betrag auf Antrag</value></data>
+  <data name="Preapprovals_Apply" xml:space="preserve"><value>Beantragen</value></data>
+  <data name="Preapprovals_Past" xml:space="preserve"><value>Frühere</value></data>
+  <data name="Preapprovals_ApplyTitle" xml:space="preserve"><value>Vorabgenehmigung beantragen</value></data>
+  <data name="Preapprovals_EditApplication" xml:space="preserve"><value>Antrag bearbeiten</value></data>
+  <data name="Preapprovals_RequestedAmount" xml:space="preserve"><value>Beantragter Betrag</value></data>
+  <data name="Preapprovals_ApplicationNote" xml:space="preserve"><value>Wofür ist es?</value></data>
+  <data name="Preapprovals_ApplicationNote_Help" xml:space="preserve"><value>Ein paar Zeilen für die Verantwortlichen des Programms: wofür du das Geld ausgeben willst.</value></data>
+  <data name="Preapprovals_NotAccepting" xml:space="preserve"><value>Dieses Programm nimmt keine Anträge an.</value></data>
+  <data name="Preapprovals_Applied" xml:space="preserve"><value>Dein Antrag wurde an die Verantwortlichen des Programms geschickt.</value></data>
+  <data name="Preapprovals_Error_NotFound" xml:space="preserve"><value>Nicht gefunden.</value></data>
+  <data name="Preapprovals_Error_NameRequired" xml:space="preserve"><value>Ein Name ist erforderlich.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountRequired" xml:space="preserve"><value>Ein Programm mit Festbetrag braucht einen Betrag pro Person.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountNotAllowed" xml:space="preserve"><value>Ein Programm mit Einzelbeträgen hat keinen Betrag pro Person.</value></data>
+  <data name="Preapprovals_Error_AmountPositive" xml:space="preserve"><value>Der Betrag muss größer als null sein.</value></data>
+  <data name="Preapprovals_Error_AmountNotAllowed" xml:space="preserve"><value>Zusagen eines Festbetragsprogramms sind immer der Betrag pro Person.</value></data>
+  <data name="Preapprovals_Error_AmountRequired" xml:space="preserve"><value>Ein Betrag ist erforderlich.</value></data>
+  <data name="Preapprovals_Error_AccountNotFound" xml:space="preserve"><value>Dieses Spesenkonto ist nicht verfügbar.</value></data>
+  <data name="Preapprovals_Error_KindLocked" xml:space="preserve"><value>Die Art kann nicht mehr geändert werden, sobald Zusagen bestehen.</value></data>
+  <data name="Preapprovals_Error_CeilingExceeded" xml:space="preserve"><value>Das würde die Obergrenze des Programms überschreiten: noch {0} verfügbar.</value></data>
+  <data name="Preapprovals_Error_CeilingBelowCommitted" xml:space="preserve"><value>Die Obergrenze kann nicht unter das bereits Zugesagte fallen: {0}.</value></data>
+  <data name="Preapprovals_Error_ProgramClosed" xml:space="preserve"><value>Dieses Programm ist geschlossen.</value></data>
+  <data name="Preapprovals_Error_NotAcceptingApplications" xml:space="preserve"><value>Dieses Programm nimmt keine Anträge an.</value></data>
+  <data name="Preapprovals_Error_DeadlinePassed" xml:space="preserve"><value>Die Einreichfrist ist abgelaufen.</value></data>
+  <data name="Preapprovals_Error_WrongStatus" xml:space="preserve"><value>Diese Aktion ist im aktuellen Status der Zusage nicht möglich.</value></data>
+  <data name="Preapprovals_Error_NoBeneficiaries" xml:space="preserve"><value>Wähle mindestens eine Person.</value></data>
+  <data name="Preapprovals_Error_TextTooLong" xml:space="preserve"><value>Der Text ist zu lang.</value></data>
+  <data name="Preapprovals_Error_IssueManyFixedOnly" xml:space="preserve"><value>Mehrere Personen auf einmal brauchen einen Festbetrag pro Person.</value></data>
+  <data name="Preapprovals_Notice_Issued" xml:space="preserve"><value>Du hast eine Vorabgenehmigung</value></data>
+  <data name="Preapprovals_Notice_Released" xml:space="preserve"><value>Deine Vorabgenehmigung ist wieder offen</value></data>
+  <data name="Preapprovals_Notice_DeadlineChanged" xml:space="preserve"><value>Die Frist deiner Vorabgenehmigung hat sich geändert</value></data>
+  <data name="Preapprovals_Notice_Reminder" xml:space="preserve"><value>Reiche deine Spesenabrechnung bald ein</value></data>
+  <data name="Preapprovals_Notice_Declined" xml:space="preserve"><value>Dein Antrag wurde abgelehnt</value></data>
+  <data name="Preapprovals_Notice_Revoked" xml:space="preserve"><value>Deine Vorabgenehmigung wurde widerrufen</value></data>
+  <data name="Preapprovals_Notice_AmountChanged" xml:space="preserve"><value>Der Betrag deiner Vorabgenehmigung hat sich geändert</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived" xml:space="preserve"><value>Neuer Antrag auf Vorabgenehmigung</value></data>
+  <data name="Preapprovals_Notice_FileBy_Body" xml:space="preserve"><value>{1} {2}. Reiche deine Spesenabrechnung bis {3} ein.</value></data>
+  <data name="Preapprovals_Notice_Decided_Body" xml:space="preserve"><value>{1} {2}. {4}</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived_Body" xml:space="preserve"><value>{4} hat {2} beantragt.</value></data>
+  <data name="Preapprovals_Email_Greeting_Generic" xml:space="preserve"><value>Hallo,</value></data>
+  <data name="Preapprovals_Email_Greeting_Named" xml:space="preserve"><value>Hallo {0},</value></data>
+  <data name="Preapprovals_Email_LabelLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Für:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DetailLine" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Issued_Subject" xml:space="preserve"><value>Vorabgenehmigung: {0}</value></data>
+  <data name="Preapprovals_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Du hast eine Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Bis zu:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Spesenabrechnung einreichen bis:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Nach diesem Datum wird nichts mehr erstattet. &lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Declined_Subject" xml:space="preserve"><value>Antrag auf Vorabgenehmigung abgelehnt: {0}</value></data>
+  <data name="Preapprovals_Email_Declined_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Dein Antrag im Programm &lt;strong&gt;{1}&lt;/strong&gt; wurde abgelehnt.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Programm ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Subject" xml:space="preserve"><value>Antrag auf Vorabgenehmigung: {0}</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Jemand hat eine Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; beantragt.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Beantragt:&lt;/strong&gt; {3}&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Antrag prüfen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Subject" xml:space="preserve"><value>Erinnerung: bis {1} einreichen für {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Deine Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; wurde noch nicht genutzt.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Bis zu:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Spesenabrechnung einreichen bis:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Nach diesem Datum wird nichts mehr erstattet. &lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Subject" xml:space="preserve"><value>Betrag der Vorabgenehmigung geändert: {0}</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Der Betrag deiner Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; hat sich geändert.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Vorher:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Jetzt:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Revoked_Subject" xml:space="preserve"><value>Vorabgenehmigung widerrufen: {0}</value></data>
+  <data name="Preapprovals_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Deine Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; wurde widerrufen.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Betrag:&lt;/strong&gt; {3}&lt;/p&gt;{4}&lt;p&gt;Falls eine Spesenabrechnung sie hält, kann die Abrechnung weiterhin entschieden werden; Obergrenze und Konto gelten nicht mehr. &lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Frist der Vorabgenehmigung geändert: bis {1} einreichen für {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Die Einreichfrist deiner Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; wurde verschoben.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Bis zu:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Neue Frist:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+</root>

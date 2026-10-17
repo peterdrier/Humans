@@ -82,10 +82,12 @@ public interface IUserService : IUserServiceRead, IUserMerge
     /// after the address changes. Call this from any outbox-processor /
     /// reconciliation writer; the invariant lives here so a future second caller
     /// cannot silently bypass it. Returns true if a write occurred, false if
-    /// short-circuited by the rule or the user has no verified Google email.
+    /// short-circuited by the rule or the target row no longer exists. When
+    /// <c>googleEmailId</c> is supplied, updates that verified row owned by the user,
+    /// even if another address has since become their selected Google email.
     /// </summary>
     Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null);
 
     /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on

@@ -13,6 +13,7 @@ internal sealed class BudgetYearConfiguration : IEntityTypeConfiguration<BudgetY
 
         builder.Property(b => b.Year).HasMaxLength(50).IsRequired();
         builder.Property(b => b.Name).HasMaxLength(256).IsRequired();
+        builder.Property(b => b.VendorEventId).HasMaxLength(256);
         builder.Property(b => b.Status).IsRequired().HasConversion<string>().HasMaxLength(50);
         builder.Property(b => b.CreatedAt).IsRequired();
         builder.Property(b => b.UpdatedAt).IsRequired();

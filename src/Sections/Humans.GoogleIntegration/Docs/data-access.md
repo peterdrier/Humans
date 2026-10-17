@@ -31,7 +31,7 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleSyncOutboxEvents | R/W |
 
 Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
-`ITeamService`, `IUserEmailService`, `ISyncSettingsService`,
+`ITeamServiceRead`, `ISyncSettingsService`,
 `IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
 `IGoogleGroupProvisioningClient`, `IGoogleGroupSync`, `IGoogleDriveSync`,
 and `IGoogleDriveAccessSource` (source-owned grant levels). No cache.
@@ -95,7 +95,7 @@ Repository: `ISyncSettingsRepository`.
 |-------|-----|
 | SyncServiceSettings | R/W |
 
-No cross-section calls, no cache.
+Calls `IAuditLogService` after each successful mode save, using the persisted row id and admin actor. No cache.
 
 ### GoogleSyncOutboxService (Scoped)
 
@@ -119,8 +119,9 @@ Repository: `IGoogleSyncLogRepository`.
 |-------|-----|
 | GoogleSyncLog | R/W |
 
-Implements the internal write side (`IGoogleSyncLogService`), the public read
-side (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
+Implements the internal `IGoogleSyncLogService` (writes, plus the
+`/Google/ActivityLog` read, 500-row cap), the public read side
+(`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
 `IUserDataContributor` for the GDPR export (design-rules §8a — the table holds
 `UserId`/`UserEmail`). Writes are best-effort — a repository failure is logged
 at Error and swallowed so a sync never fails on its own bookkeeping. The

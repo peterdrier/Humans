@@ -20,7 +20,7 @@ namespace Humans.Email.Tests;
 /// </summary>
 public sealed class EmailControllerPauseSettingsRedirectTests
 {
-    private readonly IEmailOutboxService _outbox = Substitute.For<IEmailOutboxService>();
+    private readonly IEmailOutboxManagement _outbox = Substitute.For<IEmailOutboxManagement>();
 
     private EmailController BuildSut()
     {

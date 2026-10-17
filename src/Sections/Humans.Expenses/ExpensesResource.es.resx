@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Hecho</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuevo informe de gastos</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Selecciona una categoría —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Cuenta</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Selecciona una cuenta —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categorías del presupuesto</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Otras cuentas</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Cuenta no encontrada o ya no disponible.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, máx. 500 caracteres)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe el gasto…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crear borrador</value></data>
@@ -237,9 +242,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La persona que presenta el informe debe tener un IBAN en su perfil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La persona que presenta el informe debe tener nombre y apellidos en su perfil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>No se pudo enviar el informe. Es posible que ya no sea un borrador.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Error al enviar</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Solo quien presenta el informe puede retirarlo.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Error al retirar</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo quien presenta el informe puede editarlo.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Este informe no se puede editar cuando está en estado {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Informe de gastos</value></data>

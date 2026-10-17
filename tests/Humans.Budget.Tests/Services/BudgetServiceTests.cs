@@ -92,10 +92,31 @@ public sealed class BudgetServiceTests
         else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
     }
 
-    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task YearStatus_MalformedBinding_DoesNotResetActiveYear(bool malformed)
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
+        var (controller, _, _) = CreateAdminController(true, _service);
+        if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
+
+        var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
+
+        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+    }
+
+    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
-        var budget = Substitute.For<IBudgetService>();
+        var budget = Substitute.For<IBudgetManagement>();
         var users = Substitute.For<IUserServiceRead>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
@@ -106,9 +127,9 @@ public sealed class BudgetServiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
         };
-        var controller = new BudgetAdminController(budget, _teamService,
+        var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
             new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
-            tickets, Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
+            Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
             NullLogger<BudgetAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -400,11 +421,9 @@ public sealed class BudgetServiceTests
         var category = await SeedCategoryAsync(isRestricted, isTicketingGroup);
         var coordinatorId = Guid.NewGuid();
         var deptId = Guid.NewGuid();
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(coordinatorId, TeamMemberRole.Coordinator)]),
-        });
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorId, Arg.Any<CancellationToken>())
+            .Returns(new[] { deptId });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
 
         var denied = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: false);
         var allowed = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: true);
@@ -414,118 +433,20 @@ public sealed class BudgetServiceTests
         allowed.ShouldForbid.Should().BeFalse();
     }
 
-    // ─── Effective budget-coordinator team set (derived over TeamInfo) ───────
-
     [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_IncludesDepartmentAndActiveChildren_ForDirectCoordinator()
+    public async Task GetEffectiveCoordinatorTeamIdsAsync_UsesTheTeamsOwnedScope()
     {
         var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-        var activeChildId = Guid.NewGuid();
-        var inactiveChildId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
-            [activeChildId] = MakeTeam(
-                activeChildId, "Prep", parentTeamId: deptId, isActive: true),
-            [inactiveChildId] = MakeTeam(
-                inactiveChildId, "Retired Sub-team", parentTeamId: deptId, isActive: false),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+        Guid[] expected = [Guid.NewGuid(), Guid.NewGuid()];
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(expected);
 
         var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
 
-        result.Should().BeEquivalentTo(new[] { deptId, activeChildId });
+        result.Should().BeEquivalentTo(expected);
+        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
+        await _teamService.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_IncludesDepartment_ForManagementRoleHolder()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Logistics", parentTeamId: null, isActive: true,
-                managementRoleHolderUserIds: new HashSet<Guid> { userId }),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEquivalentTo(new[] { deptId });
-    }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_ExcludesChildTeamCoordinatorship_OnlyDepartmentsQualify()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-        var childId = Guid.NewGuid();
-
-        // User is a coordinator of a CHILD team (which has a parent), not a department.
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(deptId, "Site Ops", parentTeamId: null, isActive: true),
-            [childId] = MakeTeam(
-                childId, "Fences", parentTeamId: deptId, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_ReturnsEmpty_ForNonCoordinatorMember()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Member)]),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEmpty();
-    }
-
-    private static TeamInfo MakeTeam(
-        Guid id,
-        string name,
-        Guid? parentTeamId,
-        bool isActive,
-        List<TeamMemberInfo>? members = null,
-        IReadOnlySet<Guid>? managementRoleHolderUserIds = null) =>
-        new(
-            id, name, null, name.ToLowerInvariant().Replace(' ', '-'),
-            IsActive: isActive, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
-            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
-            Members: members ?? [],
-            ParentTeamId: parentTeamId,
-            ManagementRoleHolderUserIds: managementRoleHolderUserIds);
-
-    private static TeamMemberInfo MakeMember(Guid userId, TeamMemberRole role) =>
-        new(
-            TeamMemberId: Guid.NewGuid(),
-            UserId: userId,
-            DisplayName: "Member",
-            Email: null,
-            ProfilePictureUrl: null,
-            Role: role,
-            JoinedAt: Instant.MinValue);
 
     [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()
@@ -692,7 +613,7 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", null, Guid.NewGuid());
 
         await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var auditEntries = await ctx2.BudgetAuditLogs
@@ -701,6 +622,31 @@ public sealed class BudgetServiceTests
 
         auditEntries.Should().ContainSingle(a => a.FieldName == nameof(BudgetYear.Name));
         auditEntries.Should().NotContain(a => a.FieldName == nameof(BudgetYear.Year));
+    }
+
+    [HumansFact]
+    public async Task UpdateYearAsync_persists_vendor_event_id_and_audits_the_change()
+    {
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget 2026", " event-2026 ", Guid.NewGuid());
+
+        var detail = await _service.GetYearByIdAsync(_yearId);
+        detail!.VendorEventId.Should().Be("event-2026");
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await ctx2.BudgetAuditLogs.CountAsync(
+            a => a.BudgetYearId == _yearId && a.FieldName == nameof(BudgetYear.VendorEventId),
+            TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // ─── DeleteYearAsync refuses active ─────────────────────────────────────
@@ -836,6 +782,73 @@ public sealed class BudgetServiceTests
         actualFees.Should().OnlyContain(li => li.Amount == 0m);
         (await ctx.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == _yearId
             && a.Description.StartsWith("Ticketing sync:"), ct)).Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_zeroes_weeks_absent_from_next_sync()
+    {
+        var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        // All of the week's orders were refunded: it no longer appears in the input, which now
+        // holds only a later week.
+        var laterWeek = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 1, 50m, 0m, 0m);
+        await _service.SyncTicketingActualsAsync(_yearId, [laterWeek], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actuals = await ctx.BudgetLineItems
+            .Where(li => (li.BudgetCategoryId == revenueCatId || li.BudgetCategoryId == feesCatId)
+                && !li.Description.StartsWith("Projected: ")
+                && li.ExpectedDate == new LocalDate(2026, 3, 2))
+            .ToListAsync(ct);
+        actuals.Should().HaveCount(3, because: "rows are zeroed, not deleted");
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_dropped_zero_amount_week_resets_ticket_count_notes()
+    {
+        var (_, _, revenueCatId, _) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        // Fully-discounted week: 3 tickets, 0 revenue.
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var revenueRows = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && !li.Description.StartsWith("Projected: ")
+                && li.ExpectedDate == new LocalDate(2026, 3, 2))
+            .ToListAsync(ct);
+        revenueRows.Should().ContainSingle().Which.Notes.Should().Be("0 tickets");
+    }
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_all_refunded_empty_input_zeroes_stored_weeks()
+    {
+        var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        // Every order of the week was refunded: empty input zeroes the stored week.
+        await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actuals = await ctx.BudgetLineItems
+            .Where(li => (li.BudgetCategoryId == revenueCatId || li.BudgetCategoryId == feesCatId)
+                && !li.Description.StartsWith("Projected: "))
+            .ToListAsync(ct);
+        actuals.Should().HaveCount(3);
+        actuals.Should().OnlyContain(li => li.Amount == 0m);
     }
 
     [HumansFact]
@@ -1330,7 +1343,7 @@ public sealed class BudgetServiceTests
             "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
             "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
             "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
-            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", actor, now, ct),
+            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", null, actor, now, ct),
             "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)

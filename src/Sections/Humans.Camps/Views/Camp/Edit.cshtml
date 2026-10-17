@@ -3,7 +3,7 @@
     ViewData["Title"] = $"{SharedLocalizer["Common_Edit"]} {Model.Name}";
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
@@ -238,7 +238,7 @@
     </div>
 
     <div class="col-md-4">
-        @* Members & Roles — moved to dedicated page (issue nobodies-collective#641) *@
+        @* Members & Roles — dedicated page *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camp_Edit_MembersRolesHeading"]

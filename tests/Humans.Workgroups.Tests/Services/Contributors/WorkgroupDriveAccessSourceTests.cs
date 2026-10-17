@@ -47,6 +47,17 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task Claims_CarryTheGroupNameSoMembersNeverSeeARawFolderId()
+    {
+        await SeedWorkgroupAsync(name: "Finance 2026", driveFolderId: "folder-1");
+
+        var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
+
+        access["folder-1"].ResourceName.Should().Be("Finance 2026");
+        access["root-folder"].ResourceName.Should().Be("Workgroups");
+    }
+
+    [HumansFact]
     public async Task DormantGroup_CurrentMembers_GetViewer()
     {
         var workgroup = await SeedWorkgroupAsync(

@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IConsentService"/> (T-04).
+/// Singleton caching decorator for <see cref="IConsentManagement"/> (T-04).
 /// Caches per-user <see cref="UserConsentInfo"/> — the flat set of
 /// document-version ids the user has explicitly consented to, with the
 /// account-merge source-id chain resolved at warm/load time.
@@ -41,22 +41,22 @@ namespace Humans.Consent.Services;
 /// </para>
 /// </remarks>
 internal sealed class CachingConsentService(
-    ILegalDocumentSyncService legalDocumentSync,
+    ILegalDocumentSyncManagement legalDocumentSync,
     IClock clock,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingConsentService> logger)
-    : TrackedCache<Guid, UserConsentInfo>("Consent.UserConsentInfo", warmOnStartup: false, logger), IConsentService,
+    : TrackedCache<Guid, UserConsentInfo>("Consent.UserConsentInfo", warmOnStartup: false, logger), IConsentManagement,
         IConsentCacheInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
-    /// <see cref="IConsentService"/> is registered.
+    /// <see cref="IConsentManagement"/> is registered.
     /// </summary>
     public const string InnerServiceKey = "consent-inner";
 
-    // ILegalDocumentSyncService and IClock are Singletons — inject directly.
+    // ILegalDocumentSyncManagement and IClock are Singletons — inject directly.
     // scopeFactory is still needed to resolve the keyed Scoped inner
-    // IConsentService and Scoped IUserServiceRead for the SubmitConsent /
+    // IConsentManagement and Scoped IUserServiceRead for the SubmitConsent /
     // pass-through paths.
 
     // ==========================================================================
@@ -106,7 +106,7 @@ internal sealed class CachingConsentService(
         if (misses is { Count: > 0 })
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);
             var missList = misses.ToList();
             var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
 
@@ -198,7 +198,7 @@ internal sealed class CachingConsentService(
             var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             chainIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);
             result = await inner.SubmitConsentAsync(
                 userId, documentVersionId, explicitConsent, ipAddress, userAgent, ct);
         }
@@ -269,10 +269,10 @@ internal sealed class CachingConsentService(
     // Inner-service resolution
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<IConsentService, Task<TResult>> action)
+    private async Task<TResult> WithInner<TResult>(Func<IConsentManagement, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);
         return await action(inner);
     }
 }

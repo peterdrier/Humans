@@ -32,9 +32,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddKeyedScoped<ICampManagement>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());
-        services.AddKeyedScoped<ICampRoleCampAccess>(
-            CachingCampService.InnerServiceKey,
-            (sp, _) => sp.GetRequiredService<CampService>());
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());
@@ -68,9 +65,9 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
-        // Lazy<ICityPlanningService> resolves a circular dep: CampService -> ICityPlanningService
+        // Lazy<ICityPlanningWrite> resolves a circular dep: CampService -> ICityPlanningWrite
         // -> ICampService. Used on the camp-delete path to clear the section's polygons.
-        services.AddTransient(sp => new Lazy<ICityPlanningService>(sp.GetRequiredService<ICityPlanningService>));
+        services.AddTransient(sp => new Lazy<ICityPlanningWrite>(sp.GetRequiredService<ICityPlanningWrite>));
 
         services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<CampAdminPageBuilder>();
@@ -88,6 +85,10 @@ public sealed class Section : ISection, IIssueQueueOwner
     // This section owns the issue queue its members' reports land in; Issues discovers
     // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Camps";
+
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Camps";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["camps", "barrios"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.CampAdmin];
 }

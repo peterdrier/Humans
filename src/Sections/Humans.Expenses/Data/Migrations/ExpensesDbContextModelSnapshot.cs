@@ -121,10 +121,10 @@ namespace Humans.Expenses.Data.Migrations
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("BudgetCategoryId")
+                    b.Property<Guid?>("BudgetCategoryId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("BudgetYearId")
+                    b.Property<Guid?>("BudgetYearId")
                         .HasColumnType("uuid");
 
                     b.Property<Instant?>("CoordinatorEndorsedAt")
@@ -135,6 +135,15 @@ namespace Humans.Expenses.Data.Migrations
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HoldedAccountId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("HoldedAccountNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("HoldedContactId")
                         .HasMaxLength(64)

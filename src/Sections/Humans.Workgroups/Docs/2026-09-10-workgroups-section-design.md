@@ -14,6 +14,11 @@
 > does not apply. The rows of §13 that remain are the thirty-day update nudge and clause 1's
 > fourteen-day application notice. `Docs/Workgroups.md` is the invariants of record.
 
+> **Since shipped, beyond this design:** membership join requests approved by coordinators,
+> sensitive groups, a budget with a Holded expense account, the Drive ContentManager level
+> for Active members, the `workgroups_settings` table (root Drive folder), and
+> migrations under `Data/Migrations`. For current behaviour read `Docs/Workgroups.md`.
+
 ---
 
 ## 1. Purpose

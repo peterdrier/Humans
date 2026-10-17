@@ -37,7 +37,7 @@ public class HoldedFinanceServiceTests
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -1876,6 +1876,68 @@ public class HoldedFinanceServiceTests
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
         json.Should().NotContain("CreatedAt").And.NotContain("UpdatedAt");
+        JsonSerializer.SerializeToElement(slice.Data).ValueKind.Should().Be(JsonValueKind.Object);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUser_IncludesBindingsAndPayoutsAcrossMergedAccounts(bool archivedId)
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var requestedId = archivedId ? sourceId : survivorId;
+        var info = UserInfo.Create(
+            new User { Id = survivorId, BurnerName = "Survivor", CreatedAt = FixedNow },
+            [], [], [], null, []) with
+        { MergedUserIds = [sourceId] };
+        _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
+        foreach (var (id, contact) in new[] { (survivorId, "survivor-contact"), (sourceId, "source-contact") })
+        {
+            _repo.GetCreditorContactByUserAsync(id, Arg.Any<CancellationToken>()).Returns(
+                new HoldedCreditorContact { UserId = id, HoldedContactId = contact, SupplierAccountNum = 40000004 });
+            _repo.GetSepaPayoutsForUserAsync(id, Arg.Any<CancellationToken>()).Returns(
+                new List<SepaPayoutExportRow>
+                {
+                    new(FixedNow, contact + ".xml", 40000004, contact, "Payee", "ES79****789", 12.34m, null, null, null)
+                });
+        }
+
+        var slices = await MakeService().ContributeForUserAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+
+        var bindings = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.HoldedCreditorAccount, StringComparison.Ordinal)).Data);
+        bindings.ValueKind.Should().Be(JsonValueKind.Object);
+        bindings.GetProperty("HoldedContactId").GetString().Should().Be(archivedId ? "source-contact" : "survivor-contact");
+        var additional = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName,
+            "AdditionalHoldedCreditorAccounts", StringComparison.Ordinal)).Data);
+        additional.GetArrayLength().Should().Be(1);
+        additional[0].GetProperty("HoldedContactId").GetString().Should().Be(archivedId ? "survivor-contact" : "source-contact");
+        additional[0].GetProperty("UserId").GetGuid().Should().Be(archivedId ? survivorId : sourceId);
+        var payouts = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.SepaPayouts, StringComparison.Ordinal)).Data);
+        payouts.GetArrayLength().Should().Be(2);
+        payouts.EnumerateArray().Select(b => b.GetProperty("HoldedContactId").GetString())
+            .Should().BeEquivalentTo("survivor-contact", "source-contact");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_SourceOnlyBinding_PreservesNullPrimaryAndExportsAdditionalAccount()
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        _users.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []) with { MergedUserIds = [sourceId] });
+        _repo.GetCreditorContactByUserAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = sourceId, HoldedContactId = "source-only", SupplierAccountNum = 40000004 });
+
+        var service = MakeService();
+        var slices = await service.ContributeForUserAsync(survivorId, Xunit.TestContext.Current.CancellationToken);
+
+        slices.Single(s => string.Equals(s.SectionName, "HoldedCreditorAccount", StringComparison.Ordinal)).Data.Should().BeNull();
+        var additional = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName,
+            "AdditionalHoldedCreditorAccounts", StringComparison.Ordinal)).Data);
+        additional.GetArrayLength().Should().Be(1);
+        additional[0].GetProperty("HoldedContactId").GetString().Should().Be("source-only");
+        service.ErasureDeclaration.Should().ContainKey("AdditionalHoldedCreditorAccounts").WhoseValue.Should().BeNull();
     }
 
     [HumansFact]
@@ -2865,7 +2927,7 @@ public class HoldedFinanceServiceTests
         string? description = "40000004 - NCA - ANA RUIZ", string status = "pending")
     {
         _client.ListBankMovementsAsync(
-                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(new List<HoldedBankMovementDto>
             {
                 new()

@@ -13,13 +13,13 @@ using CampService = Humans.Camps.Services.CampService;
 namespace Humans.Camps.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests for the Camps section — §15 caching decorator (T-06, 2026-05-16). Pins
+/// Architecture tests for the Camps section — §15 caching decorator. Pins
 /// that <c>CachingCampService</c> wraps <c>CampService</c> with a Singleton, hit-tracked
 /// per-camp projection plus a separate CampSettingsInfo slot.
 /// </summary>
 public class CampsArchitectureTests
 {
-    // ── CachingCampService (T-06 decorator) ──────────────────────────────────
+    // ── CachingCampService decorator ──────────────────────────────────
 
     [HumansFact]
     public void CachingCampService_ImplementsICampManagement()

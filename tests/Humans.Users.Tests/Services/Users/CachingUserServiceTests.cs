@@ -68,6 +68,24 @@ public class CachingUserServiceTests
     };
 
     [HumansFact]
+    public async Task AdminStubProfileCreation_ForwardsAuditActor_AndRefreshesProfile()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var sut = CreateSut();
+        await PrimeAsync(sut, SampleUserInfo(userId) with { Profile = null });
+        _inner.EnsureStubProfileAsync(userId, null, null, null, ct, actorId).Returns(true);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
+
+        (await sut.EnsureStubProfileAsync(userId, ct: ct, actorUserId: actorId)).Should().BeTrue();
+
+        await _inner.Received(1).EnsureStubProfileAsync(userId, null, null, null, ct, actorId);
+        (await sut.GetUserInfoAsync(userId, ct))!.Profile.Should().NotBeNull();
+    }
+
+    [HumansFact]
     public async Task CommittedPreferenceChange_FinishesCacheRefreshAndAuditDespiteRequestCancellation()
     {
         var testCt = Xunit.TestContext.Current.CancellationToken;
@@ -132,6 +150,74 @@ public class CachingUserServiceTests
         original.CommunicationPreferences.Single().OptedOut.Should().BeFalse();
         await audit.Received(1).LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
             Arg.Any<string>(), "CommunicationPreferenceService");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("add")]
+    [Xunit.InlineData("update")]
+    [Xunit.InlineData("remove")]
+    public async Task CommittedEmailWrite_FinishesCacheRefreshDespiteRequestCancellation(string operation)
+    {
+        var testCt = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false, false,
+            null, null, null, null, now, now, default);
+        var original = SampleUserInfo(userId) with
+        {
+            UserEmails = string.Equals(operation, "add", StringComparison.Ordinal) ? [] : [email]
+        };
+        var expected = original with
+        {
+            UserEmails = operation switch
+            {
+                "remove" => [],
+                "update" => [email with { IsVerified = true }],
+                _ => [email]
+            }
+        };
+        var cached = CreateSut();
+        await PrimeAsync(cached, original);
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(testCt);
+        var committed = false;
+        async Task<T> CommitAsync<T>(T result, CancellationToken writeCt)
+        {
+            writeCt.Should().Be(request.Token);
+            writeCt.ThrowIfCancellationRequested();
+            committed = true;
+            await request.CancelAsync();
+            return result;
+        }
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            committed.Should().BeTrue();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(expected);
+        });
+        switch (operation)
+        {
+            case "add":
+                _inner.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), request.Token)
+                    .Returns(call => CommitAsync(new UserEmailAddResult(email.Id, true, false), call.Arg<CancellationToken>()));
+                (await cached.AddUserEmailAsync(userId, new UserEmailAddCommand(email.Email), request.Token)).Added.Should().BeTrue();
+                break;
+            case "update":
+                _inner.UpdateUserEmailAsync(userId, email.Id, Arg.Any<UserEmailUpdateCommand>(), request.Token)
+                    .Returns(call => CommitAsync(new UpdateEmailResult(true), call.Arg<CancellationToken>()));
+                (await cached.UpdateUserEmailAsync(userId, email.Id, new UserEmailUpdateCommand(MarkVerified: true), request.Token))
+                    .Succeeded.Should().BeTrue();
+                break;
+            default:
+                _inner.RemoveUserEmailAsync(userId, email.Id, Arg.Any<UserEmailRemoveCommand>(), request.Token)
+                    .Returns(call => CommitAsync(true, call.Arg<CancellationToken>()));
+                (await cached.RemoveUserEmailAsync(userId, email.Id, new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail), request.Token))
+                    .Should().BeTrue();
+                break;
+        }
+
+        var refreshed = await cached.GetUserInfoAsync(userId, testCt);
+        refreshed!.UserEmails.Should().BeEquivalentTo(expected.UserEmails);
+        original.UserEmails.Should().BeEquivalentTo(string.Equals(operation, "add", StringComparison.Ordinal) ? [] : new[] { email });
     }
 
     [HumansFact]
@@ -1037,7 +1123,7 @@ public class CachingUserServiceTests
                 Arg.Any<UserProfileSaveCommand>(),
                 Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new UserProfileSaveResult(profileId, null, "image/png"));
+            .Returns(new UserProfileSaveResult(profileId, null, "uploads/profile-pictures/new.png"));
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1096,7 +1182,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, SampleUserInfo(userId));
 
         _inner.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true, profileId, "image/png"));
+            .Returns(new UserProfileAnonymizeResult(true, profileId, "uploads/profile-pictures/old.png"));
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1113,7 +1199,7 @@ public class CachingUserServiceTests
         var result = await sut.AnonymizeProfileForDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
-        result.PreviousProfilePictureContentType.Should().Be("image/png");
+        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/old.png");
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.FirstName.Should().Be("Deleted");
@@ -1617,6 +1703,39 @@ public class CachingUserServiceTests
         var results = await sut.SearchUsersAsync("Twin", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
 
         results.Select(r => r.UserId).Should().Equal(survivorId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("erased")]
+    [Xunit.InlineData("legacy")]
+    [Xunit.InlineData("merged-to-erased")]
+    [Xunit.InlineData("dangling")]
+    public async Task SearchUsersAsync_ByExactId_DoesNotReturnTerminalAccounts(string kind)
+    {
+        var erasedId = Guid.NewGuid();
+        var queryId = erasedId;
+        var sut = CreateSut();
+        var erased = ChainRow(erasedId, gdprErased: true) with
+        {
+            Profile = SampleUserInfo(erasedId).Profile,
+        };
+        if (string.Equals(kind, "legacy", StringComparison.Ordinal))
+            erased = erased with { MergedAt = null, State = UserState.Bare, IsGdprAnonymized = false };
+        await PrimeAsync(sut, erased);
+        if (kind is "merged-to-erased" or "dangling")
+        {
+            queryId = Guid.NewGuid();
+            await PrimeAsync(sut, BuildSearchableUserInfo(queryId, burnerName: "Archived") with
+            {
+                MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                MergedToUserId = string.Equals(kind, "dangling", StringComparison.Ordinal) ? Guid.NewGuid() : erasedId,
+            });
+        }
+
+        var results = await sut.SearchUsersAsync(queryId.ToString(), PersonSearchFields.PublicAll,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
     }
 
     [HumansFact]

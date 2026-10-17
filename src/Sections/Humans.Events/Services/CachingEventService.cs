@@ -41,7 +41,7 @@ namespace Humans.Events.Services;
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger)
-    : IEventManagement, IEventViewInvalidator, IUserDataContributor, IEventSettingsChangeListener, IHostedService
+    : IEventManagement, IUserDataContributor, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventManagement"/>
@@ -275,6 +275,13 @@ internal sealed class CachingEventService(
             _eventCache.Invalidate(guideEvent.Id);
         });
 
+    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ModeratorWithdrawAsync(guideEvent, actorUserId, ct));
+            _eventCache.Invalidate(guideEvent.Id);
+        });
+
     public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
@@ -440,13 +447,9 @@ internal sealed class CachingEventService(
         // counts that the approved-only cache cannot answer.
         WithInner(inner => inner.GetAllEventsForDashboardAsync(ct));
 
-    public Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetApprovedEventsForExportAsync(ct));
-
-    // ── IEventViewInvalidator — external invalidation hooks (nobodies-collective/Humans#719) ──
-
-    public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
-        MutateAsync(() => RefreshSettingsAsync(ct));
+    public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>
+        // Every CSV disclosure must audit, including repeated downloads of unchanged data.
+        WithInner(inner => inner.GetApprovedEventsForExportAsync(actorUserId, ct));
 
     // ── IEventSettingsChangeListener: Settings-side fan-out ──
 

@@ -41,7 +41,7 @@ public sealed class ComposerSelfSendTests
     private EmailPreviewController BuildController(bool signedIn)
     {
         var controller = new EmailPreviewController(
-            Substitute.For<IUserServiceRead>(), Substitute.For<IEmailPreviewService>(), BuildService());
+            Substitute.For<IUserServiceRead>(), Substitute.For<IEmailPreviewManagement>(), BuildService());
         var claims = signedIn ? new[] { new Claim(ClaimTypes.NameIdentifier, UserId.ToString()) } : [];
         controller.ControllerContext = new ControllerContext
         {

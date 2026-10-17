@@ -36,9 +36,9 @@ namespace Humans.Backdoor.Controllers;
 [Route("api/backdoor/finance")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
 internal sealed class BackdoorFinanceController(
-    IExpenseReportServiceRead expenses,
+    IExpenseReportService expenses,
     IHoldedFinanceServiceRead finance,
-    IBudgetServiceRead budget,
+    IBudgetService budget,
     IAuthorizationService authService,
     IUserServiceRead users) : ApiControllerBase(users), IResultFilter
 {
@@ -59,7 +59,8 @@ internal sealed class BackdoorFinanceController(
 
         var filtered = reports
             .Where(r => string.IsNullOrEmpty(year)
-                || string.Equals(years.GetValueOrDefault(r.BudgetYearId)?.Year, year, StringComparison.OrdinalIgnoreCase))
+                || (r.BudgetYearId is { } yearId
+                    && string.Equals(years.GetValueOrDefault(yearId)?.Year, year, StringComparison.OrdinalIgnoreCase)))
             .Where(r => string.IsNullOrEmpty(status)
                 || string.Equals(r.Status.ToString(), status, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
@@ -73,7 +74,7 @@ internal sealed class BackdoorFinanceController(
             // The list only carries push state, which the browser shows finance admins only
             // (ExpensesController.Detail) — nothing to fetch for a submitter who isn't one.
             var timeline = isFinanceAdmin ? await expenses.GetHoldedTimelineAsync(r, ct) : null;
-            years.TryGetValue(r.BudgetYearId, out var yearDetail);
+            var yearDetail = r.BudgetYearId is { } reportYearId ? years.GetValueOrDefault(reportYearId) : null;
             rows.Add(ProjectReportSummary(
                 r, yearDetail, names.GetValueOrDefault(r.SubmitterUserId), timeline, isSubmitter, isFinanceAdmin));
         }
@@ -94,7 +95,7 @@ internal sealed class BackdoorFinanceController(
         if (!await CanViewAsync(report)) return StatusCode(StatusCodes.Status403Forbidden);
 
         var years = await ResolveBudgetYearsAsync([report], ct);
-        years.TryGetValue(report.BudgetYearId, out var yearDetail);
+        var yearDetail = report.BudgetYearId is { } reportYearId ? years.GetValueOrDefault(reportYearId) : null;
         var submitter = await FindUserInfoByIdAsync(report.SubmitterUserId, ct);
 
         var isSubmitter = report.SubmitterUserId == userId;
@@ -297,7 +298,8 @@ internal sealed class BackdoorFinanceController(
         IReadOnlyCollection<ExpenseReportDto> reports, CancellationToken ct)
     {
         var result = new Dictionary<Guid, BudgetYearDetail>();
-        foreach (var yearId in reports.Select(r => r.BudgetYearId).Distinct())
+        // Reports booked outside the budget carry no year.
+        foreach (var yearId in reports.Select(r => r.BudgetYearId).OfType<Guid>().Distinct())
         {
             var year = await budget.GetYearByIdAsync(yearId);
             if (year is not null) result[yearId] = year;
@@ -319,7 +321,7 @@ internal sealed class BackdoorFinanceController(
                 : "(unknown)");
     }
 
-    private static string? CategoryName(BudgetYearDetail? year, Guid categoryId) =>
+    private static string? CategoryName(BudgetYearDetail? year, Guid? categoryId) =>
         year?.Groups.SelectMany(g => g.Categories).FirstOrDefault(c => c.Id == categoryId)?.Name;
 
     // ─── Projections ────────────────────────────────────────────────────────────
@@ -346,6 +348,7 @@ internal sealed class BackdoorFinanceController(
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
             payeeIbanMasked = showPayee ? IbanFormatter.Mask(r.PayeeIban) : null,
+            holdedAccountNumber = r.HoldedAccountNumber,
             budgetCategoryId = r.BudgetCategoryId,
             budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
             budgetYear = year?.Year,
@@ -392,6 +395,7 @@ internal sealed class BackdoorFinanceController(
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
             payeeIbanMasked = showPayee ? IbanFormatter.Mask(r.PayeeIban) : null,
+            holdedAccountNumber = r.HoldedAccountNumber,
             budgetCategoryId = r.BudgetCategoryId,
             budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
             budgetYear = year?.Year,

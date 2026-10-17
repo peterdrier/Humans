@@ -12,7 +12,7 @@
 # where an item is written. `themes:` stays central — rotation state is global.
 # Entries already in `inbox:` are left where they are; rotation drains them.
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
-# HUM0009, HUM0020, HUM0025, HUM0032 (HUM0029 retired). The staleness check re-creates
+# HUM0009, HUM0020, HUM0025 (HUM0029 retired). The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
 # Deliberately excluded from staleness/inventory (not fixable debt):
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 83
+next_id: 85
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -75,7 +75,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-06-13
-    remaining: 16
+    remaining: 15
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -99,21 +99,20 @@ themes:
       that read see stale cache (read-after-write regression); and
       ReassignAsync deliberately defers invalidation to the cross-section
       caller after a TransactionScope commit, which a decorator-owns fold also
-      breaks. Caller-map classification of all 17: 1 self/ordering-sensitive
+      breaks. Caller-map classification of all 16: 1 self/ordering-sensitive
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
       UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
       NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
       service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge,
-      CampLeadJoinRequestsBadge); 1 speculative future hook with no live caller
-      (IEventViewInvalidator — kept for open issue #719; delete-vs-keep is
-      Peter's call). None are sweep-mechanical. The HUM0028 ratchet correctly
+      CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
       seams. Peter 2026-06-13: LEAVE in rotation (re-check periodically, do not
-      flag as skip); KEEP IEventViewInvalidator as the #719 placeholder.
+      flag as skip). IEventViewInvalidator, the one uncalled hook, was deleted
+      2026-10-16 (EVENTS-11, Peter's 2026-10-10 ruling on peterdrier/Humans#1931).
       Ledger review 2026-10-06 (Peter): the standalone 'replace the invalidator
       family' row (CENTRAL-54) duplicated this theme and was deleted; 'todo for
-      the winter' stands. Count re-measured: 16 [Grandfathered("HUM0028")] sites.
+      the winter' stands.
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
@@ -258,15 +257,7 @@ themes:
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-11
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-17
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-16
-    id: CENTRAL-82
-    what: "tests/Humans.Integration.Tests/Controllers/MonitorPageRenderTests.cs is named for Monitor but renders only GoogleIntegration's /Google/Resource/{id} and /Google/Human/{id} pages (its own summary says so); Monitor has no pages. Rename the class and file for GoogleIntegration and update the reference in AuditLogPageRenderTests.cs's remarks. Found by /section-doctor on Monitor 2026-10-16."
-    review: light
-  - added: 2026-09-20
-    id: CENTRAL-59
-    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit. A tag-only fix is circular (reverted in peterdrier/Humans#1932); making HUM0028 see unmarked invalidators widens the analyzer. Plan: Peter 2026-10-10 — waits for the invalidator rework the HUM0028 theme is parked on; do not work it separately."
-    review: light

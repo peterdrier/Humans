@@ -39,7 +39,7 @@ public abstract class CampsTestHarness : IDisposable
     private protected TestDbContextFactory<UsersDbContext> DbFactory { get; }
 
     // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
-    // These sections' tables are no longer in Db's model, so seeding them and
+    // These sections' tables are not in Db's model, so seeding them and
     // wiring their repositories both go through the section context. Each pair
     // is an independent in-memory store; a test that seeds across two saves on
     // each. Add a pair here as each further section peels.
@@ -157,7 +157,7 @@ public abstract class CampsTestHarness : IDisposable
     /// Clears the change tracker on <see cref="Db"/> and every peeled-section
     /// context. Tests do this after exercising a service so the read-back sees
     /// what the repository actually wrote rather than the instance the seed
-    /// left tracked — and the entity now lives in whichever context owns its
+    /// left tracked — the entity lives in whichever context owns its
     /// section, so clearing only <see cref="Db"/> silently returns stale state.
     /// </summary>
     private protected void ClearAllTrackers()

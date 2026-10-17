@@ -4,8 +4,8 @@ using Humans.Expenses.Domain;
 namespace Humans.Expenses.Data;
 
 /// <summary>
-/// Per-section database context for the Expenses section
-/// (nobodies-collective/Humans#858): maps only <c>expense_reports</c>,
+/// Per-section database context for the Expenses section:
+/// maps only <c>expense_reports</c>,
 /// <c>expense_lines</c>, <c>expense_attachments</c> and
 /// <c>holded_expense_outbox_events</c>, with its own
 /// <c>__EFMigrationsHistory_Expenses</c> table and migrations under
@@ -13,7 +13,7 @@ namespace Humans.Expenses.Data;
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (nobodies-collective/Humans#750): repositories
+/// Internal-sealed like every section context: repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>

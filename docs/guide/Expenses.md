@@ -9,7 +9,7 @@
 
 ## What this section is for
 
-Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items — purchases with a receipt attached — and submit it. Once it's approved and paid, you're told automatically.
+Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items — purchases with a receipt attached — and submit it. Once it's approved, you're emailed automatically.
 
 Finance handles the approval and pays you by bank transfer, and the org's accounting system is updated behind the scenes.
 
@@ -35,7 +35,7 @@ For each thing you spent money on, add an item to the report. You're asked to pi
 
 ### Travel items (mileage and per diem)
 
-Mileage and per diem can no longer be added to a report. Reports filed before this changed still show their travel items, and those items still count towards the total, but they can't be edited — remove one if it's wrong.
+Mileage and per diem can't be added to a report. Travel items on older reports still show and count towards the total, but can't be edited — remove one if it's wrong.
 
 ### Add your bank details (IBAN)
 
@@ -43,7 +43,7 @@ Your IBAN has to be on your profile before you can submit, since that's how you 
 
 ### Submit and track
 
-Once every purchase item has a receipt and your IBAN is set, submit. You can withdraw a submitted report from its detail page as long as it hasn't been approved yet. A report moves through these stages:
+Once every purchase item has a receipt and your IBAN is set, submit. You can withdraw a report from its detail page once it's submitted, whether it's still waiting, coordinator-endorsed or already approved. A draft has no withdraw; just edit it or leave it. Withdrawn is final. A report moves through these stages:
 
 - **Draft** — you're still building it
 - **Submitted** — waiting for a coordinator's sign-off (if its category has one) or for Finance

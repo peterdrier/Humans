@@ -30,8 +30,7 @@ internal sealed partial class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
-        // Seasons.Members included so RefreshEntryAsync sees the same shape
-        // as the warmup path — otherwise EeGrantedCount projects as 0 on each invalidation.
+        // Seasons.Members included so the CachingCampService invalidation rebuild sees the same shape as warmup — otherwise EeGrantedCount projects as 0.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()
@@ -40,19 +39,6 @@ internal sealed partial class CampRepository : ICampRepository
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images)
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
-    }
-
-    public async Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Camps
-            .AsNoTracking()
-            .Include(b => b.Seasons.Where(s => s.Year == year))
-            .Include(b => b.Images)
-            .Include(b => b.HistoricalNames)
-            .Where(b => b.Seasons.Any(s => s.Year == year))
-            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Camp>> GetCampsWithLeadsForYearAsync(
@@ -250,7 +236,7 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SetNameLockDateForYearAsync(
+    public async Task<int> SetNameLockDateForYearAsync(
         int year, LocalDate lockDate, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -258,12 +244,15 @@ internal sealed partial class CampRepository : ICampRepository
             .Where(s => s.Year == year)
             .ToListAsync(ct);
 
-        foreach (var season in seasons)
+        var changed = seasons.Where(s => s.NameLockDate != lockDate).ToList();
+        foreach (var season in changed)
         {
             season.NameLockDate = lockDate;
         }
 
-        await ctx.SaveChangesAsync(ct);
+        if (changed.Count > 0)
+            await ctx.SaveChangesAsync(ct);
+        return changed.Count;
     }
 
     public async Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(

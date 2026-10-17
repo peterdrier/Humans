@@ -219,11 +219,11 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
     private sealed class RecordingGoogleGroupSyncScheduler : IGoogleGroupSyncScheduler
     {
-        public void Enqueue(string groupKey)
+        public void Enqueue(string groupKey, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
         {
         }
 
-        public void Schedule(string groupKey, TimeSpan delay, int retryAttempt)
+        public void Schedule(string groupKey, TimeSpan delay, int retryAttempt, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
         {
         }
     }

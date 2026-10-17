@@ -11,7 +11,7 @@ namespace Humans.Calendar.Services;
 /// contract is deliberately not part of <see cref="ICalendarService"/>: the keyed inner
 /// service would only be able to implement it with code nothing can reach.
 /// </summary>
-internal interface ICalendarServiceRead : IApplicationService
+internal interface ICalendarQueries : IApplicationService
 {
     Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from,

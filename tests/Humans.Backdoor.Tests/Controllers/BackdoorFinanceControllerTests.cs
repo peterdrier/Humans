@@ -30,16 +30,16 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
-/// <see cref="IExpenseReportServiceRead"/> and <see cref="IHoldedFinanceServiceRead"/>
+/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceServiceRead"/>
 /// (peterdrier/Humans#1838). Everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
 /// </summary>
 public class BackdoorFinanceControllerTests
 {
-    private readonly IExpenseReportServiceRead _expenses = Substitute.For<IExpenseReportServiceRead>();
+    private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
     private readonly IHoldedFinanceServiceRead _finance = Substitute.For<IHoldedFinanceServiceRead>();
-    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly BackdoorFinanceController _sut;
@@ -118,6 +118,7 @@ public class BackdoorFinanceControllerTests
         {
             Id = id ?? Guid.NewGuid(),
             SubmitterUserId = submitterUserId ?? Guid.NewGuid(),
+            HoldedAccountNumber = 0,
             BudgetCategoryId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
             Status = status,
@@ -246,10 +247,10 @@ public class BackdoorFinanceControllerTests
         var report2026 = Report();
         var report2025 = Report();
         _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report2026, report2025]);
-        _budget.GetYearByIdAsync(report2026.BudgetYearId).Returns(
-            new BudgetYearDetail(report2026.BudgetYearId, "2026", "2026", BudgetYearStatus.Active, false, []));
-        _budget.GetYearByIdAsync(report2025.BudgetYearId).Returns(
-            new BudgetYearDetail(report2025.BudgetYearId, "2025", "2025", BudgetYearStatus.Closed, false, []));
+        _budget.GetYearByIdAsync(report2026.BudgetYearId!.Value).Returns(
+            new BudgetYearDetail(report2026.BudgetYearId!.Value, "2026", "2026", BudgetYearStatus.Active, false, []));
+        _budget.GetYearByIdAsync(report2025.BudgetYearId!.Value).Returns(
+            new BudgetYearDetail(report2025.BudgetYearId!.Value, "2025", "2025", BudgetYearStatus.Closed, false, []));
 
         var result = await _sut.ExpenseReports("2026", null, Xunit.TestContext.Current.CancellationToken);
 

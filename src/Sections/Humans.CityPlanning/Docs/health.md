@@ -35,13 +35,13 @@ structural item below follows from this table.
 | **See the site** | What is placed where, this year? | `GET /CityPlanning/`, `GET /api/city-planning/state`, `GET /api/city-planning/containers/{year}` |
 | **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{campSeasonId}`, `GET …/history`, `POST …/restore/{historyId}` |
 | **Place a container** | Where does this box go, and what should it look like? | `GET /CityPlanning/ContainerMap/{year}`, `PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `PUT …/notes` |
-| **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `UpdatePlacementDates`; container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningServiceRead.GetSettingsAsync` |
-| **Write the registration blurb** | What do barrio leads read before they register? | `UpdateRegistrationInfo` on the settings tab **and** on Camps' own admin page (`CampAdminController.UpdateRegistrationInfo`), both through `ICityPlanningService.UpdateRegistrationInfoAsync`; read by `GetRegistrationInfoAsync` |
+| **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `UpdatePlacementDates`; container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningService.GetSettingsAsync` |
+| **Write the registration blurb** | What do barrio leads read before they register? | `UpdateRegistrationInfo` on the settings tab **and** on Camps' own admin page (`CampAdminController.UpdateRegistrationInfo`), both through `CityPlanningService.UpdateRegistrationInfoAsync` (section-internal); read by `GetRegistrationInfoAsync` |
 | **Publish the ground truth** | What is the boundary and what are the named zones? | `GET /CityPlanning/BarrioMap/Admin`, the upload, download and delete posts for the limit zone and the official zones |
 | **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `wwwroot/js/city-planning/barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
 | **Curate containers** | Which containers exist for which barrio? | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` plus its Create/Edit/Delete posts (entity owned by Containers) |
 | **Hand the data out** | Give me this as a file. | `GET /api/city-planning/export.geojson`, `GET /api/city-planning/containers/{year}/export.geojson` |
-| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningServiceRead` + `ICityPlanningService`; the `CityPlanningMapAdmin` policy |
+| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningService` + `ICityPlanningWrite`; the `CityPlanningMapAdmin` policy |
 | **Watch each other work** | Who else is on the barrio map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast), barrio map only |
 | **Explain itself to the Shell** | Where is the section, what does it mean, who can do what? | `SectionNav`, `SectionAdminNav`, `SectionSettings`, `SectionHelp` over `Docs/help/`, `SectionAccessMatrix`, `SectionConfiguration`, the `IIssueQueueOwner` queue key |
 
@@ -101,7 +101,8 @@ Stated so a violation is recognisable:
    (`Controllers/CityPlanningApiController.cs:91`) are exempt from the phase and the ownership check.
 5. A camp lead may place, annotate or clear their own camp's containers only while
    `IsContainerPlacementOpen` — the `ContainerOperationRequirement.Place` check each placement
-   endpoint makes (`Controllers/CityPlanningApiController.cs:266`), decided by Containers'
+   endpoint makes (`CityPlanningApiController.SaveContainerPlacement`, `UpdateContainerPlacementNotes` and
+   `ClearContainerPlacement`), decided by Containers'
    handler. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
    camp's polygon (`Controllers/CityPlanningApiController.cs:119`,
@@ -148,8 +149,8 @@ touching these callers are shaped by them.
 
 - **No caching decorator.** Admin-facing and low-traffic; a decorator would add a cache-key
   surface for a single settings row.
-- **No internal `ICityPlanningService`.** The section's own controllers take the concrete
-  service (design §15 step 5); the only seam worth an interface is the cross-section one.
+- **No internal management interface.** The section's own controllers take the concrete
+  service (design §15 step 5); the only seams worth an interface are the cross-section ones.
 - **No SignalR and no MapboxDraw on the container map.** Placement is a single-user workflow
   at this scale, and containers use a custom drag-to-move / drag-handle-to-rotate interaction
   rather than a polygon editor.
@@ -167,10 +168,10 @@ touching these callers are shaped by them.
 
 - **`Humans.CityPlanning.Contracts` is a project, not a folder.** The compile-time cycle it
   breaks is with Containers: `Humans.CityPlanning` references `Humans.Containers` outright, so
-  Containers can reach `ICityPlanningServiceRead` only through the leaf. `Humans.Camps` is not
+  Containers can reach `ICityPlanningService` only through the leaf. `Humans.Camps` is not
   the reason — it already references `Humans.CityPlanning` itself.
-- **`Lazy<ICityPlanningService>` is registered by `Humans.Camps`, not by this section.** That
-  is a separate, *runtime* cycle — `CampService → ICityPlanningService → ICampService`, hit
+- **`Lazy<ICityPlanningWrite>` is registered by `Humans.Camps`, not by this section.** That
+  is a separate, *runtime* cycle — `CampService → ICityPlanningWrite → ICampService`, hit
   on the camp-delete path — and the lazy belongs with the consumer, not the producer.
 - **`RegistrationInfo` is keyed differently from every other settings field** (highest open
   season, not `PublicYear`) because the Register page it feeds targets the open season.

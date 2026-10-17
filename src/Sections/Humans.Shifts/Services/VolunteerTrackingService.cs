@@ -1,4 +1,5 @@
 using Humans.Shifts.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 using NodaTime;
@@ -14,13 +15,24 @@ internal sealed class VolunteerTrackingService(
     EventCalendarResolver calendarResolver,
     IUserServiceRead userService,
     IShiftViewInvalidator viewInvalidator,
-    IClock clock) : IVolunteerTrackingManagement, IUserMerge
+    IClock clock,
+    IAuditLogService audit) : IVolunteerTrackingManagement, IUserMerge
 {
-    public async Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
+    public async Task<bool> SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
     {
+        var calendar = await calendarResolver.GetAsync(eventSettingsId);
+        if (calendar is null || dayOffsets.Any(day => day < calendar.BuildStartOffset || day > calendar.StrikeEndOffset))
+            return false;
+
         var now = clock.GetCurrentInstant();
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
+        await audit.LogAsync(
+            dayOffsets.Count == 0 ? AuditAction.VolunteerAvailabilityCleared : AuditAction.VolunteerAvailabilitySet,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={eventSettingsId}; AvailableDays={dayOffsets.Count}; self-service update", userId,
+            relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
         viewInvalidator.InvalidateUser(userId);
+        return true;
     }
 
     public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(

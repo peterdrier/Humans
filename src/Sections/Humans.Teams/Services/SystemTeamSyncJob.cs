@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
@@ -26,7 +25,6 @@ namespace Humans.Teams.Services;
 /// their contracts leaves.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-[CrossSectionWrite("Syncs team Google resources and downgrades expired membership tiers.")]
 internal sealed class SystemTeamSyncJob(
     ITeamManagementService teamService,
     IUserService userService,
@@ -80,7 +78,7 @@ internal sealed class SystemTeamSyncJob(
             // record successful sync-log rows; the team membership work above still lands.
             if (googleClient.IsConfigured)
             {
-                await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+                await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken, GoogleSyncSource.SystemTeamSync);
             }
             else
             {

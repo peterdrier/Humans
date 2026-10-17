@@ -82,8 +82,8 @@ service is the only one that touches `AgentSettings` directly (via
 `AgentRepository.GetAgentSettingsAsync` / `UpsertAgentSettingsAsync`),
 backed in-memory by `AgentSettingsStore`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamServiceRead`,
-`IUserServiceRead`, `IRoleAssignmentServiceRead`, `IConsentServiceRead`,
-`IFeedbackServiceRead`, `ITicketService`, `IShiftView`,
+`IUserServiceRead`, `IRoleAssignmentServiceRead`, `IConsentService`,
+`IFeedbackService`, `ITicketService`, `IShiftView`,
 `ISettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 

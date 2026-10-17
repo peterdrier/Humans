@@ -22,8 +22,4 @@ internal sealed class Camp
     public ICollection<CampSeason> Seasons { get; set; } = new List<CampSeason>();
     public ICollection<CampHistoricalName> HistoricalNames { get; set; } = new List<CampHistoricalName>();
     public ICollection<CampImage> Images { get; set; } = new List<CampImage>();
-
-    public bool HasPublicSeasonForYear(int year) =>
-        Seasons.Any(s => s.Year == year &&
-            (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
 }

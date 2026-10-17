@@ -237,9 +237,9 @@ public class CampContactServiceTests : IDisposable
     [HumansFact]
     public async Task SendFacilitatedMessageAsync_PassesMessageThroughForTheRendererToSanitize()
     {
-        // Sanitization now happens once, inside EmailMessageFactory.FacilitatedMessage via
-        // SanitizedMarkdownRenderer (see EmailMessageFactoryTests) — this service no longer pre-strips
-        // the message, so it should hand the raw text through unchanged.
+        // Sanitization happens once, inside EmailMessageFactory.FacilitatedMessage via
+        // SanitizedMarkdownRenderer (see EmailMessageFactoryTests) — this service hands the
+        // raw text through unchanged.
         await _service.SendFacilitatedMessageAsync(
             _campId, "camp@example.com", "Camp", _senderId,
             "Alice", "alice@example.com",

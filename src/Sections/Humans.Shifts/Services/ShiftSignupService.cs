@@ -276,6 +276,11 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
+        var targetUserId = await ResolveVoluntellTargetAsync(userId);
+        if (targetUserId is null)
+            return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = targetUserId.Value;
+
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
         if (activeShiftIds.Contains(shiftId))
             return SignupResult.Fail(localizer["Shifts_Signup_AlreadySignedUp"]);
@@ -344,6 +349,11 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
+        var targetUserId = await ResolveVoluntellTargetAsync(userId);
+        if (targetUserId is null)
+            return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = targetUserId.Value;
+
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail(localizer["Shifts_Signup_RotaNotFound"]);
 
@@ -1159,6 +1169,12 @@ internal sealed class ShiftSignupService(
 
         return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
             body is null ? title : string.Concat(title, "\n\n", body));
+    }
+
+    private async Task<Guid?> ResolveVoluntellTargetAsync(Guid userId)
+    {
+        var user = await users.GetUserInfoAsync(userId);
+        return user is null || user.IsTombstone ? null : user.Id;
     }
 
     private async Task SendAssignmentNoticeAsync(Guid userId, string resourceKey, params object[] args)

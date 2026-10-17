@@ -44,15 +44,15 @@ internal partial interface IUserRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the <c>ProfilePictureContentType</c> column for a profile —
-    /// the GDPR gate consulted by <c>ProfileService.GetProfilePictureAsync</c>
-    /// before serving the on-disk file, and the source of the file extension.
+    /// Returns the <c>ProfilePictureContentType</c> column (the GDPR gate consulted by
+    /// <c>ProfileService.GetProfilePictureAsync</c> before serving the on-disk file) and the
+    /// versioned <c>ProfilePictureStorageKey</c> (null for pictures at the legacy deterministic key).
     /// Returns <c>null</c> if the profile does not exist or has no picture
     /// (including when the picture was cleared by an anonymization run), so
     /// an anonymized profile cannot be served a stale on-disk file. Read-only
     /// (AsNoTracking).
     /// </summary>
-    Task<string?> GetProfilePictureContentTypeAsync(
+    Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
@@ -61,7 +61,7 @@ internal partial interface IUserRepository
     /// DB→FS migration verification page operates on. Projects only the
     /// scalar columns needed (no bytea load). Read-only (AsNoTracking).
     /// </summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
         GetCustomPictureRowsAsync(CancellationToken ct = default);
 
     /// <summary>

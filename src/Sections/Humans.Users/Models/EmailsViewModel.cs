@@ -23,7 +23,8 @@ internal sealed class EmailsViewModel
     public string? NewEmail { get; set; }
 
     /// <summary>
-    /// Whether the user can send a new verification email (rate limit check).
+    /// Whether account state permits email insertion and the verification rate limit permits sending.
+    /// Administrators bypass the rate limit, but cannot insert into terminal accounts.
     /// </summary>
     public bool CanAddEmail { get; set; } = true;
 

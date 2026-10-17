@@ -17,6 +17,10 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
             .HasMaxLength(32);
 
         b.Property(x => x.Note).HasMaxLength(500);
+        // Rows that predate the account column keep 0 (declared here so model and DB agree);
+        // their booking still derives from the category map at push time.
+        b.Property(x => x.HoldedAccountNumber).IsRequired().HasDefaultValue(0);
+        b.Property(x => x.HoldedAccountId).HasMaxLength(64);
         b.Property(x => x.PayeeName).HasMaxLength(200).IsRequired();
         b.Property(x => x.PayeeIban).HasMaxLength(34).IsRequired();
         b.Property(x => x.Total).HasColumnType("decimal(12,2)");
@@ -31,7 +35,6 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
             .HasForeignKey(l => l.ExpenseReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // FK-only refs (no nav)
         b.HasIndex(x => new { x.SubmitterUserId, x.Status });
         b.HasIndex(x => x.Status);
         b.HasIndex(x => x.BudgetCategoryId);

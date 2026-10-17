@@ -70,6 +70,12 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
 
     /// <summary>
+    /// Moderator withdrawal: withdraws the event and appends a
+    /// <see cref="EventModerationActionType.Withdrawn"/> history row naming the moderator.
+    /// </summary>
+    Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Admin / moderator in-place edit of a mutated event. Persists the field
     /// changes and bumps <see cref="Event.LastUpdatedAt"/> but leaves
     /// <see cref="Event.Status"/> untouched (an Approved event stays Approved /
@@ -134,5 +140,6 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
-    Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default);
+    /// <summary>Builds the approved-event CSV and audits its expanded row count and recipient.</summary>
+    Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default);
 }

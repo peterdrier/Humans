@@ -35,17 +35,17 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         // Keyed-Scoped inner + Singleton decorator. LegalDocumentSyncService is the sole writer for
         // legal_documents/document_versions (nobodies-collective/Humans#751) and implements both
-        // ILegalDocumentSyncService and IAdminLegalDocumentService; IAdminLegalDocumentService forwards
+        // ILegalDocumentSyncManagement and IAdminLegalDocumentService; IAdminLegalDocumentService forwards
         // to the same keyed inner instance so admin writes and GitHub-sync writes share one service.
-        services.AddKeyedScoped<ILegalDocumentSyncService, LegalDocumentSyncService>(
+        services.AddKeyedScoped<ILegalDocumentSyncManagement, LegalDocumentSyncService>(
             CachingLegalDocumentSyncService.InnerServiceKey);
         services.AddScoped<IAdminLegalDocumentService>(sp =>
-            (LegalDocumentSyncService)sp.GetRequiredKeyedService<ILegalDocumentSyncService>(
+            (LegalDocumentSyncService)sp.GetRequiredKeyedService<ILegalDocumentSyncManagement>(
                 CachingLegalDocumentSyncService.InnerServiceKey));
         services.AddSingleton<CachingLegalDocumentSyncService>();
-        services.AddSingleton<ILegalDocumentSyncService>(sp =>
+        services.AddSingleton<ILegalDocumentSyncManagement>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
-        services.AddSingleton<ILegalDocumentSyncServiceRead>(sp =>
+        services.AddSingleton<ILegalDocumentSyncService>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
         services.AddSingleton<ILegalDocumentCacheInvalidator>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
@@ -65,18 +65,18 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<IConsentRepository, ConsentRepository>();
 
         // Two-layer cache: keyed inner + Singleton decorator. Unkeyed concrete forwards via cast so IUserDataContributor resolves the inner cleanly for GDPR-export tests.
-        services.AddKeyedScoped<IConsentService, ConsentService>(
+        services.AddKeyedScoped<IConsentManagement, ConsentService>(
             CachingConsentService.InnerServiceKey);
         services.AddScoped<ConsentService>(sp =>
-            (ConsentService)sp.GetRequiredKeyedService<IConsentService>(
+            (ConsentService)sp.GetRequiredKeyedService<IConsentManagement>(
                 CachingConsentService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp =>
             sp.GetRequiredService<ConsentService>());
 
         services.AddSingleton<CachingConsentService>();
-        services.AddSingleton<IConsentService>(sp =>
+        services.AddSingleton<IConsentManagement>(sp =>
             sp.GetRequiredService<CachingConsentService>());
-        services.AddSingleton<IConsentServiceRead>(sp =>
+        services.AddSingleton<IConsentService>(sp =>
             sp.GetRequiredService<CachingConsentService>());
         services.AddSingleton<IConsentSubmission>(sp =>
             sp.GetRequiredService<CachingConsentService>());
@@ -107,6 +107,10 @@ public sealed class Section : ISection, IIssueQueueOwner
     // stored rows still carry the old string, so the queue keeps its name and the Consent
     // Coordinator keeps seeing it.
     string IIssueQueueOwner.QueueKey => "Legal";
+
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Legal";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["legal", "consent"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator];
 }

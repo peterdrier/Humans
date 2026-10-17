@@ -543,6 +543,46 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminAddEmail_CommittedAddition_AuditsBeforeQueueAndFinishesAfterDisconnect(bool queueFails)
+    {
+        var targetId = Guid.NewGuid();
+        const string email = "added@example.com";
+        var target = new User { Id = targetId, BurnerName = "Target", PreferredLanguage = "es" };
+        _userManager.FindByIdAsync(targetId.ToString()).Returns(target);
+        using var request = new CancellationTokenSource();
+        _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            if (!queueFails) await request.CancelAsync(); // The pending row has committed.
+            return new AddEmailResult(Guid.NewGuid(), "verification-token", false);
+        });
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(target.ToUserInfo());
+        });
+        var auditRecordedAtQueue = false;
+        var failure = new IOException("Email queue unavailable");
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            auditRecordedAtQueue = _auditLogService.ReceivedCalls().Any();
+            return queueFails ? Task.FromException(failure) : Task.CompletedTask;
+        });
+        Func<Task<IActionResult>> act = () => _controller.AdminAddEmail(targetId, email, request.Token);
+
+        if (queueFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else (await act()).Should().BeOfType<RedirectToActionResult>();
+
+        auditRecordedAtQueue.Should().BeTrue();
+        await _auditLogService.Received(1).LogAsync(AuditAction.UserEmailAdded, nameof(User), targetId,
+            Arg.Any<string>(), _userId, relatedEntityId: null, relatedEntityType: null);
+        if (queueFails) _controller.TempData.Should().NotContainKey("SuccessMessage");
+    }
+
+    [HumansTheory]
     [InlineData("en", "en")]
     [InlineData("es", "es")]
     [InlineData("", "en")]
@@ -583,6 +623,7 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
+                && m.UserId == targetUserId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
@@ -621,6 +662,7 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail
+                && m.UserId == _userId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());

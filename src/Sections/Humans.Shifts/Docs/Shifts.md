@@ -104,6 +104,8 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 - `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `Notes`, `SetByUserId`, `SetAt`, and individual `DayOffs` entries via `IVolunteerTrackingManagement.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`; the same controller's `SetAvailabilityDay` / `ClearAvailabilityDay` toggle one day on a volunteer's `GeneralAvailability` via `SetDayAvailabilityAsync`.
 
+Self-service `/Shifts/Mine/Availability` saves require a known calendar and every selected offset in `[BuildStartOffset, StrikeEndOffset]`. Invalid selections return a localized 400 without replacing saved days, auditing or invalidating views. Valid saves audit the volunteer as actor after persistence, using `VolunteerAvailabilitySet` for a non-empty selection and `VolunteerAvailabilityCleared` for an empty one. The entry links the event and records the day count; existing timestamp-refresh and replacement behavior stays the same.
+
 All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`, and `VolunteerAvailabilitySet` / `VolunteerAvailabilityCleared` with `EntityType = nameof(GeneralAvailability)`.
 
 ### VolunteerEventProfile
@@ -232,6 +234,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+Operator build/strike staffing and event-shift generation reject malformed numeric binding with HTTP 400 before generating shifts. Valid default staffing values and event day zero retain their existing meaning.
+
 - Department browse groups label all-phase rotas as “All phases”, using the shared localized phase labels rather than the event-only label.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
@@ -258,6 +262,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
 - Member-dashboard urgent cards exclude `AdminOnly` shifts and hidden rotas before scoring/limiting, so restricted work cannot displace visible recommendations. The protected operator dashboard explicitly includes both through the existing urgency read method.
 - Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](features/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `IShiftManagement.CanApproveSignupsAsync`.
+- Single and range voluntell resolve the selected human before duplicate, overlap or capacity checks. Missing and terminal accounts are refused without writes; merge aliases create signups and notices for the live survivor. On-behalf assignment still permits live non-Active accounts.
 - Voluntelling (admin/coordinator-initiated signup) creates a Confirmed `ShiftSignup` with `Enrolled = true` and records `EnrolledByUserId` / `ReviewedByUserId`. Range voluntell uses a shared `SignupBlockId` and skips shifts that are full or already booked.
 - The team-wide coordinator message (`/Teams/{slug}/Shifts/Email`) targets distinct users holding a **Pending or Confirmed** signup on any shift in any of the team's rotas the compose form's audience selection admits. Default ("upcoming rotas only") keeps a rota with at least one shift not yet ended (`shift.GetAbsoluteEnd(eventSettings) > now` — end, not start); clearing it opens the whole active event and the Build/Event/Strike boxes then filter on `Rota.Period`, a `RotaPeriod.All` rota riding on any selected period. Those period boxes are hidden under "upcoming" and `TeamRotasAudienceFilter.Includes` ignores them there, so a hidden cleared box can never narrow an upcoming send. Each recipient gets exactly one email; `Reply-To` is the sending coordinator while `From` stays the shared address.
 - Coordinator dispatch audits keep at most 120 UTF-16 code units of the message plus an ellipsis, without splitting a Unicode surrogate pair. The email retains the full message.
@@ -335,7 +340,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 - Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient.
-- `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` deliberately writes **no** audit entry, unlike every mutating action on `VolunteerTrackingController`: the grid carries burner names only — no legal names, no emails, no medical data. If the export is ever widened to carry PII, an audit entry must land in the same change.
+- `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` requires a resolved actor and records `VolunteerTrackingExported` after its model is built, including empty exports. The event, date range, department filter and emitted human-row count are audited, without names or schedule details in the audit description. Burner names and schedules leave the system in the existing workbook, so the hard export-audit rule applies; the workbook still contains no legal names, emails or medical data. Early Entry provider reads do not generate workbook-export audits.
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Deleting an allowed rota or shift removes all of its signups together with it; it does not create cancelled historical signup rows for a removed shift.
 - When an account merge accepts, the section's three `IUserMerge` implementations re-FK its user-keyed rows from source to target: `ShiftSignupService` moves `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by references), `ShiftManagementService` moves `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique), `VolunteerTrackingService` moves `GeneralAvailability`. Called only by `AccountMergeService.AcceptAsync` (Users section) through the `IUserMerge` fan-out.
 
@@ -413,6 +418,8 @@ section and is not on the leaf.
 - If you add a new table to this section, add it to §8 of `design-rules.md` **in the same commit**.
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Shifts owns the `Shifts` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

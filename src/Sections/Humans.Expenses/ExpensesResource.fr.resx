@@ -199,6 +199,11 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Compte</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Sélectionnez un compte —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Catégories budgétaires</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Autres comptes</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Compte introuvable ou plus disponible.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>
@@ -237,9 +242,7 @@
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir un IBAN enregistré dans son profil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir ses nom et prénom renseignés dans son profil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossible de soumettre le rapport. Il n’est peut-être plus à l’état de brouillon.</value></data>
-  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Échec de l’envoi</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le retirer.</value></data>
-  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Échec du retrait</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut modifier ce rapport.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Ce rapport ne peut pas être modifié lorsqu’il est au statut {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Note de frais</value></data>

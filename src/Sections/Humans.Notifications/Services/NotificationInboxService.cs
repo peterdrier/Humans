@@ -97,7 +97,7 @@ internal sealed class NotificationInboxService(
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
+        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
         if (outcome.Success)
             InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
@@ -107,7 +107,7 @@ internal sealed class NotificationInboxService(
         Guid notificationId, Guid userId,
         CancellationToken ct = default)
     {
-        var outcome = await repo.DismissAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
+        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
         if (outcome.Success)
             InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
@@ -137,7 +137,7 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), ct);
+        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
         if (affected.Count > 0)
             InvalidateBadgeCaches(affected);
     }
@@ -147,7 +147,7 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await repo.BulkDismissAsync(notificationIds, userId, clock.GetCurrentInstant(), ct);
+        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
         if (affected.Count > 0)
             InvalidateBadgeCaches(affected);
     }

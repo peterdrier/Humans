@@ -42,7 +42,7 @@
 - All scanner routes require the `ScannerAccess` policy (`TicketAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`; pinned by `EndpointAuthorizationTests` in `tests/Humans.Web.Tests`.
 - `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
 - `/Scanner/Tickets/Card` searches only orders flagged `IsCurrentEvent`; a blank or unknown barcode renders the not-found card (blank: without echoing a code).
-- `/Scanner/Tickets` performs cross-section reads via `ITicketService`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IICalFeedService`, `IEventService`, and `ISettingsService` to render the ticket card plus door context for matched Humans. It is strictly read-only and must never write server-side state.
+- `/Scanner/Tickets` performs cross-section reads via `ITicketService`, `IEarlyEntryService`, `IConsentService`, `IUserServiceRead`, `IICalFeedService`, `IEventService`, and `ISettingsService` to render the ticket card plus door context for matched Humans. It is strictly read-only and must never write server-side state.
 - Door context is read only when the ticket has a matched Human; otherwise every per-person field is null. The check-in timestamp is read for the active event year only.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
@@ -67,7 +67,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 
 - **Tickets**: `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` (read-only) and `<vc:ticket-stub>`. The barcode tool has no runtime Tickets coupling — it is gated behind `ScannerAccess` because its use case is reading TicketTailor ticket stubs.
 - **EarlyEntry**: `IEarlyEntryService.GetForUserAsync` — earliest entry date and grant-source list for the matched Human.
-- **Consent**: `IConsentServiceRead.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
+- **Consent**: `IConsentService.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
 - **Events**: `IEventService.GetApprovedEventsAsync` — events the matched Human is offering (`SubmitterUserId` match, non-camp, expanded per occurrence for recurring events).
 - **Shifts / Calendar**: `ISettingsService.GetActiveEventSettingsAsync` for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
@@ -85,6 +85,8 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 - The `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Scanner owns the `Scanner` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

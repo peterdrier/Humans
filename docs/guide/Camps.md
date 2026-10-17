@@ -25,7 +25,7 @@
 
 Camps (also called "[barrios](Glossary.md#barrio)") are self-organizing themed communities that register each year to participate in the event. Each camp has a unique URL slug, one or more leads, optional images, and a per-year **[Camp Season](Glossary.md#camp-season)** capturing that year's name, description, vibes, space needs, and placement details.
 
-Camp Admins control which year is shown publicly and which seasons are open for new registrations or opt-ins. The directory is public; registering or leading a camp requires an account.
+Camp Admins control which seasons are open for new registrations or opt-ins; the public year follows the active event. The directory is public; registering or leading a camp requires an account.
 
 ![TODO: screenshot — Camps directory page showing camp list and filters]
 
@@ -36,7 +36,7 @@ Camp Admins control which year is shown publicly and which seasons are open for 
 - **Camp detail for a specific year** (`/Camps/{slug}/Season/{year}`) — public detail for a camp's past season.
 - **Register a new camp** (`/Camps/Register`) — authenticated humans register a new camp when a season is open.
 - **Edit a camp** (`/Camps/{slug}/Edit`) — camp leads, Camp Admin, and Admin edit camp identity and season data.
-- **Camps admin dashboard** (`/Camps/Admin`) — Camp Admin and Admin review pending seasons, manage registration windows, and export data.
+- **Camps admin dashboard** (`/Camps/Admin`) — Camp Admin and Admin review pending seasons, set name lock dates, and export data.
 
 A public JSON API at `/api/camps/{year}` and `/api/camps/{year}/placement` is available for integrating listings into other sites.
 
@@ -95,9 +95,8 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 
 - **Review season registrations.** Pending seasons are listed on the dashboard. **Approve** moves a season to Active; **Reject** requires notes explaining why and records your user id and timestamp. Withdrawn seasons are also surfaced on the dashboard for follow-up.
 - **Reactivate seasons** that were marked Full or Withdrawn. Full seasons go back to Active; Withdrawn seasons go back to Pending for re-approval.
-- **Open and close registration seasons** for any year. Opening a year adds it to the list accepting new registrations and opt-ins; closing removes it.
+- **Open and close registration seasons** for any year from the Barrios tab in [Settings](/Settings#barrios), not the Camps admin dashboard. Opening a year adds it to the list accepting new registrations and opt-ins; closing removes it.
 - **Set name lock dates** per year, after which camp name changes are no longer allowed for that year's season.
-- **Update the registration info** banner (markdown copy shown on the registration form).
 - **Edit any camp** (all the lead-level Edit actions above, on any camp).
 - **Export camps as CSV** from the dashboard. The export covers every camp for the current public year and includes name, slug, status, contact info, leads, and placement-relevant season data. The file is named `barrios-{year}.csv`.
 - **Delete a camp** (Admin only — not Camp Admin). This permanently removes the camp and all of its seasons, leads, images, and historical names. Confirmation is required.

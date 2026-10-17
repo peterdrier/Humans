@@ -232,7 +232,7 @@ Settled decisions. Do not re-litigate.
 
 - `IMembershipQuery` looks like a pointless pass-through over `ITeamServiceRead` and
   `IRoleAssignmentServiceRead`. It is not: injecting them directly closes a DI cycle through
-  `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentServiceRead`
+  `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
 - `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for
   everything else) because Shell names the concrete type when it schedules it.

@@ -50,6 +50,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 
 **Acceptance Criteria:**
 - Access granted on join approval
+- Provisioning returns the actual attempted email row and failure classification; transient returned failures stay queued and permanent refusals remain visible as failed events. Vendor results cannot change a newer selected address’s state.
 - Uses member's Google account (OAuth-linked)
 - Appropriate permission level (Editor/Writer)
 - Notification that access was granted
@@ -229,6 +230,7 @@ public interface IGoogleSyncService
 
     // Provision folders and enqueue source-owned Drive reconciliation (Teams and Workgroups)
     Task<string> CreateSubfolderAsync(string parentFolderId, string name, CancellationToken ct = default);
+    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default); // declared on IGoogleSyncServiceRead
     Task RequestSyncAsync(string folderId, CancellationToken ct = default);
 }
 ```
@@ -237,15 +239,13 @@ public interface IGoogleSyncService
 ```csharp
 public interface IGoogleGroupSync
 {
-    Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
-    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default);
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true);
-
-    // Pre-#663 4-param overload, kept so in-flight Hangfire jobs serialized
-    // against the old signature can still deserialize.
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct, int retryAttempt);
+    Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 }
 ```
+
+The trigger follows queued and retry work into sync logs. Hangfire calls serialize the current signature with every argument explicit and `CancellationToken.None`; no compatibility overload is retained (standing policy D13).
 
 ### SyncAction Enum
 ```
@@ -569,7 +569,7 @@ Process: Calls Drive and Group `ReconcileAllAsync` once each with `SyncAction.Ex
 
 **Per-phase fault isolation:** Each top-level phase (Drive source reconcile covering folders and files, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
 
-**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention.
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention. Only a complete root-reaching path replaces the stored name; failed metadata reads or the depth limit preserve it.
 
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at `/Google/SyncSettings` before the job will modify Google resources.
 

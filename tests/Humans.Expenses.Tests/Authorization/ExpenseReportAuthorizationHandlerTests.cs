@@ -19,7 +19,7 @@ namespace Humans.Expenses.Tests.Authorization;
 /// </summary>
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
-    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
+    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
@@ -39,7 +39,10 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
+        var teams = CreateTeamMap();
+        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
+                teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
     }
 
     // ─── Submitter × View ────────────────────────────────────────────────────
@@ -152,6 +155,16 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse);
         result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Coordinator_CannotEndorse_ReportOutsideTheBudget()
+    {
+        // No budget category means no coordinator route, so the endorse and reject levers stay off.
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with { BudgetCategoryId = null, BudgetYearId = null };
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.CoordinatorReject)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.View)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -387,6 +400,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = submitterId,
+            HoldedAccountNumber = 0,
             BudgetCategoryId = CategoryId,
             BudgetYearId = Guid.NewGuid(),
             Status = status,

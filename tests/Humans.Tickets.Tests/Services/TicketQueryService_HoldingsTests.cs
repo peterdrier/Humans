@@ -38,7 +38,7 @@ public sealed class TicketQueryService_HoldingsTests
         Service = new TicketQueryService(
             _ticketRepo,
             _transferRepo,
-            Substitute.For<IBudgetServiceRead>(),
+            Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(),
             _users,
             Substitute.For<IUserEmailService>(),

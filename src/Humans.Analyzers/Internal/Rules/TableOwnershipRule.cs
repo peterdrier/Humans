@@ -60,7 +60,7 @@ internal static class TableOwnershipRule
         "A DbSet table must be referenced by exactly one repository";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' references DbSet '{1}', which is referenced by {2} repositories ({3}). A table must belong to exactly one repository — route foreign access through the owning section's service (I<Section>ServiceRead).";
+        "'{0}' references DbSet '{1}', which is referenced by {2} repositories ({3}). A table must belong to exactly one repository — route foreign access through the owning section's service (I<Section>Service).";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

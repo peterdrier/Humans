@@ -37,13 +37,6 @@ internal partial interface ICampRepository : IRepository
     Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every camp that has any season for the year, with seasons
-    /// (year-filtered), images and historical names included. Read-only.
-    /// Caller-side filter via <c>Camp.HasPublicSeasonForYear(year)</c> for the public subset.
-    /// </summary>
-    Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns camps participating in the year (any season), with seasons
     /// (year-filtered), members, images, historical names and active leads included (FK-only). If
     /// <paramref name="statusFilter"/> is provided, only camps with at least
@@ -154,9 +147,9 @@ internal partial interface ICampRepository : IRepository
     Task AddSeasonAsync(CampSeason season, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the <c>NameLockDate</c> for every season in the given year.
+    /// Sets the <c>NameLockDate</c> for every season in the given year, returning the changed count.
     /// </summary>
-    Task SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
+    Task<int> SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the maximum <c>NameLockDate</c> per year, for the given years.

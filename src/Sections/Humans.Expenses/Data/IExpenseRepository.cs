@@ -44,14 +44,10 @@ internal interface IExpenseRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default);
-    Task<Guid> AddAttachmentAsync(
-        ExpenseAttachment attachment, CancellationToken ct = default);
     /// <summary>Atomically replaces (or clears) a report line's attachment and removes superseded metadata.
     /// Returns whether the line exists and its removed attachment for post-commit file cleanup.</summary>
     Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
         Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default);
-    Task SetLineAttachmentAsync(
-        Guid lineId, Guid? attachmentId, CancellationToken ct = default);
     /// <summary>Unlinks a report's line and deletes its attachment metadata in one save; returns the removed row for post-commit file cleanup.</summary>
     Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default);
 
@@ -73,7 +69,7 @@ internal interface IExpenseRepository : IRepository
     Task<bool> WithdrawAsync(
         Guid reportId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> sets the authorized cap; null leaves it as it is.</summary>
+    /// <summary>Writes <paramref name="maxAmount"/> as the authorized cap; null clears it (a blanked form field).</summary>
     Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid actorUserId, decimal? maxAmount,
         NodaTime.Instant endorsedAt, CancellationToken ct = default);
@@ -82,10 +78,11 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap set at endorsement; null leaves it as it is.</summary>
+    /// <summary>Writes <paramref name="maxAmount"/> over any cap set at endorsement; null clears it (a blanked form field).
+    /// A non-null <paramref name="overrideBooking"/> rebooks the report (account, category and year together).</summary>
     Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId,
-        Guid? overrideCategoryId,
+        ExpenseBooking? overrideBooking,
         decimal? maxAmount,
         NodaTime.Instant approvedAt,
         Guid outboxEventId,

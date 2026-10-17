@@ -1,6 +1,6 @@
 ---
 name: refactor-swarm
-description: "Run multiple Reforge-guided section-refactor lanes in parallel, each in its own worktree/branch off origin/main, with a score-blind adversarial review panel gating every commit, one draft PR per section. Use when the user wants to reduce Reforge surface/internal score across several sections at once via architecturally-correct deletions (dead surface, entity-leak removal, cross-section read-splits) — not by relocation, parameter bags, or accessibility-dodging. Wraps the per-lane process in .codex/skills/humans-refactor. Triggers: 'refactor swarm', 'parallel section refactors', 'run reforge refactor on Users/Tickets/...', 'burn down surface score across sections'. Has an intensity dial (light|standard|deep) and a workflow|solo execution mode to trade token burn against autonomy per unit of output."
+description: "Run multiple Reforge-guided section-refactor lanes in parallel, each in its own worktree/branch off origin/main, with a score-blind adversarial review panel gating every commit, one draft PR per section. Use when the user wants to reduce Reforge surface/internal score across several sections at once via architecturally-correct deletions (dead surface, entity-leak removal, cross-section consumers moved onto the public contract) — not by relocation, parameter bags, or accessibility-dodging. Wraps the per-lane process in .codex/skills/humans-refactor. Triggers: 'refactor swarm', 'parallel section refactors', 'run reforge refactor on Users/Tickets/...', 'burn down surface score across sections'. Has an intensity dial (light|standard|deep) and a workflow|solo execution mode to trade token burn against autonomy per unit of output."
 argument-hint: "[sections...] [--intensity=light|standard|deep] [--mode=workflow|solo] [--lanes=N] [--cross-section]"
 ---
 
@@ -43,21 +43,21 @@ Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 
 
 - **`--mode`** — `workflow` (default): parallel lanes in a background [Workflow](#orchestration-workflow-mode); `solo`: run lanes sequentially in-session (no Workflow tool, lower concurrency, easier to watch, far fewer tokens — good for 1–2 sections).
 - **`--lanes=N`** — override lane count.
-- **`--cross-section`** — enable [cross-section lanes](#cross-section-lanes) (a lane owns a consumer→provider read-split spanning two sections). Off by default because it widens blast radius and merge-conflict risk.
+- **`--cross-section`** — enable [cross-section lanes](#cross-section-lanes) (a lane owns a consumer→provider contract migration spanning two sections). Off by default because it widens blast radius and merge-conflict risk.
 
 ## Phase 0 — Recon & lane selection (in-session, before any worktree)
 
 1. `git fetch origin`. Branch/baseline off **`origin/main`** (not local main).
 2. Build a baseline worktree and score it **built**: `dotnet build` then `reforge surface-score --all --top-symbols 200 --format Json`. Rank candidates per the **Section Refactor History** table in `docs/architecture/maintenance-log.md`: never-served sections first (current score descending), then largest growth since the last lane (Score − Post-Lane Score), tie-break by Last Lane ascending. Raw group total is an input, not the ranking key — score-only ranking re-serves the biggest sections and starves the small ones.
 3. **Open PRs and other branches are NOT exclusions** — plan against `origin/main` only; in-flight work rebases around the refactor (`memory/process/refactor-runs-origin-main-only.md`). Don't scan `gh pr list` / `git branch -r` to build an exclusion matrix. The only conflict constraint is between lanes: two lanes must never edit the same files, interfaces, repositories, or DI registration. Confirm per-section DI (`src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs`) so lanes don't collide on registration.
-4. Pick the top-N clean sections for the chosen intensity. Prefer repo-backed verticals with a canonical `<Section>Info`; connectors (Google/Email) are fine but yield deletion/read-split wins rather than DTO-fact wins.
+4. Pick the top-N clean sections for the chosen intensity. Prefer repo-backed verticals with a canonical `<Section>Info`; connectors (Google/Email) are fine but yield deletion/contract-narrowing wins rather than DTO-fact wins.
 5. Create one worktree+branch per lane off the baseline sha: `refactor/<YYYY-MM-DD>-<section>-workflow-N` at `.claude/worktrees/refactor-<YYYY-MM-DD>-<section>-workflow-N`. **Verify each worktree's branch + base sha before fan-out.**
 
 ## Per-lane loop (delegated to humans-refactor)
 
 Each lane: section-shape discovery → ≥8-candidate ledger → pick the highest-leverage coherent change → make ONE change → `dotnet build` + targeted tests (section + Architecture) → `reforge surface-score` (built) + `reforge_delta.py` vs the previous accepted stage → **review panel** → commit (with score + verdict appendix) + push → repeat until stasis. Stage scratch lives under `local/refactor-runs/<run>/<section>/` (outside the worktree, so it is never committed).
 
-Seek (deletes a concept): cross-section consumers routed onto `I<Section>ServiceRead`/DTO facts; read projections/predicates/scalars **deleted** because callers derive them via LINQ over `<Section>Info`; duplicate query/include shapes collapsed; genuinely dead public surface removed; a real lifecycle state machine.
+Seek (deletes a concept): cross-section consumers routed onto the public `I<Section>Service`/DTO facts (a cross-section write only via a section-owned component or `I<Section>Write`); read projections/predicates/scalars **deleted** because callers derive them via LINQ over `<Section>Info`; duplicate query/include shapes collapsed; genuinely dead public surface removed; a real lifecycle state machine.
 
 ## Review panel (the gate — score-BLIND, adversarial)
 
@@ -66,14 +66,14 @@ The reviewer **never sees the score** and must not treat a lower number as a rea
 Lenses (use 1 / 2 / 3 of these per `--intensity` light/standard/deep):
 
 - **A — relocation & `internal`-gaming:** anything merely moved to a helper/extension/static/other section? Accessibility narrowed (`public`→`internal`) to drop the surface count with no callers deleted? If nothing is genuinely deleted → reject.
-- **B — read-model purist:** a bespoke projection/predicate/scalar query method added to a read interface (e.g. "GetUsersNamedPeter") → reject (that's LINQ over `<Section>Info`). Consumers moved to `I<Section>ServiceRead`/DTO facts → good. A "new DTO" that's really a bag → reject.
+- **B — read-model purist:** a bespoke projection/predicate/scalar query method added to a public contract interface (e.g. "GetUsersNamedPeter") → reject (that's LINQ over `<Section>Info`). Consumers moved to `I<Section>Service`/DTO facts → good. A "new DTO" that's really a bag → reject.
 - **C — behavior/contract:** tests/auth/cache/audit/transaction intact; domain verbs preserved (no generic action/mode dispatcher); removed surface verified dead.
 
-Forbidden moves (reject regardless of score): helper/extension extraction for counts, bespoke read-interface query methods, `public`→`internal` to dodge score, parameter/options bags that only hide a signature, generic dispatchers, debt moved to another section, tests removed/weakened.
+Forbidden moves (reject regardless of score): helper/extension extraction for counts, bespoke query methods on the public contract, `public`→`internal` to dodge score, parameter/options bags that only hide a signature, generic dispatchers, debt moved to another section, tests removed/weakened.
 
 ## Cross-section lanes (`--cross-section`)
 
-The single-section model **cannot** complete a read-split when the consumer lives in section X and the needed read method lives on section Y's interface — both sides span sections, so each lane defers it. With `--cross-section`, a lane may own one such slice end-to-end **provided**: (a) it serializes against any section-level lane touching the same interfaces, and (b) the review panel additionally checks that the move *reduces*, not relocates, cross-section coupling (adding a read method to Y's interface so X can drop a full/write-service dependency is a reduction; growing Y's read surface without removing coupling is not). Expanding Y's `[SurfaceBudget]` to fit the migration is allowed here (see Hard rules).
+The single-section model **cannot** complete a contract migration when the consumer lives in section X and the needed read method lives on section Y's public `I<Section>Service` — both sides span sections, so each lane defers it. With `--cross-section`, a lane may own one such slice end-to-end **provided**: (a) it serializes against any section-level lane touching the same interfaces, and (b) the review panel additionally checks that the move *reduces*, not relocates, cross-section coupling (adding a read method to Y's `I<Section>Service` so X can drop a dependency on a write surface is a reduction; growing Y's public surface without removing coupling is not). Expanding Y's `[SurfaceBudget]` to fit the migration is allowed here (see Hard rules).
 
 ## Orchestration (workflow mode)
 

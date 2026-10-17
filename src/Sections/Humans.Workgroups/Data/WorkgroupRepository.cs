@@ -44,12 +44,6 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         return await Register(ctx).FirstOrDefaultAsync(w => w.Id == id, ct);
     }
 
-    public async Task<Workgroup?> GetWorkgroupBySlugAsync(string slug, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await Register(ctx).FirstOrDefaultAsync(w => w.Slug == slug, ct);
-    }
-
     public async Task<bool> SlugTakenAsync(string slug, Guid? exceptId = null, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

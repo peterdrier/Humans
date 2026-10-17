@@ -570,6 +570,10 @@ public sealed class FeedbackServiceTests
         var otherId = Guid.NewGuid();
         var report = await SeedReportAsync(sourceId, "source's report", "/s");
         var otherReport = await SeedReportAsync(otherId, "other's report", "/o");
+        report.AssignedToUserId = otherId;
+        report.ResolvedByUserId = otherId;
+        otherReport.AssignedToUserId = sourceId;
+        otherReport.ResolvedByUserId = sourceId;
         FeedbackDb.FeedbackMessages.Add(new FeedbackMessage
         {
             Id = Guid.NewGuid(),
@@ -587,6 +591,14 @@ public sealed class FeedbackServiceTests
             .FirstAsync(r => r.Id == report.Id, ct);
         movedReport.UserId.Should().Be(targetId);
         movedReport.UpdatedAt.Should().Be(mergeStamp);
+        movedReport.AssignedToUserId.Should().Be(otherId);
+        movedReport.ResolvedByUserId.Should().Be(otherId);
+        var movedAssignment = await FeedbackDb.FeedbackReports.AsNoTracking()
+            .SingleAsync(r => r.Id == otherReport.Id, ct);
+        movedAssignment.UserId.Should().Be(otherId);
+        movedAssignment.AssignedToUserId.Should().Be(targetId);
+        movedAssignment.ResolvedByUserId.Should().Be(targetId);
+        movedAssignment.UpdatedAt.Should().Be(mergeStamp);
         var movedMessage = await FeedbackDb.FeedbackMessages.AsNoTracking()
             .FirstAsync(m => m.FeedbackReportId == otherReport.Id, ct);
         movedMessage.SenderUserId.Should().Be(targetId);

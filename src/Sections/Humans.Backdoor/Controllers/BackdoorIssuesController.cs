@@ -78,6 +78,20 @@ internal sealed class BackdoorIssuesController(
         return Ok(MapDetail(issue, thread, displayUsers));
     }
 
+    /// <summary>
+    /// The issue's screenshot, behind the same reach check as <see cref="Get"/>. Missing,
+    /// out-of-reach and no-screenshot all answer 404.
+    /// </summary>
+    [HttpGet("{id}/screenshot")]
+    public async Task<IActionResult> Screenshot(Guid id)
+    {
+        var screenshot = await issues.GetScreenshotAsync(id, Viewer, HttpContext.RequestAborted);
+        if (screenshot is null) return NotFound();
+
+        Response.Headers.CacheControl = "private, no-store";
+        return File(screenshot.Content, screenshot.ContentType);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ApiCreateIssueModel model)
     {
@@ -220,7 +234,7 @@ internal sealed class BackdoorIssuesController(
             : null,
         i.GitHubIssueNumber,
         i.DueDate,
-        ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
+        ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/api/backdoor/issues/{i.Id}/screenshot" : null,
         CreatedAt = i.CreatedAt.ToDateTimeUtc(),
         UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
         ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
@@ -246,7 +260,7 @@ internal sealed class BackdoorIssuesController(
         AssigneeName = i.AssigneeDisplayName,
         i.GitHubIssueNumber,
         i.DueDate,
-        ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
+        ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/api/backdoor/issues/{i.Id}/screenshot" : null,
         CreatedAt = i.CreatedAt.ToDateTimeUtc(),
         UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
         ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),

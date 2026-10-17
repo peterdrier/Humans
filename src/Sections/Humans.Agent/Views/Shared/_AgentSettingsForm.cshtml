@@ -4,6 +4,7 @@
    Explicit asp-controller/asp-action keeps the tab posting to AdminAgentController. *@
 <form asp-controller="AdminAgent" asp-action="Settings" method="post">
     @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="text-danger"></div>
     <div class="form-check mb-3">
         <input asp-for="Enabled" class="form-check-input" />
         <label asp-for="Enabled" class="form-check-label">Enabled (visible to all consented humans)</label>

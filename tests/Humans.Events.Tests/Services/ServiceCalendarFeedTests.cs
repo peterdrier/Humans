@@ -2,6 +2,8 @@ using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
@@ -32,7 +34,7 @@ public class EventServiceCalendarFeedTests
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), new EventsEmails(_localizer, NullLogger<EventsEmails>.Instance), new FakeClock(FixedNow), NullLogger<EventService>.Instance, _localizer);
+        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<ICampService>(), Substitute.For<IAuditLogService>(), Substitute.For<IEmailService>(), new EventsEmails(_localizer, NullLogger<EventsEmails>.Instance), new FakeClock(FixedNow), NullLogger<EventService>.Instance, _localizer);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);

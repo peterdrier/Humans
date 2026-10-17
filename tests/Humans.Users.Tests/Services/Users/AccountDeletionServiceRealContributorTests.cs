@@ -50,7 +50,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
 
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));

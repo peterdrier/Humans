@@ -9,7 +9,7 @@ description: HARD RULE. `[SurfaceBudget(N)]` is owner-applied only — never add
 
 **How to apply:** Never add it to a type; never propose it; when asked what it does, describe HUM0015/HUM0016 and stop. The one thing you DO: when editing a type that already carries it, keep `N` exact — lower it when you legitimately remove a method (never raise it, never add the attribute to a fresh type). Per-type mechanics (no raises/splits/bag-of-flags) live in the `<remarks>` on `SurfaceBudgetAttribute`.
 
-**Where it lives now:** the read-side `I…ServiceRead` interfaces (`ITeamServiceRead`, `IUserServiceRead`, `IConsentServiceRead`).
+**Where it lives now:** only `IUserService` in `Humans.Users.Contracts`.
 
 **Related:**
 - [`interface-method-additions-are-debt`](../architecture/interface-method-additions-are-debt.md) — every method add is debt; the principle behind the budget.

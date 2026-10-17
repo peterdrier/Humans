@@ -112,7 +112,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService,
-            _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
             driveSync,
             [_driveSource],
@@ -376,14 +375,11 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo()
-            });
-        _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>
-            {
-                [memberId] =
-                [new UserEmailRowSnapshot(Guid.NewGuid(), memberId, email, true, null, null, true, false,
-                    null, null, Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]
+                [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo() with
+                {
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true, null, null, null, null,
+                        Clock.GetCurrentInstant(), Clock.GetCurrentInstant(), GoogleEmailStatus.Unknown)]
+                }
             });
 
         var diff = await _syncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute, ct);

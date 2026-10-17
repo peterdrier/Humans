@@ -32,8 +32,8 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddSingleton<IBudgetRepository, BudgetRepository>();
         services.AddScoped<BudgetService>();
+        services.AddScoped<IBudgetManagement>(sp => sp.GetRequiredService<BudgetService>());
         services.AddScoped<IBudgetService>(sp => sp.GetRequiredService<BudgetService>());
-        services.AddScoped<IBudgetServiceRead>(sp => sp.GetRequiredService<BudgetService>());
         // Owns the user-attributed budget_audit_logs table → GDPR export contributor
         // (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BudgetService>());
@@ -44,7 +44,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // only this assembly can call it — DI's reflection-based activation only sees public ones.
         services.AddScoped(sp => new TicketingBudgetSyncJob(
             sp.GetRequiredService<ITicketingBudgetService>(),
-            sp.GetRequiredService<IBudgetServiceRead>(),
+            sp.GetRequiredService<IBudgetService>(),
             sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
 
         // Development's /dev/seed/budget action drives this through the Contracts/ interface rather than
@@ -59,6 +59,10 @@ public sealed class Section : ISection, IIssueQueueOwner
     // This section owns the issue queue its members' reports land in; Issues discovers
     // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Budget";
+
+    string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Budget";
+
+    IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["finance", "budget"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.FinanceAdmin];
 }

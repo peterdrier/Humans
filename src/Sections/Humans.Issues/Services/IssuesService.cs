@@ -53,13 +53,14 @@ internal sealed class IssuesService(
     };
 
     private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
+    private const int MaxScreenshotFileNameLength = 256;
 
     /// <summary>The <c>issues.section</c> column width. Nothing legitimate reaches it.</summary>
     private const int MaxSectionLength = 64;
 
     /// <summary>
     /// Issues are kept for 6 months after they enter a terminal state. After
-    /// that the row + comments + screenshot directory are removed by
+    /// that the row + comments + screenshot are removed by
     /// <c>CleanupIssuesJob</c>. Days, not months, so the cutoff is a simple
     /// <see cref="Duration"/>.
     /// </summary>
@@ -112,7 +113,7 @@ internal sealed class IssuesService(
 
     // ─── Submission ───
 
-    public async Task<Issue> SubmitIssueAsync(
+    public async Task<IssueSubmissionResult> SubmitIssueAsync(
         Guid reporterUserId,
         IssueCategory category,
         string title,
@@ -154,12 +155,17 @@ internal sealed class IssuesService(
         if (screenshot is { Length: > 0 })
         {
             if (screenshot.Length > MaxScreenshotBytes)
-                throw new InvalidOperationException("Screenshot must be under 10MB.");
+                return new(null, "Issue_ScreenshotTooLarge");
 
-            if (!AllowedContentTypes.Contains(screenshot.ContentType))
-                throw new InvalidOperationException("Screenshot must be JPEG, PNG, or WebP.");
+            var contentType = screenshot.ContentType.ToLowerInvariant();
+            if (!AllowedContentTypes.Contains(contentType))
+                return new(null, "Issue_ScreenshotTypeInvalid");
 
-            var ext = screenshot.ContentType switch
+            var fileName = screenshot.FileName.Split('/', '\\').Last();
+            if (fileName.Length > MaxScreenshotFileNameLength)
+                return new(null, "Issue_ScreenshotFileNameTooLong");
+
+            var ext = contentType switch
             {
                 "image/jpeg" => ".jpg",
                 "image/png" => ".png",
@@ -167,14 +173,15 @@ internal sealed class IssuesService(
                 _ => throw new InvalidOperationException($"Unexpected content type: {screenshot.ContentType}")
             };
 
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var relativePath = $"uploads/issues/{issueId}/{fileName}";
-            using var stream = screenshot.OpenReadStream();
-            await fileStorage.SaveAsync(relativePath, stream, ct);
+            var key = $"uploads/issues/{issueId}/{Guid.NewGuid()}{ext}";
+            await using (var stream = screenshot.OpenReadStream())
+            {
+                await fileStorage.SaveAsync(key, stream, ct);
+            }
 
-            issue.ScreenshotFileName = screenshot.FileName;
-            issue.ScreenshotStoragePath = relativePath;
-            issue.ScreenshotContentType = screenshot.ContentType;
+            issue.ScreenshotFileName = fileName;
+            issue.ScreenshotStoragePath = key;
+            issue.ScreenshotContentType = contentType;
         }
 
         try
@@ -203,7 +210,7 @@ internal sealed class IssuesService(
         logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
             issueId, reporterUserId, category, section ?? "(unknown)");
-        return issue;
+        return new(issue);
     }
 
     private static string? BuildAdditionalContext(string? userContext, IReadOnlyList<string>? reporterRoles)
@@ -229,6 +236,16 @@ internal sealed class IssuesService(
     {
         var issue = await repo.GetByIdAsync(id, ct);
         return issue is null || !CanSee(issue, viewer) ? null : MapDetail(issue);
+    }
+
+    public async Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
+    {
+        var issue = await repo.GetByIdAsync(id, ct);
+        if (issue is null || !CanSee(issue, viewer) || issue.ScreenshotStoragePath is not { } key)
+            return null;
+
+        var content = await fileStorage.TryReadAsync(key, ct);
+        return content is null ? null : new IssueScreenshot(content, issue.ScreenshotContentType ?? "application/octet-stream");
     }
 
     /// <summary>
@@ -483,10 +500,12 @@ internal sealed class IssuesService(
         Guid? actorUserId = null,
         CancellationToken ct = default)
     {
-        var issue = await SubmitIssueAsync(
+        var submission = await SubmitIssueAsync(
             reporterUserId, category, title, description, section,
             pageUrl: null, userAgent: null, additionalContext: null, screenshot: null,
             dueDate: dueDate, ct: ct);
+        // This machine path supplies no screenshot, so upload refusals cannot occur.
+        var issue = submission.Issue!;
 
         // The in-app reporter is their own actor, so the issue row's ReporterUserId is the
         // whole story there and creation goes unaudited. Here the two can differ, and the
@@ -748,11 +767,9 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var deleted = await repo.DeleteByIdsAsync(expired, ct);
-        foreach (var issueId in expired)
-        {
-            await DeleteScreenshotDirectoryAsync(issueId);
-        }
+        var (deleted, screenshotKeys) = await repo.DeleteByIdsAsync(expired, ct);
+
+        await DeleteScreenshotsAsync(screenshotKeys);
 
         logger.LogInformation(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
@@ -766,7 +783,11 @@ internal sealed class IssuesService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var issues = await repo.GetForUserExportAsync(userId, ct);
+        var user = await users.GetUserInfoAsync(userId, ct);
+        var userIds = (user?.AllUserIds ?? [userId]).ToHashSet();
+        var issues = new List<Issue>();
+        foreach (var id in userIds)
+            issues.AddRange(await repo.GetForUserExportAsync(id, ct));
         var shaped = issues.Select(i => new
         {
             i.Title,
@@ -782,7 +803,7 @@ internal sealed class IssuesService(
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
             {
                 c.Content,
-                IsFromUser = c.SenderUserId == userId,
+                IsFromUser = c.SenderUserId is { } senderId && userIds.Contains(senderId),
                 CreatedAt = c.CreatedAt.ToIso8601()
             })
         }).ToList();
@@ -814,24 +835,29 @@ internal sealed class IssuesService(
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
 
-        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
+        var screenshotKeys = await repo.EraseForUserAsync(userId, ct);
         issuesBadge.InvalidateMany(badgeUserIds);
 
-        foreach (var issueId in erasedIssueIds)
-        {
-            await DeleteScreenshotDirectoryAsync(issueId);
-        }
+        // The screenshots are the reporter's own uploads — they go with the rows.
+        await DeleteScreenshotsAsync(screenshotKeys);
     }
 
-    private async Task DeleteScreenshotDirectoryAsync(Guid issueId)
+    /// <summary>
+    /// Best-effort removal of screenshots whose rows have already committed; failures are logged,
+    /// never thrown. Cancellation must not strand them, and a stranded blob must not abort the cascade.
+    /// </summary>
+    private async Task DeleteScreenshotsAsync(IReadOnlyList<string> keys)
     {
-        try
+        foreach (var key in keys)
         {
-            await fileStorage.DeleteAsync($"uploads/issues/{issueId}", CancellationToken.None, recursiveDirectory: true);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to delete screenshot directory for issue {IssueId}", issueId);
+            try
+            {
+                await fileStorage.DeleteAsync(key, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete issue screenshot {Key}", key);
+            }
         }
     }
 

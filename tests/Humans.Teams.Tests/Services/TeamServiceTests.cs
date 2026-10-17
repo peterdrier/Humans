@@ -2693,6 +2693,103 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // AddMemberToTeamAsync
     // ==========================================================================
 
+    [HumansTheory]
+    [Xunit.InlineData(false, "missing")]
+    [Xunit.InlineData(true, "missing")]
+    [Xunit.InlineData(false, "deleted")]
+    [Xunit.InlineData(true, "deleted")]
+    [Xunit.InlineData(false, "merged")]
+    [Xunit.InlineData(true, "merged")]
+    public async Task MembershipGrant_InvalidPerson_DoesNotCreateFootprint(bool assignRole, string kind)
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var definition = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var targetId = Guid.NewGuid();
+        if (!string.Equals(kind, "missing", StringComparison.Ordinal))
+        {
+            var target = SeedUser(displayName: "Terminal");
+            targetId = target.Id;
+            target.State = string.Equals(kind, "deleted", StringComparison.Ordinal) ? UserState.Deleted : UserState.Merged;
+            target.MergedAt = Clock.GetCurrentInstant();
+            target.MergedToUserId = string.Equals(kind, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : null;
+        }
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        Func<Task> add = async () =>
+        {
+            if (assignRole)
+                await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, Xunit.TestContext.Current.CancellationToken);
+            else
+                await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        };
+
+        await add.Should().ThrowAsync<InvalidOperationException>();
+        (await TeamsDb.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await TeamsDb.TeamRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddMemberToTeamAsync_MergeAlias_UsesSurvivorForMembershipAndPendingRequest(bool alreadyMember)
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Survivor");
+        var team = SeedTeam("Alpha");
+        var sourceId = Guid.NewGuid();
+        var request = SeedJoinRequest(team.Id, target.Id);
+        if (alreadyMember) SeedTeamMember(team.Id, target.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            UserInfo.Create(target, [], [], [], null, [])));
+
+        if (alreadyMember)
+        {
+            var add = () => _service.AddMemberToTeamAsync(team.Id, sourceId, actor.Id, Xunit.TestContext.Current.CancellationToken);
+            await add.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already a member*");
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+            (await _service.AddMemberToTeamAsync(team.Id, sourceId, actor.Id, Xunit.TestContext.Current.CancellationToken))
+                .UserId.Should().Be(target.Id);
+
+        TeamsDb.ChangeTracker.Clear();
+        var member = await TeamsDb.TeamMembers.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        member.UserId.Should().Be(target.Id);
+        var savedRequest = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        savedRequest.Status.Should().Be(alreadyMember ? TeamJoinRequestStatus.Pending : TeamJoinRequestStatus.Approved);
+        var outbox = await GoogleIntegrationDb.GoogleSyncOutboxEvents.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (alreadyMember) outbox.Should().BeEmpty();
+        else outbox.Should().ContainSingle().Which.UserId.Should().Be(target.Id);
+    }
+
+    [HumansFact]
+    public async Task AssignToRoleAsync_MergeAlias_UsesExistingSurvivorMembership()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var target = SeedUser(displayName: "Survivor");
+        var team = SeedTeam("Alpha");
+        var member = SeedTeamMember(team.Id, target.Id);
+        var definition = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var sourceId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            UserInfo.Create(target, [], [], [], null, [])));
+
+        var assignment = await _service.AssignToRoleAsync(definition.Id, sourceId, actor.Id,
+            Xunit.TestContext.Current.CancellationToken);
+
+        assignment.TeamMemberId.Should().Be(member.Id);
+        (await TeamsDb.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     [HumansFact]
     public async Task AddMemberToTeamAsync_ValidUser_CreatesMembership()
     {

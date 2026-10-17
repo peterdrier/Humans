@@ -134,4 +134,13 @@ public enum NotificationSource
 
     /// <summary>A join request was approved or declined, or a coordinator added the person directly.</summary>
     WorkgroupMembershipDecided = 43,
+
+    /// <summary>A pre-approval the person can file an expense report against: issued, released, deadline moved, or a reminder. Resolved when the grant leaves Open.</summary>
+    PreapprovalFileBy = 44,
+
+    /// <summary>Someone applied to a pre-approval program; its managers decide. Resolved on approve or decline.</summary>
+    PreapprovalApplicationReceived = 45,
+
+    /// <summary>A pre-approval was declined, revoked, or had its amount changed.</summary>
+    PreapprovalGrantDecided = 46,
 }

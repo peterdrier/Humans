@@ -3,7 +3,6 @@ using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Base.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -28,10 +27,9 @@ namespace Humans.Budget.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class BudgetAdminController(
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     ITeamServiceRead teamService,
     TicketingBudgetService ticketingBudgetService,
-    ITicketService ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
     IHoldedFinanceServiceRead holdedFinance,
@@ -140,9 +138,7 @@ internal sealed class BudgetAdminController(
                 return RedirectToAction(nameof(Index));
             }
 
-            var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-                .Sum(o => o.TotalAmount);
+            var grossTicketRevenue = await ticketingBudgetService.GetGrossTicketRevenueAsync(activeYear);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }
@@ -228,6 +224,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget year status for {YearId}", id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await budgetService.UpdateYearStatusAsync(id, status, user.Id);
@@ -244,14 +246,14 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Years/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateYear(Guid id, string year, string name)
+    public async Task<IActionResult> UpdateYear(Guid id, string year, string name, string? vendorEventId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
         {
-            await budgetService.UpdateYearAsync(id, year, name, user.Id);
+            await budgetService.UpdateYearAsync(id, year, name, vendorEventId, user.Id);
             SetSuccess("Budget year updated.");
             return RedirectToAction(nameof(Admin));
         }

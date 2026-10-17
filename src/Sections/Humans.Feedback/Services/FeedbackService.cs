@@ -36,7 +36,7 @@ internal sealed class FeedbackService(
     IFileStorage fileStorage,
     IMemoryCache cache,
     IClock clock,
-    ILogger<FeedbackService> logger) : IFeedbackServiceRead, IFeedbackTriage, IUserDataContributor, IUserMerge
+    ILogger<FeedbackService> logger) : IFeedbackService, IFeedbackTriage, IUserDataContributor, IUserMerge
 {
     internal const string FeedbackReports = "FeedbackReports";
 

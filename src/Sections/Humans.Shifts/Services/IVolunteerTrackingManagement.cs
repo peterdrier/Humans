@@ -15,7 +15,7 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
 
-    Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets);
+    Task<bool> SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets);
 
     Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
         Guid eventSettingsId, int dayOffset);

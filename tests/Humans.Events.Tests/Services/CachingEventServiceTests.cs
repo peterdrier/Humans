@@ -246,8 +246,8 @@ public sealed class CachingEventServiceTests
     public async Task EventSettingsChanged_ReloadsTheGuideSettingsProjection()
     {
         // The projection carries TimeZoneId stitched from the Settings-owned event settings
-        // row, and the guide renders every event time in it. Only Events' own writes used to
-        // refresh it, so a timezone edit on the Settings tab showed the old zone until restart.
+        // row, and the guide renders every event time in it. A timezone edit on the
+        // Settings tab must reload it.
         var before = GuideSettings("Europe/Madrid");
         var after = GuideSettings("Atlantic/Canary");
         _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())

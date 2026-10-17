@@ -21,9 +21,8 @@ internal static class AuditEntityTypes
     public const string Report = "ExpenseReport";
 
     /// <summary>
-    /// The IBAN set/remove entries name Users' <c>Profile</c>, which this section cannot spell
-    /// since it went internal to <c>Humans.Users</c> (nobodies-collective/Humans#1051). Same
-    /// remedy Onboarding already applied for the same rows.
+    /// The IBAN set/remove entries name Users' <c>Profile</c>, which is internal to
+    /// <c>Humans.Users</c> and so cannot be spelled here.
     /// </summary>
     public const string Profile = "Profile";
 

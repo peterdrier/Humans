@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Attributes;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;
@@ -12,7 +11,6 @@ using NodaTime;
 namespace Humans.Expenses.Services;
 
 /// <summary>Drains the expense outbox, preserving retries and permanent-failure audits.</summary>
-[CrossSectionWrite("Publishes expense documents and creditor bindings through the existing Holded publisher.")]
 internal sealed class ExpenseReportBackgroundProcessor(
     IExpenseRepository repo,
     IFileStorage fileStorage,
@@ -73,17 +71,13 @@ internal sealed class ExpenseReportBackgroundProcessor(
                     continue;
                 }
 
-                var submitterName = string.IsNullOrWhiteSpace(report.PayeeName)
-                    ? "Unknown"
-                    : report.PayeeName;
-
                 var now = clock.GetCurrentInstant();
 
                 switch (outboxEvent.EventType)
                 {
                     case HoldedExpenseOutboxEventType.CreateIncomingDoc:
                         await holdedPublisher.PublishAsync(
-                            outboxEvent.Id, report, submitterName, now, ct);
+                            outboxEvent.Id, report, now, ct);
                         break;
 
                     case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:

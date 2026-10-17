@@ -214,7 +214,7 @@ a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
 
-Cross-section calls via `IAdminAuthorizationService`. No direct
+Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import and admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
@@ -263,6 +263,10 @@ Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 
+New import account creation wraps User, provisioned UserEmail and Profile in one transaction, audits after local commit, then refreshes UserInfo after commit/rollback. Unverified replacements retain their existing outer transaction and refresh.
+
+Import and magic-link retry matches run the idempotent profile ensure before returning the existing account; successful repairs emit `StubProfileBackfilled` without duplicating accounts or overwriting an existing Profile.
+
 Unverified import replacements run deletion and provisioning in one serializable ambient transaction, through existing owned services/repositories. `IUserInfoInvalidator` refreshes all affected users after commit or rollback.
 
 ### AccountDeletionService (Scoped)
@@ -294,7 +298,7 @@ No cache on the service itself.
 ### UserParticipationBackfillService (Scoped)
 
 No repository. Fan-out over `IUserServiceInternal` and `ISettingsService`
-(active event settings) to backfill `EventParticipations`. No direct DB access, no cache.
+(active event settings) to preview valid CSV rows and, only after operator confirmation, backfill `EventParticipations` with the acting admin. No direct DB access, no cache.
 
 ### AccountMergeService (Scoped)
 
@@ -358,7 +362,7 @@ Repository: `IUserRepository`.
 Operator-driven BurnerName/legal-name backfill: finds `User`/`Profile`
 pairs where the User row is missing a name the Profile carries, then
 re-saves the Profile through the normal dual-write path. Cross-section
-calls via `IUserService` (`GetAllUserInfosAsync`, for email display only).
+calls via `IUserService` (`GetAllUserInfosAsync`, for email display only) and `IAuditLogService` (actor-attributed `UserNamesBackfilled` per saved member).
 No `IMemoryCache`.
 
 ### UsersAudienceService (Scoped)

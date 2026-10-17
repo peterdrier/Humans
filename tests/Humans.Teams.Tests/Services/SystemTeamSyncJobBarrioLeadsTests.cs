@@ -298,6 +298,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _googleGroupSync.Received(1).ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+        await _googleGroupSync.Received(1).ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync);
     }
 }

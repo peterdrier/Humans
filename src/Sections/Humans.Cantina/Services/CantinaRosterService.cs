@@ -1,3 +1,5 @@
+using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
@@ -25,6 +27,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private readonly ISettingsService _settingsService;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
+    private readonly IAuditLogService _audit;
 
     // Must stay in step with the last entry of Roster.cshtml's dietaryOrder array,
     // its only lookup; the service tests pin the literal as the rename tripwire.
@@ -34,19 +37,26 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IShiftManagementService shiftMgmt,
         ISettingsService settingsService,
         IUserServiceRead userRead,
-        IClock clock)
+        IClock clock,
+        IAuditLogService audit)
     {
         _shiftMgmt = shiftMgmt;
         _settingsService = settingsService;
         _userRead = userRead;
         _clock = clock;
+        _audit = audit;
     }
 
-    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
-        return await BuildWeeklyRosterAsync(
+        var roster = await BuildWeeklyRosterAsync(
             burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
+        if (exportActorUserId is { } actor)
+            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
+                $"Weekly Cantina roster exported: {roster.People.Count} people rows, week of {roster.WeekStartDate.ToInvariantDate() ?? "no active event"}",
+                actor).ConfigureAwait(false);
+        return roster;
     }
 
     private async Task<WeeklyRosterDto> BuildWeeklyRosterAsync(
@@ -212,11 +222,16 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
             : 0;
 
-    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default)
+    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
-        return await BuildDailyRosterAsync(
+        var matrix = await BuildDailyRosterAsync(
             burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
+        if (exportActorUserId is { } actor)
+            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
+                $"Daily Cantina roster exported: {matrix.People.Count} people rows, day {matrix.CalendarDate.ToInvariantDate() ?? "no active event"}",
+                actor).ConfigureAwait(false);
+        return matrix;
     }
 
     private async Task<DailyMatrixDto> BuildDailyRosterAsync(

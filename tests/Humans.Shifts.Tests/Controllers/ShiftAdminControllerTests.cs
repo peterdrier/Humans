@@ -89,6 +89,49 @@ public class ShiftAdminControllerTests
     }
 
     [HumansTheory]
+    [InlineData("Staffing", false)]
+    [InlineData("Staffing", true)]
+    [InlineData("Generation", false)]
+    [InlineData("Generation", true)]
+    public async Task Generation_RejectsMalformedBindings_ButAcceptsValidDefaults(string action, bool malformed)
+    {
+        var staffing = string.Equals(action, "Staffing", StringComparison.Ordinal);
+        var rotaId = Guid.NewGuid();
+        _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
+            .Returns(ShiftGenerationResult.Success("Created", 1));
+        _shiftMgmt.GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>())
+            .Returns(ShiftGenerationResult.Success("Created", 1));
+        var controller = BuildSut();
+        if (malformed)
+            controller.ModelState.AddModelError(staffing ? "Days[0].MinVolunteers" : "StartDayOffset",
+                "Not a number.");
+
+        var result = staffing
+            ? await controller.ConfigureStaffing(Slug, rotaId,
+                new StaffingGridModel { Days = [new DayStaffingEntry { DayOffset = -1 }] })
+            : await controller.GenerateShifts(Slug, rotaId,
+                new GenerateEventShiftsModel { StartDayOffset = 0, EndDayOffset = 0, TimeSlots = [new TimeSlotEntry()] });
+
+        if (malformed)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            await _shiftMgmt.DidNotReceive().CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>());
+            await _shiftMgmt.DidNotReceive().GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (staffing)
+                await _shiftMgmt.Received(1).CreateBuildStrikeShiftsAsync(Arg.Is<ConfigureBuildStrikeStaffingInput>(
+                    input => input.RotaId == rotaId && input.TeamId == TeamId
+                        && input.Days.Single().DayOffset == -1 && input.Days.Single().MinVolunteers == 2));
+            else
+                await _shiftMgmt.Received(1).GenerateEventShiftsAsync(Arg.Is<GenerateEventShiftsInput>(
+                    input => input.RotaId == rotaId && input.TeamId == TeamId && input.StartDayOffset == 0));
+        }
+    }
+
+    [HumansTheory]
     [InlineData("ConfigureStaffing")]
     [InlineData("DeleteRota")]
     [InlineData("BailRange")]

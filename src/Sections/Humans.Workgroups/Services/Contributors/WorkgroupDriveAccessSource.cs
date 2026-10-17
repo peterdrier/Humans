@@ -22,7 +22,7 @@ internal sealed class WorkgroupDriveAccessSource(
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)
     {
-        var claimed = new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.Ordinal);
+        var claimed = new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal);
         var register = await workgroups.GetRegisterAsync(ct);
 
         foreach (var workgroup in register)
@@ -39,22 +39,26 @@ internal sealed class WorkgroupDriveAccessSource(
                 _ => DrivePermissionLevel.None
             };
             // Keep claiming retired folders so reconciliation removes their direct grants.
-            claimed[id] = level == DrivePermissionLevel.None
+            var access = level == DrivePermissionLevel.None
                 ? []
                 : workgroup.CurrentMemberUserIds().ToDictionary(userId => userId, _ => level);
+            claimed[id] = new GoogleDriveAccessClaim(access, ResourceName: workgroup.Name);
         }
 
         if (await workgroups.GetRootDriveFolderIdAsync(ct) is { Length: > 0 } root
             && !claimed.ContainsKey(root))
         {
-            claimed[root] = await RootReadersAsync(ct);
+            claimed[root] = new GoogleDriveAccessClaim(await RootReadersAsync(ct), ResourceName: RootFolderName);
         }
 
         // The orchestrator asked about one folder; anything else this source claims is not
         // its business on this pass.
         return claimed.Where(e => folderId is null || string.Equals(e.Key, folderId, StringComparison.Ordinal))
-            .ToDictionary(e => e.Key, e => new GoogleDriveAccessClaim(e.Value), StringComparer.Ordinal);
+            .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
     }
+
+    /// <summary>What a Board member sees named in a removal email or the sync log for the root folder.</summary>
+    private const string RootFolderName = "Workgroups";
 
     /// <summary>
     /// The root folder is the register's shelf: the Board reads it, and nobody writes to it

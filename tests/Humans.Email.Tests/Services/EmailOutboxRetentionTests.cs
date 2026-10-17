@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -39,7 +40,7 @@ public class EmailOutboxRetentionTests : IDisposable
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
 
         _retention = new EmailOutboxService(
-            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now));
+            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now), Substitute.For<IAuditLogService>());
     }
 
     public void Dispose()

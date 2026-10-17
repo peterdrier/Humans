@@ -76,7 +76,8 @@ internal sealed class GuestAccountController(
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
-                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken));
+                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
+                actorUserId: fromToken ? null : userId);
 
             return Ok();
         }
@@ -151,7 +152,7 @@ internal sealed class GuestAccountController(
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is not null)
-            return (user.Id, null, false);
+            return user.IsGdprAnonymized ? (null, null, false) : (user.Id, null, false);
 
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
@@ -160,9 +161,9 @@ internal sealed class GuestAccountController(
         if (result.Status != TokenValidationStatus.Valid)
             return (null, null, false);
 
-        var exists = await FindUserInfoByIdAsync(result.UserId, ct);
-        return exists is not null
-            ? (result.UserId, result.Category, true)
+        var userInfo = await FindUserInfoByIdAsync(result.UserId, ct);
+        return userInfo is { IsGdprAnonymized: false }
+            ? (userInfo.Id, result.Category, true)
             : (null, null, false);
     }
 

@@ -28,7 +28,7 @@ internal sealed class ConsentMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var legalDocumentSyncService = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncServiceRead>();
+        var legalDocumentSyncService = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncManagement>();
         _legalDocumentsActive = await legalDocumentSyncService.GetActiveRequiredCountAsync();
     }
 }

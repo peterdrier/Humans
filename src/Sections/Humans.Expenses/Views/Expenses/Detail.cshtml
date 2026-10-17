@@ -49,8 +49,8 @@
             <div class="card-header"><strong>@Localizer["Expenses_Details"]</strong></div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">@Localizer["Expenses_BudgetCategory"]</dt>
-                    <dd class="col-sm-8">@Model.CategoryDisplayName</dd>
+                    <dt class="col-sm-4">@Localizer["Expenses_HoldedAccount"]</dt>
+                    <dd class="col-sm-8">@Model.BookingLabel</dd>
 
                     <dt class="col-sm-4">@Localizer["Expenses_ColSubject"]</dt>
                     <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
@@ -277,13 +277,21 @@
                                 </div>
                             </div>
                             <div class="mb-2">
-                                <label class="form-label" for="approve-category">Category override</label>
-                                <select class="form-select" id="approve-category" name="OverrideCategoryId">
-                                    <option value="">Keep @Model.CategoryDisplayName</option>
-                                    @foreach (var option in Model.Categories)
-                                    {
-                                        <option value="@option.Id">@option.DisplayName</option>
-                                    }
+                                <label class="form-label" for="approve-account">Account override</label>
+                                <select class="form-select" id="approve-account" name="OverrideAccountNumber">
+                                    <option value="">Keep @Model.BookingLabel</option>
+                                    <optgroup label="Budget categories">
+                                        @foreach (var option in Model.Accounts.Where(a => a.IsBudgetCategory))
+                                        {
+                                            <option value="@option.AccountNum">@option.Label</option>
+                                        }
+                                    </optgroup>
+                                    <optgroup label="Other accounts">
+                                        @foreach (var option in Model.Accounts.Where(a => !a.IsBudgetCategory))
+                                        {
+                                            <option value="@option.AccountNum">@option.AccountNum · @option.Label</option>
+                                        }
+                                    </optgroup>
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-success w-100">

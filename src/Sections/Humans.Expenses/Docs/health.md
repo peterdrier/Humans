@@ -39,12 +39,13 @@ Every question the section answers, and how it answers it.
 | Did this claim reach the accounting system? | finance | Holded sync card + `HoldedRetry` |
 | Push approved claims into accounting | nobody — the clock | `HoldedExpenseOutboxJob` → outbox drain |
 | Everything this member's claims hold | GDPR export | `IUserDataContributor` |
+| A claim, its files and its push state, read by an API client | Backdoor's finance read API | `IExpenseReportService` + the `ExpenseReportView` policy |
 
 Structural facts follow from the table. **Every decision is taken from the claim's own
 page**, never from a queue row — the queue lists and links, it does not decide. **The
 outbox is the only writer that is not a person**, which is why it is the only path with
-retries, a backoff and a write-off. And **every question is asked from inside the section**:
-no other section reads a claim.
+retries, a backoff and a write-off. And **one other section reads a claim, never writes one**:
+Backdoor asks the same read questions the section's own pages ask, through the same View check.
 
 ## 3. Structure
 
@@ -60,12 +61,17 @@ What the shapes imply, written fresh:
   method validates, calls exactly one repository write, and writes an audit entry per auditable
   action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
-- **The outbox drain owns queue semantics** in `ExpenseReportService`; `ExpenseHoldedPublisher`
-  owns the Holded conversation, and the scheduler shim holds neither — with **one cap
-  allocation** (`PayableAllocation`) that the push, the detail page and the audit text all read.
-- **The public surface is what another section consumes.** Nothing outside the section reads
-  a claim today, so the cross-section read interface has no reader; the section needs only
-  `Section` and the background-processor seam the job calls.
+- **The outbox drain owns queue semantics** in `ExpenseReportBackgroundProcessor`;
+  `ExpenseHoldedPublisher` owns the Holded conversation, and the scheduler shim holds neither —
+  with **one cap allocation** (`PayableAllocation`) that the push, the detail page and the audit
+  text all read.
+- **The public surface is what another section consumes:** `Section`, the background-processor
+  seam the job calls, and `IExpenseReportService` — exactly the reads Backdoor makes, each
+  already one the section's own pages use. A read with no outside caller stays on the internal
+  interface.
+- **One answer to "does this person coordinate this claim's category?"** The handler, the
+  service's coordinator check and the queue's scoping all ask Teams the same question; a second
+  definition of coordinator is a second set of people who can act.
 
 Each transition has one result-returning entry point. Member refusals carry resource keys and
 format arguments to the controller; operator actions retain their gated feedback. The shared
@@ -78,19 +84,19 @@ Stated so a violation is recognisable, each with the line that enforces it. The 
 list is `Expenses.md`; these are the ones a change is most likely to break silently.
 
 - **The payee is the submitter, snapshotted.** Submit copies the *submitter's* profile IBAN and
-  legal name into the claim (`Services/ExpenseReportService.cs:750`), never the actor's; the
+  legal name into the claim (`Services/ExpenseReportService.cs:793`), never the actor's; the
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
-  is pending approval (`Services/ExpenseReportService.cs:839`).
+  is pending approval (`Services/ExpenseReportService.cs:878`).
 - **Approved closes the claim.** Approve and finance-reject accept only Submitted or
-  CoordinatorEndorsed (`Data/ExpenseRepository.cs:296`, `Data/ExpenseRepository.cs:328`);
-  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:260`,
-  `Data/ExpenseRepository.cs:278`); the only move out of Approved is Withdrawn
-  (`Data/ExpenseRepository.cs:245`). No payment state is ever stamped on a claim.
+  CoordinatorEndorsed (`Data/ExpenseRepository.cs:315`, `Data/ExpenseRepository.cs:353`);
+  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:279`,
+  `Data/ExpenseRepository.cs:297`); the only move out of Approved is Withdrawn
+  (`Data/ExpenseRepository.cs:264`). No payment state is ever stamped on a claim.
 - **Payable is the only figure payment math uses** — `min(Total, MaxAmount)`
   (`Contracts/ExpenseReportDto.cs:19`).
 - **A decider's form replaces the cap outright**, blank clears it
-  (`Data/ExpenseRepository.cs:262`, `Data/ExpenseRepository.cs:306`); neither reject touches it.
-- **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:117`) and never reach Holded —
+  (`Data/ExpenseRepository.cs:281`, `Data/ExpenseRepository.cs:331`); neither reject touches it.
+- **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:123`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
   no upload (`ExpenseHoldedPublisher.PushPerLineDocsAsync`).
@@ -100,13 +106,13 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   doc (`ResumeLegacySingleDocPushAsync`). A failure between Holded issuing a doc and that
   write can still mint a second one; nothing guards that window, by the small-scale rule.
 - **A header edit never moves a claim between budget years** once submitted
-  (`Services/ExpenseReportService.cs:314`).
+  (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1113`, `Services/ExpenseReportService.cs:1682`);
+  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1353`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
-  (`Services/ExpenseReportService.cs:937`).
-- **The drain does nothing without a Holded key** (`Services/ExpenseReportService.cs:1210`), and a
-  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:370`).
+  (`Services/ExpenseReportService.cs:968`).
+- **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a
+  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:406`).
 
 ## 5. Seams — specified but unbuilt
 
@@ -171,6 +177,8 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **Finance admins hold every coordinator capability.** They may endorse and coordinator-reject
   in any category; the audit entry names them as finance admin. Peter confirmed this
   2026-09-26 — run 2's finding 1.
+- **Expenses has no member nav entry.** `/Expenses` is reached from the Budget pages and the
+  approval email; the top nav has no room. Peter confirmed this 2026-10-16 — run 3's finding 18.
 - **The review queue renders in the admin shell for admin-role users and the member shell for
   everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
   filters itself.
@@ -184,3 +192,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
 | 2 | 2026-09-26 | Finance admins endorse; approval email failure no longer fails the approval; read interface folded; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
+| 3 | 2026-10-13 | Docs and guide trued to the code; dead attachment link and resx keys gone; coordinator check asked of Teams; the queue shows every claim its viewer can sign off; GDPR export and merged-member timeline completed | peterdrier/Humans#1973 |

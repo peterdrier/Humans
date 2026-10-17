@@ -13,7 +13,7 @@ namespace Humans.Expenses.Authorization;
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>
-internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budgetService, ITeamServiceRead teamService)
+internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamServiceRead teamService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(
@@ -95,11 +95,12 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
 
     private async Task<bool> IsCoordinatorOfReportCategoryAsync(Guid userId, ExpenseReportDto report)
     {
-        var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
+        // No budget category (an account outside the budget) means no coordinator route at all.
+        if (report.BudgetCategoryId is not { } categoryId) return false;
+        var category = await budgetService.GetCategoryByIdAsync(categoryId);
         if (category?.TeamId is null)
             return false;
 
-        var teamsById = await teamService.GetTeamsAsync();
-        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, category.TeamId.Value, userId);
+        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId);
     }
 }

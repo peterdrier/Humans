@@ -40,7 +40,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | Status | ApplicationStatus | Current state (Submitted, Approved, Rejected, Withdrawn), stored as string |
 | Motivation | string (4000) | Required motivation statement |
 | AdditionalInfo | string? (4000) | Optional additional information |
-| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Nowhere or another Burn. No configured max length. |
+| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Elsewhere or another Burn; maximum 2000 characters. |
 | RoleUnderstanding | string? | Asociado-only: applicant's understanding of the asociado role and why they want it. No configured max length. |
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
@@ -248,9 +248,11 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+Approval and rejection share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
+- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures. The shared Asociado contribution prompt names Elsewhere in all six cultures, including profile editing.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 
@@ -271,6 +273,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - **Assembly votes — the roster** is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentServiceRead.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
 - **A Draft is invisible to members.** `GetVotesForMemberAsync` omits it and `GetVoteForMemberAsync` answers null for it, so knowing a draft's id is not a way to read its official text before the Board opens it.
+- Assembly-vote draft Create/Edit reject binding errors before mapping or saving, and display field errors. A malformed kind cannot become the valid YesNo default or delete a ranked draft's options; rejected forms write no audit entry.
 - **A ranked draft is publishable only when every option carries a label in the vote's official culture** — a keyed-but-unlabelled option would open as a blank line on a binding ballot.
 - **Only roster rows with `IsOfficial = true`** contribute to the official result. Indicative ballots are tallied separately and never merged.
 - **A ballot** can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision`, preserve `CastAt`, and append a history row. Nothing is ever deleted.
@@ -352,7 +355,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 - **Architecture tests:** this section has no architecture test project of its own; the solution-wide rules in `tests/Humans.Web.Tests/Architecture/` cover it, including `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.
 - `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` and `MembershipQuery` hold no cache.
-- `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IMembershipQuery` (a thin pass-through over `ITeamServiceRead` + `IRoleAssignmentServiceRead`, used to break the DI cycle with `ISystemTeamSync`), `IUserServiceRead`, `ILegalDocumentSyncServiceRead`, and `IConsentServiceRead` (resolved lazily via `IServiceProvider` to break a second cycle).
+- `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IMembershipQuery` (a thin pass-through over `ITeamServiceRead` + `IRoleAssignmentServiceRead`, used to break the DI cycle with `ISystemTeamSync`), `IUserServiceRead`, `ILegalDocumentSyncService`, and `IConsentService` (resolved lazily via `IServiceProvider` to break a second cycle).
 - `IApplicationRepository` (impl `src/Sections/Humans.Governance/Data/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
 - Application writes update only the root and append new transition history; existing history and Board votes are not rewritten. Finalization still deletes the application's votes in that save.
@@ -367,6 +370,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IApplicationServiceRead` (this section's own `SectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
+
+`Section` also declares this queue’s Area-label resource key and page-path aliases; Issues discovers both with the queue.
 
 Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle

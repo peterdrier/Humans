@@ -1,10 +1,12 @@
 using Humans.Auth.Contracts;
+using Humans.AuditLog.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 using Humans.Base.Helpers;
@@ -20,7 +22,8 @@ internal sealed class UserService(
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IFileStorage fileStorage,
     IClock clock,
-    ILogger<UserService> logger) : IUserServiceInternal, IUserDataContributor
+    ILogger<UserService> logger,
+    IAuditLogService audit) : IUserServiceInternal, IUserDataContributor
 {
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
@@ -222,19 +225,17 @@ internal sealed class UserService(
     // --- User writes ---
 
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
     {
-        // Status is per-address (#687): it belongs to the canonical Google email — the address
-        // sync actually targets — not the user. Resolve the SAME target as the sync services
-        // (GoogleWorkspaceSyncService.TryGetGoogleEmail): verified IsGoogle row, else the verified
-        // provider (OAuth) fallback. Stamping the fallback row keeps suppression working for users
-        // with no IsGoogle row (~pre-#687). No such address → nothing to stamp.
+        // Vendor results belong to the row that was attempted, even if the user switched
+        // Google address while the request ran. Legacy callers may still select the current
+        // verified Google/OAuth address by omitting the row id.
         var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
-            ?? emails
-                .Where(e => e.IsVerified && e.Provider != null)
-                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
+        var googleRow = googleEmailId is { } targetId
+            ? emails.FirstOrDefault(e => e.Id == targetId && e.IsVerified)
+            : emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
+                ?? emails.Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         if (googleRow is null)
             return false;
 
@@ -287,7 +288,8 @@ internal sealed class UserService(
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 
@@ -332,6 +334,9 @@ internal sealed class UserService(
         // FirstName/LastName, so they stay Bare. The repository derives User.State from the
         // row it persists.
         await repo.AddAsync(profile, ct);
+        if (actorUserId.HasValue)
+            await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+                "Created missing profile through admin backfill.", actorUserId.Value);
         InvalidateClaims(userId);
         return true;
     }
@@ -448,7 +453,8 @@ internal sealed class UserService(
             await repo.AddAsync(profile, ct);
         }
 
-        var previousPictureContentType = profile.ProfilePictureContentType;
+        var previousPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
 
         profile.BurnerName = command.BurnerName;
         profile.FirstName = command.FirstName;
@@ -496,42 +502,94 @@ internal sealed class UserService(
             profile.DateOfBirth = null;
         }
 
+        // Every upload lands on a fresh key, so the previous bytes survive until the editor deletes
+        // them after this save commits.
         var pictureMutation = command.PictureMutation;
+        string? newPictureKey = null;
         if (pictureMutation == UserProfilePictureMutation.Set
             && profilePictureData is not null && command.ProfilePictureContentType is not null)
         {
             try
             {
-                await fileStorage.SaveAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(profile.Id, command.ProfilePictureContentType),
-                    profilePictureData, ct);
+                newPictureKey = ProfilePictureKeys.NewVersioned(profile.Id, command.ProfilePictureContentType);
+                await fileStorage.SaveAsync(newPictureKey, profilePictureData, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex,
                     "Failed to write profile picture for {ProfileId}; preserving the previous picture metadata",
                     profile.Id);
+                newPictureKey = null;
                 pictureMutation = UserProfilePictureMutation.None;
             }
         }
 
-        profile.ProfilePictureContentType = pictureMutation switch
+        switch (pictureMutation)
         {
-            UserProfilePictureMutation.Remove => null,
-            UserProfilePictureMutation.Set => command.ProfilePictureContentType,
-            _ => profile.ProfilePictureContentType,
-        };
+            case UserProfilePictureMutation.Remove:
+                profile.ProfilePictureContentType = null;
+                profile.ProfilePictureStorageKey = null;
+                break;
+            case UserProfilePictureMutation.Set:
+                profile.ProfilePictureContentType = command.ProfilePictureContentType;
+                profile.ProfilePictureStorageKey = newPictureKey;
+                break;
+        }
 
         // Bare->Active promotion happens in the repository, which re-derives User.State from the
         // saved names and carries any existing suspension forward.
-        await repo.UpdateAsync(profile, ct);
+        try
+        {
+            await repo.UpdateAsync(profile, ct);
+        }
+        catch when (newPictureKey is not null)
+        {
+            await DeleteUnreferencedPictureAsync(profile.Id, newPictureKey);
+            throw;
+        }
+
+        // Delete the superseded file before the fallible post-commit steps below, so a throw there
+        // cannot orphan it (the old key is no longer in the DB).
+        var currentPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
+        if (previousPictureKey is not null
+            && !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
+        {
+            await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
+        }
+
         await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
 
-        return new UserProfileSaveResult(
-            profile.Id,
-            previousPictureContentType,
-            profile.ProfilePictureContentType);
+        return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+    }
+
+    private async Task DeleteSupersededPictureAsync(Guid profileId, string key)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
+                profileId);
+        }
+    }
+
+    // The metadata save failed, so the freshly written file is unreferenced; the previous picture is untouched.
+    private async Task DeleteUnreferencedPictureAsync(Guid profileId, string key)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete unreferenced profile picture for {ProfileId} after a failed save", profileId);
+        }
     }
 
     public async Task SaveDietaryMedicalAsync(
@@ -575,7 +633,10 @@ internal sealed class UserService(
         return new UserProfileAnonymizeResult(
             anonymized,
             profile?.Id,
-            profile?.ProfilePictureContentType);
+            profile is null
+                ? null
+                : ProfilePictureKeys.Resolve(
+                    profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
     }
 
     public async Task<bool> SaveProfileVolunteerHistoryAsync(
@@ -664,8 +725,10 @@ internal sealed class UserService(
 
         var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
 
-        _ = await repo.GetByIdAsync(userId, ct)
+        var user = await repo.GetByIdAsync(userId, ct)
             ?? throw new InvalidOperationException("User not found.");
+        if (UserStateEvaluator.IsTombstone(user))
+            throw new InvalidOperationException("Cannot add email addresses to a deleted or merged account.");
 
         var now = clock.GetCurrentInstant();
         var row = new UserEmail
@@ -685,8 +748,9 @@ internal sealed class UserService(
         };
 
         await repo.AddUserEmailAsync(row, ct);
-        await EnsurePrimaryInvariantAsync(row.UserId, ct);
-        await EnsureGoogleInvariantAsync(row.UserId, ct);
+        // The row has committed; finish its required invariant repairs after a browser disconnect.
+        await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
+        await EnsureGoogleInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
@@ -709,8 +773,9 @@ internal sealed class UserService(
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(email, ct);
-            await EnsurePrimaryInvariantAsync(userId, ct);
-            await EnsureGoogleInvariantAsync(userId, ct);
+            // Verification has committed; primary / Google repair is part of completing it.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
             changed = true;
         }
 
@@ -782,8 +847,9 @@ internal sealed class UserService(
 
         if (command.RepairInvariants)
         {
-            await EnsurePrimaryInvariantAsync(userId, ct);
-            await EnsureGoogleInvariantAsync(userId, ct);
+            // Removal has committed; leave the remaining verified addresses usable.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
         }
 
         return true;
@@ -794,6 +860,11 @@ internal sealed class UserService(
         UserEmailReconcilePlanCommand command,
         CancellationToken ct = default)
     {
+        var user = await repo.GetByIdAsync(userId, ct)
+            ?? throw new InvalidOperationException("User not found.");
+        if (UserStateEvaluator.IsTombstone(user))
+            throw new InvalidOperationException("Cannot reconcile email addresses for a deleted or merged account.");
+
         await repo.ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: command.DisplacedRowToDelete,
             rowToDelete: command.RowToDelete,
@@ -897,9 +968,14 @@ internal sealed class UserService(
     public async Task<int> BackfillParticipationsAsync(
         int year,
         List<(Guid UserId, ParticipationStatus Status)> entries,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
-        var count = await repo.BackfillParticipationsAsync(year, entries, ct);
+        var changed = await repo.BackfillParticipationsAsync(year, entries, ct);
+        foreach (var (userId, status) in changed)
+            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+                $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
+        var count = changed.Count;
         logger.LogInformation(
             "Backfilled {Count} participation records for year {Year}",
             count, year);
@@ -1119,12 +1195,11 @@ internal sealed class UserService(
         var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
         if (profileAnonymization.Anonymized &&
             profileAnonymization.ProfileId is { } profileId &&
-            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
+            profileAnonymization.PreviousProfilePictureKey is { } pictureKey)
         {
             try
             {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType), ct);
+                await fileStorage.DeleteAsync(pictureKey, ct);
             }
             catch (Exception ex)
             {

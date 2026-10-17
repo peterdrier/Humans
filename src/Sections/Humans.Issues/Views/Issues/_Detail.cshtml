@@ -1,4 +1,5 @@
 @model Humans.Issues.Models.IssueDetailViewModel
+@inject IssueSectionRouting Routing
 
 <div class="issue-detail">
     <div class="row">
@@ -165,7 +166,7 @@
                             @Html.AntiForgeryToken()
                             <select name="Section" class="form-select form-select-sm detail-auto-submit">
                                 <option value="">@Localizer["Issue_Unspecified"]</option>
-                                @foreach (var kvp in AreaLabelMap.Map.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
+                                @foreach (var kvp in Routing.AreaLabelResourceKeys.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
                                 {
                                     if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
                                     {

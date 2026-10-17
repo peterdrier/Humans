@@ -126,6 +126,9 @@ def run(prompt_file, report_file, deadline, repair=False):
                     # passes before this turn finishes. Never interrupt its work.
                     premature_completion = True
                     print("Native goal completed early; will reactivate after this turn", flush=True)
+                if goal_status == "blocked":
+                    print("Native goal blocked; returning committed work for draft validation", flush=True)
+                    return 2
                 if goal_status not in ("active", "complete"):
                     raise RuntimeError(f"Native goal stopped incomplete: {goal_status}")
             elif method == "thread/goal/cleared":
@@ -165,7 +168,7 @@ def run(prompt_file, report_file, deadline, repair=False):
 
 if __name__ == "__main__":
     try:
-        run(sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4:5] == ["repair"])
+        sys.exit(run(sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4:5] == ["repair"]) or 0)
     except (OSError, ValueError, KeyError, RuntimeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         sys.exit(1)

@@ -98,4 +98,9 @@ internal sealed class ParticipationBackfillViewModel
 {
     public int Year { get; set; }
     public string? CsvData { get; set; }
+    public bool Confirmed { get; set; }
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public bool IsPreview { get; set; }
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public int PreviewCount { get; set; }
 }

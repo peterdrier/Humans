@@ -22,7 +22,7 @@
     See Docs/health.md §5.
 
     Everything with no consumer outside the section stays internal: the outbox admin surface
-    (IEmailOutboxService), the facilitated-message builder, the body composer, the SMTP
+    (IEmailOutboxManagement), the facilitated-message builder, the body composer, the SMTP
     transport, the repository and the entity.
 
     References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there

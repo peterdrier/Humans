@@ -248,6 +248,7 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada com a plena.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>El nom no pot estar buit.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>Els noms històrics no poden superar els 256 caràcters.</value></data>
   <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>El nom '{0}' genera un slug reservat.</value></data>
   <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La temporada {0} no està oberta per a inscripcions.</value></data>
   <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Aquest barri ja té una temporada per a {0}.</value></data>
@@ -293,6 +294,7 @@
   <data name="Camps_Details_Next" xml:space="preserve"><value>Següent</value></data>
   <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Veure la pàgina de la temporada {0}</value></data>
   <data name="Camps_Details_MyMembership" xml:space="preserve"><value>La meva pertinença</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>Ets responsable el {0}.</value></data>
   <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Això no t’incorpora al campament. Uneix-t’hi primer mitjançant el procés del mateix campament i després informa Humans per accedir als rols del campament, les assignacions d’Entrada Anticipada i les notificacions.</value></data>
   <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Aquest campament indica que està complet per al {0} — encara pots sol·licitar unir-t’hi.</value></data>
   <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Sol·licitar unir-m’hi per al {0}</value></data>
@@ -338,4 +340,5 @@
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Missatge nou per a {0} - revisa el teu correu</value></data>
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Aquesta temporada no pertany a aquest barri.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Només es pot retirar una temporada pendent o activa.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Només es pot marcar com a plena una temporada activa.</value></data>
 </root>

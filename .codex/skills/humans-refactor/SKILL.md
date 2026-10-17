@@ -32,11 +32,12 @@ Build a section thesis with:
   `TeamInfo`, `CampInfo`, etc.)
 - read shards: any justified secondary read models keyed differently, such as
   Shifts by rota and by user; name the shard and its key
-- read surface: `I<Section>ServiceRead` or equivalent, with a goal of a small
+- read surface: the public `I<Section>Service` (Contracts), with a goal of a small
   primitive surface: primary read(s), settings, search, and occasionally one
   narrow lookup; projections and predicates are deletion candidates
-- write surface: the mutation/full service for commands; cross-section callers
-  should not depend on this unless they are truly orchestrating a mutation
+- write surface: the internal `I<Section>Management` for commands; a public
+  `I<Section>Write` exists only where another section genuinely must write
+  (preferred: the owning section's own view component/GUI control)
 - settings shape: a single `<Section>SettingsInfo` when section settings are
   read externally; avoid scattered settings scalar methods
 - cache semantics: which DTO facts are warm/cached, invalidation responsibilities,
@@ -54,9 +55,9 @@ Default repo-backed-section target:
 
 ```text
 Repository-backed section => read surface + write surface + primary <Section>Info.
-Cross-section reads use I<Section>ServiceRead and DTO facts.
-Cross-section writes/orchestration use the write/full surface only when the
-caller is intentionally performing a command.
+Cross-section reads use I<Section>Service and DTO facts.
+Cross-section writes use a section-owned component, or I<Section>Write as the
+reviewed fallback; I<Section>Management stays internal.
 ```
 
 ## Autonomy Floor
@@ -237,13 +238,13 @@ Push after each accepted commit. If a PR does not exist by the time the user ask
 - Prefer a real state engine for lifecycle transitions.
 - Penalize generic action/mode methods that are neither explicit domain verbs nor a real state engine.
 - Treat read/query shape objects differently from mutation mode dispatchers; shaped reads are acceptable when they collapse duplicated include/query shapes without growing unbounded.
-- For repo-backed sections, prefer a small `I<Section>ServiceRead`, a mutation/full write surface, and a primary `<Section>Info` DTO. Some sections may have explicit read shards keyed differently; document the shard and keep it cohesive.
+- For repo-backed sections, prefer a small public `I<Section>Service`, an internal `I<Section>Management` write surface, and a primary `<Section>Info` DTO. Some sections may have explicit read shards keyed differently; document the shard and keep it cohesive.
 - Treat the cached DTO as the source of truth for read facts. If a fact about the section is stable enough to be cached and broadly useful, prefer adding it to the existing `<Section>Info`/read shard over adding a service predicate/projection/scalar lookup.
 - Prefer adding properties/behavior to an existing canonical read DTO over creating a new interface/service/repository path. Do not treat this as DTO-bag score gaming when it removes service surface and DB reads.
-- Prefer canonical read services such as `IUserServiceRead`, `ITeamServiceRead`, and section view DTOs for cross-section reads.
-- Penalize cross-section dependencies on write/full services. If unavoidable,
-  call out the mutation/orchestration reason; otherwise move the caller to the
-  read surface and DTO facts. Existing exceptions should be explicit and
+- Prefer canonical public services such as `IUserService`, `ITeamService`, and section view DTOs for cross-section reads.
+- Penalize cross-section dependencies on any write surface. If unavoidable,
+  call out the reason; otherwise move the caller to the public
+  `I<Section>Service` and DTO facts. Existing exceptions should be explicit and
   grandfathered, not silently normalized.
 - Keep controllers thin, but allow UI-specific finite sorting/filtering/paging at the controller/view boundary.
 - Reject parameter-object refactors whose primary effect is hiding a long method signature. Accept a new input/command object only when it has cohesive domain meaning, public readable semantics appropriate to its boundary, validation/invariants, reuse across related flows, or a materially simpler call site.

@@ -248,6 +248,7 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Saison zurückgezogen.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Saison als voll markiert.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Der Name darf nicht leer sein.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>Frühere Namen dürfen höchstens 256 Zeichen lang sein.</value></data>
   <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>Der Name '{0}' erzeugt einen reservierten Slug.</value></data>
   <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>Die Saison {0} ist nicht für die Anmeldung geöffnet.</value></data>
   <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Das Camp hat bereits eine Saison für {0}.</value></data>
@@ -293,6 +294,7 @@
   <data name="Camps_Details_Next" xml:space="preserve"><value>Weiter</value></data>
   <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Saisonseite für {0} ansehen</value></data>
   <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Meine Mitgliedschaft</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>Du bist Lead für {0}.</value></data>
   <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Damit trittst du dem Camp nicht bei. Tritt zuerst über das eigene Verfahren des Camps bei und informiere dann Humans, um Zugang zu Camp-Rollen, Early-Entry-Zuteilungen und Benachrichtigungen zu erhalten.</value></data>
   <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Dieses Camp meldet sich für {0} als voll — du kannst trotzdem einen Beitritt beantragen.</value></data>
   <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Beitritt für {0} beantragen</value></data>
@@ -338,4 +340,5 @@
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Neue Nachricht für {0} - prüfe deine E-Mails</value></data>
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Diese Saison gehört nicht zu diesem Camp.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Nur eine ausstehende oder aktive Saison kann zurückgezogen werden.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Nur eine aktive Saison kann als voll markiert werden.</value></data>
 </root>

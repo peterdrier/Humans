@@ -159,6 +159,54 @@ public class BackdoorIssuesControllerTests
             .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
     // ==========================================================================
+    // Screenshot
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task Screenshot_streams_the_file_for_the_key_owner()
+    {
+        var id = Guid.NewGuid();
+        byte[] bytes = [1, 2, 3];
+        _issues
+            .GetScreenshotAsync(id, Arg.Is<IssueViewer>(v => v.UserId == KeyOwnerId), Arg.Any<CancellationToken>())
+            .Returns(new IssueScreenshot(bytes, "image/png"));
+
+        var result = await _sut.Screenshot(id);
+
+        var file = result.Should().BeOfType<FileContentResult>().Subject;
+        file.FileContents.Should().Equal(bytes);
+        file.ContentType.Should().Be("image/png");
+    }
+
+    [HumansFact]
+    public async Task Screenshot_is_404_when_the_issue_is_missing_or_out_of_reach()
+    {
+        _issues
+            .GetScreenshotAsync(Arg.Any<Guid>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns((IssueScreenshot?)null);
+
+        var result = await _sut.Screenshot(Guid.NewGuid());
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task List_points_ScreenshotUrl_at_the_key_authenticated_route()
+    {
+        var snapshot = MakeSnapshot() with { ScreenshotStoragePath = "uploads/issues/x/y.png" };
+        _issues
+            .GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([snapshot]));
+
+        var result = await _sut.List(status: null, category: null, section: null, assignee: null);
+
+        var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeAssignableTo<IEnumerable<object>>().Subject.Single();
+        row.GetType().GetProperty("ScreenshotUrl")!.GetValue(row)
+            .Should().Be($"/api/backdoor/issues/{snapshot.Id}/screenshot");
+    }
+
+    // ==========================================================================
     // List
     // ==========================================================================
 

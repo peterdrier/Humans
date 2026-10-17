@@ -1,8 +1,13 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Controllers;
+using Humans.Users.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -17,6 +22,8 @@ public sealed class UserNameSyncServiceTests : IDisposable
     private readonly UsersDbContext _dbContext;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly UserRepository _repo;
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly Guid _actorId = Guid.NewGuid();
     private readonly UserNameSyncService _service;
 
     public UserNameSyncServiceTests()
@@ -31,10 +38,38 @@ public sealed class UserNameSyncServiceTests : IDisposable
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
 
-        _service = new UserNameSyncService(_repo, userService);
+        _service = new UserNameSyncService(_repo, userService, _audit);
     }
 
     public void Dispose() => _dbContext.Dispose();
+
+    [HumansFact]
+    public async Task Profile_confirm_without_actor_refuses_before_backfill()
+    {
+        var users = Substitute.For<IUserServiceInternal>();
+        var controller = new ProfileBackfillAdminController(users,
+            NullLogger<ProfileBackfillAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        (await controller.Run(Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<UnauthorizedResult>();
+        users.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Confirm_without_actor_refuses_before_backfill()
+    {
+        var sync = Substitute.For<IUserNameSyncService>();
+        var controller = new UserNameBackfillAdminController(Substitute.For<IUserService>(), sync,
+            NullLogger<UserNameBackfillAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        (await controller.Run(Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<UnauthorizedResult>();
+        sync.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task Reports_a_human_whose_User_row_has_no_names_yet()
@@ -56,7 +91,14 @@ public sealed class UserNameSyncServiceTests : IDisposable
     {
         var userId = await SeedLegacyPairAsync("Sparkle", "Ada", "Lovelace");
 
-        var synced = await _service.SyncAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _audit.LogAsync(AuditAction.UserNamesBackfilled, nameof(User), userId,
+            Arg.Any<string>(), _actorId, null, null).Returns(async _ =>
+            {
+                var saved = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == userId,
+                    Xunit.TestContext.Current.CancellationToken);
+                saved.BurnerName.Should().Be("Sparkle");
+            });
+        var synced = await _service.SyncAllAsync(_actorId, Xunit.TestContext.Current.CancellationToken);
         synced.Should().Be(1);
 
         _dbContext.ChangeTracker.Clear();
@@ -66,9 +108,14 @@ public sealed class UserNameSyncServiceTests : IDisposable
         user.FirstName.Should().Be("Ada");
         user.LastName.Should().Be("Lovelace");
 
+        await _audit.Received(1).LogAsync(AuditAction.UserNamesBackfilled, nameof(User), userId,
+            Arg.Is<string>(description => !description.Contains("Lovelace", StringComparison.Ordinal)),
+            _actorId, null, null);
+
         // Re-running reports nothing left and moves nothing.
         (await _service.GetUnsyncedAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
-        (await _service.SyncAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _service.SyncAllAsync(_actorId, Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _audit.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]

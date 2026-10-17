@@ -303,4 +303,7 @@
   <data name="Issue_Section_Terminal" xml:space="preserve">
     <value>Der Bereich einer geschlossenen Meldung kann nicht geändert werden.</value>
   </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Screenshots dürfen höchstens 10 MB groß sein.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Screenshots müssen PNG-, JPEG- oder WebP-Bilder sein.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>Der Dateiname des Screenshots darf höchstens 256 Zeichen lang sein.</value></data>
 </root>

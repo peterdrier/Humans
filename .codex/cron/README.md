@@ -46,14 +46,26 @@ not an agent-written "done" flag. The process stays in dangerous mode
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
-Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
+Blocked goals return a distinct result: the wrapper records the actual commit
+count, checks the branch and clean tree, and runs final build/test gates. Substantive
+committed work is published as a draft with a blocked warning and Git commit list,
+while the service still fails. Other goal failures, missing completion reports,
+and disconnection fail without publishing. Dirty blocked runs never publish.
 
 If the final build or non-integration test gate fails, the wrapper starts short Codex repair passes, capped at
 `GATE_REPAIR_ATTEMPTS` (default `2`) in total across both gates. Each pass gets
-the failure excerpt, must stay on the current branch, commit its repair, and
-has a separate `GATE_REPAIR_BUDGET` (default `15m`). The wrapper reruns the
-build and tests after each successful repair and still refuses to publish
-unless the final tree is clean and both gates pass.
+a bounded diagnostic excerpt, must stay on the current branch, commit its repair,
+and has a separate `GATE_REPAIR_BUDGET` (default `15m`). Every pass consumes the
+shared attempt budget, including failed sessions and repairs that leave a gate
+red. The wrapper reruns build before tests after every repair. Dirty trees or
+branch changes stop publication; exhausted repairs publish a failed draft.
+Only a clean tree with both gates passing produces a ready PR.
+
+Repair prompts and failure warnings omit raw app-server JSON events and limit
+individual diagnostic lines and the complete excerpt. The complete log remains
+on disk. PR bodies are bounded to 60,000 UTF-8 bytes; shortened reports retain
+automation warnings and the runner's validation footer. The complete original
+report remains in `last-message-YYYY-MM-DD.md`, including on publication retry.
 
 The deadline is not a kill timer. Finishing the active task and the wrapper's
 final build/test gates may extend past it. The systemd unit uses
@@ -145,6 +157,39 @@ Check it's armed:
 systemctl --user list-timers humans-debt.timer
 ```
 
+## Pinning a runner release outside the disposable clone
+
+The script parses itself before refreshing the clone, so its current invocation
+survives that refresh. However, an `ExecStart` inside the clone uses whatever
+script the previous refresh left behind on the next invocation. To deploy a
+reviewed runner fix before its PR merges, provision an immutable release outside
+`WORK_DIR` and override only `ExecStart`:
+
+```bash
+# Run from a checkout containing the reviewed runner commit.
+runner_revision=$(git rev-parse HEAD)
+runner_release="$HOME/.humans-debt-runner/releases/$runner_revision"
+mkdir -p "$runner_release"
+git archive "$runner_revision" .codex/cron | tar -x -C "$runner_release"
+ln -s "$HOME/.humans-debt-runner/clone/.codex/cron/debt-runner.env" \
+  "$runner_release/.codex/cron/debt-runner.env"
+mkdir -p ~/.config/systemd/user/humans-debt.service.d
+cat > ~/.config/systemd/user/humans-debt.service.d/runner-release.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=$runner_release/.codex/cron/run-daily-debt.sh
+EOF
+systemctl --user daemon-reload
+systemctl --user cat humans-debt.service
+```
+
+Provision only while the service is idle. This leaves existing resource limits,
+timer settings, credentials, and the dedicated clone's branch intact. Clone
+refreshes cannot overwrite the release. Repeat with a newly reviewed revision
+to upgrade; the override remains pinned until explicitly changed. The pinned
+wrapper still reads the clone's existing environment file and runs the goal
+client from the refreshed clone.
+
 ## Testing a run manually
 
 Run a shorter work window while keeping the same completion and publication
@@ -213,7 +258,7 @@ resume. To remove entirely, also delete
 ## What it will and won't do
 
 - Never pushes to `main`. A green run produces a ready-for-review PR; an
-  unrepaired gate failure produces a draft PR for follow-up repair.
+  unrepaired gate failure or blocked goal produces a draft PR for follow-up review.
 - A bounded repair pass may be attempted after a gate failure. If the final
   build or test gate is still red, the runner pushes the committed branch and
   opens a draft PR with the failure warning and log excerpt so the follow-up

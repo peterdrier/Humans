@@ -34,7 +34,7 @@ public class ExpenseReportViewTests
         {
             Reports = [report],
             SubmitterNames = new Dictionary<Guid, string>(),
-            DepartmentNames = new Dictionary<Guid, string>(),
+            BookingLabels = new Dictionary<Guid, string>(),
             FailedHoldedPushReportIds = new HashSet<Guid>(),
         } : new ExpensesIndexViewModel { Reports = [report] };
 
@@ -67,6 +67,7 @@ public class ExpenseReportViewTests
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = Guid.NewGuid(),
+        HoldedAccountNumber = 0,
         BudgetCategoryId = Guid.NewGuid(),
         BudgetYearId = Guid.NewGuid(),
         Status = status,

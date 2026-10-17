@@ -51,7 +51,7 @@ internal static class WorkgroupRhythm
     /// <summary>Member mutations are frozen once a group ends, and before it is registered.</summary>
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    /// <summary>Meetings the group still has: not soft-deleted, and this is the only place that filters them.</summary>
+    /// <summary>Meetings not yet started, soonest first.</summary>
     public static IEnumerable<WorkgroupMeetingInfo> UpcomingMeetings(this WorkgroupInfo w, Instant now) =>
         w.Meetings.Where(m => m.StartUtc >= now).OrderBy(m => m.StartUtc);
 

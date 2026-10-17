@@ -32,9 +32,10 @@ section's own sync log, which other pages render for a resource or a person.
 | "Who is supposed to be in group X?" — asked *by* this section | answered by Teams and Camps | `IGoogleGroupMembershipSource.GetExpectedAsync` |
 | "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' pages and this section's audit page | `ITeamResourceService` |
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
-| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
+| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceServiceRead.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
 | "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
+| "Can the service account read this Drive folder?" | Workgroups (root-folder setting) | `IGoogleSyncServiceRead.IsFolderReachableAsync` |
 | "What did sync do to this resource / person?" | `/Google/Resource/{id}` and `/Google/Human/{id}` | `IGoogleSyncLogViewer` |
 | "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |
@@ -113,9 +114,8 @@ The shapes imply:
 
 ## 5. Seams
 
-- **No `ITeamResourceServiceRead`.** Teams' page services and Monitor take the full
-  `ITeamResourceService` for reads (`debt-ledger.yml`); the read split is the next
-  PR-sized cut and reshapes every item touching that interface.
+- **Resource reads have a narrow contract.** Monitor and other read-only callers use
+  `ITeamResourceServiceRead`; resource mutations remain on `ITeamResourceService`.
 - **`GoogleWorkspaceHealthCheck` calls `Google.Apis` directly** instead of a client
   interface (`debt-ledger.yml`); moving it behind a client is queued, so items touching
   the health check are shaped by it.
@@ -156,9 +156,9 @@ The shapes imply:
   enqueue and link, and this section depends on them (as `IGoogleGroupMembershipSource`) to
   learn expected membership. The interface lives here so the section never references
   Teams or Camps directly.
-- **`IGoogleGroupSync.ReconcileOneAsync` has a 4-parameter overload only for Hangfire**:
-  the scheduler binds the expression to a signature Hangfire can serialise; callers in
-  code use the 5-parameter one.
+- **Group sync queues the current signature.** Every Hangfire argument is explicit,
+  including `CancellationToken.None` and the original sync trigger. Legacy signature
+  overloads are forbidden by standing policy D13; jobs re-register at startup.
 - **`GoogleSyncOutboxProcessor` carries `[CrossSectionWrite]`** because marking the
   person's Google email valid/rejected is Users' data, written through Users' own
   `TrySetGoogleEmailStatusFromSyncAsync` — a declared, narrow write, not a leak.

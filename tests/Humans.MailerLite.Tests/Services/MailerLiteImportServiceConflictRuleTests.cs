@@ -31,7 +31,7 @@ public class MailerLiteImportServiceConflictRuleTests
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0));
 
         var plan = MakePlan("user@x.com", "bounced", SubscriberOutcome.VerifiedFlipToOptOut, userId);
-        await harness.Service.ApplyAsync(plan, ct: Xunit.TestContext.Current.CancellationToken);
+        await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
     }
@@ -57,7 +57,7 @@ public class MailerLiteImportServiceConflictRuleTests
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0)); // Humans is newer
 
         var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedKeepHumansPref, userId);
-        await harness.Service.ApplyAsync(plan, ct: Xunit.TestContext.Current.CancellationToken);
+        await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         await harness.Prefs.AssertNotUpdated(userId, MessageCategory.Marketing);
     }
@@ -83,7 +83,7 @@ public class MailerLiteImportServiceConflictRuleTests
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0));
 
         var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedFlipToOptOut, userId);
-        await harness.Service.ApplyAsync(plan, ct: Xunit.TestContext.Current.CancellationToken);
+        await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
     }

@@ -47,7 +47,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
     [ExternalWrite]
-    Task<GoogleResourceGrantOutcome> AddUserToTeamResourcesAsync(
+    Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default,
@@ -175,3 +175,16 @@ public enum GoogleResourceGrantOutcome
     /// <summary>A grant failed or the user has no eligible address.</summary>
     Failed
 }
+
+/// <summary>Vendor acceptance and the exact email row attempted by team provisioning.</summary>
+/// <param name="Outcome">Accepted only when at least one Drive grant succeeds and none fail.</param>
+/// <param name="UserId">Resolved owner of the attempted address.</param>
+/// <param name="GoogleEmailId">Attempted verified email row; required for Accepted.</param>
+/// <param name="Retryable">Whether any failed grant can be retried; local refusals are permanent.</param>
+/// <param name="ErrorMessage">Failure details for the outbox and operator diagnostics.</param>
+public sealed record GoogleResourceGrantResult(
+    GoogleResourceGrantOutcome Outcome,
+    Guid UserId,
+    Guid? GoogleEmailId = null,
+    bool Retryable = false,
+    string? ErrorMessage = null);

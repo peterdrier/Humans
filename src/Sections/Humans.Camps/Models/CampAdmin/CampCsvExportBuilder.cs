@@ -1,4 +1,5 @@
 using Humans.Base.Csv;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Models;
@@ -6,9 +7,9 @@ namespace Humans.Camps.Models;
 internal sealed record CampCsvExport(byte[] Content, string ContentType, string FileName);
 
 internal sealed class CampCsvExportBuilder(
-    ICampService campService, IUserServiceRead userService)
+    ICampService campService, IUserServiceRead userService, IAuditLogService audit)
 {
-    public async Task<CampCsvExport> BuildAsync(CancellationToken ct = default)
+    public async Task<CampCsvExport> BuildAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
@@ -20,6 +21,7 @@ internal sealed class CampCsvExportBuilder(
             .ToList();
         var leadUsers = await userService.GetUserInfosAsync(leadUserIds, ct);
 
+        var rowCount = 0;
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow(
@@ -63,9 +65,12 @@ internal sealed class CampCsvExportBuilder(
                     vibes,
                     camp.IsSwissCamp ? "Yes" : "No",
                     camp.TimesAtNowhere);
+                rowCount++;
             }
         });
 
+        await audit.LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+            $"Camp contact and lead list exported for {year}: {rowCount} rows", actorUserId);
         return new CampCsvExport(bytes, "text/csv", $"barrios-{year}.csv");
     }
 }

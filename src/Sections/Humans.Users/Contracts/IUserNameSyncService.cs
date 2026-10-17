@@ -14,9 +14,9 @@ public interface IUserNameSyncService : IApplicationService
 
     /// <summary>
     /// Re-persists each unsynced Profile, which mirrors its names onto the owning User row.
-    /// Returns the number of humans synced.
+    /// Audits each completed save with the acting admin. Returns the number of humans synced.
     /// </summary>
-    Task<int> SyncAllAsync(CancellationToken ct = default);
+    Task<int> SyncAllAsync(Guid actorUserId, CancellationToken ct = default);
 }
 
 /// <summary>One human whose User-side names have not been filled in yet.</summary>

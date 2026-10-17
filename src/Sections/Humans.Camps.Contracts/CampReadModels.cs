@@ -5,7 +5,7 @@ namespace Humans.Camps.Contracts;
 
 /// <summary>
 /// <see cref="PublicYear"/> is populated from Settings' active event year (falling back to
-/// the clock year when no event is active) — Camps no longer stores its own year.
+/// the clock year when no event is active).
 /// </summary>
 public sealed record CampSettingsInfo(
     int PublicYear,
@@ -16,7 +16,7 @@ public sealed record CampSettingsInfo(
 }
 
 /// <summary>
-/// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
+/// Canonical Camps read-model entry. One <see cref="CampInfo"/> per
 /// camp in the <c>CachingCampService</c> projection; year-keyed views like
 /// <see cref="ICampService.GetCampsForYearAsync"/> are filtered snapshots of
 /// this canonical per-camp cache, never separate cache entries.
@@ -41,13 +41,12 @@ public sealed record CampSettingsInfo(
 /// methods that flip those fields —
 /// <c>ICampManagement.SetEarlyEntryAsync</c>,
 /// <c>ICampManagement.RemoveCampMemberAsync</c>,
-/// <c>ICampManagement.LeaveCampMembershipAsync</c>, and the membership
+/// <c>ICampManagement.LeaveCampAsync</c>, and the membership
 /// confirm/withdraw paths — invalidate the affected camp via
 /// <c>ICampInfoInvalidator</c> inside the decorator, so the cached
 /// projection rebuilds with the current count on the next read. No bypass
 /// is possible because only the inner <c>CampService</c> /
-/// <c>CampRoleService</c> may touch <c>ICampRepository</c>
-/// (pinned by <c>CampsArchitectureTests</c>).
+/// <c>CampRoleService</c> may touch <c>ICampRepository</c>.
 /// </para>
 /// </remarks>
 public sealed record CampInfo(

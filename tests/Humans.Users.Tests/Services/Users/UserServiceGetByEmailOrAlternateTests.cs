@@ -35,7 +35,7 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
     }
 
     /// <summary>Stubs the repo reads <c>GetUserInfoAsync</c> needs once a match is found.</summary>

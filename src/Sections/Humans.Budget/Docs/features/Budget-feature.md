@@ -207,7 +207,7 @@ Outbound invoices to members/barrios:
   - Can add/edit/delete line items within own department only
   - Per-category unallocated remainder and progress bar
   - `IsRestricted` groups hidden from coordinator view
-  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which delegates to `GetEffectiveCoordinatorTeamIdsAsync` (includes child teams)
+  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which delegates to `GetEffectiveCoordinatorTeamIdsAsync`, which uses Teams’ `GetEffectiveBudgetCoordinatorTeamIdsAsync` policy (includes active child teams)
   - All changes audit-logged via existing BudgetAuditLog
 - **Public summary** at `/Budget/Summary` (#234):
   - All authenticated members see budget allocation pie chart (Chart.js doughnut)
@@ -252,7 +252,7 @@ Outbound invoices to members/barrios:
   - Upsert logic: existing auto-generated items updated on re-sync, not duplicated
   - (VAT is not stored as its own line item — settlement math lives in the cash-flow
     computation; no donation handling or quarter-boundary splitting exists in the sync)
-- **Projections** via `IBudgetService.GetTicketingProjectionEntriesAsync`:
+- **Projections** via `IBudgetManagement.GetTicketingProjectionEntriesAsync`:
   - Virtual (non-persisted) weekly entries for future weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday)
   - Each week projects `DailySalesRate` × days (plus the initial burst in the first week); the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive

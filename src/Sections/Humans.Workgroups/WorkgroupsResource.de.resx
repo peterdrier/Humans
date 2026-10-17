@@ -120,6 +120,7 @@
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Koordinatoren müssen bereits Mitglieder sein.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Du bist der letzte Koordinator; benenne einen Nachfolger, bevor du austrittst.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>Der Drive-Stammordner für Arbeitsgruppen ist noch nicht konfiguriert.</value></data>
+  <data name="Workgroups_Error_RootFolderUnreachable" xml:space="preserve"><value>Das Dienstkonto kann diesen Drive-Ordner nicht erreichen. Prüfe die ID und ob der Ordner mit ihm geteilt ist.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Das Erstellen des Drive-Ordners der Gruppe ist fehlgeschlagen; bitte versuche es erneut.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Das ist im aktuellen Status der Gruppe oder des Dokuments nicht möglich.</value></data>
   <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Systemprotokolleinträge können nicht bearbeitet oder gelöscht werden.</value></data>
@@ -217,8 +218,6 @@
   <data name="Workgroups_Board" xml:space="preserve"><value>Vorstand</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Nachfolger als Koordinator (du bist der letzte)</value></data>
   <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Koordinatoren speichern</value></data>
-  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>Nutzer-ID Koordinator 1</value></data>
-  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>Nutzer-ID Koordinator 2 (optional)</value></data>
   <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Status-Update anfragen</value></data>
   <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Eine kurze Frage (optional)</value></data>
   <data name="Workgroups_MarkDone" xml:space="preserve"><value>Als erledigt markieren</value></data>

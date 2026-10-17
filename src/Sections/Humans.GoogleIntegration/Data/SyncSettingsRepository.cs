@@ -34,7 +34,7 @@ internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegration
         return mode ?? SyncMode.None;
     }
 
-    public async Task<bool> UpdateModeAsync(
+    public async Task<SyncServiceSettings?> UpdateModeAsync(
         SyncServiceType serviceType,
         SyncMode mode,
         Guid actorUserId,
@@ -44,12 +44,12 @@ internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegration
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var setting = await ctx.SyncServiceSettings
             .FirstOrDefaultAsync(s => s.ServiceType == serviceType, ct);
-        if (setting is null) return false;
+        if (setting is null) return null;
 
         setting.SyncMode = mode;
         setting.UpdatedAt = updatedAt;
         setting.UpdatedByUserId = actorUserId;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return setting;
     }
 }

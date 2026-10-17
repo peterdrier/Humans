@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
@@ -37,7 +38,48 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _claimsCacheInvalidator,
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
+    }
+
+    [HumansFact]
+    public async Task ParticipationBackfill_AuditsOnlyCommittedFinalChanges_AndNoOpsOnRepeat()
+    {
+        var userId = Guid.NewGuid();
+        var attendedId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUser(attendedId);
+        Db.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = attendedId,
+            Year = 2025,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync
+        });
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        AuditLog.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            {
+                var saved = await Db.EventParticipations.AsNoTracking().SingleAsync(
+                    e => e.UserId == userId && e.Year == 2025, TestContext.Current.CancellationToken);
+                saved.Status.Should().Be(ParticipationStatus.NoShow);
+            });
+        List<(Guid UserId, ParticipationStatus Status)> entries =
+        [
+            (userId, ParticipationStatus.Ticketed), (userId, ParticipationStatus.NoShow),
+            (attendedId, ParticipationStatus.NotAttending)
+        ];
+
+        (await _service.BackfillParticipationsAsync(2025, entries, actorId, TestContext.Current.CancellationToken))
+            .Should().Be(1);
+        await AuditLog.Received(1).LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+            Arg.Is<string>(description => description.Contains("NoShow", StringComparison.Ordinal)
+                && description.Contains("2025", StringComparison.Ordinal)), actorId, null, null);
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
+        (await _service.BackfillParticipationsAsync(2025, entries, actorId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansTheory]
@@ -598,6 +640,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.LastName.Should().Be("Lovelace");
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Active);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -607,12 +650,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(userId);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        var actorId = Guid.NewGuid();
+        AuditLog.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            {
+                (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId,
+                    TestContext.Current.CancellationToken)).Should().BeTrue();
+            });
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId);
 
         var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().BeEmpty();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
+        await AuditLog.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            Arg.Any<string>(), actorId, null, null);
+        (await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId))
+            .Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -645,9 +700,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.MergedAt = Clock.GetCurrentInstant();
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -661,9 +717,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.Email = $"deleted-{userId:N}@deleted.local";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: Guid.NewGuid());
 
         (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -685,6 +742,111 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         row.UserId.Should().Be(userId);
         row.Email.Should().Be("legacy@example.com");
         row.IsVerified.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData("deleted", false, false)]
+    [InlineData("merged", true, false)]
+    [InlineData("deleted", true, true)]
+    [InlineData("merged", true, true)]
+    [InlineData("legacy-deleted", false, false)]
+    [InlineData("legacy-merged", true, false)]
+    public async Task EmailInsertion_Tombstone_DoesNotRecreatePersonalData(string kind, bool verified, bool reconcile)
+    {
+        var userId = Guid.NewGuid();
+        var user = SeedUser(userId);
+        user.State = kind switch { "deleted" => UserState.Deleted, "merged" => UserState.Merged, _ => UserState.Bare };
+        if (kind.Contains("deleted", StringComparison.Ordinal)) user.Email = $"deleted-{userId:N}@deleted.local";
+        if (string.Equals(kind, "legacy-merged", StringComparison.Ordinal)) user.Email = $"merged-{userId:N}@merged.local";
+        if (string.Equals(kind, "merged", StringComparison.Ordinal))
+        {
+            user.MergedAt = Clock.GetCurrentInstant();
+            user.MergedToUserId = Guid.NewGuid();
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Func<Task> act = async () =>
+        {
+            if (reconcile)
+                await _service.ApplyUserEmailReconcilePlanAsync(userId, new UserEmailReconcilePlanCommand(null, null, null,
+                    new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "recreated@example.com", IsVerified = verified }),
+                    TestContext.Current.CancellationToken);
+            else
+                await _service.AddUserEmailAsync(userId, new UserEmailAddCommand("recreated@example.com", IsVerified: verified),
+                    TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await Db.UserEmails.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("add")]
+    [InlineData("verify")]
+    [InlineData("remove")]
+    public async Task EmailWrite_DisconnectAfterCommit_StillRepairsPrimaryAndGoogle(string operation)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var target = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "target@example.com" };
+        var survivor = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "survivor@example.com", IsVerified = true };
+        var rows = new List<UserEmail>();
+        if (!string.Equals(operation, "add", StringComparison.Ordinal)) rows.Add(target);
+        if (string.Equals(operation, "remove", StringComparison.Ordinal))
+        {
+            target.IsVerified = target.IsPrimary = target.IsGoogle = true;
+            rows.Add(survivor);
+        }
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([]));
+        repository.GetUserEmailByIdAndUserIdAsync(target.Id, userId, Arg.Any<CancellationToken>()).Returns(target);
+        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<UserEmail>>(rows.ToList());
+        });
+        repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            rows.Add(call.Arg<UserEmail>());
+            await request.CancelAsync();
+        });
+        repository.UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            await request.CancelAsync();
+        });
+        repository.RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            rows.Remove(call.Arg<UserEmail>());
+            await request.CancelAsync();
+        });
+        repository.UpdateUserEmailsAsync(Arg.Any<IReadOnlyList<UserEmail>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+        var service = BuildWithUserRepository(repository);
+
+        if (string.Equals(operation, "add", StringComparison.Ordinal))
+            (await service.AddUserEmailAsync(userId, new UserEmailAddCommand(target.Email, IsVerified: true), request.Token))
+                .Added.Should().BeTrue();
+        else if (string.Equals(operation, "verify", StringComparison.Ordinal))
+            (await service.UpdateUserEmailAsync(userId, target.Id, new UserEmailUpdateCommand(MarkVerified: true), request.Token))
+                .Succeeded.Should().BeTrue();
+        else
+            (await service.RemoveUserEmailAsync(userId, target.Id, new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail), request.Token))
+                .Should().BeTrue();
+
+        request.IsCancellationRequested.Should().BeTrue();
+        var remaining = rows.Should().ContainSingle().Which;
+        remaining.IsVerified.Should().BeTrue();
+        remaining.IsPrimary.Should().BeTrue();
+        remaining.IsGoogle.Should().BeTrue();
     }
 
     [HumansFact]
@@ -720,16 +882,18 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType = "image/png";
+        profile.ProfilePictureStorageKey = "uploads/profile-pictures/versioned.png";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.AnonymizeProfileForDeletionAsync(userId, TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
         result.ProfileId.Should().Be(profileId);
-        result.PreviousProfilePictureContentType.Should().Be("image/png");
+        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/versioned.png");
 
         var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();
+        fresh.ProfilePictureStorageKey.Should().BeNull();
         fresh.FirstName.Should().Be("Deleted");
         fresh.LastName.Should().Be("User");
     }
@@ -765,5 +929,5 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _claimsCacheInvalidator,
             Substitute.For<IFileStorage>(),
             Clock,
-            NullLogger<UserService>.Instance);
+            NullLogger<UserService>.Instance, AuditLog);
 }

@@ -39,7 +39,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
-            .Where(r => r.Status == status && categoryIds.Contains(r.BudgetCategoryId))
+            .Where(r => r.Status == status && r.BudgetCategoryId != null && categoryIds.Contains(r.BudgetCategoryId.Value))
             // arch:db-sort-ok coordinator queue FIFO — oldest pending submissions surface first
             .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
@@ -97,6 +97,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         // (GetEditableReportAsync) and differs by actor — a finance admin correcting a report
         // on a member's behalf reaches past Draft. Re-deciding it here would silently no-op that.
         if (tracked is null) return;
+        tracked.HoldedAccountNumber = report.HoldedAccountNumber;
+        tracked.HoldedAccountId = report.HoldedAccountId;
         tracked.BudgetCategoryId = report.BudgetCategoryId;
         tracked.BudgetYearId = report.BudgetYearId;
         tracked.Note = report.Note;
@@ -175,15 +177,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         return attachments;
     }
 
-    public async Task<Guid> AddAttachmentAsync(
-        ExpenseAttachment attachment, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.ExpenseAttachments.Add(attachment);
-        await ctx.SaveChangesAsync(ct);
-        return attachment.Id;
-    }
-
     public async Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
         Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default)
     {
@@ -210,16 +203,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             ctx.ExpenseAttachments.Remove(replaced);
         await ctx.SaveChangesAsync(ct);
         return (true, replaced);
-    }
-
-    public async Task SetLineAttachmentAsync(
-        Guid lineId, Guid? attachmentId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var line = await ctx.ExpenseLines.FirstOrDefaultAsync(l => l.Id == lineId, ct);
-        if (line is null) return;
-        line.AttachmentId = attachmentId;
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)
@@ -276,9 +259,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved per section invariant.
-        // Draft has no UI Withdraw path (use Delete-while-Draft when that ships) and a direct
-        // POST should not silently succeed; Withdrawn is already terminal.
+        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved. Draft has no
+        // Withdraw path, so a direct POST must not succeed; Withdrawn is terminal.
         if (r.Status is ExpenseReportStatus.Draft
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;
@@ -323,7 +305,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<bool> ApproveAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
+        Guid reportId, Guid actorUserId, ExpenseBooking? overrideBooking, decimal? maxAmount,
         Instant approvedAt, Guid outboxEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -337,7 +319,13 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         r.ApprovedByUserId = actorUserId;
         r.ApprovedAt = approvedAt;
         r.UpdatedAt = approvedAt;
-        if (overrideCategoryId is { } cat) r.BudgetCategoryId = cat;
+        if (overrideBooking is { } booking)
+        {
+            r.HoldedAccountNumber = booking.HoldedAccountNumber;
+            r.HoldedAccountId = booking.HoldedAccountId;
+            r.BudgetCategoryId = booking.BudgetCategoryId;
+            r.BudgetYearId = booking.BudgetYearId;
+        }
         // Blank form field = null = no cap; the input is prefilled with the current cap,
         // so blanking it must clear a coordinator-set cap, not silently keep it.
         r.MaxAmount = maxAmount;

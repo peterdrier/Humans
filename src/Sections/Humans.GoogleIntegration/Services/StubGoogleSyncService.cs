@@ -31,6 +31,10 @@ internal sealed class StubGoogleSyncService(
         return result.FolderId;
     }
 
+    // The stub creates subfolders under any parent, so every folder counts as reachable.
+    public Task<bool> IsFolderReachableAsync(string folderId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(true);
+
     public Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))
@@ -43,14 +47,14 @@ internal sealed class StubGoogleSyncService(
         return Task.CompletedTask;
     }
 
-    public Task<GoogleResourceGrantOutcome> AddUserToTeamResourcesAsync(
+    public Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
-        return Task.FromResult(GoogleResourceGrantOutcome.Deferred);
+        return Task.FromResult(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Deferred, userId));
     }
 
     public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)

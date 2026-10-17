@@ -8,6 +8,7 @@
   src/Sections/Humans.Camps/Views/Camp/**
   src/Sections/Humans.Camps/Views/CampAdmin/**
   src/Sections/Humans.Camps/Views/CampCompliance/**
+  src/Sections/Humans.Camps/ViewComponents/**
   src/Sections/Humans.Camps/Domain/Camp.cs
   src/Sections/Humans.Camps/Domain/CampSeason.cs
   src/Sections/Humans.Camps/Domain/CampMember.cs
@@ -84,6 +85,8 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Leads can edit their own camp; CampAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
+- Manual historical names must contain 1–256 characters after trimming, both during registration and when added later. Invalid entries are refused before saving.
+- Audited browser edits, season changes, images, reactivation and deletion carry the signed-in actor through Camps’ service and decorator. Automated dev-persona season opt-in retains job attribution.
 - Can manually add or remove historical names from the Edit page, independent of the rename auto-log (`/Camps/{slug}/HistoricalNames/Add`, `/Camps/{slug}/HistoricalNames/Remove/{nameId}`)
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images
@@ -96,7 +99,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - Only available when target season is open
-- Creates a new CampSeason with Pending status
+- Creates a new CampSeason: Active if the camp has an earlier approved season (Active/Full/Withdrawn), else Pending
 - Copies camp identity but requires fresh season data review
 - Redirects to edit page
 
@@ -117,8 +120,9 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** the camp registration lifecycle is controlled
 
 **Acceptance Criteria:**
-- Open a season by year (adds to OpenSeasons list)
-- Close a season by year (removes from OpenSeasons list)
+- Season registration toggles and name-lock changes record the acting admin and target year after saving, with no audit for unchanged values.
+- Open a season by year (adds to OpenSeasons list), from the Barrios tab on `/Settings`
+- Close a season by year (removes from OpenSeasons list), from the same tab
 - Set name lock date per year (prevents name changes after date)
 - The publicly-shown year is not set here — it resolves from Settings' active event
 
@@ -247,9 +251,8 @@ CampSeason
 ├── MemberCount: int
 ├── SpaceRequirement: SpaceSize?
 ├── SoundZone: SoundZone?
-├── ContainerCount: int
-├── ContainerNotes: string?
 ├── ElectricalGrid: ElectricalGrid?
+├── EeSlotCount: int
 ├── ReviewedByUserId: Guid?
 ├── ReviewNotes: string?
 ├── ResolvedAt: Instant?
@@ -430,7 +433,7 @@ Transitions:
 - Full → Active (CampAdmin reactivates)
 - Withdrawn → Pending (CampAdmin reactivates; requires re-approval)
 
-Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation).
+Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.MarkSeasonFullAsync` → `CampSeason.MarkFull`, both guarded to accept only Active seasons).
 
 ## Authorization
 
@@ -462,6 +465,8 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `GET /Camps/{slug}/Season/{year}` | Camp detail for specific season |
 | `GET /Camps/Register` | Registration form |
 | `POST /Camps/Register` | Submit registration |
+| `GET /Camps/{slug}/Contact` | Facilitated contact form for camp leads |
+| `POST /Camps/{slug}/Contact` | Send facilitated message to camp leads |
 | `GET /Camps/{slug}/Edit` | Edit form (camp metadata only — links to Members for role/membership management) |
 | `POST /Camps/{slug}/Edit` | Submit edits |
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
@@ -488,7 +493,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
-| `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a Full season to Active |
+| `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a season (Full→Active, Withdrawn→Pending) |
 | `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |
 | `GET /Camps/Admin/Roles` | List role definitions |
 | `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |

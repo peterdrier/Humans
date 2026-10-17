@@ -1,4 +1,8 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Agent.Models;
+using System.ComponentModel.DataAnnotations;
+using NSubstitute;
 using Humans.Agent.Data;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Stores;
@@ -32,14 +36,16 @@ public class AgentSettingsServiceTests
         var store = new AgentSettingsStore();
         var clock = new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0));
         var repo = new AgentRepository(db, clock);
-        var service = new AgentSettingsService(repo, store, clock);
+        var audit = Substitute.For<IAuditLogService>();
+        var service = new AgentSettingsService(repo, store, clock, audit);
         await service.LoadAsync(Xunit.TestContext.Current.CancellationToken);
 
+        var actorId = Guid.NewGuid();
         await service.UpdateAsync(s =>
         {
             s.Enabled = true;
             s.DailyMessageCap = 60;
-        }, Xunit.TestContext.Current.CancellationToken);
+        }, actorId, Xunit.TestContext.Current.CancellationToken);
 
         store.Current.Enabled.Should().BeTrue();
         store.Current.DailyMessageCap.Should().Be(60);
@@ -47,6 +53,25 @@ public class AgentSettingsServiceTests
         var reloaded = await db.AgentSettings.AsNoTracking().FirstAsync(Xunit.TestContext.Current.CancellationToken);
         reloaded.Enabled.Should().BeTrue();
         reloaded.DailyMessageCap.Should().Be(60);
+        var entry = audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        entry[0].Should().Be(AuditAction.AgentSettingsUpdated);
+        entry[1].Should().Be("AgentSettings");
+        entry[4].Should().Be(actorId);
+        entry[2].Should().Be(Guid.Empty);
+        entry[3]!.ToString().Should().Contain("DailyMessageCap=60").And.Contain("SettingsId=1");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0, false)]
+    [Xunit.InlineData(64, true)]
+    [Xunit.InlineData(65, false)]
+    public void SettingsForm_ModelMustFitTheRequiredDatabaseColumn(int length, bool valid)
+    {
+        var model = new AdminAgentSettingsViewModel { Model = new string('m', length) };
+        var errors = new List<ValidationResult>();
+
+        Validator.TryValidateObject(model, new ValidationContext(model), errors, validateAllProperties: true)
+            .Should().Be(valid);
     }
 
     private static AgentDbContext CreateDb()

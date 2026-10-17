@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Budget.Contracts;
 using Humans.Tickets.Contracts;
 using NodaTime;
 
@@ -9,16 +10,31 @@ namespace Humans.Budget.Services;
 /// </summary>
 internal sealed class TicketingBudgetService(
     ITicketService ticketService,
-    IBudgetService budgetService,
+    IBudgetManagement budgetService,
     IClock clock,
     ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
 {
     public async Task<int> SyncActualsAsync(
         Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
+        var activeYear = await budgetService.GetActiveYearAsync();
+        if (activeYear is null || activeYear.Id != budgetYearId)
+            throw new InvalidOperationException(
+                "Ticketing actuals can only be synced into the active budget year.");
+
         try
         {
             var orders = await ticketService.GetTicketOrdersAsync(ct);
+
+            // No orders of any status for the year's event means a moved VendorEventId or missing
+            // sync state, not "everything refunded": write nothing rather than zero the year.
+            if (!orders.Any(o => IsYearTicketOrder(activeYear, o)))
+            {
+                logger.LogWarning(
+                    "Ticketing sync for budget year {YearId} found no orders for its event; stored actuals left untouched",
+                    budgetYearId);
+                return 0;
+            }
 
             var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
@@ -29,7 +45,7 @@ internal sealed class TicketingBudgetService(
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
-                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(activeYear, o))
                     .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                     .Where(g => g.Key < currentWeekMonday)
                     .OrderBy(g => g.Key)
@@ -95,6 +111,24 @@ internal sealed class TicketingBudgetService(
 
         return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
+
+    /// <summary>
+    /// Gross revenue of the year's paid ticket orders, by the same event rule as the actuals
+    /// sync; seeds the cash-flow runway.
+    /// </summary>
+    public async Task<decimal> GetGrossTicketRevenueAsync(BudgetYearDetail year, CancellationToken ct = default) =>
+        (await ticketService.GetTicketOrdersAsync(ct))
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(year, o))
+            .Sum(o => o.TotalAmount);
+
+    /// <summary>
+    /// The one event rule: a year with a configured <c>VendorEventId</c> counts only that
+    /// event's orders; an unconfigured year counts the current event's.
+    /// </summary>
+    private static bool IsYearTicketOrder(BudgetYearDetail year, TicketOrderInfo order) =>
+        year.VendorEventId is { } eventId
+            ? string.Equals(order.VendorEventId, eventId, StringComparison.Ordinal)
+            : order.IsCurrentEvent;
 
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
     private static LocalDate GetIsoMonday(LocalDate date)

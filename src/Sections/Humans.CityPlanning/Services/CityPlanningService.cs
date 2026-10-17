@@ -16,7 +16,7 @@ namespace Humans.CityPlanning.Services;
 
 /// <summary>
 /// The City Planning section service. Implements the cross-section surface
-/// (<see cref="ICityPlanningService"/> on the contracts leaf) and, beyond it, the polygon,
+/// (<see cref="ICityPlanningService"/> and <see cref="ICityPlanningWrite"/> on the contracts leaf) and, beyond it, the polygon,
 /// placement-phase, zone and export operations the section's own controllers call directly.
 /// Cross-section reads via ICampService/ITeamServiceRead/IUserServiceRead; settings
 /// writes record their actor through the Audit crosscut.
@@ -28,7 +28,7 @@ internal sealed class CityPlanningService(
     ICampService campService,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
-    IAuditLogService auditLog) : ICityPlanningService
+    IAuditLogService auditLog) : ICityPlanningService, ICityPlanningWrite
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 

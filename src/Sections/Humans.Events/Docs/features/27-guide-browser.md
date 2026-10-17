@@ -85,7 +85,7 @@ No new entities required. The browser reads from existing tables:
 | `EventVenue` | Venue names for individual events |
 | `EventFavourite` | Current user's favourited events |
 | `EventPreference` | Current user's excluded categories |
-| `EventGuideSettings` + Shifts' `EventSettings` (burn settings) | Date range and timezone for day derivation |
+| `EventGuideSettings` + Settings' `settings_event` (edition dates and timezone) | Date range and timezone for day derivation |
 
 ## Routes
 

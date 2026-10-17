@@ -41,15 +41,16 @@ internal interface IIssuesRepository : IRepository
 
     /// <summary>
     /// Deletes the supplied issue rows. Comments cascade via FK. No-op when the
-    /// list is empty. Returns the number of rows actually removed.
+    /// list is empty. Returns the number of rows actually removed and the storage keys of their
+    /// screenshots so the caller can drop the files.
     /// </summary>
-    Task<int> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+    Task<(int Deleted, IReadOnlyList<string> ScreenshotKeys)> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR Art. 17: hard-deletes the issues the user reported (comments cascade)
     /// and detaches them from comments and triage fields on other people's issues.
-    /// Returns the deleted issue ids so the caller can drop their screenshots.
+    /// Returns the storage keys of the deleted issues' screenshots so the caller can drop the files.
     /// </summary>
-    Task<IReadOnlyList<Guid>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
 }
 

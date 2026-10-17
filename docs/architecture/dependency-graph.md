@@ -14,7 +14,7 @@ this service-to-service diagram; the Backdoor node below represents only
 
 - Solid black arrow (`-->`) = ctor-injected dependency, eagerly resolved.
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
-- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary are collapsed onto the owning service node. The node names the full service; the read interface is the cross-section consumption surface.
+- Public contracts: edges into a section that go through its `I<Section>Service` (or `I<Section>Write`) contract are collapsed onto the owning service node. The node names the implementing service; the contract is the cross-section consumption surface.
 - Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
 - Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
@@ -63,6 +63,7 @@ graph LR
     classDef guide fill:#65a30d,color:#fff
     classDef rideshare fill:#f472b6,color:#000
     classDef workgroups fill:#e11d48,color:#fff
+    classDef preapprovals fill:#0f766e,color:#fff
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
@@ -207,6 +208,8 @@ graph LR
     Rideshare[RideshareService]:::rideshare
 
     Workgroup[WorkgroupService]:::workgroups
+
+    Preapproval[PreapprovalService]:::preapprovals
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -586,6 +589,14 @@ graph LR
     Workgroup --> Finance
     Workgroup --> Holded
 
+    %% Preapprovals
+    Preapproval --> Audit
+    Preapproval --> Email
+    Preapproval --> NotifEmitter
+    Preapproval --> User
+    Preapproval --> UEmail
+    Preapproval --> Finance
+
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles
     %% ═══════════════════════════════════
@@ -634,10 +645,10 @@ repository only), `EmailProblemsService`, `GoogleWorkspaceUserService`, `GuideCo
 Each pair below would fail constructor injection if both sides eager-injected the other.
 
 1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamServiceRead`; TeamService eagerly injects `IShiftAuthorizationInvalidator` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamServiceRead`.)
-2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
+2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentService` for required-docs-given checks. Both lazy because the cycle is two-way hot.
 3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamServiceRead`.
 4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamServiceRead`.
-5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampService`.
+5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningWrite>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampService`.
 6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketService` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
 
 Other notable one-way lazy edges:

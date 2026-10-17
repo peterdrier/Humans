@@ -154,4 +154,7 @@
   <data name="Issue_Section_Terminal" xml:space="preserve">
     <value>Cannot change the section of a closed issue.</value>
   </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Screenshots must be 10 MB or smaller.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Screenshots must be PNG, JPEG or WebP images.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>The screenshot filename must be 256 characters or fewer.</value></data>
 </root>

@@ -71,13 +71,15 @@ internal sealed class AdminLegalDocumentsController(
             return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", model);
         }
 
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
         var result = await adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
-            ToUpsertRequest(model, folderPath));
+            ToUpsertRequest(model, folderPath), actorUserId.Value);
         var document = result.Document;
 
-        var currentUser = await GetCurrentUserInfoAsync();
         logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
-            currentUser?.Id, document.Id, document.Name);
+            actorUserId.Value, document.Id, document.Name);
 
         if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Synced)
         {
@@ -167,17 +169,19 @@ internal sealed class AdminLegalDocumentsController(
             return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", model);
         }
 
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
         var document = await adminLegalDocumentService.UpdateLegalDocumentAsync(
             id,
-            ToUpsertRequest(model, folderPath));
+            ToUpsertRequest(model, folderPath), actorUserId.Value);
 
         if (document is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
-        logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", currentUser?.Id, id);
+        logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", actorUserId.Value, id);
 
         SetSuccess($"Legal document '{document.Name}' updated successfully.");
         return RedirectToAction(nameof(LegalDocuments));
@@ -187,14 +191,16 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchiveLegalDocument(Guid id)
     {
-        var document = await adminLegalDocumentService.ArchiveLegalDocumentAsync(id);
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
+        var document = await adminLegalDocumentService.ArchiveLegalDocumentAsync(id, actorUserId.Value);
         if (document is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
-        logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", currentUser?.Id, id);
+        logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", actorUserId.Value, id);
 
         SetSuccess($"Legal document '{document.Name}' archived.");
         return RedirectToAction(nameof(LegalDocuments));
@@ -204,11 +210,13 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncLegalDocument(Guid id)
     {
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
         try
         {
-            var result = await adminLegalDocumentService.SyncLegalDocumentAsync(id);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", currentUser?.Id, id);
+            var result = await adminLegalDocumentService.SyncLegalDocumentAsync(id, actorUserId.Value);
+            logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", actorUserId.Value, id);
 
             SetSuccess(result ?? "Document is already up to date.");
         }
@@ -225,7 +233,10 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string changesSummary)
     {
-        var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary);
+        var actorUserId = GetCurrentUserId();
+        if (actorUserId is null) return Unauthorized();
+
+        var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary, actorUserId.Value);
         if (!updated)
         {
             return NotFound();

@@ -29,7 +29,7 @@ The `/api/backdoor/*` machine APIs that serve another section (`agent`,
 `issues`, `feedback`, `store`, `surveys`, `finance`, `notifications`) are thin controller orchestrators over that
 section's contracts interface (`IAgentTranscriptRead`, `IIssueTriage`,
 `IFeedbackTriage`, `IStoreAccountingRead`, `ISurveyAnalysisRead`,
-`IExpenseReportServiceRead`, `IHoldedFinanceServiceRead`, `IBudgetServiceRead`, `INotificationInboxRead`) — Backdoor's own repository is
+`IExpenseReportService`, `IHoldedFinanceServiceRead`, `IBudgetService`, `INotificationInboxRead`) — Backdoor's own repository is
 never touched by them, and they carry no `###` heading here since each is
 documented in the section that owns the interface. `logs` alone reads
 `InMemoryLogSink` from `Humans.Base` and owns no data either.

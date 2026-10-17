@@ -42,7 +42,7 @@
     <ProjectReference Include="..\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
     <!--
-      Expense reports (peterdrier/Humans#1838, #1839): IExpenseReportServiceRead. Report/attachment
+      Expense reports (peterdrier/Humans#1838, #1839): IExpenseReportService. Report/attachment
       routes authorize via PolicyNames.ExpenseReportView — a named policy Expenses' own
       SectionPolicies registers — so the ExpenseReportOperation/ExpenseReportOperationRequirement
       pair and its handler stay internal there rather than becoming published surface here.

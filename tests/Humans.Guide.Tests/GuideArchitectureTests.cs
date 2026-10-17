@@ -26,8 +26,7 @@ public class GuideArchitectureTests
             .GetParameters().Select(p => p.ParameterType).ToList();
 
         // The absence half — NotContain(ITeamService) — was retired on Peter's call
-        // (peterdrier/Humans#1655, N1): analyzer HUM0032 (CrossSectionReadRule) enforces it at
-        // the call site, and an analyzer beats a test wherever one fits.
+        // (peterdrier/Humans#1655, N1); the split it guarded no longer exists.
         paramTypes.Should().Contain(typeof(ITeamServiceRead));
     }
 

@@ -19,7 +19,7 @@ internal sealed class CampController(
     ICampManagement campService,
     ICampContactService campContactService,
     ICampRoleService campRoleService,
-    ICityPlanningServiceRead cityPlanningService,
+    ICityPlanningService cityPlanningService,
     IShiftView shiftView,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
@@ -577,7 +577,7 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, CampEditViewModel model)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -602,7 +602,7 @@ internal sealed class CampController(
             model.HideHistoricalNames,
             model.SeasonId,
             model.Name,
-            MapToSeasonData(model)));
+            MapToSeasonData(model)), actorUserId: user.Id);
 
         if (!result.Succeeded)
         {
@@ -622,13 +622,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OptIn(string slug, int year)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        var result = await _campService.OptInToSeasonAsync(camp.Id, year);
+        var result = await _campService.OptInToSeasonAsync(camp.Id, year, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}: {ErrorKey}", camp.Id, slug, year, key);
@@ -647,13 +647,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(string slug, Guid seasonId)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        var result = await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
+        var result = await _campService.WithdrawSeasonAsync(camp.Id, seasonId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}: {ErrorKey}", camp.Id, slug, seasonId, key);
@@ -672,13 +672,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkFull(string slug, Guid seasonId)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        var result = await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full);
+        var result = await _campService.MarkSeasonFullAsync(camp.Id, seasonId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}: {ErrorKey}", camp.Id, slug, seasonId, key);
@@ -704,14 +704,16 @@ internal sealed class CampController(
         if (errorResult is not null)
             return errorResult;
 
-        if (string.IsNullOrWhiteSpace(name))
+        var result = await _campService.AddHistoricalNameAsync(camp.Id, name);
+        if (result.ErrorKey is { } key)
         {
-            SetError(campsLocalizer["Camps_Flash_NameRequired"].Value);
-            return RedirectToAction(nameof(Edit), new { slug });
+            logger.LogWarning("Adding a historical name failed for camp {CampId}: {Reason}", camp.Id, key);
+            SetError(campsLocalizer[key].Value);
         }
-
-        await _campService.AddHistoricalNameAsync(camp.Id, name);
-        SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
+        else
+        {
+            SetSuccess(campsLocalizer["Camps_Flash_HistoricalNameAdded"].Value);
+        }
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
@@ -745,7 +747,7 @@ internal sealed class CampController(
     [RequestSizeLimit(11 * 1024 * 1024)] // One 10 MB image plus multipart overhead; service enforces the image cap.
     public async Task<IActionResult> UploadImage(string slug, IFormFile? file)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -762,7 +764,7 @@ internal sealed class CampController(
             file.OpenReadStream(),
             file.FileName,
             file.ContentType,
-            file.Length);
+            file.Length, actorUserId: user.Id);
 
         if (result.Succeeded)
         {
@@ -781,13 +783,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteImage(string slug, Guid imageId)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        var result = await _campService.DeleteImageAsync(camp.Id, imageId);
+        var result = await _campService.DeleteImageAsync(camp.Id, imageId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Deleting image {ImageId} failed for camp {CampId} and slug {Slug}: {Reason}", imageId, camp.Id, slug, key);

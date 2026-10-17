@@ -200,6 +200,9 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ParticipationBackfill(ParticipationBackfillViewModel model)
     {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+
         if (!ModelState.IsValid)
         {
             SetError("Please provide CSV data with UserId and Status columns.");
@@ -208,10 +211,20 @@ internal sealed class TicketController(
 
         try
         {
-            var result = await participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData);
+            var result = await participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData, actorId.Value,
+                apply: model.Confirmed);
             if (!result.Succeeded)
             {
                 SetError(result.Message);
+                return View(model);
+            }
+
+            if (result.PreviewCsv is not null)
+            {
+                model.CsvData = result.PreviewCsv;
+                model.IsPreview = true;
+                model.PreviewCount = result.Count;
+                ModelState.Remove(nameof(model.CsvData));
                 return View(model);
             }
 

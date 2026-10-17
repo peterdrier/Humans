@@ -104,6 +104,15 @@ internal sealed partial class WorkgroupService
             : new(workgroup);
     }
 
+    /// <summary>The group, refused unless it exists and accepts member work.</summary>
+    private async Task<WorkgroupMutationResult<Workgroup>> RequireActiveAsync(Guid workgroupId, CancellationToken ct)
+    {
+        var result = await RequireAsync(workgroupId, ct);
+        if (result.Refusal is null && RequireAcceptsMemberWork(result.Value!) is { } stateRefusal)
+            return new(Refusal: stateRefusal);
+        return result;
+    }
+
     /// <summary>Soft-deleted meetings cannot be edited or deleted again.</summary>
     private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
     {
@@ -160,8 +169,24 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    private static WorkgroupRefusal? ValidateApplication(WorkgroupApplication application) =>
-        ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable);
+    private async Task<WorkgroupMutationResult<WorkgroupApplication>> ValidateApplicationAsync(
+        WorkgroupApplication application, CancellationToken ct)
+    {
+        if (ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable) is { } refusal)
+            return new(Refusal: refusal);
+        if (application.SecondCoordinatorUserId is not { } second)
+            return new(application);
+        var coordinator = await ResolveMemberTargetAsync(second, ct);
+        return coordinator is null
+            ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
+            : new(application with { SecondCoordinatorUserId = coordinator.Value });
+    }
+
+    private async Task<Guid?> ResolveMemberTargetAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.GetUserInfoAsync(userId, ct);
+        return user is null || user.IsTombstone ? null : user.Id;
+    }
 
     private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable)
     {

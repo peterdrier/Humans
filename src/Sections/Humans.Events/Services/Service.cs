@@ -1,4 +1,9 @@
 using System.Text.Json;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Csv;
+using Humans.Camps.Contracts;
+using static Humans.Events.Helpers.EventsLookupHelpers;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Humans.Events.Services.Dtos;
@@ -19,6 +24,8 @@ internal sealed class EventService(
     IEventRepository repo,
     ISettingsService settingsService,
     IUserServiceRead userService,
+    ICampService camps,
+    IAuditLogService audit,
     IEmailService emailService,
     EventsEmails emailMessages,
     IClock clock,
@@ -37,7 +44,7 @@ internal sealed class EventService(
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Settings-owned settings_event row via
-        // ISettingsService (cross-section supplier API, nobodies-collective/Humans#719).
+        // ISettingsService (cross-section supplier API).
         var burn = await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
         return new EventGuideSettingsView(
             Id: settings.Id,
@@ -251,6 +258,22 @@ internal sealed class EventService(
         return repo.SaveEventAsync(guideEvent, ct);
     }
 
+    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default)
+    {
+        guideEvent.Withdraw(clock);
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEvent.Id,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Withdrawn,
+            CreatedAt = guideEvent.LastUpdatedAt
+        };
+
+        return repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+    }
+
     public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
@@ -418,12 +441,62 @@ internal sealed class EventService(
         return events.Select(ToEventInfo).ToList();
     }
 
-    public async Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default)
+    public async Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        var events = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var settingsView = settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
-        return new ApprovedEventsExportInfo(events.Select(ToEventInfo).ToList(), settingsView);
+        var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct)).Select(ToEventInfo).ToList();
+        var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
+        var tz = GetTimeZone(eventSettings);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var submitters = await LoadSubmittersAsync(
+            userService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
+
+        var rows = new List<object?[]>();
+        foreach (var e in events.OrderBy(e => e.StartAt))
+        {
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var campName = ResolveCampName(camp) ?? "";
+            var venueName = e.VenueName ?? "";
+            var submitterName = e.CampId == null
+                ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
+                : "";
+
+            foreach (var occurrence in e.GetOccurrenceInstants(eventSettings?.GateOpeningDate, tz))
+            {
+                var local = ToLocalDateTime(occurrence, tz);
+                rows.Add([
+                    e.Id.ToString(),
+                    e.Title,
+                    e.Description,
+                    e.CategoryName,
+                    campName,
+                    venueName,
+                    submitterName,
+                    e.LocationNote ?? "",
+                    local.ToInvariantDate(),
+                    local.ToInvariantTime(),
+                    e.DurationMinutes,
+                    e.IsRecurring ? "Yes" : "No",
+                    e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    e.Status.ToString(),
+                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
+                    e.Host ?? "",
+                ]);
+            }
+        }
+
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow("Id", "Title", "Description", "Category", "CampName", "VenueName", "SubmitterName",
+                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt", "Host");
+            foreach (var row in rows)
+            {
+                csv.WriteRow(row);
+            }
+        });
+        await audit.LogAsync(AuditAction.EventGuideExported, "EventGuide", settings?.Id ?? Guid.Empty,
+            $"Approved event guide CSV exported: {rows.Count} rows", actorUserId);
+        return bytes;
     }
 
     private static EventCategoryView ToCategoryView(EventCategory c) => new(
@@ -572,10 +645,19 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var favourites = await repo.GetFavouritesForContributorAsync(userId, ct);
-        var preference = await repo.GetPreferenceAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var userIds = info?.AllUserIds ?? [userId];
+        var favourites = new List<EventFavourite>();
+        var preferences = new List<EventPreference>();
+        foreach (var id in userIds)
+        {
+            favourites.AddRange(await repo.GetFavouritesForContributorAsync(id, ct));
+            if (await repo.GetPreferenceAsync(id, ct) is { } preference)
+                preferences.Add(preference);
+        }
         var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => e.SubmitterUserId == userId);
+            .Where(e => userIds.Contains(e.SubmitterUserId));
+        var requestedPreference = preferences.FirstOrDefault(p => p.UserId == userId);
 
         var shaped = new
         {
@@ -609,11 +691,17 @@ internal sealed class EventService(
                     f.DayOffset,
                     CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
-            Preference = preference == null ? null : new
+            Preference = requestedPreference is null ? null : new
             {
-                preference.ExcludedCategorySlugs,
-                UpdatedAt = preference.UpdatedAt.ToIso8601()
-            }
+                requestedPreference.ExcludedCategorySlugs,
+                UpdatedAt = requestedPreference.UpdatedAt.ToIso8601()
+            },
+            AdditionalPreferences = preferences.Where(p => p.UserId != userId).OrderBy(p => p.UpdatedAt).Select(p => new
+            {
+                p.UserId,
+                p.ExcludedCategorySlugs,
+                UpdatedAt = p.UpdatedAt.ToIso8601()
+            }).ToList()
         };
 
         return [new UserDataSlice(Events, shaped)];

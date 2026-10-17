@@ -105,14 +105,105 @@ public class GuestAccountControllerTests
         Assert.Empty(_commPrefService.ReceivedCalls());
     }
 
-    [HumansFact]
-    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("stale-token")]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid(string? token)
     {
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
         var controller = BuildSut(user);
-        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, null));
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, token));
         await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
-            true, false, "Guest", Arg.Any<CancellationToken>());
+            true, false, "Guest", actorUserId: user.Id, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_AnonymousToken_DoesNotInventAHumanActor()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        _commPrefService.ValidateUnsubscribeToken("valid-token")
+            .Returns((TokenValidationStatus.Valid, user.Id, MessageCategory.Marketing));
+
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, "valid-token"));
+
+        await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
+            true, false, "MagicLink", actorUserId: null, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommunicationPreferences_PreMergeToken_UsesTheSurvivingAccount(bool update)
+    {
+        var archivedId = Guid.NewGuid();
+        var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Survivor" };
+        var controller = BuildSut(survivor);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var resolvedUser = await _userService.GetUserInfoAsync(survivor.Id);
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(resolvedUser));
+        _commPrefService.ValidateUnsubscribeToken("pre-merge-token")
+            .Returns((TokenValidationStatus.Valid, archivedId, MessageCategory.Marketing));
+        _commPrefService.GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
+        _ticketQueryService.GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+
+        if (update)
+        {
+            Assert.IsType<OkResult>(await controller.UpdatePreference(
+                MessageCategory.Marketing, false, false, "pre-merge-token"));
+            await _commPrefService.Received(1).UpdatePreferenceAsync(survivor.Id,
+                MessageCategory.Marketing, true, false, "MagicLink", actorUserId: null,
+                cancellationToken: Arg.Any<CancellationToken>());
+            await _commPrefService.DidNotReceive().UpdatePreferenceAsync(archivedId,
+                Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            Assert.IsType<ViewResult>(await controller.CommunicationPreferences("pre-merge-token"));
+            await _commPrefService.Received(1).GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>());
+            await _ticketQueryService.Received(1).GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>());
+            await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(archivedId, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update)
+    {
+        var userId = Guid.NewGuid();
+        var controller = BuildSut(new User
+        {
+            Id = userId,
+            DisplayName = "Deleted User",
+            Email = $"deleted-{userId:N}@deleted.local"
+        });
+        if (!signedIn)
+            controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        _commPrefService.ValidateUnsubscribeToken("pre-erasure-token")
+            .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
+        _commPrefService.GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
+        _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+
+        if (update)
+            Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(
+                MessageCategory.Marketing, false, false, "pre-erasure-token"));
+        else
+            Assert.IsType<ChallengeResult>(await controller.CommunicationPreferences("pre-erasure-token"));
+
+        await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+        await _commPrefService.DidNotReceive().UpdatePreferenceAsync(Arg.Any<Guid>(),
+            Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

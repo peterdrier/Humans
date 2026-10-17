@@ -61,6 +61,7 @@
     <Project Path="src/Sections/Humans.Tour/Humans.Tour.csproj" />
     <Project Path="src/Sections/Humans.Users/Humans.Users.csproj" />
     <Project Path="src/Sections/Humans.Users.Contracts/Humans.Users.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Preapprovals/Humans.Preapprovals.csproj" />
     <Project Path="src/Sections/Humans.Workgroups/Humans.Workgroups.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -114,6 +115,7 @@
     <Project Path="tests/Humans.Tour.Tests/Humans.Tour.Tests.csproj" />
     <Project Path="tests/Humans.Settings.Tests/Humans.Settings.Tests.csproj" />
     <Project Path="tests/Humans.Users.Tests/Humans.Users.Tests.csproj" />
+    <Project Path="tests/Humans.Preapprovals.Tests/Humans.Preapprovals.Tests.csproj" />
     <Project Path="tests/Humans.Workgroups.Tests/Humans.Workgroups.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>

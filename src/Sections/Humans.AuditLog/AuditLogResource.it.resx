@@ -68,6 +68,9 @@
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Camp aggiornato</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Camp eliminato</value></data>
   <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Stagione del Camp creata</value></data>
+  <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Iscrizioni ai camp aperte</value></data>
+  <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Iscrizioni ai camp chiuse</value></data>
+  <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Data di blocco dei nomi dei camp modificata</value></data>
   <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Stagione del Camp approvata</value></data>
   <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Stagione del Camp rifiutata</value></data>
   <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Stagione del Camp ritirata</value></data>
@@ -236,6 +239,7 @@
   <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Problema creato</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>Bonifico Sepa</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Trasferimento di pagamento Sepa prenotato</value></data>
+  <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Riga bancaria Sepa ignorata</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Periodo di collocamento urbanistico aperto</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Periodo di collocamento urbanistico chiuso</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Periodo di collocazione dei container aperto</value></data>
@@ -358,4 +362,17 @@
   <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Risorsa Google collegata</value></data>
   <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Risorsa Google scollegata</value></data>
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Impostazioni della risorsa Google aggiornate</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Token del calendario creato</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Token del calendario rinnovato</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Modalità di sincronizzazione modificata</value></data>
+  <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Impostazioni dell’assistente aggiornate</value></data>
+  <data name="Enum_AuditAction_LegalDocumentCreated" xml:space="preserve"><value>Documento legale creato</value></data>
+  <data name="Enum_AuditAction_LegalDocumentUpdated" xml:space="preserve"><value>Impostazioni del documento legale aggiornate</value></data>
+  <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Documento legale archiviato</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Versione del documento legale pubblicata</value></data>
+  <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Riepilogo della versione del documento legale aggiornato</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guida degli eventi esportata</value></data>
+  <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camp esportati</value></data>
+  <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Elenco della mensa esportato</value></data>
+  <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Monitoraggio dei volontari esportato</value></data>
 </root>

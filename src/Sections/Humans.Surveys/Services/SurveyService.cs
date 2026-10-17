@@ -1708,11 +1708,21 @@ internal sealed class SurveyService(
     /// query (not personal data linkable to the user) — the invitation slice is what such a person,
     /// and anyone who was only invited, gets instead. Prompts/labels are resolved in the response's own
     /// <see cref="SurveyResponse.Culture"/>, falling back to the survey's default culture.
+    /// Identified responses and invitations keep their original account IDs across merges;
+    /// export includes the survivor's full identity chain without linking anonymous answers.
     /// Every slice is always emitted (an empty list, never null) so the export keys stay stable.
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var responses = await repo.GetIdentifiedResponsesForUserAsync(userId, ct);
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        var userIds = user?.AllUserIds ?? [userId];
+        var responses = new List<SurveyResponse>();
+        var invitations = new List<SurveyInvitation>();
+        foreach (var id in userIds)
+        {
+            responses.AddRange(await repo.GetIdentifiedResponsesForUserAsync(id, ct));
+            invitations.AddRange(await repo.GetInvitationsForUserAsync(id, ct));
+        }
 
         // Load each distinct survey definition once (few at this scale) to resolve titles, prompts, and labels.
         var definitions = new Dictionary<Guid, Survey>();
@@ -1766,7 +1776,7 @@ internal sealed class SurveyService(
 
         // Authoring is open to any approved human, so a member's own surveys are their
         // personal data too — Drafts nobody else can see included.
-        var authored = (await repo.GetSurveysAuthoredByAsync(userId, ct))
+        var authored = (await repo.GetSurveysAuthoredByAsync(user?.Id ?? userId, ct))
             .OrderBy(s => s.CreatedAt)
             .Select(s => new
             {
@@ -1782,7 +1792,6 @@ internal sealed class SurveyService(
         // invited — or who answered under completion tracking — this is the only record of theirs
         // the section holds. The timestamps here are invitation-side and say nothing about when a
         // response arrived, so they do not correlate with an anonymous answer.
-        var invitations = await repo.GetInvitationsForUserAsync(userId, ct);
         foreach (var surveyId in invitations.Select(i => i.SurveyId).Distinct())
         {
             if (definitions.ContainsKey(surveyId)) continue;
@@ -1847,8 +1856,9 @@ internal sealed class SurveyService(
     }
 
     /// <summary>
-    /// Account merge: authorship follows the survivor. Responses and invitations are keyed by
-    /// the account merge's own paths; only the authored surveys need re-FKing here.
+    /// Account merge: authorship follows the survivor. Responses and invitations retain
+    /// their original account IDs; GDPR export follows the identity chain, and the deletion
+    /// pipeline erases each account in that chain.
     /// </summary>
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)

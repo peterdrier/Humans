@@ -4,7 +4,7 @@
    the <strong> markup in the resource value itself. *@
 @inject IHtmlLocalizer<ConsentResource> HtmlLocalizer
 @{
-    ViewData["Title"] = string.Format(Localizer["ConsentReview_Title"].Value, Model.DocumentName);
+    ViewData["Title"] = string.Format(Localizer["Consent_Review_Title"].Value, Model.DocumentName);
 }
 
 <nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
@@ -23,7 +23,7 @@
             </div>
             @if (Model.HasAlreadyConsented)
             {
-                <span class="badge bg-success fs-6">@Localizer["ConsentReview_AlreadyConsented"]</span>
+                <span class="badge bg-success fs-6">@Localizer["Consent_Review_AlreadyConsented"]</span>
             }
         </div>
 
@@ -36,9 +36,9 @@
                 ChangesSummary = Model.ChangesSummary,
                 SubmitAction = "Submit",
                 SubmitController = "Consent",
-                SubmitButtonText = Localizer["ConsentReview_GiveConsent"].Value,
+                SubmitButtonText = Localizer["Consent_Review_GiveConsent"].Value,
                 CancelHref = Url.Action("Index"),
-                CancelText = Localizer["ConsentReview_BackToList"].Value,
+                CancelText = Localizer["Consent_Review_BackToList"].Value,
             })" />
         }
         else
@@ -46,7 +46,7 @@
             @if (!string.IsNullOrEmpty(Model.ChangesSummary))
             {
                 <div class="alert alert-info">
-                    <strong>@Localizer["ConsentReview_ChangesInVersion"]</strong> @Model.ChangesSummary
+                    <strong>@Localizer["Consent_Review_ChangesInVersion"]</strong> @Model.ChangesSummary
                 </div>
             }
 
@@ -58,7 +58,7 @@
                 TabsId = "contentTabs",
                 ContentId = "contentTabsContent",
                 DefaultLanguage = defaultLang,
-                EmptyMessage = Localizer["ConsentReview_ContentNotAvailable"].Value,
+                EmptyMessage = Localizer["Consent_Review_ContentNotAvailable"].Value,
                 ContentCssClass = "tab-content border border-top-0 p-4 bg-white"
             };
             @if (orderedLanguages.Count > 0)
@@ -68,12 +68,12 @@
             else
             {
                 <div class="alert alert-secondary">
-                    <p class="text-muted mb-0">@Localizer["ConsentReview_ContentNotAvailable"]</p>
+                    <p class="text-muted mb-0">@Localizer["Consent_Review_ContentNotAvailable"]</p>
                 </div>
             }
 
             <div class="d-flex justify-content-between align-items-center mt-4">
-                <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["ConsentReview_BackToList"]</a>
+                <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Consent_Review_BackToList"]</a>
                 <div class="text-end text-muted">
                     @HtmlLocalizer["Consent_AgreedToBy", Model.ConsentedByFullName ?? string.Empty, Model.ConsentedAt.ToDate() ?? string.Empty, Model.ConsentedAt.ToTime() ?? string.Empty]
                 </div>

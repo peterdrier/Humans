@@ -7,8 +7,7 @@ namespace Humans.Camps.ViewComponents;
 /// One camp-search result row, keyed by camp id
 /// (nobodies-collective/Humans#1062). Callers hold the id their own search
 /// produced; Camps owns what a camp row looks like, resolves the public-year
-/// season name itself and fetches the slug the row links to. Replaces the
-/// projection <c>SearchService</c> used to build.
+/// season name itself and fetches the slug the row links to.
 /// </summary>
 /// <remarks>
 /// Public because Razor's compile-time discovery filters on public — an internal

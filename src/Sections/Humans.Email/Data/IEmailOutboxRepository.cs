@@ -10,7 +10,7 @@ namespace Humans.Email.Data;
 /// Repository for the <c>email_outbox_messages</c> table — the only
 /// non-test file that writes to the outbox DbSet. The email pause flag
 /// (<c>IsEmailSendingPaused</c>) now lives in the Settings section,
-/// accessed via <c>IEmailOutboxService.IsEmailPausedAsync</c>.
+/// accessed via <c>IEmailOutboxManagement.IsEmailPausedAsync</c>.
 /// </summary>
 /// <remarks>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
@@ -158,6 +158,12 @@ internal interface IEmailOutboxRepository : IRepository
     /// message body. Returns the number of rows deleted.
     /// </summary>
     Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reassigns all outbox rows from a merged user to the survivor, regardless
+    /// of delivery status. Repeating the operation is safe.
+    /// </summary>
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     // ==========================================================================
     // Daily send counts — durable denominator for spam-rate spikes (#1195).

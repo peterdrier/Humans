@@ -16,8 +16,8 @@ public class MembershipPartitionTests
     private readonly MembershipCalculator _service;
     private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
-    private readonly ILegalDocumentSyncServiceRead _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncServiceRead>();
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
     private readonly Dictionary<Guid, User> _usersById = new();
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();

@@ -30,21 +30,24 @@ internal interface IAdminLegalDocumentService : IApplicationService
     /// </summary>
     Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
+        Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     Task<LegalDocument?> UpdateLegalDocumentAsync(
         Guid documentId,
         AdminLegalDocumentUpsertRequest request,
+        Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task<LegalDocument?> ArchiveLegalDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
+    Task<LegalDocument?> ArchiveLegalDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<string?> SyncLegalDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
+    Task<string?> SyncLegalDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     Task<bool> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
+        Guid actorUserId,
         CancellationToken cancellationToken = default);
 }
 

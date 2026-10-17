@@ -384,7 +384,8 @@ writes, in this PR:
 
 The prose gate runs inside every `doctor.py commit` (`memory/process/no-derived-aggregates-in-docs.md`):
 a typed count of the list beneath it, a parenthesised count, a total row or a count in a heading
-refuses the commit; other numerals near plurals are printed as advisory. A count is wrong the first
+is printed as must-fix, and the run fixes it in its next commit; other numerals near plurals are
+printed as advisory. The gate checks; it never refuses the commit. A count is wrong the first
 time the list changes.
 
 ### Phase 6: Retro

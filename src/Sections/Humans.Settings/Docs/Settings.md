@@ -105,6 +105,8 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 
 ## Invariants
 
+- The event-name editor uses Elsewhere in its example.
+
 - **At most one `Active` row in `settings_event`; zero is legal** (a cycle ends
   by deactivation). Enforced in `Service.SaveEventSettingsAsync` via
   `AnyOtherActiveEventSettingsAsync(excludingId)`; `ServiceTests` covers it.

@@ -24,7 +24,7 @@ public sealed class Section : ISection, IUserPart, ICampPart
 {
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
 
-    // The camp detail page's hosted-events card (nobodies-collective/Humans#1815).
+    // The camp detail page's hosted-events card (peterdrier/Humans#1815).
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -66,11 +66,6 @@ public sealed class Section : ISection, IUserPart, ICampPart
         // reads served to other sections (e.g. the camp detail events card) hit
         // the existing approved-events cache. Interface segregation only; no new cache layer.
         services.AddSingleton<IEventService>(sp => sp.GetRequiredService<CachingEventService>());
-
-        // IEventViewInvalidator must resolve to the SAME Singleton instance
-        // that backs IEventManagement (§15e CRITICAL).
-        services.AddSingleton<IEventViewInvalidator>(sp =>
-            sp.GetRequiredService<CachingEventService>());
 
         // The guide settings projection carries the Settings-owned TimeZoneId, so a
         // Settings-side event-settings save has to refresh it (peterdrier/Humans#1627).

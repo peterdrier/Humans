@@ -1,4 +1,5 @@
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 
 namespace Humans.Users.Services;
@@ -10,7 +11,8 @@ namespace Humans.Users.Services;
 /// </summary>
 internal sealed class UserNameSyncService(
     IUserRepository repo,
-    IUserService userService) : IUserNameSyncService
+    IUserService userService,
+    IAuditLogService audit) : IUserNameSyncService
 {
     public async Task<IReadOnlyList<UnsyncedNameRow>> GetUnsyncedAsync(CancellationToken ct = default)
     {
@@ -48,7 +50,7 @@ internal sealed class UserNameSyncService(
         return rows;
     }
 
-    public async Task<int> SyncAllAsync(CancellationToken ct = default)
+    public async Task<int> SyncAllAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var unsynced = await GetUnsyncedAsync(ct).ConfigureAwait(false);
 
@@ -62,6 +64,8 @@ internal sealed class UserNameSyncService(
                 continue;
 
             await repo.UpdateAsync(profile, ct).ConfigureAwait(false);
+            await audit.LogAsync(AuditAction.UserNamesBackfilled, nameof(User), row.UserId,
+                "Copied Profile names onto the User row.", actorUserId).ConfigureAwait(false);
             synced++;
         }
 

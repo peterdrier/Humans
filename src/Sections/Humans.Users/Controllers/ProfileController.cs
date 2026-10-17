@@ -1,5 +1,4 @@
 using Humans.Users.Services;
-using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -44,7 +43,6 @@ namespace Humans.Users.Controllers;
 // the /Profile route prefix.
 [Authorize]
 [Route("Profile")]
-[CrossSectionWrite("Profile submits and edits the member tier application.")]
 internal sealed class ProfileController(
     IUserServiceInternal userService,
     UserManager<User> userManager,
@@ -65,7 +63,7 @@ internal sealed class ProfileController(
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
     ICampaignServiceRead campaignService,
-    IEmailOutboxServiceRead emailOutboxService,
+    IEmailOutboxService emailOutboxService,
     IClock clock,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,
@@ -863,7 +861,7 @@ internal sealed class ProfileController(
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
-                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id);
 
             return Ok();
         }

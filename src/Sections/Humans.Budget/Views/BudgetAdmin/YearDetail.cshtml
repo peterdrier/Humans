@@ -202,12 +202,15 @@
                             <strong role="button" data-bs-toggle="collapse" data-bs-target="#@projCollapseId">
                                 <i class="fa-solid fa-chart-line me-1"></i>Projection Parameters
                             </strong>
-                            <form asp-action="SyncTicketingBudget" asp-route-yearId="@year.Id" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Actuals
-                                </button>
-                            </form>
+                            @if (year.Status == BudgetYearStatus.Active)
+                            {
+                                <form asp-action="SyncTicketingBudget" asp-route-yearId="@year.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Actuals
+                                    </button>
+                                </form>
+                            }
                         </div>
                         <div id="@projCollapseId" class="collapse">
                             <form asp-action="UpdateTicketingProjection" asp-route-groupId="@group.Id" method="post">

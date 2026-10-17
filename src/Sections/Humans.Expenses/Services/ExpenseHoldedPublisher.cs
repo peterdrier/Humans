@@ -12,7 +12,6 @@ using NodaTime;
 namespace Humans.Expenses.Services;
 
 /// <summary>The resumable Holded document and attachment conversation for an approved expense report.</summary>
-[CrossSectionWrite("Publishes expense documents and creditor bindings through Finance and Holded contracts.")]
 internal sealed class ExpenseHoldedPublisher(
     IExpenseRepository repo,
     IFileStorage fileStorage,
@@ -26,7 +25,6 @@ internal sealed class ExpenseHoldedPublisher(
     public async Task PublishAsync(
         Guid outboxEventId,
         ExpenseReportDto report,
-        string submitterName,
         Instant now,
         CancellationToken ct)
     {
@@ -63,13 +61,17 @@ internal sealed class ExpenseHoldedPublisher(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
-        // Mirror the contact id onto the report (keeps the creditor-timeline reads working) before the
-        // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.
+        // Mirror the contact id onto the report (creditor-timeline reads need it) before the
+        // retryable doc-create + attachment steps; the supplier-account number is set in step 5.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
-        // Books items[].account directly at doc creation — the account IS the category. Null when
-        // the category has no active mapping; the doc still creates, just unbooked.
-        var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
+        // Books items[].account directly at doc creation to the account chosen on the report.
+        // Reports that predate the account column still resolve through their category's mapping;
+        // null when there is none, and the doc still creates, just unbooked.
+        var holdedAccountId = report.HoldedAccountId
+            ?? (report.BudgetCategoryId is { } categoryId
+                ? await holdedFinance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
+                : null);
 
         // 2–4. One purchase doc per bookable line, each carrying its one receipt. A report pushed
         // before per-line docs carries a report-level doc id instead: that push resumes onto its
@@ -83,7 +85,7 @@ internal sealed class ExpenseHoldedPublisher(
         else
         {
             pushedSummary = await PushPerLineDocsAsync(
-                report, submitterName, holdedContactId, holdedAccountId, now, ct);
+                report, holdedContactId, holdedAccountId, now, ct);
         }
 
         // 5. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
@@ -137,7 +139,6 @@ internal sealed class ExpenseHoldedPublisher(
     /// </summary>
     private async Task<string> PushPerLineDocsAsync(
         ExpenseReportDto report,
-        string submitterName,
         string holdedContactId,
         string? holdedAccountId,
         Instant now,
@@ -186,7 +187,7 @@ internal sealed class ExpenseHoldedPublisher(
                     new HoldedPurchaseDocumentInput
                     {
                         ContactId = holdedContactId,
-                        ContactName = submitterName,
+                        ContactName = string.IsNullOrWhiteSpace(report.PayeeName) ? "Unknown" : report.PayeeName,
                         Date = report.SubmittedAt ?? report.CreatedAt,
                         // The report's Note stays in Humans — the doc's breadcrumb back to its
                         // report is what the accountant needs, not member↔reviewer context. It
@@ -220,7 +221,13 @@ internal sealed class ExpenseHoldedPublisher(
         // AuditLogEntry.Description caps at 4,000 chars (job-name prefix included) and a failed
         // insert is swallowed, so an oversized summary loses the audit entry entirely.
         const int maxSummaryLength = 3500;
-        return full.Length <= maxSummaryLength ? full : full[..(maxSummaryLength - 1)] + "…";
+        if (full.Length <= maxSummaryLength)
+            return full;
+
+        var length = maxSummaryLength - 1;
+        if (char.IsHighSurrogate(full[length - 1]) && char.IsLowSurrogate(full[length]))
+            length--;
+        return full[..length] + "…";
     }
 
     /// <summary>

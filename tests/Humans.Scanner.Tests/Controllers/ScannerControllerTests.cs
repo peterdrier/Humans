@@ -25,7 +25,7 @@ public class ScannerControllerTests
         ITicketService tickets,
         IUserServiceRead? users = null,
         IEarlyEntryService? earlyEntry = null,
-        IConsentServiceRead? consents = null,
+        IConsentService? consents = null,
         IICalFeedService? calendarFeed = null,
         IEventService? events = null,
         ISettingsService? burnSettings = null)
@@ -34,7 +34,7 @@ public class ScannerControllerTests
             tickets,
             users ?? Substitute.For<IUserServiceRead>(),
             earlyEntry ?? Substitute.For<IEarlyEntryService>(),
-            consents ?? Substitute.For<IConsentServiceRead>(),
+            consents ?? Substitute.For<IConsentService>(),
             calendarFeed ?? Substitute.For<IICalFeedService>(),
             events ?? Substitute.For<IEventService>(),
             burnSettings ?? Substitute.For<ISettingsService>());
@@ -231,7 +231,7 @@ public class ScannerControllerTests
     {
         var tickets = TicketsWithAttendee(Attendee(matchedUserId: null));
         var earlyEntry = Substitute.For<IEarlyEntryService>();
-        var consents = Substitute.For<IConsentServiceRead>();
+        var consents = Substitute.For<IConsentService>();
         var users = Substitute.For<IUserServiceRead>();
         var ctrl = NewController(tickets, users: users, earlyEntry: earlyEntry, consents: consents);
 
@@ -260,7 +260,7 @@ public class ScannerControllerTests
         earlyEntry.GetForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new EarlyEntryRosterRow(userId, new LocalDate(2026, 6, 15), ["Teams: Gate"], false));
 
-        var consents = Substitute.For<IConsentServiceRead>();
+        var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { "Liability Waiver" });
 
@@ -340,7 +340,7 @@ public class ScannerControllerTests
     {
         var userId = Guid.NewGuid();
         var tickets = TicketsWithAttendee(Attendee(userId));
-        var consents = Substitute.For<IConsentServiceRead>();
+        var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<string>());
 

@@ -15,19 +15,19 @@ If you run a camp or a workshop space, you can submit events on behalf of your c
 
 ## Key pages at a glance
 
-- **Browse events** (`/Events/Browse`) — the full programme of approved events, searchable and filterable by category, venue, or camp
+- **Browse events** (`/Events/Browse`) — the full programme of approved events, searchable and filterable by day, category, venue, keyword, or favourites only
 - **Submit a camp event** (`/Events/Barrio/{slug}/Submit`) — submit an event on behalf of your camp (camp & workshop leads)
 - **Bulk upload** (`/Events/Barrio/{slug}/BulkUpload`) — upload a CSV of camp events all at once
 - **Moderation queue** (`/Events/Moderate`) — review pending submissions (moderators only)
 - **Dashboard** (`/Events/Dashboard`) — submission and approval statistics (moderators only)
-- **Export** (`/Events/Export`) — download a CSV of events for print production (moderators only)
-- **Settings & categories** (`/Events/Admin/Settings`) — submission window, categories, and venues (moderators only)
+- **Export** (`/Events/Export`) — download a CSV or the printable guide for print production (moderators only)
+- **Settings & categories** — the submission window on the Event guide tab of `/Settings` (`/Settings#event-guide`); categories and venues under `/Events/Admin` (moderators only)
 
 ## As a Volunteer
 
 ### Browse the programme
 
-Go to `/Events/Browse` to see every approved event in the guide. Filter by category, venue, or camp to find what interests you.
+Go to `/Events/Browse` to see every approved event in the guide. Filter by day, category, venue, keyword, or favourites only to find what interests you.
 
 ### Make it your own
 
@@ -43,7 +43,7 @@ If your event is sent back for edits or turned down, you'll get an email. You ca
 
 ### Check your submissions
 
-Your submitted events show their status: **Pending**, **Approved**, **Rejected**, **Resubmit requested**, or **Withdrawn**. You can withdraw a submission at any time.
+Your submitted events show their status: **Pending**, **Approved**, **Rejected**, **Resubmit requested**, or **Withdrawn**. You can withdraw a submission while it is pending or approved.
 
 ### Submitting events for your camp (camp & workshop leads)
 
@@ -61,13 +61,12 @@ Go to `/Events/Moderate` to see everything waiting for review. You can **approve
 
 ### Manage the programme
 
-From `/Events/Admin/Settings`, set the submission window (open and close dates) and the guide publish date. Manage event categories from `/Events/Admin/Categories` and the list of venues people can pick when submitting from `/Events/Admin/Venues`.
+On the Event guide tab of `/Settings` (`/Settings#event-guide`), set the submission window (open and close dates) and the guide publish date. Manage event categories from `/Events/Admin/Categories` and the list of venues people can pick when submitting from `/Events/Admin/Venues`.
 
 ### Dashboard and export
 
-`/Events/Dashboard` gives you the at-a-glance numbers. When it's time for print, download a CSV of approved events from `/Events/Export`.
+`/Events/Dashboard` gives you the at-a-glance numbers. When it's time for print, download a CSV or the printable guide of approved events from `/Events/Export`.
 
 ## Related sections
 
 - [Camps](Camps.md) — camp events are submitted under a camp; camp-lead authority is managed in Camps.
-- [Shifts](Shifts.md) — the submission window is tied to the active event's settings.

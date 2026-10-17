@@ -36,7 +36,8 @@ internal interface ICantinaRosterService : IApplicationService
     /// when there is no active event or no on-site humans for the week — the
     /// controller treats both as "no data" copy without branching.
     /// </summary>
-    Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default);
+    // CSV callers supply their actor so the service records the personal-data disclosure.
+    Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Builds the per-day matrix payload for the Cantina Daily Matrix page
@@ -50,5 +51,5 @@ internal interface ICantinaRosterService : IApplicationService
     /// (<c>CantinaRosterAssembler.WithSortedPeople</c>, in this section's
     /// <c>Models/</c>).
     /// </summary>
-    Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default);
+    Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default);
 }

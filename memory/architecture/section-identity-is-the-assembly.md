@@ -32,4 +32,4 @@ All of it went in nobodies-collective/Humans#1064.
 
 **Related:** [`sections-are-logical-units`](sections-are-logical-units.md),
 [`section-controllers-need-feature-provider`](section-controllers-need-feature-provider.md),
-[`section-read-write-split`](section-read-write-split.md).
+[`section-public-contract`](section-public-contract.md).

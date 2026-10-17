@@ -313,7 +313,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Cross-Section Dependencies
 
-- **Budget:** `IBudgetService.GetActiveYearAsync()`, `IBudgetService.GetCategoriesByYearAsync(yearId)`, `IBudgetService.GetCategoryAsync(id)` — read-only category lookups.
+- **Budget:** `IBudgetManagement.GetActiveYearAsync()`, `IBudgetManagement.GetCategoriesByYearAsync(yearId)`, `IBudgetManagement.GetCategoryAsync(id)` — read-only category lookups.
 - **Teams:** `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId)`, `ITeamService.IsCoordinatorOfBudgetCategoryAsync(userId, categoryId)` *(new narrow method)* — coordinator resolution and authz.
 - **Users/Identity:** `IUserService.GetByIdsAsync(...)` — display names for queues. `IUserService.GetMergedSourceIdsAsync(...)` — merge-tombstone follow-through on GDPR export.
 - **Holded** (new sibling section — see "Sibling section: Holded" below): `IHoldedClient.CreatePurchaseDocumentAsync`, `IHoldedClient.UpdatePurchaseDocumentTagsAsync`, `IHoldedClient.UploadAttachmentAsync`, `IHoldedClient.GetPurchaseDocumentAsync`. Holded ships its own section doc and its own narrow surface; Expenses is its first consumer.
@@ -339,7 +339,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 - `IbanFormatter` (`Humans.Application.Helpers.IbanFormatter`) — static helper with `Mask(string iban)` returning `NL75****123` format. Centralizes the masking pattern for logs/error/audit. A code-review rule (project-rule atom) forbids logging raw IBANs.
 - **Decorator decision — no caching decorator.** Member-facing routes are scoped to one user's own reports (cheap query). Coordinator and FinanceAdmin queues are admin-only, low-traffic. Same rationale as Budget / Finance / Governance.
 - **Cross-domain navs:** none. `BudgetCategoryId`, `SubmitterUserId`, `*ByUserId` are FK-only with no navigation properties.
-- **Cross-section calls** route through `IBudgetService` (read-only), `ITeamService` (read-only), `IUserService` (read-only), `IHoldedClient` (read + write — sibling section), and `IAuditLogService` (write-only).
+- **Cross-section calls** route through `IBudgetManagement` (read-only), `ITeamService` (read-only), `IUserService` (read-only), `IHoldedClient` (read + write — sibling section), and `IAuditLogService` (write-only).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs` pins the shape: no EF Core import in service, no cross-section repositories injected, no direct foreign-table access.
 - **Authorization** — resource-based (design-rules §11): `ExpenseReportAuthorizationHandler` + `ExpenseReportOperationRequirement` gate every per-report action against the report (submitter? coordinator of the report's category? FinanceAdmin? Admin?). The IBAN read/write is its own narrow handler (`IbanAccessHandler`) covering self / FinanceAdmin-in-report-context / Admin-on-admin-page.
 - **GDPR** — `ExpenseService.ContributeForUserAsync` registered as `IUserDataContributor`. Returns the user's reports, lines, attachment metadata (filename, size, content-type — bytes referenced via attachment URLs, not inlined), `Profile.Iban`, and audit-log entries where they're the actor or subject. Chain-follows merge tombstones.
@@ -391,7 +391,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 
 ## Sibling section: Holded
 
-Expenses depends on a thin **`Holded`** section that owns the HTTP client surface and configuration for the Holded API. Expenses is the first consumer; the broader Finance/Holded reconciliation described in `docs/sections/Finance.md` is a future evolution that will extend the same `IHoldedClient` surface (and may add tables of its own — `holded_transactions`, etc.) without breaking Expenses' contract.
+Expenses depends on a thin **`Holded`** section that owns the HTTP client surface and configuration for the Holded API. Expenses is the first consumer; the broader Finance/Holded reconciliation described in `src/Sections/Humans.Finance/Docs/Finance.md` is a future evolution that will extend the same `IHoldedClient` surface (and may add tables of its own — `holded_transactions`, etc.) without breaking Expenses' contract.
 
 **Owning section:** `Holded` (new top-level)
 **Owned tables:** none in v1.
@@ -400,7 +400,7 @@ Expenses depends on a thin **`Holded`** section that owns the HTTP client surfac
 
 In v1, `Holded` ships exactly four methods on `IHoldedClient` — those needed by Expenses: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`. API base URL and auth header are configured from `HOLDED_API_KEY` env var (no `appsettings.json` fallback). Errors are surfaced as a small `HoldedApiException` hierarchy distinguishing transient (retry-eligible) vs permanent (4xx) failures so consumers can choose retry policy.
 
-A separate `docs/sections/Holded.md` invariant doc captures: API key handling, retry semantics, EUR-only assumption, and the explicit out-of-scope statement that v1 has no transaction-pull / sync job (that lives in the future Finance section).
+A separate `src/Sections/Humans.Holded/Docs/Holded.md` invariant doc captures: API key handling, retry semantics, EUR-only assumption, and the explicit out-of-scope statement that v1 has no transaction-pull / sync job (that lives in the future Finance section).
 
 ## Future cleanup (out of v1)
 
