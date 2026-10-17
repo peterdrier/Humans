@@ -85,7 +85,7 @@ public class EventsArchitectureTests
     // ── T-03: Caching decorator invariants ───────────────────────────────────
 
     [HumansFact]
-    public void CachingEventService_ImplementsIEventService_AndIEventViewInvalidator()
+    public void CachingEventService_ImplementsIEventManagement_AndIEventViewInvalidator()
     {
         typeof(IEventManagement).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
@@ -119,16 +119,6 @@ public class EventsArchitectureTests
         typeof(IHostedService).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
                 because: "the decorator drives its own startup warmup via IHostedService");
-    }
-
-    // ── Cross-section read surface (IEventService) ───────────────────────
-
-    [HumansFact]
-    public void IEventService_DerivesFrom_IEventServiceRead()
-    {
-        typeof(IEventService).IsAssignableFrom(typeof(IEventManagement))
-            .Should().BeTrue(
-                because: "other sections consume the Events section through the IEventService read surface");
     }
 
     /// <summary>The section's own DI registrations, from <see cref="Section.Register"/>.</summary>

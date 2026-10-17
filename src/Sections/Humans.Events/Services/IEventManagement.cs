@@ -14,7 +14,7 @@ namespace Humans.Events.Services;
 internal interface IEventManagement : IApplicationService, IEventService
 {
     // ── Settings ─────────────────────────────────────────────────────────
-    // GetGuideSettingsAsync is declared on IEventService (cross-section read surface).
+    // GetGuideSettingsAsync is declared on IEventService (public contract).
     Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>Returns false if the selected event edition no longer exists; dependency failures propagate.</summary>
@@ -101,10 +101,10 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     // ── Browse / API ──────────────────────────────────────────────────────
     // GetApprovedEventsAsync and GetApprovedEventByIdAsync are declared on IEventService
-    // (cross-section read surface).
+    // (public contract).
 
     // ── Favourites ────────────────────────────────────────────────────────
-    // GetFavouriteEventIdsAsync is declared on IEventService (cross-section read surface).
+    // GetFavouriteEventIdsAsync is declared on IEventService (public contract).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     // dayOffset selects one occurrence of a recurring event; null means the whole event.
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);

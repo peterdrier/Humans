@@ -62,7 +62,7 @@ public sealed class Section : ISection, IUserPart, ICampPart
         services.AddSingleton<CachingEventService>();
         services.AddSingleton<IEventManagement>(sp => sp.GetRequiredService<CachingEventService>());
 
-        // Cross-section read surface — forwards to the same caching Singleton so
+        // Public contract — forwards to the same caching Singleton so
         // reads served to other sections (e.g. the camp detail events card) hit
         // the existing approved-events cache. Interface segregation only; no new cache layer.
         services.AddSingleton<IEventService>(sp => sp.GetRequiredService<CachingEventService>());

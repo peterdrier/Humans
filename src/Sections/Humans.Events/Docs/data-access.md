@@ -59,7 +59,7 @@ Cross-section calls via `ISettingsService` (active event settings),
 | Flat `EventVenueView` list | Static | yes | yes | yes |
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
-Implements `IEventManagement` (which extends the cross-section read surface
+Implements `IEventManagement` (which extends the public contract
 `IEventService`), `IEventViewInvalidator`, `IUserDataContributor`
 (delegates to the inner service, then refreshes the affected cache slice —
 erasure edits a cached row's Host name),

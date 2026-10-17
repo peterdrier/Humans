@@ -1,7 +1,7 @@
 namespace Humans.Events.Contracts;
 
 /// <summary>
-/// Cross-section read surface for the Events section. Exposes only the
+/// Public contract of the Events section. Exposes only the
 /// approved-event reads other sections need (e.g. the camp detail page's
 /// events card) without granting access to submission, moderation, or
 /// settings writes. Implemented by the same service that backs
