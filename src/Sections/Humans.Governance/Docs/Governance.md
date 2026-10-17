@@ -300,7 +300,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.
 - Board **cannot** assign the Admin role.
 - HumanAdmin **cannot** assign the Admin role.
-- A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved.
+- A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved. Concurrent submissions share a short in-process gate; only one is inserted, and the other returns `AlreadyPending`.
 - Non-roster members **cannot** cast or change a ballot, and **cannot** see any individual ballot.
 - Board **cannot** open, stop, extend, cancel or peek an assembly vote — all AdminOnly.
 - Nothing **can** bypass the embargo: no export, no Backdoor endpoint, and no Debug page returns ballot content for an Open vote.

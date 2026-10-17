@@ -106,24 +106,26 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
 
-        _service = new ApplicationDecisionService(
-            _repository,
-            _userService,
-            _roleAssignmentService,
-            AuditLog,
-            _emailService,
-            _emailMessages,
-            _userEmailService,
-            _notificationService,
-            _syncJob,
-            _metrics,
-            _navBadge,
-            _notificationMeter,
-            _votingBadge,
-            _cache,
-            Clock,
-            NullLogger<ApplicationDecisionService>.Instance);
+        _service = CreateService();
     }
+
+    private ApplicationDecisionService CreateService(IApplicationRepository? repository = null) => new(
+        repository ?? _repository,
+        _userService,
+        _roleAssignmentService,
+        AuditLog,
+        _emailService,
+        _emailMessages,
+        _userEmailService,
+        _notificationService,
+        _syncJob,
+        _metrics,
+        _navBadge,
+        _notificationMeter,
+        _votingBadge,
+        _cache,
+        Clock,
+        NullLogger<ApplicationDecisionService>.Instance);
 
     // --- Submit flow ---
 
@@ -184,6 +186,63 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_ConcurrentPosts_CreateOnlyOneSubmittedApplication()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pause = new PauseFirstApplicationSave();
+        var options = new DbContextOptionsBuilder<GovernanceDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var repository = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
+        var userId = Guid.NewGuid();
+        var first = CreateService(repository).SubmitAsync(userId, MembershipTier.Colaborador,
+            ValidMotivation, null, null, null, "en", ct);
+        Task<ApplicationDecisionResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first application save must be paused");
+            second = CreateService(repository).SubmitAsync(userId, MembershipTier.Asociado,
+                ValidMotivation, null, "An active contribution", "I understand the role", "en", ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        await using var db = new GovernanceDbContext(options);
+        var stored = (await db.Applications.ToListAsync(ct)).Should().ContainSingle().Subject;
+        stored.UserId.Should().Be(userId);
+        stored.Status.Should().Be(ApplicationStatus.Submitted);
+        results.Should().ContainSingle(result => result.Success);
+        results.Should().ContainSingle(result => string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal));
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+    }
+
+    private sealed class PauseFirstApplicationSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<MemberApplication>()
+                    .Any(entry => entry.State == EntityState.Added)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansFact]
