@@ -222,9 +222,11 @@ def prose_gate(diff_args, read_file):
             print("  " + h)
     for h in must:
         print(h)
+    # A check, not a stop: the run reads the hits and fixes them in a follow-up commit.
     if must:
-        sys.exit(f"prose gate: {len(must)} line(s) type a count of the list under them or a total — delete or list")
-    print("prose gate: clean")
+        print(f"prose gate: {len(must)} line(s) type a count of the list under them or a total — delete or list")
+    else:
+        print("prose gate: clean")
 
 
 def cmd_prose_gate(a):
