@@ -98,8 +98,9 @@ Conversation list and transcript GETs propagate request cancellation through vie
    Refusal and silent-turn replies come from Agent resources in the member/conversation locale
    (all six supported cultures, English fallback). Stored handoff text reuses the widget’s
    `Help_Agent_IssueProposed` key so the live reply and transcript cannot drift.
+   The issue widget displays localized server upload refusals from JSON error responses, falling back to its localized validation message for other response shapes.
    The widget’s browser error/status messages and Close label are localized too; its
-   rendered data attributes supply all browser messages, including the handoff fallback.
+   rendered data attributes supply its fallback messages, including the handoff fallback.
    Interrupted streams retain partial answers and issue handoffs with a localized error
    note. EOF without a finalizer is an interruption; a received finalizer protects the
    completed reply from subsequent transport failures. Provider EOF without a finalizer

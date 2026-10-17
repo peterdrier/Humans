@@ -72,7 +72,7 @@
 
                 <div class="mb-3">
                     <label asp-for="Screenshot" class="form-label">@Localizer["Issue_Attachment"]</label>
-                    <input asp-for="Screenshot" type="file" class="form-control" accept="image/*" />
+                    <input asp-for="Screenshot" type="file" class="form-control" accept="image/png,image/jpeg,image/webp" />
                     <div class="form-text small">@Localizer["Issue_Attachment_Hint"]</div>
                 </div>
 
