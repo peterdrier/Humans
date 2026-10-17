@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using System.Globalization;
+using Humans.Base.Extensions;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Services;
 using Microsoft.Extensions.Logging;
@@ -38,13 +40,13 @@ public class ICalFeedServiceTests
     /// the caller asks for, and the row that comes back is <paramref name="resolvedId"/>'s — the
     /// same row for a live account, the survivor's for a merge tombstone.
     /// </summary>
-    private void StubUser(Guid requestedId, Guid? icalToken, Guid? resolvedId = null)
+    private void StubUser(Guid requestedId, Guid? icalToken, Guid? resolvedId = null, string language = "en")
     {
         var user = new User
         {
             Id = resolvedId ?? requestedId,
             DisplayName = "Test Human",
-            PreferredLanguage = "en",
+            PreferredLanguage = language,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
 
@@ -173,19 +175,37 @@ public class ICalFeedServiceTests
         ics.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task GetFeedIcsAsync_ValidToken_SerializesItemsAsUtcVEvents()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task GetFeedIcsAsync_ValidToken_SerializesItemsAsUtcVEvents(string language)
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
-        StubUser(userId, icalToken: token);
-        var service = CreateService(new FakeContributor(
-            MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))));
+        using var callerCulture = new CultureScope("en");
+        StubUser(userId, icalToken: token, language: language);
+        var contributor = Substitute.For<ICalendarFeedContributor>();
+        contributor.GetCalendarItemsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await Task.Yield();
+            return (IReadOnlyList<CalendarFeedItem>)[
+                MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))
+                    with { Summary = $"Owner language {CultureInfo.CurrentUICulture.Name}" },
+            ];
+        });
+        var service = CreateService(contributor);
 
         var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
         ics.Should().Contain("BEGIN:VCALENDAR");
+        ics.Should().Contain($"SUMMARY:Owner language {language}");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+        CultureInfo.CurrentUICulture.Name.Should().Be("en");
         ics.Should().Contain("UID:shift-1@humans.nobodies.team");
         ics.Should().Contain("DTSTART:20260702T080000Z");
         ics.Should().Contain("DTEND:20260702T100000Z");

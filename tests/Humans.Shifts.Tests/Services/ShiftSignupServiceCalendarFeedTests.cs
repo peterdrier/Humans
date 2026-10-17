@@ -1,4 +1,8 @@
 using Humans.Shifts.Domain;
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Options;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
@@ -59,7 +63,8 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             Clock,
             NullLogger<ShiftSignupService>.Instance,
             Substitute.For<IUserServiceRead>(),
-            Substitute.For<IStringLocalizer<ShiftsResource>>());
+            new StringLocalizer<ShiftsResource>(new ResourceManagerStringLocalizerFactory(
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
     }
 
     private (EventSettings es, Rota rota, Shift shift) SeedShiftScenario()
@@ -181,9 +186,16 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         item.Url.Should().Be("/Shifts/Mine");
     }
 
-    [HumansFact]
-    public async Task GetCalendarItems_PendingSignup_MarkedPendingInSummary()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task GetCalendarItems_PendingSignup_MarkedPendingInSummary(string language)
     {
+        using var culture = new CultureScope(language);
         var (_, _, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         SeedSignup(shift, userId, SignupStatus.Pending);
@@ -194,7 +206,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
-        items[0].Summary.Should().Be("Test Rota (pending)");
+        var pending = new ResourceManager(typeof(ShiftsResource)).GetString("Shifts_Pending", CultureInfo.CurrentUICulture);
+        pending.Should().NotBeNullOrEmpty();
+        items[0].Summary.Should().Be($"Test Rota {pending}");
     }
 
     [HumansTheory]

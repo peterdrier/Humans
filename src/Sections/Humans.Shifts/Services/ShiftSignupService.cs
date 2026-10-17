@@ -1449,7 +1449,7 @@ internal sealed class ShiftSignupService(
                     ? $"{team.Name}: {ss.Shift.Rota.Name}"
                     : ss.Shift.Rota.Name;
                 if (ss.Status == SignupStatus.Pending)
-                    summary += " (pending)";
+                    summary += $" {localizer["Shifts_Pending"].Value}";
 
                 var description = string.Join("\n\n", new[] { ss.Shift.Description, ss.Shift.Rota.PracticalInfo }
                     .Where(s => !string.IsNullOrWhiteSpace(s)));
