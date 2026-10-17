@@ -1347,7 +1347,7 @@ internal sealed class Service(
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
         {
-            movements = await ReadBankFeedAsync(FeedFrom(), ct);
+            movements = await ReadBankFeedAsync(FeedFrom(tolerance), ct);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -1385,10 +1385,11 @@ internal sealed class Service(
 
         // A transfer two bank lines could each have paid is as ambiguous as a line two transfers
         // could each have asked for: Humans cannot tell which line moved the money, so neither one
-        // books it and both go to the panel.
+        // books it and both go to the panel. Every line that could be the transfer's counts, an
+        // ambiguous textless one included — PairingRefusal's rival check counts the same lines.
         var claimants = considered
-            .Where(c => c.Matches.Count == 1)
-            .GroupBy(c => c.Matches[0].TransferId)
+            .SelectMany(c => c.Matches.Select(r => r.TransferId))
+            .GroupBy(id => id)
             .ToDictionary(g => g.Key, g => g.Count());
 
         // A line the bank debited for a whole file at once. Read over every outgoing line, claimed or
@@ -1542,7 +1543,7 @@ internal sealed class Service(
         // GeneratedAt, never BookedAt: a line may only pay a file generated on or before it
         // (FirstPayableDate), while a booking can land days later, so a BookedAt window would start
         // *after* the very line a pending row is waiting to see reconciled.
-        var floor = FeedFrom();
+        var floor = FeedFrom(GenerationSlackDays);
         var matchFrom = unbooked.Select(FirstPayableDate).DefaultIfEmpty(floor).Min();
         if (matchFrom < floor) matchFrom = floor;
         var pendingFrom = pending.Select(FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
@@ -1779,7 +1780,7 @@ internal sealed class Service(
         IReadOnlyList<HoldedBankMovementDto> feed;
         try
         {
-            feed = await ReadBankFeedAsync(FeedFrom(), ct);
+            feed = await ReadBankFeedAsync(FeedFrom(tolerance), ct);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -1906,7 +1907,7 @@ internal sealed class Service(
         {
             try
             {
-                feed = await ReadBankFeedAsync(FeedFrom(), ct);
+                feed = await ReadBankFeedAsync(FeedFrom(tolerance), ct);
                 movement = feed.FirstOrDefault(
                     x => string.Equals(x.Id, bankMovementId, StringComparison.Ordinal));
             }
@@ -2332,8 +2333,9 @@ internal sealed class Service(
     private LocalDate Today() => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
     /// <summary>The first day the feed is read from for matching: the oldest non-stale file's first
-    /// payable day, so every line <see cref="UnbookedMatches"/> could accept is on it.</summary>
-    private LocalDate FeedFrom() => Today().PlusDays(-FeedWindowDays - GenerationSlackDays);
+    /// payable day under <paramref name="tolerance"/>, so every line <see cref="UnbookedMatches"/>
+    /// could accept is on it.</summary>
+    private LocalDate FeedFrom(int tolerance) => Today().PlusDays(-FeedWindowDays - tolerance);
 
     /// <summary>Reads the feed, skipping the lines the sweep has given up on
     /// (<see cref="SkippedStuckLineIds"/>) unless the caller — the sweep's own counting read — names
@@ -2413,6 +2415,9 @@ internal sealed class Service(
         rows.GroupBy(r => r.FileId).Any(f =>
             f.Count() >= 2 && f.Sum(r => r.Amount) == Math.Abs(m.Amount)
             && f.Any(r => !r.IsBooked) && !IsStale(f.First())
+            // A row booked against some other line means the bank did not debit this file as
+            // one — the same rule BatchLineRefusal applies.
+            && !f.Any(r => r.IsBooked && !string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal))
             && InWindow(f.First(), m.Date, tolerance, bounded: true));
 
     /// <summary>The files whose whole total <paramref name="m"/> could be the one debit of. More than

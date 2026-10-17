@@ -1055,6 +1055,77 @@ public class SepaBankBookingTests
         wide.Succeeded.Should().BeTrue(wide.Message);
     }
 
+    [HumansFact]
+    public async Task Page_NamedLine_RivalledByAnAmbiguousTextlessLine_IsNotOffered()
+    {
+        // Two 30s on accounts A and B; one line names A, a textless one could be either. Booking
+        // counts the textless line as A's rival and refuses, so the page must not offer it.
+        var otherUser = Guid.NewGuid();
+        SeedRows(Row(TransferId, _userId), Row(OtherTransferId, otherUser, OtherAccount));
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact>
+            {
+                new() { UserId = _userId, HoldedContactId = "c1", SupplierAccountNum = Account, Source = CreditorContactSource.Auto },
+                new() { UserId = otherUser, HoldedContactId = "c1", SupplierAccountNum = OtherAccount, Source = CreditorContactSource.Auto },
+            });
+        SeedMovements(Movement(), Movement("mov-2", description: Textless));
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
+            ct: Xunit.TestContext.Current.CancellationToken);
+        var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => !r.CanBook);
+        unmatched.Should().HaveCount(2);
+        booking.Succeeded.Should().BeFalse();
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task TextlessLine_WhoseAmountIsTheTotalOfAFilePartlyBookedElsewhere_PairsWithTheTransfer()
+    {
+        // 10 (booked against its own line) + 20 totals 30, but that file can no longer be a single
+        // debit, so the textless €30 line is the default transfer's.
+        var partFile = Guid.NewGuid();
+        SeedRows(
+            Row(TransferId, _userId),
+            Row(Guid.NewGuid(), Guid.NewGuid(), 40000011, 10m, fileId: partFile, bookedAt: FixedNow, movementId: "mov-own"),
+            Row(Guid.NewGuid(), Guid.NewGuid(), 40000012, 20m, fileId: partFile));
+        SeedContacts(_userId);
+        SeedMovements(Movement(description: Textless));
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
+            ct: Xunit.TestContext.Current.CancellationToken);
+        var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
+        unmatched.Should().BeEmpty();
+        booking.Succeeded.Should().BeTrue(booking.Message);
+    }
+
+    [HumansFact]
+    public async Task Page_WidenedTolerance_ReadsTheFeedBackFarEnough_ForAFileAtTheWindowEdge()
+    {
+        // Generated exactly 90 days ago, paid by a textless line 5 days earlier: within days=7, so
+        // the feed read has to start that far back too.
+        var generatedAt = FixedNow - Duration.FromDays(90);
+        var lineDate = new LocalDate(2026, 1, 26);
+        SeedRows(Row(TransferId, _userId, generatedAt: generatedAt));
+        SeedContacts(_userId);
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
+                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(description: Textless, date: lineDate)]
+                : []);
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            toleranceDays: 7, ct: Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().Be(MovementId);
+    }
+
     private static readonly Guid MatchedFileId = Guid.Parse("55555555-5555-5555-5555-555555555555");
     private static readonly Guid OtherTransferId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
