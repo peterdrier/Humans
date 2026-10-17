@@ -29,7 +29,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// </para>
 /// <para>
 /// <c>Resource/{id}</c> and <c>Human/{id}</c> are GoogleIntegration's pages, covered by
-/// <c>MonitorPageRenderTests</c>; <c>CheckDriveActivity</c> is <c>Humans.Monitor</c>'s.
+/// <c>GoogleSyncAuditPageRenderTests</c>; <c>CheckDriveActivity</c> is <c>Humans.Monitor</c>'s.
 /// </para>
 /// </remarks>
 public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)

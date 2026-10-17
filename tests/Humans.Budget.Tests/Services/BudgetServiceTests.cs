@@ -92,7 +92,28 @@ public sealed class BudgetServiceTests
         else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
     }
 
-    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task YearStatus_MalformedBinding_DoesNotResetActiveYear(bool malformed)
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
+        var (controller, _, _) = CreateAdminController(true, _service);
+        if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
+
+        var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
+
+        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+    }
+
+    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetManagement>();
@@ -106,7 +127,7 @@ public sealed class BudgetServiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
         };
-        var controller = new BudgetAdminController(budget, _teamService,
+        var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
             new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
             Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
             NullLogger<BudgetAdminController>.Instance)
@@ -400,11 +421,9 @@ public sealed class BudgetServiceTests
         var category = await SeedCategoryAsync(isRestricted, isTicketingGroup);
         var coordinatorId = Guid.NewGuid();
         var deptId = Guid.NewGuid();
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(coordinatorId, TeamMemberRole.Coordinator)]),
-        });
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorId, Arg.Any<CancellationToken>())
+            .Returns(new[] { deptId });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
 
         var denied = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: false);
         var allowed = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: true);
@@ -414,118 +433,20 @@ public sealed class BudgetServiceTests
         allowed.ShouldForbid.Should().BeFalse();
     }
 
-    // ─── Effective budget-coordinator team set (derived over TeamInfo) ───────
-
     [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_IncludesDepartmentAndActiveChildren_ForDirectCoordinator()
+    public async Task GetEffectiveCoordinatorTeamIdsAsync_UsesTheTeamsOwnedScope()
     {
         var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-        var activeChildId = Guid.NewGuid();
-        var inactiveChildId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
-            [activeChildId] = MakeTeam(
-                activeChildId, "Prep", parentTeamId: deptId, isActive: true),
-            [inactiveChildId] = MakeTeam(
-                inactiveChildId, "Retired Sub-team", parentTeamId: deptId, isActive: false),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+        Guid[] expected = [Guid.NewGuid(), Guid.NewGuid()];
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(expected);
 
         var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
 
-        result.Should().BeEquivalentTo(new[] { deptId, activeChildId });
+        result.Should().BeEquivalentTo(expected);
+        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
+        await _teamService.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_IncludesDepartment_ForManagementRoleHolder()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Logistics", parentTeamId: null, isActive: true,
-                managementRoleHolderUserIds: new HashSet<Guid> { userId }),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEquivalentTo(new[] { deptId });
-    }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_ExcludesChildTeamCoordinatorship_OnlyDepartmentsQualify()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-        var childId = Guid.NewGuid();
-
-        // User is a coordinator of a CHILD team (which has a parent), not a department.
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(deptId, "Site Ops", parentTeamId: null, isActive: true),
-            [childId] = MakeTeam(
-                childId, "Fences", parentTeamId: deptId, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Coordinator)]),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetEffectiveCoordinatorTeamIdsAsync_ReturnsEmpty_ForNonCoordinatorMember()
-    {
-        var userId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-
-        var teams = new Dictionary<Guid, TeamInfo>
-        {
-            [deptId] = MakeTeam(
-                deptId, "Kitchen", parentTeamId: null, isActive: true,
-                members: [MakeMember(userId, TeamMemberRole.Member)]),
-        };
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
-
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
-
-        result.Should().BeEmpty();
-    }
-
-    private static TeamInfo MakeTeam(
-        Guid id,
-        string name,
-        Guid? parentTeamId,
-        bool isActive,
-        List<TeamMemberInfo>? members = null,
-        IReadOnlySet<Guid>? managementRoleHolderUserIds = null) =>
-        new(
-            id, name, null, name.ToLowerInvariant().Replace(' ', '-'),
-            IsActive: isActive, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
-            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
-            Members: members ?? [],
-            ParentTeamId: parentTeamId,
-            ManagementRoleHolderUserIds: managementRoleHolderUserIds);
-
-    private static TeamMemberInfo MakeMember(Guid userId, TeamMemberRole role) =>
-        new(
-            TeamMemberId: Guid.NewGuid(),
-            UserId: userId,
-            DisplayName: "Member",
-            Email: null,
-            ProfilePictureUrl: null,
-            Role: role,
-            JoinedAt: Instant.MinValue);
 
     [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()

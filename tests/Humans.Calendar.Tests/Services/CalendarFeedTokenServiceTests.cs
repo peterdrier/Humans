@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using NSubstitute;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
@@ -15,6 +17,7 @@ namespace Humans.Calendar.Tests.Services;
 public sealed class CalendarFeedTokenServiceTests : IDisposable
 {
     private readonly CalendarDbContext _db;
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CalendarFeedTokenService _sut;
     private readonly Guid _user = Guid.NewGuid();
 
@@ -25,7 +28,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
             .Options;
         _db = new CalendarDbContext(options);
         _sut = new CalendarFeedTokenService(
-            new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options)));
+            new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options)), _audit);
     }
 
     private CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
@@ -34,6 +37,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     public async Task A_member_who_never_opened_the_card_has_no_token()
     {
         (await _sut.GetAsync(_user, Ct)).Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -45,6 +49,13 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         first.Should().NotBeEmpty();
         second.Should().Be(first);
         (await _sut.GetAsync(_user, Ct)).Should().Be(first);
+        var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        audit[1].Should().Be("User");
+        audit[2].Should().Be(_user);
+        audit[0].Should().Be(AuditAction.CalendarFeedTokenCreated);
+        audit[3].Should().Be("Personal calendar feed token created");
+        audit[4].Should().Be(_user);
+        audit[3]!.ToString().Should().NotContain(first.ToString());
     }
 
     [HumansFact]
@@ -64,16 +75,25 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
 
         got.Should().Be(winner, "adopting the existing token beats revoking a live feed");
         _db.CalendarFeedTokens.Count(t => t.UserId == _user).Should().Be(1);
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task Rotate_replaces_the_token_and_leaves_exactly_one_row()
     {
         var original = await _sut.EnsureAsync(_user, Ct);
+        _audit.ClearReceivedCalls();
 
         var rotated = await _sut.RotateAsync(_user, Ct);
 
         rotated.Should().NotBe(original).And.NotBe(Guid.Empty);
+        var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        audit[1].Should().Be("User");
+        audit[2].Should().Be(_user);
+        audit[0].Should().Be(AuditAction.CalendarFeedTokenRotated);
+        audit[3].Should().Be("Personal calendar feed token rotated");
+        audit[4].Should().Be(_user);
+        audit[3]!.ToString().Should().NotContain(original.ToString()).And.NotContain(rotated.ToString());
         (await _sut.GetAsync(_user, Ct)).Should().Be(rotated);
         _db.CalendarFeedTokens.Count(t => t.UserId == _user).Should().Be(1);
     }

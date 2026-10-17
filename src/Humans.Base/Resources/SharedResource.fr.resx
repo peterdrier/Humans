@@ -596,7 +596,7 @@
     <value>Questions supplémentaires pour les candidats Asociado</value>
   </data>
   <data name="Application_SignificantContribution" xml:space="preserve">
-    <value>Quelle a été votre contribution la plus significative à Nowhere ?</value>
+    <value>Quelle a été votre contribution la plus significative à Elsewhere ?</value>
   </data>
   <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
     <value>Si vous n'en trouvez pas, mais avez contribué de manière significative à un autre Burn, parlez-nous-en.</value>

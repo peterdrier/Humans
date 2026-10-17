@@ -188,7 +188,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - Member personal/camp event submission forms and My Submissions localize breadcrumb navigation labels in all six supported cultures.
 
-- The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. Only rows whose `SubmitterUserId` matches are included; internal moderator notes are excluded. Export reads do not alter rows.
+- The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. The contributor resolves `AllUserIds` so archived merge sources are included throughout; submissions are filtered to those submitter IDs and unrelated members remain excluded. The existing `Preference` key retains its object/null shape for the requested account; `AdditionalPreferences` includes exclusions under the other identities in its merge chain. Internal moderator notes are excluded. Export reads do not alter rows.
 
 - Barrio bulk CSV uploads detect comma/semicolon separators from the first non-comment header line through CsvHelper’s quote-aware detector. Separators inside quoted working-column names cannot change the format; comments, reordered/extra columns and physical row numbers retain their existing behavior.
 - CSV header/cell refusals return keys and physical file-row arguments, with no importable rows on failure. The upload controller renders every refusal in the uploader's culture; unexpected parse/stream exceptions stay in logs and show generic feedback. Dependency `FormatException` text is never shown to members.
@@ -225,6 +225,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy lives in `EventsResource` in all six cultures and renders in the submitter's supported preferred language, with English fallback for blank, malformed or unsupported preferences (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
 - When a moderator withdraws an Approved event (`IEventService.ModeratorWithdrawAsync`): `Event.Status` transitions to `Withdrawn` and a `Withdrawn` `EventModerationAction` naming the moderator is appended.
+
+- CSV guide downloads keep the EventsAdmin/Admin policy and existing columns. The owning service builds the file and writes `EventGuideExported` with the authenticated actor and emitted row count (recurring occurrences count separately), including empty/repeated downloads. Print-guide composition uses existing approved-event/settings reads, without the CSV’s SubmitterName column.
 
 ## Cross-Section Dependencies
 

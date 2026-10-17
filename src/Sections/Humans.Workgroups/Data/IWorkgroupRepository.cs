@@ -46,9 +46,6 @@ internal interface IWorkgroupRepository : IRepository
     /// <summary>One group with members, meetings, log entries and documents loaded.</summary>
     Task<Workgroup?> GetWorkgroupAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>As <see cref="GetWorkgroupAsync"/>, by slug.</summary>
-    Task<Workgroup?> GetWorkgroupBySlugAsync(string slug, CancellationToken ct = default);
-
     /// <summary>True when another group already holds <paramref name="slug"/>.</summary>
     Task<bool> SlugTakenAsync(string slug, Guid? exceptId = null, CancellationToken ct = default);
 

@@ -56,62 +56,21 @@ internal sealed class CommunicationPreferenceService(
         return pref?.OptedOut ?? category.DefaultOptedOut();
     }
 
-    public async Task UpdatePreferenceAsync(
+    public Task UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, string source,
-        CancellationToken cancellationToken = default)
-    {
-        if (category.IsAlwaysOn())
-        {
-            logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
-            return;
-        }
+        CancellationToken cancellationToken = default) =>
+        UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled: null, source,
+            actorUserId: null, cancellationToken);
 
-        var now = clock.GetCurrentInstant();
-        var pref = await repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
-
-        if (pref is null)
-        {
-            pref = new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = category,
-                OptedOut = optedOut,
-                UpdatedAt = now,
-                UpdateSource = source,
-                SubscribedAt = optedOut ? null : now,
-            };
-            await repository.AddAsync(pref, cancellationToken);
-        }
-        else
-        {
-            if (pref.OptedOut == optedOut)
-                return; // idempotent
-
-            if (!optedOut && pref.SubscribedAt is null)
-                pref.SubscribedAt = now;
-
-            pref.OptedOut = optedOut;
-            pref.UpdatedAt = now;
-            pref.UpdateSource = source;
-            await repository.UpdateAsync(pref, cancellationToken);
-        }
-
-        var description = $"{category} set to {!optedOut} via {source}";
-
-        await auditLog.LogAsync(
-            AuditAction.CommunicationPreferenceChanged,
-            "User", userId, description,
-            "CommunicationPreferenceService");
-
-        logger.LogInformation(
-            "User {UserId} communication preference {Category} set to OptedOut={OptedOut} via {Source}",
-            userId, category, optedOut, source);
-    }
-
-    public async Task UpdatePreferenceAsync(
+    public Task UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
-        CancellationToken cancellationToken = default)
+        Guid? actorUserId = null, CancellationToken cancellationToken = default) =>
+        UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled, source,
+            actorUserId, cancellationToken);
+
+    private async Task UpdatePreferenceCoreAsync(
+        Guid userId, MessageCategory category, bool optedOut, bool? inboxEnabled, string source,
+        Guid? actorUserId, CancellationToken cancellationToken)
     {
         if (category.IsAlwaysOn())
         {
@@ -121,7 +80,6 @@ internal sealed class CommunicationPreferenceService(
 
         var now = clock.GetCurrentInstant();
         var pref = await repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
-
         if (pref is null)
         {
             pref = new CommunicationPreference
@@ -130,38 +88,48 @@ internal sealed class CommunicationPreferenceService(
                 UserId = userId,
                 Category = category,
                 OptedOut = optedOut,
-                InboxEnabled = inboxEnabled,
                 UpdatedAt = now,
                 UpdateSource = source,
                 SubscribedAt = optedOut ? null : now,
             };
+            if (inboxEnabled is { } inbox)
+                pref.InboxEnabled = inbox;
             await repository.AddAsync(pref, cancellationToken);
         }
         else
         {
-            if (pref.OptedOut == optedOut && pref.InboxEnabled == inboxEnabled)
-                return; // idempotent
+            // Email-only updates preserve the inbox setting; new rows keep the domain default.
+            var nextInbox = inboxEnabled ?? pref.InboxEnabled;
+            if (pref.OptedOut == optedOut && pref.InboxEnabled == nextInbox)
+                return;
 
             if (!optedOut && pref.SubscribedAt is null)
                 pref.SubscribedAt = now;
 
             pref.OptedOut = optedOut;
-            pref.InboxEnabled = inboxEnabled;
+            pref.InboxEnabled = nextInbox;
             pref.UpdatedAt = now;
             pref.UpdateSource = source;
             await repository.UpdateAsync(pref, cancellationToken);
         }
 
-        var description = $"{category} set to {!optedOut}, Inbox set to {inboxEnabled} via {source}";
+        var description = inboxEnabled.HasValue
+            ? $"{category} set to {!optedOut}, Inbox set to {inboxEnabled.Value} via {source}"
+            : $"{category} set to {!optedOut} via {source}";
+        await LogPreferenceChangeAsync(userId, description, actorUserId);
 
-        await auditLog.LogAsync(
-            AuditAction.CommunicationPreferenceChanged,
-            "User", userId, description,
-            "CommunicationPreferenceService");
-
-        logger.LogInformation(
-            "User {UserId} communication preference {Category} set to OptedOut={OptedOut}, InboxEnabled={InboxEnabled} via {Source}",
-            userId, category, optedOut, inboxEnabled, source);
+        if (inboxEnabled.HasValue)
+        {
+            logger.LogInformation(
+                "User {UserId} communication preference {Category} set to OptedOut={OptedOut}, InboxEnabled={InboxEnabled} via {Source}",
+                userId, category, optedOut, inboxEnabled.Value, source);
+        }
+        else
+        {
+            logger.LogInformation(
+                "User {UserId} communication preference {Category} set to OptedOut={OptedOut} via {Source}",
+                userId, category, optedOut, source);
+        }
     }
 
     public async Task ResetPreferenceAsync(
@@ -178,16 +146,20 @@ internal sealed class CommunicationPreferenceService(
         if (!deleted)
             return;
 
-        await auditLog.LogAsync(
-            AuditAction.CommunicationPreferenceChanged,
-            "User", userId,
-            $"{category} reset to no preference (null) via {source}",
-            "CommunicationPreferenceService");
+        await LogPreferenceChangeAsync(userId,
+            $"{category} reset to no preference (null) via {source}", actorUserId: null);
 
         logger.LogInformation(
             "User {UserId} communication preference {Category} reset to null via {Source}",
             userId, category, source);
     }
+
+    private Task LogPreferenceChangeAsync(Guid userId, string description, Guid? actorUserId) =>
+        actorUserId is { } actor
+            ? auditLog.LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
+                description, actor)
+            : auditLog.LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
+                description, nameof(CommunicationPreferenceService));
 
     public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>
         tokenProvider.GenerateToken(userId, category);

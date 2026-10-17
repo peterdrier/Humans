@@ -102,9 +102,7 @@ internal interface IWorkgroupService : IApplicationService
 
     /// <summary>
     /// Adds a member log entry (Update, Disclosure, StatusRequested or Note). System kinds are
-    /// refused. The log form offers Update, Disclosure and Note only; StatusRequested reaches here
-    /// from a hand-made post, which costs nothing that <see cref="RequestStatusAsync"/> does not
-    /// also allow — that path is unmetered too, and nothing downstream reads the entry.
+    /// refused.
     /// </summary>
     Task<WorkgroupMutationResult<Guid>> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);

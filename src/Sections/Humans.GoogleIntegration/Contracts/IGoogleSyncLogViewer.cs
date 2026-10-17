@@ -19,6 +19,7 @@ public interface IGoogleSyncLogViewer : IApplicationService
 
     /// <summary>Sync trail for one human, newest first, following merge tombstones.</summary>
     Task<IReadOnlyList<GoogleSyncLogView>> GetForUserAsync(Guid userId, CancellationToken ct = default);
+
 }
 
 /// <summary>Rendered shape of a <c>google_sync_log</c> row, with the resource name resolved.</summary>
@@ -31,7 +32,8 @@ public sealed record GoogleSyncLogView(
     string Role,
     GoogleSyncSource Source,
     bool Success,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    Guid? UserId = null);
 
 /// <summary>What a Google sync did to a resource.</summary>
 public enum GoogleSyncLogAction

@@ -102,7 +102,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
     }
 
     /// <summary>Every prefix the carve took into <c>ConsentResource</c>.</summary>
-    private static readonly string[] CarvedPrefixes = ["Consent_", "ConsentReview_", "ConsentIndex_"];
+    private static readonly string[] CarvedPrefixes = ["Consent_", "Consent_Review_", "Consent_Index_"];
 
     private static void AssertRenderedCleanly(string html, string what)
     {
@@ -126,7 +126,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var html = await response.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(html, "GET /Consent");
 
-        html.Should().Contain("Agreements");            // ConsentIndex_Title
+        html.Should().Contain("Agreements");            // Consent_Index_Title
         html.Should().Contain("Consent History");       // Consent_History
         html.Should().Contain("About Consent");         // Consent_AboutTitle
         // Nav_Consents stayed in SharedResource (Humans.UI's login partial renders it too), so
@@ -152,8 +152,8 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         // _ConsentReviewBody's checkbox copy and the ResourceManager-driven per-language JSON
         // both come from ConsentResource; a marker left pointing at SharedResource renders the
         // raw key here and nowhere else.
-        html.Should().Contain("I have read and understood this document");   // ConsentReview_ConsentCheckbox
-        html.Should().Contain("Give Consent");                               // ConsentReview_GiveConsent
+        html.Should().Contain("I have read and understood this document");   // Consent_Review_ConsentCheckbox
+        html.Should().Contain("Give Consent");                               // Consent_Review_GiveConsent
     }
 
     [HumansFact(Timeout = 120000)]
@@ -228,7 +228,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var html = await response.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(html, "GET /Consent (es)");
 
-        html.Should().Contain("Acuerdos");                      // ConsentIndex_Title
+        html.Should().Contain("Acuerdos");                      // Consent_Index_Title
         html.Should().Contain("Historial de consentimientos");  // Consent_History
         html.Should().NotContain("About Consent");
     }

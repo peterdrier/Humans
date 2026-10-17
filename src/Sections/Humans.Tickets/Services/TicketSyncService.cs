@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -16,7 +15,6 @@ namespace Humans.Tickets.Services;
 /// Tickets sync pipeline: upsert vendor orders/attendees, match users by email,
 /// compute VAT, enrich Stripe fees, reconcile event participation.
 /// </summary>
-[CrossSectionWrite("Ticket sync writes participation and redeems campaign grants.")]
 internal sealed class TicketSyncService(
     ITicketRepository ticketRepository,
     ITicketTransferRepository transferRepository,

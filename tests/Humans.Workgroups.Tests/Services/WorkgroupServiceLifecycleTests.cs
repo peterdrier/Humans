@@ -560,4 +560,17 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.Frozen);
     }
+
+    [HumansFact]
+    public async Task Reactivate_ClearsTheReasonsOfTheClose()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var secretary = SeedUser();
+        await NewService().CloseAsync(workgroup.Id, secretary, "Quiet for two months", Ct);
+
+        await NewService().ReactivateAsync(workgroup.Id, secretary, Ct);
+
+        await using var ctx = OpenContext();
+        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).Reasons.Should().BeNull();
+    }
 }

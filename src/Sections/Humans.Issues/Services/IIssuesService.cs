@@ -21,7 +21,7 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
     /// </summary>
     Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default);
 
-    Task<Issue> SubmitIssueAsync(
+    Task<IssueSubmissionResult> SubmitIssueAsync(
         Guid reporterUserId,
         IssueCategory category,
         string title,
@@ -40,3 +40,6 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
 
 /// <summary>A distinct reporter and how many issues they filed — the index page's filter list.</summary>
 internal sealed record DistinctReporterRow(Guid UserId, string DisplayName, int Count);
+
+/// <summary>A saved issue or an upload refusal the member-facing controller localizes.</summary>
+internal sealed record IssueSubmissionResult(Issue? Issue, string? ErrorKey = null);

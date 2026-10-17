@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Csv;
+using Humans.Base.Enums;
 using AwesomeAssertions;
 using Humans.Camps.Models;
 using Humans.Users.Contracts;
@@ -18,6 +21,126 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampAdminControllerTests
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Export_AuditsAdministratorAndEmittedRows_IncludingEmptyExports(bool hasSeason)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var audit = Substitute.For<IAuditLogService>();
+        var actorId = Guid.NewGuid();
+        var leadId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "contact@example.org", "+34600000000", false, 1, []);
+        if (hasSeason)
+            camp = camp with
+            {
+                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, camp.Slug, 2026, null,
+                    "Camp name", "", "en", [], CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.Yes,
+                    AdultPlayspacePolicy.No, 12, null, null, null, 0, null, null) { LeadUserIds = [leadId] }]
+            };
+        var noSeason = camp with { Id = Guid.NewGuid(), Slug = "no-season", Seasons = [] };
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, audit: audit);
+        var ct = controller.HttpContext.RequestAborted;
+        camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, []));
+        camps.GetCampsForYearAsync(2026, ct).Returns(new List<CampInfo> { camp, noSeason });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [leadId] = MakeUser(leadId) with { BurnerName = "Lead", IdentityEmailColumn = "lead@example.org" }
+            });
+
+        var file = (await controller.ExportCamps()).Should().BeOfType<FileContentResult>().Which;
+
+        var csv = HumansCsv.Utf8WithBom.GetString(file.FileContents);
+        csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(hasSeason ? 2 : 1);
+        if (hasSeason)
+            csv.Should().Contain("contact@example.org").And.Contain("Lead <lead@example.org>");
+        file.FileDownloadName.Should().Be("barrios-2026.csv");
+        await audit.Received(1).LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+            $"Camp contact and lead list exported for 2026: {(hasSeason ? 1 : 0)} rows", actorId);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EeSlotCount_RejectsMalformedBinding_ButAcceptsExplicitZero(bool malformed)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+        if (malformed)
+            controller.ModelState.AddModelError("slotCount", "Not a number.");
+
+        var result = await controller.SetCampSeasonEeSlotCount(seasonId, 0, ct);
+
+        if (malformed)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            await camps.DidNotReceive().SetCampSeasonEeSlotCountAsync(
+                Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await camps.Received(1).SetCampSeasonEeSlotCountAsync(seasonId, 0, actorId, ct);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("Open", true)]
+    [InlineData("Close", true)]
+    [InlineData("LockDate", true)]
+    [InlineData("Open", false)]
+    [InlineData("Close", false)]
+    [InlineData("LockDate", false)]
+    [InlineData("Reactivate", true)]
+    [InlineData("Delete", true)]
+    [InlineData("Reactivate", false)]
+    [InlineData("Delete", false)]
+    public async Task AuditedAdminAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        if (userExists)
+            users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+        var lockDate = new LocalDate(2026, 3, 1);
+
+        var result = action switch
+        {
+            "Open" => await controller.OpenSeason(2027),
+            "Close" => await controller.CloseSeason(2026),
+            "LockDate" => await controller.SetNameLockDate(2026, "2026-03-01"),
+            "Reactivate" => await controller.Reactivate(targetId, null),
+            "Delete" => await controller.Delete(targetId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        if (!userExists)
+        {
+            result.Should().BeOfType<UnauthorizedResult>();
+            camps.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        switch (action)
+        {
+            case "Open": await camps.Received(1).OpenSeasonAsync(2027, actorId); break;
+            case "Close": await camps.Received(1).CloseSeasonAsync(2026, actorId); break;
+            case "LockDate": await camps.Received(1).SetNameLockDateAsync(2026, lockDate, actorId); break;
+            case "Reactivate": await camps.Received(1).ReactivateSeasonAsync(targetId, actorId); break;
+            case "Delete": await camps.Received(1).DeleteCampAsync(targetId, actorId); break;
+        }
+    }
+
     [HumansTheory]
     [InlineData(false, "settings")]
     [InlineData(false, "camps")]
@@ -198,8 +321,8 @@ public class CampAdminControllerTests
         {
             case "Approve": camps.ApproveSeasonAsync(targetId, actorId, null).ThrowsAsync(failure); break;
             case "Reject": camps.RejectSeasonAsync(targetId, actorId, "Rejected").ThrowsAsync(failure); break;
-            case "Reactivate": camps.ReactivateSeasonAsync(targetId).ThrowsAsync(failure); break;
-            case "Delete": camps.DeleteCampAsync(targetId).ThrowsAsync(failure); break;
+            case "Reactivate": camps.ReactivateSeasonAsync(targetId, actorUserId: actorId).ThrowsAsync(failure); break;
+            case "Delete": camps.DeleteCampAsync(targetId, actorUserId: actorId).ThrowsAsync(failure); break;
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
     }
@@ -214,13 +337,13 @@ public class CampAdminControllerTests
     };
 
     private static CampAdminController CreateController(
-        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null)
+        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null, IAuditLogService? audit = null)
     {
         var controller = new CampAdminController(
             camps,
             roles,
             new CampAdminPageBuilder(camps, roles),
-            new CampCsvExportBuilder(camps, users),
+            new CampCsvExportBuilder(camps, users, audit ?? Substitute.For<IAuditLogService>()),
             users,
             logger ?? NullLogger<CampAdminController>.Instance);
         var services = new ServiceCollection().BuildServiceProvider();

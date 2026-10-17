@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Enums;
@@ -11,7 +10,6 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>Reconciles Drive resources claimed by Teams and Workgroups through their public sources.</summary>
-[CrossSectionWrite("Drive sync records rejected Google addresses through Users.")]
 internal sealed class GoogleDriveAccessSyncService(
     IEnumerable<IGoogleDriveAccessSource> sources,
     IGoogleDrivePermissionsClient drivePermissions,

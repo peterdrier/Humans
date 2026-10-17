@@ -3,9 +3,9 @@ using NodaTime;
 namespace Humans.Workgroups.Domain;
 
 /// <summary>
-/// One person's membership of one group. Joining is immediate (clause 3 standing
-/// approval); leaving is a soft <see cref="LeftAt"/> so the roster shows current
-/// members while the log keeps the history.
+/// One person's membership of one group. Joining files a pending request (<c>IsPending</c>)
+/// that a coordinator approves; leaving is a soft <see cref="LeftAt"/> so the roster shows
+/// current members while the log keeps the history.
 /// </summary>
 internal sealed class WorkgroupMember
 {

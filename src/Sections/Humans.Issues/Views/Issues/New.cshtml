@@ -1,4 +1,5 @@
 @model Humans.Issues.Models.SubmitIssueViewModel
+@inject IssueSectionRouting Routing
 @{
     ViewData["Title"] = Localizer["Issue_New_Title"].Value;
 }
@@ -46,7 +47,7 @@
                         <label asp-for="Section" class="form-label">@Localizer["Issue_Area"]</label>
                         <select asp-for="Section" class="form-select">
                             <option value="">@Localizer["Issue_Area_Auto"]</option>
-                            @foreach (var kvp in AreaLabelMap.Map.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
+                            @foreach (var kvp in Routing.AreaLabelResourceKeys.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
                             {
                                 if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
                                 {
@@ -71,7 +72,7 @@
 
                 <div class="mb-3">
                     <label asp-for="Screenshot" class="form-label">@Localizer["Issue_Attachment"]</label>
-                    <input asp-for="Screenshot" type="file" class="form-control" accept="image/*" />
+                    <input asp-for="Screenshot" type="file" class="form-control" accept="image/png,image/jpeg,image/webp" />
                     <div class="form-text small">@Localizer["Issue_Attachment_Hint"]</div>
                 </div>
 

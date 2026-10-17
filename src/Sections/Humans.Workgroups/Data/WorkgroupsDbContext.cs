@@ -16,8 +16,8 @@ namespace Humans.Workgroups.Data;
 /// <remarks>
 /// Internal-sealed like every section context: the repository is the only consumer.
 /// Configurations are applied explicitly (not by assembly scanning) so this model can
-/// never accrete another section's tables. Cross-section references (<c>UserId</c>,
-/// <c>AppliedByUserId</c>, <c>SurveyId</c>) are bare Guid columns, never FKs.
+/// never accrete another section's tables. Cross-section references (user and survey ids)
+/// are bare Guid columns, never FKs.
 /// </remarks>
 internal sealed class WorkgroupsDbContext(DbContextOptions<WorkgroupsDbContext> options)
     : DbContext(options)

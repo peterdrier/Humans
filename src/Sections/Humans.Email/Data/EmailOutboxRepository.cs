@@ -214,6 +214,22 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         return toDelete.Count;
     }
 
+    public async Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        if (sourceUserId == targetUserId) return;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var messages = await ctx.EmailOutboxMessages
+            .Where(m => m.UserId == sourceUserId)
+            .ToListAsync(ct);
+        if (messages.Count == 0) return;
+
+        foreach (var message in messages)
+            message.UserId = targetUserId;
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
     // ==========================================================================
     // Daily send counts (#1195)
     // ==========================================================================

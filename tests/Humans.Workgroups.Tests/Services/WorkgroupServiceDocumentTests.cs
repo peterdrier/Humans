@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using NSubstitute;
 using Xunit;
 using AwesomeAssertions;
@@ -480,5 +481,39 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         await using var ctx = OpenContext();
         (await ctx.Comments.SingleAsync(c => c.Id == hidden.Id, Ct)).Disposition
             .Should().Be(WorkgroupCommentDisposition.Pending);
+    }
+
+    [HumansFact]
+    public async Task HideComment_AuditsTheReason()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, categories: ["Scope"]);
+        var comment = await AddCommentAsync(document.Id, category: "Scope");
+
+        await NewService().HideCommentAsync(comment.Id, member, "Off-topic", Ct);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupCommentHidden, AuditEntityTypes.WorkgroupComment, comment.Id,
+            Arg.Is<string>(text => text.Contains("Off-topic", StringComparison.Ordinal)),
+            member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CloseComments_BeforeTheWindowEnds_EndsItNowAndKeepsTheComments()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(
+            workgroup.Id, WorkgroupDocumentStatus.Published, categories: ["Scope"],
+            opensAt: now.Minus(Duration.FromDays(1)), closesAt: now.Plus(Duration.FromDays(1)));
+        var comment = await AddCommentAsync(document.Id, category: "Scope");
+
+        await NewService().CloseCommentsAsync(document.Id, member, Ct);
+
+        await using var ctx = OpenContext();
+        (await ctx.Documents.SingleAsync(d => d.Id == document.Id, Ct)).CommentsCloseAt.Should().Be(now);
+        (await ctx.Comments.AnyAsync(c => c.Id == comment.Id, Ct)).Should().BeTrue();
     }
 }

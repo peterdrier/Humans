@@ -144,6 +144,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 - The Holded outbox drain is marked as an external write; HTTP mutations must not pass browser cancellation into its vendor operations. Report transitions only queue the work.
 
+- Successful Holded push audit summaries are bounded to 3500 UTF-16 units without splitting surrogate pairs, so Unicode receipt descriptions remain valid for database encoding.
 - Holded outbox retries and write-offs bound saved error summaries to 2000 UTF-16 units without splitting surrogate pairs. Permanent-failure audits use the same bounded summary; logs retain the full exception.
 
 - Member report-list status badges reuse the section’s existing labels in all six cultures and the shared badge-color registry; stored status values and workflow rules are unchanged.

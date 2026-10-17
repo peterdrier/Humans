@@ -15,7 +15,7 @@ internal static class IssueSectionInference
     /// inferred from a path's first segment, or null if no match.
     /// Examples: "/Camps/123" returns "Camps"; "/Tickets" returns "Tickets"; "/" returns null.
     /// </summary>
-    public static string? FromPath(string? path)
+    public static string? FromPath(string? path, IssueSectionRouting routing)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
         if (!Uri.TryCreate(path, UriKind.RelativeOrAbsolute, out var uri))
@@ -26,7 +26,7 @@ internal static class IssueSectionInference
         if (trimmed.Length == 0) return null;
 
         var first = trimmed.Split('/', 2)[0];
-        return Map(first);
+        return routing.ResolvePathSegment(first);
     }
 
     private static string StripQueryAndFragment(string path)
@@ -34,20 +34,4 @@ internal static class IssueSectionInference
         var qIdx = path.IndexOfAny(['?', '#']);
         return qIdx < 0 ? path : path[..qIdx];
     }
-
-    private static string? Map(string segment) => segment.ToLowerInvariant() switch
-    {
-        "camps" or "barrios" => "Camps",
-        "tickets" => "Tickets",
-        "teams" => "Teams",
-        "shifts" or "vol" => "Shifts",
-        "onboardingreview" => "Onboarding",
-        "profile" or "humans" => "Profiles",
-        "finance" or "budget" => "Budget",
-        "board" or "voting" => "Governance",
-        "legal" or "consent" => "Legal",
-        "cityplanning" => "CityPlanning",
-        "scanner" => "Scanner",
-        _ => null
-    };
 }

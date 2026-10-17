@@ -45,7 +45,7 @@ internal sealed class LegalController(
                 TabsId = "legal-tabs",
                 ContentId = "legal-tabs-content",
                 ContentStyle = "",
-                EmptyMessage = localizer["ConsentReview_ContentNotAvailable"].Value,
+                EmptyMessage = localizer["Consent_Review_ContentNotAvailable"].Value,
                 UseLegalLanguageLabels = true
             }
         };

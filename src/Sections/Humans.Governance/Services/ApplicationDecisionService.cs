@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Gdpr.Contracts;
@@ -25,7 +24,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Services;
 
-[CrossSectionWrite("Approval sets the applicant membership tier.")]
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
@@ -80,26 +78,7 @@ internal sealed class ApplicationDecisionService(
         var today = clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
-        // Resolve the Board before the write so nothing awaitable sits between the commit and the audit.
-        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
-
-        await repository.FinalizeAsync(application, cancellationToken);
-
-        navBadge.Invalidate();
-        notificationMeter.Invalidate();
-        InvalidateVotingBadges(boardMemberIds);
-
-        await auditLogService.LogAsync(
-            AuditAction.TierApplicationApproved,
-            AuditEntityTypes.Application,
-            application.Id,
-            $"{application.MembershipTier} application approved",
-            reviewerUserId);
-
-        metrics.RecordApplicationProcessed("approved");
-        logger.LogInformation(
-            "Application {ApplicationId} approved by {UserId}",
-            application.Id, reviewerUserId);
+        await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
         await userService.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
@@ -157,26 +136,7 @@ internal sealed class ApplicationDecisionService(
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
-        // Resolve the Board before the write so nothing awaitable sits between the commit and the audit.
-        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
-
-        await repository.FinalizeAsync(application, cancellationToken);
-
-        navBadge.Invalidate();
-        notificationMeter.Invalidate();
-        InvalidateVotingBadges(boardMemberIds);
-
-        await auditLogService.LogAsync(
-            AuditAction.TierApplicationRejected,
-            AuditEntityTypes.Application,
-            application.Id,
-            $"{application.MembershipTier} application rejected",
-            reviewerUserId);
-
-        metrics.RecordApplicationProcessed("rejected");
-        logger.LogInformation(
-            "Application {ApplicationId} rejected by {UserId}",
-            application.Id, reviewerUserId);
+        await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
         var culture = await SendDecisionEmailAsync(
             application,
@@ -199,6 +159,32 @@ internal sealed class ApplicationDecisionService(
             cancellationToken);
 
         return new ApplicationDecisionResult(true);
+    }
+
+    private async Task FinalizeDecisionAsync(
+        MemberApplication application, Guid reviewerUserId, CancellationToken cancellationToken)
+    {
+        // Resolve the Board before the write so nothing awaitable sits between commit and audit.
+        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
+        await repository.FinalizeAsync(application, cancellationToken);
+
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
+        InvalidateVotingBadges(boardMemberIds);
+
+        var approved = application.Status == ApplicationStatus.Approved;
+        var decision = approved ? "approved" : "rejected";
+        await auditLogService.LogAsync(
+            approved ? AuditAction.TierApplicationApproved : AuditAction.TierApplicationRejected,
+            AuditEntityTypes.Application,
+            application.Id,
+            $"{application.MembershipTier} application {decision}",
+            reviewerUserId);
+
+        metrics.RecordApplicationProcessed(decision);
+        logger.LogInformation(
+            "Application {ApplicationId} {Decision} by {UserId}",
+            application.Id, decision, reviewerUserId);
     }
 
     public async Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(

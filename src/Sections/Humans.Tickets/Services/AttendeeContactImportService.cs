@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -9,7 +8,6 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Services;
 
-[CrossSectionWrite("Ticket import writes participation onto the imported attendee's user.")]
 internal sealed class AttendeeContactImportService(
     ITicketRepository ticketRepository,
     IUserEmailService userEmails,

@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -24,7 +23,6 @@ namespace Humans.Expenses.Services;
 /// Expenses' application service: the report state machine over the section's repository,
 /// and the GDPR export contributor.
 /// </summary>
-[CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,

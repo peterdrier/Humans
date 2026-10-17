@@ -182,7 +182,9 @@
                 if (r.status === 200) {
                     return r.json().then(function (data) { return { ok: true, data: data }; });
                 }
-                return r.text().then(function (txt) { return { ok: false, status: r.status, body: txt }; });
+                return r.json().then(
+                    function (data) { return { ok: false, status: r.status, data: data }; },
+                    function () { return { ok: false, status: r.status }; });
             })
             .then(function (result) {
                 if (result.ok && result.data && result.data.id) {
@@ -191,7 +193,8 @@
                     if (modal) modal.hide();
                     show(toastSuccessTemplate.replace('{0}', '/Issues/' + result.data.id), 'success');
                 } else {
-                    show(toastValidationFailed, 'danger');
+                    show(result.data && typeof result.data.error === 'string'
+                        ? result.data.error : toastValidationFailed, 'danger');
                 }
             })
             .catch(function () {

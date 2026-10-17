@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
@@ -26,7 +25,6 @@ namespace Humans.Teams.Services;
 /// their contracts leaves.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-[CrossSectionWrite("Syncs team Google resources and downgrades expired membership tiers.")]
 internal sealed class SystemTeamSyncJob(
     ITeamManagementService teamService,
     IUserService userService,

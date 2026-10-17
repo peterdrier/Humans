@@ -207,7 +207,7 @@ Outbound invoices to members/barrios:
   - Can add/edit/delete line items within own department only
   - Per-category unallocated remainder and progress bar
   - `IsRestricted` groups hidden from coordinator view
-  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which delegates to `GetEffectiveCoordinatorTeamIdsAsync` (includes child teams)
+  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which delegates to `GetEffectiveCoordinatorTeamIdsAsync`, which uses Teams’ `GetEffectiveBudgetCoordinatorTeamIdsAsync` policy (includes active child teams)
   - All changes audit-logged via existing BudgetAuditLog
 - **Public summary** at `/Budget/Summary` (#234):
   - All authenticated members see budget allocation pie chart (Chart.js doughnut)

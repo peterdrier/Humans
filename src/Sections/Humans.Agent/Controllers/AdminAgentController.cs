@@ -39,6 +39,9 @@ internal sealed class AdminAgentController(
             return View("~/Views/Admin/Agent/Settings.cshtml", vm);
         }
 
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
+
         await settings.UpdateAsync(s =>
         {
             s.Enabled = vm.Enabled;
@@ -48,7 +51,7 @@ internal sealed class AdminAgentController(
             s.HourlyMessageCap = vm.HourlyMessageCap;
             s.DailyTokenCap = vm.DailyTokenCap;
             s.RetentionDays = vm.RetentionDays;
-        }, ct);
+        }, actor.Id, ct);
         SetSuccess("Settings saved.");
         return Redirect("/Settings#agent");
     }

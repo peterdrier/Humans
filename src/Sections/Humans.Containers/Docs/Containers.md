@@ -15,7 +15,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Concepts
 
-- A **Container** is a physical asset owned by a `Camp` (`CampId` non-null). Containers persist year-over-year — they are NOT scoped to a season. Every container belongs to a real camp; there is no system-managed or virtual camp.
+- A **Container** is a physical asset owned by a `Camp` (`CampId` non-null). Containers persist year-over-year — they are NOT scoped to a season. Creation verifies camp existence through `ICampServiceRead` before saving files or rows; a missing or empty camp id returns the localized refusal to every caller. Every container belongs to a real camp; there is no system-managed or virtual camp.
 - **Org-level containers** (not tied to any barrio) are owned by an ordinary, production-created camp like any other; admin-only access falls out naturally because that camp has no assigned leads.
 - A **ContainerImage** is one photo in a container's gallery. A container holds **at most 5** images; they are year-agnostic like the container itself.
 - A **ContainerPlacement** is a per-year placement of a container on the city map. Composite primary key on `(ContainerId, Year)`. Placement-only metadata (notes, placement image) lives here, since it varies year over year.

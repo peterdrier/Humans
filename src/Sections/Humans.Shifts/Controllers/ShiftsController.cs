@@ -404,7 +404,11 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return BadRequest(localizer["VolTrack_NoActiveEvent"].Value);
 
-        await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
+        if (!await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []))
+        {
+            logger.LogWarning("Rejected volunteer availability outside event {EventId} for {UserId}", es.Id, user.Id);
+            return BadRequest(localizer["Shifts_AvailabilityInvalidDays"].Value);
+        }
         SetSuccess(localizer["Shifts_AvailabilityUpdated"].Value);
         return RedirectToAction(nameof(Mine));
     }

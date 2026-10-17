@@ -22,6 +22,7 @@ internal sealed class IssueSectionRouting
 {
     private readonly Dictionary<string, IReadOnlyList<string>> _roles;
     private readonly Dictionary<string, string> _canonical;
+    private readonly Dictionary<string, string> _pathSections;
 
     public IssueSectionRouting(IEnumerable<IIssueQueueOwner> owners)
     {
@@ -37,8 +38,21 @@ internal sealed class IssueSectionRouting
 
         _canonical = claimed.ToDictionary(g => g.Key, g => g.Key, StringComparer.OrdinalIgnoreCase);
 
+        AreaLabelResourceKeys = claimed.ToDictionary(
+            g => g.Key, g => g.First().AreaLabelResourceKey, StringComparer.Ordinal);
+        _pathSections = claimed.SelectMany(g => g.SelectMany(o => o.PathSegments)
+                .Select(segment => (Segment: segment, Queue: g.Key)))
+            .GroupBy(p => p.Segment, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Queue, StringComparer.OrdinalIgnoreCase);
+
         AllKnownSections = [.. claimed.Select(g => g.Key)];
     }
+
+    /// <summary>Area labels published by the queue owners, keyed by canonical queue name.</summary>
+    public IReadOnlyDictionary<string, string> AreaLabelResourceKeys { get; }
+
+    /// <summary>The queue owning a page's first path segment, or null if none declares it.</summary>
+    public string? ResolvePathSegment(string segment) => _pathSections.GetValueOrDefault(segment);
 
     /// <summary>Every queue key a section claims, ordered so the dropdown is stable.</summary>
     public IReadOnlyList<string> AllKnownSections { get; }

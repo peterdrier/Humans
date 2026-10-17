@@ -49,8 +49,8 @@ Skip sections with in-flight or imminently-planned feature work (check the activ
 
 **Maintaining the table:** each lane records its Post-Lane Score (the section's built
 `reforge surface-score` after the final accepted commit) and Last Lane (date + PR) — the
-refactor-swarm coordinator does this in one wave-end docs commit; /section-align and
-/section-read-split update their own section's row in the PR. Each wave also re-snapshots the
+refactor-swarm coordinator does this in one wave-end docs commit; /section-align
+updates its own section's row in the PR. Each wave also re-snapshots the
 Score column for all sections from `reforge surface-score --format compact` so deltas stay honest.
 
 Scores below are the 2026-06-11 wave-end snapshot (solution combined: 59182, built at c698496bc

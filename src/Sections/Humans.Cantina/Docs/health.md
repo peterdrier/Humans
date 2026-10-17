@@ -67,7 +67,7 @@ through and owns nothing but sorting and file naming.
   one human, once, in every total and every roll-up row.
 - **`MedicalConditions` is never read, never mapped, never rendered** — no viewer role changes
   this. The payload records have no such property, and that absence is pinned by a test.
-- **The section never writes.** No tables, no audit rows, no notifications, no POST routes.
+- **No domain writes.** No owned tables, notifications or POST routes. Existing weekly/daily CSV disclosures append AuditLog entries with actor, scope and person-row count.
 - **Live on every request.** No cached aggregate; the only cache it benefits from is the Users
   section's, behind `IUserServiceRead`.
 - **Access is `Admin` or `CantinaAdmin`, by policy.** An authenticated human without either is

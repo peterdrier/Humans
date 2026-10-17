@@ -224,6 +224,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget year status for {YearId}", id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await budgetService.UpdateYearStatusAsync(id, status, user.Id);

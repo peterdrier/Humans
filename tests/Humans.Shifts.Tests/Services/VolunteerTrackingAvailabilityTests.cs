@@ -1,4 +1,5 @@
 using Humans.Shifts.Domain;
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
@@ -15,6 +16,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
 {
     private readonly VolunteerTrackingRepository _repo;
     private readonly VolunteerTrackingService _service;
+    private readonly IShiftViewInvalidator _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
@@ -27,8 +29,9 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             Substitute.For<IShiftManagementRepository>(),
             NewCalendarResolver(),
             Substitute.For<IUserService>(),
-            Substitute.For<IShiftViewInvalidator>(),
-            Clock);
+            _viewInvalidator,
+            Clock,
+            AuditLog);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -45,6 +48,10 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.Should().NotBeNull();
         record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
+        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilitySet,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={esId}; AvailableDays=3; self-service update", userId,
+            relatedEntityId: esId, relatedEntityType: "EventSettings");
     }
 
     [HumansFact]
@@ -69,6 +76,26 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task SetAvailability_ClearsTheDays_AndAuditsTheVolunteer()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
+        AuditLog.ClearReceivedCalls();
+
+        await _service.SetAvailabilityAsync(userId, esId, []);
+
+        var record = await ShiftsDb.GeneralAvailability.AsNoTracking().SingleAsync(
+            g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
+        record.AvailableDayOffsets.Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilityCleared,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={esId}; AvailableDays=0; self-service update", userId,
+            relatedEntityId: esId, relatedEntityType: "EventSettings");
+    }
+
+    [HumansFact]
     public async Task GetAvailableVolunteers_ReturnsMatchingDayOffset()
     {
         var user1Id = Guid.NewGuid();
@@ -85,6 +112,45 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         var available = await _service.GetAvailableForDayAsync(esId, -2);
         available.Should().HaveCount(2);
         available.Select(a => a.UserId).Should().BeEquivalentTo([user1Id, user2Id]);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(-15, false)]
+    [Xunit.InlineData(10, false)]
+    [Xunit.InlineData(int.MinValue, false)]
+    [Xunit.InlineData(int.MaxValue, false)]
+    [Xunit.InlineData(-14, true)]
+    [Xunit.InlineData(9, true)]
+    public async Task SetAvailability_ValidatesAllDaysBeforeReplacingSavedSelection(int dayOffset, bool valid)
+    {
+        var userId = Guid.NewGuid();
+        var eventId = SeedEventSettings();
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SetAvailabilityAsync(userId, eventId, [-3]);
+        AuditLog.ClearReceivedCalls();
+        _viewInvalidator.ClearReceivedCalls();
+
+        var saved = await _service.SetAvailabilityAsync(userId, eventId, [-2, dayOffset]);
+
+        saved.Should().Be(valid);
+        var row = await ShiftsDb.GeneralAvailability.AsNoTracking().SingleAsync(
+            g => g.UserId == userId && g.EventSettingsId == eventId, Xunit.TestContext.Current.CancellationToken);
+        row.AvailableDayOffsets.Should().BeEquivalentTo(valid ? new[] { -2, dayOffset } : [-3]);
+        if (!valid)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task SetAvailability_UnknownCalendar_DoesNotCreateRow()
+    {
+        await _service.SetAvailabilityAsync(Guid.NewGuid(), Guid.NewGuid(), []);
+
+        (await ShiftsDb.GeneralAvailability.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _viewInvalidator.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -112,7 +178,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SetAvailabilityAsync(userId, esId, [-3, dayOffset]);
+        // Seed retained data from before the calendar bounds were enforced.
+        await _repo.UpsertAvailabilityAsync(userId, esId, [-3, dayOffset], TestNow);
 
         var changed = await _service.SetDayAvailabilityAsync(
             userId, esId, dayOffset, false, Xunit.TestContext.Current.CancellationToken);

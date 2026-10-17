@@ -1,4 +1,5 @@
 using Humans.Calendar.Data;
+using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -12,10 +13,9 @@ namespace Humans.Calendar.Services;
 /// <remarks>
 /// Not folded into <c>CalendarService</c>: that interface is the event mutation surface
 /// behind <c>CachingCalendarService</c>'s occurrence snapshot, and a per-member
-/// credential has nothing to cache there. Registered Singleton like the repository it
-/// wraps.
+/// credential has nothing to cache there. Scoped to share the audit writer’s request lifetime.
 /// </remarks>
-internal sealed class CalendarFeedTokenService(ICalendarRepository repo)
+internal sealed class CalendarFeedTokenService(ICalendarRepository repo, IAuditLogService audit)
     : ICalendarFeedTokenService, IUserDataContributor, IUserMerge
 {
     public Task<Guid?> GetAsync(Guid userId, CancellationToken ct = default) =>
@@ -24,13 +24,21 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo)
     // One call, not a read then a write: the null check has to happen where the insert
     // does, or two first-time views of /Calendar race and one of them 500s on the
     // primary key. The loser gets the winner's token, which is the same working feed.
-    public Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default) =>
-        repo.GetOrAddFeedTokenAsync(userId, Guid.NewGuid(), ct);
+    public async Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default)
+    {
+        var (token, created) = await repo.GetOrAddFeedTokenAsync(userId, Guid.NewGuid(), ct);
+        if (created)
+            await audit.LogAsync(AuditAction.CalendarFeedTokenCreated, "User", userId,
+                "Personal calendar feed token created", userId);
+        return token;
+    }
 
     public async Task<Guid> RotateAsync(Guid userId, CancellationToken ct = default)
     {
         var token = Guid.NewGuid();
         await repo.SetFeedTokenAsync(userId, token, ct);
+        await audit.LogAsync(AuditAction.CalendarFeedTokenRotated, "User", userId,
+            "Personal calendar feed token rotated", userId);
         return token;
     }
 

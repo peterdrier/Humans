@@ -91,7 +91,7 @@ All routes are `AdminOnly`.
 
 ## Triggers
 
-- When admin commits an import → one `MailerLiteReconciliationCompleted` audit entry with counts (no PII).
+- When an admin commits an import → one `MailerLiteReconciliationCompleted` audit entry attributed to that admin, with counts (no PII), after the section’s sync state is saved.
 - When `ApplyAsync` flips `Marketing.OptedOut` → existing `CommunicationPreferenceChanged` audit fires through `CommunicationPreferenceService`.
 - When `ApplyAsync` creates a contact → existing `ContactCreated` audit through `AccountProvisioningService`.
 - When `MailerLiteAudienceSyncService.SyncAsync` runs (via the opt-in Hangfire job — `MailerLite:AudienceSyncCron`, unset by default — or the on-demand admin button) → one `MailerLiteAudienceSyncCompleted` audit entry with counts (no PII). Per-row ML mutations are not separately audited.
