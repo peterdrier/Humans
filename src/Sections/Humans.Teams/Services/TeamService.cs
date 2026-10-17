@@ -973,16 +973,17 @@ internal sealed class TeamService(
     }
 
     private async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
-        Guid teamMemberId,
-        Instant leftAt,
-        GoogleSyncOutboxEvent? outboxEvent,
+        TeamMember member,
         CancellationToken ct)
     {
+        var outboxEvent = await BuildOutboxEventAsync(
+            member.Id, member.TeamId, member.UserId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, ct);
+        var leftAt = clock.GetCurrentInstant();
         if (outboxEvent is null)
-            return await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+            return await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
 
         using var scope = CreateTransactionScope();
-        var removedAssignments = await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+        var removedAssignments = await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
         await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
         scope.Complete();
         return removedAssignments;
@@ -1051,12 +1052,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var outboxEvent = await BuildOutboxEventAsync(
-            member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
-
-        var now = clock.GetCurrentInstant();
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
-            member.Id, now, outboxEvent, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
@@ -1318,12 +1314,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var outboxEvent = await BuildOutboxEventAsync(
-            member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
-
-        var now = clock.GetCurrentInstant();
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
-            member.Id, now, outboxEvent, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamMemberRemoved, nameof(Team), teamId,
