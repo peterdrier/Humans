@@ -18,7 +18,7 @@ internal sealed class CachingCalendarService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingCalendarService> logger)
     : TrackedCache<Guid, CalendarEventInfo>("Calendar.Event", warmOnStartup: true, logger),
-        ICalendarServiceRead, ICalendarService
+        ICalendarQueries, ICalendarService
 {
     /// <summary>DI key for the undecorated inner <see cref="ICalendarService"/>.</summary>
     public const string InnerServiceKey = "calendar-inner";

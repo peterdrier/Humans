@@ -11,7 +11,7 @@ directly. Owns `CalendarEvents`, `CalendarEventExceptions`,
 `Humans.Calendar.Services.CachingCalendarService` (Singleton decorator
 inheriting `TrackedCache<Guid, CalendarEventInfo>`, warmed on startup).
 The decorator exposes the cross-section read surface as
-`ICalendarServiceRead` and is its only implementation — it answers them
+`ICalendarQueries` and is its only implementation — it answers them
 from its snapshot, so the inner does not implement that interface at all. Writes
 delegate to the inner service then refresh the affected event row. `CalendarRepository` does not join the `Teams`
 table — the decorator stitches team names via `ITeamServiceRead` at the
@@ -37,7 +37,7 @@ not an injected dependency.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, CalendarEventInfo>` (`Calendar.Event`, warmed on startup) | Per-Entity | yes | yes | yes (per-event `ReplaceAsync` after each delegated write) |
 
-Implements `ICalendarService`, `ICalendarServiceRead`. Resolves the keyed
+Implements `ICalendarService`, `ICalendarQueries`. Resolves the keyed
 Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
 names, and (when `teamId` is null) `IEnumerable<ICalendarFeedContributor>`
 for community-calendar items — fanned out fresh per call, never cached, and
