@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Metering;
@@ -27,7 +26,6 @@ namespace Humans.Email.Services;
 /// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to Settings
 /// through <see cref="IEmailOutboxService.IsEmailPausedAsync"/>.
 /// </remarks>
-[CrossSectionWrite("Marks the campaign grant email status after send.")]
 internal sealed class EmailOutboxProcessor(
     IEmailOutboxRepository outboxRepo,
     IEmailOutboxService emailOutboxService,

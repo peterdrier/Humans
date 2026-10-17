@@ -12,7 +12,6 @@ using NodaTime;
 namespace Humans.Expenses.Services;
 
 /// <summary>The resumable Holded document and attachment conversation for an approved expense report.</summary>
-[CrossSectionWrite("Publishes expense documents and creditor bindings through Finance and Holded contracts.")]
 internal sealed class ExpenseHoldedPublisher(
     IExpenseRepository repo,
     IFileStorage fileStorage,

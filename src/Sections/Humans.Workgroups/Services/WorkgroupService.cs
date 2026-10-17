@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
@@ -31,7 +30,6 @@ namespace Humans.Workgroups.Services;
 /// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
 /// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
 /// </remarks>
-[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,

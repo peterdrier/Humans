@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -23,7 +22,6 @@ internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, In
 /// so the account never sits in the Consent Coordinator review queue.
 /// The password lives on the Identity row itself — no extra credential storage.
 /// </summary>
-[CrossSectionWrite("Provisions the shared gate-terminal account: creates the Identity user, saves its profile through Users' canonical path, and clears its consent check.")]
 internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,

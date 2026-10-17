@@ -9,7 +9,6 @@ using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using Humans.Base.Attributes;
 
 namespace Humans.Consent.Jobs;
 
@@ -31,11 +30,9 @@ namespace Humans.Consent.Jobs;
 /// <c>SectionJobs.cs</c> name the concrete type, and Shell schedules it through
 /// <c>ISectionJobs</c>.
 ///
-/// The cooldown stamp is a Users column, set through Users' own service, so the class is
-/// marked <see cref="CrossSectionWriteAttribute"/> rather than downgraded to
-/// <c>IUserServiceRead</c> — which cannot set it (HUM0032).
+/// The cooldown stamp is a Users column, set through Users' own service, so the class
+/// injects <c>IUserService</c> rather than <c>IUserServiceRead</c>, which cannot set it.
 /// </remarks>
-[CrossSectionWrite("The re-consent reminder stamps its own cooldown on the user it mailed.")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
     IMembershipCalculatorRead membershipCalculator,

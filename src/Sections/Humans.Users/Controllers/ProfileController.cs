@@ -1,5 +1,4 @@
 using Humans.Users.Services;
-using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -44,7 +43,6 @@ namespace Humans.Users.Controllers;
 // the /Profile route prefix.
 [Authorize]
 [Route("Profile")]
-[CrossSectionWrite("Profile submits and edits the member tier application.")]
 internal sealed class ProfileController(
     IUserServiceInternal userService,
     UserManager<User> userManager,

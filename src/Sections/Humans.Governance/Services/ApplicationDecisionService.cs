@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Gdpr.Contracts;
@@ -25,7 +24,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Services;
 
-[CrossSectionWrite("Approval sets the applicant membership tier.")]
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,

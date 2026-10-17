@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -23,7 +22,6 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;
 
-[CrossSectionWrite("Admin forms assign and end Auth role assignments.")]
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 [Route("Users/Admin")]
 internal sealed class UsersAdminController(

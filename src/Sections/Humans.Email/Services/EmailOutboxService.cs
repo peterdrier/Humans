@@ -1,7 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
-using Humans.Base.Attributes;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
@@ -23,7 +22,6 @@ namespace Humans.Email.Services;
 /// <see cref="IEmailOutboxRetention"/>. Also the section's GDPR fan-out member:
 /// outbox rows are user-scoped personal data (address, name, rendered body).
 /// </summary>
-[CrossSectionWrite("Email owns the IsEmailSendingPaused flag; the Settings key/value store is where it is kept.")]
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,

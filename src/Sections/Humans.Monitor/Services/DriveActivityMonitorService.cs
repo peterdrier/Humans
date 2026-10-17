@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Monitor.Contracts;
 using NodaTime;
@@ -9,7 +8,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Services;
 
-[CrossSectionWrite("Monitor stamps its own last-run marker into the Settings key/value store.")]
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceServiceRead teamResourceService,
