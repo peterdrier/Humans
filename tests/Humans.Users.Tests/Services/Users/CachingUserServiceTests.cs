@@ -152,6 +152,74 @@ public class CachingUserServiceTests
             Arg.Any<string>(), "CommunicationPreferenceService");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("add")]
+    [Xunit.InlineData("update")]
+    [Xunit.InlineData("remove")]
+    public async Task CommittedEmailWrite_FinishesCacheRefreshDespiteRequestCancellation(string operation)
+    {
+        var testCt = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false, false,
+            null, null, null, null, now, now, default);
+        var original = SampleUserInfo(userId) with
+        {
+            UserEmails = string.Equals(operation, "add", StringComparison.Ordinal) ? [] : [email]
+        };
+        var expected = original with
+        {
+            UserEmails = operation switch
+            {
+                "remove" => [],
+                "update" => [email with { IsVerified = true }],
+                _ => [email]
+            }
+        };
+        var cached = CreateSut();
+        await PrimeAsync(cached, original);
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(testCt);
+        var committed = false;
+        async Task<T> CommitAsync<T>(T result, CancellationToken writeCt)
+        {
+            writeCt.Should().Be(request.Token);
+            writeCt.ThrowIfCancellationRequested();
+            committed = true;
+            await request.CancelAsync();
+            return result;
+        }
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            committed.Should().BeTrue();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(expected);
+        });
+        switch (operation)
+        {
+            case "add":
+                _inner.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), request.Token)
+                    .Returns(call => CommitAsync(new UserEmailAddResult(email.Id, true, false), call.Arg<CancellationToken>()));
+                (await cached.AddUserEmailAsync(userId, new UserEmailAddCommand(email.Email), request.Token)).Added.Should().BeTrue();
+                break;
+            case "update":
+                _inner.UpdateUserEmailAsync(userId, email.Id, Arg.Any<UserEmailUpdateCommand>(), request.Token)
+                    .Returns(call => CommitAsync(new UpdateEmailResult(true), call.Arg<CancellationToken>()));
+                (await cached.UpdateUserEmailAsync(userId, email.Id, new UserEmailUpdateCommand(MarkVerified: true), request.Token))
+                    .Succeeded.Should().BeTrue();
+                break;
+            default:
+                _inner.RemoveUserEmailAsync(userId, email.Id, Arg.Any<UserEmailRemoveCommand>(), request.Token)
+                    .Returns(call => CommitAsync(true, call.Arg<CancellationToken>()));
+                (await cached.RemoveUserEmailAsync(userId, email.Id, new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail), request.Token))
+                    .Should().BeTrue();
+                break;
+        }
+
+        var refreshed = await cached.GetUserInfoAsync(userId, testCt);
+        refreshed!.UserEmails.Should().BeEquivalentTo(expected.UserEmails);
+        original.UserEmails.Should().BeEquivalentTo(string.Equals(operation, "add", StringComparison.Ordinal) ? [] : new[] { email });
+    }
+
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
     {
