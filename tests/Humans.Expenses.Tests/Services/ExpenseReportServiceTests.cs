@@ -3554,6 +3554,32 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task ReplacingTheFileOfADeclinedLine_WhenTheUploadRollsBack_KeepsTheDecline()
+    {
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
+        AuditLog.LogAsync(
+                AuditAction.ExpenseAttachmentUploaded,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new IOException("audit unavailable"));
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            reportId, submitter, false, lines[0], "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        var line = loaded.Lines.Single(l => l.Id == lines[0]);
+        line.Declined.Should().BeTrue();
+        line.DeclinedReason.Should().Be("Not eligible");
+        line.DeclinedByUserId.Should().Be(DeclineFinanceAdmin);
+        line.DeclinedAt.Should().Be(FakeNow);
+        loaded.Total.Should().Be(100m);
+    }
+
+    [HumansFact]
     public async Task HoldedPush_SendsAcceptedLinesOnly()
     {
         var (_, category) = SetupActiveYear();

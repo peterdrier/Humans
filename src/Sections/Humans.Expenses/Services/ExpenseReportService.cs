@@ -712,6 +712,14 @@ internal sealed class ExpenseReportService(
             }
         }
 
+        // A new file answers a decline: the line is back in the total for the reviewer to judge
+        // again. Cleared only once the upload and its audit have stuck, so a rolled-back upload
+        // never leaves a declined line payable.
+        if (line.Declined)
+            await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: false, reason: null, byUserId: null,
+                clock.GetCurrentInstant(), CancellationToken.None);
+
         return null;
     }
 

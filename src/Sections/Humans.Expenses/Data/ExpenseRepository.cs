@@ -187,17 +187,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (line is null) return (false, null);
         if (line.AttachmentId == attachment?.Id) return (true, null);
 
-        // A new file answers the decline: the line is back in the total for the reviewer to judge again.
-        if (line.Declined && attachment is not null)
-        {
-            if (line.ParentLineId is null)
-            {
-                var owner = await ctx.ExpenseReports.FirstOrDefaultAsync(r => r.Id == reportId, ct);
-                if (owner is not null) owner.Total += line.Amount;
-            }
-            ClearDecline(line);
-        }
-
         var replaced = line.Attachment;
         ExpenseAttachment? replacement = null;
         if (attachment is not null)
