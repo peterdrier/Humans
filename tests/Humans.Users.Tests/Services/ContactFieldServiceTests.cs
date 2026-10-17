@@ -422,6 +422,45 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task SaveContactFields_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var profile = await CreateProfile(Guid.NewGuid());
+        var field = new ContactField
+        {
+            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
+            Value = "+34 612345678", Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        Db.ContactFields.Add(field);
+        await Db.SaveChangesAsync(ct);
+        var inner = new UserRepository(DbFactory, Clock);
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByProfileIdForMutationAsync(profile.Id, Arg.Any<CancellationToken>())
+            .Returns(c => inner.GetByProfileIdForMutationAsync(profile.Id, c.Arg<CancellationToken>()));
+        repository.BatchSaveAsync(Arg.Any<IReadOnlyList<ContactField>>(),
+                Arg.Any<IReadOnlyList<ContactField>>(), Arg.Any<IReadOnlyList<ContactField>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(c => inner.BatchSaveAsync(c.ArgAt<IReadOnlyList<ContactField>>(0),
+                c.ArgAt<IReadOnlyList<ContactField>>(1), c.ArgAt<IReadOnlyList<ContactField>>(2),
+                c.Arg<CancellationToken>()));
+        repository.GetOwnerUserIdAsync(profile.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Guid?>(new InvalidOperationException("Owner lookup failed")));
+        var service = new ContactFieldService(
+            repository, _userService, _teamService, _roleAssignmentService,
+            Substitute.For<IUserInfoInvalidator>(), Clock, NullLogger<ContactFieldService>.Instance,
+            new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+
+        var act = () => service.SaveContactFieldsAsync(profile.Id,
+            [new(field.Id, field.FieldType, null, field.Value, ContactFieldVisibility.BoardOnly, 0)], ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Owner lookup failed");
+        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Visibility
+            .Should().Be(ContactFieldVisibility.AllActiveProfiles);
+    }
+
+    [HumansFact]
     public async Task SaveContactFields_WithInvalidValueOnNonEmailField_Succeeds()
     {
         // Non-email fields should not be validated as email

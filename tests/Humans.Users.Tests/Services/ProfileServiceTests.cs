@@ -513,6 +513,34 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     // The search surface lives on IUserServiceInternal.SearchUsersAsync and is
     // covered by CachingUserServiceTests.
 
+    [HumansFact]
+    public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var profileId = await SeedUserWithProfileAsync(Guid.NewGuid());
+        Db.ProfileLanguages.Add(new ProfileLanguage
+        {
+            Id = Guid.NewGuid(), ProfileId = profileId,
+            LanguageCode = "es", Proficiency = LanguageProficiency.Native,
+        });
+        await Db.SaveChangesAsync(ct);
+        var repository = Substitute.For<IUserRepository>();
+        repository.ReplaceLanguagesAsync(profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>())
+            .Returns(c => _userRepository.ReplaceLanguagesAsync(profileId,
+                c.Arg<IReadOnlyList<ProfileLanguage>>(), c.Arg<CancellationToken>()));
+        repository.GetOwnerUserIdAsync(profileId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Owner lookup failed"));
+        var service = new UserService(repository, _communicationPreferenceRepository, AdminAuthorization,
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(), _pictureStorage,
+            Clock, NullLogger<UserService>.Instance, AuditLog);
+
+        var act = () => service.SaveProfileLanguagesAsync(profileId,
+            [new ProfileLanguageInfo(Guid.Empty, "fr", LanguageProficiency.Native)], ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Owner lookup failed");
+        (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
+    }
+
     // --- SaveProfileVolunteerHistoryAsync ---
 
     [HumansFact]

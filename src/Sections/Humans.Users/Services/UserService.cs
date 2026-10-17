@@ -668,8 +668,8 @@ internal sealed class UserService(
             })
             .ToList();
 
-        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
         var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
+        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
         return new UserProfileLanguagesSaveResult(
             ownerUserId is not null,
             ownerUserId);
