@@ -226,6 +226,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
 - When a moderator withdraws an Approved event (`IEventService.ModeratorWithdrawAsync`): `Event.Status` transitions to `Withdrawn` and a `Withdrawn` `EventModerationAction` naming the moderator is appended.
 
+- CSV guide downloads keep the EventsAdmin/Admin policy and existing columns. The owning service builds the file and writes `EventGuideExported` with the authenticated actor and emitted row count (recurring occurrences count separately), including empty/repeated downloads. Print-guide composition uses existing approved-event/settings reads, without the CSV’s SubmitterName column.
+
 ## Cross-Section Dependencies
 
 - **Users**: controllers call `IUserServiceRead.GetUserInfoAsync(userId)` for submitter display names (email as fallback) — moderation actors render through `<vc:human>` from `ActorUserId`; the current user comes from `HumansControllerBase` over the same interface.

@@ -371,4 +371,5 @@
   <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Document legal arxivat</value></data>
   <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Versió del document legal publicada</value></data>
   <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Resum de la versió del document legal actualitzat</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Guia d’esdeveniments exportada</value></data>
 </root>

@@ -1,4 +1,9 @@
 using System.Text.Json;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Csv;
+using Humans.Camps.Contracts;
+using static Humans.Events.Helpers.EventsLookupHelpers;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Humans.Events.Services.Dtos;
@@ -19,6 +24,8 @@ internal sealed class EventService(
     IEventRepository repo,
     ISettingsService settingsService,
     IUserServiceRead userService,
+    ICampServiceRead camps,
+    IAuditLogService audit,
     IEmailService emailService,
     EventsEmails emailMessages,
     IClock clock,
@@ -434,12 +441,62 @@ internal sealed class EventService(
         return events.Select(ToEventInfo).ToList();
     }
 
-    public async Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default)
+    public async Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        var events = await repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var settingsView = settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
-        return new ApprovedEventsExportInfo(events.Select(ToEventInfo).ToList(), settingsView);
+        var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct)).Select(ToEventInfo).ToList();
+        var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
+        var tz = GetTimeZone(eventSettings);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var submitters = await LoadSubmittersAsync(
+            userService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
+
+        var rows = new List<object?[]>();
+        foreach (var e in events.OrderBy(e => e.StartAt))
+        {
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var campName = ResolveCampName(camp) ?? "";
+            var venueName = e.VenueName ?? "";
+            var submitterName = e.CampId == null
+                ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
+                : "";
+
+            foreach (var occurrence in e.GetOccurrenceInstants(eventSettings?.GateOpeningDate, tz))
+            {
+                var local = ToLocalDateTime(occurrence, tz);
+                rows.Add([
+                    e.Id.ToString(),
+                    e.Title,
+                    e.Description,
+                    e.CategoryName,
+                    campName,
+                    venueName,
+                    submitterName,
+                    e.LocationNote ?? "",
+                    local.ToInvariantDate(),
+                    local.ToInvariantTime(),
+                    e.DurationMinutes,
+                    e.IsRecurring ? "Yes" : "No",
+                    e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    e.Status.ToString(),
+                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
+                    e.Host ?? "",
+                ]);
+            }
+        }
+
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow("Id", "Title", "Description", "Category", "CampName", "VenueName", "SubmitterName",
+                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt", "Host");
+            foreach (var row in rows)
+            {
+                csv.WriteRow(row);
+            }
+        });
+        await audit.LogAsync(AuditAction.EventGuideExported, "EventGuide", settings?.Id ?? Guid.Empty,
+            $"Approved event guide CSV exported: {rows.Count} rows", actorUserId);
+        return bytes;
     }
 
     private static EventCategoryView ToCategoryView(EventCategory c) => new(

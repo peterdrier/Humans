@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.AuditLog.Contracts;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Events.Controllers;
@@ -37,6 +38,8 @@ public sealed class EventServiceTests
     private readonly FakeEventRepository _repo = new();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly EventsEmails _emailMessages = new(new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
         Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)), NullLogger<EventsEmails>.Instance);
@@ -44,7 +47,65 @@ public sealed class EventServiceTests
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
+        _service = new EventService(_repo, _burnSettings, _userService, _camps, _audit, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task CsvExport_AuditsActorAndExpandedRows_AndPreservesPrintGuide(int expectedRows)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var submitterId = Guid.NewGuid();
+        var burn = BurnFixtures.Burn();
+        _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
+        _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
+        _camps.GetCampsForYearAsync(2026, ct).Returns(Array.Empty<CampInfo>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], [], null, [])
+            });
+        if (expectedRows > 0)
+            _repo.Events.Add(new Event
+            {
+                Id = Guid.NewGuid(), SubmitterUserId = submitterId,
+                Category = new EventCategory { Name = "Workshop", Slug = "workshop" },
+                EventVenue = new EventVenue { Name = "Main Stage" },
+                Title = "Fire Circle", Description = "Bring a mat", Host = "Ember",
+                StartAt = Instant.FromUtc(2026, 7, 1, 8, 30), DurationMinutes = 60,
+                IsRecurring = expectedRows == 2, RecurrenceDays = "0,2", Status = EventStatus.Approved
+            });
+        _repo.Events.Add(new Event { Title = "Pending event", Status = EventStatus.Pending });
+        var controller = new EventsExportController(_service, _camps, _userService)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+                }
+            }
+        };
+
+        var file = (await controller.DownloadCsv(ct)).Should().BeOfType<FileContentResult>().Which;
+        var csv = HumansCsv.Utf8WithBom.GetString(file.FileContents);
+        csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(expectedRows + 1);
+        csv.Should().NotContain("Pending event");
+        if (expectedRows > 0)
+            csv.Should().Contain("Flame").And.Contain("Ember").And.Contain("Main Stage").And.Contain("2026-07-01");
+        await _audit.Received(1).LogAsync(AuditAction.EventGuideExported, "EventGuide", _repo.Settings.Id,
+            $"Approved event guide CSV exported: {expectedRows} rows", actorId);
+
+        var print = (await controller.PrintGuide(ct)).Should().BeOfType<ViewResult>().Which;
+        var model = print.Model.Should().BeOfType<EventsExportController.PrintGuideViewModel>().Which;
+        model.DayGroups.Sum(day => day.Entries.Count).Should().Be(expectedRows);
+        if (expectedRows > 0)
+            model.DayGroups.SelectMany(day => day.Entries).Should()
+                .OnlyContain(entry => string.Equals(entry.CampOrVenueName, "Main Stage", StringComparison.Ordinal));
+        _audit.ReceivedCalls().Should().ContainSingle();
     }
 
     [HumansTheory]

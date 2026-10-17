@@ -395,4 +395,5 @@ public enum AuditAction
     LegalDocumentArchived,
     LegalDocumentVersionPublished,
     LegalDocumentVersionSummaryUpdated,
+    EventGuideExported,
 }

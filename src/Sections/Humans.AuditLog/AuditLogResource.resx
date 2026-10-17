@@ -371,4 +371,5 @@
   <data name="Enum_AuditAction_LegalDocumentArchived" xml:space="preserve"><value>Legal document archived</value></data>
   <data name="Enum_AuditAction_LegalDocumentVersionPublished" xml:space="preserve"><value>Legal document version published</value></data>
   <data name="Enum_AuditAction_LegalDocumentVersionSummaryUpdated" xml:space="preserve"><value>Legal document version summary updated</value></data>
+  <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Event guide exported</value></data>
 </root>
