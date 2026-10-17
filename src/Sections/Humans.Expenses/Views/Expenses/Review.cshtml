@@ -62,9 +62,22 @@ else
         if (rows.Any(r => Model.FailedHoldedPushReportIds.Contains(r.Id)))
         {
             builder = builder
-                .Column("Holded", r => Model.FailedHoldedPushReportIds.Contains(r.Id) ? "Push failed" : "", c => c.SelectFilter())
-                .RowCss(r => Model.FailedHoldedPushReportIds.Contains(r.Id) ? "table-danger" : null);
+                .Column("Holded", r => Model.FailedHoldedPushReportIds.Contains(r.Id) ? "Push failed" : "", c => c.SelectFilter());
         }
+        @* A pre-approved report names its program; a revoked grant flags the row from the moment
+           of revocation, so Finance rejects it instead of approving against a cap that is gone. *@
+        if (rows.Any(r => Model.Grants.ContainsKey(r.Id)))
+        {
+            builder = builder.Column(Localizer["Expenses_Preapprovals_Column"].Value,
+                r => Model.Grants.TryGetValue(r.Id, out var grant)
+                    ? (Model.IsRevoked(r.Id) ? $"{grant.ProgramName} ({Localizer["Expenses_Preapprovals_RevokedBadge"].Value})" : grant.ProgramName)
+                    : "",
+                c => c.SelectFilter());
+        }
+        builder = builder.RowCss(r =>
+            Model.FailedHoldedPushReportIds.Contains(r.Id) ? "table-danger"
+            : Model.IsRevoked(r.Id) ? "table-warning"
+            : null);
         var table = builder
             .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
             .Column(Localizer["Expenses_HoldedAccount"].Value, r => Model.BookingLabels.TryGetValue(r.Id, out var booking) ? booking : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())

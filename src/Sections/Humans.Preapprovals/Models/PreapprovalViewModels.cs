@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Finance.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Users.Contracts;

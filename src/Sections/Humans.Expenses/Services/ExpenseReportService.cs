@@ -6,12 +6,14 @@ using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
+using System.Transactions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;
@@ -35,6 +37,8 @@ internal sealed class ExpenseReportService(
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
+    IPreapprovalService preapprovals,
+    IPreapprovalWrite preapprovalWrites,
     IClock clock,
     ILogger<ExpenseReportService> logger,
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
@@ -44,6 +48,9 @@ internal sealed class ExpenseReportService(
     internal const string ExpenseAuditLog = "ExpenseAuditLog";
 
     private readonly TravelReimbursementConfig _travel = travelConfig.Value;
+
+    /// <summary>Pre-approval claim deadlines are Europe/Madrid dates, the zone the association books in.</summary>
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
@@ -222,48 +229,81 @@ internal sealed class ExpenseReportService(
             .ToList();
     }
 
-    public async Task<Guid> CreateDraftAsync(
+    public async Task<ExpenseCreateDraftResult> CreateDraftAsync(
         Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
         CancellationToken ct = default)
     {
-        var (resolved, refusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
-        if (refusal is not null)
-            throw new InvalidOperationException($"Account {holdedAccountNumber} cannot be booked to: {refusal.Error?.ResourceKey ?? refusal.Error?.OperatorMessage}.");
-        var booking = resolved!;
-
-        var now = clock.GetCurrentInstant();
-        var report = new ExpenseReport
+        Guid? reportId = null;
+        var result = await RunMutationAsync(ct, async () =>
         {
-            Id = Guid.NewGuid(),
-            SubmitterUserId = submitterUserId,
-            HoldedAccountNumber = booking.HoldedAccountNumber,
-            HoldedAccountId = booking.HoldedAccountId,
-            BudgetCategoryId = booking.BudgetCategoryId,
-            BudgetYearId = booking.BudgetYearId,
-            Status = ExpenseReportStatus.Draft,
-            Note = note,
-            PayeeName = "",
-            PayeeIban = "",
-            Total = 0m,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        await repo.AddDraftAsync(report, ct);
+            var (resolved, refusal) = preapprovalGrantId is { } grantId
+                ? await ResolveGrantBookingAsync(grantId, submitterUserId, heldGrantId: null, ct)
+                : await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
+            if (refusal is not null) return refusal;
+            var booking = resolved!;
 
-        // Self-created drafts stay unaudited — the report itself is the record. A report filed for
-        // somebody else is an action taken on their behalf, so it leaves a trail naming both.
-        if (actorUserId != submitterUserId)
-        {
-            await auditLogService.LogAsync(
-                AuditAction.ExpenseCreatedOnBehalf,
-                AuditEntityTypes.Report, report.Id,
-                $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}.",
-                actorUserId,
-                relatedEntityId: submitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
-        }
+            var now = clock.GetCurrentInstant();
+            var report = new ExpenseReport
+            {
+                Id = Guid.NewGuid(),
+                SubmitterUserId = submitterUserId,
+                HoldedAccountNumber = booking.HoldedAccountNumber,
+                HoldedAccountId = booking.HoldedAccountId,
+                BudgetCategoryId = booking.BudgetCategoryId,
+                BudgetYearId = booking.BudgetYearId,
+                PreapprovalGrantId = preapprovalGrantId,
+                Status = ExpenseReportStatus.Draft,
+                Note = note,
+                PayeeName = "",
+                PayeeIban = "",
+                Total = 0m,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            await repo.AddDraftAsync(report, ct);
+            reportId = report.Id;
 
-        return report.Id;
+            // Self-created drafts stay unaudited — the report itself is the record. A report filed for
+            // somebody else is an action taken on their behalf, so it leaves a trail naming both.
+            if (actorUserId != submitterUserId)
+            {
+                await auditLogService.LogAsync(
+                    AuditAction.ExpenseCreatedOnBehalf,
+                    AuditEntityTypes.Report, report.Id,
+                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}."
+                    + DescribeGrant(preapprovalGrantId),
+                    actorUserId,
+                    relatedEntityId: submitterUserId,
+                    relatedEntityType: AuditEntityTypes.User);
+            }
+
+            return ExpenseMutationResult.Success;
+        }, "Error creating draft expense report for {SubmitterUserId}", submitterUserId);
+
+        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId);
+    }
+
+    /// <summary>Audit-detail suffix naming the pre-approval a report files against; empty when none.</summary>
+    private static string DescribeGrant(Guid? grantId) =>
+        grantId is { } id ? $" Filed against pre-approval {id}." : "";
+
+    /// <summary>
+    /// The booking a pre-approved report carries while it is a draft: the grant's account, with no
+    /// budget category and no year, which is what routes it past coordinator endorsement. The grant
+    /// must be one the submitter may file against today (held under any of their ids, Open, and
+    /// inside the claim deadline); the grant a draft already holds (<paramref name="heldGrantId"/>)
+    /// is always kept, so a rejected report can be corrected after the deadline it met.
+    /// </summary>
+    private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveGrantBookingAsync(
+        Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
+    {
+        var grant = grantId == heldGrantId
+            ? await preapprovals.GetGrantAsync(grantId, ct)
+            : (await preapprovals.ListClaimableForUserAsync(submitterUserId, ct)).FirstOrDefault(g => g.Id == grantId);
+        if (grant is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
+        return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
     }
 
     /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
@@ -308,6 +348,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
@@ -315,14 +356,33 @@ internal sealed class ExpenseReportService(
             if (refusal is not null) return refusal;
             var report = editableReport!;
 
-            // A draft is not booked to anything yet, so its header resolves through the active year
-            // as it always has. A report past submit already belongs to a budget year; re-resolving
-            // it through the active year would silently move last year's accounting into this year's
-            // books, so it keeps its own year and only that year's categories are accepted.
-            var pinnedYearId = IsPendingApproval(report.Status) ? report.BudgetYearId : null;
-            var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
-            if (bookingRefusal is not null) return bookingRefusal;
-            var booking = resolved!;
+            ExpenseBooking booking;
+            if (report.Status != ExpenseReportStatus.Draft
+                && (preapprovalGrantId != report.PreapprovalGrantId
+                    || (report.PreapprovalGrantId is not null && holdedAccountNumber != report.HoldedAccountNumber)))
+            {
+                // The grant was claimed at submit and the report stamped from it; neither moves until
+                // the report leaves the pending window (withdraw releases, approval consumes).
+                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalLocked");
+            }
+            if (preapprovalGrantId is { } grantId)
+            {
+                var (grantBooking, grantRefusal) = await ResolveGrantBookingAsync(
+                    grantId, report.SubmitterUserId, report.PreapprovalGrantId, ct);
+                if (grantRefusal is not null) return grantRefusal;
+                booking = grantBooking!;
+            }
+            else
+            {
+                // A draft is not booked to anything yet, so its header resolves through the active year
+                // as it always has. A report past submit already belongs to a budget year; re-resolving
+                // it through the active year would silently move last year's accounting into this year's
+                // books, so it keeps its own year and only that year's categories are accepted.
+                var pinnedYearId = IsPendingApproval(report.Status) ? report.BudgetYearId : null;
+                var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
+                if (bookingRefusal is not null) return bookingRefusal;
+                booking = resolved!;
+            }
 
             var updated = new ExpenseReport
             {
@@ -331,13 +391,38 @@ internal sealed class ExpenseReportService(
                 HoldedAccountId = booking.HoldedAccountId,
                 BudgetCategoryId = booking.BudgetCategoryId,
                 BudgetYearId = booking.BudgetYearId,
+                PreapprovalGrantId = preapprovalGrantId,
                 Note = note,
                 UpdatedAt = clock.GetCurrentInstant()
             };
-            await repo.UpdateDraftAsync(updated, ct);
+
+            // A rejected draft still holds the grant it was submitted against (Claimed). Dropping or
+            // swapping it releases that claim in the same transaction as the header, so no grant stays
+            // claimed by a report that no longer names it. A grant revoked meanwhile is left behind.
+            var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
+                && (await preapprovals.GetGrantAsync(held, ct))?.Status == GrantStatus.Claimed
+                ? held
+                : (Guid?)null;
+            if (released is { } releasedId)
+            {
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Required,
+                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                    TransactionScopeAsyncFlowOption.Enabled);
+                await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
+                await repo.UpdateDraftAsync(updated, ct);
+                scope.Complete();
+            }
+            else
+            {
+                await repo.UpdateDraftAsync(updated, ct);
+            }
 
             await AuditOnBehalfEditAsync(report, actorUserId,
-                $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})", ct);
+                $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})"
+                + (preapprovalGrantId != report.PreapprovalGrantId
+                    ? $" and pre-approval ({report.PreapprovalGrantId?.ToString() ?? "none"} → {preapprovalGrantId?.ToString() ?? "none"})"
+                    : ""), ct);
 
             return ExpenseMutationResult.Success;
         }, "Error updating expense report {ReportId}", reportId);
@@ -786,7 +871,7 @@ internal sealed class ExpenseReportService(
             if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
             // The Subject carries the project name; reviewers cannot tell what was paid for without it.
-            // Expenses has no link to a Preapprovals grant, so this applies to every report.
+            // A pre-approved report is no exception: the grant's label only prefills the field on the new form.
             if (string.IsNullOrWhiteSpace(report.Note))
                 return ExpenseMutationResult.Failure("Expenses_Validation_SubjectRequired");
 
@@ -814,15 +899,48 @@ internal sealed class ExpenseReportService(
             var payeeIban = profile.Iban;
 
             var now = clock.GetCurrentInstant();
-            var ok = await repo.SubmitAsync(reportId, legalName, payeeIban, now, ct);
-            if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+            if (report.PreapprovalGrantId is not { } grantId)
+            {
+                var ok = await repo.SubmitAsync(reportId, legalName, payeeIban, now, ct: ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+            }
+            else
+            {
+                // The claim pre-check only picks the member's message; ClaimAsync is the gate, and it
+                // runs first inside the transaction so a refused claim leaves the report untouched.
+                var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
+                if (grantRefusal is not null) return grantRefusal;
+
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Required,
+                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                    TransactionScopeAsyncFlowOption.Enabled);
+                GrantStamp stamp;
+                try
+                {
+                    stamp = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    logger.LogWarning(ex, "Pre-approval {GrantId} refused the claim by report {ReportId}", grantId, reportId);
+                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                }
+                var ok = await repo.SubmitAsync(
+                    reportId, legalName, payeeIban, now,
+                    grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
+                    grantMaxAmount: stamp.MaxAmount,
+                    ct: ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+                scope.Complete();
+            }
 
             await auditLogService.LogAsync(
                 AuditAction.ExpenseSubmit,
                 AuditEntityTypes.Report, reportId,
-                report.SubmitterUserId == actorUserId
+                (report.SubmitterUserId == actorUserId
                     ? "Submitted expense report."
-                    : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
+                    : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
+                + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
                 relatedEntityType: AuditEntityTypes.User);
@@ -830,6 +948,31 @@ internal sealed class ExpenseReportService(
             return ExpenseMutationResult.Success;
 
         }, "Error submitting expense report {ReportId}", reportId);
+
+    /// <summary>
+    /// Why the submitter cannot claim their pre-approval now, as a member-facing refusal, or null when
+    /// the claim should be attempted. Mirrors <see cref="IPreapprovalWrite.ClaimAsync"/>'s rules:
+    /// the report already holding the grant resubmits past the deadline; anyone else is refused.
+    /// </summary>
+    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
+    {
+        var grant = await preapprovals.GetGrantAsync(grantId, ct);
+        switch (grant?.Status)
+        {
+            case GrantStatus.Revoked:
+                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalRevoked");
+            case GrantStatus.Open:
+                var today = clock.GetCurrentInstant().InZone(MadridZone).Date;
+                return grant.ClaimBy < today
+                    ? ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalDeadlinePassed", grant.ClaimBy.ToInvariantDate())
+                    : null;
+            case GrantStatus.Claimed:
+                // Held by this report (a resubmit) or by another one; ClaimAsync tells them apart.
+                return null;
+            default:
+                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+        }
+    }
 
     public Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
@@ -841,13 +984,37 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
 
             var now = clock.GetCurrentInstant();
-            var ok = await repo.WithdrawAsync(reportId, now, ct);
-            if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+            // Withdrawn before approval, a held pre-approval goes back to the member to file again;
+            // after approval it was consumed and stays so. A grant revoked while the report was
+            // pending is not held any more and is left alone, so the withdrawal still goes through.
+            var heldGrant = report.PreapprovalGrantId is { } grantId && IsPendingApproval(report.Status)
+                ? await preapprovals.GetGrantAsync(grantId, ct)
+                : null;
+            var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
+            if (!releasesGrant)
+            {
+                var ok = await repo.WithdrawAsync(reportId, now, ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+            }
+            else
+            {
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Required,
+                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                    TransactionScopeAsyncFlowOption.Enabled);
+                await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
+                var ok = await repo.WithdrawAsync(reportId, now, ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                scope.Complete();
+            }
 
             await auditLogService.LogAsync(
                 AuditAction.ExpenseWithdraw,
                 AuditEntityTypes.Report, reportId,
-                "Withdrew expense report.",
+                "Withdrew expense report."
+                + (releasesGrant
+                    ? $" Released pre-approval {report.PreapprovalGrantId}."
+                    : heldGrant is not null ? $" Pre-approval {report.PreapprovalGrantId} is {heldGrant.Status}; left as is." : ""),
                 submitterUserId);
 
             return ExpenseMutationResult.Success;
@@ -1194,21 +1361,61 @@ internal sealed class ExpenseReportService(
             ExpenseBooking? overrideBooking = null;
             if (overrideAccountNumber is { } overrideNumber && overrideNumber != report.HoldedAccountNumber)
             {
+                if (report.PreapprovalGrantId is not null)
+                    return ExpenseMutationResult.OperatorFailure("The account is locked by the report's pre-approval; reject the report to change it.");
                 var (resolved, refusal) = await ResolveBookingAsync(overrideNumber, report.BudgetYearId, ct);
                 if (refusal is not null) return refusal;
                 overrideBooking = resolved;
             }
 
+            if (report.PreapprovalGrantId is { } grantId)
+            {
+                // The grant's current amount is the ceiling: a blank cap keeps it, a lower one is
+                // Finance's call, a higher one is a new pre-approval, not an approval.
+                var grant = await preapprovals.GetGrantAsync(grantId, ct);
+                if (grant is null)
+                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report.");
+                if (maxAmount is null)
+                    maxAmount = grant.MaxAmount;
+                else if (maxAmount > grant.MaxAmount)
+                    return ExpenseMutationResult.OperatorFailure(
+                        $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR.");
+            }
+
             var outboxEventId = Guid.NewGuid();
             var now = clock.GetCurrentInstant();
-            var ok = await repo.ApproveAsync(
-                reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+            bool ok;
+            if (report.PreapprovalGrantId is not { } consumedGrantId)
+            {
+                ok = await repo.ApproveAsync(
+                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+            }
+            else
+            {
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Required,
+                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                    TransactionScopeAsyncFlowOption.Enabled);
+                try
+                {
+                    await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    logger.LogWarning(ex, "Pre-approval {GrantId} refused consumption by report {ReportId}", consumedGrantId, reportId);
+                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                }
+                ok = await repo.ApproveAsync(
+                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                if (ok) scope.Complete();
+            }
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
             await auditLogService.LogAsync(
                 AuditAction.ExpenseApprove,
                 AuditEntityTypes.Report, reportId,
-                "Finance approved expense report." + MaxAmountDetail(maxAmount),
+                "Finance approved expense report." + MaxAmountDetail(maxAmount)
+                + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
                 actorUserId);
 
             if (overrideBooking is not null)

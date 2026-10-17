@@ -8,6 +8,7 @@ using Humans.Expenses.Controllers;
 using Humans.Expenses.Models;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,12 +16,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Expenses.Tests.Controllers;
 
 public sealed class ExpensesControllerTests
 {
+    private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
+
     [HumansTheory]
     [Xunit.InlineData("Detail", "View")]
     [Xunit.InlineData("EditGet", "Edit")]
@@ -55,8 +60,8 @@ public sealed class ExpensesControllerTests
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(users, reports,
             Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
-            authorization, NullLogger<ExpensesController>.Instance,
-            Substitute.For<IStringLocalizer<ExpensesResource>>())
+            Substitute.For<IPreapprovalService>(), authorization, TestClock,
+            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext
             {
@@ -161,7 +166,8 @@ public sealed class ExpensesControllerTests
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
-            Substitute.For<IHoldedFinanceService>(), authorization, NullLogger<ExpensesController>.Instance, localizer)
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
+            TestClock, NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -220,7 +226,8 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports,
             Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
-            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, localizer)
+            Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock,
+            NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
@@ -277,7 +284,8 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports, budget,
-            Substitute.For<IHoldedFinanceService>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(),
+            Substitute.For<IAuthorizationService>(), TestClock,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext { HttpContext = context },

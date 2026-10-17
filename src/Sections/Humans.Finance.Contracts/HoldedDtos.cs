@@ -30,8 +30,9 @@ public sealed record HoldedDocSyncInfo(
 public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created);
 
 /// <summary>One expense account a caller may book to: a budget category's account (labelled
-/// "Group / Category" from the active budget year) or a Finance-managed account (its label).
-/// Cache reads only — never a Holded call.</summary>
+/// "Group / Category" from the active budget year; inactive when its category is not in that year)
+/// or a Finance-managed account (its label; inactive when retired). Cache reads only — never a
+/// Holded call.</summary>
 public sealed record HoldedExpenseAccountOption(
     int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive);
 

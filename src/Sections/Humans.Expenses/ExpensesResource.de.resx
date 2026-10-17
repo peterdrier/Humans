@@ -279,6 +279,26 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Noch nichts aufgezeichnet.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(unbekannte Kategorie)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>z. B. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Offene Vorabgenehmigungen</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Ausgabe einreichen</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Einreichen bis {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>bis zu {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Gegen eine Vorabgenehmigung einreichen</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Keine Vorabgenehmigung</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Eine Vorabgenehmigung legt Konto und Höchstbetrag fest; das Konto unten wird daraus übernommen.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Vorab genehmigt: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>Noch {0} Tage zum Einreichen (bis {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Heute einreichen: die Frist endet am {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>Die Frist {0} ist abgelaufen; dieser Bericht kann nicht mehr gegen die Vorabgenehmigung eingereicht werden.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Rechtzeitig eingereicht: die Frist gilt nicht mehr. Reiche erneut ein, wenn alles bereit ist.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Diese Vorabgenehmigung wurde widerrufen. Die Abrechnung kann damit nicht genehmigt werden: nach der Ablehnung kann die Vorabgenehmigung im Entwurf entfernt oder getauscht werden.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Vorabgenehmigung</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>widerrufen</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Gegen diese Vorabgenehmigung kann nicht eingereicht werden: sie gehört nicht dem Mitglied, ist nicht offen oder ihre Frist ist abgelaufen.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>Vorabgenehmigung und Konto eines eingereichten Berichts können nicht geändert werden.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>Die Vorabgenehmigung wurde widerrufen; dieser Bericht kann nicht dagegen eingereicht werden.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>Die Frist {0} ist abgelaufen; dieser Bericht kann nicht mehr gegen die Vorabgenehmigung eingereicht werden.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>Die Vorabgenehmigung ist nicht mehr verfügbar: sie wurde von einem anderen Bericht beansprucht oder bereits verwendet.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Du musst den Bericht nicht neu anlegen: Öffne unten eine beliebige Zeile, um sie zu bearbeiten, den Beleg zu ersetzen oder sie zu entfernen, und sende den Bericht dann erneut ab.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Zu den Zeilen</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Einreicher/in</value></data>

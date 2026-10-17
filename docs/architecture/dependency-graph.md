@@ -520,6 +520,7 @@ graph LR
     ExpenseReport --> Team
     ExpenseReport --> Budget
     ExpenseReport --> Finance
+    ExpenseReport --> Preapproval
 
     %% Containers
     Container --> Audit

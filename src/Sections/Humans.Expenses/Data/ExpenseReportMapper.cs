@@ -13,6 +13,7 @@ internal static class ExpenseReportMapper
         HoldedAccountId = r.HoldedAccountId,
         BudgetCategoryId = r.BudgetCategoryId,
         BudgetYearId = r.BudgetYearId,
+        PreapprovalGrantId = r.PreapprovalGrantId,
         Status = r.Status,
         Note = r.Note,
         PayeeName = r.PayeeName,

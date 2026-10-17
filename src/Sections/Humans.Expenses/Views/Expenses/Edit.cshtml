@@ -23,6 +23,21 @@
 
             <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
+            @if (r.Status == ExpenseReportStatus.Draft && Model.Grants.Count > 0)
+            {
+                <partial name="_PreapprovalSelect" model="@(new PreapprovalSelectModel(Model.Grants, Model.PreapprovalGrantId, "HoldedAccountNumber"))" />
+            }
+            else if (r.PreapprovalGrantId is not null)
+            {
+                @* Past Draft the grant is claimed and the report stamped from it: shown, not editable. *@
+                <input type="hidden" asp-for="PreapprovalGrantId" />
+                <div class="form-text mb-3">@Localizer["Expenses_Validation_PreapprovalLocked"]</div>
+            }
+            @if (Model.HeldGrant is { } held)
+            {
+                <partial name="_PreapprovalBanner" model="@(new PreapprovalBannerModel(held, Model.Today, ShowDeadline: r.Status == ExpenseReportStatus.Draft))" />
+            }
+
             <div class="mb-3">
                 <label asp-for="HoldedAccountNumber" class="form-label">@Localizer["Expenses_HoldedAccount"] <span class="text-danger">*</span></label>
                 <select asp-for="HoldedAccountNumber" class="form-select" required>

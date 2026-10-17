@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Authorization;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Controllers;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Models;

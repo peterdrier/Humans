@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;

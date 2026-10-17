@@ -279,6 +279,26 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Non è stato ancora registrato nulla.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria sconosciuta)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>ad es. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Preapprovazioni aperte</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Presenta spesa</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Richiedere entro il {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>fino a {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Presenta a fronte di una preapprovazione</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Nessuna preapprovazione</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Una preapprovazione fissa il conto e il massimo; il conto qui sotto viene preso da essa.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Preapprovato: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>{0} giorni rimasti per inviare (entro il {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Invia oggi: la scadenza è il {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>La scadenza {0} è passata; questo rapporto non può più essere inviato a fronte della preapprovazione.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentato in tempo: la scadenza non si applica più. Reinvia quando è pronto.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Questa preapprovazione è stata revocata. La nota non può essere approvata con essa: una volta respinta, la preapprovazione può essere rimossa o cambiata nella bozza.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preapprovazione</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocata</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Non è possibile presentare a fronte di quella preapprovazione: non è del membro, non è aperta o la scadenza è passata.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preapprovazione e il conto di un rapporto inviato non possono essere modificati.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preapprovazione è stata revocata; questo rapporto non può essere inviato a fronte di essa.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>La scadenza {0} è passata; questo rapporto non può più essere inviato a fronte della preapprovazione.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preapprovazione non è più disponibile: è stata richiesta da un altro rapporto o già usata.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puoi correggere questo rendiconto senza ricominciare: apri una qualsiasi riga qui sotto per modificarla, sostituire la ricevuta o rimuoverla, poi invia di nuovo.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Vai alle righe</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Richiedente</value></data>

@@ -39,5 +39,6 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
         b.HasIndex(x => x.Status);
         b.HasIndex(x => x.BudgetCategoryId);
         b.HasIndex(x => x.HoldedDocId);
+        b.HasIndex(x => x.PreapprovalGrantId);
     }
 }
