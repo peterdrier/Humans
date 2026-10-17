@@ -1876,7 +1876,7 @@ public class HoldedFinanceServiceTests
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
         json.Should().NotContain("CreatedAt").And.NotContain("UpdatedAt");
-        JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(1);
+        JsonSerializer.SerializeToElement(slice.Data).ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [HumansTheory]
@@ -1905,13 +1905,38 @@ public class HoldedFinanceServiceTests
         var slices = await MakeService().ContributeForUserAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
 
         var bindings = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.HoldedCreditorAccount, StringComparison.Ordinal)).Data);
-        bindings.GetArrayLength().Should().Be(2);
-        bindings.EnumerateArray().Select(b => b.GetProperty("HoldedContactId").GetString())
-            .Should().BeEquivalentTo("survivor-contact", "source-contact");
+        bindings.ValueKind.Should().Be(JsonValueKind.Object);
+        bindings.GetProperty("HoldedContactId").GetString().Should().Be(archivedId ? "source-contact" : "survivor-contact");
+        var additional = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName,
+            "AdditionalHoldedCreditorAccounts", StringComparison.Ordinal)).Data);
+        additional.GetArrayLength().Should().Be(1);
+        additional[0].GetProperty("HoldedContactId").GetString().Should().Be(archivedId ? "survivor-contact" : "source-contact");
+        additional[0].GetProperty("UserId").GetGuid().Should().Be(archivedId ? survivorId : sourceId);
         var payouts = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.SepaPayouts, StringComparison.Ordinal)).Data);
         payouts.GetArrayLength().Should().Be(2);
         payouts.EnumerateArray().Select(b => b.GetProperty("HoldedContactId").GetString())
             .Should().BeEquivalentTo("survivor-contact", "source-contact");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_SourceOnlyBinding_PreservesNullPrimaryAndExportsAdditionalAccount()
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        _users.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []) with { MergedUserIds = [sourceId] });
+        _repo.GetCreditorContactByUserAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = sourceId, HoldedContactId = "source-only", SupplierAccountNum = 40000004 });
+
+        var service = MakeService();
+        var slices = await service.ContributeForUserAsync(survivorId, Xunit.TestContext.Current.CancellationToken);
+
+        slices.Single(s => string.Equals(s.SectionName, "HoldedCreditorAccount", StringComparison.Ordinal)).Data.Should().BeNull();
+        var additional = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName,
+            "AdditionalHoldedCreditorAccounts", StringComparison.Ordinal)).Data);
+        additional.GetArrayLength().Should().Be(1);
+        additional[0].GetProperty("HoldedContactId").GetString().Should().Be("source-only");
+        service.ErasureDeclaration.Should().ContainKey("AdditionalHoldedCreditorAccounts").WhoseValue.Should().BeNull();
     }
 
     [HumansFact]

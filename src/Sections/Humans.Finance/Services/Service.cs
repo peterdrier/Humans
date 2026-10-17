@@ -44,6 +44,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
+    internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
@@ -2419,11 +2420,21 @@ internal sealed class Service(
                 bindings.Add(binding);
             payouts.AddRange(await repo.GetSepaPayoutsForUserAsync(id, ct));
         }
+        var currentBinding = bindings.FirstOrDefault(binding => binding.UserId == userId);
+        var additionalBindings = bindings.Where(binding => binding.UserId != userId).ToList();
         return
         [
-            new UserDataSlice(HoldedCreditorAccount,
-                bindings.Count == 0 ? null : bindings.Select(binding => new
+            // Preserve the original object-or-null field for the requested account.
+            new UserDataSlice(HoldedCreditorAccount, currentBinding is null ? null : new
+            {
+                currentBinding.SupplierAccountNum,
+                currentBinding.HoldedContactId,
+                Source = currentBinding.Source.ToString(),
+            }),
+            new UserDataSlice(AdditionalHoldedCreditorAccounts,
+                additionalBindings.Count == 0 ? null : additionalBindings.Select(binding => new
                 {
+                    binding.UserId,
                     binding.SupplierAccountNum,
                     binding.HoldedContactId,
                     Source = binding.Source.ToString(),
@@ -2461,6 +2472,7 @@ internal sealed class Service(
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [HoldedCreditorAccount] = null,
+            [AdditionalHoldedCreditorAccounts] = null,
             [SepaPayouts] = PayoutRetention
         };
 
