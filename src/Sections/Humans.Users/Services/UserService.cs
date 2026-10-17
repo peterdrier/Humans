@@ -748,8 +748,9 @@ internal sealed class UserService(
         };
 
         await repo.AddUserEmailAsync(row, ct);
-        await EnsurePrimaryInvariantAsync(row.UserId, ct);
-        await EnsureGoogleInvariantAsync(row.UserId, ct);
+        // The row has committed; finish its required invariant repairs after a browser disconnect.
+        await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
+        await EnsureGoogleInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
@@ -772,8 +773,9 @@ internal sealed class UserService(
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(email, ct);
-            await EnsurePrimaryInvariantAsync(userId, ct);
-            await EnsureGoogleInvariantAsync(userId, ct);
+            // Verification has committed; primary / Google repair is part of completing it.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
             changed = true;
         }
 
@@ -845,8 +847,9 @@ internal sealed class UserService(
 
         if (command.RepairInvariants)
         {
-            await EnsurePrimaryInvariantAsync(userId, ct);
-            await EnsureGoogleInvariantAsync(userId, ct);
+            // Removal has committed; leave the remaining verified addresses usable.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
         }
 
         return true;

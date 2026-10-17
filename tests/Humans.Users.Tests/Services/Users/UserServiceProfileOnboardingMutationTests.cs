@@ -781,6 +781,74 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("add")]
+    [InlineData("verify")]
+    [InlineData("remove")]
+    public async Task EmailWrite_DisconnectAfterCommit_StillRepairsPrimaryAndGoogle(string operation)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var target = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "target@example.com" };
+        var survivor = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "survivor@example.com", IsVerified = true };
+        var rows = new List<UserEmail>();
+        if (!string.Equals(operation, "add", StringComparison.Ordinal)) rows.Add(target);
+        if (string.Equals(operation, "remove", StringComparison.Ordinal))
+        {
+            target.IsVerified = target.IsPrimary = target.IsGoogle = true;
+            rows.Add(survivor);
+        }
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([]));
+        repository.GetUserEmailByIdAndUserIdAsync(target.Id, userId, Arg.Any<CancellationToken>()).Returns(target);
+        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<UserEmail>>(rows.ToList());
+        });
+        repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            rows.Add(call.Arg<UserEmail>());
+            await request.CancelAsync();
+        });
+        repository.UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            await request.CancelAsync();
+        });
+        repository.RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            rows.Remove(call.Arg<UserEmail>());
+            await request.CancelAsync();
+        });
+        repository.UpdateUserEmailsAsync(Arg.Any<IReadOnlyList<UserEmail>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+        var service = BuildWithUserRepository(repository);
+
+        if (string.Equals(operation, "add", StringComparison.Ordinal))
+            (await service.AddUserEmailAsync(userId, new UserEmailAddCommand(target.Email, IsVerified: true), request.Token))
+                .Added.Should().BeTrue();
+        else if (string.Equals(operation, "verify", StringComparison.Ordinal))
+            (await service.UpdateUserEmailAsync(userId, target.Id, new UserEmailUpdateCommand(MarkVerified: true), request.Token))
+                .Succeeded.Should().BeTrue();
+        else
+            (await service.RemoveUserEmailAsync(userId, target.Id, new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail), request.Token))
+                .Should().BeTrue();
+
+        request.IsCancellationRequested.Should().BeTrue();
+        var remaining = rows.Should().ContainSingle().Which;
+        remaining.IsVerified.Should().BeTrue();
+        remaining.IsPrimary.Should().BeTrue();
+        remaining.IsGoogle.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
     {

@@ -787,4 +787,6 @@ Deletion confirmations use the no-persistence email path. Delivery failures are 
 
 - Verification links refuse a missing user, missing/already-verified/OAuth email row or invalid token through `VerifyEmailResult.ErrorKey`. All member-facing refusals use the existing six-culture invalid-link message; owner warnings identify only user/email row ids and a fixed reason, without token or address. Dependency failures propagate instead of being classified as invalid links or exposed as validation text. Row-bound token purposes, conflict merge requests and email update/provisioning behavior remain.
 
+After email insertion, verification, or removal commits, required primary and Google flag repairs finish independently of browser cancellation; initial reads and the first write remain cancellable.
+
 Email insertion and OAuth reconciliation refuse deleted or merged accounts, including legacy tombstones, before changing email rows. OAuth linking likewise refuses terminal targets before adding or moving provider credentials; a merged source may still transfer its existing login to a live survivor. Admin recovery bypasses verification cooldowns only for live accounts.
