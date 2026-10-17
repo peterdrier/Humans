@@ -362,4 +362,6 @@
   <data name="Enum_AuditAction_GoogleResourceLinked" xml:space="preserve"><value>Google resource linked</value></data>
   <data name="Enum_AuditAction_GoogleResourceUnlinked" xml:space="preserve"><value>Google resource unlinked</value></data>
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Google resource settings updated</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Calendar feed token created</value></data>
+  <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Calendar feed token rotated</value></data>
 </root>

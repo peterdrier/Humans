@@ -386,4 +386,6 @@ public enum AuditAction
     CampRegistrationOpened,
     CampRegistrationClosed,
     CampNameLockDateChanged,
+    CalendarFeedTokenCreated,
+    CalendarFeedTokenRotated,
 }
