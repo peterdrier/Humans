@@ -1648,6 +1648,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await _userServiceRead.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new

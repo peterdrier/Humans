@@ -733,6 +733,7 @@ internal sealed class CampaignService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await userService.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var grants = await repository.GetGrantsForUserExportAsync(userId, ct);
 
         var shaped = grants.Select(g => new

@@ -2563,13 +2563,20 @@ public sealed class CampServiceTests : CampsTestHarness
         CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
     }
 
-    [HumansFact]
-    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt(bool requestArchivedId)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
         var userId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var requestedId = requestArchivedId ? archivedId : userId;
+        _userServiceRead.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = userId }, [], [], [], null, []) with { MergedUserIds = [archivedId] }));
         var otherUserId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
@@ -2612,7 +2619,7 @@ public sealed class CampServiceTests : CampsTestHarness
         CampsDb.CampMembers.Add(otherMember);
         await SaveAllAsync(ct);
 
-        var slices = await _service.ContributeForUserAsync(userId, ct);
+        var slices = await _service.ContributeForUserAsync(requestedId, ct);
         JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampRoleAssignments, StringComparison.Ordinal)).Data)
             .GetArrayLength().Should().Be(0, "ordinary memberships need no role assignment");
         var exported = JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampMemberships, StringComparison.Ordinal)).Data);
@@ -2637,7 +2644,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId, ct)).Should().BeFalse();
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.Id == otherMember.Id, ct)).Should().BeTrue();
-        foreach (var slice in await _service.ContributeForUserAsync(userId, ct))
+        foreach (var slice in await _service.ContributeForUserAsync(requestedId, ct))
             JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(0);
     }
 

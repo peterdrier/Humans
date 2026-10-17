@@ -1011,12 +1011,18 @@ public sealed class CampaignServiceTests
         preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_ExportsGrantRows()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ContributeForUserAsync_ExportsGrantRows(bool requestArchivedId)
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["EXPORT-CODE"]);
+        var campaign = await SeedActiveCampaignWithCodesAsync(["EXPORT-CODE", "OTHER-CODE"]);
         var user = SeedUser(displayName: "Export User");
-        var code = await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var archivedId = Guid.NewGuid();
+        _people[user.Id] = user with { MergedUserIds = [archivedId] };
+        _people[archivedId] = _people[user.Id];
+        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var code = codes.Single(c => string.Equals(c.Code, "EXPORT-CODE", StringComparison.Ordinal));
         CampaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
@@ -1025,14 +1031,24 @@ public sealed class CampaignServiceTests
             UserId = user.Id,
             AssignedAt = Clock.GetCurrentInstant()
         });
+        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = codes.Single(c => string.Equals(c.Code, "OTHER-CODE", StringComparison.Ordinal)).Id,
+            UserId = SeedUser(displayName: "Unrelated user").Id,
+            AssignedAt = Clock.GetCurrentInstant()
+        });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? archivedId : user.Id, Xunit.TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(CampaignService.CampaignGrants);
         var rows = (System.Collections.IEnumerable)slices[0].Data!;
         rows.Cast<object>().Should().ContainSingle();
+        System.Text.Json.JsonSerializer.SerializeToElement(slices[0].Data).EnumerateArray().Single()
+            .GetProperty("Code").GetString().Should().Be("EXPORT-CODE");
     }
 
     [HumansFact]
