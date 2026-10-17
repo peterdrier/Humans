@@ -99,6 +99,9 @@ internal sealed class ProfileEmailsController(
         }
 
         await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
+        logger.LogInformation(
+            "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
+            model.NewEmail.Trim(), user.Id, result.IsConflict);
         SetAddedEmailFlash(model.NewEmail, result.IsConflict);
 
         return RedirectToAction(nameof(Emails));
@@ -122,10 +125,6 @@ internal sealed class ProfileEmailsController(
             result.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
                 ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode));
-
-        logger.LogInformation(
-            "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            trimmedEmail, user.Id, result.IsConflict);
     }
 
     private void SetAddedEmailFlash(string email, bool isConflict)
@@ -754,7 +753,8 @@ internal sealed class ProfileEmailsController(
                 return RedirectToAction(nameof(AdminEmails), new { id });
             }
 
-            await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id, ct);
+            // The pending address committed. Finish its audit and verification queueing after disconnect.
+            await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -772,36 +772,19 @@ internal sealed class ProfileEmailsController(
         User targetUser,
         string email,
         AddEmailResult result,
-        Guid actorId,
-        CancellationToken ct)
+        Guid actorId)
     {
         var trimmedEmail = email.Trim();
-        var verificationUrl = Url.Action(
-            nameof(VerifyEmail),
-            "ProfileEmails",
-            new { userId, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
-            Request.Scheme);
-
-        var info = await _userService.GetUserInfoAsync(userId, ct);
-
-        await emailService.SendAsync(emailMessages.EmailVerification(
-            trimmedEmail,
-            info?.BurnerName ?? string.Empty,
-            verificationUrl!,
-            result.IsConflict,
-            targetUser.PreferredLanguage.IsSupportedCultureCode()
-                ? targetUser.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-            ct);
-
-        logger.LogInformation(
-            "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            trimmedEmail, userId, result.IsConflict);
-
         await auditLogService.LogAsync(
             AuditAction.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
             actorId);
+
+        await SendAddedEmailVerificationAsync(targetUser, email, result);
+        logger.LogInformation(
+            "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
+            trimmedEmail, userId, result.IsConflict);
 
         SetSuccess(localizer["EmailGrid_AdminAddSentVerification"].Value);
     }
