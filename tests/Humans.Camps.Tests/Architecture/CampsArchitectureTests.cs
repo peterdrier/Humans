@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
+using Microsoft.Extensions.Configuration;
 using Humans.Base.Caching;
 using Humans.Base.Enums;
 using Humans.Settings.Contracts;
@@ -118,5 +119,30 @@ public class CampsArchitectureTests
         camp.Active.Should().Be(season2026,
             because: "Active returns the season with the highest Year");
         camp.Active!.Name.Should().Be("Camp 2026");
+    }
+
+    /// <summary>
+    /// Asserts that <see cref="ICampManagement"/> and <see cref="ICampService"/> resolve to the same
+    /// singleton from the production DI registration — <c>Section.Register</c>
+    /// itself, not a test-built mirror of it.
+    /// </summary>
+    [HumansFact]
+    public void ICampManagement_And_ICampService_ResolveToSameInstance()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IClock>());
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var fromManagement = scope.ServiceProvider.GetRequiredService<ICampManagement>();
+        var fromPublic = scope.ServiceProvider.GetRequiredService<ICampService>();
+
+        fromManagement.Should().BeOfType<CachingCampService>(
+            because: "the cache decorator is the section's public face");
+        ReferenceEquals(fromManagement, fromPublic).Should().BeTrue(
+            because: "both interfaces must expose the same singleton so the cache is shared");
     }
 }

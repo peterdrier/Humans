@@ -1,5 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
+using NSubstitute;
+using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
 using Humans.Events.Contracts;
@@ -134,5 +136,28 @@ public class EventsArchitectureTests
             .Single();
 
         return route.Template;
+    }
+
+    /// <summary>
+    /// Asserts that <see cref="IEventManagement"/> and <see cref="IEventService"/> resolve to the same
+    /// singleton from the production DI registration — <c>Section.Register</c>
+    /// itself, not a test-built mirror of it.
+    /// </summary>
+    [HumansFact]
+    public void IEventManagement_And_IEventService_ResolveToSameInstance()
+    {
+        var services = Registrations();
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IClock>());
+
+        using var provider = services.BuildServiceProvider();
+
+        var fromManagement = provider.GetRequiredService<IEventManagement>();
+        var fromPublic = provider.GetRequiredService<IEventService>();
+
+        fromManagement.Should().BeOfType<CachingEventService>(
+            because: "the cache decorator is the section's public face");
+        ReferenceEquals(fromManagement, fromPublic).Should().BeTrue(
+            because: "both interfaces must expose the same singleton so the cache is shared");
     }
 }
