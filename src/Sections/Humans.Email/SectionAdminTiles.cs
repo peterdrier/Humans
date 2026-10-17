@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Email;

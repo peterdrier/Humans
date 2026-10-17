@@ -54,7 +54,7 @@ public sealed class EmailPreviewGalleryTests
     [HumansFact]
     public async Task OutboxMutations_WithoutActor_RefuseBeforeWriting()
     {
-        var outbox = Substitute.For<IEmailOutboxService>();
+        var outbox = Substitute.For<IEmailOutboxManagement>();
         var controller = new EmailController(Substitute.For<IUserServiceRead>(), outbox,
             Substitute.For<IAuditLogService>(), NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings()))
