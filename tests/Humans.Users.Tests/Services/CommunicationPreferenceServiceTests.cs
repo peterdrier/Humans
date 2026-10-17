@@ -90,8 +90,13 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
         {
             Db.CommunicationPreferences.Add(new CommunicationPreference
             {
-                Id = Guid.NewGuid(), UserId = userId, Category = MessageCategory.Marketing,
-                OptedOut = true, InboxEnabled = false, UpdatedAt = Clock.GetCurrentInstant(), UpdateSource = "Profile"
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Category = MessageCategory.Marketing,
+                OptedOut = true,
+                InboxEnabled = false,
+                UpdatedAt = Clock.GetCurrentInstant(),
+                UpdateSource = "Profile"
             });
             await Db.SaveChangesAsync(ct);
         }

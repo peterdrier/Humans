@@ -795,7 +795,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             MaxAmount = 1m,
             Lines = Enumerable.Range(0, 8).Select(i =>
                 MakeLineWithAttachment(Guid.NewGuid(), $"receipt-{i}.pdf", i, holdedUploadedAt: null)
-                    with { Description = description, Amount = 100m }).ToList(),
+                    with
+                { Description = description, Amount = 100m }).ToList(),
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
         _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())

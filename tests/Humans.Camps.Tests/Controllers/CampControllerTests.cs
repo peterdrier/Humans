@@ -69,13 +69,13 @@ public class CampControllerTests
         var controller = BuildController(actorId);
         using var image = new MemoryStream([1]);
         var file = new FormFile(image, 0, 1, "file", "camp.jpg")
-            { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
+        { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
 
         switch (action)
         {
             case "Edit":
                 await controller.Edit(camp.Slug, new CampEditViewModel
-                    { CampId = camp.Id, SeasonId = season.Id, Name = "Alpha", ContactPhone = "+34600000000" });
+                { CampId = camp.Id, SeasonId = season.Id, Name = "Alpha", ContactPhone = "+34600000000" });
                 await _camps.Received(1).UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId); break;
             case "OptIn":
                 await controller.OptIn(camp.Slug, 2027);

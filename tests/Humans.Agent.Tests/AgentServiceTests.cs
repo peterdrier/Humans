@@ -62,7 +62,8 @@ public class AgentServiceTests
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
-                with { MergedUserIds = [sourceId] });
+                with
+            { MergedUserIds = [sourceId] });
         var (service, client) = await BuildService(settings => settings.Enabled = true, users: users);
         foreach (var (ownerId, question) in new[]
         {

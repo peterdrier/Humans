@@ -212,7 +212,9 @@ public class UnsubscribeServiceTests
         var userId = Guid.NewGuid();
         var erasedUser = CreateUserInfo(new User
         {
-            Id = userId, DisplayName = "Deleted User", Email = $"deleted-{userId:N}@deleted.local"
+            Id = userId,
+            DisplayName = "Deleted User",
+            Email = $"deleted-{userId:N}@deleted.local"
         });
         erasedUser.IsGdprAnonymized.Should().BeTrue();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(erasedUser);

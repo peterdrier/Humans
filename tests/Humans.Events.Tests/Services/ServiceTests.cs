@@ -71,12 +71,18 @@ public sealed class EventServiceTests
         if (expectedRows > 0)
             _repo.Events.Add(new Event
             {
-                Id = Guid.NewGuid(), SubmitterUserId = submitterId,
+                Id = Guid.NewGuid(),
+                SubmitterUserId = submitterId,
                 Category = new EventCategory { Name = "Workshop", Slug = "workshop" },
                 EventVenue = new EventVenue { Name = "Main Stage" },
-                Title = "Fire Circle", Description = "Bring a mat", Host = "Ember",
-                StartAt = Instant.FromUtc(2026, 7, 1, 8, 30), DurationMinutes = 60,
-                IsRecurring = expectedRows == 2, RecurrenceDays = "0,2", Status = EventStatus.Approved
+                Title = "Fire Circle",
+                Description = "Bring a mat",
+                Host = "Ember",
+                StartAt = Instant.FromUtc(2026, 7, 1, 8, 30),
+                DurationMinutes = 60,
+                IsRecurring = expectedRows == 2,
+                RecurrenceDays = "0,2",
+                Status = EventStatus.Approved
             });
         _repo.Events.Add(new Event { Title = "Pending event", Status = EventStatus.Pending });
         var controller = new EventsExportController(_service, _camps, _userService)
@@ -802,18 +808,24 @@ public sealed class EventServiceTests
         var requestedId = archivedId ? sourceId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
-                with { MergedUserIds = [sourceId] });
+                with
+            { MergedUserIds = [sourceId] });
         foreach (var id in new[] { survivorId, sourceId, strangerId })
         {
             _repo.Events.Add(new Event { Id = Guid.NewGuid(), SubmitterUserId = id, Title = id.ToString() });
             _repo.Favourites.Add(new EventFavourite
             {
-                Id = Guid.NewGuid(), UserId = id, GuideEventId = id, CreatedAt = _clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                UserId = id,
+                GuideEventId = id,
+                CreatedAt = _clock.GetCurrentInstant()
             });
         }
         _repo.Preference = new EventPreference
         {
-            Id = Guid.NewGuid(), UserId = sourceId, ExcludedCategorySlugs = "[\"adults\"]",
+            Id = Guid.NewGuid(),
+            UserId = sourceId,
+            ExcludedCategorySlugs = "[\"adults\"]",
             UpdatedAt = _clock.GetCurrentInstant()
         };
 

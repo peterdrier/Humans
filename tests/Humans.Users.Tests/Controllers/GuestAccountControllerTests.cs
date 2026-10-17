@@ -181,7 +181,9 @@ public class GuestAccountControllerTests
         var userId = Guid.NewGuid();
         var controller = BuildSut(new User
         {
-            Id = userId, DisplayName = "Deleted User", Email = $"deleted-{userId:N}@deleted.local"
+            Id = userId,
+            DisplayName = "Deleted User",
+            Email = $"deleted-{userId:N}@deleted.local"
         });
         if (!signedIn)
             controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());

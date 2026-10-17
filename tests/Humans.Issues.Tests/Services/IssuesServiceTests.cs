@@ -518,7 +518,10 @@ public sealed class IssuesServiceTests
 
         var result = await controller.Submit(new SubmitIssueViewModel
         {
-            Title = "Screenshot problem", Description = "Details", Category = IssueCategory.Bug, Screenshot = screenshot
+            Title = "Screenshot problem",
+            Description = "Details",
+            Category = IssueCategory.Bug,
+            Screenshot = screenshot
         });
 
         if (ajax) result.Should().BeOfType<BadRequestObjectResult>();
@@ -1624,8 +1627,11 @@ public sealed class IssuesServiceTests
         })
             _issuesDb.IssueComments.Add(new IssueComment
             {
-                Id = Guid.NewGuid(), IssueId = sourceIssueId, SenderUserId = sender,
-                Content = content, CreatedAt = Clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                IssueId = sourceIssueId,
+                SenderUserId = sender,
+                Content = content,
+                CreatedAt = Clock.GetCurrentInstant()
             });
         await _issuesDb.SaveChangesAsync(ct);
 

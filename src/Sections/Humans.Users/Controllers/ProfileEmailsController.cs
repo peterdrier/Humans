@@ -125,7 +125,8 @@ internal sealed class ProfileEmailsController(
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode) with { UserId = user.Id };
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode) with
+        { UserId = user.Id };
         await emailService.SendAsync(message);
     }
 

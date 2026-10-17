@@ -1889,7 +1889,8 @@ public class HoldedFinanceServiceTests
         var requestedId = archivedId ? sourceId : survivorId;
         var info = UserInfo.Create(
             new User { Id = survivorId, BurnerName = "Survivor", CreatedAt = FixedNow },
-            [], [], [], null, []) with { MergedUserIds = [sourceId] };
+            [], [], [], null, []) with
+        { MergedUserIds = [sourceId] };
         _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         foreach (var (id, contact) in new[] { (survivorId, "survivor-contact"), (sourceId, "source-contact") })
         {

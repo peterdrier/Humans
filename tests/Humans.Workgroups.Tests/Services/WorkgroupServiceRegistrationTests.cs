@@ -33,7 +33,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         if (terminal)
         {
             var person = (await Users.GetUserInfoAsync(actor, Ct))! with
-                { Id = target, State = UserState.Deleted, MergedAt = Clock.GetCurrentInstant() };
+            { Id = target, State = UserState.Deleted, MergedAt = Clock.GetCurrentInstant() };
             Users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(person));
         }
         var application = new WorkgroupApplication("People check", "Purpose", "Report", WorkgroupDeliverableKind.Report,
