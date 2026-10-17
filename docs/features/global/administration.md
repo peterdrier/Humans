@@ -188,13 +188,13 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
 | `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
 | `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagementServiceRead.GetOverallCoverageAsync` |
-| `feedback.open` | Open feedback | Feedback | AdminOnly | `IFeedbackServiceRead.GetActionableCountAsync` — Board/domain admins don't see it (nobodies-collective/Humans#977) |
+| `feedback.open` | Open feedback | Feedback | AdminOnly | `FeedbackService.GetActionableCountAsync` (section-internal) — Board/domain admins don't see it (nobodies-collective/Humans#977) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
 | `shell.online.day` | Active (24h) | Shell | — | `IUserActivityTracker`, 24-hour window |
 | `teams.total` | Teams | Teams | — | `ITeamServiceRead.GetTeamsAsync` count |
 | `auditlog.total` | Audit events | Audit Log | — | `IAuditViewerService.GetPageAsync`'s `TotalCount` |
-| `email.outbox` | Emails | Email | — | `IEmailOutboxServiceRead.GetOutboxStatsAsync` total |
+| `email.outbox` | Emails | Email | — | `IEmailOutboxManagement.GetOutboxStatsAsync` (section-internal) total |
 | `store.orders` | Store orders | Store | StoreCatalogAdmin | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
 | `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportService.GetAllAsync`, all statuses |
 | `workgroups.queue` | Workgroups | Workgroups | BoardOrAdmin | `IWorkgroupService.GetRegisterAsync` — pending applications/referrals plus items awaiting a disposition; hidden when nothing is waiting |

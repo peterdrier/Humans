@@ -79,10 +79,10 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 
 - **Users:** `users.total` / `users.profiles` / `users.tickets` tiles (`IUserServiceRead`); the "Preferred language" card.
 - **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementServiceRead`).
-- **Feedback:** `feedback.open` tile, AdminOnly (`IFeedbackServiceRead`).
+- **Feedback:** `feedback.open` tile, AdminOnly (`FeedbackService`, section-internal).
 - **Teams:** `teams.total` tile (`ITeamServiceRead`).
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
-- **Email:** `email.outbox` tile (`IEmailOutboxServiceRead`).
+- **Email:** `email.outbox` tile (`IEmailOutboxManagement`, section-internal).
 - **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (Store's internal `Service`).
 - **Expenses:** `expenses.reports` tile, gated to `FinanceAdminOrAdmin` (the section's own `IExpenseReportService`).
 - **Governance:** the "Tier applications" card (`IApplicationServiceRead`); also contributes the Voting tab pill's unvoted-application count.
