@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 84
+next_id: 85
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -252,12 +252,16 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 2
+    remaining: 3
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-10-17
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
-inbox: []
+inbox:
+  - added: 2026-10-17
+    id: CENTRAL-84
+    what: "GdprService calls EmailOutboxService.ContributeForUserAsync once with the survivor id; Email queries only that exact UserId and does not reassign outbox rows on merge, so Article 15 exports omit retained source-account mail. Verified against merge fan-out and EmailOutboxRepository.GetForUserAsync; erasure already visits every chain id. Crosscut purity forbids an Email-to-Users identity lookup, while the shared contributor contract supplies no identity chain."
+    review: panel
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
