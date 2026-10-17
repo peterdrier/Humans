@@ -375,8 +375,8 @@ Member and Board notice previews fit notification storage: 200 Unicode character
 shortened copy. Full names and notes remain in the register and system log.
 Notification recipient lookup and delivery failures are logged without failing committed
 changes or skipping their email, Drive sync or Finance update. Recipient-language groups
-remain independent. The rhythm nudge audit records only the number successfully notified;
-no delivery means no success audit. GDPR orphan notices use the same Board copy limits.
+remain independent. The rhythm nudge audit records successful dispatch requests, not inbox delivery (which
+respects notification preferences); if every dispatch fails, no success audit is written. GDPR orphan notices use the same Board copy limits.
 Caller cancellation still propagates.
 
 - Apply: the applicant becomes the first coordinator (plus an optional second); writes

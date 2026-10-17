@@ -345,7 +345,7 @@ internal sealed partial class WorkgroupService
 
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(WorkgroupsResource));
 
-    // Notifications follow committed writes. Return actual deliveries for the rhythm audit.
+    // Return successful dispatch requests for the rhythm audit; Notifications applies inbox preferences.
     private async Task<int> NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
         WorkgroupInfo w, string? body, CancellationToken ct)
@@ -372,7 +372,7 @@ internal sealed partial class WorkgroupService
             var language = person?.PreferredLanguage;
             return (Id: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
         }).DistinctBy(person => person.Id);
-        var delivered = 0;
+        var dispatched = 0;
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
             try
@@ -383,7 +383,7 @@ internal sealed partial class WorkgroupService
                 await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
                     copy.Title, ids, copy.Body,
                     actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
-                delivered += ids.Count;
+                dispatched += ids.Count;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -395,7 +395,7 @@ internal sealed partial class WorkgroupService
                     source, group.Key, w.Id);
             }
         }
-        return delivered;
+        return dispatched;
     }
 
     private async Task NotifyBoardAsync(
