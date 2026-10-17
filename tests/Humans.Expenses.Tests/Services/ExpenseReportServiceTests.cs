@@ -3491,8 +3491,13 @@ public sealed class ExpenseReportServiceTests
         {
             ctx.ExpenseLines.Add(new ExpenseLine
             {
-                Id = proofId, ExpenseReportId = reportId, Description = "Proof", Amount = 90m,
-                LineType = ExpenseLineType.Receipt, ParentLineId = lines[0], SortOrder = 9,
+                Id = proofId,
+                ExpenseReportId = reportId,
+                Description = "Proof",
+                Amount = 90m,
+                LineType = ExpenseLineType.Receipt,
+                ParentLineId = lines[0],
+                SortOrder = 9,
             });
             await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         }
@@ -3569,7 +3574,13 @@ public sealed class ExpenseReportServiceTests
         _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedPurchaseDocumentDto
             {
-                Id = "doc-1", DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m, PaymentsPending = 0m,
+                Id = "doc-1",
+                DocNumber = "",
+                Subtotal = 0m,
+                Tax = 0m,
+                Total = 0m,
+                PaymentsTotal = 0m,
+                PaymentsPending = 0m,
             });
         _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
 
