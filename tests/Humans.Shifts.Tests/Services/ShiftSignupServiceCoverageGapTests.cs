@@ -190,12 +190,16 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             notices.Should().HaveCount(2);
             foreach (var args in notices)
             {
-                var title = (string)args[3]!;
-                title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-                title.Should().EndWith("…");
-                var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-                encode.Should().NotThrow();
-                ((string)args[5]!).Should().Contain(rota.Name);
+                if ((NotificationSource)args[0]! == NotificationSource.ShiftCoverageGap)
+                {
+                    args[3].Should().Be($"Coverage gap: {rota.Name} day {signupA.Shift.DayOffset}");
+                    args[5].Should().Be("Only 1/2 volunteers confirmed.");
+                }
+                else
+                {
+                    args[3].Should().Be($"Shift signup change: {rota.Name}");
+                    ((string)args[5]!).Should().Contain(rota.Name);
+                }
             }
         }
     }

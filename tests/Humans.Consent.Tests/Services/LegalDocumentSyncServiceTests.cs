@@ -361,7 +361,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SyncDocumentAsync_LongNamesKeepNoticeWithinStorageLimit(bool update)
+    public async Task SyncDocumentAsync_LongNamesDispatchFullNoticeCopy(bool update)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         StubActiveUser();
@@ -387,12 +387,10 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         await _service.SyncDocumentAsync(document.Id, ct);
 
         var args = Notifier.ReceivedCalls().Single().GetArguments();
-        var title = (string)args[3]!;
-        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-        title.Should().EndWith("…").And.Contain("😀");
-        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-        encode.Should().NotThrow();
-        ((string)args[5]!).Should().Contain(update ? "new version" : "new required legal document");
+        args[3].Should().Be(update ? $"{name} has been updated — re-consent required" : $"New legal document published: {name}");
+        args[5].Should().Be(update
+            ? "A required legal document has been updated. Please review and sign the new version."
+            : "A new required legal document has been published. Please review and sign it.");
     }
 
     [HumansTheory]

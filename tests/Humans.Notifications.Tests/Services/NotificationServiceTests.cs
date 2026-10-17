@@ -116,6 +116,27 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SendToRoleAsync_LongCopyFitsStorageAndKeepsOneSharedNotice()
+    {
+        var holders = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns(holders);
+        var title = "Working group applied: " + new string('x', 200);
+        var detail = string.Concat(Enumerable.Repeat("🚀", 2000));
+
+        await _service.SendToRoleAsync(NotificationSource.WorkgroupRegistrationPending,
+            NotificationClass.Actionable, NotificationPriority.Normal, title, "Board", detail,
+            cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var notification = await _notificationsDb.Notifications.Include(n => n.Recipients)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        notification.Title.Should().Be(string.Concat(title.EnumerateRunes().Take(199)) + "…");
+        notification.Body.Should().Be(string.Concat((title + "\n\n" + detail).EnumerateRunes().Take(1999)) + "…");
+        notification.TargetGroupName.Should().Be("Board");
+        notification.Recipients.Select(r => r.UserId).Should().BeEquivalentTo(holders);
+    }
+
+    [HumansFact]
     public async Task SendToRoleAsync_Informational_SkipsHoldersWithInboxDisabled()
     {
         var suppressed = Guid.NewGuid();

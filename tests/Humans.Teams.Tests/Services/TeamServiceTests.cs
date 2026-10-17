@@ -1549,7 +1549,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [Xunit.InlineData("remove")]
     [Xunit.InlineData("request")]
     [Xunit.InlineData("join")]
-    public async Task MemberNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    public async Task MemberNotices_LongNamesDispatchFullCopy(string action)
     {
         var coordinator = SeedUser(displayName: "Coordinator");
         var requester = SeedUser(displayName: "Requester");
@@ -1572,16 +1572,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
             .Select(call => call.GetArguments()).ToList();
-        notices.Should().NotBeEmpty();
-        foreach (var args in notices)
+        (string Title, string? Body)[] expected = action switch
         {
-            var title = (string)args[3]!;
-            title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-            title.Should().EndWith("…");
-            var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-            encode.Should().NotThrow();
-            ((string)args[5]!).Should().Contain(name);
-        }
+            "approve" => [($"You've been added to {name}", null),
+                ($"Your request to join {name} has been approved", $"Welcome to {name}!")],
+            "reject" => [($"Your request to join {name} was not approved", $"Your request to join {name} was not approved.")],
+            "remove" => [($"You were removed from {name}", null)],
+            "request" => [($"New join request for {name}", $"Requester has requested to join {name}.")],
+            _ => [($"You've been added to {name}", null), ($"Requester joined {name}", $"Requester has joined {name}.")]
+        };
+        notices.Select(args => ((string)args[3]!, (string?)args[5])).Should().BeEquivalentTo(expected);
     }
 
     [HumansTheory]

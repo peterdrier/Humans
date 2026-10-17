@@ -1161,16 +1161,6 @@ internal sealed class ShiftSignupService(
         return null;
     }
 
-    // Notification storage holds 200 Unicode characters; retain the full title in the body.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
-    {
-        if (title.EnumerateRunes().Count() <= 200)
-            return (title, body);
-
-        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
-            body is null ? title : string.Concat(title, "\n\n", body));
-    }
-
     private async Task<Guid?> ResolveVoluntellTargetAsync(Guid userId)
     {
         var user = await users.GetUserInfoAsync(userId);
@@ -1180,14 +1170,14 @@ internal sealed class ShiftSignupService(
     private async Task SendAssignmentNoticeAsync(Guid userId, string resourceKey, params object[] args)
     {
         var culture = await GetRecipientCultureAsync(userId);
-        var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args));
+        var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
         await notificationService.SendAsync(
             NotificationSource.ShiftAssigned,
             NotificationClass.Informational,
             NotificationPriority.Normal,
-            noticeCopy.Title,
+            title,
             [userId],
-            body: noticeCopy.Body,
+            body: null,
             actionUrl: "/Shifts",
             actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
     }
@@ -1227,14 +1217,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
-            var noticeCopy = PrepareNoticeCopy($"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}", $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.");
+            var title = $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}";
             await notificationService.SendAsync(
                 NotificationSource.ShiftCoverageGap,
                 NotificationClass.Actionable,
                 NotificationPriority.High,
-                noticeCopy.Title,
+                title,
                 coordinatorIds,
-                body: noticeCopy.Body,
+                body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "Find cover →");
         }
@@ -1268,14 +1258,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
-            var noticeCopy = PrepareNoticeCopy($"Shift signup change: {rotaName}", enrichedDescription);
+            var title = $"Shift signup change: {rotaName}";
             await notificationService.SendAsync(
                 NotificationSource.ShiftSignupChange,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 coordinatorIds,
-                body: noticeCopy.Body,
+                body: enrichedDescription,
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "View →");
         }

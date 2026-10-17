@@ -635,7 +635,7 @@ public sealed class CampaignServiceTests
     [HumansTheory]
     [Xunit.InlineData("x")]
     [Xunit.InlineData("🚀")]
-    public async Task SendWaveAsync_LongCampaignTitle_PreservesNoticeCopyWithinTitleLimit(string character)
+    public async Task SendWaveAsync_LongCampaignTitle_DispatchesFullNoticeCopy(string character)
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A"]);
         campaign.Title = string.Concat(Enumerable.Repeat(character, 200));
@@ -651,10 +651,8 @@ public sealed class CampaignServiceTests
         var call = _notifications.ReceivedCalls().Should().ContainSingle().Subject;
         var arguments = call.GetArguments();
         var fullTitle = $"You received a code from campaign: {campaign.Title}";
-        var title = (string)arguments[3]!;
-        title.EnumerateRunes().Count().Should().Be(200);
-        title.Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
-        arguments[5].Should().Be(fullTitle + "\n\nYour campaign code is available under My Codes in your profile.");
+        arguments[3].Should().Be(fullTitle);
+        arguments[5].Should().Be("Your campaign code is available under My Codes in your profile.");
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(user.Id);
         arguments[0].Should().Be(NotificationSource.CampaignReceived);
     }

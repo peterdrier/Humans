@@ -76,15 +76,14 @@ internal sealed class CampContactService(
                     try
                     {
                         var culture = CultureInfo.GetCultureInfo(group.Key);
-                        var notice = CampService.PrepareNoticeCopy(string.Format(culture,
-                            NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName));
+                        var title = string.Format(culture,
+                            NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName);
                         await notificationEmitter.SendAsync(
                             NotificationSource.FacilitatedMessageReceived,
                             NotificationClass.Informational,
                             NotificationPriority.Normal,
-                            notice.Title,
+                            title,
                             group.ToList(),
-                            body: notice.Body,
                             actionUrl: campDetailsUrl,
                             actionLabel: NoticeResources.GetString("Camps_Notification_ViewCamp", culture));
                     }

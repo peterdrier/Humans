@@ -1150,7 +1150,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [Xunit.InlineData("approve")]
     [Xunit.InlineData("reject")]
     [Xunit.InlineData("close")]
-    public async Task MembershipNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    public async Task MembershipNotices_LongNamesDispatchFullCopy(string action)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1170,17 +1170,15 @@ public sealed class CampServiceTests : CampsTestHarness
             default: await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
         }
         var args = Notifier.ReceivedCalls().Single().GetArguments();
-        var title = (string)args[3]!;
-        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-        title.Should().EndWith("…");
-        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-        encode.Should().NotThrow();
-        ((string)args[5]!).Should().Contain(action switch
+        args[3].Should().Be(action switch
         {
             "approve" => $"Your request to join {name} was approved",
             "reject" => $"Your request to join {name} was not approved",
-            _ => "Your pending request to join this camp won't be reviewed"
+            _ => $"The {season.Year} season for {name} is no longer open"
         });
+        args[5].Should().Be(string.Equals(action, "close", StringComparison.Ordinal)
+            ? "Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected."
+            : null);
     }
 
     [HumansTheory]

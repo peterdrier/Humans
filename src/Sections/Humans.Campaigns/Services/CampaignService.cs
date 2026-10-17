@@ -506,11 +506,6 @@ internal sealed class CampaignService(
                 var title = string.Format(culture,
                     NoticeResources.GetString("Campaigns_Notification_ReceivedTitle", culture)!, campaign.Title);
                 var body = NoticeResources.GetString("Campaigns_Notification_ReceivedBody", culture)!;
-                if (title.EnumerateRunes().Count() > 200)
-                {
-                    body = string.Concat(title, "\n\n", body);
-                    title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-                }
 
                 await notificationService.SendAsync(
                     NotificationSource.CampaignReceived,

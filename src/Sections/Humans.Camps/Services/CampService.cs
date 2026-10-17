@@ -739,14 +739,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
                 try
                 {
                     var campName = name ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-                    var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Camps_Notification_SeasonClosed", culture)!, year, campName), NoticeResources.GetString("Camps_Notification_SeasonClosedBody", culture));
+                    var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_SeasonClosed", culture)!, year, campName);
                     await _notificationEmitter.SendAsync(
                         NotificationSource.CampMembershipSeasonClosed,
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
-                        noticeCopy.Title,
+                        title,
                         recipients,
-                        body: noticeCopy.Body,
+                        body: NoticeResources.GetString("Camps_Notification_SeasonClosedBody", culture),
                         actionUrl: slug is null ? null : $"/Barrios/{slug}",
                         actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
                         cancellationToken: cancellationToken);
@@ -1388,16 +1388,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         };
     }
 
-    // Notification storage holds 200 Unicode characters; retain the full title in the body.
-    internal static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
-    {
-        if (title.EnumerateRunes().Count() <= 200)
-            return (title, body);
-
-        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
-            body is null ? title : string.Concat(title, "\n\n", body));
-    }
-
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
     {
         try
@@ -1447,14 +1437,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             var culture = await GetRecipientCultureAsync(member.UserId, cancellationToken);
             var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName));
+            var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName);
             await _notificationEmitter.SendAsync(
                 NotificationSource.CampMembershipApproved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [member.UserId],
-                body: noticeCopy.Body,
+                body: null,
                 actionUrl: slug is null ? null : $"/Barrios/{slug}",
                 actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
                 cancellationToken: cancellationToken);
@@ -1493,14 +1483,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
             var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName));
+            var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName);
             await _notificationEmitter.SendAsync(
                 NotificationSource.CampMembershipRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [requesterUserId],
-                body: noticeCopy.Body,
+                body: null,
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)

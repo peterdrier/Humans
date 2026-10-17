@@ -25,7 +25,7 @@ internal sealed class NotificationEmitter(
     IMemoryCache cache,
     ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
-    private static (string Title, string? Body) FitCopyToStorage(string title, string? body)
+    internal static (string Title, string? Body) FitCopyToStorage(string title, string? body)
     {
         if (title.EnumerateRunes().Count() > Notification.TitleMaxLength)
         {

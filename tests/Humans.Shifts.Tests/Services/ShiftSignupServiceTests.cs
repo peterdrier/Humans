@@ -730,7 +730,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task VoluntellNotices_LongNamesKeepFullCopyAndValidTitle(int rangeCount)
+    public async Task VoluntellNotices_LongNamesDispatchFullCopy(int rangeCount)
     {
         var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         rota.Name = new string('x', 168) + "😀" + new string('x', 86);
@@ -753,12 +753,21 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         notices.Should().NotBeEmpty();
         foreach (var args in notices)
         {
-            var title = (string)args[3]!;
-            title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-            title.Should().EndWith("…");
-            var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-            encode.Should().NotThrow();
-            ((string)args[5]!).Should().Contain(rota.Name);
+            if ((NotificationSource)args[0]! == NotificationSource.ShiftAssigned)
+            {
+                args[3].Should().Be(rangeCount switch
+                {
+                    0 => $"You were assigned to {rota.Name} on day {shift.DayOffset}",
+                    1 => $"You were assigned to {rota.Name} (1 shift)",
+                    _ => $"You were assigned to {rota.Name} ({rangeCount} shifts)"
+                });
+                args[5].Should().BeNull();
+            }
+            else
+            {
+                args[3].Should().Be($"Shift signup change: {rota.Name}");
+                ((string)args[5]!).Should().Contain(rota.Name);
+            }
         }
     }
 

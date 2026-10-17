@@ -81,7 +81,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 ## Invariants
 
-- The emitter fits copy to storage for every sender: titles at most 200 Unicode characters,
+- Known-recipient emission and shared role broadcasts use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
   oversized title is retained at the start of the body before the body is excerpted.
   Valid-length copy is preserved unchanged.

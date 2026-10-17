@@ -157,7 +157,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_notice_long_name_keeps_full_copy_in_body()
+    public async Task Contact_notice_long_name_dispatches_full_copy()
     {
         var campName = string.Concat(Enumerable.Repeat("🏕️", 128));
         await _service.SendFacilitatedMessageAsync(
@@ -166,8 +166,8 @@ public class CampContactServiceTests : IDisposable
 
         var call = _notificationEmitter.ReceivedCalls().Single();
         var arguments = call.GetArguments();
-        ((string)arguments[3]!).EnumerateRunes().Count().Should().Be(200);
-        ((string)arguments[5]!).Should().Be($"New message for {campName} - check your email");
+        arguments[3].Should().Be($"New message for {campName} - check your email");
+        arguments[5].Should().BeNull();
     }
 
     [HumansFact]
