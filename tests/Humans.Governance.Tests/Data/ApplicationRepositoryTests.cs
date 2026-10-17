@@ -38,6 +38,34 @@ public sealed class ApplicationRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RenewalCandidates_DoNotFallBackToAnOlderApproval(bool latestAlreadyReminded)
+    {
+        var today = new LocalDate(2027, 11, 1);
+        var userId = Guid.NewGuid();
+        var older = SeedApp(userId, Instant.FromUtc(2025, 10, 1, 0, 0));
+        var latest = SeedApp(userId, Instant.FromUtc(2027, 10, 1, 0, 0));
+        var otherTier = SeedApp(userId, tier: MembershipTier.Asociado);
+        var otherUser = SeedApp();
+        foreach (var application in new[] { older, latest, otherTier, otherUser })
+        {
+            application.Approve(Guid.NewGuid(), null, new FakeClock(Instant.FromUtc(2027, 10, 31, 0, 0)));
+            application.TermExpiresAt = new LocalDate(2027, 12, 31);
+        }
+        if (latestAlreadyReminded)
+            latest.RenewalReminderSentAt = Instant.FromUtc(2027, 10, 31, 0, 0);
+        else
+            latest.TermExpiresAt = new LocalDate(2029, 12, 31);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var candidates = await _repo.GetExpiringApplicationsNeedingReminderAsync(
+            today, today.PlusDays(90), Xunit.TestContext.Current.CancellationToken);
+
+        candidates.Select(a => a.Id).Should().BeEquivalentTo([otherTier.Id, otherUser.Id]);
+    }
+
     [HumansFact]
     public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierApplications()
     {

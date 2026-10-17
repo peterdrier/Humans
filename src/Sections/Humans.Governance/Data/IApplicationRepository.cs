@@ -103,7 +103,7 @@ internal interface IApplicationRepository : IRepository
     Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every Approved application whose <c>TermExpiresAt</c> falls
+    /// Returns the latest Approved application per user and tier when its <c>TermExpiresAt</c> falls
     /// between <paramref name="today"/> (inclusive) and
     /// <paramref name="reminderThreshold"/> (inclusive) and whose
     /// <c>RenewalReminderSentAt</c> is still null. Read-only.
