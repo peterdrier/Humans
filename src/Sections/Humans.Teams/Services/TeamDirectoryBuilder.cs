@@ -3,8 +3,53 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;
 
+/// <summary>
+/// One node of the public team tree: a department or one of its (recursively nested)
+/// sub-teams. <see cref="IsAnonymouslyVisible"/> mirrors the anonymous Details rule, so
+/// the tree only links names an anonymous visitor can actually open.
+/// </summary>
+internal sealed record TeamTreeNode(
+    string Name,
+    string? Description,
+    string Slug,
+    int MemberCount,
+    bool IsAnonymouslyVisible,
+    IReadOnlyList<TeamTreeNode> Children);
+
 internal static class TeamDirectoryBuilder
 {
+    /// <summary>
+    /// Departments with their sub-teams nested beneath them, name-sorted at every level.
+    /// Inactive, hidden and system teams are left out, along with everything under them.
+    /// </summary>
+    public static IReadOnlyList<TeamTreeNode> BuildTree(IReadOnlyDictionary<Guid, TeamInfo> teamsById)
+    {
+        var included = teamsById.Values
+            .Where(t => t.IsActive && !t.IsHidden && !t.IsSystemTeam)
+            .ToList();
+        var childrenByParent = included
+            .Where(t => t.ParentTeamId is not null)
+            .ToLookup(t => t.ParentTeamId!.Value);
+
+        return included
+            .Where(t => t.ParentTeamId is null)
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => ToNode(t, childrenByParent))
+            .ToList();
+    }
+
+    private static TeamTreeNode ToNode(TeamInfo team, ILookup<Guid, TeamInfo> childrenByParent) =>
+        new(
+            team.Name,
+            team.Description,
+            team.Slug,
+            team.Members.Count,
+            team.ParentTeamId is null ? team.IsPublicPage : team.IsPromotedToDirectory,
+            childrenByParent[team.Id]
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(t => ToNode(t, childrenByParent))
+                .ToList());
+
     public static async Task<TeamDirectoryResult> BuildAsync(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,
         IRoleAssignmentService roleAssignmentService,

@@ -103,4 +103,34 @@ public sealed class TeamDirectoryBuilderTests
         result.Departments.Select(t => t.Name).Should().BeEquivalentTo("Build");
         result.HiddenTeams.Select(t => t.Name).Should().BeEquivalentTo("Secret");
     }
+
+    [HumansFact]
+    public void Tree_NestsSubTeamsUnderDepartments_AndDropsHiddenSystemInactive()
+    {
+        var member = Guid.NewGuid();
+        var build = Team("Build", isPublicPage: true, memberIds: [member, Guid.NewGuid()]);
+        var art = Team("Art");
+        var hidden = Team("Secret", isHidden: true);
+        var inactive = Team("Old", isActive: false);
+        var system = Team("Volunteers", systemType: SystemTeamType.Volunteers);
+        var logo = Team("Logo", parentId: build.Id, isPromoted: true, memberIds: member);
+        var signs = Team("Signs", parentId: build.Id);
+        var hiddenChild = Team("Vault", parentId: build.Id, isHidden: true);
+        var orphanOfHidden = Team("Keys", parentId: hidden.Id);
+        var grandchild = Team("Fonts", parentId: logo.Id);
+
+        var tree = TeamDirectoryBuilder.BuildTree(
+            Graph(build, art, hidden, inactive, system, logo, signs, hiddenChild, orphanOfHidden, grandchild));
+
+        tree.Select(n => n.Name).Should().Equal("Art", "Build");
+        var (artNode, buildNode) = (tree[0], tree[1]);
+        buildNode.MemberCount.Should().Be(2);
+        buildNode.IsAnonymouslyVisible.Should().BeTrue();
+        buildNode.Children.Select(c => c.Name).Should().Equal("Logo", "Signs");
+        var (logoNode, signsNode) = (buildNode.Children[0], buildNode.Children[1]);
+        logoNode.IsAnonymouslyVisible.Should().BeTrue();
+        signsNode.IsAnonymouslyVisible.Should().BeFalse();
+        logoNode.Children.Select(c => c.Name).Should().Equal("Fonts");
+        artNode.IsAnonymouslyVisible.Should().BeFalse();
+    }
 }

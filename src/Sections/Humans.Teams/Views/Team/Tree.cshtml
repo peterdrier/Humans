@@ -1,0 +1,51 @@
+@model Humans.Teams.Models.TeamTreeViewModel
+@{
+    ViewData["Title"] = Localizer["Teams_Tree_Title"].Value;
+}
+
+<style>
+    .team-tree { list-style: none; padding-left: 0; margin: 0; }
+    .team-tree ul { list-style: none; padding-left: 1.75rem; margin: 0; position: relative; }
+    .team-tree ul::before {
+        content: ""; position: absolute; top: 0; bottom: 0.75rem; left: 0.6rem;
+        border-left: 2px solid var(--bs-border-color);
+    }
+    .team-tree ul > li { position: relative; padding: 0.3rem 0 0.3rem 1rem; }
+    .team-tree ul > li::before {
+        content: ""; position: absolute; top: 1.15rem; left: calc(-1.75rem + 0.6rem);
+        width: calc(1.75rem - 0.6rem + 0.5rem); border-top: 2px solid var(--bs-border-color);
+    }
+    .team-tree .team-node { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .team-tree .team-desc { color: var(--bs-secondary-color); font-size: 0.875rem; margin: 0.15rem 0 0; }
+    .team-tree .team-desc p:last-child { margin-bottom: 0; }
+</style>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Tree_Title"]</li>
+    </ol>
+</nav>
+
+<div class="mb-4">
+    <h1 class="mb-1">@Localizer["Teams_Tree_Title"]</h1>
+    <p class="text-muted mb-0">@Localizer["Teams_Tree_Subtitle"]</p>
+</div>
+
+@if (Model.Departments.Count == 0)
+{
+    <div class="alert alert-light">@Localizer["Teams_NoTeams"]</div>
+}
+else
+{
+    <ul class="team-tree">
+        @foreach (var department in Model.Departments)
+        {
+            <li class="card mb-3">
+                <div class="card-body">
+                    <partial name="_TeamTreeNode" model="(department, Model.IsAuthenticated, true)" />
+                </div>
+            </li>
+        }
+    </ul>
+}

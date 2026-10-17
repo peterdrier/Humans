@@ -530,6 +530,9 @@
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Équipes masquées</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visibles par les admins uniquement)</value></data>
   <data name="Teams_Summary" xml:space="preserve"><value>Résumé</value></data>
+  <data name="Teams_Tree_Title" xml:space="preserve"><value>Arborescence des équipes</value></data>
+  <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Chaque département et les équipes qui le composent.</value></data>
+  <data name="Teams_Tree_TeamCount" xml:space="preserve"><value>{0} équipe(s)</value><comment>{0} = sub-team count</comment></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>État de synchronisation</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Équipes système</value></data>
   <data name="Teams_TeamAdminResources_Title" xml:space="preserve">

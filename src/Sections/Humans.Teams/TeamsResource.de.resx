@@ -530,6 +530,9 @@
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Versteckte Teams</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(nur für Admins sichtbar)</value></data>
   <data name="Teams_Summary" xml:space="preserve"><value>Übersicht</value></data>
+  <data name="Teams_Tree_Title" xml:space="preserve"><value>Teambaum</value></data>
+  <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Jede Abteilung und die Teams darin.</value></data>
+  <data name="Teams_Tree_TeamCount" xml:space="preserve"><value>{0} Team(s)</value><comment>{0} = sub-team count</comment></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Sync-Status</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>System-Teams</value></data>
   <data name="Teams_TeamAdminResources_Title" xml:space="preserve">

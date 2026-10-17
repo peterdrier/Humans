@@ -1,0 +1,58 @@
+@model (Humans.Teams.Services.TeamTreeNode Node, bool IsAuthenticated, bool IsDepartment)
+@{
+    var node = Model.Node;
+    var canLink = Model.IsAuthenticated || node.IsAnonymouslyVisible;
+}
+
+<div class="team-node">
+    @if (Model.IsDepartment)
+    {
+        <h2 class="h4 mb-0">
+            @if (canLink)
+            {
+                <a asp-action="Details" asp-route-slug="@node.Slug" class="text-decoration-none">@node.Name</a>
+            }
+            else
+            {
+                @node.Name
+            }
+        </h2>
+    }
+    else
+    {
+        <span class="fw-semibold">
+            @if (canLink)
+            {
+                <a asp-action="Details" asp-route-slug="@node.Slug" class="text-decoration-none">@node.Name</a>
+            }
+            else
+            {
+                @node.Name
+            }
+        </span>
+    }
+    <span class="badge rounded-pill text-bg-light border">
+        <i class="fa-solid fa-user me-1"></i>@string.Format(Localizer["Teams_MemberCount"].Value, node.MemberCount)
+    </span>
+    @if (node.Children.Count > 0)
+    {
+        <span class="badge rounded-pill text-bg-light border">
+            <i class="fa-solid fa-sitemap me-1"></i>@string.Format(Localizer["Teams_Tree_TeamCount"].Value, node.Children.Count)
+        </span>
+    }
+</div>
+@if (!string.IsNullOrWhiteSpace(node.Description))
+{
+    <div class="team-desc">@Html.SanitizedMarkdown(node.Description)</div>
+}
+@if (node.Children.Count > 0)
+{
+    <ul class="mt-2">
+        @foreach (var child in node.Children)
+        {
+            <li>
+                <partial name="_TeamTreeNode" model="(child, Model.IsAuthenticated, false)" />
+            </li>
+        }
+    </ul>
+}
