@@ -1,7 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
-using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
 

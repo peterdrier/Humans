@@ -4,7 +4,6 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Users.Contracts;
@@ -33,7 +32,7 @@ internal sealed partial class PreapprovalService(
     PreapprovalsEmails emailFactory,
     IAuditLogService auditLog,
     IClock clock,
-    ILogger<PreapprovalService> logger) : IPreapprovalManagementService
+    ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 

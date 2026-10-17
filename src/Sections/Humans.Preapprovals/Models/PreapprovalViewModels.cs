@@ -28,7 +28,7 @@ internal sealed class MemberProgramViewModel
     public required IReadOnlyList<GrantInfo> MyGrants { get; init; }
     public required ApplyFormViewModel Form { get; init; }
 
-    public GrantInfo? Pending => MyGrants.FirstOrDefault(g => g.Status == Contracts.GrantStatus.Applied);
+    public GrantInfo? Pending => MyGrants.FirstOrDefault(g => g.Status == GrantStatus.Applied);
 }
 
 internal sealed class ApplyFormViewModel
@@ -59,8 +59,8 @@ internal sealed class AdminProgramViewModel
     public string NameOf(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 
-    public IEnumerable<GrantInfo> Applications => Program.Grants.Where(g => g.Status == Contracts.GrantStatus.Applied);
-    public IEnumerable<GrantInfo> Decided => Program.Grants.Where(g => g.Status != Contracts.GrantStatus.Applied)
+    public IEnumerable<GrantInfo> Applications => Program.Grants.Where(g => g.Status == GrantStatus.Applied);
+    public IEnumerable<GrantInfo> Decided => Program.Grants.Where(g => g.Status != GrantStatus.Applied)
         .OrderBy(g => g.IsTerminal).ThenBy(g => g.CreatedAt);
 }
 

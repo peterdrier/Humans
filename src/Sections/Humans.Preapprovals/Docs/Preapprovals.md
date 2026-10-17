@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Preapprovals/**
-  src/Sections/Humans.Preapprovals.Contracts/**
   tests/Humans.Preapprovals.Tests/**
 -->
 <!-- freshness:flag-on-change
@@ -96,7 +95,7 @@ Delivery log only; nothing reads it but the job.
 
 | Enum | Values |
 |------|--------|
-| `GrantStatus` (`Humans.Preapprovals.Contracts`) | Applied, Open, Claimed, Consumed, Declined, Revoked |
+| `GrantStatus` (`Humans.Preapprovals.Domain`, internal) | Applied, Open, Claimed, Consumed, Declined, Revoked |
 | `ProgramKind` | FixedPerPerson, PerGrantAmount |
 | `ProgramStatus` | Open, Closed |
 | `ReminderKind` | D14, D3 |
@@ -196,21 +195,25 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
 - **AuditLog**: `IAuditLogService.LogAsync` (actor and job overloads).
 - **Gdpr**: implements `IUserDataContributor`.
-- **Expenses** (consumer, PR 3 of the feature): `IPreapprovalService.ClaimAsync` /
+- **Expenses** (planned consumer, PR 3 of the feature; none today): `ClaimAsync` /
   `ReleaseAsync` / `ConsumeAsync` inside its own `TransactionScope`;
-  `IPreapprovalServiceRead.ListClaimableForUserAsync` / `GetGrantAsync`.
+  `ListClaimableForUserAsync` / `GetGrantAsync`. All of it is internal until Expenses consumes it,
+  at which point the narrow face moves to a public `Contracts/` surface.
 
 ## Architecture
 
-**Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalManagementService` internal, `IPreapprovalService` / `IPreapprovalServiceRead` via `Humans.Preapprovals.Contracts`)
+**Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalManagement` and `IPreapprovalService`, both internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
-### Cross-section read interface
+### Public contract
 
-| Read interface | Methods | Notes |
+None (all internal). No other section consumes Preapprovals yet, so there is no `Contracts` surface and no `Humans.Preapprovals.Contracts` project.
+
+| Internal interface | Methods | Notes |
 |---|---:|---|
-| `IPreapprovalServiceRead` | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`; `IPreapprovalService` adds the three Expenses transitions. Returns `GrantOption` / `GrantStamp`, never entities. |
+| `IPreapprovalService` | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`. Returns `GrantOption`, never entities. |
+| `IPreapprovalManagement : IPreapprovalService` | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders, and the three Expenses transitions (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync`, returning `GrantStamp`). |
 
 ### For (A) Migrated sections
 
