@@ -76,8 +76,8 @@ changes, peterdrier/Humans#1650) moved to the target's deliberately-not-done lis
 
 ## Needs Peter
 
-- [ ] 12 — may the Board comment on a sensitive group's documents?
-- [ ] 13 — apply the proposed edit to peterdrier/Humans#1937 (fresh line cite, reachability check on save as acceptance)?
+- [x] 12 — may the Board comment on a sensitive group's documents? **Peter: no — members-only commenting stays.**
+- [x] 13 — apply the proposed edit to peterdrier/Humans#1937? **Peter: fix it now — done in peterdrier/Humans#1997 (reachability check on save).**
 
 ## File coverage
 
