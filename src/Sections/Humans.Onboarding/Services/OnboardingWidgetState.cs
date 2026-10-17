@@ -24,6 +24,7 @@ internal sealed class OnboardingWidgetState(
         var info = await users.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return OnboardingWidgetStep.Names;
+        userId = info.Id;
 
         // Returning member with any prior signature → skip Shifts, go to Consents (renew/new docs).
         var requiredRows = await consents.GetRequiredConsentRowsForUserAsync(

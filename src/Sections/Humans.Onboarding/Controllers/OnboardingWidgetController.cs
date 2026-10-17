@@ -78,6 +78,7 @@ internal sealed class OnboardingWidgetController(
 
         var userId = CurrentUserId();
         var info = await _userService.GetUserInfoAsync(userId, ct);
+        userId = info?.Id ?? userId;
 
         // Skip the save for an already-named user (stale page / back-button re-POST).
         // In-section check against the user's OWN profile — the name save must NOT be
@@ -136,7 +137,8 @@ internal sealed class OnboardingWidgetController(
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
-        var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
+        var userId = (await GetCurrentUserInfoAsync(ct))?.Id ?? CurrentUserId();
+        var userShiftView = await shiftView.GetUserAsync(userId, ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
         // Onboarding viewers are regular (non-privileged) volunteers, so the early-entry
         // lock applies whenever the close has passed — same surfacing the /Shifts browse

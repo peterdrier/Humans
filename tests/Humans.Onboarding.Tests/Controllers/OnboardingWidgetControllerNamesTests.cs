@@ -249,16 +249,19 @@ public class OnboardingWidgetControllerNamesTests
                 bio: bio),
             communicationPreferences: []);
 
-    [HumansFact]
-    public async Task Names_Post_PreservesExistingProfileFields_WhenFixingDriftedName()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Names_Post_PreservesExistingProfileFields_WhenFixingDriftedName(bool mergedAlias)
     {
         // A data-drifted profile (City/Bio on file but a blank required name) reaches
         // this POST via NameRequiredFilter. SaveProfileAsync is a full-field overwrite,
         // so fixing the name must carry the existing City/Bio forward, not null them.
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
             .Returns(MakeUserInfo(userId, burner: "Drifted", first: "Has", last: "", city: "Madrid", bio: "existing bio"));
-        var ctrl = BuildSut(userId);
+        var ctrl = BuildSut(inputId);
         var vm = new NamesViewModel { BurnerName = "Drifted", FirstName = "Has", LastName = "NowSet" };
 
         var result = await ctrl.Names(vm, TestContext.Current.CancellationToken);

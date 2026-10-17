@@ -66,6 +66,34 @@ public class OnboardingWidgetControllerShiftsTests
         return ctrl;
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Shifts_Get_ShowsResolvedAccountsExistingSignup(bool mergedAlias)
+    {
+        var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        var shiftId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [], [],
+                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last"), []));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn());
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UrgentShiftInfo>());
+        _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(c => new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(c.Arg<Guid>())));
+        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(userId,
+                [ShiftFixtures.Signup(shiftId: shiftId, status: SignupStatus.Pending)])));
+
+        var result = await BuildSut(inputId).Shifts(ct: TestContext.Current.CancellationToken);
+
+        var model = Assert.IsType<Humans.Onboarding.Models.ShiftsStepViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Contains(shiftId, model.UserSignupShiftIds);
+        Assert.Equal(SignupStatus.Pending, model.UserSignupStatuses[shiftId]);
+    }
+
     [HumansFact]
     public async Task Shifts_Get_StopsBrowseReadWhenRequestIsAbandoned()
     {
