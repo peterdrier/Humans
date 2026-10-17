@@ -29,10 +29,13 @@ internal interface IGoogleSyncLogRepository : IRepository
     /// <summary>
     /// Newest-first entries across all resources, at most <paramref name="limit"/>. A null filter
     /// matches everything; <paramref name="from"/> is inclusive, <paramref name="to"/> exclusive.
+    /// A non-null <paramref name="unlinkedDescriptionContains"/> widens the resource filter: rows with no
+    /// resource (<see cref="Guid.Empty"/>) whose description contains it (case-insensitive) match too.
     /// </summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
-        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default);
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
+        string? unlinkedDescriptionContains = null);
 
     /// <summary>Every distinct resource id the log references.</summary>
     Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default);

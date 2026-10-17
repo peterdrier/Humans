@@ -104,11 +104,11 @@ internal sealed class GoogleSyncLogService(
             var names = await teamResourceService.GetResourceNamesByIdsAsync(await repo.GetResourceIdsAsync(ct), ct);
             resourceIds = names.Where(n => n.Value.Contains(needle, StringComparison.OrdinalIgnoreCase))
                 .Select(n => n.Key).ToList();
-            if (resourceIds.Count == 0)
-                return [];
         }
 
-        var entries = await repo.GetRecentAsync(from, to, action, source, success, resourceIds, MaxRecentRows, ct);
+        // Unregistered Drive folders log Guid.Empty; the sync service puts their path in the description.
+        var entries = await repo.GetRecentAsync(from, to, action, source, success, resourceIds, MaxRecentRows, ct,
+            unlinkedDescriptionContains: resourceName?.Trim() is { Length: > 0 } needle2 ? needle2 : null);
         return await ToViewsAsync(entries, ct);
     }
 

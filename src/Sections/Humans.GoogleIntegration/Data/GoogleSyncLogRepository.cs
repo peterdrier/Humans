@@ -62,11 +62,19 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
-        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default)
+        IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
+        string? unlinkedDescriptionContains = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.GoogleSyncLog.AsNoTracking();
-        if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
+        if (unlinkedDescriptionContains is not null)
+        {
+            var needle = unlinkedDescriptionContains.ToLowerInvariant();
+            var ids = resourceIds ?? [];
+            query = query.Where(e => ids.Contains(e.ResourceId)
+                || (e.ResourceId == Guid.Empty && e.Description.ToLowerInvariant().Contains(needle)));
+        }
+        else if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
         if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);
         if (to.HasValue) query = query.Where(e => e.OccurredAt < to.Value);
         if (action.HasValue) query = query.Where(e => e.Action == action.Value);

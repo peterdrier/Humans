@@ -31,7 +31,8 @@ public sealed class GoogleSyncLogActivityLogTests
 
     private static GoogleSyncLogEntry Entry(
         Instant at, GoogleSyncLogAction action = GoogleSyncLogAction.AccessGranted,
-        GoogleSyncSource source = GoogleSyncSource.ScheduledSync, bool success = true, Guid? resourceId = null) => new()
+        GoogleSyncSource source = GoogleSyncSource.ScheduledSync, bool success = true, Guid? resourceId = null,
+        string description = "Sync: x") => new()
     {
         Id = Guid.NewGuid(),
         Action = action,
@@ -41,7 +42,7 @@ public sealed class GoogleSyncLogActivityLogTests
         Role = "reader",
         Source = source,
         Success = success,
-        Description = "Sync: x",
+        Description = description,
         JobName = "Sync",
         OccurredAt = at
     };
@@ -126,15 +127,50 @@ public sealed class GoogleSyncLogActivityLogTests
 
         var all = await sut.GetRecentAsync(null, null, null, null, null, null, ct);
         await sut.GetRecentAsync(null, null, null, null, null, " board ", ct);
-        var none = await sut.GetRecentAsync(null, null, null, null, null, "nothing", ct);
+        await sut.GetRecentAsync(null, null, null, null, null, "nothing", ct);
 
         all.Select(v => v.ResourceName).Should().Equal("Board Docs", "Camp Group", null);
         all.Should().OnlyContain(v => v.UserId != null);
-        none.Should().BeEmpty();
-        await repo.Received(1).GetRecentAsync(null, null, null, null, null, null, 500, ct);
+        await repo.Received(1).GetRecentAsync(null, null, null, null, null, null, 500, ct, null);
         await repo.Received(1).GetRecentAsync(null, null, null, null, null,
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { docs })), 500, ct);
-        await repo.ReceivedWithAnyArgs(2).GetRecentAsync(default, default, default, default, default, default, default, default);
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { docs })), 500, ct, "board");
+        await repo.ReceivedWithAnyArgs(3).GetRecentAsync(default, default, default, default, default, default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task GetRecentAsync_UnlinkedDescriptionFilter_MatchesOnlyGuidEmptyRowsCaseInsensitively()
+    {
+        var linked = Guid.NewGuid();
+        var unlinkedMatch = Entry(T0, resourceId: Guid.Empty,
+            description: "GoogleDriveAccessSyncService: Granted x (Shared/Workgroups/Tickets)");
+        var unlinkedOther = Entry(T0, resourceId: Guid.Empty,
+            description: "GoogleDriveAccessSyncService: Granted x (Shared/Other)");
+        var linkedByDescription = Entry(T0, resourceId: linked, description: "Sync: Shared/Workgroups/Tickets");
+        var linkedById = Entry(T0, resourceId: Guid.NewGuid());
+        await SeedAsync(unlinkedMatch, unlinkedOther, linkedByDescription, linkedById);
+
+        var rows = await Repo().GetRecentAsync(null, null, null, null, null, [linkedById.ResourceId], 10,
+            Xunit.TestContext.Current.CancellationToken, "workgroups/TICKETS");
+
+        rows.Select(r => r.Id).Should().BeEquivalentTo([unlinkedMatch.Id, linkedById.Id]);
+    }
+
+    [HumansFact]
+    public async Task Viewer_GetRecentAsync_NameFilterWithNoMatchingResource_StillQueriesUnlinkedDescriptions()
+    {
+        var repo = Substitute.For<IGoogleSyncLogRepository>();
+        repo.GetResourceIdsAsync(default).ReturnsForAnyArgs([Guid.NewGuid()]);
+        var resources = Substitute.For<ITeamResourceService>();
+        resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(new Dictionary<Guid, string>());
+        var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserEmailService>(), Substitute.For<IServiceProvider>(),
+            new FakeClock(T0), NullLogger<GoogleSyncLogService>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        await sut.GetRecentAsync(null, null, null, null, null, " Workgroups ", ct);
+
+        await repo.Received(1).GetRecentAsync(null, null, null, null, null,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0), 500, ct, "Workgroups");
     }
 
     private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)

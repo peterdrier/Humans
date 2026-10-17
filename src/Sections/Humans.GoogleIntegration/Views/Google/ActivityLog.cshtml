@@ -5,6 +5,14 @@
 @{
     ViewData["Title"] = "Activity Log";
 
+    // No resolvable resource: the description carries the Drive path (peterdrier/Humans#2000).
+    static string UnlinkedLabel(string description)
+    {
+        const string prefix = "GoogleDriveAccessSyncService: ";
+        var text = description.StartsWith(prefix, StringComparison.Ordinal) ? description[prefix.Length..] : description;
+        return string.IsNullOrWhiteSpace(text) ? "(unlinked)" : text;
+    }
+
     Func<GoogleSyncLogView, IHtmlContent> whenCell =
         @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
     Func<GoogleSyncLogView, IHtmlContent> whoCell = @<text>
@@ -37,7 +45,7 @@
     var table = TableModel.For(Model.Entries)
         .Template("When", whenCell, c => c.NoSort())
         .Template("Who", whoCell, c => c.NoSort())
-        .Column("Resource", e => e.ResourceName ?? "(unlinked)")
+        .Column("Resource", e => e.ResourceName ?? UnlinkedLabel(e.Description))
         .Template("Action", actionCell, c => c.NoSort())
         .Column("Role", e => e.Role)
         .Column("Trigger", e => e.Source.ToString())
