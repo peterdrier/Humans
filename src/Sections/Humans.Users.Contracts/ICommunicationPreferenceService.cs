@@ -68,11 +68,11 @@ public interface ICommunicationPreferenceService
 
     /// <summary>
     /// Updates opt-out and inbox-enabled status for a specific category. Idempotent.
-    /// Logs an audit entry for compliance.
+    /// Logs the authenticated actor when supplied; anonymous updates retain service attribution.
     /// </summary>
     Task UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
-        CancellationToken cancellationToken = default);
+        Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes the preference row for a user+category, reverting the category to

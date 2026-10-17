@@ -105,14 +105,31 @@ public class GuestAccountControllerTests
         Assert.Empty(_commPrefService.ReceivedCalls());
     }
 
-    [HumansFact]
-    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("stale-token")]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid(string? token)
     {
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
         var controller = BuildSut(user);
-        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, null));
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, token));
         await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
-            true, false, "Guest", Arg.Any<CancellationToken>());
+            true, false, "Guest", actorUserId: user.Id, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_AnonymousToken_DoesNotInventAHumanActor()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        _commPrefService.ValidateUnsubscribeToken("valid-token")
+            .Returns((TokenValidationStatus.Valid, user.Id, MessageCategory.Marketing));
+
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, "valid-token"));
+
+        await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
+            true, false, "MagicLink", actorUserId: null, cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

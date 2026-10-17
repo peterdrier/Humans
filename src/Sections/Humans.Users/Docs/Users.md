@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Communication preference writes share one channel-update path. Signed-in profile and Guest changes audit their authenticated actor; token/one-click and imported changes retain service attribution. Email-only writes preserve the inbox channel; no-ops preserve timestamps, source and audit history.
+
 - Self-service email visibility accepts only defined visibility values. Unsupported text and out-of-range numeric input use the existing hidden fallback rather than persisting an undefined audience; valid names, case-insensitive names and defined numeric values retain their meaning.
 
 - Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.

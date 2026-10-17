@@ -187,7 +187,7 @@ public class ProfileControllerEditTests
     {
         Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
         await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
-            true, false, "Profile", Arg.Any<CancellationToken>());
+            true, false, "Profile", actorUserId: _userId, cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

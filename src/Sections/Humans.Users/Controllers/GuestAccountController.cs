@@ -76,7 +76,8 @@ internal sealed class GuestAccountController(
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
-                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken));
+                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
+                actorUserId: fromToken ? null : userId);
 
             return Ok();
         }
