@@ -398,4 +398,5 @@ public enum AuditAction
     EventGuideExported,
     CampsExported,
     CantinaRosterExported,
+    VolunteerTrackingExported,
 }

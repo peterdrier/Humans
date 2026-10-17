@@ -374,4 +374,5 @@
   <data name="Enum_AuditAction_EventGuideExported" xml:space="preserve"><value>Event guide exported</value></data>
   <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camps exported</value></data>
   <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Cantina roster exported</value></data>
+  <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Volunteer tracking exported</value></data>
 </root>
