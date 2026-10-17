@@ -297,7 +297,7 @@ internal sealed class ShiftManagementService(
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }
-    public async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId)
+    public async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId)
     {
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.ShiftsWithSignups);
         if (rota is null) return RefuseDeletion(rotaId, "Shifts_Signup_RotaNotFound");
@@ -309,18 +309,16 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(rotaId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        // Snapshot user-ids pre-delete so cache eviction works after cascade.
-        var affectedUserIds = rota.Shifts
-            .SelectMany(s => s.ShiftSignups)
-            .Select(d => d.UserId)
-            .Distinct()
-            .ToList();
+        // Keep the removed requests for the audit after the cascade commits.
+        var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
+        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         await repo.DeleteRotaCascadeAsync(rotaId);
 
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId, $"rota '{rota.Name}' was deleted");
         return new ShiftDeletionResult();
     }
 
@@ -765,9 +763,9 @@ internal sealed class ShiftManagementService(
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
-    public async Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId)
+    public async Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId)
     {
-        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.ShiftSignups);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Rota | ShiftReadShape.ShiftSignups);
         if (shift is null) return RefuseDeletion(shiftId, "Shifts_Signup_ShiftNotFound");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -775,7 +773,8 @@ internal sealed class ShiftManagementService(
             return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
         var rotaId = shift.RotaId;
-        var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();
+        var removedSignups = shift.ShiftSignups.ToList();
+        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         await repo.DeleteShiftCascadeAsync(shiftId);
 
@@ -783,7 +782,20 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId,
+            $"shift in '{shift.Rota.Name}' on day {shift.DayOffset} was deleted");
         return new ShiftDeletionResult();
+    }
+
+    private async Task AuditDeletedPendingSignupsAsync(
+        IReadOnlyList<ShiftSignup> signups, Guid actorUserId, string reason)
+    {
+        foreach (var signup in signups.Where(s => s.Status == SignupStatus.Pending))
+        {
+            await auditLogService.LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+                $"shift {signup.ShiftId}: {reason}", actorUserId,
+                relatedEntityId: signup.UserId, relatedEntityType: "User");
+        }
     }
 
     private ShiftDeletionResult RefuseDeletion(Guid entityId, string errorKey, int confirmedSignups = 0)

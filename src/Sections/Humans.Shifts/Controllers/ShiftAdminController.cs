@@ -513,13 +513,13 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        var result = await shiftMgmt.DeleteRotaAsync(rotaId);
+        var result = await shiftMgmt.DeleteRotaAsync(rotaId, user.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Rejected deletion of {rotaId} in team {Slug}: {ErrorKey}", rotaId, slug, errorKey);
@@ -535,13 +535,13 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteShift(string slug, Guid shiftId)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
 
-        var result = await shiftMgmt.DeleteShiftAsync(shiftId);
+        var result = await shiftMgmt.DeleteShiftAsync(shiftId, user.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Rejected deletion of {shiftId} in team {Slug}: {ErrorKey}", shiftId, slug, errorKey);

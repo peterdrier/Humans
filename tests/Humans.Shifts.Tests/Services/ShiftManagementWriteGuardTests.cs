@@ -388,7 +388,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansFact]
     public async Task DeleteShiftAsync_Refuses_WhenShiftMissing()
     {
-        var result = await _service.DeleteShiftAsync(Guid.NewGuid());
+        var result = await _service.DeleteShiftAsync(Guid.NewGuid(), Guid.NewGuid());
         result.ErrorKey.Should().Be("Shifts_Signup_ShiftNotFound");
     }
 
@@ -400,7 +400,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         SeedSignup(shift, SeedUser("Alice").Id, SignupStatus.Confirmed);
         await SaveAllAsync(Ct);
 
-        var result = await _service.DeleteShiftAsync(shift.Id);
+        var result = await _service.DeleteShiftAsync(shift.Id, Guid.NewGuid());
         result.ErrorKey.Should().Be("Shifts_Delete_ConfirmedSignups");
         result.ConfirmedSignups.Should().Be(1);
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeTrue();
@@ -415,9 +415,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var bob = SeedUser("Bob");
         SeedSignup(shift, alice.Id, SignupStatus.Pending);
         SeedSignup(shift, bob.Id, SignupStatus.Bailed);
+        var pending = ShiftsDb.ShiftSignups.Local.Single(s => s.UserId == alice.Id);
         await SaveAllAsync(Ct);
 
-        await _service.DeleteShiftAsync(shift.Id);
+        var actorUserId = Guid.NewGuid();
+        await _service.DeleteShiftAsync(shift.Id, actorUserId);
 
         ShiftsDb.ChangeTracker.Clear();
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeFalse();
@@ -426,6 +428,12 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         _viewInvalidator.Received(1).InvalidateRota(rota.Id);
         _viewInvalidator.Received(1).InvalidateUser(alice.Id);
         _viewInvalidator.Received(1).InvalidateUser(bob.Id);
+        await AuditLog.Received(1).LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
+            Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
+                && text.Contains("deleted", StringComparison.Ordinal)),
+            actorUserId, alice.Id, "User");
+        AuditLog.ReceivedCalls().Where(call => Equals(call.GetArguments()[0], AuditAction.ShiftSignupCancelled))
+            .Should().ContainSingle();
     }
 
     // ============================================================

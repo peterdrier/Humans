@@ -72,8 +72,8 @@ public class ShiftAdminControllerTests
 
     public ShiftAdminControllerTests()
     {
-        _shiftMgmt.DeleteRotaAsync(Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
-        _shiftMgmt.DeleteShiftAsync(Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
+        _shiftMgmt.DeleteRotaAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
+        _shiftMgmt.DeleteShiftAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(UserId));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -142,7 +142,7 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
         _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
             .Returns(Task.FromException<ShiftGenerationResult>(new InvalidOperationException(reason)));
-        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 2));
+        _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 2));
         _localizer["Shifts_Delete_ConfirmedSignups", Arg.Any<object[]>()]
             .Returns(new LocalizedString("Shifts_Delete_ConfirmedSignups", reason));
         var signupBlockId = Guid.NewGuid();
@@ -182,7 +182,7 @@ public class ShiftAdminControllerTests
         var result = await BuildSut().DeleteRota(Slug, rota.Id);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _shiftMgmt.DidNotReceive().DeleteRotaAsync(Arg.Any<Guid>());
+        await _shiftMgmt.DidNotReceive().DeleteRotaAsync(Arg.Any<Guid>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -194,7 +194,7 @@ public class ShiftAdminControllerTests
         var result = await BuildSut().DeleteRota(Slug, rota.Id);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _shiftMgmt.Received(1).DeleteRotaAsync(rota.Id);
+        await _shiftMgmt.Received(1).DeleteRotaAsync(rota.Id, UserId);
     }
 
     [HumansFact]
@@ -206,7 +206,7 @@ public class ShiftAdminControllerTests
         var result = await BuildSut().DeleteShift(Slug, shift.Id);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _shiftMgmt.DidNotReceive().DeleteShiftAsync(Arg.Any<Guid>());
+        await _shiftMgmt.DidNotReceive().DeleteShiftAsync(Arg.Any<Guid>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -218,7 +218,7 @@ public class ShiftAdminControllerTests
         var result = await BuildSut().DeleteShift(Slug, shift.Id);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _shiftMgmt.Received(1).DeleteShiftAsync(shift.Id);
+        await _shiftMgmt.Received(1).DeleteShiftAsync(shift.Id, UserId);
     }
 
     [HumansFact]
@@ -413,8 +413,8 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
         _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
         var failure = new InvalidOperationException("Private cascade delete diagnostic");
-        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(Task.FromException<ShiftDeletionResult>(failure));
-        _shiftMgmt.DeleteShiftAsync(shift.Id).Returns(Task.FromException<ShiftDeletionResult>(failure));
+        _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(Task.FromException<ShiftDeletionResult>(failure));
+        _shiftMgmt.DeleteShiftAsync(shift.Id, UserId).Returns(Task.FromException<ShiftDeletionResult>(failure));
         var controller = BuildSut();
         Func<Task<IActionResult>> act = deleteShift
             ? () => controller.DeleteShift(Slug, shift.Id)
@@ -449,8 +449,8 @@ public class ShiftAdminControllerTests
         var shift = MakeShift(rota);
         _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
         _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
-        _shiftMgmt.DeleteRotaAsync(rota.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
-        _shiftMgmt.DeleteShiftAsync(shift.Id).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
+        _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
+        _shiftMgmt.DeleteShiftAsync(shift.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
         var controller = BuildSut(localizer);
 
         var result = deleteShift ? await controller.DeleteShift(Slug, shift.Id) : await controller.DeleteRota(Slug, rota.Id);

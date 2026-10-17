@@ -1174,7 +1174,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act + Assert
-        var result = await _service.DeleteRotaAsync(rota.Id);
+        var result = await _service.DeleteRotaAsync(rota.Id, Guid.NewGuid());
         result.ErrorKey.Should().Be("Shifts_Delete_ConfirmedSignups");
         result.ConfirmedSignups.Should().Be(1);
         (await ShiftsDb.Rotas.FindAsync(rota.Id)).Should().NotBeNull();
@@ -1210,7 +1210,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
-        await _service.DeleteRotaAsync(rota.Id);
+        var actorUserId = Guid.NewGuid();
+        await _service.DeleteRotaAsync(rota.Id, actorUserId);
 
         // Assert: rota gone, pending signups removed by cascade-delete. We query
         // through the service so we hit the same factory-managed context the
@@ -1221,6 +1222,13 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .Where(s => s.Id == pending1.Id || s.Id == pending2.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken))
             .Should().BeEmpty();
+        foreach (var removed in new[] { pending1, pending2 })
+        {
+            await AuditLog.Received(1).LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), removed.Id,
+                Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
+                    && text.Contains("deleted", StringComparison.Ordinal)),
+                actorUserId, removed.UserId, "User");
+        }
     }
 
     // ============================================================
