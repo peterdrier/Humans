@@ -103,6 +103,19 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task SetRootDriveFolderId_Unreachable_RefusesAndKeepsTheOldValue()
+    {
+        GoogleSync.IsFolderReachableAsync("gone-root", Arg.Any<CancellationToken>()).Returns(false);
+        var service = NewService();
+
+        var result = await service.SetRootDriveFolderIdAsync("https://drive.google.com/drive/folders/gone-root", SeedUser(), Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.RootFolderUnreachable);
+        (await service.GetRootDriveFolderIdAsync(Ct)).Should().Be(RootFolderId);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task RootDriveFolder_PreservesLegacyValueUntilAdminSavesSectionOwnedSetting()
     {
         var actor = SeedUser();

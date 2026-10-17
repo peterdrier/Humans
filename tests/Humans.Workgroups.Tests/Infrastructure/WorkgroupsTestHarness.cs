@@ -92,6 +92,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         GoogleSync = Substitute.For<IGoogleSyncService>();
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => $"folder-{Guid.NewGuid()}");
+        GoogleSync.IsFolderReachableAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         Finance = Substitute.For<IHoldedFinanceService>();
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())

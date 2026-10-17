@@ -230,6 +230,7 @@ public interface IGoogleSyncService
 
     // Provision folders and enqueue source-owned Drive reconciliation (Teams and Workgroups)
     Task<string> CreateSubfolderAsync(string parentFolderId, string name, CancellationToken ct = default);
+    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default);
     Task RequestSyncAsync(string folderId, CancellationToken ct = default);
 }
 ```

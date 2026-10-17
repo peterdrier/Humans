@@ -120,6 +120,7 @@
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Koordinatoren müssen bereits Mitglieder sein.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Du bist der letzte Koordinator; benenne einen Nachfolger, bevor du austrittst.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>Der Drive-Stammordner für Arbeitsgruppen ist noch nicht konfiguriert.</value></data>
+  <data name="Workgroups_Error_RootFolderUnreachable" xml:space="preserve"><value>Das Dienstkonto kann diesen Drive-Ordner nicht erreichen. Prüfe die ID und ob der Ordner mit ihm geteilt ist.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Das Erstellen des Drive-Ordners der Gruppe ist fehlgeschlagen; bitte versuche es erneut.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Das ist im aktuellen Status der Gruppe oder des Dokuments nicht möglich.</value></data>
   <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Systemprotokolleinträge können nicht bearbeitet oder gelöscht werden.</value></data>

@@ -750,6 +750,10 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
 
         var id = NormalizeFolderId(folderId);
+        // Registration creates each group's folder under this one; a 404 there blocks every registration.
+        if (!await googleSync.IsFolderReachableAsync(id, ct))
+            return new(Refusal: new(WorkgroupErrorKeys.RootFolderUnreachable));
+
         await repository.SetRootDriveFolderIdAsync(id, ct);
         await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,

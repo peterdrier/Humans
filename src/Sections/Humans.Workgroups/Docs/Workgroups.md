@@ -213,7 +213,9 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 `workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
-through the Workgroups repository and audits the actor. Until that first save,
+through the Workgroups repository and audits the actor. A save is refused unless
+the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
+so a stale id surfaces on save, not at the next registration. Until that first save,
 reads fall back to the legacy Settings key; reads never backfill or mutate it.
 New section state is never written to the shared store. Registration is refused with
 a clear error while unset.
