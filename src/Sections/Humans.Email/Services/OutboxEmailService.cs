@@ -118,8 +118,19 @@ internal sealed class OutboxEmailService(
         // repository orders the batch by, so drain and queue order cannot drift.
         if (TimeSensitiveTemplates.Names.Contains(message.TemplateName, StringComparer.Ordinal))
         {
-            immediateProcessor.TriggerImmediate();
-            logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", message.TemplateName);
+            try
+            {
+                immediateProcessor.TriggerImmediate();
+                logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", message.TemplateName);
+            }
+            catch (Exception ex)
+            {
+                // The message is already durable. The recurring drain will deliver it;
+                // reporting a send failure here would invite a duplicate enqueue.
+                logger.LogWarning(ex,
+                    "Immediate outbox trigger failed for {TemplateName}; the queued message will use the recurring drain",
+                    message.TemplateName);
+            }
         }
     }
 
