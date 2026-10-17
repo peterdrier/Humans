@@ -200,16 +200,16 @@ public class AccountDeletionServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RequestDeletionAsync_TicketHolder_SetsEligibleAfterAndIsHeldForTicket()
+    [HumansTheory]
+    [Xunit.InlineData(10)]
+    [Xunit.InlineData(30)]
+    [Xunit.InlineData(60)]
+    public async Task RequestDeletionAsync_TicketHolder_ReportsTheLaterOfGracePeriodAndEventHold(int holdDays)
     {
-        // Ticket-hold path: deletion is held until after the event so the
-        // ticket stays usable. Drives different UI copy in both Profile and
-        // Guest deletion entry points, so the result must carry the hold date
-        // and the IsHeldForTicket flag verbatim.
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
-        var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
+        var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(holdDays));
+        var effectiveDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(Math.Max(30, holdDays)));
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(
@@ -225,7 +225,14 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeTrue();
         result.IsHeldForTicket.Should().BeTrue();
-        result.EffectiveDeletionDate.Should().Be(holdDate);
+        result.EffectiveDeletionDate.Should().Be(effectiveDate);
+
+        using var recipientCulture = new CultureScope("en");
+        var expectedDate = effectiveDate.InUtc().Date.ToDate();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "deletion_requested"
+                && m.HtmlBody.Contains($"<p>{expectedDate}</p>", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
 
         await _userService.Received(1).SetDeletionPendingAsync(
             userId,

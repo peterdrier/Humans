@@ -56,7 +56,7 @@ internal sealed class UserController(
 
         var viewModel = new PendingDeletionViewModel
         {
-            ScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc(),
+            ScheduledFor = user.EffectiveDeletionDate?.ToDateTimeUtc(),
         };
         return View(viewModel);
     }

@@ -648,7 +648,7 @@ internal sealed class ProfileController(
         {
             IsDeletionPending = user.IsDeletionPending,
             DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc(),
-            DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc()
+            DeletionScheduledFor = user.EffectiveDeletionDate?.ToDateTimeUtc()
         };
 
         ViewData["DpoEmail"] = configuration.GetOptionalSetting(configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);

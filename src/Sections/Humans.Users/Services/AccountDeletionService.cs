@@ -55,6 +55,9 @@ internal sealed class AccountDeletionService(
             eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
+        var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
+            ? holdDate : deletionDate;
+
         try
         {
             await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
@@ -81,7 +84,7 @@ internal sealed class AccountDeletionService(
                 await emailService.SendAsync(emailMessages.AccountDeletionRequested(
                     notificationEmail,
                     user.BurnerName,
-                    deletionDate,
+                    effectiveDeletionDate,
                     user.PreferredLanguage.IsSupportedCultureCode()
                         ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
                     ct);
@@ -89,7 +92,7 @@ internal sealed class AccountDeletionService(
 
             return new DeletionRequestResult(
                 Success: true,
-                EffectiveDeletionDate: eligibleAfter ?? deletionDate,
+                EffectiveDeletionDate: effectiveDeletionDate,
                 IsHeldForTicket: eligibleAfter is not null);
         }
         finally

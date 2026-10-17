@@ -83,8 +83,8 @@ public interface IAccountDeletionService : IOrchestrator
 /// Outcome of <see cref="IAccountDeletionService.RequestDeletionAsync"/>.
 /// On success, <see cref="EffectiveDeletionDate"/> is the earliest instant at
 /// which the user's account becomes eligible for anonymization
-/// (<c>DeletionEligibleAfter</c> when held for a current event ticket, otherwise
-/// the standard 30-day <c>DeletionScheduledFor</c>). <see cref="IsHeldForTicket"/>
+/// (the later of <c>DeletionScheduledFor</c> and any ticket-holder
+/// <c>DeletionEligibleAfter</c> floor). <see cref="IsHeldForTicket"/>
 /// signals the ticket-hold path so callers can render the right copy without a
 /// re-fetch. Mirrors <see cref="OnboardingResult"/>'s <c>ErrorKey</c> contract
 /// (<c>NotFound</c>, <c>AlreadyPending</c>) on failure.
