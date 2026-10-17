@@ -28,6 +28,7 @@ administrative recognition, and every decision is a human's.
   (`WorkgroupMemberRole.Coordinator`). Every member may do member work; the one thing a
   coordinator holds that a member does not is the membership decision — who joins.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
+- Selected members and coordinators must resolve to existing non-terminal accounts before admission, application or existing-group registration writes. Merge aliases use the survivor; a second-coordinator alias of the applicant creates no duplicate membership. Registration validates people before budget or Drive creation. This adds no admission-state restriction for live accounts.
 - A **Member** is any signed-in human a coordinator (or Board/Admin) let in: a join is a
   **request** (`IsPending`) until approved, or the coordinator adds the person directly.
 - A **Sensitive** group keeps its roster, documents, meetings and history to its members and

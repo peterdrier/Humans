@@ -86,7 +86,9 @@ internal sealed partial class WorkgroupService(
     {
         ct = CancellationToken.None;
         ArgumentNullException.ThrowIfNull(application);
-        if (ValidateApplication(application) is { } applicationRefusal) return new(Refusal: applicationRefusal);
+        var validation = await ValidateApplicationAsync(application, ct);
+        if (validation.Refusal is { } applicationRefusal) return new(Refusal: applicationRefusal);
+        application = validation.Value!;
 
         var now = clock.GetCurrentInstant();
         var slugResult = await ReserveSlugAsync(application.Name, null, ct);
@@ -199,8 +201,10 @@ internal sealed partial class WorkgroupService(
         var workgroup = workgroupResult.Value!;
         if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
-        if (await users.GetUserInfoAsync(userId, ct) is null)
+        var target = await ResolveMemberTargetAsync(userId, ct);
+        if (target is null)
             return new(Refusal: new(WorkgroupErrorKeys.NotFound));
+        userId = target.Value;
 
         var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
         if (existing is { IsPending: not true })
