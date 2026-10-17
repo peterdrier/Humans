@@ -118,13 +118,14 @@ internal sealed class ProfileEmailsController(
 
         var info = await _userService.GetUserInfoAsync(user.Id);
 
-        await emailService.SendAsync(emailMessages.EmailVerification(
+        var message = emailMessages.EmailVerification(
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode));
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode) with { UserId = user.Id };
+        await emailService.SendAsync(message);
     }
 
     private void SetAddedEmailFlash(string email, bool isConflict)

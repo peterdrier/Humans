@@ -623,6 +623,7 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
+                && m.UserId == targetUserId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
@@ -661,6 +662,7 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail
+                && m.UserId == _userId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
