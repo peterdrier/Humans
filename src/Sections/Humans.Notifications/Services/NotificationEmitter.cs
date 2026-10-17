@@ -25,6 +25,18 @@ internal sealed class NotificationEmitter(
     IMemoryCache cache,
     ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
+    private static (string Title, string? Body) FitCopyToStorage(string title, string? body)
+    {
+        if (title.EnumerateRunes().Count() > Notification.TitleMaxLength)
+        {
+            body = body is null ? title : string.Concat(title, "\n\n", body);
+            title = string.Concat(title.EnumerateRunes().Take(Notification.TitleMaxLength - 1)) + "…";
+        }
+        if (body is not null && body.EnumerateRunes().Count() > Notification.BodyMaxLength)
+            body = string.Concat(body.EnumerateRunes().Take(Notification.BodyMaxLength - 1)) + "…";
+        return (title, body);
+    }
+
     public async Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
@@ -51,6 +63,7 @@ internal sealed class NotificationEmitter(
         var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             recipientUserIds, category, cancellationToken);
 
+        (title, body) = FitCopyToStorage(title, body);
         var notifications = new List<Notification>(recipientUserIds.Count);
         foreach (var userId in recipientUserIds)
         {

@@ -9,6 +9,9 @@ namespace Humans.Notifications.Domain;
 /// </summary>
 internal sealed class Notification
 {
+    internal const int TitleMaxLength = 200;
+    internal const int BodyMaxLength = 2000;
+
     public Guid Id { get; init; }
 
     public string Title { get; set; } = string.Empty;

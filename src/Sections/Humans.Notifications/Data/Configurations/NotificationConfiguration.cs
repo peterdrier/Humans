@@ -13,11 +13,11 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasKey(n => n.Id);
 
         builder.Property(n => n.Title)
-            .HasMaxLength(200)
+            .HasMaxLength(Notification.TitleMaxLength)
             .IsRequired();
 
         builder.Property(n => n.Body)
-            .HasMaxLength(2000);
+            .HasMaxLength(Notification.BodyMaxLength);
 
         builder.Property(n => n.ActionUrl)
             .HasMaxLength(500);
