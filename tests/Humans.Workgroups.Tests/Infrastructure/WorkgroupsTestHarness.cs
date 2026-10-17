@@ -24,7 +24,7 @@ namespace Humans.Workgroups.Tests.Infrastructure;
 /// Base class for the section's service tests: a per-test in-memory
 /// <see cref="WorkgroupsDbContext"/> and factory, a deterministic clock, substitutes for
 /// every cross-section seam the inner <see cref="WorkgroupService"/> talks to, and seeders
-/// for the seven tables. Member names follow the other section harnesses
+/// for every table. Member names follow the other section harnesses
 /// (memory/code/service-test-harness.md): <c>Db</c>, <c>DbFactory</c>, <c>Clock</c>, <c>SeedUser</c>.
 /// </summary>
 public abstract class WorkgroupsTestHarness : IDisposable

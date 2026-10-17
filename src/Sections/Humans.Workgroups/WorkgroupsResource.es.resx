@@ -217,8 +217,6 @@
   <data name="Workgroups_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinador de reemplazo (eres el último)</value></data>
   <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Guardar coordinadores</value></data>
-  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>Id de usuario del coordinador 1</value></data>
-  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>Id de usuario del coordinador 2 (opcional)</value></data>
   <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Pedir una actualización de estado</value></data>
   <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Una pregunta de una línea (opcional)</value></data>
   <data name="Workgroups_MarkDone" xml:space="preserve"><value>Marcar como finalizado</value></data>

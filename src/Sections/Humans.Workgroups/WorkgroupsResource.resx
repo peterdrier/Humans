@@ -217,8 +217,6 @@
   <data name="Workgroups_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Replacement coordinator (you're the last one)</value></data>
   <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Save coordinators</value></data>
-  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>Coordinator 1 user id</value></data>
-  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>Coordinator 2 user id (optional)</value></data>
   <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Request a status update</value></data>
   <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>A one-line question (optional)</value></data>
   <data name="Workgroups_MarkDone" xml:space="preserve"><value>Mark done</value></data>
