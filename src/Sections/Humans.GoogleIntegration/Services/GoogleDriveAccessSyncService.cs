@@ -201,7 +201,8 @@ internal sealed class GoogleDriveAccessSyncService(
                 memberLinks[userId] = memberLinks.TryGetValue(userId, out var known) ? [.. known, .. links] : links;
         }
 
-        return new GoogleDriveAccessClaim(access, claims.SelectMany(c => c.LinkedTeams ?? []).ToList(), memberLinks);
+        return new GoogleDriveAccessClaim(access, claims.SelectMany(c => c.LinkedTeams ?? []).ToList(), memberLinks,
+            claims.Select(c => c.ResourceName).FirstOrDefault(n => n is not null));
     }
 
     private async Task<IReadOnlyList<GoogleResource>> LoadResourcesAsync(CancellationToken ct)

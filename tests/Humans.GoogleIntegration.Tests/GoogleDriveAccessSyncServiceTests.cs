@@ -280,7 +280,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var bob = Guid.NewGuid();
         var service = CreateService(
             new StaticSource("folder-1", (alice, DrivePermissionLevel.Viewer)),
-            new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor), (bob, DrivePermissionLevel.Viewer)));
+            new StaticSource("folder-1", "Finance 2026", (alice, DrivePermissionLevel.Contributor), (bob, DrivePermissionLevel.Viewer)));
         StubUsers((alice, "Alice", "alice@nobodies.team"), (bob, "Bob", "bob@nobodies.team"));
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -289,7 +289,8 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(0);
-        result.Diffs.Should().ContainSingle();
+        result.Diffs.Should().ContainSingle().Which.ResourceName.Should().Be("Finance 2026",
+            "the union keeps whichever source named the folder");
         await _drivePermissions.Received(1)
             .CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>());
         await _drivePermissions.Received(1)
