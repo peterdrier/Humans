@@ -361,7 +361,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var withdraw = string.Equals(scenario, "withdraw", StringComparison.Ordinal);
         var interest = duplicate ? null : await SeedInterestAsync(rider, trip.Id);
         var other = capacity ? await SeedInterestAsync(SeedUser("Other rider"), trip.Id) : interest;
-        var pause = new PauseFirstInterestSave();
+        var pause = new PauseFirstRideshareSave();
         var options = new DbContextOptionsBuilder<RideshareDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
         await using (var seed = new RideshareDbContext(options))
@@ -411,7 +411,81 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             : capacity ? "Rideshare_Error_NotEnoughSeats" : "Rideshare_Error_InterestNotPending");
     }
 
-    private sealed class PauseFirstInterestSave : SaveChangesInterceptor
+    [HumansTheory]
+    [InlineData("edit-accept")]
+    [InlineData("accept-edit")]
+    [InlineData("offer-cancel")]
+    [InlineData("request-cancel")]
+    public async Task ConcurrentPostingMutations_PreserveCapacityAndTerminalCancellation(string scenario)
+    {
+        var driver = SeedUser("Driver");
+        var rider = SeedUser("Rider");
+        var trip = await SeedTripAsync(driver, seatsOffered: 2);
+        var requestRace = string.Equals(scenario, "request-cancel", StringComparison.Ordinal);
+        var capacityRace = scenario is "edit-accept" or "accept-edit";
+        var interest = capacityRace ? await SeedInterestAsync(rider, trip.Id, seats: 2) : null;
+        var request = requestRace ? await SeedRequestAsync(rider) : null;
+        var pause = new PauseFirstRideshareSave();
+        var options = new DbContextOptionsBuilder<RideshareDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        await using (var seed = new RideshareDbContext(options))
+        {
+            seed.Trips.Add(trip);
+            if (request is not null) seed.Requests.Add(request);
+            await seed.SaveChangesAsync(Ct);
+        }
+        pause.Armed = true;
+        var repository = new RideshareRepository(new TestDbContextFactory<RideshareDbContext>(options));
+        var firstService = NewService(repository);
+        var first = string.Equals(scenario, "accept-edit", StringComparison.Ordinal)
+            ? firstService.AcceptInterestAsync(interest!.Id, driver, Ct)
+            : requestRace
+                ? firstService.UpdateRequestAsync(request!.Id, rider, NewRequestSave(), Ct)
+                : firstService.UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: capacityRace ? 1 : 2), Ct);
+        Task<RideshareMutationResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first mutation must be paused before saving");
+            var secondService = NewService(repository);
+            second = scenario switch
+            {
+                "edit-accept" => secondService.AcceptInterestAsync(interest!.Id, driver, Ct),
+                "accept-edit" => secondService.UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 1), Ct),
+                "offer-cancel" => secondService.CancelOfferAsync(trip.Id, driver, Ct),
+                "request-cancel" => secondService.CancelRequestAsync(request!.Id, rider, Ct),
+                _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+            };
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+        results[0].Refusal.Should().BeNull();
+        await using var stored = new RideshareDbContext(options);
+        if (capacityRace)
+        {
+            var offered = (await stored.Trips.SingleAsync(Ct)).SeatsOffered;
+            var accepted = (await stored.Interests.ToListAsync(Ct))
+                .Where(row => row.Status == InterestStatus.Accepted).Sum(row => row.Seats);
+            accepted.Should().BeLessThanOrEqualTo(offered);
+            results[1].Refusal.Should().NotBeNull();
+            results[1].Refusal!.Key.Should().Be(string.Equals(scenario, "edit-accept", StringComparison.Ordinal)
+                ? "Rideshare_Error_NotEnoughSeats" : "Rideshare_Error_SeatsBelowAccepted");
+        }
+        else
+        {
+            results[1].Refusal.Should().BeNull();
+            if (requestRace)
+                (await stored.Requests.SingleAsync(Ct)).Status.Should().Be(RequestStatus.Cancelled);
+            else
+                (await stored.Trips.SingleAsync(Ct)).Status.Should().Be(TripStatus.Cancelled);
+        }
+    }
+
+    private sealed class PauseFirstRideshareSave : SaveChangesInterceptor
     {
         private int _paused;
         public bool Armed { get; set; }
@@ -422,8 +496,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             DbContextEventData eventData, InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            if (Armed && eventData.Context!.ChangeTracker.Entries<RideshareInterest>()
-                    .Any(entry => entry.State is EntityState.Added or EntityState.Modified)
+            if (Armed && eventData.Context!.ChangeTracker.Entries()
+                    .Any(entry => (entry.State is EntityState.Added or EntityState.Modified)
+                        && (entry.Entity is RideshareInterest or RideshareTrip or RideshareRequest))
                 && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
             {
                 Entered.TrySetResult();

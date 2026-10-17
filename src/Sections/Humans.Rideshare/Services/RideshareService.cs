@@ -111,6 +111,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.UserId != actorUserId)
@@ -154,6 +155,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.UserId != actorUserId)
@@ -193,6 +195,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var request = await repository.GetRequestAsync(requestId, ct)
             ?? throw new KeyNotFoundException($"Request {requestId} not found.");
         if (request.UserId != actorUserId)
@@ -212,6 +215,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var request = await repository.GetRequestAsync(requestId, ct)
             ?? throw new KeyNotFoundException($"Request {requestId} not found.");
         if (request.UserId != actorUserId)
