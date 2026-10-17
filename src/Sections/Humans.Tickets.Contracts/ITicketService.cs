@@ -13,7 +13,7 @@ namespace Humans.Tickets.Contracts;
 /// <see cref="TicketOrderInfo"/>, not a new method
 /// (memory/architecture/read-model-enrichment.md).
 /// </remarks>
-public interface ITicketServiceRead
+public interface ITicketService
 {
     /// <summary>
     /// Returns the ticket order projection used by cross-section read callers.

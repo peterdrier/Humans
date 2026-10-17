@@ -31,7 +31,7 @@ public class AccountDeletionServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
-    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();

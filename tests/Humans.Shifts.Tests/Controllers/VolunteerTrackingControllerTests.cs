@@ -47,8 +47,8 @@ namespace Humans.Shifts.Tests.Controllers;
 public class VolunteerTrackingControllerTests
 {
     private readonly UserManager<User> _userManager;
-    private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IVolunteerTrackingManagement _service = Substitute.For<IVolunteerTrackingManagement>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IVolunteerTrackingExportService _exportService =
         Substitute.For<IVolunteerTrackingExportService>();

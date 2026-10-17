@@ -14,7 +14,7 @@ namespace Humans.Camps.Tests.Authorization;
 /// </summary>
 public sealed class CampComplianceAccessHandlerTests
 {
-    private readonly IShiftManagementServiceRead _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly CampComplianceAccessHandler _handler;
 
     public CampComplianceAccessHandlerTests()

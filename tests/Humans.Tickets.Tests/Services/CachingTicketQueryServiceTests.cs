@@ -17,16 +17,16 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserB = Guid.NewGuid();
     private static readonly Guid UserC = Guid.NewGuid();
 
-    private readonly ITicketService _inner;
+    private readonly ITicketManagement _inner;
     private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
     public CachingTicketQueryServiceTests()
     {
-        _inner = Substitute.For<ITicketService>();
+        _inner = Substitute.For<ITicketManagement>();
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<ITicketService>(
+        services.AddKeyedScoped<ITicketManagement>(
             CachingTicketQueryService.InnerServiceKey,
             (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();

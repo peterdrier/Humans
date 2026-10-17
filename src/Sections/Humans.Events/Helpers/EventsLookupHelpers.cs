@@ -55,14 +55,14 @@ internal static class EventsLookupHelpers
 
     /// <summary>The burn the guide is configured for, or null when the guide is not configured.</summary>
     public static async Task<EventSettingsInfo?> LoadBurnSettingsAsync(
-        IEventService guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
+        IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
     {
         if (guideSettings == null) return null;
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
     }
 
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(
-        ICampServiceRead camps, int? year, CancellationToken ct = default)
+        ICampService camps, int? year, CancellationToken ct = default)
     {
         if (year is null) return [];
         var list = await camps.GetCampsForYearAsync(year.Value, ct);

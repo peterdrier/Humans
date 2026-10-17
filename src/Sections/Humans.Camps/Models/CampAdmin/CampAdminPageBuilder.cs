@@ -1,7 +1,7 @@
 namespace Humans.Camps.Models;
 
 internal sealed class CampAdminPageBuilder(
-    ICampServiceRead campService,
+    ICampService campService,
     ICampRoleService campRoleService)
 {
     public async Task<CampAdminViewModel> BuildAsync(CancellationToken ct = default)

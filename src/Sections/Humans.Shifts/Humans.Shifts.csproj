@@ -50,7 +50,7 @@
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is
       below this project).
-        Camps         — ICampServiceRead: camp labels and rosters for the summary-by-camp.
+        Camps         — ICampService: camp labels and rosters for the summary-by-camp.
         Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
         AuditLog      — every write path records an audit entry.
         Auth          — the coordinator/manager authorization surface.

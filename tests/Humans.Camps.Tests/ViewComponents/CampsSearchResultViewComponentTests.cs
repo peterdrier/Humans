@@ -16,7 +16,7 @@ namespace Humans.Camps.Tests.ViewComponents;
 /// </summary>
 public class CampsSearchResultViewComponentTests
 {
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansFact]
     public async Task Renders_the_public_year_season_name()

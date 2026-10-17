@@ -14,13 +14,13 @@ namespace Humans.Tickets.Services;
 internal sealed class OnsiteRosterService : IOnsiteRosterService
 {
     private readonly IUserServiceRead _users;
-    private readonly ICampServiceRead _camps;
+    private readonly ICampService _camps;
     private readonly ITeamServiceRead _teams;
     private readonly IRoleAssignmentServiceRead _roles;
 
     public OnsiteRosterService(
         IUserServiceRead users,
-        ICampServiceRead camps,
+        ICampService camps,
         ITeamServiceRead teams,
         IRoleAssignmentServiceRead roles)
     {

@@ -82,7 +82,7 @@ Development is a pure consumer and depends on more sections than any other:
 | Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserServiceRead`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator`, `IHumanLifecycleService` |
 | Auth | `IRoleAssignmentServiceRead` for login eligibility; `IRoleAssignmentService` for persona role seeding |
 | Teams | `ITeamService`, `ITeamSeeding`, `ISystemTeamSync` |
-| Camps | `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding` |
+| Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IShiftSignupSeeding` |
 | Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
 | Audit Log | `IAuditLogService` |

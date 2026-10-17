@@ -70,7 +70,7 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
 
 1. Admin opens `/Tickets/SalesAggregates`, clicks **Ticketing Donations**.
 2. `TicketController.ExportDonations` (`AdminOnly`) resolves the current user and calls
-   `ITicketService.GetDonationExportDataAsync(actorUserId)`.
+   `ITicketManagement.GetDonationExportDataAsync(actorUserId)`.
 3. `TicketQueryService` filters paid orders, splits each into its donation rows, dates them in
    Europe/Madrid, writes the audit entry, returns the rows.
 4. The controller renders the CSV through `HumansCsv` and appends the `Total` row.

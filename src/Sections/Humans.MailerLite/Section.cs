@@ -82,7 +82,7 @@ public sealed class Section : ISection
         services.AddScoped<IMailerLiteImportService, MailerLiteImportService>();
 
         // Audience framework — orchestrator + audience registrations.
-        // Audiences are Scoped because their dependencies (ITicketServiceRead,
+        // Audiences are Scoped because their dependencies (ITicketService,
         // IShiftView) are Scoped/decorated-Singleton.
         services.AddScoped<IMailerLiteAudienceSyncService, MailerLiteAudienceSyncService>();
         services.AddScoped<IMailerLiteAudience, TicketNoShiftsAudience>();

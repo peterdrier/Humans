@@ -19,7 +19,7 @@ namespace Humans.CityPlanning.Controllers;
 [ApiController]
 internal sealed class CityPlanningApiController(
     CityPlanningService cityPlanningService,
-    ICampServiceRead campService,
+    ICampService campService,
     IContainerService containerService,
     IStringLocalizer<ContainersResource> containersLocalizer,
     IAuthorizationService authorizationService,

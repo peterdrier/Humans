@@ -45,10 +45,10 @@ public class ShiftsControllerUserActiveSignupsTests
     private static readonly BurnSettingsInfo PastBurn =
         MakeBurn(PastBurnId, "Southern 2025", 2025, "Pacific/Auckland", new LocalDate(2025, 1, 15));
 
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
-    private readonly IVolunteerTrackingService _volunteerTracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IVolunteerTrackingManagement _volunteerTracking = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();

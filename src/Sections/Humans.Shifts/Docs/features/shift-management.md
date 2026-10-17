@@ -232,7 +232,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** Controller action is gated by `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` → Admin, NoInfoAdmin, VolunteerCoordinator. The service (`IShiftManagementService`) is auth-free per `design-rules.md`.
+**Authorization:** Controller action is gated by `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` → Admin, NoInfoAdmin, VolunteerCoordinator. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 

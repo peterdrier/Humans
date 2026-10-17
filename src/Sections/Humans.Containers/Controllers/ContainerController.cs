@@ -13,7 +13,7 @@ namespace Humans.Containers.Controllers;
 [Authorize]
 [Route("Camp/{slug}/Containers")]
 internal sealed class ContainerController(
-    ICampServiceRead campService,
+    ICampService campService,
     IContainerService containerService,
     ICityPlanningServiceRead cityPlanningService,
     IAuthorizationService authorizationService,

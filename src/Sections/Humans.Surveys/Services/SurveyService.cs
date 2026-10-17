@@ -28,7 +28,7 @@ internal sealed class SurveyService(
     ILogger<SurveyService> logger,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
-    ITicketServiceRead ticketService,
+    ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
     IEmailService emailService,

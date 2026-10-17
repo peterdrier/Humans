@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Services/IShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/IShiftManagement.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Shifts/Views/Shifts/Index.cshtml
   src/Sections/Humans.Shifts/Views/Shifts/_DepartmentCoveragePieRow.cshtml

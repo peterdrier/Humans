@@ -17,7 +17,7 @@ namespace Humans.Shifts.Tests.Authorization;
 /// </summary>
 public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
 {
-    private readonly IShiftManagementServiceRead _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly IsAnyTeamManagerOrCoordinatorHandler _handler;
 
     public IsAnyTeamManagerOrCoordinatorHandlerTests()

@@ -99,13 +99,13 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - Uploaded image display names are reduced to their basename and limited to 256 characters before persistence; the original client path is never stored, and an overlong name is rejected before a database write.
 - **The gallery is one uniform list.** `ContainerDto.Images` is the legacy image (if any, as `Guid.Empty`) followed by `container_images` rows in `SortOrder`. Callers add, remove and render one list; nothing outside `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist.
 - **DTOs are the display shape.** `ContainerDto` and `ContainerPlacementDto` are what the two host pages render; `ContainerPlacementDto.PlacementImageUrl` is a URL (leading `/`), not the storage key the entity holds, and `IsPlaced` / `HasPlacementInfo` are computed on the record. There is no view-model copy layer between the service and the card partials.
-- Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampServiceRead.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the target placement year, falling back to the public year when the target omits it).
+- Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampService.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the target placement year, falling back to the public year when the target omits it).
 - Deleting a container deletes all its `ContainerPlacement` rows in the same transaction.
 - Documented limitation: deleting a container leaves its placement-image files (every year) on disk. At our small scale this is acceptable; a periodic disk sweep can reclaim the space.
 
 ## Negative Access Rules
 
-- Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies the user leads a season of the container's `CampId` (via `ICampServiceRead.GetCampsForYearAsync` + `Season.IsLead`).
+- Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies the user leads a season of the container's `CampId` (via `ICampService.GetCampsForYearAsync` + `Season.IsLead`).
 - Barrio leads **cannot** place, clear, or annotate placements when the placement phase is closed for the requested placement year (`IsContainerPlacementOpen == false`), or unless they lead that camp in that year. All three placement mutation endpoints pass their route year to authorization. Container CRUD stays available to them year-round.
 - Non-admins **cannot** toggle the placement phase open or closed.
 - Non-admins **cannot** access `/CityPlanning/ContainerMap/{year}` — they get a 403 — when the placement phase is closed or they lead no camp in that year.
@@ -122,7 +122,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
+- **Camps:** `ICampService` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
 - **City Planning:** `ICityPlanningServiceRead` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 - **Audit Log:** `IAuditLogService.LogAsync` on every write, under the literal entity types in `Services/AuditEntityTypes.cs`.
 - **Users:** `IUserServiceRead`, injected by `ContainerController` for `HumansControllerBase`'s current-user resolution.

@@ -76,8 +76,8 @@ internal partial interface ICampRepository
 
     /// <summary>
     /// Hard-deletes every assignment for the given <c>CampMemberId</c>. Returns the count of rows removed.
-    /// Used by <see cref="Humans.Camps.Services.ICampService.LeaveCampAsync"/> and
-    /// <see cref="Humans.Camps.Services.ICampService.WithdrawCampMembershipRequestAsync"/> cascade hooks.
+    /// Used by <see cref="Humans.Camps.Services.ICampManagement.LeaveCampAsync"/> and
+    /// <see cref="Humans.Camps.Services.ICampManagement.WithdrawCampMembershipRequestAsync"/> cascade hooks.
     /// </summary>
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 

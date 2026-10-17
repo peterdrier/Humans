@@ -22,7 +22,7 @@ namespace Humans.Shifts.ViewComponents;
 /// reads the current user from claims rather than a caller-supplied id.
 /// </remarks>
 internal sealed class ShiftsGalleryViewComponent(
-    IShiftManagementService shiftMgmt,
+    IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     ILogger<ShiftsGalleryViewComponent> logger) : ViewComponent
 {

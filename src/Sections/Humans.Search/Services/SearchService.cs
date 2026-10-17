@@ -15,9 +15,9 @@ namespace Humans.Search.Services;
 internal sealed class SearchService(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    ICampServiceRead campService,
-    IShiftManagementServiceRead shiftService,
-    IEventServiceRead eventService,
+    ICampService campService,
+    IShiftManagementService shiftService,
+    IEventService eventService,
     IConfiguration configuration) : ISearchService
 {
     private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");

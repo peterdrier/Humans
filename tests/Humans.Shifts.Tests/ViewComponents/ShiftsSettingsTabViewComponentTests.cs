@@ -16,7 +16,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public sealed class ShiftsSettingsTabViewComponentTests
 {
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly ShiftsSettingsTabViewComponent _sut;
 
     private static readonly BurnSettingsInfo ActiveEvent = new(

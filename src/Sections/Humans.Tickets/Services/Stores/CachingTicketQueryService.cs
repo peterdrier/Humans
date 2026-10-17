@@ -12,7 +12,7 @@ namespace Humans.Tickets.Services.Stores;
 /// Singleton caching decorator for Tickets. Internally it keeps two tracked
 /// slices: orders keyed by order id, and user holdings keyed by user id.
 /// </summary>
-internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheInvalidator, IHostedService
+internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCacheInvalidator, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
@@ -149,10 +149,10 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-    private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
+    private async Task<TResult> WithInner<TResult>(Func<ITicketManagement, Task<TResult>> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketManagement>(InnerServiceKey);
         return await action(inner);
     }
 

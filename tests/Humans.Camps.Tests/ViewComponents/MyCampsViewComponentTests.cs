@@ -16,7 +16,7 @@ public sealed class MyCampsViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var camps = Substitute.For<ICampServiceRead>();
+        var camps = Substitute.For<ICampService>();
         camps.GetSettingsAsync(aborted.Token)
             .Returns(Task.FromException<CampSettingsInfo>(new OperationCanceledException(aborted.Token)));
         var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };

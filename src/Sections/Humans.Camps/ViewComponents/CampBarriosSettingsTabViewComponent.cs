@@ -8,7 +8,7 @@ namespace Humans.Camps.ViewComponents;
 /// it on <c>PolicyNames.CampAdminOrAdmin</c> — the same policy the old <c>Camps/Admin</c>
 /// Season Management card used, so every viewer who reaches this component may edit.
 /// </summary>
-internal sealed class CampBarriosSettingsTabViewComponent(ICampService campService) : ViewComponent
+internal sealed class CampBarriosSettingsTabViewComponent(ICampManagement campService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

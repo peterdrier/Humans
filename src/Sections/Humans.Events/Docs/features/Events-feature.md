@@ -224,10 +224,10 @@ If any field differs:
 | What | Where |
 | --- | --- |
 | `ResolveCampEventManagementAsync(slug)` | `EventsController` base helpers — auth guard |
-| `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventService` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
-| `SubmitEventAsync(event)` | `IEventService` — submits new events |
-| `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
-| `GetActiveCategoriesAsync()` | `IEventService` — category lookup for validation |
+| `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventManagement` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
+| `SubmitEventAsync(event)` | `IEventManagement` — submits new events |
+| `UpdateAndResubmitAsync(event)` | `IEventManagement` — updates + resubmits existing events |
+| `GetActiveCategoriesAsync()` | `IEventManagement` — category lookup for validation |
 | `ToInstant(date + time, tz)` | `Helpers/EventsTimeHelpers.cs` — date+time → UTC Instant |
 
 ### US-26.9: Moderator Exports the Print Guide

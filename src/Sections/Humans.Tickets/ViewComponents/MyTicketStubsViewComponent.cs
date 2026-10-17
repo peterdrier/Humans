@@ -12,7 +12,7 @@ namespace Humans.Tickets.ViewComponents;
 /// nothing when the holder owns no tickets.
 /// </summary>
 public sealed class MyTicketStubsViewComponent(
-    ITicketServiceRead ticketService,
+    ITicketService ticketService,
     IEarlyEntryService earlyEntryService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)

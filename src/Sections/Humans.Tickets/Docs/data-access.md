@@ -13,7 +13,7 @@ Project: `src/Sections/Humans.Tickets` is split across **two projects
 plus a contracts leaf**: `src/Sections/Humans.Tickets` (orders, attendees,
 transfers, sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
-`ITicketServiceRead`, `ITicketSync`, `ITicketDiscountCodes`,
+`ITicketService`, `ITicketSync`, `ITicketDiscountCodes`,
 `ITicketVendorMirror`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
@@ -24,7 +24,7 @@ references `Humans.Tickets` directly to name the port).
 `IDbContextFactory<TicketsDbContext>` directly. Owns `TicketOrders`,
 `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`.
 
-The section's public surface is small: `ITicketServiceRead` (2 members,
+The section's public surface is small: `ITicketService` (2 members,
 no `SurfaceBudget` pinned), `ITicketSync` (2), `ITicketDiscountCodes` (1),
 `ITicketVendorMirror` (1). `TicketDashboardDtos` (24 public types), the
 transfer wizard (including the `ITicketTransferQueue` badge count), and the
@@ -44,10 +44,10 @@ registered keyed under `CachingTicketQueryService.InnerServiceKey`
 (`"ticket-query-inner"`), and is wrapped by the Singleton
 `CachingTicketQueryService` decorator (`Services/Stores/`).
 The decorator is the registered
-`ITicketService`, the budgeted cross-section `ITicketServiceRead`, and the
-`ITicketCacheInvalidator`. External sections inject `ITicketServiceRead`
+`ITicketManagement`, the budgeted cross-section `ITicketService`, and the
+`ITicketCacheInvalidator`. External sections inject `ITicketService`
 (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync` and shared current-event barcode lookup)
-rather than the full `ITicketService`. Tickets caching is entirely
+rather than the full `ITicketManagement`. Tickets caching is entirely
 `TrackedCache`-based: an orders slice (`Tickets.Orders`, warmed on startup)
 and a user-holdings slice (`Tickets.UserHoldings`, lazy with a 5-minute
 freshness deadline embedded in the cached value).
@@ -94,7 +94,7 @@ attendees, resolved from approved `TicketTransferRequests` via the
 `ITicketTransferRepository` read in `TicketQueryService`). The admin
 attendee search predicate in `TicketRepository` matches barcode alongside
 name/email. The Scanner ticket card (`ScannerController`) resolves a barcode
-by filtering `ITicketServiceRead.GetTicketOrdersAsync` in memory.
+by filtering `ITicketService.GetTicketOrdersAsync` in memory.
 
 `TicketAttendees` also has a `CheckedInAt` column — `TicketSyncService`
 syncs vendor check-ins from the TicketTailor `/check_ins` endpoint so the
@@ -112,7 +112,7 @@ has an automated TicketTailor void(-to-hold)+reissue path
 | `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`, warmed on startup) | Per-Entity | yes | yes (warm + lazy) | `ITicketCacheInvalidator` (clear-all on transfer / contact-import / merge / sync) |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` (`Tickets.UserHoldings`, lazy, 5-min freshness inside value) | Per-User | yes | yes (lazy load) | `ITicketCacheInvalidator` (per-user evict on transfer/merge; clear-all on contact import) |
 
-Implements `ITicketService`, `ITicketServiceRead`, `ITicketCacheInvalidator`,
+Implements `ITicketManagement`, `ITicketService`, `ITicketCacheInvalidator`,
 `IHostedService` (its `StartAsync` warms the orders slice). Resolves the keyed
 Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
 instances are surfaced on `/Debug/CacheStats`.
@@ -178,7 +178,7 @@ Transfers of gate-checked-in tickets are refused — `CheckedInAt` respected.
 No `IMemoryCache` directly.
 
 Tickets is also read from the outside by `TicketingBudgetService`, which
-consumes `ITicketServiceRead.GetTicketOrdersAsync` to build the budget's
+consumes `ITicketService.GetTicketOrdersAsync` to build the budget's
 ticketing actuals. It is a Budget service and is documented in
 [Budget's map](../../Humans.Budget/Docs/data-access.md).
 
@@ -211,7 +211,7 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 ### OnsiteRosterService (Scoped)
 
 No repository. "Who's onsite" roster orchestrator. Pure read
-orchestration over `IUserServiceRead`, `ICampServiceRead`, `ITeamServiceRead`,
+orchestration over `IUserServiceRead`, `ICampService`, `ITeamServiceRead`,
 `IRoleAssignmentServiceRead` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.

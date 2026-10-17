@@ -39,7 +39,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private readonly IContainerService _containers = Substitute.For<IContainerService>();
     private IStringLocalizer<ContainersResource> _containersLocalizer = Substitute.For<IStringLocalizer<ContainersResource>>();
     private IAuthorizationService _authorization;
-    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ILogger<CityPlanningApiController> _logger = Substitute.For<ILogger<CityPlanningApiController>>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();

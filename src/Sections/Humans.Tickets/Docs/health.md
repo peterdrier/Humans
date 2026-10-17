@@ -20,7 +20,7 @@ and a member's erasure scrubs their name and email from the sales records withou
 | Shape | Members | Notes |
 |---|---|---|
 | Mirror the vendor | `TicketSyncService.SyncOrdersAndAttendeesAsync`, `ResetSyncStateForFullResyncAsync`, `TicketSyncJob`, `POST /Tickets/Sync`, `POST /Tickets/FullResync`, `TicketSyncState` | One pipeline: fetch orders + issued tickets + check-ins → verified-email lookup → upsert orders → Stripe fee enrichment → upsert attendees (matched while built) → apply check-ins → VAT → code redemption → participation reconcile. Incremental by `LastSyncAt` cursor |
-| "Does this human hold a ticket" | `ITicketServiceRead` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`) | One projection per question; callers derive aggregates from `TicketOrderInfo` |
+| "Does this human hold a ticket" | `ITicketService` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`) | One projection per question; callers derive aggregates from `TicketOrderInfo` |
 | Member holds & transfers | `/Tickets/Transfers` (Index, Confirm, Submit, Cancel), `<vc:my-ticket-stubs>`, `<vc:ticket-holdings>`, `<vc:ticket-stub>`, `<vc:member-ticket-status>`, `<vc:guest-ticket-orders>` | One wizard + one stub renderer reused by homepage, profile and wizard |
 | Admin transfer processing | `/Tickets/Admin/Transfers` (Index?tab, Detail/{id}, Decide), `ITicketTransferQueue` | One state machine: Pending → Approved / Rejected / Cancelled; vendor void-to-hold + reissue is the automated path, mark-successful the manual one |
 | Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought` | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join over Users, Teams and the active year |
@@ -42,7 +42,7 @@ The layout these shapes imply:
 - One sync service owning the pipeline end to end; one repository over `ticket_orders`,
   `ticket_attendees` and `ticket_sync_state`; one transfer repository owning
   `ticket_transfer_requests` end to end.
-- One query service behind `ITicketService` (admin) and `ITicketServiceRead` (cross-section),
+- One query service behind `ITicketManagement` (admin) and `ITicketService` (cross-section),
   wrapped once by a singleton caching decorator that also owns invalidation; a second singleton
   decorator on the vendor port caches only the event summary.
 - One transfer service holding the state machine; the vendor writeback goes through it and

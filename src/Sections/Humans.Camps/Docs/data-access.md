@@ -18,7 +18,7 @@ The Camps section is a single repository owning all of its tables.
 `IEarlyEntryProvider` is implemented by `CampService`; the registered
 `CachingCampService` delegates to that inner projection. Active-event settings
 and grant assembly belong to the inner service, not the cache shell. `CampRoleService` does not inject the full
-`ICampService`; it takes the narrow intra-section `ICampRoleCampAccess`
+`ICampManagement`; it takes the narrow intra-section `ICampRoleCampAccess`
 (implemented by `CampService`) for camp-member status lookups, plus
 `ICampInfoInvalidator` to evict the cached `CampInfo` on role-assignment
 writes.
@@ -67,7 +67,7 @@ consumed by `CampRoleService`), `ICampLeadDirectory`, `ICampSeeding`,
 | `TrackedCache<Guid, CampInfo>` (`Camp.CampInfo`, warmed on startup) | Per-Entity | yes | yes | yes (`ICampInfoInvalidator.InvalidateCampAsync`, wholesale `RefreshAll` for cross-cutting writes) |
 | `CampSettingsInfo` single slot (no `IMemoryCache`) | Static | yes | yes | yes (`ICampInfoInvalidator.InvalidateSettingsAsync`) |
 
-Implements `ICampService` (hence `ICampServiceRead`), `ICampLeadDirectory`,
+Implements `ICampManagement` (hence `ICampService`), `ICampLeadDirectory`,
 `ICampSeeding`, `ICampRoleCampAccess`, `IUserMerge`, `ICampInfoInvalidator`,
 `IEarlyEntryProvider`. `SearchAsync` is served from the cached `CampInfo`
 snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
@@ -99,7 +99,7 @@ direct `IMemoryCache`.
 
 No repository. Rate-limited contact relay. Injects `IEmailService`,
 `IEmailMessageFactory`, `IAuditLogService`, `INotificationEmitter`,
-`IMemoryCache`, `ILogger`. **No `IUserService` or `ICampService` injection**
+`IMemoryCache`, `ILogger`. **No `IUserService` or `ICampManagement` injection**
 — the controller resolves the camp/lead data and passes display names,
 contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
 No cross-section service-to-service calls within the service itself.

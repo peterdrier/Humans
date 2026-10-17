@@ -19,7 +19,7 @@ public class UserEmailServiceTests
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
-    private readonly ITicketServiceRead _ticketServiceRead = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _ticketServiceRead = Substitute.For<ITicketService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();

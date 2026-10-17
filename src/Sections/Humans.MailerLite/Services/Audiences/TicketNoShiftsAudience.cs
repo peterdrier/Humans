@@ -17,7 +17,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// already encodes the Pending/Confirmed-on-active-event rule.
 /// </remarks>
 internal sealed class TicketNoShiftsAudience(
-    ITicketServiceRead tickets,
+    ITicketService tickets,
     IShiftView shiftView,
     IUserServiceRead users) : MailerLiteAudienceBase(users)
 {

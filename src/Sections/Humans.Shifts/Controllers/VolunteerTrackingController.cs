@@ -22,8 +22,8 @@ namespace Humans.Shifts.Controllers;
 [Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 internal sealed class VolunteerTrackingController(
-    IVolunteerTrackingService service,
-    IShiftManagementService shiftManagementService,
+    IVolunteerTrackingManagement service,
+    IShiftManagement shiftManagementService,
     IBurnSettingsService burnSettings,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,

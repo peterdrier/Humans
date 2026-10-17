@@ -31,10 +31,10 @@ Repository: `IGateRepository`.
 | gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
 | EventParticipations | W via `IUserService.SetParticipationFromTicketSyncAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Users service, so consumed camp EE can't be revoked) |
 
-Cross-section calls via `ITicketServiceRead` (barcode → attendee resolved by
+Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
-`ISettingsService` (event timezone / active event), `IShiftManagementServiceRead`
+`ISettingsService` (event timezone / active event), `IShiftManagementService`
 (gate-crew shift roster for the claim screen, via
 `GetBrowseShiftsAsync`), `IRoleAssignmentServiceRead` (server-verified supervisor
 roles for overrides), `IUserService` (participation projection),

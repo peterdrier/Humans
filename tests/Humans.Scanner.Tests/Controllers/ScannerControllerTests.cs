@@ -22,12 +22,12 @@ namespace Humans.Scanner.Tests.Controllers;
 public class ScannerControllerTests
 {
     private static ScannerController NewController(
-        ITicketServiceRead tickets,
+        ITicketService tickets,
         IUserServiceRead? users = null,
         IEarlyEntryService? earlyEntry = null,
         IConsentServiceRead? consents = null,
         IICalFeedService? calendarFeed = null,
-        IEventServiceRead? events = null,
+        IEventService? events = null,
         ISettingsService? burnSettings = null)
     {
         var ctrl = new ScannerController(
@@ -36,7 +36,7 @@ public class ScannerControllerTests
             earlyEntry ?? Substitute.For<IEarlyEntryService>(),
             consents ?? Substitute.For<IConsentServiceRead>(),
             calendarFeed ?? Substitute.For<IICalFeedService>(),
-            events ?? Substitute.For<IEventServiceRead>(),
+            events ?? Substitute.For<IEventService>(),
             burnSettings ?? Substitute.For<ISettingsService>());
 
         var services = new ServiceCollection();
@@ -51,9 +51,9 @@ public class ScannerControllerTests
         return ctrl;
     }
 
-    private static ITicketServiceRead TicketsWithAttendee(TicketAttendeeInfo attendee, bool isCurrentEvent = true)
+    private static ITicketService TicketsWithAttendee(TicketAttendeeInfo attendee, bool isCurrentEvent = true)
     {
-        var tickets = Substitute.For<ITicketServiceRead>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.FindCurrentEventAttendeeByBarcodeAsync(attendee.Barcode, Arg.Any<CancellationToken>())
             .Returns(isCurrentEvent ? attendee : null);
         return tickets;
@@ -209,7 +209,7 @@ public class ScannerControllerTests
     {
         var userId = Guid.NewGuid();
         var start = Instant.FromUtc(2026, 6, 18, 6, 0);
-        var events = Substitute.For<IEventServiceRead>();
+        var events = Substitute.For<IEventService>();
         events.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
@@ -298,7 +298,7 @@ public class ScannerControllerTests
         calendarFeed.GetFeedItemsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { shiftItem, favouritedItem });
 
-        var events = Substitute.For<IEventServiceRead>();
+        var events = Substitute.For<IEventService>();
         events.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {

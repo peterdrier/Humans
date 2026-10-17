@@ -32,7 +32,7 @@ public sealed class NotificationsControllerTests
         var meterProvider = new NotificationMeterProvider(
             Substitute.For<IUserServiceRead>(), Substitute.For<IGoogleSyncServiceRead>(),
             Substitute.For<ITeamServiceRead>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IApplicationServiceRead>(), Substitute.For<ICampServiceRead>(), cache,
+            Substitute.For<IApplicationServiceRead>(), Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,
             localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var controller = new NotificationsController(inbox, Substitute.For<IUserServiceRead>(), meterProvider)

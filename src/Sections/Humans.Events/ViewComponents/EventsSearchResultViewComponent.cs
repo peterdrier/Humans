@@ -16,7 +16,7 @@ namespace Humans.Events.ViewComponents;
 /// callers gate on the flag: an off flag empties the search bucket, and the widget
 /// gallery skips the card outright.
 /// </remarks>
-public sealed class EventsSearchResultViewComponent(IEventServiceRead events) : ViewComponent
+public sealed class EventsSearchResultViewComponent(IEventService events) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the event no longer resolves as approved.</summary>
     /// <param name="eventId">The matched approved event.</param>

@@ -21,7 +21,7 @@ internal sealed record ShiftDashboardPageRequest(
     BuildSubPeriod? SubPeriod);
 
 internal sealed class ShiftDashboardPageBuilder(
-    IShiftManagementService shiftManagement,
+    IShiftManagement shiftManagement,
     IWebHostEnvironment environment,
     IClock clock)
 {

@@ -27,7 +27,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);

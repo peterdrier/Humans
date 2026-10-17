@@ -22,7 +22,7 @@ namespace Humans.Tickets.Services;
 internal sealed class TicketTransferService(
     ITicketTransferRepository transferRepo,
     ITicketRepository ticketRepo,
-    ITicketServiceRead holdings,
+    ITicketService holdings,
     ITicketVendorService vendor,
     IUserServiceRead userService,
     IUserEmailService userEmailService,

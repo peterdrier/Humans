@@ -12,7 +12,7 @@ namespace Humans.Tickets.Contracts;
 /// Driven by Gate's <c>GateVendorCheckInJob</c>. It goes through
 /// Tickets rather than straight at the vendor port for the reason
 /// <see cref="ITicketDiscountCodes"/> does. This is a write, so it is not on
-/// <see cref="ITicketServiceRead"/>. The Gate section's own <c>gate_scan_events</c>
+/// <see cref="ITicketService"/>. The Gate section's own <c>gate_scan_events</c>
 /// remains the dedupe authority; a failed mirror is not a failed admission.
 /// </remarks>
 public interface ITicketVendorMirror : IApplicationService

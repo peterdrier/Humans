@@ -29,12 +29,12 @@ internal sealed class TeamAdminController(
     IAuthorizationService authorizationService,
     ILogger<TeamAdminController> logger,
     IStringLocalizer<TeamsResource> localizer,
-    ITicketServiceRead tickets)
+    ITicketService tickets)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamManagementService _teamService = teamService;
     private readonly IUserServiceRead _userService = userService;
-    private readonly ITicketServiceRead _tickets = tickets;
+    private readonly ITicketService _tickets = tickets;
 
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]

@@ -27,7 +27,7 @@ public class CampAdminControllerTests
     [InlineData(true, "roles")]
     public async Task AdminRead_PropagatesRequestCancellationAtEveryRead(bool dashboard, string boundary)
     {
-        var camps = Substitute.For<ICampService>();
+        var camps = Substitute.For<ICampManagement>();
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserServiceRead>();
         using var cancellation = new CancellationTokenSource();
@@ -69,7 +69,7 @@ public class CampAdminControllerTests
     [HumansFact]
     public async Task DeactivateRole_PropagatesRequestCancellation()
     {
-        var camps = Substitute.For<ICampService>();
+        var camps = Substitute.For<ICampManagement>();
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserServiceRead>();
         var actorId = Guid.NewGuid();
@@ -94,7 +94,7 @@ public class CampAdminControllerTests
     [InlineData("Delete")]
     public async Task LifecycleAction_ExpectedRejection_LogsWarningWithoutException(string action)
     {
-        var camps = Substitute.For<ICampService>();
+        var camps = Substitute.For<ICampManagement>();
         var users = Substitute.For<IUserServiceRead>();
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -123,7 +123,7 @@ public class CampAdminControllerTests
     [InlineData("Delete")]
     public async Task LifecycleAction_UnexpectedFailure_Propagates(string action)
     {
-        var camps = Substitute.For<ICampService>();
+        var camps = Substitute.For<ICampManagement>();
         var users = Substitute.For<IUserServiceRead>();
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -153,7 +153,7 @@ public class CampAdminControllerTests
         roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
         roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
         var logger = Substitute.For<ILogger<CampAdminController>>();
-        var controller = CreateController(Substitute.For<ICampService>(), roles, users, actorId, logger);
+        var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -179,7 +179,7 @@ public class CampAdminControllerTests
         roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(new UpdateCampRoleDefinitionResult((UpdateCampRoleDefinitionStatus)99, string.Empty));
         var logger = Substitute.For<ILogger<CampAdminController>>();
-        var controller = CreateController(Substitute.For<ICampService>(), roles, users, actorId, logger);
+        var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
 
         var result = await controller.EditRole(roleId, form, Xunit.TestContext.Current.CancellationToken);
@@ -192,7 +192,7 @@ public class CampAdminControllerTests
         args[2]!.ToString().Should().Contain(roleId.ToString());
     }
 
-    private static void ConfigureFailure(ICampService camps, string action, Guid targetId, Guid actorId, Exception failure)
+    private static void ConfigureFailure(ICampManagement camps, string action, Guid targetId, Guid actorId, Exception failure)
     {
         switch (action)
         {
@@ -214,7 +214,7 @@ public class CampAdminControllerTests
     };
 
     private static CampAdminController CreateController(
-        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null)
+        ICampManagement camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null)
     {
         var controller = new CampAdminController(
             camps,

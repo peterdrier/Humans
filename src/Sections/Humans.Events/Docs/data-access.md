@@ -22,13 +22,13 @@ directly — active-event discovery goes through a service-layer call.
 `EventSettings` lives in a different DbContext (`ShiftsDbContext`) than
 `EventRepository`'s `EventGuideDbContext`, so a direct EF read across the
 two is not possible without a second context injection. The inner
-`IEventService` is wrapped by `Humans.Events.Services.CachingEventService`
+`IEventManagement` is wrapped by `Humans.Events.Services.CachingEventService`
 (Singleton decorator). It owns four split projections — a per-event
 `TrackedCache<Guid, ApprovedEventView>` (`Event.ApprovedEventView`) plus
 flat snapshots for categories, venues, and the guide-settings singleton.
 Writes delegate to the inner service then invalidate the affected slice
 inline (no `SaveChangesInterceptor` — all `event_*` writes flow through
-`IEventService` by design, enforced by the universal `HUM0025` analyzer —
+`IEventManagement` by design, enforced by the universal `HUM0025` analyzer —
 only `EventRepository` references the Event DbSets).
 
 ### EventService (Scoped, keyed `"event-inner"` — inner of CachingEventService)
@@ -59,12 +59,12 @@ Cross-section calls via `ISettingsService` (active event settings),
 | Flat `EventVenueView` list | Static | yes | yes | yes |
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
-Implements `IEventService` (which extends the cross-section read surface
-`IEventServiceRead`), `IEventViewInvalidator`, `IUserDataContributor`
+Implements `IEventManagement` (which extends the cross-section read surface
+`IEventService`), `IEventViewInvalidator`, `IUserDataContributor`
 (delegates to the inner service, then refreshes the affected cache slice —
 erasure edits a cached row's Host name),
 `IHostedService` (`StartAsync` warms all four projections).
-`IEventServiceRead` (approved events / guide settings / favourite ids) is
+`IEventService` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the
 camp detail and profile pages' events card, `EventsCardViewComponent`) read from the
 cache. The moderator-only `GetAllEventsForDashboardAsync` passes through

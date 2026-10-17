@@ -10,7 +10,7 @@ internal sealed class VolunteerTagPreference
 
     /// <summary>
     /// FK to the volunteer. Settable so the account-merge fold
-    /// (<c>IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync</c>)
+    /// (<c>IShiftManagement.ReassignProfilesAndTagPrefsToUserAsync</c>)
     /// can re-FK rows from a source user to the merge target.
     /// </summary>
     public Guid UserId { get; set; }

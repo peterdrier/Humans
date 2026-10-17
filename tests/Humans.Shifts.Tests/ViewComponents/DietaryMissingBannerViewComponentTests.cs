@@ -19,7 +19,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 /// </summary>
 public class DietaryMissingBannerViewComponentTests
 {
-    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IUserServiceRead _userRead = Substitute.For<IUserServiceRead>();
     private readonly DietaryMissingBannerViewComponent _sut;
 

@@ -61,7 +61,7 @@ public sealed class EmailDependencyCycleTests
         // Users is another section; its concrete UserService and its two repository
         // interfaces are internal to Humans.Users and its own graph is pinned by the
         // section's own tests. Same call as ITeamService / IRoleAssignmentService /
-        // IShiftManagementServiceRead below — the subject here is the email chain.
+        // IShiftManagementService below — the subject here is the email chain.
         services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
@@ -72,7 +72,7 @@ public sealed class EmailDependencyCycleTests
         // Shifts is another section; its concrete service is internal to Humans.Shifts and
         // its own graph is pinned by the section's own tests. Same call as ITeamService and
         // IRoleAssignmentService below — the subject here is the email chain.
-        services.AddScoped<IShiftManagementServiceRead>(_ => Substitute.For<IShiftManagementServiceRead>());
+        services.AddScoped<IShiftManagementService>(_ => Substitute.For<IShiftManagementService>());
 
         services.AddScoped<IUserEmailService>(_ => Substitute.For<IUserEmailService>());
 

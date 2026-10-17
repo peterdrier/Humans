@@ -11,7 +11,7 @@ namespace Humans.Store.Services;
 /// <summary>Shared live prices and counterparty names for Store order views and issuance.</summary>
 internal sealed class StoreOrderReader(
     IStoreRepository repo,
-    ICampServiceRead campService,
+    ICampService campService,
     ITeamServiceRead teamService,
     IClock clock,
     ISettingsService settingsService) : IApplicationService

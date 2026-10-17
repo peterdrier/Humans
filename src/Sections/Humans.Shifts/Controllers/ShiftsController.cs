@@ -23,10 +23,10 @@ namespace Humans.Shifts.Controllers;
 [Authorize]
 [Route("Shifts")]
 internal sealed class ShiftsController(
-    IShiftManagementService shiftMgmt,
+    IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
-    IVolunteerTrackingService volunteerTrackingService,
+    IVolunteerTrackingManagement volunteerTrackingService,
     IShiftRowView shiftView,
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,

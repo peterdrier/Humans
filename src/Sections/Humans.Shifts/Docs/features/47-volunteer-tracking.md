@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/Domain/VolunteerBuildStatus.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingService.cs
-  src/Sections/Humans.Shifts/Services/IVolunteerTrackingService.cs
+  src/Sections/Humans.Shifts/Services/IVolunteerTrackingManagement.cs
   src/Sections/Humans.Shifts/Data/IVolunteerTrackingRepository.cs
   src/Sections/Humans.Shifts/Controllers/VolunteerTrackingController.cs
   src/Sections/Humans.Shifts/Views/VolunteerTracking/Index.cshtml
@@ -121,7 +121,7 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 - `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
 
-All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
+All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 
 ### Export
 

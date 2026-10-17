@@ -20,7 +20,7 @@ namespace Humans.Events.Tests.Controllers;
 
 public sealed class EventsModerationControllerTests
 {
-    private readonly IEventService _guide = Substitute.For<IEventService>();
+    private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 
     [HumansFact]
@@ -91,7 +91,7 @@ public sealed class EventsModerationControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, moderatorId.ToString())], "test")),
         };
         var controller = new EventsModerationController(
-            _guide, _users, Substitute.For<ICampServiceRead>(),
+            _guide, _users, Substitute.For<ICampService>(),
             NullLogger<EventsModerationController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

@@ -15,7 +15,7 @@ namespace Humans.Shifts.Contracts;
 ///
 /// <para>
 /// Mutations + Shifts-internal reads (flags, caps, rotas) stay on
-/// <c>IShiftManagementService</c> — the Shifts section is the single
+/// <c>IShiftManagement</c> — the Shifts section is the single
 /// writer of its own local <c>event_settings</c> knobs row.
 /// </para>
 /// </summary>

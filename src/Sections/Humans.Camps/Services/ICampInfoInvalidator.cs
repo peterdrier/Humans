@@ -10,7 +10,7 @@ namespace Humans.Camps.Contracts;
 /// <remarks>
 /// <para>
 /// The decorator implements this interface and calls it from inside every
-/// mutating <see cref="ICampService"/> method (after the inner write
+/// mutating <see cref="ICampManagement"/> method (after the inner write
 /// completes). Cross-table effects — including
 /// <c>camp_members.HasEarlyEntry</c> / <c>Status</c> flips that drive
 /// <see cref="CampSeasonInfo.EeGrantedCount"/> — are handled by the same
@@ -22,7 +22,7 @@ namespace Humans.Camps.Contracts;
 /// </para>
 /// <para>
 /// The invalidator must resolve to the SAME singleton instance as
-/// <see cref="ICampService"/> (per §15e CRITICAL) so the dict and the
+/// <see cref="ICampManagement"/> (per §15e CRITICAL) so the dict and the
 /// signaller agree on cache identity.
 /// </para>
 /// </remarks>

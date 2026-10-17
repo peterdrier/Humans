@@ -31,7 +31,7 @@ namespace Humans.CityPlanning.Tests;
 /// </summary>
 public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTestBase
 {
-    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly CityPlanningService _service;
     private readonly CityPlanningController _controller;

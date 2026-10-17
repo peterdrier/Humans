@@ -20,7 +20,7 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// <summary>
 /// Step 2 of the onboarding widget — covers the SignUp POST and Skip POST
 /// endpoints. The Shifts GET is exercised separately at the integration layer
-/// because its response model is built from <see cref="IShiftManagementServiceRead"/>
+/// because its response model is built from <see cref="IShiftManagementService"/>
 /// and does not affect step routing.
 /// </summary>
 public class OnboardingWidgetControllerShiftsTests
@@ -28,7 +28,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
-    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();

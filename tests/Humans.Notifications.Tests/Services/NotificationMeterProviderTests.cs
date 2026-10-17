@@ -32,7 +32,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
-    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly IMemoryCache _cache;
     private readonly NotificationMeterProvider _provider;

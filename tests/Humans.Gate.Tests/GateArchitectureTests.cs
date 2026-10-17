@@ -33,7 +33,7 @@ public class GateArchitectureTests
         var paramTypes = typeof(GateService).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(ITicketServiceRead));
+        paramTypes.Should().Contain(typeof(ITicketService));
 
         // The full ticket service is internal to Humans.Tickets since that section's G5 move,
         // so it can no longer be named here — assert on the namespace instead, which also

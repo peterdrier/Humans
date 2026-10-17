@@ -251,7 +251,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         // formats here. Sync on purpose: the listener seam is a void called inline on the
         // Settings write path.
         using var scope = scopeFactory.CreateScope();
-        scope.ServiceProvider.GetRequiredService<IShiftManagementService>()
+        scope.ServiceProvider.GetRequiredService<IShiftManagement>()
             .InvalidateDashboardCaches(eventSettingsId);
     }
 

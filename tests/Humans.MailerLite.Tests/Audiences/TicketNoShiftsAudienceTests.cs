@@ -83,7 +83,7 @@ public class TicketNoShiftsAudienceTests
         HashSet<Guid> shiftCommitted,
         IReadOnlyDictionary<Guid, ShiftUserSummary>? summaryOverrides = null)
     {
-        var tickets = Substitute.For<ITicketServiceRead>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 

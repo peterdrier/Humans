@@ -6,7 +6,7 @@ namespace Humans.Shifts.Contracts;
 /// <summary>
 /// Cross-section read surface for the Shifts section. Carved from the call
 /// sites, not from the interface: these are the members of the section's
-/// internal <c>IShiftManagementService</c> that something outside the section
+/// internal <c>IShiftManagement</c> that something outside the section
 /// actually calls. The rota/shift generation surface, the coordinator
 /// dashboard's aggregate reads and the post-event stats have no
 /// external caller and stay internal.
@@ -17,7 +17,7 @@ namespace Humans.Shifts.Contracts;
 /// writes and would make this name a lie); the dev-fixture verbs are
 /// <see cref="IShiftSeeding"/>.
 /// </remarks>
-public interface IShiftManagementServiceRead
+public interface IShiftManagementService
 {
     /// <summary>
     /// Whether the user is a department coordinator for the given team
@@ -124,7 +124,7 @@ public interface IShiftManagementServiceRead
 
 /// <summary>
 /// One rota that matched a global-search query. Returned by
-/// <see cref="IShiftManagementServiceRead.SearchAsync"/>, already scored by this
+/// <see cref="IShiftManagementService.SearchAsync"/>, already scored by this
 /// section — the orchestrator ranks by <see cref="Score"/> and passes
 /// <see cref="RotaId"/> to <c>&lt;vc:shifts-search-result&gt;</c>, which fetches
 /// the row's team name and link itself.

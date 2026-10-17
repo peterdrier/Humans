@@ -11,7 +11,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class MarketingNoTicketAudience(
     IUserServiceRead users,
-    ITicketServiceRead tickets) : MailerLiteAudienceBase(users)
+    ITicketService tickets) : MailerLiteAudienceBase(users)
 {
     public override string Key => "marketing-no-ticket";
     public override string DisplayName => "Marketing opt-ins without a ticket";

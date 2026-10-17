@@ -103,8 +103,8 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
 
     private static VolunteerTrackingController BuildController(IVolunteerTrackingExportService exportService)
     {
-        var service = Substitute.For<IVolunteerTrackingService>();
-        var shiftMgmt = Substitute.For<IShiftManagementService>();
+        var service = Substitute.For<IVolunteerTrackingManagement>();
+        var shiftMgmt = Substitute.For<IShiftManagement>();
         var userService = Substitute.For<IUserService>();
         var auditLog = Substitute.For<IAuditLogService>();
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();

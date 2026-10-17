@@ -33,7 +33,7 @@ public class AccountingReadTests
     private static readonly Guid TeamOrderId = Guid.NewGuid();
 
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly Service _service;
 

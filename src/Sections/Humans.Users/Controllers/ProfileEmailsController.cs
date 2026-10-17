@@ -54,12 +54,12 @@ internal sealed class ProfileEmailsController(
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ITicketServiceRead ticketQueryService,
+    ITicketService ticketQueryService,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
+    private readonly ITicketService _ticketQueryService = ticketQueryService;
     private readonly IUserServiceInternal _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 

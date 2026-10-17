@@ -8,7 +8,7 @@ namespace Humans.Shifts.Contracts;
 /// <summary>
 /// One-way cache-staleness signal for the per-user shift-authorization cache
 /// (<c>shift-auth:{userId}</c>, 60s TTL) owned by
-/// <c>IShiftManagementService</c>. Implemented by ShiftManagementService.
+/// <c>IShiftManagement</c>. Implemented by ShiftManagementService.
 /// External sections that change the
 /// user's team / coordinator / admin state inject this and call
 /// <see cref="Invalidate"/> after their own writes — they never mutate the
@@ -23,7 +23,7 @@ public interface IShiftAuthorizationInvalidator : IInvalidator
 {
     /// <summary>
     /// Drops the cached coordinator-team-id list for a single user. The next
-    /// call to <c>IShiftManagementServiceRead.GetCoordinatorTeamIdsAsync</c>
+    /// call to <c>IShiftManagementService.GetCoordinatorTeamIdsAsync</c>
     /// for that user re-queries via <c>ITeamService</c>.
     /// </summary>
     void Invalidate(Guid userId);

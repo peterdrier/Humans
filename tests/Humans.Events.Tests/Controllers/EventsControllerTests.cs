@@ -36,9 +36,9 @@ namespace Humans.Events.Tests.Controllers;
 public class EventsControllerTests
 {
     private readonly ILogger<EventsController> _logger = Substitute.For<ILogger<EventsController>>();
-    private readonly IEventService _guide = Substitute.For<IEventService>();
+    private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
@@ -415,7 +415,7 @@ public class EventsControllerTests
             args[3].Should().BeSameAs(failure);
             args[2]!.ToString().Should().Contain(camp.Slug);
         }
-        _guide.ReceivedCalls().Should().NotContain(c => string.Equals(c.GetMethodInfo().Name, nameof(IEventService.BulkImportAsync), StringComparison.Ordinal));
+        _guide.ReceivedCalls().Should().NotContain(c => string.Equals(c.GetMethodInfo().Name, nameof(IEventManagement.BulkImportAsync), StringComparison.Ordinal));
     }
 
     private void StubEditableGuideSettings()

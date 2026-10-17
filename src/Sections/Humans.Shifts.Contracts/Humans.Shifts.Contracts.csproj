@@ -11,12 +11,12 @@
 
     The split is carved from the call sites, not from the interfaces (Notifications'
     rule). A member is on this leaf if something outside the section calls it, and
-    nowhere else. From IShiftManagementService that is the cross-section reads
-    (IShiftManagementServiceRead), the volunteer-profile surface Shell's profile page
+    nowhere else. From IShiftManagement that is the cross-section reads
+    (IShiftManagementService), the volunteer-profile surface Shell's profile page
     and widget gallery read (IShiftVolunteerProfiles), and the dev-fixture verbs
     Humans.Development's seeder needs (IShiftSeeding); the rota/shift generation,
     coordinator-dashboard and post-event-stats surface has no outside caller and stays
-    on the internal IShiftManagementService, which inherits the three leaf interfaces so
+    on the internal IShiftManagement, which inherits the three leaf interfaces so
     the section's own call sites are unchanged. Same shape for IShiftSignupService: the
     signup state machine Shell and onboarding drive leaves as IShiftSignups, the seeder's
     verbs as IShiftSignupSeeding (Teams' rule — the seeder builds a multi-section

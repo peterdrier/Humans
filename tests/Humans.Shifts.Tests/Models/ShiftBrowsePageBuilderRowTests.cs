@@ -18,7 +18,7 @@ public class ShiftBrowsePageBuilderRowTests
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 

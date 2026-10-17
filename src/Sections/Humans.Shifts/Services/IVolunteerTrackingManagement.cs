@@ -11,7 +11,7 @@ internal sealed record GeneralAvailabilitySnapshot(
     Guid EventSettingsId,
     IReadOnlyList<int> AvailableDayOffsets);
 
-internal interface IVolunteerTrackingService : IApplicationService, IVolunteerTrackingServiceRead
+internal interface IVolunteerTrackingManagement : IApplicationService, IVolunteerTrackingService
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
 

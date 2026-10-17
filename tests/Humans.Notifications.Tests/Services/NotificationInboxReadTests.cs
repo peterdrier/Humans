@@ -30,7 +30,7 @@ public sealed class NotificationInboxReadTests : IDisposable
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly ITicketSync _tickets = Substitute.For<ITicketSync>();
     private readonly IApplicationServiceRead _applications = Substitute.For<IApplicationServiceRead>();
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly NotificationInboxRead _sut;

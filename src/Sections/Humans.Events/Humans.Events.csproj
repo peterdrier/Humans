@@ -29,7 +29,7 @@
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       EventsController derives from Humans.Camps' HumansCampControllerBase so Workshop Leads
-      can submit camp events. The base could not stay in Humans.UI once ICampServiceRead moved
+      can submit camp events. The base could not stay in Humans.UI once ICampService moved
       onto a section leaf (Humans.UI may not reference a section at any price), and it derives
       from HumansControllerBase, which lives in Humans.UI — a project no .Contracts leaf may
       reference. So it lives under the section's Contracts/ folder and consumers take the section

@@ -87,9 +87,9 @@ public class EventsArchitectureTests
     [HumansFact]
     public void CachingEventService_ImplementsIEventService_AndIEventViewInvalidator()
     {
-        typeof(IEventService).IsAssignableFrom(typeof(CachingEventService))
+        typeof(IEventManagement).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
-                because: "the decorator wraps the IEventService surface");
+                because: "the decorator wraps the IEventManagement surface");
         typeof(IEventViewInvalidator).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
                 because: "§15e — the decorator and its invalidator interface resolve to the same Singleton instance");
@@ -121,14 +121,14 @@ public class EventsArchitectureTests
                 because: "the decorator drives its own startup warmup via IHostedService");
     }
 
-    // ── Cross-section read surface (IEventServiceRead) ───────────────────────
+    // ── Cross-section read surface (IEventService) ───────────────────────
 
     [HumansFact]
     public void IEventService_DerivesFrom_IEventServiceRead()
     {
-        typeof(IEventServiceRead).IsAssignableFrom(typeof(IEventService))
+        typeof(IEventService).IsAssignableFrom(typeof(IEventManagement))
             .Should().BeTrue(
-                because: "other sections consume the Events section through the IEventServiceRead read surface");
+                because: "other sections consume the Events section through the IEventService read surface");
     }
 
     /// <summary>The section's own DI registrations, from <see cref="Section.Register"/>.</summary>

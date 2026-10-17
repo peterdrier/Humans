@@ -6,7 +6,7 @@ namespace Humans.Camps.Contracts;
 /// this interface for camp read models and settings - never EF entities.
 /// See memory/architecture/section-read-write-split.md.
 /// </summary>
-public interface ICampServiceRead
+public interface ICampService
 {
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);

@@ -61,8 +61,8 @@ public sealed class TeamsDependencyCycleTests
 
         // Shifts is another section; its concrete service and repository are internal to
         // Humans.Shifts and its own graph is pinned by that section's own tests.
+        services.AddScoped<IShiftManagement>(_ => Substitute.For<IShiftManagement>());
         services.AddScoped<IShiftManagementService>(_ => Substitute.For<IShiftManagementService>());
-        services.AddScoped<IShiftManagementServiceRead>(_ => Substitute.For<IShiftManagementServiceRead>());
 
         services.AddScoped<TeamService>();
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());

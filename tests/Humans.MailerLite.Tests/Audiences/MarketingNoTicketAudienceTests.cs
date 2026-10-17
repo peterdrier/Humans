@@ -58,7 +58,7 @@ public class MarketingNoTicketAudienceTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
 
-        var ticketService = Substitute.For<ITicketServiceRead>();
+        var ticketService = Substitute.For<ITicketService>();
         ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 

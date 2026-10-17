@@ -5,7 +5,7 @@ namespace Humans.Shifts.Models;
 
 /// <summary>
 /// State for the Export card on the Volunteer Tracking page. Populated by the
-/// controller from <c>IShiftManagementService.GetDepartmentsWithRotasAsync</c>
+/// controller from <c>IShiftManagement.GetDepartmentsWithRotasAsync</c>
 /// and rendered by <c>_ExportCard.cshtml</c>; the form posts back to
 /// <c>VolunteerTrackingController.ExportXlsx</c>.
 /// </summary>

@@ -24,7 +24,7 @@ public class CampsArchitectureTests
     [HumansFact]
     public void CachingCampService_ImplementsICampService()
     {
-        typeof(ICampService).IsAssignableFrom(typeof(CachingCampService))
+        typeof(ICampManagement).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue(
                 because: "the decorator transparently substitutes the inner service per §15a");
     }
@@ -86,26 +86,26 @@ public class CampsArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(ICampRoleCampAccess),
-            because: "role workflows need only membership/status/settings helpers, not the whole ICampService surface");
-        paramTypes.Should().NotContain(typeof(ICampService),
+            because: "role workflows need only membership/status/settings helpers, not the whole ICampManagement surface");
+        paramTypes.Should().NotContain(typeof(ICampManagement),
             because: "the role sub-service must not depend on the full Camps service surface");
     }
 
-    // ── ICampServiceRead split (memory/architecture/section-read-write-split.md) ──
+    // ── ICampService split (memory/architecture/section-read-write-split.md) ──
 
     [HumansFact]
     public void ICampService_InheritsICampServiceRead()
     {
-        typeof(ICampServiceRead).IsAssignableFrom(typeof(ICampService))
+        typeof(ICampService).IsAssignableFrom(typeof(ICampManagement))
             .Should().BeTrue(
-                because: "ICampService is the full Camps surface; external sections inject the narrow ICampServiceRead. " +
+                because: "ICampManagement is the full Camps surface; external sections inject the narrow ICampService. " +
                          "See memory/architecture/section-read-write-split.md.");
     }
 
     [HumansFact]
     public void CachingCampService_ImplementsICampServiceRead()
     {
-        typeof(ICampServiceRead).IsAssignableFrom(typeof(CachingCampService))
+        typeof(ICampService).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue();
     }
 
@@ -130,14 +130,14 @@ public class CampsArchitectureTests
         services.AddSingleton(Substitute.For<ILogger<CachingCampService>>());
 
         services.AddSingleton<CachingCampService>();
+        services.AddSingleton<ICampManagement>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
-        services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
 
         using var provider = services.BuildServiceProvider();
 
-        var fromFull = provider.GetRequiredService<ICampService>();
-        var fromRead = provider.GetRequiredService<ICampServiceRead>();
+        var fromFull = provider.GetRequiredService<ICampManagement>();
+        var fromRead = provider.GetRequiredService<ICampService>();
         var fromRoleAccess = provider.GetRequiredService<ICampRoleCampAccess>();
         var concrete = provider.GetRequiredService<CachingCampService>();
 

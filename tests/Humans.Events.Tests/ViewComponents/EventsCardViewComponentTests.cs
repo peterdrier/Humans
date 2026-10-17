@@ -21,7 +21,7 @@ namespace Humans.Events.Tests.ViewComponents;
 /// </summary>
 public class EventsCardViewComponentTests
 {
-    private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
+    private readonly IEventService _events = Substitute.For<IEventService>();
 
     private EventsCardViewComponent BuildSut(
         Guid? viewerId, bool eventsEnabled = true, CancellationToken requestAborted = default)

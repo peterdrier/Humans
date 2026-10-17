@@ -16,11 +16,11 @@ namespace Humans.Events.Tests.Services;
 /// <summary>
 /// Covers <see cref="CachingEventService.SearchAsync"/> — Events' scored search hit
 /// (nobodies-collective/Humans#1062). Served entirely from the approved-event cache warmed
-/// off the substitute inner <see cref="IEventService"/>; no DB involved.
+/// off the substitute inner <see cref="IEventManagement"/>; no DB involved.
 /// </summary>
 public sealed class CachingEventServiceTests
 {
-    private readonly IEventService _inner = Substitute.For<IEventService>();
+    private readonly IEventManagement _inner = Substitute.For<IEventManagement>();
     private readonly CachingEventService _service;
 
     public CachingEventServiceTests()
@@ -33,7 +33,7 @@ public sealed class CachingEventServiceTests
             .Returns(Task.FromResult<EventGuideSettingsView?>(null));
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<IEventService>(
+        services.AddKeyedScoped<IEventManagement>(
             CachingEventService.InnerServiceKey, (_, _) => _inner);
         var provider = services.BuildServiceProvider();
 

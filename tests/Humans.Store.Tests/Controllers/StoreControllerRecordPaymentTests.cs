@@ -55,7 +55,7 @@ public sealed class StoreControllerRecordPaymentTests
     {
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        var camps = Substitute.For<ICampServiceRead>();
+        var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamServiceRead>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());

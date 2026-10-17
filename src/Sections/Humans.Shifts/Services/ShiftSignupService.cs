@@ -26,7 +26,7 @@ namespace Humans.Shifts.Services;
 internal sealed class ShiftSignupService(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
-    IShiftManagementService shiftMgmt,
+    IShiftManagement shiftMgmt,
     EventCalendarResolver calendarResolver,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,

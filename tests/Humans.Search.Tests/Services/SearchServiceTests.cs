@@ -28,9 +28,9 @@ public sealed class SearchServiceTests
 
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
-    private readonly IShiftManagementServiceRead _shifts = Substitute.For<IShiftManagementServiceRead>();
-    private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IEventService _events = Substitute.For<IEventService>();
 
     public SearchServiceTests()
     {

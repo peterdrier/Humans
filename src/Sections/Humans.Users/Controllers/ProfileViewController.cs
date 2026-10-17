@@ -52,12 +52,12 @@ internal sealed class ProfileViewController(
     IAuditLogService auditLogService,
     IShiftSignups shiftSignupService,
     ISettingsService settingsService,
-    IShiftManagementServiceRead shiftMgmt,
+    IShiftManagementService shiftMgmt,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamServiceRead teamService,
     ITeamMessageOptionsProvider teamMessageOptionsProvider,
-    ICampServiceRead campService,
+    ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     private readonly IUserServiceInternal _userService = userService;

@@ -20,7 +20,7 @@ internal sealed record ShiftAdminPageRequest(
     Instant Now);
 
 internal sealed class ShiftAdminPageBuilder(
-    IShiftManagementService shiftManagement,
+    IShiftManagement shiftManagement,
     IMembershipCalculatorRead membership,
     IUserServiceRead userService,
     ITeamServiceRead teamService)

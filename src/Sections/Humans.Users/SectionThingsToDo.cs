@@ -107,7 +107,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         try
         {
-            var hasQualifyingSignup = await services.GetRequiredService<IShiftManagementServiceRead>()
+            var hasQualifyingSignup = await services.GetRequiredService<IShiftManagementService>()
                 .HasQualifyingCantinaSignupAsync(userId);
             var descriptionKey = hasQualifyingSignup
                 ? "Todo_DietaryMedical_Pending"

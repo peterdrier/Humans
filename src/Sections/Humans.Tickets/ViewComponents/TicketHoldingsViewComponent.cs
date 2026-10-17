@@ -12,7 +12,7 @@ namespace Humans.Tickets.ViewComponents;
 /// ticket holdings to any authenticated viewer.
 /// </summary>
 public sealed class TicketHoldingsViewComponent(
-    ITicketServiceRead queryService,
+    ITicketService queryService,
     IEarlyEntryService earlyEntryService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

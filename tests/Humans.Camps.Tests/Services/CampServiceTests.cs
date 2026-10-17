@@ -89,7 +89,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.OptInToSeasonAsync(created.Id, 2026, ct);
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<ICampService>(CachingCampService.InnerServiceKey, (_, _) => _service);
+        services.AddKeyedScoped<ICampManagement>(CachingCampService.InnerServiceKey, (_, _) => _service);
         services.AddScoped(_ => _settingsService);
         await using var provider = services.BuildServiceProvider();
         var cached = new CachingCampService(provider.GetRequiredService<IServiceScopeFactory>(),

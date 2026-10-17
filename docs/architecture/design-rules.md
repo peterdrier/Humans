@@ -281,14 +281,14 @@ The table-owning sections are listed below. The other section projects own no ta
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService`, `CalendarFeedTokenService`, `ICalFeedService` (the personal iCal feed fan-out — owns no tables) | `calendar_events`, `calendar_event_exceptions`, `calendar_feed_tokens` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
-| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementServiceRead`, the active event via `ISettingsService`, and dietary fields via `IUserServiceRead`)* |
+| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `ISettingsService`, and dietary fields via `IUserServiceRead`)* |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Finance** | `IHoldedFinanceService` (`Humans.Finance`; implemented by the section-internal `Service`) | `holded_expense_docs`, `holded_category_map`, `holded_creditor_contacts`, `holded_doc_sync_state`, `sepa_payout_files`, `sepa_payout_transfers` |
 | **Holded** | `IHoldedService` (`Humans.Holded`, published via `Humans.Holded.Contracts`; implemented by the section-internal `Service`) — the Holded API v2 ledger mirror, its reconciliation sweep, and the `/Holded` admin screen | `holded_ledger_lines`, `holded_accounts`, `holded_sync_states`, `holded_api_calls` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketTransferService` (`Humans.Tickets`, published via `Humans.Tickets.Contracts`; the vendor adapter is the separate `Humans.TicketTailor` project behind `ITicketVendorService`; the Tickets→Budget bridge `TicketingBudgetService` is **Budget**-owned — `src/Sections/Humans.Budget/Services/`) | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
 | **Store** | `Service` (`Humans.Store`, internal — no public service interface; Store is self-contained and takes no cross-section calls into it) | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
-| **Scanner** | none (`Humans.Scanner`; no business logic and no `Services/` folder — its controller reads via `ITicketServiceRead`) | none |
+| **Scanner** | none (`Humans.Scanner`; no business logic and no `Services/` folder — its controller reads via `ITicketService`) | none |
 | **Gate** | `GateService` (`Humans.Gate`) | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Google Integration** | `GoogleWorkspaceSyncService` (the production `IGoogleSyncService`; `StubGoogleSyncService` stands in when no credentials are configured), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleSyncLogService`, `TeamResourceService` (the Teams↔Drive linking surface — lives in `Humans.GoogleIntegration.Services`, not Teams) — `Humans.GoogleIntegration`, published via `Humans.GoogleIntegration.Contracts` | `sync_service_settings`, `google_sync_outbox`, `google_sync_log`, `google_resources` |
@@ -300,7 +300,7 @@ The table-owning sections are listed below. The other section projects own no ta
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` (`Humans.AuditLog`, published via `Humans.AuditLog.Contracts`) | `audit_log` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` (`Humans.Agent`) | `agent_conversations`, `agent_messages`, `agent_settings` |
-| **Event Guide** | `EventService` (`Humans.Events`; implements the section-internal `IEventService`, with `IEventServiceRead` published cross-section via `Humans.Events.Contracts`) | `events`, `event_guide_settings`, `event_categories`, `event_venues`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
+| **Event Guide** | `EventService` (`Humans.Events`; implements the section-internal `IEventManagement`, with `IEventService` published cross-section via `Humans.Events.Contracts`) | `events`, `event_guide_settings`, `event_categories`, `event_venues`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Rideshare** | `RideshareService` (`Humans.Rideshare`; section-internal — no `Contracts` leaf, no other section consumes it) | `rideshare_trips`, `rideshare_requests`, `rideshare_interests`, `rideshare_settings` |
 | **Survey** | `SurveyService` (`Humans.Surveys`) | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 | **Workgroups** | `WorkgroupService` (`Humans.Workgroups`; section-internal, cached by `CachingWorkgroupService`) | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_log_entries` |
@@ -425,7 +425,7 @@ When a service needs data from another section, it calls that section's public s
 public class CampService(
     ICampRepository campRepository,
     ICampStore campStore,
-    IProfileService profileService) : ICampService
+    IProfileService profileService) : ICampManagement
 {
     public async Task<CampDetailDto> GetCampDetailAsync(Guid campId, CancellationToken ct)
     {
@@ -442,10 +442,10 @@ Wrong patterns — each violates an invariant somewhere:
 
 ```csharp
 // WRONG — reaches into another domain's repository
-public class CampService(ICampRepository repo, IUserRepository userRepo) : ICampService { ... }
+public class CampService(ICampRepository repo, IUserRepository userRepo) : ICampManagement { ... }
 
 // WRONG — uses IDbContextFactory to query another domain's tables directly
-public class CampService(ICampRepository repo, IDbContextFactory<UsersDbContext> factory) : ICampService
+public class CampService(ICampRepository repo, IDbContextFactory<UsersDbContext> factory) : ICampManagement
 {
     public async Task<CampDetailDto> GetCampDetailAsync(Guid campId, CancellationToken ct)
     {
@@ -456,7 +456,7 @@ public class CampService(ICampRepository repo, IDbContextFactory<UsersDbContext>
 }
 
 // WRONG — direct DbContext access (impossible by project graph once migrated)
-public class CampService(CampsDbContext db) : ICampService { ... }
+public class CampService(CampsDbContext db) : ICampManagement { ... }
 
 // WRONG — cross-domain .Include
 var camp = await db.Camps.Include(c => c.Leads).ThenInclude(l => l.Profile).FirstAsync(...);

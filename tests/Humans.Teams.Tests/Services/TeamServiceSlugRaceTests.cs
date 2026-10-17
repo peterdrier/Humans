@@ -108,7 +108,7 @@ public class TeamServiceSlugRaceTests
             repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
-            Substitute.For<IShiftManagementService>(),
+            Substitute.For<IShiftManagement>(),
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),

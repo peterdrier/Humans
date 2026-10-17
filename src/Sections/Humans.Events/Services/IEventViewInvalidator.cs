@@ -13,7 +13,7 @@ namespace Humans.Events.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// All event_* table writes flow through <c>IEventService</c> by design
+/// All event_* table writes flow through <c>IEventManagement</c> by design
 /// (enforced by the universal <c>HUM0025</c> analyzer), so the decorator handles its own invalidation
 /// inline after each delegated write. This interface exists for the
 /// one cross-section signal the section will eventually receive — see the

@@ -20,8 +20,8 @@ namespace Humans.Events.Controllers;
 [Route("Events/Export")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 internal sealed class EventsExportController(
-    IEventService guide,
-    ICampServiceRead camps,
+    IEventManagement guide,
+    ICampService camps,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]

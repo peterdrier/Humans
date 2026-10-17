@@ -12,7 +12,7 @@ namespace Humans.Cantina.Tests.Services;
 
 /// <summary>
 /// Unit tests for <see cref="CantinaRosterService"/>. The on-site cohort comes
-/// from <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>;
+/// from <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>;
 /// dietary data is read from <see cref="IUserServiceRead"/> (cached UserInfo —
 /// dietary lives on Profile). Tests exercise the "unique humans across the week"
 /// contract: a single human on-site multiple days contributes exactly once to
@@ -20,7 +20,7 @@ namespace Humans.Cantina.Tests.Services;
 /// </summary>
 public class CantinaRosterServiceTests
 {
-    private readonly IShiftManagementServiceRead _shiftMgmt;
+    private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
@@ -32,7 +32,7 @@ public class CantinaRosterServiceTests
 
     public CantinaRosterServiceTests()
     {
-        _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+        _shiftMgmt = Substitute.For<IShiftManagementService>();
         _burnSettings = Substitute.For<ISettingsService>();
         _userRead = Substitute.For<IUserServiceRead>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that

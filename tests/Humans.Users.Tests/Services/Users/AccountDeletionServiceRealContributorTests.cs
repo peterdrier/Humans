@@ -33,7 +33,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
     private readonly UserService _userService;
     private readonly AccountDeletionService _service;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
 
     public AccountDeletionServiceRealContributorTests()
     {

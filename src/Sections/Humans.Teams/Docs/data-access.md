@@ -85,7 +85,7 @@ Repository: `ITeamRepository`.
 | `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (per-user on grant writes / merge; `InvalidateAll` on team EE-flag flip) |
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
-`IShiftManagementServiceRead`, `IAdminAuthorizationService`,
+`IShiftManagementService`, `IAdminAuthorizationService`,
 `IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
@@ -121,7 +121,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceServiceRead`,
-`IShiftManagementServiceRead`, `ISettingsService` and `IUserServiceRead`;
+`IShiftManagementService`, `ISettingsService` and `IUserServiceRead`;
 the mapper and the directory builder are pure.
 
 ### TeamsEmails (Scoped, internal)

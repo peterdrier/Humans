@@ -9,7 +9,7 @@ namespace Humans.Shifts.Data;
 
 /// <summary>
 /// Repository for the Shifts section tables owned by
-/// <see cref="IShiftManagementService"/>: <c>rotas</c>, <c>shifts</c>,
+/// <see cref="IShiftManagement"/>: <c>rotas</c>, <c>shifts</c>,
 /// <c>event_settings</c>, <c>shift_tags</c>, <c>volunteer_tag_preferences</c>,
 /// and <c>volunteer_event_profiles</c>.
 ///

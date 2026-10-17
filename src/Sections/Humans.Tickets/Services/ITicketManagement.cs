@@ -7,9 +7,9 @@ namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Full Tickets service surface for Tickets-owned admin/query workflows.
-/// External sections should depend on <see cref="ITicketServiceRead"/>.
+/// External sections should depend on <see cref="ITicketService"/>.
 /// </summary>
-internal interface ITicketService : ITicketServiceRead, IApplicationService
+internal interface ITicketManagement : ITicketService, IApplicationService
 {
     /// <summary>
     /// Compute aggregated dashboard statistics: revenue, fees, daily sales,

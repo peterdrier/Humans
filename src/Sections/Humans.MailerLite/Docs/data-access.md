@@ -51,7 +51,7 @@ Audience-membership computation classes under `Services/Audiences/`:
 `MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerLiteAudienceBase`,
 `ShiftViewAudienceBase`, `CurrentEventTicketHolders`.
 No repository; compute over read-split / section service interfaces
-(`ITicketServiceRead`, `IShiftView`, `IUserServiceRead`). No direct DB
+(`ITicketService`, `IShiftView`, `IUserServiceRead`). No direct DB
 access, no cache.
 
 ---

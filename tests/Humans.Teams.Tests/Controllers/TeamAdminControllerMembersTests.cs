@@ -75,7 +75,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, resources, sync, users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, localizer,
-            Substitute.For<ITicketServiceRead>())
+            Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -134,7 +134,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<ITicketServiceRead>())
+            Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -192,7 +192,7 @@ public class TeamAdminControllerMembersTests
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             Substitute.For<IGoogleSyncService>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
-            logger, localizer, Substitute.For<ITicketServiceRead>())
+            logger, localizer, Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -266,7 +266,7 @@ public class TeamAdminControllerMembersTests
         }
         var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
-            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext
             {
@@ -307,7 +307,7 @@ public class TeamAdminControllerMembersTests
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
         var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext
             {

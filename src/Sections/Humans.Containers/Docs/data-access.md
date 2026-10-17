@@ -19,7 +19,7 @@ Repository: `IContainerRepository`.
 | ContainerImages | R/W |
 | ContainerPlacements | R/W |
 
-Cross-section calls via `ICampServiceRead`, `IAuditLogService`,
+Cross-section calls via `ICampService`, `IAuditLogService`,
 `IFileStorage`. No cache.
 
 ---

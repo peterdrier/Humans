@@ -37,7 +37,7 @@ internal sealed class ShiftManagementService(
     EventCalendarResolver calendarResolver,
     IClock clock,
     IEarlyEntryInvalidator earlyEntryInvalidator,
-    ILogger<ShiftManagementService> logger) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+    ILogger<ShiftManagementService> logger) : IShiftManagement, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -57,9 +57,9 @@ internal sealed class ShiftManagementService(
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
     private IRoleAssignmentServiceRead RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
-    private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
+    private ITicketService TicketQueryService => serviceProvider.GetRequiredService<ITicketService>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
-    private ICampServiceRead CampService => serviceProvider.GetRequiredService<ICampServiceRead>();
+    private ICampService CampService => serviceProvider.GetRequiredService<ICampService>();
     private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(

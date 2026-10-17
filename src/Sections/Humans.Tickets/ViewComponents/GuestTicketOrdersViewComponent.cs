@@ -9,7 +9,7 @@ namespace Humans.Tickets.ViewComponents;
 /// nothing for an account with no ticket and no order.
 /// </summary>
 public sealed class GuestTicketOrdersViewComponent(
-    ITicketServiceRead ticketService, ILogger<GuestTicketOrdersViewComponent> logger) : ViewComponent
+    ITicketService ticketService, ILogger<GuestTicketOrdersViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

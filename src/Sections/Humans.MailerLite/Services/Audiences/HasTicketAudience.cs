@@ -8,7 +8,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// defined by <see cref="CurrentEventTicketHolders.ForCurrentEventAsync"/>.
 /// </summary>
 internal sealed class HasTicketAudience(
-    ITicketServiceRead tickets,
+    ITicketService tickets,
     IUserServiceRead users) : MailerLiteAudienceBase(users)
 {
     public override string Key => "has-ticket";

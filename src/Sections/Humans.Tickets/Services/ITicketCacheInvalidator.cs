@@ -7,12 +7,12 @@ namespace Humans.Tickets.Services;
 /// <summary>
 /// One-way cache-staleness signal for the Tickets section's read model.
 /// Implemented by the Singleton caching decorator that wraps
-/// <see cref="ITicketService"/>. Write-side callers poke this seam after
+/// <see cref="ITicketManagement"/>. Write-side callers poke this seam after
 /// committing changes instead of reaching into the decorator's private cache
 /// layout.
 /// </summary>
 /// <remarks>
-/// Kept separate from <see cref="ITicketServiceRead"/> so the budgeted read
+/// Kept separate from <see cref="ITicketService"/> so the budgeted read
 /// surface does not grow each time a new invalidation seam is needed, and so
 /// callers that only invalidate do not depend on the full query service.
 /// </remarks>

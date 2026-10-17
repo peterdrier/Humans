@@ -339,7 +339,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         // that every approved-event projection is stale, so drive that.
         sp.GetRequiredService<CachingTeamService>().InvalidateActiveTeamsCache();
         await sp.GetRequiredService<CachingCampService>().InvalidateAllAsync(ct);
-        await sp.GetRequiredService<IEventService>().UpdateCategoryAsync(category, ct);
+        await sp.GetRequiredService<IEventManagement>().UpdateCategoryAsync(category, ct);
 
         return new SeededRows(team.Slug, team.Id, camp.Slug);
     }

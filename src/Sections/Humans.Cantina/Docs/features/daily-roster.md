@@ -172,7 +172,7 @@ Reads:
 
 | Source | Used for | Notes |
 |---|---|---|
-| `ShiftSignup.Status`, `Shift.DayOffset` | Filter on-site cohort per day; service unions across the 7 days of the week | Read via `IShiftManagementServiceRead`, never the repository |
+| `ShiftSignup.Status`, `Shift.DayOffset` | Filter on-site cohort per day; service unions across the 7 days of the week | Read via `IShiftManagementService`, never the repository |
 | `Profile.DietaryPreference` | Per-human dietary chip + breakdown counts | Owned by Users; read from the cached `ProfileInfo` on `UserInfo` |
 | `Profile.Allergies` (`List<string>`) | Allergy chips + roll-up | Same read path |
 | `Profile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
@@ -234,7 +234,7 @@ The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `ca
 
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
-- **Shifts (read, on-site cohort):** `IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
+- **Shifts (read, on-site cohort):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Users/Identity (read, dietary + names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
@@ -245,7 +245,7 @@ New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementServiceRead`, `ISettingsService` + `IUserServiceRead` |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `ISettingsService` + `IUserServiceRead` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
 | Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |

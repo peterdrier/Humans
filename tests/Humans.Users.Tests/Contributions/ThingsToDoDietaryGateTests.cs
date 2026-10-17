@@ -21,7 +21,7 @@ namespace Humans.Users.Tests.Contributions;
 public class ThingsToDoDietaryGateTests
 {
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
-    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();

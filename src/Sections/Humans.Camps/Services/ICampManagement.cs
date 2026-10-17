@@ -7,7 +7,7 @@ namespace Humans.Camps.Services;
 /// <summary>
 /// Service for managing camps and camp-season state.
 /// </summary>
-internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyEntryProvider
+internal interface ICampManagement : ICampService, IApplicationService, IEarlyEntryProvider
 {
     // Registration
     Task<CampWriteResult<Camp>> CreateCampAsync(

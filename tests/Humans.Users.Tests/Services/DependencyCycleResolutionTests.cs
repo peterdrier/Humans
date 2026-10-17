@@ -51,8 +51,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         //
         // Keying on the "IFoo → Foo" naming convention passes silently when the
         // convention is broken: there is no `UserServiceRead`
-        // class, because `IUserServiceRead` (and ITeamServiceRead / ICampServiceRead /
-        // IEventServiceRead) is registered as a forwarder factory onto the matching
+        // class, because `IUserServiceRead` (and ITeamServiceRead / ICampService /
+        // IEventService) is registered as a forwarder factory onto the matching
         // `Caching*Service` decorator. Any edge through a read interface therefore
         // vanished, so a cycle routed via a decorator resolved fine here and blew up
         // only in MS DI — the exact failure mode this guard exists to prevent.

@@ -7,7 +7,7 @@ namespace Humans.Camps.Contracts;
 /// Lists camps the current human belongs to (or has requested), grouped by year.
 /// Rendered on the human's own profile page. Private — never shown publicly.
 /// </summary>
-public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
+public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

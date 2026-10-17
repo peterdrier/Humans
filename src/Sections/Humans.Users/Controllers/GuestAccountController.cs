@@ -22,7 +22,7 @@ namespace Humans.Users.Controllers;
 internal sealed class GuestAccountController(
     IUserServiceRead userService,
     ICommunicationPreferenceService commPrefService,
-    ITicketServiceRead ticketQueryService,
+    ITicketService ticketQueryService,
     IAccountDeletionService accountDeletionService,
     IClock clock,
     ILogger<GuestAccountController> logger,

@@ -37,9 +37,9 @@ public class ShiftsControllerToggleDayTests
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
-    private readonly IVolunteerTrackingService _volunteerTrackingService = Substitute.For<IVolunteerTrackingService>();
+    private readonly IVolunteerTrackingManagement _volunteerTrackingService = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();

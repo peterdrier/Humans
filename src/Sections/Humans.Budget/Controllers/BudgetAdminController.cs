@@ -31,7 +31,7 @@ internal sealed class BudgetAdminController(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     TicketingBudgetService ticketingBudgetService,
-    ITicketServiceRead ticketQueryService,
+    ITicketService ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
     IHoldedFinanceServiceRead holdedFinance,

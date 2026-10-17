@@ -8,7 +8,7 @@
     CampSeasonInfo, SystemTeamSyncJob takes the two camp-lead reads, and Shell's
     ProfileSummaryViewModelBuilder binds CampUserInfo. And Camps and CityPlanning reference
     each other — CampService clears a deleted camp's polygons through
-    Lazy<ICityPlanningService> while CityPlanningService injects ICampServiceRead — so a
+    Lazy<ICityPlanningService> while CityPlanningService injects ICampService — so a
     folder would be a project cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 

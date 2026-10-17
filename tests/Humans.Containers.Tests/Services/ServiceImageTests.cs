@@ -43,7 +43,7 @@ public sealed class ServiceImageTests
         _sut = new Service(
             repo,
             _fileStorage,
-            Substitute.For<ICampServiceRead>(),
+            Substitute.For<ICampService>(),
             _auditLog,
             new FakeClock(StartTime), _logger);
     }
@@ -366,7 +366,7 @@ public sealed class ServiceImageTests
             });
         var original = new IOException("Database delete failed");
         repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
-        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), _logger);
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampService>(), _auditLog, new FakeClock(StartTime), _logger);
 
         var act = () => service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
 

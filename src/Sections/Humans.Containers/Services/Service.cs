@@ -12,7 +12,7 @@ namespace Humans.Containers.Services;
 internal sealed class Service(
     IContainerRepository repo,
     IFileStorage fileStorage,
-    ICampServiceRead campService,
+    ICampService campService,
     IAuditLogService auditLog,
     IClock clock,
     ILogger<Service> logger) : IContainerService

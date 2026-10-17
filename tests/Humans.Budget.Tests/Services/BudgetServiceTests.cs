@@ -100,7 +100,7 @@ public sealed class BudgetServiceTests
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
-        var tickets = Substitute.For<ITicketServiceRead>();
+        var tickets = Substitute.For<ITicketService>();
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

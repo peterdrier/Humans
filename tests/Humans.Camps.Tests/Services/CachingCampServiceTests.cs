@@ -28,14 +28,14 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CachingCampServiceTests : CampsTestHarness
 {
     private readonly ServiceProvider _serviceProvider;
-    private readonly ICampService _innerSubstitute;
+    private readonly ICampManagement _innerSubstitute;
     private readonly ICampRoleCampAccess _innerRoleAccess;
     private readonly ISettingsService _settingsService;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
-        _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess, IUserMerge>();
+        _innerSubstitute = Substitute.For<ICampManagement, ICampRoleCampAccess, IUserMerge>();
         _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
@@ -64,7 +64,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 return camp is null ? null : ProjectCampInfo(camp);
             });
         var services = new ServiceCollection();
-        services.AddKeyedScoped<ICampService>(
+        services.AddKeyedScoped<ICampManagement>(
             CachingCampService.InnerServiceKey,
             (_, _) => _innerSubstitute);
         services.AddKeyedScoped<ICampRoleCampAccess>(
@@ -539,32 +539,32 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task>> SnapshotWriteVerbs => new()
     {
-        { nameof(ICampService.CreateCampAsync), (t, c, se, ct) => t._service.CreateCampAsync(Guid.NewGuid(), "New Camp", "n@x.com", "+34600000001", null, null, false, 1, SeedSeasonData(), null, 2026, ct) },
-        { nameof(ICampService.OptInToSeasonAsync), (t, c, se, ct) => t._service.OptInToSeasonAsync(c, 2026, ct) },
-        { nameof(ICampService.UpdateSeasonAsync), (t, c, se, ct) => t._service.UpdateSeasonAsync(c, se, SeedSeasonData(), ct) },
-        { nameof(ICampService.ApproveSeasonAsync), (t, c, se, ct) => t._service.ApproveSeasonAsync(se, Guid.NewGuid(), null, ct) },
-        { nameof(ICampService.RejectSeasonAsync), (t, c, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
-        { nameof(ICampService.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, ct) },
-        { nameof(ICampService.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, ct) },
-        { nameof(ICampService.SetSeasonStatusAsync), (t, c, se, ct) => t._service.SetSeasonStatusAsync(c, se, CampSeasonStatus.Full, ct) },
-        { nameof(ICampService.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", ct) },
-        { nameof(ICampService.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), ct) },
-        { nameof(ICampService.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", ct) },
-        { nameof(ICampService.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), ct) },
-        { nameof(ICampService.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, ct) },
-        { nameof(ICampService.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), ct) },
-        { nameof(ICampService.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
-        { nameof(ICampService.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
-        { nameof(ICampService.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.RemoveCampMemberAsync), (t, c, se, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.AddCampMemberToActiveSeasonAsync), (t, c, se, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, se, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.WithdrawCampMembershipRequestAsync), (t, c, se, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.LeaveCampAsync), (t, c, se, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampService.SetEarlyEntryAsync), (t, c, se, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
-        { nameof(ICampService.SetCampSeasonEeSlotCountAsync), (t, c, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.CreateCampAsync), (t, c, se, ct) => t._service.CreateCampAsync(Guid.NewGuid(), "New Camp", "n@x.com", "+34600000001", null, null, false, 1, SeedSeasonData(), null, 2026, ct) },
+        { nameof(ICampManagement.OptInToSeasonAsync), (t, c, se, ct) => t._service.OptInToSeasonAsync(c, 2026, ct) },
+        { nameof(ICampManagement.UpdateSeasonAsync), (t, c, se, ct) => t._service.UpdateSeasonAsync(c, se, SeedSeasonData(), ct) },
+        { nameof(ICampManagement.ApproveSeasonAsync), (t, c, se, ct) => t._service.ApproveSeasonAsync(se, Guid.NewGuid(), null, ct) },
+        { nameof(ICampManagement.RejectSeasonAsync), (t, c, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
+        { nameof(ICampManagement.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, ct) },
+        { nameof(ICampManagement.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, ct) },
+        { nameof(ICampManagement.SetSeasonStatusAsync), (t, c, se, ct) => t._service.SetSeasonStatusAsync(c, se, CampSeasonStatus.Full, ct) },
+        { nameof(ICampManagement.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", ct) },
+        { nameof(ICampManagement.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), ct) },
+        { nameof(ICampManagement.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", ct) },
+        { nameof(ICampManagement.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, ct) },
+        { nameof(ICampManagement.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
+        { nameof(ICampManagement.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampManagement.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.RemoveCampMemberAsync), (t, c, se, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddCampMemberToActiveSeasonAsync), (t, c, se, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, se, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.WithdrawCampMembershipRequestAsync), (t, c, se, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.LeaveCampAsync), (t, c, se, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, se, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.SetCampSeasonEeSlotCountAsync), (t, c, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
         { nameof(IUserMerge.ReassignAsync), (t, c, se, ct) => ((IUserMerge)t._service).ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
     };
 
@@ -590,7 +590,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         _ = await _service.GetCampsForYearAsync(2026, ct);
         _innerSubstitute.ReceivedCalls()
-            .Count(call => string.Equals(call.GetMethodInfo().Name, nameof(ICampService.GetCampsForYearAsync), StringComparison.Ordinal))
+            .Count(call => string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetCampsForYearAsync), StringComparison.Ordinal))
             .Should().Be(1, because: $"{verbName} must invalidate the cached CampInfo snapshot so the next warm-year read re-warms from the inner service");
     }
 
@@ -699,9 +699,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
-        { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },
-        { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, ct) },
-        { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
+        { nameof(ICampManagement.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },
+        { nameof(ICampManagement.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, ct) },
+        { nameof(ICampManagement.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
     };
 
     [HumansTheory]
@@ -719,7 +719,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         _ = await _service.GetSettingsAsync(ct);
         _innerSubstitute.ReceivedCalls()
-            .Count(call => string.Equals(call.GetMethodInfo().Name, nameof(ICampService.GetSettingsAsync), StringComparison.Ordinal))
+            .Count(call => string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetSettingsAsync), StringComparison.Ordinal))
             .Should().Be(1, because: $"{verbName} must clear the cached settings slot so the next read refetches from the inner service");
     }
 

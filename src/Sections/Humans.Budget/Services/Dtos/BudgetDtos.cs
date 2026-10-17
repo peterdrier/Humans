@@ -91,7 +91,7 @@ internal sealed class TicketingWeekProjection
 
 /// <summary>
 /// Aggregated ticket sales for a completed ISO week, produced by the bridge service from
-/// <c>ITicketServiceRead</c> data and consumed by <c>BudgetService.SyncTicketingActualsAsync</c>.
+/// <c>ITicketService</c> data and consumed by <c>BudgetService.SyncTicketingActualsAsync</c>.
 /// </summary>
 internal sealed record TicketingWeeklyActuals(
     LocalDate Monday,

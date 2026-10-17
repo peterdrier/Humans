@@ -23,10 +23,10 @@ internal sealed class UserEmailService(
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
-    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketServiceRead.
+    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketService.
     // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
-    private Humans.Tickets.Contracts.ITicketServiceRead TicketServiceRead =>
-        serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketServiceRead>();
+    private Humans.Tickets.Contracts.ITicketService TicketServiceRead =>
+        serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)

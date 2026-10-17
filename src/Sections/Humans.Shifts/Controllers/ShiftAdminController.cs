@@ -17,7 +17,7 @@ namespace Humans.Shifts.Controllers;
 [Route("Teams/{slug}/Shifts")]
 internal sealed class ShiftAdminController(
     ITeamServiceRead teamService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
     IShiftRowView shiftView,

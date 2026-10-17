@@ -15,7 +15,7 @@ namespace Humans.Camps.Controllers;
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 internal sealed class CampComplianceController(
-    ICampServiceRead campService,
+    ICampService campService,
     ICampRoleService campRoleService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {

@@ -37,7 +37,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
     IUserServiceRead userService,
     IShiftRowView shiftView,
     IShiftSignupService signupService,
-    IVolunteerTrackingService volunteerTrackingService)
+    IVolunteerTrackingManagement volunteerTrackingService)
 {
     public async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
         Shift? shift,

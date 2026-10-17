@@ -11,10 +11,10 @@ namespace Humans.Events.Services;
 /// <summary>
 /// Service for the Events section (camp-event guide).
 /// </summary>
-internal interface IEventService : IApplicationService, IEventServiceRead
+internal interface IEventManagement : IApplicationService, IEventService
 {
     // ── Settings ─────────────────────────────────────────────────────────
-    // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
+    // GetGuideSettingsAsync is declared on IEventService (cross-section read surface).
     Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>Returns false if the selected event edition no longer exists; dependency failures propagate.</summary>
@@ -100,11 +100,11 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
-    // GetApprovedEventsAsync and GetApprovedEventByIdAsync are declared on IEventServiceRead
+    // GetApprovedEventsAsync and GetApprovedEventByIdAsync are declared on IEventService
     // (cross-section read surface).
 
     // ── Favourites ────────────────────────────────────────────────────────
-    // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).
+    // GetFavouriteEventIdsAsync is declared on IEventService (cross-section read surface).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     // dayOffset selects one occurrence of a recurring event; null means the whole event.
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);

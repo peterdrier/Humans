@@ -637,8 +637,8 @@ Each pair below would fail constructor injection if both sides eager-injected th
 2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
 3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamServiceRead`.
 4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamServiceRead`.
-5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`.
-6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketServiceRead` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
+5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampService`.
+6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketService` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
 
 Other notable one-way lazy edges:
 

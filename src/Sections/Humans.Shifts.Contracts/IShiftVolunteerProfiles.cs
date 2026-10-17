@@ -10,7 +10,7 @@ namespace Humans.Shifts.Contracts;
 /// (Governance's rule: a leaf keeps an honest name rather than a
 /// <c>Read</c> suffix over write members). The rest of the section's write
 /// surface — rotas, shifts, generation, event settings — has no external
-/// caller and stays on the internal <c>IShiftManagementService</c>.
+/// caller and stays on the internal <c>IShiftManagement</c>.
 ///
 /// <para>
 /// The read crosses the boundary as <see cref="ShiftVolunteerProfileInfo"/>,

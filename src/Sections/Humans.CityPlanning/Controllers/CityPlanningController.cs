@@ -17,7 +17,7 @@ namespace Humans.CityPlanning.Controllers;
 [Route("CityPlanning")]
 internal sealed class CityPlanningController(
     CityPlanningService cityPlanningService,
-    ICampServiceRead campService,
+    ICampService campService,
     IContainerService containerService,
     IStringLocalizer<ContainersResource> containersLocalizer,
     IUserServiceRead userService,

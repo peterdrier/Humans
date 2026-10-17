@@ -29,7 +29,7 @@ public class ServiceTeamOrdersTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();

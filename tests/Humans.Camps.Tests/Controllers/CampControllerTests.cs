@@ -27,7 +27,7 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampControllerTests
 {
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampManagement _camps = Substitute.For<ICampManagement>();
     private readonly ICampContactService _contacts = Substitute.For<ICampContactService>();
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
     private readonly ICityPlanningService _cityPlanning = Substitute.For<ICityPlanningService>();

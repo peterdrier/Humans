@@ -11,7 +11,7 @@ namespace Humans.Camps.Controllers;
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 internal sealed class CampAdminController(
-    ICampService campService,
+    ICampManagement campService,
     ICampRoleService campRoleService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,

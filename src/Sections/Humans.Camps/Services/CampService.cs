@@ -18,8 +18,8 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Camps.Services;
 
-/// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserDataContributor, IUserMerge
+/// <summary>Application-layer <see cref="ICampManagement"/>; cache-unaware (decorator owns §15 caching).</summary>
+internal sealed class CampService : ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserDataContributor, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
@@ -34,7 +34,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
-    // Lazy: CityPlanningService injects ICampServiceRead, closing the cycle.
+    // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningService> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
@@ -326,7 +326,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         throw new NotSupportedException(
             "Camp search runs against the cached CampInfo snapshot in CachingCampService. " +
             "If this is being called on the inner CampService it indicates a DI registration " +
-            "mistake — ICampServiceRead must resolve to the caching decorator.");
+            "mistake — ICampService must resolve to the caching decorator.");
 
     /// <summary>
     /// Special-role user-id lists (Lead/Workshop) keyed by season+role, plus the full

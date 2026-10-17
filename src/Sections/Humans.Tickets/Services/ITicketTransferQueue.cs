@@ -8,7 +8,7 @@ namespace Humans.Tickets.Services;
 /// decision surface and every transfer DTO are likewise internal to Humans.Tickets.
 /// </summary>
 /// <remarks>
-/// A one-method interface beats hanging a count off <c>ITicketServiceRead</c>,
+/// A one-method interface beats hanging a count off <c>ITicketService</c>,
 /// which would name a queue depth "Read" (Issues' shape). <see cref="ITicketTransferService"/>
 /// inherits this. Internal because no other section asks the question; it moves to the
 /// Contracts leaf the day one does.

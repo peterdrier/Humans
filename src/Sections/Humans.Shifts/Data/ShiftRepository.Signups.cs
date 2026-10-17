@@ -315,7 +315,7 @@ internal sealed partial class ShiftRepository
         // Team names are NOT resolved here: Teams is another section's table and a
         // Shifts repo must not query db.Teams (memory/architecture/no-cross-section-ef-joins.md).
         // The caller (VolunteerTrackingExportService) stitches TeamId → name via
-        // IShiftManagementService.GetDepartmentsWithRotasAsync.
+        // IShiftManagement.GetDepartmentsWithRotasAsync.
         var rows = new List<ConfirmedShiftRow>(raw.Count);
         foreach (var r in raw)
         {

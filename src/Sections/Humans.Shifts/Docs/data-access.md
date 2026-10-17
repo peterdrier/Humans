@@ -49,8 +49,8 @@ Repository: `IShiftManagementRepository`.
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking, which
 lazy-resolves the read surfaces `ITeamServiceRead`, `IUserServiceRead`,
-`ICampServiceRead`, `IRoleAssignmentServiceRead`, and
-`ITicketServiceRead`. Injects `IMemoryCache` directly for the
+`ICampService`, `IRoleAssignmentServiceRead`, and
+`ITicketService`. Injects `IMemoryCache` directly for the
 `shift-auth:{userId}` slot. Implements `IShiftAuthorizationInvalidator`,
 `IUserMerge`. Also exposes the Cantina-gating predicates
 (`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
@@ -59,7 +59,7 @@ lazy-resolves the read surfaces `ITeamServiceRead`, `IUserServiceRead`,
 read-only by-camp shift summary: confirmed signup totals come from
 `IShiftManagementRepository.GetConfirmedUserShiftTotalsAsync` (reads
 `ShiftSignups` joined to `Shifts`/`Rotas`, scoped by `EventSettings` id),
-camp labels and the active-camp roster from `ICampServiceRead`, and display
+camp labels and the active-camp roster from `ICampService`, and display
 names from `IUserServiceRead` — stitched in memory at the service layer with
 **no new cross-section interface** and no foreign-repository read. Returns
 `null` for an unknown team-slug / out-of-scope rota (controller maps to 404).
@@ -78,7 +78,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
 | VolunteerBuildStatuses | W (via `IVolunteerTrackingRepository`, GDPR erasure) |
 
-Cross-section calls via `IShiftManagementService`, `ISettingsService` (via
+Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
@@ -109,7 +109,7 @@ cache. Holds the gap-detection algorithm + heatmap data assembly,
 plus the full day-availability / camp-setup / day-off mutation surface.
 Build-eligibility signups (`ShiftSignups` + `EventSettings`) read through
 `IShiftManagementRepository.GetEligibleBuildSignupsAsync`. Implements
-`IVolunteerTrackingService`, `IUserMerge`.
+`IVolunteerTrackingManagement`, `IUserMerge`.
 
 ### VolunteerTrackingExportService (Scoped)
 
@@ -122,7 +122,7 @@ Repository: `IShiftManagementRepository`.
 | Shifts | R (via repo) |
 | Rotas | R (via repo) |
 
-Cross-section calls via `IShiftManagementService`, `IUserServiceRead`.
+Cross-section calls via `IShiftManagement`, `IUserServiceRead`.
 Implements `IVolunteerTrackingExportService`, `IEarlyEntryProvider`
 (contributes confirmed-build-shift early-entry rows). No cache, no
 direct DB access beyond the export query.

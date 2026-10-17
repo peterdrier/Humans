@@ -17,7 +17,7 @@ namespace Humans.Shifts.Tests.Services;
 public class CachingShiftViewServiceTests
 {
     private readonly IShiftRowView _inner = Substitute.For<IShiftRowView>();
-    private readonly IShiftManagementService _management = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _management = Substitute.For<IShiftManagement>();
 
     private CachingShiftViewService CreateSut()
     {

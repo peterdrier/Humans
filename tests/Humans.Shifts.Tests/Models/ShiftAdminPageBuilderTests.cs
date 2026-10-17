@@ -28,7 +28,7 @@ public sealed class ShiftAdminPageBuilderTests
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
     private readonly IMembershipCalculatorRead _membership = Substitute.For<IMembershipCalculatorRead>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();

@@ -31,7 +31,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         : base(TestNow)
     {
         // The dashboard compute methods now reach cross-domain data through
-        // ITicketServiceRead / ITeamServiceRead / IUserServiceRead. Wire thin fakes that
+        // ITicketService / ITeamServiceRead / IUserServiceRead. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
@@ -41,7 +41,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(fakeTeamService)
             .With<ITeamServiceRead>(fakeTeamService)
-            .With<ITicketServiceRead>(fakeTicketService)
+            .With<ITicketService>(fakeTicketService)
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
             .With<IRoleAssignmentServiceRead>()
@@ -1106,11 +1106,11 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     // so the test seed helpers (Db.*.Add) drive results end-to-end.
     // ================================================================
 
-    // Only the two-method read surface now: the full ITicketService is internal to
+    // Only the two-method read surface now: the full ITicketManagement is internal to
     // Humans.Tickets since that section's G5 move, and this fake never needed the other
     // eleven members. Seeds come from the section's own fixture, so the fake returns the
     // rows the dashboard paths read rather than querying a context this project cannot see.
-    private sealed class FakeTicketQueryService(IReadOnlyList<TicketOrderInfo> orders) : ITicketServiceRead
+    private sealed class FakeTicketQueryService(IReadOnlyList<TicketOrderInfo> orders) : ITicketService
     {
         public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult(orders);

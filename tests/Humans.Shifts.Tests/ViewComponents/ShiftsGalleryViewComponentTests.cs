@@ -21,7 +21,7 @@ public sealed class ShiftsGalleryViewComponentTests
         settings.GetActiveAsync(aborted.Token).Returns(Task.FromException<BurnSettingsInfo?>(
             new OperationCanceledException(aborted.Token)));
         var component = new ShiftsGalleryViewComponent(
-            Substitute.For<IShiftManagementService>(), settings,
+            Substitute.For<IShiftManagement>(), settings,
             NullLogger<ShiftsGalleryViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext

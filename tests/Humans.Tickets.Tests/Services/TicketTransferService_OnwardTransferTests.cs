@@ -27,7 +27,7 @@ public sealed class TicketTransferService_OnwardTransferTests
 
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
-    private readonly ITicketServiceRead _holdings = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _holdings = Substitute.For<ITicketService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();

@@ -39,7 +39,7 @@ Volunteers browsing `/Shifts` had no way to jump straight to a specific calendar
 
 ## Data Model
 
-No new tables or fields. Derived entirely from the existing `IShiftManagementService.GetBrowseShiftsAsync` browse query (`UrgentShiftInfo.Date` / `.Period`, `Shift.DayOffset`) and `BuildSubPeriodClassifier` (already used by the shift dashboard's sub-period filter).
+No new tables or fields. Derived entirely from the existing `IShiftManagement.GetBrowseShiftsAsync` browse query (`UrgentShiftInfo.Date` / `.Period`, `Shift.DayOffset`) and `BuildSubPeriodClassifier` (already used by the shift dashboard's sub-period filter).
 
 ### Day option list
 

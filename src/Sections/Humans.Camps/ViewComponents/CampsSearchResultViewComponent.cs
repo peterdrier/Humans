@@ -15,7 +15,7 @@ namespace Humans.Camps.ViewComponents;
 /// view component ships <c>&lt;vc:…&gt;</c> as inert markup on a green build
 /// (HUM0034's framework exception).
 /// </remarks>
-public sealed class CampsSearchResultViewComponent(ICampServiceRead camps) : ViewComponent
+public sealed class CampsSearchResultViewComponent(ICampService camps) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the camp no longer resolves.</summary>
     /// <param name="campId">The matched camp.</param>

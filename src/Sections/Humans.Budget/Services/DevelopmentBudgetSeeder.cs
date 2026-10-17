@@ -25,7 +25,7 @@ internal sealed class DevelopmentBudgetSeeder(
     IBudgetService budgetService,
     ITeamServiceRead teamService,
     ITeamSeeding teamSeeding,
-    ICampServiceRead campService,
+    ICampService campService,
     IClock clock,
     ILogger<DevelopmentBudgetSeeder> logger) : IBudgetDemoSeeder
 {

@@ -12,7 +12,7 @@ namespace Humans.Events.ViewComponents;
 /// <c>Events/Admin/Settings</c> page used, so every viewer who reaches this component
 /// may edit. Mirrors <c>EventsAdminController.Settings</c>'s former data assembly.
 /// </summary>
-internal sealed class EventGuideSettingsTabViewComponent(IEventService guide) : ViewComponent
+internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

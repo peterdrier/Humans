@@ -170,7 +170,7 @@ touching these callers are shaped by them.
   Containers can reach `ICityPlanningServiceRead` only through the leaf. `Humans.Camps` is not
   the reason — it already references `Humans.CityPlanning` itself.
 - **`Lazy<ICityPlanningService>` is registered by `Humans.Camps`, not by this section.** That
-  is a separate, *runtime* cycle — `CampService → ICityPlanningService → ICampServiceRead`, hit
+  is a separate, *runtime* cycle — `CampService → ICityPlanningService → ICampService`, hit
   on the camp-delete path — and the lazy belongs with the consumer, not the producer.
 - **`RegistrationInfo` is keyed differently from every other settings field** (highest open
   season, not `PublicYear`) because the Register page it feeds targets the open season.

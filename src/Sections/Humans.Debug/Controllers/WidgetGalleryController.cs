@@ -27,10 +27,10 @@ namespace Humans.Debug.Controllers;
 internal sealed class WidgetGalleryController(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    ICampServiceRead campService,
-    IShiftManagementServiceRead shiftService,
+    ICampService campService,
+    IShiftManagementService shiftService,
     ISettingsService settingsService,
-    IEventServiceRead eventService,
+    IEventService eventService,
     IConfiguration configuration) : HumansControllerBase(userService)
 {
     private static readonly Guid SampleTeamId = Guid.NewGuid();

@@ -112,7 +112,7 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 ## Deferred — Year filter
 
-- **Year filter** — there is no multi-year surface on `IShiftManagementService` today. The view uses the active event. Easy follow-up once a year-based lookup lands.
+- **Year filter** — there is no multi-year surface on `IShiftManagement` today. The view uses the active event. Easy follow-up once a year-based lookup lands.
 
 Role hours only surface when the active event has at least one shift (the report short-circuits to empty for a shift-less event); revisit if year-round role workload needs to show before any shifts exist.
 

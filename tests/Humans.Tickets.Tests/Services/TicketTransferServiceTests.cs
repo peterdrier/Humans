@@ -922,7 +922,7 @@ public sealed class TicketTransferServiceTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _adminId.ToString())], "test"))
         };
-        var controller = new TicketTransferAdminController(_service, Substitute.For<ITicketService>(), _userService)
+        var controller = new TicketTransferAdminController(_service, Substitute.For<ITicketManagement>(), _userService)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -951,7 +951,7 @@ public sealed class TicketTransferServiceTests
         new(
             _transferRepo,
             _ticketRepo,
-            Substitute.For<ITicketServiceRead>(),
+            Substitute.For<ITicketService>(),
             _vendor,
             _userService,
             _userEmailService,

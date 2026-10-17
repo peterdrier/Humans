@@ -5,7 +5,7 @@
   <!--
     Tickets' cross-section surface, carved into its own leaf project because other
     sections (Users, Shifts, Budget, Gate, Scanner, MailerLite, Teams, Surveys, Agent) read
-    a human's holdings or the order projection through ITicketServiceRead, and Notifications
+    a human's holdings or the order projection through ITicketService, and Notifications
     reads ITicketSync. A Contracts/ *folder* inside Humans.Tickets would make each of them
     reference the section itself and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).

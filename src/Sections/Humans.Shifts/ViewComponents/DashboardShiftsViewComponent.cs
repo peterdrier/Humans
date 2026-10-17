@@ -12,7 +12,7 @@ namespace Humans.Shifts.ViewComponents;
 /// row.
 /// </summary>
 public sealed class DashboardShiftsViewComponent(
-    IShiftManagementServiceRead shiftMgmt,
+    IShiftManagementService shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     IMembershipCalculatorRead membershipCalculator,

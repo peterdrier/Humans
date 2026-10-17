@@ -24,7 +24,7 @@ public class CommunicationPreferencesPanelViewComponentTests
             .Returns(Task.FromException<IReadOnlyList<CommunicationPreferenceSnapshot>>(
                 new OperationCanceledException(aborted.Token)));
         var sut = new CommunicationPreferencesPanelViewComponent(
-            commPrefs, Substitute.For<ITicketServiceRead>(), new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
+            commPrefs, Substitute.For<ITicketService>(), new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -95,7 +95,7 @@ public class CommunicationPreferencesPanelViewComponentTests
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(prefs);
 
-        var tickets = Substitute.For<ITicketServiceRead>();
+        var tickets = Substitute.For<ITicketService>();
         tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
 

@@ -50,8 +50,8 @@ internal interface ICampRoleService : IApplicationService
 
     /// <summary>
     /// Cascade hook — deletes every role assignment for the given camp member.
-    /// Called by <see cref="ICampService.LeaveCampAsync"/> and
-    /// <see cref="ICampService.WithdrawCampMembershipRequestAsync"/>.
+    /// Called by <see cref="ICampManagement.LeaveCampAsync"/> and
+    /// <see cref="ICampManagement.WithdrawCampMembershipRequestAsync"/>.
     /// </summary>
     Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
 

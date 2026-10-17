@@ -44,7 +44,7 @@ public sealed class TeamServiceEarlyEntryTests
             _repo,
             _audit,
             Substitute.For<INotificationEmitter>(),
-            Substitute.For<IShiftManagementService>(),
+            Substitute.For<IShiftManagement>(),
             _meterInvalidator,
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),

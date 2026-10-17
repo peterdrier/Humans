@@ -24,7 +24,7 @@ internal sealed class AccountDeletionService(
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
     IGdprService gdprService,
-    ITicketServiceRead ticketQueryService,
+    ITicketService ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,

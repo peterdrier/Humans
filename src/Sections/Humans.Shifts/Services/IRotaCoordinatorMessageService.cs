@@ -8,7 +8,7 @@ namespace Humans.Shifts.Services;
 /// </summary>
 /// <remarks>
 /// One method, one responsibility. Lives separate from
-/// <c>IShiftSignupService</c> / <c>IShiftManagementService</c> because the
+/// <c>IShiftSignupService</c> / <c>IShiftManagement</c> because the
 /// shape — fan-out enqueue across the Email and Users sections — does not
 /// belong on either existing shift surface.
 /// </remarks>

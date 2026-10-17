@@ -10,7 +10,7 @@ namespace Humans.Shifts.Contracts;
 /// other sections legitimately need (identity, calendar anchor, build
 /// calendar, early-entry capacity, and the global shift-browsing switch) —
 /// Shifts-internal tuning knobs (<c>GlobalVolunteerCap</c>,
-/// <c>ReminderLeadTimeHours</c>) stay on <c>IShiftManagementService</c>.
+/// <c>ReminderLeadTimeHours</c>) stay on <c>IShiftManagement</c>.
 /// </summary>
 /// <remarks>
 /// <para>

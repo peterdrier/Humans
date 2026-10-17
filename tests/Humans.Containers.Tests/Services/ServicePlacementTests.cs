@@ -38,7 +38,7 @@ public sealed class ServicePlacementTests
         _sut = new Service(
             repo,
             _fileStorage,
-            Substitute.For<ICampServiceRead>(),
+            Substitute.For<ICampService>(),
             _auditLog,
             Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
     }
@@ -294,7 +294,7 @@ public sealed class ServicePlacementTests
         });
         repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Database write failed"));
-        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog,
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampService>(), _auditLog,
             Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         var act = () => service.UpdatePlacementNotesAsync(id, Year, "notes",

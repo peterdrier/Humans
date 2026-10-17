@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Services/IShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/IShiftManagement.cs
   src/Sections/Humans.Shifts/Models/PostEventStats.cs
   src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs

@@ -17,7 +17,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 /// </summary>
 public class ShiftsSearchResultViewComponentTests
 {
-    private readonly IShiftManagementServiceRead _shifts = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
 
     [HumansFact]

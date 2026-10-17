@@ -30,7 +30,7 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
     IAuditLogService auditLog,
-    IClock clock) : ITicketService, IUserDataContributor
+    IClock clock) : ITicketManagement, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
     {

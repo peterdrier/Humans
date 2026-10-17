@@ -127,7 +127,7 @@ never turn a STOP into an admit.
 
 ## Cross-section reads (via existing interfaces only — no new surface)
 
-`ITicketServiceRead.GetTicketOrdersAsync` (find attendee by normalized barcode),
+`ITicketService.GetTicketOrdersAsync` (find attendee by normalized barcode),
 `IEarlyEntryService.GetForUserAsync` (EE date + sources),
 `ISettingsService.GetActiveEventSettingsAsync` (event time zone → "today"), `IClock` (cutoff).
 
@@ -180,7 +180,7 @@ Two independent reviews (correctness/architecture + security/privacy/ops) ran on
 1. Bless the attendance-gateway posture change (new `Gate` section). _Done —
    signed off 2026-07-02._
 2. Approve the deferred new surface: `ITicketVendorService.CreateCheckInAsync`
-   (+ impls) and the `ITicketService` seam Gate calls for the writeback mirror.
+   (+ impls) and the `ITicketManagement` seam Gate calls for the writeback mirror.
    _Done — shipped._
 3. Confirm `gate_scan_events` retention / GDPR basis (it's a movement record).
    _Done — `GateRetentionJob` purges after `Gate:RetentionDays` (default 365)._

@@ -162,10 +162,10 @@ Every table is owned by exactly one repository; there are no HUM0025
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
    `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
-   `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`
+   `ICampService`, `ITicketService`, `IGoogleSyncServiceRead`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
-   `IEventServiceRead` (consumed by `EventsCardViewComponent`
+   `IEventService` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
    `ICityPlanningServiceRead` (exposes `GetSettingsAsync` /
    `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
@@ -257,7 +257,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    `NotificationMeterProvider` reads no tables directly — every counter
    fans out through an owning-service interface call (`IUserServiceRead`,
    `ITeamServiceRead`, `IApplicationServiceRead`, `ITicketSync`,
-   `IGoogleSyncServiceRead`, `ICampServiceRead`). Cache invalidation goes
+   `IGoogleSyncServiceRead`, `ICampService`). Cache invalidation goes
    through `INotificationMeterCacheInvalidator`.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn
@@ -278,7 +278,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 12. **Surveys section uses cross-section read-split surfaces exclusively.**
     `SurveyService` fans out over `ITeamServiceRead`,
-    `IUserServiceRead`, `ITicketServiceRead`, and `IShiftView` for
+    `IUserServiceRead`, `ITicketService`, and `IShiftView` for
     audience resolution and display-name stitching — never a foreign
     repository. `IGoogleTranslationService` (GoogleIntegration section)
     is the translation bridge for the admin pre-fill helper. No
@@ -303,11 +303,11 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 14. **Gate composes cached cross-section reads and never touches a foreign
     table.** `GateService` resolves a scanned barcode by filtering
-    the cached `ITicketServiceRead.GetTicketOrdersAsync` projection in
+    the cached `ITicketService.GetTicketOrdersAsync` projection in
     memory (no new interface method), checks early entry via the cached
     `IEarlyEntryService`, verifies supervisor roles via
     `IRoleAssignmentService`, and pulls the gate-crew roster via
-    `IShiftManagementService` — all §15-compliant service-interface calls.
+    `IShiftManagement` — all §15-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     `EventParticipations` row as `Attended` — goes through the
     owning `IUserService.SetParticipationFromTicketSyncAsync`, so no

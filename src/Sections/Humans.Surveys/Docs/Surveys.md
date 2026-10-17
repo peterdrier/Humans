@@ -276,7 +276,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 - **Users/Identity:** `IUserServiceRead` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamServiceRead` — `Team`-audience member ids and team display data.
-- **Tickets:** `ITicketServiceRead` — `TicketHolders`-audience recipient ids.
+- **Tickets:** `ITicketService` — `TicketHolders`-audience recipient ids.
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
 - **Users/Identity:** `IUserEmailService` — effective notification target email per recipient when queueing invite/reminder mail.
 - **Email:** Surveys owns its two templates — `SurveysEmails` (internal) builds each `EmailMessage` from Surveys' own `Surveys_Email_*` keys in `SurveysResource`, rendered in the recipient's culture via `CultureScope`; `SurveysEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists them at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (queued through the email outbox in production), plus `IEmailPreviewServiceRead` for the preview-email-to-self page (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
@@ -299,7 +299,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Aggregate-local navs kept:** `Survey.Questions ↔ SurveyQuestion.Survey`, `SurveyQuestion.Options ↔ SurveyQuestionOption.Question`, `SurveyResponse.Answers ↔ SurveyAnswer.Response`. All within Survey-owned tables, so these `.Include`s are legal inside the repository.
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (`memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints**. The service resolves display data via the cross-section read interfaces and returns DTOs.
-- **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketServiceRead`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewServiceRead`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
+- **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketService`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewServiceRead`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
 - **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal — a per-consumer allow-list test would only assert absence ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ### Cross-section read interface

@@ -9,7 +9,7 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ICampService"/>. Per-camp
+/// Singleton caching decorator for <see cref="ICampManagement"/>. Per-camp
 /// <see cref="CampInfo"/> dict plus a single-slot <see cref="CampSettingsInfo"/>.
 /// Year-keyed reads are filtered snapshots, not separate cache entries.
 /// </summary>
@@ -17,9 +17,9 @@ internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
+    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
 {
-    /// <summary>DI key for the undecorated inner <see cref="ICampService"/>.</summary>
+    /// <summary>DI key for the undecorated inner <see cref="ICampManagement"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
 
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
@@ -632,10 +632,10 @@ internal sealed class CachingCampService(
             return true;
         });
 
-    private async Task<T> WithInner<T>(Func<ICampService, Task<T>> work)
+    private async Task<T> WithInner<T>(Func<ICampManagement, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);
         return await work(inner);
     }
 
@@ -646,10 +646,10 @@ internal sealed class CachingCampService(
         return await work(inner);
     }
 
-    private async Task WithInner(Func<ICampService, Task> work)
+    private async Task WithInner(Func<ICampManagement, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);
         await work(inner);
     }
 
@@ -715,7 +715,7 @@ internal sealed class CachingCampService(
     private async Task<T> WithInnerLeadDirectory<T>(Func<ICampLeadDirectory, Task<T>> work)
     {
         using var scope = scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);
         return await work((ICampLeadDirectory)inner);
     }
 

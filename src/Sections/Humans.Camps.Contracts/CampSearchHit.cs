@@ -2,7 +2,7 @@ namespace Humans.Camps.Contracts;
 
 /// <summary>
 /// One camp that matched a global-search query. Returned by
-/// <c>ICampService.SearchAsync</c>, already scored by this section — the
+/// <c>ICampManagement.SearchAsync</c>, already scored by this section — the
 /// orchestrator ranks by <see cref="Score"/> and passes <see cref="CampId"/> to
 /// <c>&lt;vc:camps-search-result&gt;</c>, which fetches everything it renders
 /// (nobodies-collective/Humans#1062). Names-only matching: only

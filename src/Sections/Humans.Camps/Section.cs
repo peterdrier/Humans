@@ -29,7 +29,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ICampRepository, CampRepository>();
 
         services.AddScoped<CampService>();
-        services.AddKeyedScoped<ICampService>(
+        services.AddKeyedScoped<ICampManagement>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());
         services.AddKeyedScoped<ICampRoleCampAccess>(
@@ -43,14 +43,14 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
+        services.AddSingleton<ICampManagement>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
-        services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampLeadDirectory>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampSeeding>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampService — one cache, one signaller.
+        // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampManagement — one cache, one signaller.
         services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingCampService>());
 
@@ -69,7 +69,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
         // Lazy<ICityPlanningService> resolves a circular dep: CampService -> ICityPlanningService
-        // -> ICampServiceRead. Used on the camp-delete path to clear the section's polygons.
+        // -> ICampService. Used on the camp-delete path to clear the section's polygons.
         services.AddTransient(sp => new Lazy<ICityPlanningService>(sp.GetRequiredService<ICityPlanningService>));
 
         services.AddScoped<ICampContactService, CampContactService>();

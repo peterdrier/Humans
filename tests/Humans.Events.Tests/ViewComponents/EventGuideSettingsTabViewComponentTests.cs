@@ -18,7 +18,7 @@ namespace Humans.Events.Tests.ViewComponents;
 /// </summary>
 public sealed class EventGuideSettingsTabViewComponentTests
 {
-    private readonly IEventService _guide = Substitute.For<IEventService>();
+    private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
 
     [HumansFact]
     public async Task InvokeAsync_RequestAborted_PropagatesCancellation()

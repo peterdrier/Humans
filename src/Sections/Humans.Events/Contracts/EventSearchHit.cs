@@ -2,7 +2,7 @@ namespace Humans.Events.Contracts;
 
 /// <summary>
 /// One approved event that matched a global-search query. Returned by
-/// <c>IEventServiceRead.SearchAsync</c>, already scored by this section — the
+/// <c>IEventService.SearchAsync</c>, already scored by this section — the
 /// orchestrator ranks by <see cref="Score"/> and passes <see cref="EventId"/> to
 /// <c>&lt;vc:events-search-result&gt;</c>, which fetches everything it renders
 /// (nobodies-collective/Humans#1062). Matches Title or Description: a Title match

@@ -26,7 +26,7 @@ public class GuestAccountControllerTests
 {
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<UsersResource> _localizer = Substitute.For<IStringLocalizer<UsersResource>>();

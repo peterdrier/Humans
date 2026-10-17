@@ -9,7 +9,7 @@ namespace Humans.Camps.Controllers;
 [EnableCors("BarriosPublic")]
 [Route("api/barrios")]
 [Route("api/camps")]
-internal sealed class CampApiController(ICampServiceRead campService) : ControllerBase
+internal sealed class CampApiController(ICampService campService) : ControllerBase
 {
     [HttpGet("{year:int}")]
     public async Task<IActionResult> GetCamps(int year, CancellationToken cancellationToken)

@@ -55,9 +55,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_teamService)
             .With<ITeamServiceRead>(_teamService)
             .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
-            .With<ITicketServiceRead>()
+            .With<ITicketService>()
             .With(_users)
-            .With<ICampServiceRead>()
+            .With<ICampService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

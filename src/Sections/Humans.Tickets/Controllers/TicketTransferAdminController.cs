@@ -14,7 +14,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Transfers")]
 internal sealed class TicketTransferAdminController(
     ITicketTransferService service,
-    ITicketService ticketQueryService,
+    ITicketManagement ticketQueryService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]

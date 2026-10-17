@@ -69,7 +69,7 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
 
 ## 5. Seams
 
-- **Events-owned provide items.** A read on `IEventServiceRead` returning the feed items for
+- **Events-owned provide items.** A read on `IEventService` returning the feed items for
   events a member is hosting would let `GetProvideItemsAsync` shrink to two calls and a
   merge, and delete this section's copy of Events' occurrence-to-feed-item rule.
 - **Event-cycle cutover.** `IBurnSettingsService.GetActiveAsync` is the Shifts-owned twin of

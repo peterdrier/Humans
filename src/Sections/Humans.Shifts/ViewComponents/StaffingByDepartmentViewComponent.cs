@@ -15,7 +15,7 @@ namespace Humans.Shifts.ViewComponents;
 /// <c>Departments</c> is always empty, so the card renders the "no data yet" copy and
 /// points at Shifts.
 /// </remarks>
-internal sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRead shifts) : ViewComponent
+internal sealed class StaffingByDepartmentViewComponent(IShiftManagementService shifts) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

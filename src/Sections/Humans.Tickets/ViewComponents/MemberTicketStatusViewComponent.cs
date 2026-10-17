@@ -13,7 +13,7 @@ namespace Humans.Tickets.ViewComponents;
 /// vendor is set up, rather than hiding.
 /// </summary>
 public sealed class MemberTicketStatusViewComponent(
-    ITicketServiceRead ticketService,
+    ITicketService ticketService,
     IUserServiceRead userService,
     ISettingsService settingsService,
     IOptions<TicketVendorSettings> ticketSettings,

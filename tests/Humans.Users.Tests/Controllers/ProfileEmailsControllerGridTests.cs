@@ -97,7 +97,7 @@ public class ProfileEmailsControllerGridTests
             _logger,
             localizer,
             _sharedLocalizer,
-            Substitute.For<ITicketServiceRead>(),
+            Substitute.For<ITicketService>(),
             _authorizationService,
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
@@ -225,7 +225,7 @@ public class ProfileEmailsControllerGridTests
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var controller = new ProfileEmailsController(
             _userService, _userManager, _emailService, _emailMessages, _userEmailService,
-            _auditLogService, _logger, localizer, _sharedLocalizer, Substitute.For<ITicketServiceRead>(),
+            _auditLogService, _logger, localizer, _sharedLocalizer, Substitute.For<ITicketService>(),
             _authorizationService, _signInManager, Options.Create(new GoogleWorkspaceOptions()));
         var row = Guid.NewGuid();
         _userEmailService.VerifyEmailAsync(_userId, row, "token")

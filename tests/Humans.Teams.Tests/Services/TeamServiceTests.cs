@@ -602,7 +602,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var service = new TeamService(
             repo, Substitute.For<IAuditLogService>(), Notifier,
-            Substitute.For<IShiftManagementServiceRead>(),
+            Substitute.For<IShiftManagementService>(),
             Substitute.For<INotificationMeterCacheInvalidator>(), ShiftAuthInvalidator,
             AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);

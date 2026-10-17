@@ -16,7 +16,7 @@ namespace Humans.Shifts.Contracts;
 /// <c>InvokeAsync(Guid)</c> is public.
 /// </remarks>
 public sealed class VolunteerBuildStripViewComponent(
-    IVolunteerTrackingServiceRead tracking,
+    IVolunteerTrackingService tracking,
     IUserServiceRead userService,
     ILogger<VolunteerBuildStripViewComponent> logger) : ViewComponent
 {

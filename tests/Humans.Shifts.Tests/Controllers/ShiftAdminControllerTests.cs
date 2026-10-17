@@ -41,13 +41,13 @@ public class ShiftAdminControllerTests
     private static readonly Guid OtherTeamId = Guid.NewGuid();
     private const string Slug = "gate";
 
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
-    private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();

@@ -16,7 +16,7 @@ public sealed class CampBarriosSettingsTabViewComponentTests
     [HumansFact]
     public async Task InvokeAsync_ReturnsTheOpenSeasons()
     {
-        var campService = Substitute.For<ICampService>();
+        var campService = Substitute.For<ICampManagement>();
         campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2025, 2026]));
 

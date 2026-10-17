@@ -16,7 +16,7 @@ namespace Humans.Camps.Controllers;
 [Route("Barrios")]
 [Route("Camps")]
 internal sealed class CampController(
-    ICampService campService,
+    ICampManagement campService,
     ICampContactService campContactService,
     ICampRoleService campRoleService,
     ICityPlanningServiceRead cityPlanningService,
@@ -29,7 +29,7 @@ internal sealed class CampController(
     IStringLocalizer<SharedResource> sharedLocalizer)
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly ICampService _campService = campService;
+    private readonly ICampManagement _campService = campService;
     private readonly IUserServiceRead _userService = userService;
     private readonly IClock _clock = clock;
 

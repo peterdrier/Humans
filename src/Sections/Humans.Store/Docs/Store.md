@@ -64,7 +64,7 @@ A camp's order against a season.
 
 **Indexes:** `CampSeasonId`, `TeamId`, `State`.
 
-**Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampServiceRead.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
+**Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampService.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
 
 **Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `AddLineAsync` performs the same idempotent correction before validating a product, with an audit entry and structured application log line. An unresolved year or a product from another year is refused with localized feedback and no line write. Editable order pages offer the catalog for the stored `Order.Year`, including historical orders. `GetOrderAsync` remains read-only because callers load the order before authorizing access.
 
@@ -289,7 +289,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampServiceRead` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
+- **Camps:** `ICampService` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
 - **Teams:** `ITeamServiceRead` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only — no new surface added to its `[SurfaceBudget(4)]`.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
@@ -319,7 +319,7 @@ The Store section uses `IStripeService` (`Humans.Stripe.Contracts`; internal imp
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 - **Schema decision — one polymorphic `Order`, not a second table.** Nullable `CampSeasonId` / `TeamId` on the same row was chosen over a separate `store_team_orders` table so team orders reuse the existing catalog, line, authorization and audit machinery instead of duplicating it for the non-billable case. The "exactly one of the two is non-null" invariant is service-enforced, not a DB constraint.
 - **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `OrderLine.Order` and `Payment.Order` are aggregate-local and are kept.
-- **Cross-section calls** route through `ICampServiceRead` (camp / camp-season lookups), `ITeamServiceRead` (department lookups for team orders), `ISettingsService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
+- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `ITeamServiceRead` (department lookups for team orders), `ISettingsService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 - **Architecture test:** none — `StoreArchitectureTests` was deleted at G5. Both its assertions became false or vacuous once the section became one assembly (the assembly now contains `StoreDbContext` by design, and interface-implementation is a tautology). What it encoded is policed by `ApplicationServiceDbContextInjectionAnalyzer` plus the assembly boundary itself. Store's unit tests live in `tests/Humans.Store.Tests`; its controller tests stay in `Humans.Integration.Tests`.
 
 ### Configuration

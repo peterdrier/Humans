@@ -36,7 +36,7 @@ The shapes imply the layered split that exists:
   live controller-side; VAT/summary *computation* belongs to the service.
 - One `BudgetService`: the tree CRUD pass-through to atomic repository ops, the coordinator
   scope derivation, the pure summary/VAT computations, and the GDPR contributor.
-- One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketServiceRead` into
+- One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketService` into
   weekly actuals and hands them to `IBudgetService`; no data of its own. Anything it does
   that never reads Tickets is a pass-through the admin controller could make itself.
 - One singleton `BudgetRepository` (`IDbContextFactory`): each mutation is one atomic

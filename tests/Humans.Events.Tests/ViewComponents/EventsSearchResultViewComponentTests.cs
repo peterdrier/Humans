@@ -16,7 +16,7 @@ namespace Humans.Events.Tests.ViewComponents;
 /// </summary>
 public class EventsSearchResultViewComponentTests
 {
-    private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
+    private readonly IEventService _events = Substitute.For<IEventService>();
 
     [HumansFact]
     public async Task Renders_the_matching_approved_event()

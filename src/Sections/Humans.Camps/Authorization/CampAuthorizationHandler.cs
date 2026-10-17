@@ -14,7 +14,7 @@ namespace Humans.Camps.Authorization;
 ///   for the resource camp.
 /// - Everyone else: deny.
 /// </summary>
-internal sealed class CampAuthorizationHandler(ICampServiceRead campService) : AuthorizationHandler<CampOperationRequirement>
+internal sealed class CampAuthorizationHandler(ICampService campService) : AuthorizationHandler<CampOperationRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
     {

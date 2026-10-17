@@ -126,7 +126,7 @@ The shapes imply one register with one cache and one write funnel:
   read methods exist only on the decorator and the inner throws `NotSupportedException`.
 - `UserInfoSaveChangesInterceptor` is registered on every section's context because Identity
   writes can happen anywhere.
-- `IUserEmailService` lazily resolves `ITicketServiceRead` through `IServiceProvider` to break a
+- `IUserEmailService` lazily resolves `ITicketService` through `IServiceProvider` to break a
   DI cycle.
 - `ExternalLoginService` keeps the `Humans.Application.Services.Users` namespace because an
   analyzer names it by full name.

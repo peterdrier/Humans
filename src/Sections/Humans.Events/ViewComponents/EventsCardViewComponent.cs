@@ -21,7 +21,7 @@ namespace Humans.Events.ViewComponents;
 // Public, not internal: Razor's build-time tag-helper discovery only sees public view
 // components, so an internal one renders <vc:events-card> as inert markup.
 public sealed class EventsCardViewComponent(
-    IEventServiceRead events,
+    IEventService events,
     IConfiguration configuration,
     ILogger<EventsCardViewComponent> logger) : ViewComponent
 {

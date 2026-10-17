@@ -12,7 +12,7 @@ namespace Humans.Shifts.ViewComponents;
 /// blank form, matching <c>ShiftsController.Settings</c>'s old GET.
 /// </summary>
 internal sealed class ShiftsSettingsTabViewComponent(
-    IBurnSettingsService burnSettings, IShiftManagementService shiftMgmt) : ViewComponent
+    IBurnSettingsService burnSettings, IShiftManagement shiftMgmt) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

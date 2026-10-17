@@ -40,11 +40,11 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ShiftRepository>();
         services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
+        services.AddScoped<IShiftManagement>(sp => sp.GetRequiredService<ShiftManagementService>());
 
-        // The three cross-section halves of IShiftManagementService, registered onto the
+        // The three cross-section halves of IShiftManagement, registered onto the
         // same Scoped instance (memory/architecture/section-read-write-split.md).
-        services.AddScoped<IShiftManagementServiceRead>(sp => sp.GetRequiredService<ShiftManagementService>());
+        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftSeeding>(sp => sp.GetRequiredService<ShiftManagementService>());
 
@@ -67,8 +67,8 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<VolunteerTrackingService>();
+        services.AddScoped<IVolunteerTrackingManagement>(sp => sp.GetRequiredService<VolunteerTrackingService>());
         services.AddScoped<IVolunteerTrackingService>(sp => sp.GetRequiredService<VolunteerTrackingService>());
-        services.AddScoped<IVolunteerTrackingServiceRead>(sp => sp.GetRequiredService<VolunteerTrackingService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<VolunteerTrackingService>());
         services.AddScoped<VolunteerTrackingExportService>();
         services.AddScoped<IVolunteerTrackingExportService>(sp =>

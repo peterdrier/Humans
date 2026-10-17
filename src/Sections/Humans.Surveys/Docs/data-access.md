@@ -42,7 +42,7 @@ Repository: `ISurveyRepository`.
 
 Cross-section calls via `ITeamServiceRead` (audience resolution — team
 members for `SurveyAudienceType.Team`), `IUserServiceRead` (active-member
-enumeration, display-name stitching in results / export), `ITicketServiceRead`
+enumeration, display-name stitching in results / export), `ITicketService`
 (audience resolution — current-event ticket holders for
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
 shift participants for `SurveyAudienceType.ShiftParticipants`),

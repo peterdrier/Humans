@@ -41,7 +41,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// decorator, because all three are Singletons that warmed at host start — before
 /// the test body — and a bare context write is invisible to every read afterwards
 /// (Consent's rule). Events has no blanket invalidator, so its event is created
-/// through <c>IEventService</c>'s own submit + moderate path, which owns the
+/// through <c>IEventManagement</c>'s own submit + moderate path, which owns the
 /// surgical cache reload.
 /// </para>
 /// </remarks>
@@ -329,7 +329,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         // CachingCampService warmed at host start and only its own write verbs
         // refresh it; the sequence is DevPersonaSeeder's.
         using var scope = Factory.Services.CreateScope();
-        var camps = scope.ServiceProvider.GetRequiredService<ICampServiceRead>();
+        var camps = scope.ServiceProvider.GetRequiredService<ICampService>();
         var seeding = scope.ServiceProvider.GetRequiredService<ICampSeeding>();
         var roleSeeding = scope.ServiceProvider.GetRequiredService<ICampRoleSeeding>();
 
@@ -382,7 +382,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         // Events decorator has no blanket invalidator, and its approved-event
         // projection is reloaded by the submit + moderate path itself.
         using var scope = Factory.Services.CreateScope();
-        var events = scope.ServiceProvider.GetRequiredService<IEventService>();
+        var events = scope.ServiceProvider.GetRequiredService<IEventManagement>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var category = new EventCategory

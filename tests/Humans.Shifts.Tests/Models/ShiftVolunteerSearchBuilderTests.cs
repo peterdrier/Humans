@@ -35,7 +35,7 @@ public class ShiftVolunteerSearchBuilderTests
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
-    private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
     private readonly Guid _candidateId = Guid.NewGuid();
 
     public ShiftVolunteerSearchBuilderTests()

@@ -17,7 +17,7 @@ namespace Humans.Tickets.Tests.ViewComponents;
 /// </summary>
 public class MyTicketStubsViewComponentTests
 {
-    private readonly ITicketServiceRead _tickets = Substitute.For<ITicketServiceRead>();
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
 
     private MyTicketStubsViewComponent BuildSut() => new(_tickets, _earlyEntry)
