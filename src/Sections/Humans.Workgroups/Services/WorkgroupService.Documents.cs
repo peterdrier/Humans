@@ -24,10 +24,9 @@ internal sealed partial class WorkgroupService
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (string.IsNullOrWhiteSpace(save.Title))
             return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
 
@@ -254,12 +253,11 @@ internal sealed partial class WorkgroupService
     {
         var comment = await repository.GetCommentAsync(commentId, ct);
         if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
         // Responding is the answering half of the resolution's "show what you heard"; it
         // stays open after the window closes, but not after the group ends.
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
 
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
@@ -325,10 +323,9 @@ internal sealed partial class WorkgroupService
 
         var comment = await repository.GetCommentAsync(commentId, ct);
         if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireAsync(comment.Document.WorkgroupId, ct);
+        var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         comment.HiddenAt = clock.GetCurrentInstant();
         comment.HiddenByUserId = actorUserId;

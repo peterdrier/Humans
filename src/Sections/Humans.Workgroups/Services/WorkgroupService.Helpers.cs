@@ -104,6 +104,15 @@ internal sealed partial class WorkgroupService
             : new(workgroup);
     }
 
+    /// <summary>The group, refused unless it exists and accepts member work.</summary>
+    private async Task<WorkgroupMutationResult<Workgroup>> RequireActiveAsync(Guid workgroupId, CancellationToken ct)
+    {
+        var result = await RequireAsync(workgroupId, ct);
+        if (result.Refusal is null && RequireAcceptsMemberWork(result.Value!) is { } stateRefusal)
+            return new(Refusal: stateRefusal);
+        return result;
+    }
+
     /// <summary>Soft-deleted meetings cannot be edited or deleted again.</summary>
     private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
     {

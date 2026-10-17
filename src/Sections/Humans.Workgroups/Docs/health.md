@@ -68,10 +68,9 @@ A register with a rhythm on top. Written fresh, it is:
 - **Two inbound contributors** — the calendar feed and the Drive access source — that other
   sections call without naming Workgroups.
 
-The layout matches with two exceptions. The member controller turns a refusal into a flash
-message the same way in several actions instead of once. And most member-facing service methods
-open with the same three lines — load the group, unwrap it, check it is Active — which is one
-guard written out a dozen times.
+The layout matches with one exception: the document methods load through their own loader and
+then check the group is Active by hand at each site, because the Board's disposition shares that
+loader and must not be gated. The group-loading methods take the check from the loader.
 
 ## 4. Invariants
 
