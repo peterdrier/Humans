@@ -185,6 +185,26 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task Erase_LongGroupName_UsesTheSharedBoardNoticeLimits()
+    {
+        var group = await SeedWorkgroupAsync(name: new string('x', 200));
+        Notifications.When(service => service.SendToRoleAsync(Arg.Any<NotificationSource>(),
+                Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()))
+            .Do(call =>
+            {
+                var title = call.ArgAt<string>(3);
+                if (title.Length > 200) throw new InvalidOperationException("Notification title exceeds storage limit");
+            });
+
+        await NewService().EraseForUserAsync(group.Members.Single().UserId, Ct);
+
+        var notice = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((string)notice[3]!).Length.Should().BeLessThanOrEqualTo(200);
+        ((string)notice[5]!).Should().Contain(group.Name);
+    }
+
+    [HumansFact]
     public async Task Erase_WithASecondCoordinatorStillStanding_DoesNotNotifyTheBoard()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);

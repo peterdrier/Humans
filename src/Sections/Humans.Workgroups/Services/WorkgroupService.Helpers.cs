@@ -345,12 +345,26 @@ internal sealed partial class WorkgroupService
 
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(WorkgroupsResource));
 
-    private async Task NotifyAsync(
+    // Notifications follow committed writes. Return actual deliveries for the rhythm audit.
+    private async Task<int> NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
         WorkgroupInfo w, string? body, CancellationToken ct)
     {
-        if (recipientUserIds.Count == 0) return;
-        var people = await users.GetUserInfosAsync(recipientUserIds, ct);
+        if (recipientUserIds.Count == 0) return 0;
+        IReadOnlyDictionary<Guid, UserInfo> people;
+        try
+        {
+            people = await users.GetUserInfosAsync(recipientUserIds, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve workgroup {Source} notification recipients for {WorkgroupId}", source, w.Id);
+            return 0;
+        }
         // In-app notices are keyed by user id: deliver to the live id the read resolved to.
         var recipients = recipientUserIds.Select(id =>
         {
@@ -358,23 +372,50 @@ internal sealed partial class WorkgroupService
             var language = person?.PreferredLanguage;
             return (Id: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
         }).DistinctBy(person => person.Id);
+        var delivered = 0;
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
-            var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
-            var copy = PrepareNoticeCopy($"{NoticeResources.GetString(titleKey, culture)}: {w.Name}", body);
-            await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
-                copy.Title, group.Select(person => person.Id).ToList(), copy.Body,
-                actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+            try
+            {
+                var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+                var copy = PrepareNoticeCopy($"{NoticeResources.GetString(titleKey, culture)}: {w.Name}", body);
+                var ids = group.Select(person => person.Id).ToList();
+                await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
+                    copy.Title, ids, copy.Body,
+                    actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+                delivered += ids.Count;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send workgroup {Source} notification in {Language} for {WorkgroupId}",
+                    source, group.Key, w.Id);
+            }
         }
+        return delivered;
     }
 
-    private Task NotifyBoardAsync(
+    private async Task NotifyBoardAsync(
         NotificationSource source, string title, WorkgroupInfo w, string body, CancellationToken ct)
     {
-        var copy = PrepareNoticeCopy(title, body);
-        return notifications.SendToRoleAsync(source, NotificationClass.Actionable,
-            NotificationPriority.Normal, copy.Title, RoleNames.Board, copy.Body,
-            actionUrl: "/Workgroups/Admin", cancellationToken: ct);
+        try
+        {
+            var copy = PrepareNoticeCopy(title, body);
+            await notifications.SendToRoleAsync(source, NotificationClass.Actionable,
+                NotificationPriority.Normal, copy.Title, RoleNames.Board, copy.Body,
+                actionUrl: "/Workgroups/Admin", cancellationToken: ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send workgroup {Source} notification to the Board for {WorkgroupId}", source, w.Id);
+        }
     }
 
     // Preview limits belong at both notification boundaries; full details stay in the register/log.

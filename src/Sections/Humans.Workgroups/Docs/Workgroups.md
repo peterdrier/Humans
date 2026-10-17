@@ -373,6 +373,11 @@ Settings and Register an existing group on first setup or after clearing the que
 Member and Board notice previews fit notification storage: 200 Unicode characters for titles,
 2,000 for bodies. Oversized titles move into the body before the detail excerpt; ellipses mark
 shortened copy. Full names and notes remain in the register and system log.
+Notification recipient lookup and delivery failures are logged without failing committed
+changes or skipping their email, Drive sync or Finance update. Recipient-language groups
+remain independent. The rhythm nudge audit records only the number successfully notified;
+no delivery means no success audit. GDPR orphan notices use the same Board copy limits.
+Caller cancellation still propagates.
 
 - Apply: the applicant becomes the first coordinator (plus an optional second); writes
   `Applied`; notifies and emails the Board.
