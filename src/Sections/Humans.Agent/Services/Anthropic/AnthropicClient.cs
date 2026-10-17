@@ -27,6 +27,12 @@ internal sealed class AnthropicClient : IAnthropicClient
         _logger = logger;
     }
 
+    internal AnthropicClient(SdkAnthropicClient sdk, ILogger<AnthropicClient> logger)
+    {
+        _sdk = sdk;
+        _logger = logger;
+    }
+
     public async IAsyncEnumerable<AgentTurnToken> StreamAsync(
         AnthropicRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -62,6 +68,7 @@ internal sealed class AnthropicClient : IAnthropicClient
         long cacheCreationTokens = 0;
         string? stopReason = null;
         bool streamErrored = false;
+        bool streamCompleted = false;
 
         // Tool args stream as input_json_delta; accumulate per-block and emit on content_block_stop.
         var pendingToolBlocks = new Dictionary<long, (string Id, string Name, System.Text.StringBuilder Json)>();
@@ -160,6 +167,7 @@ internal sealed class AnthropicClient : IAnthropicClient
 
                 if (evt.TryPickStop(out _))
                 {
+                    streamCompleted = true;
                     yield return new AgentTurnToken(
                         null,
                         null,
@@ -178,8 +186,10 @@ internal sealed class AnthropicClient : IAnthropicClient
             await enumerator.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (streamErrored)
+        if (!streamCompleted)
         {
+            if (!streamErrored)
+                _logger.LogError("Anthropic stream ended before message_stop; preserving known usage in an error finalizer.");
             yield return new AgentTurnToken(
                 null,
                 null,
