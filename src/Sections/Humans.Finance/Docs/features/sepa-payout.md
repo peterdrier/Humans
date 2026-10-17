@@ -220,6 +220,8 @@ Holded; the row is stamped when the line then reads `reconciled`. A line Holded 
 `reconciled` (a human in the GUI) is stamped as is. A line that reads `partial` is not re-issued —
 its payments are linked and what remains (a journal entry) is a human's — and a row with no payment
 id (booked before the ids were kept, or paid by an entry alone) only has its line's status read.
+A file a Process run got part-way through is not re-issued either: linking the booked part would
+turn the line `partial`, and the Process retry that finishes the file refuses a touched line.
 Rows booked while the token could not write to the bank feed are what the re-issue exists for.
 Every reconcile-pending row's line lies inside the window read for it: the read's lower
 bound drops to the oldest pending row's first payable day with no feed floor, so a pending row

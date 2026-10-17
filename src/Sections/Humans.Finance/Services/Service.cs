@@ -1572,13 +1572,16 @@ internal sealed class Service(
         // re-issue clears it. Rows of one Processed file share a line and are re-issued together, as
         // they were booked. A line Holded already reads reconciled (a later sweep's booking, or a
         // human in the GUI) is stamped as is; one that is `partial` is not re-issued: its payments
-        // are linked and what is left (a journal remainder, a hand reconcile) is a human's.
+        // are linked and what is left (a journal remainder, a hand reconcile) is a human's. A file
+        // a Process run got part-way through is not re-issued either: linking the booked part would
+        // turn the line `partial`, and the retry that finishes the file refuses a touched line.
         foreach (var group in pending.GroupBy(r => r.HoldedBankMovementId!, StringComparer.Ordinal))
         {
             var line = byId[group.Key].FirstOrDefault();
             if (line is null) continue;
             Instant? at = IsReconciled(line) ? clock.GetCurrentInstant() : null;
-            if (at is null && IsUntouched(line))
+            var fileStillOpen = rows.Any(r => !r.IsBooked && group.Any(g => g.FileId == r.FileId));
+            if (at is null && IsUntouched(line) && !fileStillOpen)
             {
                 var refs = group.SelectMany(r => PaymentRefs(r.HoldedPaymentRefs)).ToList();
                 if (refs.Count > 0)

@@ -664,6 +664,25 @@ public class SepaBankBookingTests
         await _repo.Received(1).MarkSepaTransferReconciledAsync(second, FixedNow, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Sweep_ReconcilePendingRowOfAHalfProcessedFile_IsNotReissued()
+    {
+        // Process booked one transfer of the file and stopped before the other. Linking that one
+        // payment would leave the line `partial`, and the Process retry refuses a touched line —
+        // so the sweep leaves the line alone until the file is finished.
+        var fileId = Guid.NewGuid();
+        SeedRows(
+            Row(TransferId, _userId, fileId: fileId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1"),
+            Row(Guid.NewGuid(), Guid.NewGuid(), account: Account + 1, fileId: fileId));
+        SeedMovements(Movement(amount: -60m));
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(
+            default!, default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+    }
+
     [HumansTheory]
     [InlineData("pending", null)]
     [InlineData("partial", "pay-1")]
