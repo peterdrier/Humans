@@ -299,6 +299,7 @@ internal sealed class CachingUserService(
             // A pasted id from an audit trail may be a merged-away one: jump to its survivor.
             if (TryGet(idGuid, out var byIdRow)
                 && Resolve(byIdRow) is { Profile: not null } byId
+                && !byId.IsTombstone
                 && byId.Profile.RejectedAt is null)
             {
                 return [

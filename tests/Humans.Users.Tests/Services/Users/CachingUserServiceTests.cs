@@ -1705,6 +1705,39 @@ public class CachingUserServiceTests
         results.Select(r => r.UserId).Should().Equal(survivorId);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("erased")]
+    [Xunit.InlineData("legacy")]
+    [Xunit.InlineData("merged-to-erased")]
+    [Xunit.InlineData("dangling")]
+    public async Task SearchUsersAsync_ByExactId_DoesNotReturnTerminalAccounts(string kind)
+    {
+        var erasedId = Guid.NewGuid();
+        var queryId = erasedId;
+        var sut = CreateSut();
+        var erased = ChainRow(erasedId, gdprErased: true) with
+        {
+            Profile = SampleUserInfo(erasedId).Profile,
+        };
+        if (string.Equals(kind, "legacy", StringComparison.Ordinal))
+            erased = erased with { MergedAt = null, State = UserState.Bare, IsGdprAnonymized = false };
+        await PrimeAsync(sut, erased);
+        if (kind is "merged-to-erased" or "dangling")
+        {
+            queryId = Guid.NewGuid();
+            await PrimeAsync(sut, BuildSearchableUserInfo(queryId, burnerName: "Archived") with
+            {
+                MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                MergedToUserId = string.Equals(kind, "dangling", StringComparison.Ordinal) ? Guid.NewGuid() : erasedId,
+            });
+        }
+
+        var results = await sut.SearchUsersAsync(queryId.ToString(), PersonSearchFields.PublicAll,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task SearchUsersAsync_ByExactId_ResolvesAnArchivedIdToItsSurvivor()
     {
