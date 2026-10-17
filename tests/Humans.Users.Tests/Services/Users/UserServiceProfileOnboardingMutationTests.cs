@@ -158,6 +158,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             UserService.Languages,
             UserService.CommunicationPreferences
         ]);
+        System.Text.Json.JsonSerializer.Serialize(slices.Single(s =>
+            string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal)).Data)
+            .Should().Be("[]");
         var userEmailsSlice = slices.Single(s =>
             string.Equals(s.SectionName, UserService.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
@@ -176,6 +179,50 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             System.Text.Json.JsonSerializer.Serialize(participationSlice.Data));
         participationJson.RootElement.EnumerateArray().Single().GetProperty("CheckedInAt")
             .GetString().Should().Be(arrival.ToIso8601());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_ExportsRetainedProfilesAcrossMergeChain(bool requestArchivedId)
+    {
+        var oldestId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var unrelatedId = Guid.NewGuid();
+        foreach (var id in new[] { oldestId, archivedId, survivorId, unrelatedId })
+        {
+            await SeedUserWithProfileAsync(id);
+            var profile = await Db.Profiles.SingleAsync(p => p.UserId == id, TestContext.Current.CancellationToken);
+            profile.MedicalConditions = $"Health {id}";
+            profile.DietaryPreference = $"Diet {id}";
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        foreach (var (source, target) in new[] { (oldestId, archivedId), (archivedId, survivorId) })
+        {
+            await _service.ReassignAsync(source, target, Guid.NewGuid(), Clock.GetCurrentInstant(),
+                TestContext.Current.CancellationToken);
+            await _service.AnonymizeForMergeAsync(source, target, Clock.GetCurrentInstant(),
+                TestContext.Current.CancellationToken);
+        }
+
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? oldestId : survivorId,
+            TestContext.Current.CancellationToken);
+
+        var mergedSlice = slices.Single(s => string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal));
+        using var mergedJson = System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(mergedSlice.Data));
+        var profiles = mergedJson.RootElement.EnumerateArray()
+            .ToDictionary(p => p.GetProperty("UserId").GetGuid(), p => p.GetProperty("Profile"));
+        profiles.Keys.Should().BeEquivalentTo([oldestId, archivedId]);
+        foreach (var id in new[] { oldestId, archivedId })
+        {
+            profiles[id].GetProperty("MedicalConditions").GetString().Should().Be($"Health {id}");
+            profiles[id].GetProperty("DietaryPreference").GetString().Should().Be($"Diet {id}");
+        }
+        using var currentJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(s => string.Equals(s.SectionName, UserService.Profile, StringComparison.Ordinal)).Data));
+        currentJson.RootElement.GetProperty("MedicalConditions").GetString().Should().Be($"Health {survivorId}");
     }
 
     [HumansFact]
