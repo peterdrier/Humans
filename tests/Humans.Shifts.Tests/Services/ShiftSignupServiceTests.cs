@@ -358,16 +358,22 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
     }
 
-    [HumansFact]
-    public async Task SignUp_PublicPolicy_CreatesConfirmed()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUp_PublicPolicy_CreatesConfirmed(bool mergedAlias)
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpAsync(userId, shift.Id);
+        var result = await _service.SignUpAsync(inputId, shift.Id);
 
         result.Success.Should().BeTrue();
+        Saved(result).UserId.Should().Be(userId);
         Saved(result).Status.Should().Be(SignupStatus.Confirmed);
         Saved(result).ReviewedByUserId.Should().Be(userId);
     }
@@ -1109,8 +1115,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // SignUpRange
     // ============================================================
 
-    [HumansFact]
-    public async Task SignUpRange_CreatesOneSignupPerDay()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUpRange_CreatesOneSignupPerDay(bool mergedAlias)
     {
         // Arrange: rota with 5 all-day shifts (days -5 to -1), user picks days -3 to -1
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -1119,10 +1127,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         for (var day = -5; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
+        var result = await _service.SignUpRangeAsync(inputId, rota.Id, -3, -1);
 
         // Assert: 3 signups created, all share same SignupBlockId
         result.Success.Should().BeTrue();

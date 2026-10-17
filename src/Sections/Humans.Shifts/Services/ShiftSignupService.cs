@@ -64,6 +64,7 @@ internal sealed class ShiftSignupService(
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = user.Id;
 
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
@@ -564,6 +565,7 @@ internal sealed class ShiftSignupService(
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = user.Id;
 
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
