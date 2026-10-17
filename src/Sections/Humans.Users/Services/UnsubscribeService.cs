@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.DataProtection;
 namespace Humans.Users.Services;
 
 internal sealed class UnsubscribeService(
-    IUserServiceRead userService,
+    IUserService userService,
     ICommunicationPreferenceService preferenceService,
     IDataProtectionProvider dataProtection,
     ILogger<UnsubscribeService> logger) : IUnsubscribeService

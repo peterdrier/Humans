@@ -57,7 +57,7 @@ public class AttendeeContactImportServiceApplyTests
             .UpsertAttendeesAsync(Arg.Is<IReadOnlyList<TicketAttendee>>(
                 l => l.Count == 1 && l[0].Id == attendeeId), Arg.Any<CancellationToken>());
 
-        await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
             targetUserId, 2026, ParticipationStatus.Ticketed,
             null, Arg.Any<CancellationToken>());
 
@@ -107,7 +107,7 @@ public class AttendeeContactImportServiceApplyTests
         await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
             "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
 
-        await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
             newUserId, 2026, ParticipationStatus.Ticketed,
             null, Arg.Any<CancellationToken>());
     }
@@ -307,7 +307,7 @@ public class AttendeeContactImportServiceApplyTests
         extra.MatchedUserId.Should().Be(targetUserId);
 
         // Participation flips once for the single user, not twice.
-        await harness.Users.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
             targetUserId, 2026, ParticipationStatus.Ticketed,
             null, Arg.Any<CancellationToken>());
     }
@@ -434,6 +434,7 @@ internal sealed class ApplyHarness
     public IUserEmailService UserEmails { get; } = Substitute.For<IUserEmailService>();
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
+    public IUserWrite UsersWrite { get; } = Substitute.For<IUserWrite>();
     public ISettingsService Shifts { get; } = Substitute.For<ISettingsService>();
     public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
@@ -458,6 +459,6 @@ internal sealed class ApplyHarness
     }
 
     public AttendeeContactImportService Service => new(
-        TicketRepo, UserEmails, Provisioning, Users, Shifts, TicketCacheInvalidator, Audit, Clock,
+        TicketRepo, UserEmails, Provisioning, Users, UsersWrite, Shifts, TicketCacheInvalidator, Audit, Clock,
         NullLogger<AttendeeContactImportService>.Instance);
 }

@@ -28,10 +28,10 @@ namespace Humans.Budget.Controllers;
 [Route("Finance")]
 internal sealed class BudgetAdminController(
     IBudgetManagement budgetService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     TicketingBudgetService ticketingBudgetService,
     IClock clock,
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedFinanceServiceRead holdedFinance,
     ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
 {

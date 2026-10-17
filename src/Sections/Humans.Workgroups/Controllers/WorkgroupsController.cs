@@ -22,8 +22,8 @@ namespace Humans.Workgroups.Controllers;
 [Route("Workgroups")]
 internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
-    IUserServiceRead users,
-    ITeamServiceRead teams,
+    IUserService users,
+    ITeamService teams,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
     IAuthorizationService authorization,

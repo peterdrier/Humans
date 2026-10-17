@@ -5,7 +5,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Guide.Services;
 
 internal sealed class GuideRoleResolver(
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ICampLeadDirectory campLeadDirectory) : IGuideRoleResolver
 {
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)

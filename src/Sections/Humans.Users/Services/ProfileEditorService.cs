@@ -5,7 +5,7 @@ using Humans.Base.Threading;
 namespace Humans.Users.Services;
 
 internal sealed class ProfileEditorService(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {
     // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.

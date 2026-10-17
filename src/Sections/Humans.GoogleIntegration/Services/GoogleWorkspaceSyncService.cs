@@ -21,8 +21,9 @@ internal sealed class GoogleWorkspaceSyncService(
     IGoogleDirectoryClient directory,
     IGoogleResourceRepository resourceRepository,
     IGoogleSyncOutboxRepository googleSyncOutboxRepository,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IUserService userService,
+    IUserWrite userWrite,
     IGoogleGroupSync googleGroupSync,
     IGoogleDriveSync googleDriveSync,
     IEnumerable<IGoogleDriveAccessSource> driveAccessSources,
@@ -143,7 +144,7 @@ internal sealed class GoogleWorkspaceSyncService(
             return;
         }
 
-        await userService.TrySetGoogleEmailStatusFromSyncAsync(
+        await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
             userId, GoogleEmailStatus.Rejected, ct, googleEmailId);
 
         logger.LogWarning(

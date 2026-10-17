@@ -28,6 +28,7 @@ namespace Humans.Teams.Services;
 internal sealed class SystemTeamSyncJob(
     ITeamManagementService teamService,
     IUserService userService,
+    IUserWrite userWrite,
     ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
     IGoogleSyncService googleSyncService,
@@ -46,8 +47,8 @@ internal sealed class SystemTeamSyncJob(
     private IApplicationServiceRead ApplicationDecisionService =>
         serviceProvider.GetRequiredService<IApplicationServiceRead>();
 
-    private IRoleAssignmentServiceRead RoleAssignmentService =>
-        serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+    private IRoleAssignmentService RoleAssignmentService =>
+        serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     private ITeamResourceServiceRead TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
@@ -329,7 +330,7 @@ internal sealed class SystemTeamSyncJob(
         var otherTierByUser = await ApplicationDecisionService
             .GetOtherActiveTierAssignmentsAsync(tier, today, cancellationToken);
 
-        var downgrades = await userService.DowngradeMembershipTierForExpiredAsync(
+        var downgrades = await userWrite.DowngradeMembershipTierForExpiredAsync(
             tier, applicationUserIds, otherTierByUser, todayInstant, cancellationToken);
 
         if (downgrades.Count > 0)

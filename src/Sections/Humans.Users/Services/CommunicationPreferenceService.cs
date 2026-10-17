@@ -12,7 +12,7 @@ namespace Humans.Users.Services;
 /// </summary>
 internal sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
-    IUserServiceRead userService,
+    IUserService userService,
     IUnsubscribeTokenProvider tokenProvider,
     IClock clock,
     IAuditLogService auditLog,

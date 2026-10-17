@@ -85,7 +85,7 @@ public class GateServiceTests
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IUserWrite _users = Substitute.For<IUserWrite>();
     private readonly GateService _svc;
 
     public GateServiceTests()

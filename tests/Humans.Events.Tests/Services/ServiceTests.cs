@@ -37,7 +37,7 @@ public sealed class EventServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -205,7 +205,7 @@ public sealed class EventServiceTests
         guide.SaveGuideSettingsAsync(null, edition, default, default, default, 0)
             .ReturnsForAnyArgs(dependencyFailure ? Task.FromException<bool>(failure) : Task.FromResult(false));
         var controller = new EventsAdminController(guide, NullLogger<EventsAdminController>.Instance,
-            Substitute.For<IUserServiceRead>());
+            Substitute.For<IUserService>());
         var model = new GuideSettingsViewModel { EventSettingsId = edition };
 
         if (dependencyFailure)

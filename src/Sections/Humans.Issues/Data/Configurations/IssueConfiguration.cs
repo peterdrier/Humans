@@ -31,7 +31,7 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
 
         // ReporterUserId / AssigneeUserId / ResolvedByUserId are bare cross-section
         // Guid columns — no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
-        // Resolve display data via IUserServiceRead; repositories must not .Include()
+        // Resolve display data via IUserService; repositories must not .Include()
         // across sections. Account deletion anonymises the User row in place
         // (IAccountDeletionService), so these ids stay resolvable.
 

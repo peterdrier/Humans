@@ -4,18 +4,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/AccountMerges")]
 internal sealed class UsersAdminAccountMergesController(
-    IUserService userService,
+    IUserManagement userService,
     IAccountMergeService mergeService,
     IDuplicateAccountService duplicateService,
     ILogger<UsersAdminAccountMergesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserManagement _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

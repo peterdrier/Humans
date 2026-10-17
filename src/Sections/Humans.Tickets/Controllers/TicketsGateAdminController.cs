@@ -15,7 +15,7 @@ namespace Humans.Tickets.Controllers;
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
 [Route("Tickets/Admin/Gate")]
 internal sealed class TicketsGateAdminController(
-    IUserServiceRead userService,
+    IUserService userService,
     GateTerminalAccountSeeder gateAccount) : HumansControllerBase(userService)
 {
     [HttpGet("")]

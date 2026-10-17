@@ -22,7 +22,7 @@ namespace Humans.Users.Jobs;
 /// deletion-related cache invalidation. The job retains the loop +
 /// audit-log + confirmation-email orchestration so a per-user failure
 /// doesn't stop the run. Candidate enumeration stays on
-/// <see cref="IUserService"/> because <c>DeletionScheduledFor</c> is a User
+/// <see cref="IUserManagement"/> because <c>DeletionScheduledFor</c> is a User
 /// column (owning-section rule).
 ///
 /// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
@@ -30,7 +30,7 @@ namespace Humans.Users.Jobs;
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class ProcessAccountDeletionsJob(
-    IUserServiceRead userService,
+    IUserManagement userService,
     IAccountDeletionService accountDeletionService,
     IEmailService emailService,
     UsersEmails emailMessages,

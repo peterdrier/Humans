@@ -20,7 +20,7 @@ namespace Humans.Users.Tests.Contributions;
 /// </summary>
 public class ThingsToDoDietaryGateTests
 {
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();

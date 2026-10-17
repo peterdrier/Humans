@@ -15,7 +15,7 @@ namespace Humans.Search.Controllers;
 [Route("Search")]
 internal sealed class SearchController(
     ISearchService searchService,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<SearchController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

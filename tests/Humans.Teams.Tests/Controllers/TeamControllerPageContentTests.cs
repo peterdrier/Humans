@@ -48,7 +48,7 @@ public class TeamControllerPageContentTests
             Slot("Alpha", "Lead", 3, SlotPriority.None)
         });
         var controller = new TeamController(
-            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
             Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
@@ -112,7 +112,7 @@ public class TeamControllerPageContentTests
         teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var actor = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         if (!actorMissing)
             users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
                 .Returns(UserInfo.Create(new User { Id = actor, DisplayName = "Admin" }, [], [], [], null, []));
@@ -217,7 +217,7 @@ public class TeamControllerPageContentTests
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         using var request = new CancellationTokenSource();
         var userId = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var teams = Substitute.For<ITeamManagementService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
         void CheckCancellation(string read, CancellationToken ct)
@@ -313,7 +313,7 @@ public class TeamControllerPageContentTests
         {
             using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
             var userId = Guid.NewGuid();
-            var users = Substitute.For<IUserServiceRead>();
+            var users = Substitute.For<IUserService>();
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
             var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
@@ -393,7 +393,7 @@ public class TeamControllerPageContentTests
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
         using var services = registrations.BuildServiceProvider();
         var userId = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
         var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", RequiresApproval = true };
@@ -491,7 +491,7 @@ public class TeamControllerPageContentTests
         var pages = Substitute.For<ITeamPageService>();
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
-            Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserServiceRead>(),
+            Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
             Substitute.For<ITeamResourceServiceRead>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),

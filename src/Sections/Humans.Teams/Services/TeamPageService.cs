@@ -12,7 +12,7 @@ internal sealed class TeamPageService(
     ITeamResourceServiceRead teamResourceService,
     IShiftManagementService shiftManagementService,
     ISettingsService settingsService,
-    IUserServiceRead userService) : ITeamPageService
+    IUserService userService) : ITeamPageService
 {
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,

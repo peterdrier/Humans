@@ -33,7 +33,7 @@ public class GateVendorBackfillControllerTests
         new("TIX-B", "Ben", Instant.FromUtc(2026, 7, 2, 9, 5), "vt-B");
 
     private readonly IGateService _gate = Substitute.For<IGateService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
     private readonly GateVendorMirrorLedger _ledger = new(new MemoryCache(new MemoryCacheOptions()));
 

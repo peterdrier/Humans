@@ -11,7 +11,7 @@ namespace Humans.Users.Tests.Services;
 
 public sealed class DuplicateAccountServiceTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();

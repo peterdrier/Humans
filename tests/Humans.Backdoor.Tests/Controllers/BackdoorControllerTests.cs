@@ -22,7 +22,7 @@ public class BackdoorControllerTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly BackdoorController _sut;
 
     private readonly Guid _activeAdmin = Guid.NewGuid();

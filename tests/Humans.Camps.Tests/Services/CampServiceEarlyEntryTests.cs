@@ -20,7 +20,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
-    private readonly IUserServiceRead _userServiceRead;
+    private readonly IUserService _userServiceRead;
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -33,7 +33,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
-        _userServiceRead = Substitute.For<IUserServiceRead>();
+        _userServiceRead = Substitute.For<IUserService>();
 
         var settingsService = Substitute.For<ISettingsService>();
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())

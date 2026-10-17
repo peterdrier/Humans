@@ -136,7 +136,7 @@ internal sealed record TeamJoinRequestSnapshot(
 /// Persistence-free read model for a team early-entry grant, returned by the
 /// Teams-internal management read so the service boundary does not expose the
 /// <see cref="TeamEarlyEntryGrant"/> entity. The human display name is resolved
-/// by the caller via <c>IUserServiceRead</c> from <see cref="UserId"/>.
+/// by the caller via <c>IUserService</c> from <see cref="UserId"/>.
 /// </summary>
 internal sealed record TeamEarlyEntryGrantInfo(
     Guid Id,
@@ -152,8 +152,9 @@ internal sealed record TeamEarlyEntryGrantInfo(
 /// The Teams section's own service surface: the directory, detail, join-request, roster,
 /// role-definition, role-assignment, team-page and early-entry members, plus the reads that
 /// return the section's entities. Internal because nothing outside the assembly calls any of
-/// it — the cross-section half is <see cref="ITeamService"/>, which this inherits so the
-/// section's controllers and its caching decorator keep one injection
+/// it — the cross-section half is <see cref="ITeamService"/> and <see cref="ITeamWrite"/>, which this
+/// inherits via <see cref="ITeamManagement"/> so the section's controllers and its caching
+/// decorator keep one injection
 /// (design §15 step 5b, Notifications' shape).
 /// </summary>
 /// <remarks>
@@ -161,7 +162,7 @@ internal sealed record TeamEarlyEntryGrantInfo(
 /// needs the seam, and MA0053 seals the concrete <c>TeamService</c> so NSubstitute cannot
 /// stand in for it.
 /// </remarks>
-internal interface ITeamManagementService : ITeamService
+internal interface ITeamManagementService : ITeamManagement
 {
     /// <summary>
     /// Creates a new team.
@@ -177,7 +178,7 @@ internal interface ITeamManagementService : ITeamService
 
     /// <summary>
     /// Gets a team entity by its slug (Teams-internal use; external sections
-    /// should use <see cref="ITeamServiceRead.GetTeamBySlugAsync"/> for the
+    /// should use <see cref="ITeamService.GetTeamBySlugAsync"/> for the
     /// <see cref="TeamInfo"/> projection).
     /// </summary>
     Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default);
@@ -498,7 +499,7 @@ internal interface ITeamManagementService : ITeamService
     // ==========================================================================
     // Early-Entry Grants (Teams-internal; called by TeamAdminController for the
     // per-team management page, plus AccountDeletionService for erasure and
-    // IUserMerge for merge). Not exposed on ITeamServiceRead — cross-section reads
+    // IUserMerge for merge). Not exposed on ITeamService — cross-section reads
     // go through IEarlyEntryProvider.
     // ==========================================================================
 

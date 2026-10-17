@@ -250,7 +250,7 @@ public sealed class HoldedLedgerSyncTests
         });
         var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
         var controller = new Humans.Holded.Controllers.HoldedController(
-            Substitute.For<Humans.Users.Contracts.IUserServiceRead>(),
+            Substitute.For<Humans.Users.Contracts.IUserService>(),
             Substitute.For<IHoldedAdminService>(), Substitute.For<IHoldedService>(), finance, logger)
         {
             TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(

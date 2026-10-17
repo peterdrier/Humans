@@ -15,7 +15,7 @@ namespace Humans.Store.Controllers;
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     private const decimal SpanishStandardVatRatePercent = 21m;
 

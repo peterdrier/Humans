@@ -21,8 +21,8 @@ Repository: `IIssuesRepository`.
 | `NavBadge:Issues:{userId:N}` (`IIssuesBadgeCacheInvalidator`) | 2 min | yes | yes | yes |
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
 
-Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`IRoleAssignmentServiceRead`, `IEmailService`,
+Cross-section calls via `IUserService`, `IUserEmailService`,
+`IRoleAssignmentService`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
 `ISectionCatalog`, `IFileStorage` (screenshot bytes; the row keeps only the key; atomic uploads and failed-submission cleanup). Routes through `IssueSectionRouting`

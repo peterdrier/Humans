@@ -66,8 +66,9 @@ public sealed class ExpenseReportServiceTests
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IUserWrite _userServiceWrite;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
@@ -95,15 +96,16 @@ public sealed class ExpenseReportServiceTests
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
+        _userServiceWrite = Substitute.For<IUserWrite>();
 
         _sut = new ExpenseReportService(
             _expenseRepo,
             _fileStorage,
             _budgetService,
             _teamService,
-            _userService,
+            _userService, _userServiceWrite,
             _userEmailService,
             _emailService,
             TestExpensesEmails.Create(),
@@ -804,7 +806,7 @@ public sealed class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -925,7 +927,7 @@ public sealed class ExpenseReportServiceTests
             .Returns(false);
 
         var sut = new ExpenseReportService(
-            failingRepo, _fileStorage, _budgetService, _teamService, _userService,
+            failingRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1048,7 +1050,7 @@ public sealed class ExpenseReportServiceTests
         var factory = new TestDbContextFactory<ExpensesDbContext>(options);
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _userServiceWrite, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedClient, _holdedFinance, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -1362,7 +1364,7 @@ public sealed class ExpenseReportServiceTests
             .AddInterceptors(interceptor).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _userServiceWrite, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedClient, _holdedFinance, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
@@ -1723,7 +1725,7 @@ public sealed class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1752,7 +1754,7 @@ public sealed class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1767,7 +1769,7 @@ public sealed class ExpenseReportServiceTests
         // NOT the service's own ExpenseValidationException — must still log at Error with the
         // exception attached, not be misclassified as a validation rejection.
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("IUserService: profile cache not initialized"));
+            .Throws(new InvalidOperationException("IUserWrite: profile cache not initialized"));
 
         var result = await sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
 
@@ -1777,7 +1779,7 @@ public sealed class ExpenseReportServiceTests
             because: "a dependency fault (even one thrown as InvalidOperationException) is not a validation rejection");
         var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
         error.Exception.Should().BeOfType<InvalidOperationException>()
-            .Which.Message.Should().Be("IUserService: profile cache not initialized");
+            .Which.Message.Should().Be("IUserWrite: profile cache not initialized");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
     }
 
@@ -1791,7 +1793,7 @@ public sealed class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1815,7 +1817,7 @@ public sealed class ExpenseReportServiceTests
         }
         else
         {
-            _userService.SetProfileIbanAsync(submitter, "ES9121000418450200051332", cancellation.Token)
+            _userServiceWrite.SetProfileIbanAsync(submitter, "ES9121000418450200051332", cancellation.Token)
                 .Throws(_ =>
                 {
                     if (callerCancelled) cancellation.Cancel();
@@ -1922,7 +1924,7 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -1958,7 +1960,7 @@ public sealed class ExpenseReportServiceTests
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_InvalidFormat");
-        await _userService.DidNotReceive().SetProfileIbanAsync(
+        await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(
             Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -2213,7 +2215,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2266,7 +2268,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2293,7 +2295,7 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2317,7 +2319,7 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Approved, payeeIban: "ES1000750000010000000000");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2346,7 +2348,7 @@ public sealed class ExpenseReportServiceTests
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_RequiredForPendingReport");
         // Neither half of the change lands — profile and snapshot stay in agreement.
-        await _userService.DidNotReceive().SetProfileIbanAsync(
+        await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(
             Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());
         (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!
             .PayeeIban.Should().Be("ES1000750000010000000000");

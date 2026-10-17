@@ -21,7 +21,7 @@ internal sealed class TicketController(
     ITicketSyncService ticketSyncService,
     IUserParticipationBackfillService participationBackfillService,
     TicketDashboardPageBuilder dashboardPageBuilder,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<TicketController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

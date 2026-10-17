@@ -14,12 +14,13 @@ internal sealed class GoogleDriveAccessSyncService(
     IEnumerable<IGoogleDriveAccessSource> sources,
     IGoogleDrivePermissionsClient drivePermissions,
     IUserService userService,
+    IUserWrite userWrite,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IGoogleSyncLogService googleSyncLog,
     IGoogleRemovalNotificationService removalNotifications,
     IGoogleResourceRepository resourceRepository,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ITeamResourceService teamResourceService,
     IClock clock,
     ILogger<GoogleDriveAccessSyncService> logger) : IGoogleDriveSync
@@ -485,7 +486,7 @@ internal sealed class GoogleDriveAccessSyncService(
                         errorMessage: error, userId: member.UserId, ct: ct);
                     errors.Add(error);
                     if (result.Error is { IsDriveTargetRejection: true } && member.UserId is { } rejectedUserId)
-                        await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                        await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
                             rejectedUserId, GoogleEmailStatus.Rejected, ct, plan.GoogleEmailIdsByEmail[member.Email]);
                     break;
             }

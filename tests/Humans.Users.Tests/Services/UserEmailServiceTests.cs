@@ -18,7 +18,7 @@ public class UserEmailServiceTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly ITicketService _ticketServiceRead = Substitute.For<ITicketService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
@@ -377,7 +377,7 @@ public class UserEmailServiceTests
             volunteerHistory: [],
             communicationPreferences: []);
 
-    // Stub IUserServiceInternal to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
+    // Stub IUserManagement to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
     private void StubAllUserInfosFromRows(IReadOnlyList<UserEmail> rows)
     {
         var infos = rows.GroupBy(r => r.UserId)

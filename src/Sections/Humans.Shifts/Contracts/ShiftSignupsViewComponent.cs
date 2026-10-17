@@ -19,7 +19,7 @@ namespace Humans.Shifts.Contracts;
 public sealed class ShiftSignupsViewComponent(
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {

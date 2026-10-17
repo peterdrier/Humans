@@ -23,7 +23,7 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class WorkloadServiceTests : ShiftsTestHarness
 {
     private readonly WorkloadService _service;
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {

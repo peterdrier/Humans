@@ -7,7 +7,7 @@
     added the three entities and the write interface Base still names.
 
     A Contracts/ *folder* inside Humans.Users was never an option here. UserInfo is the
-    canonical "everything-about-a-person" read model and IUserServiceRead is injected by
+    canonical "everything-about-a-person" read model and IUserService is injected by
     HumansControllerBase, so between them they are named by more than twenty section
     projects, by Humans.UI, and — decisively — by Humans.Application and
     Humans.Infrastructure, which the section itself references. A folder would cycle at
@@ -58,7 +58,7 @@
 
     ONE project reference, AND IT MUST NEVER GROW. Base (Humans.Interfaces, becoming
     Humans.Base at 4b-iv) references THIS project, because HumansControllerBase injects
-    IUserServiceRead and Humans.UI names the User entity. So anything reachable from here is
+    IUserService and Humans.UI names the User entity. So anything reachable from here is
     reachable from Base, and a reference added here to any project that has references of its
     own is a cycle the moment 4b-iii moves HumansControllerBase/ApiControllerBase into Base.
     That cycle is not live today — Humans.Interfaces still has zero project references of its

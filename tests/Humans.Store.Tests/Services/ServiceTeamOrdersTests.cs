@@ -30,7 +30,7 @@ public class ServiceTeamOrdersTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));

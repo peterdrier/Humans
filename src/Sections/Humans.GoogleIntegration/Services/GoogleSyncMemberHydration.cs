@@ -9,7 +9,7 @@ internal static class GoogleSyncMemberHydration
 {
     public static async Task<Dictionary<Guid, GoogleSyncMember>> LoadAsync(
         IReadOnlyCollection<Guid> userIds,
-        IUserServiceRead userService,
+        IUserService userService,
         CancellationToken ct)
     {
         if (userIds.Count == 0)

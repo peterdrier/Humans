@@ -29,7 +29,7 @@ public class FinanceControllerTests
 
     private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)

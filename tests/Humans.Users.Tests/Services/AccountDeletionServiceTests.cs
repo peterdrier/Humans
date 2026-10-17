@@ -26,10 +26,10 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class AccountDeletionServiceTests
 {
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly ITeamWrite _teamService = Substitute.For<ITeamWrite>();
+    private readonly IRoleAssignmentWrite _roleAssignmentService = Substitute.For<IRoleAssignmentWrite>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();

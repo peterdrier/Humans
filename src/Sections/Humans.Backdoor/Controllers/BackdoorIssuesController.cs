@@ -23,7 +23,7 @@ namespace Humans.Backdoor.Controllers;
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
 internal sealed class BackdoorIssuesController(
     IIssueTriage issues,
-    IUserServiceRead users,
+    IUserService users,
     ILogger<BackdoorIssuesController> logger)
     : ApiControllerBase(users)
 {

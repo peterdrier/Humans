@@ -5,9 +5,9 @@ using Humans.Users.Contracts;
 
 namespace Humans.Base.Controllers;
 
-public abstract class HumansControllerBase(IUserServiceRead userService) : Controller
+public abstract class HumansControllerBase(IUserService userService) : Controller
 {
-    protected IUserServiceRead UserService => userService;
+    protected IUserService UserService => userService;
 
     protected Guid? GetCurrentUserId()
     {

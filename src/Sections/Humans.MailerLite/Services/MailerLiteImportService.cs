@@ -11,7 +11,7 @@ namespace Humans.MailerLite.Services;
 internal sealed class MailerLiteImportService(
     IMailerLiteService ml,
     IUserEmailService userEmails,
-    IUserServiceRead users,
+    IUserService users,
     IAccountProvisioningService provisioning,
     ICommunicationPreferenceService prefs,
     IAuditLogService audit,

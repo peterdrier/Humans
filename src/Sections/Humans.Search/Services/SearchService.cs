@@ -13,8 +13,8 @@ namespace Humans.Search.Services;
 /// Display ordering lives in <c>SearchController</c>.
 /// </summary>
 internal sealed class SearchService(
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
+    IUserService userService,
+    ITeamService teamService,
     ICampService campService,
     IShiftManagementService shiftService,
     IEventService eventService,

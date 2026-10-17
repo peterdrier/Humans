@@ -12,12 +12,12 @@ namespace Humans.Governance.Services;
 
 internal sealed class MembershipCalculator(
     IMembershipQuery membershipQuery,
-    IUserServiceRead userService,
+    IUserService userService,
     ILegalDocumentSyncService legalDocumentSyncService,
     IServiceProvider serviceProvider,
     IClock clock) : IMembershipCalculatorRead, IOrchestrator
 {
-    // IMembershipQuery (not ITeamService/IRoleAssignmentServiceRead) breaks DI cycle through ISystemTeamSync.
+    // IMembershipQuery (not ITeamService/IRoleAssignmentService) breaks DI cycle through ISystemTeamSync.
 
     // Lazy IConsentService resolve — ConsentService depends on IMembershipCalculatorRead.
 

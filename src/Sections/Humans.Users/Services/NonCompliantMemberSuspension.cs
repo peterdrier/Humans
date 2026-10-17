@@ -22,7 +22,7 @@ namespace Humans.Users.Services;
 /// <remarks>
 /// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
 /// All reads/writes fan out through section services
-/// (<see cref="IUserService"/>, <see cref="ITeamServiceRead"/>,
+/// (<see cref="IUserManagement"/>, <see cref="ITeamService"/>,
 /// <see cref="IGoogleSyncService"/>) so this never touches another section's
 /// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
@@ -30,8 +30,8 @@ namespace Humans.Users.Services;
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
-    IUserServiceInternal userService,
-    ITeamServiceRead teamService,
+    IUserManagement userService,
+    ITeamService teamService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculatorRead membershipCalculator,
     IEmailService emailService,
@@ -73,7 +73,7 @@ internal sealed class NonCompliantMemberSuspension(
             .GetUserInfosAsync(usersToSuspend, cancellationToken);
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
-        // Apply the suspension write through IUserService — returns the
+        // Apply the suspension write through IUserManagement — returns the
         // subset of user ids actually mutated (skips already-suspended /
         // profileless users).
         var suspendedIds = await userService

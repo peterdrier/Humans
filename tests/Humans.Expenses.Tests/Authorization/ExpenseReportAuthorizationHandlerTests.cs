@@ -20,7 +20,7 @@ namespace Humans.Expenses.Tests.Authorization;
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
     private static readonly Guid SubmitterId = Guid.NewGuid();

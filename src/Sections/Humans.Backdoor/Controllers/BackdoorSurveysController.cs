@@ -23,7 +23,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/surveys")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUserServiceRead users)
+internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUserService users)
     : ApiControllerBase(users)
 {
     private const int DefaultLimit = 100;

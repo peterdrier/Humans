@@ -37,7 +37,7 @@ public class NameRequiredFilterTests
     [HumansFact]
     public async Task Unauthenticated_PassesThrough()
     {
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var sut = new NameRequiredFilter(users);
         var ctx = BuildContext("Home", "Index", authenticated: false);
 
@@ -80,7 +80,7 @@ public class NameRequiredFilterTests
     public async Task NoProfile_RedirectsToNameForm()
     {
         // OAuth/import stub: User exists, Profile is null → not yet named.
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(profile: null)));
         var sut = new NameRequiredFilter(users);
@@ -153,9 +153,9 @@ public class NameRequiredFilterTests
         return nextCalled;
     }
 
-    private static IUserServiceRead StubUserInfo(string burnerName)
+    private static IUserService StubUserInfo(string burnerName)
     {
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Jane",

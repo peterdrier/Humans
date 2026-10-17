@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Users.Models;
 using Humans.Users.ViewComponents;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -93,7 +94,7 @@ public class MergedAccountsViewComponentTests
     {
         var tombstone = Guid.NewGuid();
         var survivor = Guid.NewGuid();
-        var users = Substitute.For<IUserService>();
+        var users = Substitute.For<IUserManagement>();
         Stub(users, Row(tombstone, mergedTo: survivor, mergedAt: Now), Row(survivor));
 
         await Sut(users).InvokeAsync(tombstone);
@@ -122,7 +123,7 @@ public class MergedAccountsViewComponentTests
         return mergedUserIds is null ? info : info with { MergedUserIds = mergedUserIds };
     }
 
-    private static void Stub(IUserService users, params UserInfo[] rows)
+    private static void Stub(IUserManagement users, params UserInfo[] rows)
     {
         users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(rows));
@@ -133,7 +134,7 @@ public class MergedAccountsViewComponentTests
         }
     }
 
-    private static MergedAccountsViewComponent Sut(IUserService users) =>
+    private static MergedAccountsViewComponent Sut(IUserManagement users) =>
         new(users)
         {
             ViewComponentContext = new ViewComponentContext
@@ -144,7 +145,7 @@ public class MergedAccountsViewComponentTests
 
     private static async Task<IViewComponentResult> InvokeWith(Guid userId, params UserInfo[] rows)
     {
-        var users = Substitute.For<IUserService>();
+        var users = Substitute.For<IUserManagement>();
         Stub(users, rows);
         return await Sut(users).InvokeAsync(userId);
     }

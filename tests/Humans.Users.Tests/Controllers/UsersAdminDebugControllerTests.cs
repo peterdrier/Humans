@@ -64,7 +64,7 @@ public class UsersAdminDebugControllerTests
     public async Task Index_large_page_does_not_wrap_to_the_first_page()
     {
         var users = new[] { MakeUserInfo(Guid.NewGuid(), "Human", true, false) };
-        var service = Substitute.For<IUserService>();
+        var service = Substitute.For<IUserManagement>();
         service.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
         var controller = new UsersAdminDebugController(service);
         var first = (UsersDebugViewModel)((ViewResult)await controller.Index(page: 1, pageSize: 50)).Model!;
@@ -83,7 +83,7 @@ public class UsersAdminDebugControllerTests
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i:D3}", hasProfile: i % 2 == 0, hasTicket: i % 3 == 0))
             .ToArray();
 
-        var userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
@@ -108,7 +108,7 @@ public class UsersAdminDebugControllerTests
             MakeUserInfo(Guid.NewGuid(), "Bob",   hasProfile: true, hasTicket: false),
             MakeUserInfo(Guid.NewGuid(), "Carol", hasProfile: true, hasTicket: false),
         };
-        var userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
@@ -126,7 +126,7 @@ public class UsersAdminDebugControllerTests
         var users = Enumerable.Range(0, 5)
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i}", true, false))
             .ToArray();
-        var userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 

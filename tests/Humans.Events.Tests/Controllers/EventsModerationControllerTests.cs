@@ -21,7 +21,7 @@ namespace Humans.Events.Tests.Controllers;
 public sealed class EventsModerationControllerTests
 {
     private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     [HumansFact]
     public async Task Approve_pending_event_applies_the_approval_with_submitter_edit_url()

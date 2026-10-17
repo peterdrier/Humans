@@ -45,7 +45,7 @@ public class ServiceIssueInvoiceTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
@@ -458,7 +458,7 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct());
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<StoreResource>>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(_actor, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = _actor }, [], [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();

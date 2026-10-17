@@ -33,9 +33,10 @@ internal sealed class DevelopmentDashboardSeeder(
     IEventSettingsSeeding eventSettingsSeeding,
     IShiftSignupSeeding shiftSignupSeeding,
     ITeamService teamService,
+    ITeamWrite teamWrite,
     ITeamSeeding teamSeeding,
     IUserEmailService userEmailService,
-    IUserService userService,
+    IUserWrite userService,
     IProfileEditorService profileEditor,
     UserManager<User> userManager,
     IClock clock,
@@ -481,7 +482,7 @@ internal sealed class DevelopmentDashboardSeeder(
             if (team is null)
                 continue;
 
-            if (await teamService.PermanentlyDeleteTeamAsync(team.Id, cancellationToken))
+            if (await teamWrite.PermanentlyDeleteTeamAsync(team.Id, cancellationToken))
                 teamsDeleted++;
         }
 

@@ -33,7 +33,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     private readonly AnthropicOptions _anthropicOptions;
     private readonly IClock _clock;
     private readonly ILogger<AgentService> _logger;
-    private readonly IUserServiceRead _users;
+    private readonly IUserService _users;
 
     public AgentService(
         IAgentSettingsService settings,
@@ -49,7 +49,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         IOptions<AnthropicOptions> anthropicOptions,
         IClock clock,
         ILogger<AgentService> logger,
-        IUserServiceRead users)
+        IUserService users)
     {
         _settings = settings; _rateLimit = rateLimit; _abuse = abuse;
         _repo = repo; _retentionRuns = retentionRuns; _snapshots = snapshots; _preload = preload;

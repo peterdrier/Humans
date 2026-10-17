@@ -47,7 +47,7 @@ public class TeamAdminControllerMembersTests
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
         var sync = Substitute.For<IGoogleSyncService>();
@@ -115,7 +115,7 @@ public class TeamAdminControllerMembersTests
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -169,7 +169,7 @@ public class TeamAdminControllerMembersTests
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, instant, []);
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -236,7 +236,7 @@ public class TeamAdminControllerMembersTests
         await aborted.CancelAsync();
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -289,7 +289,7 @@ public class TeamAdminControllerMembersTests
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var instant = Instant.FromUtc(2026, 1, 1, 0, 0);
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, instant,

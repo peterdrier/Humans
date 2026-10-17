@@ -65,8 +65,8 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
-`IUserEmailService`, `ITeamServiceRead` (read-split surface),
+`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserService`,
+`IUserEmailService`, `ITeamService` (read-split surface),
 `ISettingsService`, plus `IClock`. Implements
 `IUserDataContributor` (the GDPR contributor is the inner, one per section):
 `EraseForUserAsync` erases via `ITicketRepository.EraseUserPiiAsync` +
@@ -79,11 +79,11 @@ projection carries the now-stale names/emails.
 `ComputeUserTicketCountAsync` matches a user's tickets by fetching the
 valid attendee emails (`ITicketRepository.GetValidAttendeeEmailsAsync`) and
 looking each up **in-memory** in the same verified-email → user index the
-sync builds (`VerifiedEmailLookup` over `IUserServiceRead.GetAllUserInfosAsync`;
+sync builds (`VerifiedEmailLookup` over `IUserService.GetAllUserInfosAsync`;
 an email verified by two users maps to nobody) — no extra repository round-trip.
 
 Email-to-user matching for ticket sync routes through
-`IUserServiceRead.GetAllUserInfosAsync` (see
+`IUserService.GetAllUserInfosAsync` (see
 `TicketSyncService.BuildEmailLookupAsync`); no cross-section `UserEmails`
 reads remain.
 
@@ -147,10 +147,10 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserServiceRead`, `IUserService`, `ICampaignService`,
+`IUserService`, `IUserWrite`, `ICampaignService`,
 `ISettingsService`, `ITicketCacheInvalidator`. Implements
 `ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
-verified-email → user-id map by fanning out over `IUserServiceRead.GetAllUserInfosAsync`.
+verified-email → user-id map by fanning out over `IUserService.GetAllUserInfosAsync`.
 
 ### TicketTransferService (Scoped)
 
@@ -162,7 +162,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
+Cross-section calls via `IUserService`, `IUserEmailService`,
 `IEmailService`, the section's own `TicketsEmails` builder,
 `IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
@@ -211,8 +211,8 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 ### OnsiteRosterService (Scoped)
 
 No repository. "Who's onsite" roster orchestrator. Pure read
-orchestration over `IUserServiceRead`, `ICampService`, `ITeamServiceRead`,
-`IRoleAssignmentServiceRead` (the controller resolves the active year via
+orchestration over `IUserService`, `ICampService`, `ITeamService`,
+`IRoleAssignmentService` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 
@@ -228,7 +228,7 @@ a person) the first time a ticket admin sets its password from
 `/Tickets/Admin/Gate`. `[CrossSectionWrite]`-marked: creates the Identity
 user via `UserManager<User>`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
-`IUserService.ApplyProfileOnboardingMutationAsync`, invalidates user-access
+`IUserWrite.ApplyProfileOnboardingMutationAsync`, invalidates user-access
 cache and `IUserInfoInvalidator`, and logs via `IAuditLogService`. No direct
 DB or cache access of its own — every mutation goes through another
 section's public service surface.

@@ -13,6 +13,7 @@ internal sealed class AttendeeContactImportService(
     IUserEmailService userEmails,
     IAccountProvisioningService provisioning,
     IUserService users,
+    IUserWrite userWrite,
     ISettingsService settingsService,
     ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
@@ -110,7 +111,7 @@ internal sealed class AttendeeContactImportService(
         {
             foreach (var userId in importState.NewlyMatchedUserIds)
             {
-                await users.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     userId, active.Year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }

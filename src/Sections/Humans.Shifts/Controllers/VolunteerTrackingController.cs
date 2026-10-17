@@ -27,11 +27,11 @@ internal sealed class VolunteerTrackingController(
     IBurnSettingsService burnSettings,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuditLogService auditLogService,
     IStringLocalizer<ShiftsResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(

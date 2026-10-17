@@ -9,10 +9,9 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
-/// The read split is the subject:
-/// <see cref="ITeamService"/> inherits <see cref="ITeamServiceRead"/>, the caching decorator
-/// implements both, and the two resolve to the same singleton — so a reader and a writer can
-/// never end up looking at different caches. Plus the repository implements its own interface.
+/// The section's three faces — <see cref="ITeamManagement"/>, <see cref="ITeamService"/> and
+/// <see cref="ITeamWrite"/> — resolve to the same singleton, so a reader and a writer can never
+/// end up looking at different caches. Plus the repository implements its own interface.
 /// </summary>
 public class TeamsArchitectureTests
 {
@@ -28,45 +27,32 @@ public class TeamsArchitectureTests
     // Cross-section injection of ITeamRepository is structurally impossible: the
     // interface is internal to Humans.Teams, so no other assembly can name it.
 
-    // ── ITeamServiceRead split (memory/architecture/section-read-write-split.md) ──
+    // ── Public faces share one instance ──────────────────────────────────────
 
     [HumansFact]
-    public void ITeamService_InheritsITeamServiceRead()
-    {
-        typeof(ITeamServiceRead).IsAssignableFrom(typeof(ITeamService))
-            .Should().BeTrue(
-                because: "ITeamService is the full Teams surface; external sections inject the narrow ITeamServiceRead. " +
-                         "See memory/architecture/section-read-write-split.md.");
-    }
-
-    [HumansFact]
-    public void CachingTeamService_ImplementsITeamServiceRead()
-    {
-        typeof(ITeamServiceRead).IsAssignableFrom(typeof(CachingTeamService))
-            .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void ITeamService_And_ITeamServiceRead_ResolveToSameSingleton()
+    public void ITeamManagement_ITeamService_And_ITeamWrite_ResolveToSameSingleton()
     {
         // Mirrors the Teams-section DI shape: the same CachingTeamService
-        // singleton is exposed under both interface keys.
+        // singleton is exposed under every interface key.
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<ITeamRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
         services.AddSingleton(Substitute.For<ILogger<CachingTeamService>>());
 
         services.AddSingleton<CachingTeamService>();
+        services.AddSingleton<ITeamManagement>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
-        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamWrite>(sp => sp.GetRequiredService<CachingTeamService>());
 
         using var provider = services.BuildServiceProvider();
 
-        var fromFull = provider.GetRequiredService<ITeamService>();
-        var fromRead = provider.GetRequiredService<ITeamServiceRead>();
+        var fromManagement = provider.GetRequiredService<ITeamManagement>();
+        var fromRead = provider.GetRequiredService<ITeamService>();
+        var fromWrite = provider.GetRequiredService<ITeamWrite>();
         var concrete = provider.GetRequiredService<CachingTeamService>();
 
-        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromManagement, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        ReferenceEquals(fromWrite, concrete).Should().BeTrue();
     }
 }

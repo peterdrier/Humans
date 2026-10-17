@@ -22,7 +22,7 @@ public sealed class AdminAgentControllerTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         if (actorExists)
             users.GetUserInfoAsync(actorId, ct).Returns(UserInfo.Create(
                 new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []));
@@ -64,7 +64,7 @@ public sealed class AdminAgentControllerTests
         var context = new DefaultHttpContext();
         var controller = new AdminAgentController(
             Substitute.For<IAgentSettingsService>(), Substitute.For<IAgentService>(),
-            Substitute.For<IAgentAdminStatusService>(), preload, Substitute.For<IUserServiceRead>())
+            Substitute.For<IAgentAdminStatusService>(), preload, Substitute.For<IUserService>())
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())

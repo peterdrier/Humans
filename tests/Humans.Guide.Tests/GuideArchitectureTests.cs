@@ -27,7 +27,7 @@ public class GuideArchitectureTests
 
         // The absence half — NotContain(ITeamService) — was retired on Peter's call
         // (peterdrier/Humans#1655, N1); the split it guarded no longer exists.
-        paramTypes.Should().Contain(typeof(ITeamServiceRead));
+        paramTypes.Should().Contain(typeof(ITeamService));
     }
 
     [HumansFact]

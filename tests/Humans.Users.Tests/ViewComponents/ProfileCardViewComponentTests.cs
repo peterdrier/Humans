@@ -43,7 +43,7 @@ public sealed class ProfileCardViewComponentTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(UsersResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly);
-        builder.Services.AddSingleton(Substitute.For<IUserServiceRead>());
+        builder.Services.AddSingleton(Substitute.For<IUserService>());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
@@ -88,12 +88,12 @@ public sealed class ProfileCardViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(),
-            Substitute.For<ITeamServiceRead>(), Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IMembershipCalculatorRead>(), Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext

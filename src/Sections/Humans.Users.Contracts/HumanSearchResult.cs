@@ -1,7 +1,7 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Single canonical person-search result. Returned by IUserServiceRead's
+/// Single canonical person-search result. Returned by IUserService's
 /// search regardless of the <c>PersonSearchFields</c> bits passed; a wider
 /// flag-set just lets more rows match.
 /// </summary>

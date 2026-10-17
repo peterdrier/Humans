@@ -23,15 +23,15 @@ Deactivating a team closes its memberships in bulk and does none of the three (�
 
 | Question shape | Asked by | Answered by |
 |---|---|---|
-| "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
-| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, GoogleIntegration, `TeamAuthorizationHandler` | `ITeamServiceRead.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
-| "Which teams is this human in?" | Users, GoogleIntegration, the profile card | `ITeamServiceRead.GetUserTeamMembershipsAsync` |
+| "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamService.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
+| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, GoogleIntegration, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
+| "Which teams is this human in?" | Users, GoogleIntegration, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
 | "Show me the directory / a team page / my teams / the roster" | the section's own controllers | `ITeamManagementService.GetTeamDirectoryAsync` / `GetTeamDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync` / `GetAdminTeamListAsync`; `ITeamPageService` |
 | "Let me in / let me out" (join, request, withdraw, leave; approve, reject) | members and coordinators via the controllers | `JoinTeamAsync` / `LeaveTeamAsync` / `WithdrawJoinRequestAsync` / `ApproveJoinRequestAsync` / `RejectJoinRequestAsync` + the two pending-request reads |
 | "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Board/Admin via the controllers; GoogleIntegration for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamService.SetGoogleGroupPrefixAsync` |
 | "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
-| "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamService.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
+| "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamWrite.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
 | "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync` / `RemoveMemberFromAllTeamsCache`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure) |
 | "Something changed underneath you" | Users, Development | `IActiveTeamsCacheInvalidator` → `InvalidateActiveTeamsCache` |
 | "Seed a fixture" | Development, Budget dev seeders | `ITeamSeeding` |
@@ -101,7 +101,7 @@ The shapes imply:
 
 ## 5. Seams
 
-- **`IRoleAssignmentServiceRead` / `ITeamResourceServiceRead`** carry the reconciler's
+- **`IRoleAssignmentService` / `ITeamResourceServiceRead`** carry the reconciler's
   read-only cross-section calls; mutations stay on each owner's full interface.
 - **Cross-camp / sub-team shift management** (guide: "the system is being updated to
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by
@@ -111,8 +111,8 @@ The shapes imply:
 
 ## 6. Deliberately not done
 
-- **No `ITeamService` split into per-shape interfaces.** The read/write/management
-  three-level split is the settled shape (`section-read-write-split`); further carving
+- **No `ITeamService` split into per-shape interfaces.** The service/write/management
+  three-face split is the settled shape (`section-public-contract`); further carving
   buys nothing at one implementation.
 - **No DB constraint for one-management-role-per-team or one-pending-request** — service
   guards plus tests (`db-enforcement-minimal`).

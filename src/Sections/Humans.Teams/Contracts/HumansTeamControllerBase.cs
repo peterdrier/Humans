@@ -14,8 +14,8 @@ namespace Humans.Teams.Contracts;
 /// in Base's view layer, which no <c>.Contracts</c> leaf may reference.
 /// </summary>
 public abstract class HumansTeamControllerBase(
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
+    IUserService userService,
+    ITeamService teamService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)

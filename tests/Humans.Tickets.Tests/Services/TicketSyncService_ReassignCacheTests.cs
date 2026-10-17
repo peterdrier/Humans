@@ -55,8 +55,8 @@ public sealed class TicketSyncService_ReassignCacheTests
             NullLogger<TicketSyncService>.Instance,
             invalidator,
             Substitute.For<ITicketVendorCacheInvalidator>(),
-            Substitute.For<IUserServiceRead>(),
             Substitute.For<IUserService>(),
+            Substitute.For<IUserWrite>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<ISettingsService>());
 

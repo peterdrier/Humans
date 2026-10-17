@@ -40,7 +40,7 @@ namespace Humans.Store.Authorization;
 /// </summary>
 internal sealed class OrderAuthorizationHandler(
     ICampService campService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ISettingsService settingsService,
     IClock clock) : IAuthorizationHandler
 {

@@ -34,8 +34,8 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
-        services.AddSingleton<IUserServiceRead>(userService);
-        services.AddSingleton<IRoleAssignmentServiceRead>(_roleAssignmentService);
+        services.AddSingleton<IUserService>(userService);
+        services.AddSingleton<IRoleAssignmentService>(_roleAssignmentService);
         services.AddKeyedScoped<ITeamManagementService>(
             CachingTeamService.InnerServiceKey,
             (_, _) => _innerTeamService);

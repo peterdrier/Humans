@@ -32,7 +32,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 
 **Table:** `sync_service_settings`
 
-Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav (#992 cut the FK). Display names are resolved via `IUserServiceRead.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
+Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav (#992 cut the FK). Display names are resolved via `IUserService.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
 
 ### GoogleSyncOutboxEvent
 
@@ -189,7 +189,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService` / `ITeamResourceService` — Google resources are linked per team. Team membership drives Google Group and Drive access.
-- **Users:** `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` supply verified target emails and their status in one `UserInfo` snapshot. Vendor status writes use the captured email-row ID through `IUserService.TrySetGoogleEmailStatusFromSyncAsync`; they never re-resolve the target by email. `IUserEmailService.MatchByEmailsAsync` attributes extra permissions, and `GetByEmailOrAlternateAsync` checks already-linked identities during standalone account provisioning.
+- **Users:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` supply verified target emails and their status in one `UserInfo` snapshot. Vendor status writes use the captured email-row ID through `IUserWrite.TrySetGoogleEmailStatusFromSyncAsync`; they never re-resolve the target by email. `IUserEmailService.MatchByEmailsAsync` attributes extra permissions, and `GetByEmailOrAlternateAsync` checks already-linked identities during standalone account provisioning.
 - **Admin:** Sync settings management is Admin-only.
 - **Onboarding:** Volunteers membership is reconciled by `SystemTeamSyncJob` on name + consents only, which cascades to Google Group membership; the Consent Coordinator's clear/flag does not affect it.
 - **Email:** `IGoogleRemovalNotificationService` (Google Integration-owned) dispatches the Google removal messages via `IEmailService.SendAsync(...)`, built by the section's own `GoogleIntegrationEmails` builder (this section owns the copy and its `/Email/EmailPreview` samples, peterdrier/Humans#1651), after every confirmed Google API delete in `IGoogleGroupSync` / `IGoogleDriveSync` (issue peterdrier/Humans#639). Variant 1 (loss-of-access) vs Variant 2 (secondary-email cleanup) is chosen by inspecting the recipient's `UserEmail` rows; messages are `MessageCategory.System` (no unsubscribe footer) and localized to the recipient's supported `User.PreferredLanguage`, falling back to English for blank, invalid or unsupported preferences. `SyncRemovalReason.EmailRotation` is plumbed through for audit/telemetry but does not suppress the notification — Workspace identity rotation produces a Variant 2 email so the user can confirm which address was tidied up. Suppression is limited to the orphan-address case (no matching `UserEmail` row, e.g. deleted user, anonymized human, or OAuth-rename-in-place).

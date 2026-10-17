@@ -6,6 +6,7 @@ using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -22,7 +23,7 @@ public class ProfileAdminControllerTests
 {
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
-    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IUserManagement _users = Substitute.For<IUserManagement>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 

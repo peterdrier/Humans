@@ -59,7 +59,7 @@ None. The section is retired and closed; no specified-but-unbuilt work reserves 
 - No caching decorator — admin-only, low-traffic (same call as Governance/User); the one cache is
   the badge count, inline, allowlisted.
 - No cross-section FK constraints or nav properties — bare Guid columns, display data stitched
-  in-service via `IUserServiceRead`/`ITeamServiceRead` (#996).
+  in-service via `IUserService`/`ITeamService` (#996).
 - No purge/delete of historical rows — the archive is the point; GDPR erasure is the only remover.
 - No reporter-facing view and no un-retiring — new reporting is Issues' lane (#977).
 - No internal interface for the section's own controllers, nav pill or tile — they take the

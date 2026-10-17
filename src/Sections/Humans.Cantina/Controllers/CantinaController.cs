@@ -28,7 +28,7 @@ internal sealed class CantinaController : HumansControllerBase
     public CantinaController(
         ICantinaRosterService roster,
         ILogger<CantinaController> logger,
-        IUserServiceRead userService) : base(userService)
+        IUserService userService) : base(userService)
     {
         _roster = roster;
         _logger = logger;

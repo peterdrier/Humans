@@ -19,17 +19,17 @@ namespace Humans.Users.Tests.Services;
 
 public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IUserService _userService;
+    private readonly IUserManagement _userService;
     private readonly ContactFieldService _service;
 
     public ContactFieldServiceTests()
         : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
     {
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserManagement>();
 
         var repository = new UserRepository(DbFactory, Clock);
 
@@ -443,7 +443,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
     #region Helper Methods
 
-    // Stub IUserService.GetUserInfoAsync to return a UserInfo carrying the profile's ContactFields.
+    // Stub IUserManagement.GetUserInfoAsync to return a UserInfo carrying the profile's ContactFields.
     private void StubUserInfo(Guid userId, Profile profile)
     {
         var fields = Db.ContactFields

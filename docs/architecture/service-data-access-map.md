@@ -161,8 +161,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 2. **Read/write surface split (read-split interfaces).** Several sections
    now expose a budgeted cross-section read interface that external sections
-   inject instead of the full service: `IUserServiceRead`,
-   `ITeamServiceRead`, `IConsentService`,
+   inject instead of the full service: `IUserService` (writes other sections
+   need: `IUserWrite`), `ITeamService` (`ITeamWrite`), `IRoleAssignmentService`
+   (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncServiceRead`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
@@ -190,7 +191,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 4. **Tickets ↔ Profiles email lookup.**
    `TicketRepository` does not project `UserEmail` rows directly.
    `TicketSyncService.BuildEmailLookupAsync` fans out over
-   `IUserServiceRead.GetAllUserInfosAsync` and synthesises the
+   `IUserService.GetAllUserInfosAsync` and synthesises the
    verified-email → user-id map from the cached `UserInfo` slices.
    `UserEmails` is read only by the consolidated `IUserRepository`
    for `UserInfo` projection — internal to the unified Users+Profiles owner,
@@ -210,7 +211,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    section's own — resolves Google
    `people/{client_id}` actors through Directory first, then through a per-run
    Google provider-key -> `UserInfo` index from
-   `IUserServiceRead.GetAllUserInfosAsync`. It has no repository; the
+   `IUserService.GetAllUserInfosAsync`. It has no repository; the
    last-run marker
    (`SettingKeys.DriveActivityMonitorLastRunAt`) is read/written
    through `ISettingsService` — a §15-compliant cross-section service
@@ -256,8 +257,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 9. **Notification meters are computed, not queried.**
    `NotificationMeterProvider` reads no tables directly — every counter
-   fans out through an owning-service interface call (`IUserServiceRead`,
-   `ITeamServiceRead`, `IApplicationServiceRead`, `ITicketSync`,
+   fans out through an owning-service interface call (`IUserService`,
+   `ITeamService`, `IApplicationServiceRead`, `ITicketSync`,
    `IGoogleSyncServiceRead`, `ICampService`). Cache invalidation goes
    through `INotificationMeterCacheInvalidator`.
 
@@ -278,8 +279,8 @@ Every table is owned by exactly one repository; there are no HUM0025
     interface in their section's DI extension.
 
 12. **Surveys section uses cross-section read-split surfaces exclusively.**
-    `SurveyService` fans out over `ITeamServiceRead`,
-    `IUserServiceRead`, `ITicketService`, and `IShiftView` for
+    `SurveyService` fans out over `ITeamService`,
+    `IUserService`, `ITicketService`, and `IShiftView` for
     audience resolution and display-name stitching — never a foreign
     repository. `IGoogleTranslationService` (GoogleIntegration section)
     is the translation bridge for the admin pre-fill helper. No
@@ -291,7 +292,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 13. **ICalFeed is a pure fan-out orchestrator.** `ICalFeedService`
     owns no repository and touches no table directly. Token validation
     routes through Calendar's own `ICalendarFeedTokenService`
-    (`CalendarFeedTokens`); `IUserServiceRead.GetUserInfoAsync` is only the
+    (`CalendarFeedTokens`); `IUserService.GetUserInfoAsync` is only the
     missing/merged-user guard.
     Shift and Event items are contributed by `ShiftSignupService` and
     `EventService` respectively, each reading their own owned tables through
@@ -311,7 +312,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IShiftManagement` — all §15-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     `EventParticipations` row as `Attended` — goes through the
-    owning `IUserService.SetParticipationFromTicketSyncAsync`, so no
+    owning `IUserWrite.SetParticipationFromTicketSyncAsync`, so no
     design-rule violation. `IGateRepository` reads/writes only the three
     Gate-owned tables. The section deliberately has **no caching
     decorator**: admission verdicts must be live.

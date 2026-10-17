@@ -20,7 +20,7 @@ namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// The real-graph half of <c>DependencyCycleResolutionTests</c>: <c>UserService</c> injects
-/// <see cref="ITeamService"/> and <c>TeamService</c> resolves <c>ISystemTeamSync</c> and the
+/// <see cref="ITeamManagement"/> and <c>TeamService</c> resolves <c>ISystemTeamSync</c> and the
 /// Google sync surface lazily through <c>IServiceProvider</c> to break the cycle back. The
 /// assertion needs the concrete <c>TeamService</c> in the graph, which is internal to this
 /// assembly, so the test lives here.
@@ -57,7 +57,7 @@ public sealed class TeamsDependencyCycleTests
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
         // own constructor shape is pinned by that section's AuthArchitectureTests. The
         // subject here is the Teams chain.
-        services.AddScoped<IRoleAssignmentServiceRead>(_ => Substitute.For<IRoleAssignmentServiceRead>());
+        services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
         // Shifts is another section; its concrete service and repository are internal to
         // Humans.Shifts and its own graph is pinned by that section's own tests.
@@ -65,14 +65,14 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IShiftManagementService>(_ => Substitute.For<IShiftManagementService>());
 
         services.AddScoped<TeamService>();
-        services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
+        services.AddScoped<ITeamManagement>(sp => sp.GetRequiredService<TeamService>());
 
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
 
-        var resolve = () => scope.ServiceProvider.GetRequiredService<ITeamService>();
+        var resolve = () => scope.ServiceProvider.GetRequiredService<ITeamManagement>();
 
         resolve.Should().NotThrow();
         resolve().Should().BeOfType<TeamService>();

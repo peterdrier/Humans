@@ -14,7 +14,7 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
     ITeamResourceService teamResourceService,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     IServiceProvider serviceProvider,
     IClock clock,

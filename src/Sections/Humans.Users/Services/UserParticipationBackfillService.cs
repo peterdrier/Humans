@@ -8,7 +8,7 @@ using Humans.Users.Contracts;
 namespace Humans.Application.Services.Users;
 
 internal sealed class UserParticipationBackfillService(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     ISettingsService settingsService,
     IClock clock) : IUserParticipationBackfillService
 {

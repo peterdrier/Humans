@@ -11,7 +11,7 @@ namespace Humans.Users.Tests.Services;
 
 public sealed class UserParticipationBackfillServiceTests
 {
-    private readonly IUserServiceInternal _users = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _users = Substitute.For<IUserManagement>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private List<(Guid UserId, ParticipationStatus Status)>? _captured;

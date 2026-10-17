@@ -134,7 +134,7 @@ Application
 ├── TermExpiresAt: LocalDate? [set on approval: Dec 31 of odd year]
 ├── BoardMeetingDate: LocalDate? [date Board finalized decision]
 ├── DecisionNote: string? (4000) [Board's collective decision note]
-├── Navigation: StateHistory, BoardVotes (transient) — no `User`/`ReviewedByUser` navs; resolve via `IUserServiceRead.GetUserInfosAsync` keyed on `UserId`/`ReviewedByUserId`
+├── Navigation: StateHistory, BoardVotes (transient) — no `User`/`ReviewedByUser` navs; resolve via `IUserService.GetUserInfosAsync` keyed on `UserId`/`ReviewedByUserId`
 ```
 
 The `Language` field records the applicant's UI language at the time of submission, displayed to reviewers as the native language name to help them understand context.

@@ -27,8 +27,9 @@ internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,
     IBudgetService budgetService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IUserService userService,
+    IUserWrite userWrite,
     IUserEmailService userEmailService,
     IEmailService emailService,
     ExpensesEmails emails,
@@ -882,7 +883,7 @@ internal sealed class ExpenseReportService(
 
         try
         {
-            var saved = await userService.SetProfileIbanAsync(submitterUserId, normalized, ct);
+            var saved = await userWrite.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
                 return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
 

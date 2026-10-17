@@ -9,7 +9,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class HasShiftEventAudience(
     IShiftView shiftView,
-    IUserServiceRead users) : ShiftViewAudienceBase(shiftView, users)
+    IUserService users) : ShiftViewAudienceBase(shiftView, users)
 {
     public override string Key => "has-shift-event";
     public override string DisplayName => "Volunteers with an event shift";

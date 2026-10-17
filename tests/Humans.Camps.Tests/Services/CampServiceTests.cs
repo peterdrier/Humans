@@ -37,7 +37,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
-    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userServiceRead = Substitute.For<IUserService>();
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))

@@ -25,7 +25,7 @@ public sealed class EmailControllerPauseSettingsRedirectTests
     private EmailController BuildSut()
     {
         var controller = new EmailController(
-            Substitute.For<IUserServiceRead>(), _outbox, Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>(), _outbox, Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()));
         var http = new DefaultHttpContext
         {

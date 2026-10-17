@@ -16,7 +16,7 @@ namespace Humans.Teams.Tests.ViewComponents;
 /// </summary>
 public class TeamsSearchResultViewComponentTests
 {
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
 
     [HumansFact]
     public async Task Fetches_the_teams_own_display_fields_from_the_id()

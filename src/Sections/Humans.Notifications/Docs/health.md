@@ -104,14 +104,14 @@ Specified or known, not built; reserved, not ranked:
 ## Load-bearing weirdness
 
 - **`NotificationEmitter` is its own type.** `NotificationService` injects
-  `IRoleAssignmentServiceRead`, and `RoleAssignmentService` emits; it injects the narrow
+  `IRoleAssignmentService`, and `RoleAssignmentService` emits; it injects the narrow
   `INotificationEmitter`, whose implementation has no edge back, so the graph cannot close.
   `NotificationService.SendAsync` delegates to the emitter to keep one copy of that path.
 - **`NotificationRecipient.UserId` is init-only**, so the account-merge fold is
   remove-then-add rather than an update.
 - **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
   (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names are stitched from
-  `IUserServiceRead`.
+  `IUserService`.
 - **`ApplicationSubmitted` and `ConsentReviewNeeded` are retired sources**: nothing emits them,
   the purge deletes their unresolved rows, and the inbox's approvals filter still names them
   while any remain.

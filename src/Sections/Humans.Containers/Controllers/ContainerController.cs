@@ -17,7 +17,7 @@ internal sealed class ContainerController(
     IContainerService containerService,
     ICityPlanningService cityPlanningService,
     IAuthorizationService authorizationService,
-    IUserServiceRead userService,
+    IUserService userService,
     IStringLocalizer<ContainersResource> localizer,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)
 {

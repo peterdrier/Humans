@@ -22,7 +22,7 @@ internal sealed class StoreController(
     Service storeService,
     ICampService campService,
     IAuthorizationService authService,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<StoreController> logger,
     IStringLocalizer<StoreResource> localizer) : HumansControllerBase(userService)
 {

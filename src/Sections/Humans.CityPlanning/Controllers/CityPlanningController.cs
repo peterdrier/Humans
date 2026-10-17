@@ -20,7 +20,7 @@ internal sealed class CityPlanningController(
     ICampService campService,
     IContainerService containerService,
     IStringLocalizer<ContainersResource> containersLocalizer,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuthorizationService authorizationService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
 {

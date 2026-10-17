@@ -1,10 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserService.cs
   src/Sections/Humans.Users.Contracts/IUserEmailService.cs
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentServiceRead.cs
-  src/Sections/Humans.Teams.Contracts/ITeamServiceRead.cs
+  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
+  src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
   src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
@@ -425,10 +425,10 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserServiceRead` — names, `MembershipTier`, approved-profile check;
+- **Users**: `IUserService` — names, `MembershipTier`, approved-profile check;
   `IUserEmailService` — notification target addresses for lifecycle emails.
-- **Auth**: `IRoleAssignmentServiceRead` — active holders of the Board role, the recipients of Board emails.
-- **Teams**: `ITeamServiceRead` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
+- **Auth**: `IRoleAssignmentService` — active holders of the Board role, the recipients of Board emails.
+- **Teams**: `ITeamService` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
@@ -500,12 +500,12 @@ display-name reads.
   entry for the whole register, cleared on every write. Loads begun before a clear cannot
   repopulate it with the old register. Nothing time-derived is cached —
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
-- **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
-- **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
-  `IRoleAssignmentServiceRead`, `ISettingsService`, `IGoogleSyncService`,
+- **Display stitching** — `IUserService.GetUserInfosAsync` for burner names and tiers.
+- **Cross-section calls** — `IUserService`, `IUserEmailService`,
+  `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
-  `ITeamServiceRead` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
+  `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
   builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own
   `Workgroups_Email_*` keys in `WorkgroupsResource`, rendered in the recipient's culture

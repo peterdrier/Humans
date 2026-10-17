@@ -15,11 +15,11 @@ namespace Humans.Users.ViewComponents;
 // components, so an internal one renders <vc:profile-card> as inert markup. HUM0034
 // exempts view components for exactly this reason.
 public sealed class ProfileCardViewComponent(
-    IUserServiceRead userService,
+    IUserService userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
-    ITeamServiceRead teamService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
     IMembershipCalculatorRead membershipCalculator,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {

@@ -98,7 +98,7 @@ None.
   of the audit log it writes to.
 - **`DriveActivityMonitorJob` is `public`.** HUM0034 allows a section's public types under
   `Jobs/`; `Section.cs` and `SectionJobs.cs` name the type.
-- **The scan reads Users through `IUserServiceRead.GetAllUserInfosAsync`**, the whole user
+- **The scan reads Users through `IUserService.GetAllUserInfosAsync`**, the whole user
   set, lazily, once per run, and only when the Directory connector could not resolve a
   people-id.
 - **The test project takes the ASP.NET Core framework reference** so CI can construct

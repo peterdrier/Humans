@@ -7,13 +7,13 @@ using NodaTime;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IRoleAssignmentService"/>.
+/// Singleton caching decorator for <see cref="IRoleAssignmentManagement"/>.
 /// Caches the full set of <c>role_assignments</c> rows so cross-section reads
 /// such as <see cref="GetActiveCountsByRoleAsync"/> can be derived in memory
 /// at any clock instant. Invalidated wholesale via explicit
 /// <c>IRoleAssignmentCacheInvalidator.InvalidateAll()</c> calls inside
 /// <c>RoleAssignmentService</c>'s mutating methods, and via
-/// <c>IRoleAssignmentService.InvalidateRoleAssignmentCache()</c> from
+/// <c>IRoleAssignmentManagement.InvalidateRoleAssignmentCache()</c> from
 /// <c>AccountMergeService</c> after a merge fold. No EF interceptor —
 /// all writes go through <c>RoleAssignmentService</c>.
 /// </summary>
@@ -30,12 +30,12 @@ namespace Humans.Auth.Services;
 /// </remarks>
 internal sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
-      IRoleAssignmentService,
+      IRoleAssignmentManagement,
       IRoleAssignmentCacheInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
-    /// <see cref="IRoleAssignmentService"/> is registered. The Singleton
+    /// <see cref="IRoleAssignmentManagement"/> is registered. The Singleton
     /// decorator resolves the Scoped inner per-call via
     /// <see cref="IServiceScopeFactory"/>.
     /// </summary>
@@ -175,30 +175,30 @@ internal sealed class CachingRoleAssignmentService
     public void InvalidateClaimsCacheForUser(Guid userId)
     {
         using var scope = _scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentManagement>(InnerServiceKey);
         inner.InvalidateClaimsCacheForUser(userId);
     }
 
     public void InvalidateNavBadgeCache()
     {
         using var scope = _scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentManagement>(InnerServiceKey);
         inner.InvalidateNavBadgeCache();
     }
 
     // Implemented directly on the decorator (it IS the cache invalidator);
     // no need to flow through the inner service.
-    void IRoleAssignmentService.InvalidateRoleAssignmentCache() => InvalidateAll();
+    void IRoleAssignmentWrite.InvalidateRoleAssignmentCache() => InvalidateAll();
 
     // ==========================================================================
     // Inner-service resolution
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<IRoleAssignmentService, Task<TResult>> action)
+    private async Task<TResult> WithInner<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider
-            .GetRequiredKeyedService<IRoleAssignmentService>(InnerServiceKey);
+            .GetRequiredKeyedService<IRoleAssignmentManagement>(InnerServiceKey);
         return await action(inner);
     }
 }

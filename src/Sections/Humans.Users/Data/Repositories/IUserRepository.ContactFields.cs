@@ -17,7 +17,7 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// Returns every contact field row, read-only, with no ordering. Used by
-    /// person-search (<c>IUserServiceRead.SearchUsersAsync</c>) so the
+    /// person-search (<c>IUserService.SearchUsersAsync</c>) so the
     /// matcher can scan public + non-public ContactField values without
     /// per-profile round-trips. Trivial at our small scale; the row count
     /// across all profiles is far smaller than the user count.

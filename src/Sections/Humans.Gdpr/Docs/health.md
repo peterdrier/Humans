@@ -27,7 +27,7 @@ category, what it deletes when the person asks to be forgotten and what it keeps
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "Give me everything held about this person, as one document" | both download routes | `IGdprService.ExportForUserAsync` |
-| "Whose account is this document for, and which older ids fold into it?" | the export itself, once per download | one `IUserServiceRead.GetUserInfoAsync` read, carried on `GdprExport` |
+| "Whose account is this document for, and which older ids fold into it?" | the export itself, once per download | one `IUserService.GetUserInfoAsync` read, carried on `GdprExport` |
 | "Forget this person, across every part of the system" | Users' deletion lifecycle, once per account id | `IGdprService.EraseForUserAsync` |
 | "Here is my portion for this person" | the orchestrator, of every data-owning section | `IUserDataContributor.ContributeForUserAsync` |
 | "Forget my portion of this person" | the orchestrator, of every data-owning section | `IUserDataContributor.EraseForUserAsync` |
@@ -133,7 +133,7 @@ ledger, a fix that adds public surface either way.
 - **One contract carries both halves.** `IUserDataContributor` declares the export portion,
   the erasure and the retention declaration together, so a section cannot export a
   category without accounting for its deletion in the same interface.
-- **The one outbound dependency is `IUserServiceRead`.** Everything else the orchestrator
+- **The one outbound dependency is `IUserService`.** Everything else the orchestrator
   touches is its own leaf; the account read exists only to stamp the envelope with the
   surviving id and the archived ids, and contributors still resolve for themselves.
 - **Almost all of this section's reforge surface score is the fan-out seam** — the

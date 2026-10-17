@@ -513,7 +513,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // No cross-domain Includes — callers resolve team names via
-        // ITeamServiceRead keyed off TeamId / ResponsibleTeamId. Line-item
+        // ITeamService keyed off TeamId / ResponsibleTeamId. Line-item
         // display sort (SortOrder) is applied by the CategoryDetail views.
         return await ctx.BudgetCategories
             .AsNoTracking()

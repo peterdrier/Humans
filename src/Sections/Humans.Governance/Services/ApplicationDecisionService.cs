@@ -27,7 +27,8 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IUserWrite userWrite,
+    IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
@@ -80,7 +81,7 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        await userService.SetMembershipTierAsync(
+        await userWrite.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)

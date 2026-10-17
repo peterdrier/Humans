@@ -20,7 +20,7 @@ namespace Humans.Workgroups.Controllers;
 [Route("Workgroups/Admin")]
 internal sealed class WorkgroupsAdminController(
     IWorkgroupService workgroups,
-    IUserServiceRead users,
+    IUserService users,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
     ILogger<WorkgroupsAdminController> logger) : HumansControllerBase(users)

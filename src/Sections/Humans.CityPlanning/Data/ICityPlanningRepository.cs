@@ -47,7 +47,7 @@ internal interface ICityPlanningRepository : IRepository
     /// display ordering belongs to the controller
     /// (<c>memory/architecture/display-sort-in-controllers.md</c>). Read-only
     /// (AsNoTracking). The returned rows carry only the FK <c>ModifiedByUserId</c>;
-    /// user display data is resolved through <c>IUserServiceRead</c> at the service
+    /// user display data is resolved through <c>IUserService</c> at the service
     /// layer.
     /// </summary>
     Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(

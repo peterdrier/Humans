@@ -40,7 +40,7 @@ internal sealed class TeamsMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
+        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
 
         var teams = await teamService.GetTeamsAsync(CancellationToken.None);
         var teamsActive = teams.Values.Count(t => t.IsActive);

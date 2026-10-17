@@ -88,7 +88,7 @@ public class FeedbackListViewTests
         });
         builder.Services.AddLocalization();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddSingleton(Substitute.For<Humans.Users.Contracts.IUserServiceRead>());
+        builder.Services.AddSingleton(Substitute.For<Humans.Users.Contracts.IUserService>());
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(FeedbackResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly);

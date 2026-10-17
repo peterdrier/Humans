@@ -9,7 +9,7 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
 -->
 <!-- freshness:flag-on-change
-  FinanceController routes or auth policy (FinanceAdminOrAdmin) — review when FinanceController or the section's cross-section contracts (IBudgetService, IHoldedService, IUserServiceRead) change. Holded attribution logic (Account → Tag → Managed → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, HoldedCategoryMap, or the managed-account registry (HoldedManagedAccount) change.
+  FinanceController routes or auth policy (FinanceAdminOrAdmin) — review when FinanceController or the section's cross-section contracts (IBudgetService, IHoldedService, IUserService) change. Holded attribution logic (Account → Tag → Managed → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, HoldedCategoryMap, or the managed-account registry (HoldedManagedAccount) change.
 -->
 
 # Finance — Section Invariants
@@ -307,7 +307,7 @@ Derived from `Humans.Finance.csproj`'s project references — contracts leaves o
 
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
-- **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
+- **Users** (`Humans.Users.Contracts`): `IUserService.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
 - **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
 - **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of every creditor binding and SEPA payout across the member's resolved `AllUserIds` (including archived merge sources; retained financial rows are not rekeyed). `HoldedCreditorAccount` preserves its original object-or-null shape for the requested account; `AdditionalHoldedCreditorAccounts` contains other merge-chain bindings with their user ids, omitted when none exist. Payout rows remain globally ordered by generation time. Generation, booking and reconciliation dates serialize as UTC ISO 8601 strings; absent booking/reconciliation dates stay null. For Article 17 erasure, `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps both creditor-binding slices to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership.
 

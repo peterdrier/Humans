@@ -10,12 +10,12 @@ namespace Humans.Web.Controllers;
 
 [Route("[controller]")]
 public class AboutController(
-    IUserServiceRead userService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IUserService userService,
+    IRoleAssignmentService roleAssignmentService,
     IClock clock,
     ILogger<AboutController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public IActionResult Index([FromServices] IWebHostEnvironment env)

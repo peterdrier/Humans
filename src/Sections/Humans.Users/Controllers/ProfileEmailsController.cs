@@ -46,7 +46,7 @@ namespace Humans.Users.Controllers;
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileEmailsController(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     UserManager<User> userManager,
     IEmailService emailService,
     UsersEmails emailMessages,
@@ -61,7 +61,7 @@ internal sealed class ProfileEmailsController(
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly ITicketService _ticketQueryService = ticketQueryService;
-    private readonly IUserServiceInternal _userService = userService;
+    private readonly IUserManagement _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     // ─── Own Emails ──────────────────────────────────────────────────

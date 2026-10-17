@@ -23,7 +23,7 @@ namespace Humans.Search.Tests.Controllers;
 public sealed class SearchControllerTests
 {
     private readonly ISearchService _search = Substitute.For<ISearchService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ILogger<SearchController> _logger = Substitute.For<ILogger<SearchController>>();
 
     [HumansTheory]

@@ -21,13 +21,13 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 
 | Shape | Question it answers | Where it lives today |
 |---|---|---|
-| **Resolve a person** | id → snapshot; ids → snapshots; everyone; text → ranked matches; address → snapshot | `IUserServiceRead` over the cached `UserInfo` dictionary |
+| **Resolve a person** | id → snapshot; ids → snapshots; everyone; text → ranked matches; address → snapshot | `IUserService` over the cached `UserInfo` dictionary |
 | **Address ownership** | which rows hold address X (`FindByAddressAsync`: aliased or exact, verified or any — callers pick the cardinality; prefix+suffix for the dev seeder); which addresses does account Y hold (all / verified / primary / Google / nobodies.team) | `IUserEmailService` over the cached snapshot; `IUserRepository.GetUserEmailsByAddressAsync` behind the write paths |
-| **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserServiceInternal` storage commands → repository |
-| **Profile mutation** | save the edit form; save dietary/medical; set picture; set tier; set IBAN; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserServiceInternal` (row) → repository |
+| **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserManagement` storage commands → repository |
+| **Profile mutation** | save the edit form; save dietary/medical; set picture; set tier; set IBAN; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
 | **Mail consent** | is Y opted out of category C; flip it; mint / validate an unsubscribe token | `ICommunicationPreferenceService`, `IUnsubscribeService`, `IUnsubscribeTokenProvider` |
-| **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserServiceRead.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
+| **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserService.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
@@ -39,11 +39,11 @@ Recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
 
 The shapes imply one register with one cache and one write funnel:
 
-- **One read surface**, `IUserServiceRead`, answering *resolve a person* from the cache. Every
+- **One read surface**, `IUserService`, answering *resolve a person* from the cache. Every
   other section reads through it and nothing else.
 - **One write funnel** owning every row write to the tables the section owns, so the cache
-  refresh happens exactly once per write: `IUserService` is the half other sections call,
-  `IUserServiceInternal : IUserService` the section-only half; one `CachingUserService`
+  refresh happens exactly once per write: `IUserWrite` is the write half other sections call,
+  `IUserManagement : IUserService, IUserWrite` adds the section-only half; one `CachingUserService`
   behind both. Domain services (`UserEmailService`,
   `ProfileEditorService`, `ContactFieldService`, `CommunicationPreferenceService`) hold the
   rules and call the funnel; they do not reach the repository around it — except where a table

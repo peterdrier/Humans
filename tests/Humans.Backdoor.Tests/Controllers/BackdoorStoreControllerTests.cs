@@ -20,7 +20,7 @@ public class BackdoorStoreControllerTests
     private readonly BackdoorStoreController _sut;
 
     public BackdoorStoreControllerTests() =>
-        _sut = new BackdoorStoreController(_store, Substitute.For<IUserServiceRead>());
+        _sut = new BackdoorStoreController(_store, Substitute.For<IUserService>());
 
     [HumansFact]
     public async Task OrderLines_without_a_year_is_a_BadRequest()

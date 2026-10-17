@@ -15,7 +15,7 @@ internal sealed class CampAdminController(
     ICampRoleService campRoleService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<CampAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

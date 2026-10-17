@@ -50,7 +50,7 @@ cached in-memory from GitHub. No migrations, no new tables.
 
 1. Human navigates to `/Guide/<Page>`.
 2. `GuideRoleResolver` builds a `GuideRoleContext` from claims,
-   `ITeamServiceRead` (team coordinator) and `ICampLeadDirectory` (camp lead).
+   `ITeamService` (team coordinator) and `ICampLeadDirectory` (camp lead).
 3. `GuideContentService` gets the page's cached `GuideDocument` — its ordered
    role-scoped segments — fetching and segmenting every stem in
    `GuideFiles.All` on cache miss.

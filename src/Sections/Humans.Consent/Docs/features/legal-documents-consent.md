@@ -113,7 +113,7 @@ LegalDocument
 +-- IsActive: bool
 +-- CreatedAt: Instant
 +-- LastSyncedAt: Instant
-+-- Navigation: Versions (team name resolved via ITeamServiceRead, stitched onto DTOs — not a nav property)
++-- Navigation: Versions (team name resolved via ITeamService, stitched onto DTOs — not a nav property)
 ```
 
 ### DocumentVersion Entity

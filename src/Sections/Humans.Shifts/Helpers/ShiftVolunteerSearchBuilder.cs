@@ -34,7 +34,7 @@ internal sealed record VolunteerSearchBuildResult(
 
 internal sealed class ShiftVolunteerSearchBuilder(
     IBurnSettingsService burnSettings,
-    IUserServiceRead userService,
+    IUserService userService,
     IShiftRowView shiftView,
     IShiftSignupService signupService,
     IVolunteerTrackingManagement volunteerTrackingService)

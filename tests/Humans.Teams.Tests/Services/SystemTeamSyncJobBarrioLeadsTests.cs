@@ -60,6 +60,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
+            Substitute.For<IUserWrite>(),
             _campRepository,
             provider,
             _googleSyncService,

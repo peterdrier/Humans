@@ -19,7 +19,7 @@ namespace Humans.Expenses.Controllers;
 [Authorize]
 [Route("Expenses")]
 internal sealed class ExpensesController(
-    IUserServiceRead userService,
+    IUserService userService,
     IExpenseReportManagement service,
     IBudgetService budgetService,
     IHoldedFinanceServiceRead holdedFinance,
@@ -27,7 +27,7 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()

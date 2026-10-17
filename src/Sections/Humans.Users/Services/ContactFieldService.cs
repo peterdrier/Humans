@@ -14,9 +14,9 @@ namespace Humans.Users.Services;
 /// </summary>
 internal sealed class ContactFieldService(
     IUserRepository userRepository,
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IUserService userService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
     ILogger<ContactFieldService> logger,

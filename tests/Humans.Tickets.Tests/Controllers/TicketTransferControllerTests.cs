@@ -26,7 +26,7 @@ public class TicketTransferControllerTests
     {
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -67,7 +67,7 @@ public class TicketTransferControllerTests
             var localizer = services.GetRequiredService<IStringLocalizer<TicketsResource>>();
             var userId = Guid.NewGuid();
             var user = new User { Id = userId };
-            var users = Substitute.For<IUserServiceRead>();
+            var users = Substitute.For<IUserService>();
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(UserInfo.Create(user, [], [], [], null, []));
             var transfers = Substitute.For<ITicketTransferService>();

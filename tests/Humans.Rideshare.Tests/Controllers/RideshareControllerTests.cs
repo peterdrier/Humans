@@ -29,7 +29,7 @@ public sealed class RideshareControllerTests
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     private readonly IRideshareService _rideshare = Substitute.For<IRideshareService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IStringLocalizer<RideshareResource> _localizer = Substitute.For<IStringLocalizer<RideshareResource>>();
     private readonly Guid _me = Guid.NewGuid();
     private readonly ILogger<RideshareController> _logger = Substitute.For<ILogger<RideshareController>>();

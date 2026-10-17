@@ -38,7 +38,7 @@
       Two *vertical* leaves are also here, both for the magic-link sign-in path that came home
       at nobodies-collective/Humans#866 G5 lane 4b-2i:
 
-      Users.Contracts — already required before that lane (IUserServiceRead for assignee/creator
+      Users.Contracts — already required before that lane (IUserService for assignee/creator
                         display stitching); MagicLinkService adds UserManager<User> and
                         IUserEmailService on top.
       Email.Contracts — IEmailService, which MagicLinkService injects to send the

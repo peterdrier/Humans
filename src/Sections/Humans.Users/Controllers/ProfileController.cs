@@ -44,7 +44,7 @@ namespace Humans.Users.Controllers;
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileController(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IContactFieldService contactFieldService,
@@ -69,7 +69,7 @@ internal sealed class ProfileController(
     IAccountDeletionService accountDeletionService,
     IMembershipCalculatorRead membershipCalculator) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceInternal _userService = userService;
+    private readonly IUserManagement _userService = userService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)

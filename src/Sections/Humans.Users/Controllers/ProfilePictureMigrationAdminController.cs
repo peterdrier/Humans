@@ -10,7 +10,7 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
 internal sealed class ProfilePictureMigrationAdminController(
-    IUserServiceRead userService,
+    IUserService userService,
     IProfilePictureService profilePictureService,
     ILogger<ProfilePictureMigrationAdminController> logger) : HumansControllerBase(userService)
 {

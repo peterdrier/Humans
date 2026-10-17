@@ -11,7 +11,7 @@ namespace Humans.Notifications.Controllers;
 [Route("Notifications")]
 internal sealed class NotificationsController(
     INotificationInboxService inboxService,
-    IUserServiceRead userService,
+    IUserService userService,
     NotificationMeterProvider meterProvider) : HumansControllerBase(userService)
 {
     [HttpGet("")]

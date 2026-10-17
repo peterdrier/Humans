@@ -39,7 +39,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     // Fixed test time: 2026-06-15 12:00 UTC
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -53,8 +53,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<ITeamServiceRead>(_teamService)
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
+            .With<ITeamService>(_teamService)
+            .With<IRoleAssignmentService>(_roleAssignmentService)
             .With<ITicketService>()
             .With(_users)
             .With<ICampService>()
@@ -1383,8 +1383,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var earlyEntry = Substitute.For<IEarlyEntryInvalidator>();
         earlyEntry.When(x => x.InvalidateUser(userId)).Do(_ => cachedConfirmed = null);
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService).With<ITeamServiceRead>(_teamService)
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService).With(_users).Build();
+            .With(_teamService).With<ITeamService>(_teamService)
+            .With<IRoleAssignmentService>(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,
@@ -1457,8 +1457,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var settings = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService).With<ITeamServiceRead>(_teamService)
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService).With(_users).Build();
+            .With(_teamService).With<ITeamService>(_teamService)
+            .With<IRoleAssignmentService>(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, Substitute.For<IEarlyEntryInvalidator>(),

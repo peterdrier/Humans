@@ -20,18 +20,18 @@ internal sealed class CalendarController : HumansControllerBase
 {
     private readonly ICalendarQueries _calendarRead;
     private readonly ICalendarService _calendar;
-    private readonly ITeamServiceRead _teams;
+    private readonly ITeamService _teams;
     private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
     private readonly ILogger<CalendarController> _logger;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
     public CalendarController(
-        IUserServiceRead userService,
+        IUserService userService,
         ICalendarFeedTokenService feedTokens,
         ICalendarQueries calendarRead,
         ICalendarService calendar,
-        ITeamServiceRead teams,
+        ITeamService teams,
         IClock clock,
         Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer,
         ILogger<CalendarController> logger)

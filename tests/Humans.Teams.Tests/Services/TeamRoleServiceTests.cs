@@ -19,6 +19,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
+using Humans.Teams.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -53,14 +54,14 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamService>()
-            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
+            .With<ITeamManagement>()
+            .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
             .With<ISystemTeamSync>()
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(teamResourceService)
             .With(userService)
-            .With<IUserServiceRead>(userService)
+            .With<IUserService>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),

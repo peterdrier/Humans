@@ -13,7 +13,7 @@ internal sealed class VolunteerTrackingService(
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementRepository shiftManagement,
     EventCalendarResolver calendarResolver,
-    IUserServiceRead userService,
+    IUserService userService,
     IShiftViewInvalidator viewInvalidator,
     IClock clock,
     IAuditLogService audit) : IVolunteerTrackingManagement, IUserMerge

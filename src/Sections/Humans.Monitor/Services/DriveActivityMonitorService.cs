@@ -12,7 +12,7 @@ internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceServiceRead teamResourceService,
     ISettingsService settingsStore,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuditLogService auditLogService,
     IClock clock,
     ILogger<DriveActivityMonitorService> logger) : IDriveActivityMonitorService
@@ -338,7 +338,7 @@ internal sealed class DriveActivityMonitorService(
     /// </summary>
     private sealed class PersonNameResolver(
         IGoogleDriveActivityClient driveActivityClient,
-        IUserServiceRead userService,
+        IUserService userService,
         ILogger logger)
     {
         private static readonly IReadOnlyDictionary<string, UserInfo> NoGoogleUserInfo =

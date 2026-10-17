@@ -14,7 +14,7 @@ internal sealed class CampContactService(
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
     INotificationEmitter notificationEmitter,
-    IUserServiceRead users,
+    IUserService users,
     IMemoryCache cache,
     ILogger<CampContactService> logger) : ICampContactService
 {

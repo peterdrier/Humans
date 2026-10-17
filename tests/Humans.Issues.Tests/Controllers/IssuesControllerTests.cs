@@ -42,7 +42,7 @@ public sealed class IssuesControllerTests
         issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
             new IssueDetail(issueId, IssueStatus.Resolved, default, "Camps", "Existing", "Details",
                 null, null, null, null, actor, Guid.NewGuid(), actor, 42, null, default, default, null, 0));
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
@@ -152,7 +152,7 @@ public sealed class IssuesControllerTests
             .Returns(IssueMutationResult.Success());
         issues.SetGitHubIssueNumberAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<int?>(), viewerId)
             .Returns(IssueMutationResult.Success());
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
@@ -196,7 +196,7 @@ public sealed class IssuesControllerTests
             {
                 new(Guid.NewGuid(), "Zoe", 2), new(Guid.NewGuid(), "Alice", 1),
             });
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = adminId }, [], [], [], null, []));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,

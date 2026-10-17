@@ -80,8 +80,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamService>()
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
+            .With<ITeamManagement>()
+            .With<IRoleAssignmentService>(_roleAssignmentService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
@@ -89,7 +89,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With<ITeamResourceServiceRead>(_teamResourceService)
             .With(userService)
-            .With<IUserServiceRead>(userService)
+            .With<IUserService>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
@@ -2114,7 +2114,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
-    // GetTeamBySlugAsync (TeamInfo? â€” ITeamServiceRead surface)
+    // GetTeamBySlugAsync (TeamInfo? â€” ITeamService surface)
     // ==========================================================================
 
     [HumansFact]

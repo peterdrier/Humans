@@ -19,7 +19,8 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class GoogleSyncOutboxProcessor(
     IGoogleSyncOutboxRepository outboxRepository,
     IUserService userService,
-    ITeamServiceRead teamService,
+    IUserWrite userWrite,
+    ITeamService teamService,
     IGoogleSyncService googleSyncService,
     IGoogleDriveActivityClient googleClient,
     IHumansMetrics metrics,
@@ -33,7 +34,7 @@ internal sealed class GoogleSyncOutboxProcessor(
     /// Admin-initiated reruns carry one of two dedup-key shapes: the per-human rerun
     /// (<c>admin-resync:{userId}:{teamId}:{ticks}</c>, <c>EnqueueUserSyncAsync</c>) and the
     /// account-link resync (<c>{teamMemberId}:AddUserToTeamResources:resync:{instant}</c>,
-    /// <c>ITeamService.EnqueueGoogleResyncForUserTeamsAsync</c>). Ordinary joins are
+    /// <c>ITeamWrite.EnqueueGoogleResyncForUserTeamsAsync</c>). Ordinary joins are
     /// <c>{teamMemberId}:{eventType}</c>.
     /// </summary>
     internal static bool IsManualResync(string deduplicationKey)
@@ -114,7 +115,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                 {
                     if (grant.GoogleEmailId is not { } emailId)
                         throw new InvalidOperationException("Accepted Google grant omitted its target email row");
-                    await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                    await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
                         grant.UserId, GoogleEmailStatus.Valid, cancellationToken, emailId);
                 }
 

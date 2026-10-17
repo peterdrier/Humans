@@ -33,7 +33,7 @@ public class AccountControllerGateLoginTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 10, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userService = Substitute.For<IUserWrite>();
     private readonly GateLoginThrottle _throttle;
     private readonly AccountController _controller;
 
@@ -67,6 +67,7 @@ public class AccountControllerGateLoginTests
 
         _controller = new AccountController(
             _signInManager,
+            Substitute.For<IUserService>(),
             _userService,
             _userManager,
             _clock,

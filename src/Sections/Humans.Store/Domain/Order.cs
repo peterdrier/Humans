@@ -19,7 +19,7 @@ internal sealed class Order
     /// <summary>
     /// Cross-section linkage to <c>Team</c> for non-billable department orders — bare
     /// Guid, no EF navigation, no FK constraint. Resolved at the service layer via
-    /// <c>ITeamServiceRead.GetTeamAsync</c>. See <see cref="CampSeasonId"/> for the
+    /// <c>ITeamService.GetTeamAsync</c>. See <see cref="CampSeasonId"/> for the
     /// exactly-one-counterparty invariant.
     /// </summary>
     public Guid? TeamId { get; set; }

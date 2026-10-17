@@ -43,15 +43,15 @@ public class HoldedFinanceServiceTests
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Guid Admin = Guid.NewGuid();
-    private readonly IUserServiceRead _users = NoUsers();
+    private readonly IUserService _users = NoUsers();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly SepaOptions _sepa = new();
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
-    private static IUserServiceRead NoUsers()
+    private static IUserService NoUsers()
     {
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         return users;

@@ -50,7 +50,7 @@ public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
@@ -138,7 +138,7 @@ public class ProfileControllerEditTests
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
-        // also call IUserServiceInternal.GetUserInfoAsync. Default stub returns a UserInfo
+        // also call IUserManagement.GetUserInfoAsync. Default stub returns a UserInfo
         // with no profile so the initial-setup branch is taken; per-test overrides
         // (e.g. approved profile) replace it.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())

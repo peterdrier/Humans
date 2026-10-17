@@ -1,5 +1,6 @@
 using Humans.Users.Models;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Users.ViewComponents;

@@ -18,7 +18,7 @@ namespace Humans.Issues.Controllers;
 internal sealed class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,
-    IUserServiceRead users,
+    IUserService users,
     IssueSectionRouting routing,
     IStringLocalizer<IssuesResource> localizer,
     ILogger<IssuesController> logger) : HumansControllerBase(users)

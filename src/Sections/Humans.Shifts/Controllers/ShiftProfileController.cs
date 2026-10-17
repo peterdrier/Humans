@@ -21,7 +21,7 @@ namespace Humans.Shifts.Controllers;
 [Route("Profile")]
 internal sealed class ShiftProfileController(
     IShiftManagement shiftMgmt,
-    IUserServiceRead userService,
+    IUserService userService,
     // SharedResource: the only string this controller resolves is Profile_Updated,
     // which belongs to Shell's profile vocabulary.
     IStringLocalizer<SharedResource> localizer,

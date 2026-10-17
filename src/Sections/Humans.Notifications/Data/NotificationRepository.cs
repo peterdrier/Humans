@@ -16,7 +16,7 @@ namespace Humans.Notifications.Data;
 /// Read methods deliberately do not <c>.Include</c> cross-domain user data
 /// (recipient <see cref="NotificationRecipient.UserId"/>,
 /// resolver <see cref="Notification.ResolvedByUserId"/>). Callers resolve
-/// display names through <c>IUserServiceRead</c> and stitch results in memory,
+/// display names through <c>IUserService</c> and stitch results in memory,
 /// preserving table ownership and eliminating cross-domain joins.
 /// </remarks>
 internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbContext> factory) : INotificationRepository

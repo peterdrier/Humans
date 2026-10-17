@@ -16,7 +16,7 @@ namespace Humans.Surveys.Data;
 /// atomically inside a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{SurveysDbContext}"/>-owned
 /// context. Cross-domain references (<c>Survey.CreatedByUserId</c>, <c>SurveyInvitation.UserId</c>,
 /// <c>Survey.AudienceTeamId</c>) are bare <see cref="System.Guid"/> columns with no navigation — the
-/// application service stitches display data via <c>IUserServiceRead</c>/<c>ITeamServiceRead</c>.
+/// application service stitches display data via <c>IUserService</c>/<c>ITeamService</c>.
 /// </remarks>
 internal partial interface ISurveyRepository : IRepository
 {

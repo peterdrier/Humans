@@ -37,8 +37,8 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
-            .With<ITeamServiceRead>(teamService)
-            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
+            .With<ITeamService>(teamService)
+            .With<IRoleAssignmentService>(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -55,7 +55,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();

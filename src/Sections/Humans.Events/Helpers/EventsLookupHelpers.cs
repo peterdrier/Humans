@@ -45,7 +45,7 @@ internal static class EventsLookupHelpers
     public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
 
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
-        IUserServiceRead users, IEnumerable<Guid> userIds, CancellationToken ct = default)
+        IUserService users, IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var ids = userIds.Distinct().ToArray();
         if (ids.Length == 0) return [];

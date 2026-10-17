@@ -19,7 +19,7 @@ public class ServiceBoundaryArchitectureTests
     /// <remarks>
     /// <c>IApplicationService</c> and <c>IOrchestrator</c> live in <c>Humans.Interfaces</c>
     /// (Base). Base references <c>Humans.Users.Contracts</c> — <c>HumansControllerBase</c>
-    /// injects <c>IUserServiceRead</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
+    /// injects <c>IUserService</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
     /// that leaf must hold no reference back, or 4b-iii closes an assembly cycle when
     /// <c>HumansControllerBase</c> moves into Base. Peter's ruling: the migration outranks the
     /// marker. The markers were dropped; <c>Humans.Users.Contracts.csproj</c> carries the record.

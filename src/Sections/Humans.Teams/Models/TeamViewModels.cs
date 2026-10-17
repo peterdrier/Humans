@@ -125,7 +125,7 @@ internal sealed class TeamMemberViewModel
     public string? NobodiesTeamEmail { get; set; }
 
     /// <summary>
-    /// The merge-survivor user id (<c>IUserServiceRead</c>'s resolved id when the lookup hit,
+    /// The merge-survivor user id (<c>IUserService</c>'s resolved id when the lookup hit,
     /// else <see cref="UserId"/>) — the provisioning form must post this, not a merged-away id.
     /// </summary>
     public Guid LiveUserId { get; set; }

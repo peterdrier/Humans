@@ -29,7 +29,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         workgroups.GetRegisterAsync(Arg.Any<CancellationToken>())
             .Returns([Group("Open", false), Group("Secret", true)]);
         var component = new GovernanceWorkgroupsViewComponent(
-            workgroups, Substitute.For<IUserServiceRead>(), new NodaTime.Testing.FakeClock(now))
+            workgroups, Substitute.For<IUserService>(), new NodaTime.Testing.FakeClock(now))
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -57,7 +57,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
             .Returns(Task.FromException<IReadOnlyList<WorkgroupInfo>>(
                 new OperationCanceledException(aborted.Token)));
         var component = new GovernanceWorkgroupsViewComponent(
-            workgroups, Substitute.For<IUserServiceRead>(), SystemClock.Instance)
+            workgroups, Substitute.For<IUserService>(), SystemClock.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {

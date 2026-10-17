@@ -87,7 +87,7 @@ RoleAssignment
 `role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
 neither id carries a database FK and neither has a navigation property to
 `.Include()`. Display names are stitched in memory via
-`IUserServiceRead.GetUserInfosAsync`.
+`IUserService.GetUserInfosAsync`.
 
 ## Authentication Flow
 

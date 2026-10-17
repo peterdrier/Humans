@@ -14,9 +14,9 @@ using Humans.Users.Contracts;
 namespace Humans.Agent.Services;
 
 internal sealed class AgentUserSnapshotProvider(
-    IUserServiceRead users,
-    IRoleAssignmentServiceRead roles,
-    ITeamServiceRead teams,
+    IUserService users,
+    IRoleAssignmentService roles,
+    ITeamService teams,
     IConsentService consents,
     IFeedbackService feedback,
     ITicketService tickets,

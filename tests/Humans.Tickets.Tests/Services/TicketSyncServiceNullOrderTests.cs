@@ -63,7 +63,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
             Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<ITicketVendorCacheInvalidator>(),
             _userService,
-            _userService,
+            Substitute.For<IUserWrite>(),
             _campaignService,
             _shiftManagementService);
 

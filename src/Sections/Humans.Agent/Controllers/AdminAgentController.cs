@@ -15,7 +15,7 @@ internal sealed class AdminAgentController(
     IAgentService agent,
     IAgentAdminStatusService status,
     IAgentPreloadCorpusBuilder preload,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     /// <summary>Index lands on Status — the operational view is the default
     /// destination for an admin clicking through the nav.</summary>

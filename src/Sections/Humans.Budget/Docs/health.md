@@ -85,7 +85,7 @@ The shapes imply the layered split that exists:
 - `ITicketingBudgetService` stays single-member (the job's test seam); the admin controller
   injects the concrete `TicketingBudgetService` for its other calls.
 - No cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`): labels
-  are stitched in-memory via `ITeamServiceRead` / `IUserServiceRead`.
+  are stitched in-memory via `ITeamService` / `IUserService`.
 - No pagination beyond the audit log's top-500.
 
 ## Load-bearing weirdness

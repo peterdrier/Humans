@@ -36,7 +36,7 @@ internal sealed class AuthMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
+        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentManagement>();
         var counts = await roleAssignmentService.GetActiveCountsByRoleAsync();
         _snapshot = counts.Select(kv => (kv.Key, kv.Value)).ToList();
     }

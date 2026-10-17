@@ -25,7 +25,7 @@ namespace Humans.Surveys.Controllers;
 [Route("Survey")]
 internal sealed class SurveyController(
     ISurveyService surveyService,
-    IUserServiceRead userService,
+    IUserService userService,
     IClock clock,
     SurveyPreviewTokenProvider previewTokens,
     IStringLocalizer<SurveysResource> localizer,

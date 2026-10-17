@@ -6,7 +6,7 @@ namespace Humans.Testing;
 
 /// <summary>
 /// Builds <see cref="ProfileInfo"/> and its nested projections for tests that stub
-/// <c>IUserService</c> / <c>IUserServiceRead</c>.
+/// <c>IUserService</c> / <c>IUserService</c>.
 /// </summary>
 /// <remarks>
 /// Same reason as <see cref="ShiftFixtures"/>: <see cref="ProfileInfo"/> is positional with

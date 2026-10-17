@@ -15,7 +15,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = (await sp.GetRequiredService<ITeamServiceRead>().GetTeamsAsync(ct)).Count;
+        var count = (await sp.GetRequiredService<ITeamService>().GetTeamsAsync(ct)).Count;
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture));
     }
 }

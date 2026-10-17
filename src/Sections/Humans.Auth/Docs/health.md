@@ -90,7 +90,7 @@ Written fresh from the shapes above, not from today's tree.
   users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
   boundary, not an unfinished move.
 - **S6 does not belong on a role-assignment contract.** The cache-flush verbs sit on
-  `IRoleAssignmentService` so that one caller — Users' `AccountMergeService` — can poke
+  `IRoleAssignmentWrite` so that one caller — Users' `AccountMergeService` — can poke
   Auth's caches after a merge fold commits. The target shape is that a merge tells Auth *a
   merge happened* (the `IUserMerge` seam it already implements) and Auth decides what to
   invalidate. Recorded as a seam (§5), not struck: it is a public-surface change.

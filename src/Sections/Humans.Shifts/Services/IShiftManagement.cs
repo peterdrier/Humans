@@ -131,7 +131,7 @@ internal interface IShiftManagement
     /// <paramref name="teamSlug"/> + <paramref name="rotaId"/> → a single rota.
     /// </para>
     /// Camp labels and roster come from <c>ICampService</c>; display names
-    /// from <c>IUserServiceRead</c> — no new cross-section interface. Returns
+    /// from <c>IUserService</c> — no new cross-section interface. Returns
     /// null when <paramref name="teamSlug"/> matches no team, or
     /// <paramref name="rotaId"/> does not belong to the team-set within the event
     /// (the controller maps null to 404). Rows are unsorted; the controller

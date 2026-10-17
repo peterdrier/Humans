@@ -19,7 +19,7 @@ internal interface ISurveyPreviewEmailService : IOrchestrator
 internal sealed class SurveyPreviewEmailService(
     ISurveyService surveyService,
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailService emailService,
     SurveysEmails emailMessages,
     IEmailPreviewService emailPreviews,

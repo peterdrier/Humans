@@ -25,9 +25,9 @@ namespace Humans.Notifications.Tests.Services;
 public sealed class NotificationInboxReadTests : IDisposable
 {
     private readonly INotificationInboxService _inbox = Substitute.For<INotificationInboxService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IGoogleSyncServiceRead _google = Substitute.For<IGoogleSyncServiceRead>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITicketSync _tickets = Substitute.For<ITicketSync>();
     private readonly IApplicationServiceRead _applications = Substitute.For<IApplicationServiceRead>();
     private readonly ICampService _camps = Substitute.For<ICampService>();

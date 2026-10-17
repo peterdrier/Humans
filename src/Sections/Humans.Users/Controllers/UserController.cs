@@ -17,7 +17,7 @@ namespace Humans.Users.Controllers;
 [Authorize]
 [Route("User")]
 internal sealed class UserController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAccountDeletionService accountDeletionService,
     IStringLocalizer<UsersResource> localizer) : HumansControllerBase(userService)
 {

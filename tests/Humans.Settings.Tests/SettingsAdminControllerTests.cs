@@ -22,7 +22,7 @@ namespace Humans.Settings.Tests;
 public sealed class SettingsAdminControllerTests
 {
     private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private SettingsAdminController BuildSut()
     {

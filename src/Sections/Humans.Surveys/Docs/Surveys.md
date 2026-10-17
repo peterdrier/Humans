@@ -40,7 +40,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | AudienceLoggedInSince | Instant? | cutoff (when `AudienceType = LoggedInSince`); users with `LastLoginAt >= cutoff` match, `null` LastLoginAt never matches |
 | PublicSlug | string? | max 80; shareable answering link; identified surveys require sign-in and current audience access; null = invite-only |
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
-| CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
+| CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserService` |
 | SubmittedAt | Instant? | stamped entering PendingApproval; cleared on approve/reject |
 | RejectionNote | string? | max 4000; validated before rejection persists; invalid notes remain in the queue form for correction; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
 | CreatedAt / UpdatedAt | Instant | |
@@ -275,8 +275,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserServiceRead` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
-- **Teams:** `ITeamServiceRead` — `Team`-audience member ids and team display data.
+- **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
+- **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
 - **Tickets:** `ITicketService` — `TicketHolders`-audience recipient ids.
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
 - **Users/Identity:** `IUserEmailService` — effective notification target email per recipient when queueing invite/reminder mail.
@@ -300,7 +300,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Aggregate-local navs kept:** `Survey.Questions ↔ SurveyQuestion.Survey`, `SurveyQuestion.Options ↔ SurveyQuestionOption.Question`, `SurveyResponse.Answers ↔ SurveyAnswer.Response`. All within Survey-owned tables, so these `.Include`s are legal inside the repository.
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (`memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints**. The service resolves display data via the cross-section read interfaces and returns DTOs.
-- **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketService`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewService`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
+- **Cross-section calls — the public interfaces this section consumes:** `IUserService`, `ITeamService`, `ITicketService`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewService`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
 - **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal — a per-consumer allow-list test would only assert absence ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ### Cross-section read interface

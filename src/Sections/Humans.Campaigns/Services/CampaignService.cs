@@ -26,9 +26,9 @@ namespace Humans.Campaigns.Services;
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     INotificationEmitter notificationService,
     IEmailService emailService,
     CampaignsEmails emailMessages,

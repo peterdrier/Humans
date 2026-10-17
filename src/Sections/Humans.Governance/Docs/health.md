@@ -216,7 +216,7 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
   that already has one. A result that could be recomputed is a result that could change after
   it was published.
 - **No cross-domain navigation properties.** Applicant, reviewer, voter, history author, vote
-  actor and roster member are Guids; display names are stitched from `IUserServiceRead` at the
+  actor and roster member are Guids; display names are stitched from `IUserService` at the
   call site.
 - **No `nameof` for the audit entity discriminators.** They are persisted strings; a CLR rename
   must not silently change the schema.
@@ -230,8 +230,8 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 
 Settled decisions. Do not re-litigate.
 
-- `IMembershipQuery` looks like a pointless pass-through over `ITeamServiceRead` and
-  `IRoleAssignmentServiceRead`. It is not: injecting them directly closes a DI cycle through
+- `IMembershipQuery` looks like a pointless pass-through over `ITeamService` and
+  `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
 - `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for

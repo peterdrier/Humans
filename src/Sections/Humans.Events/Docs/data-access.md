@@ -47,7 +47,7 @@ Repository: `IEventRepository`. Implements `IEventManagement` and `ICalendarFeed
 | EventFavourites | R/W |
 
 Cross-section calls via `ISettingsService` (active event settings),
-`IUserServiceRead` and `IEmailService`, plus `IClock`, with the section's own
+`IUserService` and `IEmailService`, plus `IClock`, with the section's own
 `EventsEmails` builder supplying the message. The inner service has no
 `IMemoryCache`.
 

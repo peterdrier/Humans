@@ -11,7 +11,7 @@ public enum HumanLink { None, Public, Admin }
 
 /// <summary>Renders a member’s name and picture, localizing missing names; its read honors browser cancellation.</summary>
 public class HumanViewComponent(
-    IUserServiceRead userService,
+    IUserService userService,
     IUrlHelperFactory urlHelperFactory,
     IStringLocalizer<SharedResource> localizer) : ViewComponent
 {

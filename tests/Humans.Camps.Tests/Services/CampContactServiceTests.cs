@@ -16,7 +16,7 @@ public class CampContactServiceTests : IDisposable
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationEmitter _notificationEmitter;
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IMemoryCache _cache;
     private readonly CampContactService _service;
 

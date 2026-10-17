@@ -15,7 +15,7 @@ namespace Humans.Email.Services;
 /// </summary>
 internal sealed class ComposerSelfSendService(
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailService emailService,
     IAuditLogService audit,
     IStringLocalizer<EmailResource> localizer,

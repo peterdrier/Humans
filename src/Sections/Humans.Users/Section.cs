@@ -63,16 +63,16 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
 
         // Inner Scoped + keyed; decorator resolves via IServiceScopeFactory per-call.
-        services.AddKeyedScoped<IUserServiceInternal, UserService>(CachingUserService.InnerServiceKey);
+        services.AddKeyedScoped<IUserManagement, UserService>(CachingUserService.InnerServiceKey);
         services.AddScoped<UserService>(sp =>
-            (UserService)sp.GetRequiredKeyedService<IUserServiceInternal>(CachingUserService.InnerServiceKey));
+            (UserService)sp.GetRequiredKeyedService<IUserManagement>(CachingUserService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
 
         // Singleton so _byUserId dict survives across requests.
         services.AddSingleton<CachingUserService>();
+        services.AddSingleton<IUserManagement>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
-        services.AddSingleton<IUserServiceInternal>(sp => sp.GetRequiredService<CachingUserService>());
-        services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
+        services.AddSingleton<IUserWrite>(sp => sp.GetRequiredService<CachingUserService>());
         // Guid → display-name fan-out.
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());
 
@@ -131,7 +131,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
-        // The suspend/unsuspend state machine over this section's own IUserService, and the body
+        // The suspend/unsuspend state machine over this section's own IUserManagement, and the body
         // of the nightly non-compliance sweep. Orchestrators: no repository injected, and every
         // outbound edge is another section's leaf.
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();

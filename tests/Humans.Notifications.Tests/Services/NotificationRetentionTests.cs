@@ -36,7 +36,7 @@ public class NotificationRetentionTests : IDisposable
 
         var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
         _retention = new NotificationInboxService(
-            repo, Substitute.For<IUserServiceRead>(), _clock, _cache);
+            repo, Substitute.For<IUserService>(), _clock, _cache);
     }
 
     public void Dispose()

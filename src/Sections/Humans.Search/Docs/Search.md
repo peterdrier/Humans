@@ -41,7 +41,7 @@ Orchestrator behind the global `/Search` page. Fans out to five sections' read s
 - The **Search** section is the global `/Search` page and its orchestrator, `SearchService`. It matches each entity's own public fields (name, plus a public bio bucket for humans) and returns five independently-scored, unsorted buckets — Humans, Teams, Camps, Shifts, Events. No cross-modal traversal (a person hit never pulls in their teams), no cross-type ranking.
 - A **query** shorter than 2 characters after trim returns all five buckets empty — not an error, not the full dataset.
 - **`onlyType`** short-circuits the fan-out: `SearchService` calls only the matching section. Backs the per-type filter chips.
-- **Naming trap:** `/Search` (this section) is unrelated to `HumanSearchViewComponent` (`<vc:human-search>`, the inline person picker), which is Users-owned and calls `IUserServiceRead.SearchUsersAsync` directly from in-form pickers across several sections. See [`person-search`](../../../../memory/architecture/person-search.md). Only the `/Search` page and `SearchService` belong here.
+- **Naming trap:** `/Search` (this section) is unrelated to `HumanSearchViewComponent` (`<vc:human-search>`, the inline person picker), which is Users-owned and calls `IUserService.SearchUsersAsync` directly from in-form pickers across several sections. See [`person-search`](../../../../memory/architecture/person-search.md). Only the `/Search` page and `SearchService` belong here.
 
 ## Data Model
 
@@ -62,7 +62,7 @@ None — Search owns no tables. It is a read-only fan-out over five other sectio
 - **Every hit arrives pre-scored by its owning section; `SearchService` never rescores.** Teams/Camps/Shifts/Events score against `StringSearchExtensions.NameMatchScore` in `Humans.Base` (exact 100, prefix 80, contains 60; Events halves the tiers for a Description-only match). Humans arrive from `PersonSearchMatcher`, which adds a whole-name-prefix tier (85) and a non-name public-field tier (40) — so a Humans score of 85 or 40 is correct, not a defect. A GUID hit scores 100 in every bucket.
 - **No result cap.** Every match is returned; the orchestrator passes an effectively unbounded `max` to each section. Capping was tried and hid people.
 - **Display order is the controller's, never the service's** ([`display-sort-in-controllers`](../../../../memory/architecture/display-sort-in-controllers.md)): non-human buckets by score desc then `SortKey` asc (case-insensitive); humans by the shared `OrderByRelevance()`.
-- **Text queries are visibility-filtered per section, role-blind.** Hidden teams, non-public camp seasons (outside `Active`/`Full`), admin-only rotas and admin-only profile fields are excluded for every viewer. The filters are constants inside each section's own search call (`CachingTeamService`, `CachingCampService`, `ShiftManagementService`, `IUserServiceRead.SearchUsersAsync(..., PersonSearchFields.PublicAll, ...)`) — not a role check `SearchService` performs.
+- **Text queries are visibility-filtered per section, role-blind.** Hidden teams, non-public camp seasons (outside `Active`/`Full`), admin-only rotas and admin-only profile fields are excluded for every viewer. The filters are constants inside each section's own search call (`CachingTeamService`, `CachingCampService`, `ShiftManagementService`, `IUserService.SearchUsersAsync(..., PersonSearchFields.PublicAll, ...)`) — not a role check `SearchService` performs.
 - **GUID queries are NOT visibility-filtered — a routing convenience, not an authorization statement.** Pasting an entity's own id (Team, Camp, Rota, Human) resolves it past the text-query filters, on the reasoning that a caller can only use an id they already hold. Search may return a hit the caller cannot open; enforcement is the destination page's job (ruling on nobodies-collective/Humans#985). **Do not re-add a visibility check on the GUID path.**
 - The Humans bucket has no visibility filter for the GUID path to bypass, but resolution is not unconditional: `CachingUserService.SearchUsersAsync` returns an id hit only for a human with a non-rejected `Profile`, the same eligibility gate the text loop applies per candidate. The GUID path skips only the `PersonSearchFields.PublicAll` field mask.
 - **The destination page's own scoping wins, including when it shows less than the GUID resolved.** Both known cases are settled behavior, closed as designed: `/Camps/{slug}` renders a non-public season's detail page to any viewer (nobodies-collective/Humans#993), and a rota GUID from a past event resolves to a `/Shifts?departmentId=` link that lists only the current event's rotas (nobodies-collective/Humans#998). Neither is a Search-layer change.
@@ -82,8 +82,8 @@ None — this section is a pure read surface with no side effects: no writes, no
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)` — Humans bucket.
-- **Teams**: `ITeamServiceRead.SearchAsync` — Teams bucket, `Team.Name` only, non-hidden teams.
+- **Users**: `IUserService.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)` — Humans bucket.
+- **Teams**: `ITeamService.SearchAsync` — Teams bucket, `Team.Name` only, non-hidden teams.
 - **Camps**: `ICampService.SearchAsync` — Camps bucket, public-year `CampSeason.Name` only, `Active`/`Full` seasons.
 - **Shifts**: `IShiftManagementService.SearchAsync` — Shifts bucket (rota names), `IsVisibleToVolunteers` rotas of the active event.
 - **Events**: `IEventService.SearchAsync` — Events bucket, approved events by Title or Description; gated by `Features:Events`.
@@ -93,7 +93,7 @@ None — this section is a pure read surface with no side effects: no writes, no
 ## Architecture
 
 **Owning services:** `SearchService` (orchestrator)
-**Owned tables:** None — orchestrator over `IUserServiceRead`, `ITeamServiceRead`, `ICampService`, `IShiftManagementService`, `IEventService`.
+**Owned tables:** None — orchestrator over `IUserService`, `ITeamService`, `ICampService`, `IShiftManagementService`, `IEventService`.
 **Status:** (A) Migrated — own project at `src/Sections/Humans.Search`; `ISearchService : IOrchestrator` ([`orchestrator-marker`](../../../../memory/architecture/orchestrator-marker.md)).
 
 ### Cross-section read interface

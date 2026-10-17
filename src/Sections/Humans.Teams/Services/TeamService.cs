@@ -47,12 +47,12 @@ internal sealed class TeamService(
     internal const string TeamJoinRequests = "TeamJoinRequests";
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
-    // Lazy resolution — UserService injects ITeamService, closing the cycle.
+    // Lazy resolution — UserService injects ITeamManagement, closing the cycle.
     private ITeamResourceServiceRead TeamResourceService
         => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
 
-    private IRoleAssignmentServiceRead RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+    private IRoleAssignmentService RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();
@@ -63,8 +63,8 @@ internal sealed class TeamService(
     private ISystemTeamSync SystemTeamSync
         => serviceProvider.GetRequiredService<ISystemTeamSync>();
 
-    private IUserServiceRead UserService
-        => serviceProvider.GetRequiredService<IUserServiceRead>();
+    private IUserService UserService
+        => serviceProvider.GetRequiredService<IUserService>();
 
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
@@ -183,7 +183,7 @@ internal sealed class TeamService(
         throw new NotSupportedException(
             "Team search runs against the cached TeamInfo snapshot in CachingTeamService. " +
             "If this is being called on the inner TeamService it indicates a DI registration " +
-            "mistake — ITeamServiceRead must resolve to the caching decorator.");
+            "mistake — ITeamService must resolve to the caching decorator.");
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)

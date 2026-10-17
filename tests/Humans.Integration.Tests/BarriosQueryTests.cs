@@ -16,7 +16,7 @@ public class BarriosQueryTests(HumansTestDatabase database) : IntegrationTestBas
 
         using (var warmScope = Factory.Services.CreateScope())
         {
-            var users = warmScope.ServiceProvider.GetRequiredService<IUserServiceRead>();
+            var users = warmScope.ServiceProvider.GetRequiredService<IUserService>();
             await users.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
         }
 

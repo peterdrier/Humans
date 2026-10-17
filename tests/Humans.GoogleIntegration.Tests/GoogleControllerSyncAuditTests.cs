@@ -18,7 +18,7 @@ namespace Humans.GoogleIntegration.Tests;
 
 public sealed class GoogleControllerSyncAuditTests
 {
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
     private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
 

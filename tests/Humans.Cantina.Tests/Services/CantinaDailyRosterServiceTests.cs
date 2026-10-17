@@ -22,7 +22,7 @@ public class CantinaDailyRosterServiceTests
 {
     private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _burnSettings;
-    private readonly IUserServiceRead _userRead;
+    private readonly IUserService _userRead;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
@@ -34,7 +34,7 @@ public class CantinaDailyRosterServiceTests
     {
         _shiftMgmt = Substitute.For<IShiftManagementService>();
         _burnSettings = Substitute.For<ISettingsService>();
-        _userRead = Substitute.For<IUserServiceRead>();
+        _userRead = Substitute.For<IUserService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
         _userRead.GetUserInfosAsync(

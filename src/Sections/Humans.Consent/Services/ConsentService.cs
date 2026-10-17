@@ -20,7 +20,7 @@ internal sealed class ConsentService(
     ILegalDocumentSyncManagement legalDocumentSyncService,
     INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
-    IUserServiceRead userService,
+    IUserService userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,

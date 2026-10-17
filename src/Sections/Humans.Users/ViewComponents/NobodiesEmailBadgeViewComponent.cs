@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.ViewComponents;
 
@@ -7,7 +8,7 @@ namespace Humans.Users.ViewComponents;
 /// Renders a nobodies.team email badge or status indicator for a user.
 ///
 /// Reads from the cached <c>UserInfo</c> projection — no local IMemoryCache is needed
-/// since the underlying read is already cache-served by <see cref="IUserService"/>.
+/// since the underlying read is already cache-served by <see cref="IUserManagement"/>.
 ///
 /// Modes:
 ///   "badge"     — icon badge (ProfileCard)
@@ -20,7 +21,7 @@ namespace Humans.Users.ViewComponents;
 /// <c>&lt;vc:nobodies-email-badge&gt;</c>. Teams' member roster (formerly this component's
 /// "provision" mode) now renders its own email-or-provisioning-form cell.
 /// </summary>
-public sealed class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
+public sealed class NobodiesEmailBadgeViewComponent(IUserService userService) : ViewComponent
 {
     /// <summary>
     /// Renders a nobodies.team email badge for the given user.

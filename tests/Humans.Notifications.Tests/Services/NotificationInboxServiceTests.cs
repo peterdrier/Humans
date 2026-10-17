@@ -20,7 +20,7 @@ public class NotificationInboxServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
     private readonly NotificationRepository _repo;
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly NotificationInboxService _service;
     private readonly Guid _userId = Guid.NewGuid();
 

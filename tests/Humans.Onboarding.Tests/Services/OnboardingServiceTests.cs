@@ -20,6 +20,7 @@ namespace Humans.Onboarding.Tests.Services;
 public sealed class OnboardingServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
@@ -33,6 +34,7 @@ public sealed class OnboardingServiceTests
     private OnboardingService BuildSut() =>
         new(
             _userService,
+            _userServiceWrite,
             _applicationDecisionService,
             _emailService,
             _emailMessages,
@@ -54,7 +56,7 @@ public sealed class OnboardingServiceTests
         var reviewerId = Guid.NewGuid();
         const string notes = "looks good";
 
-        _userService.ApplyProfileOnboardingMutationAsync(
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(
                 userId,
                 Arg.Is<UserProfileOnboardingCommand>(cmd =>
                     cmd.Mutation == UserProfileOnboardingMutation.RecordConsentCheck
@@ -82,7 +84,7 @@ public sealed class OnboardingServiceTests
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
 
-        _userService.ApplyProfileOnboardingMutationAsync(
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(
                 userId,
                 Arg.Is<UserProfileOnboardingCommand>(cmd =>
                     cmd.Mutation == UserProfileOnboardingMutation.RejectSignup
@@ -123,7 +125,7 @@ public sealed class OnboardingServiceTests
         if (cancelled) await cancellation.CancelAsync();
         var failure = cancelled ? (Exception)new OperationCanceledException(cancellation.Token)
             : new IOException("Recipient lookup unavailable");
-        _userService.ApplyProfileOnboardingMutationAsync(userId,
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(userId,
             Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -155,7 +157,7 @@ public sealed class OnboardingServiceTests
     public async Task RejectSignupAsync_LocalizesNotificationForRecipient(string? reason, string expectedBody)
     {
         var userId = Guid.NewGuid();
-        _userService.ApplyProfileOnboardingMutationAsync(userId,
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(userId,
             Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -181,7 +183,7 @@ public sealed class OnboardingServiceTests
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
         var reason = string.Concat(Enumerable.Repeat(character, 2000));
-        _userService.ApplyProfileOnboardingMutationAsync(userId,
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(userId,
             Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -198,7 +200,7 @@ public sealed class OnboardingServiceTests
         body.Should().StartWith("Tu inscripción no se ha podido aprobar: ");
         body.Should().EndWith("…");
         body.Should().NotContain("�");
-        await _userService.Received(1).ApplyProfileOnboardingMutationAsync(userId,
+        await _userServiceWrite.Received(1).ApplyProfileOnboardingMutationAsync(userId,
             Arg.Is<UserProfileOnboardingCommand>(command => command.RejectionReason == reason),
             Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
@@ -217,7 +219,7 @@ public sealed class OnboardingServiceTests
         var reviewerId = Guid.NewGuid();
         const string reason = "duplicate account";
 
-        _userService.ApplyProfileOnboardingMutationAsync(
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(
                 userId,
                 Arg.Is<UserProfileOnboardingCommand>(cmd =>
                     cmd.Mutation == UserProfileOnboardingMutation.RejectSignup
@@ -289,7 +291,7 @@ public sealed class OnboardingServiceTests
                 SystemTeamIds.Volunteers,
                 Arg.Any<CancellationToken>())
             .Returns(true);
-        _userService.ApplyProfileOnboardingMutationAsync(
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(
                 userId,
                 Arg.Is<UserProfileOnboardingCommand>(cmd =>
                     cmd.Mutation == UserProfileOnboardingMutation.SetConsentCheckPending),
@@ -299,7 +301,7 @@ public sealed class OnboardingServiceTests
         var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         set.Should().BeTrue();
-        await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
+        await _userServiceWrite.Received(1).ApplyProfileOnboardingMutationAsync(
             userId,
             Arg.Is<UserProfileOnboardingCommand>(cmd =>
                 cmd.Mutation == UserProfileOnboardingMutation.SetConsentCheckPending),
@@ -515,7 +517,7 @@ public sealed class OnboardingServiceTests
             consentCheckStatus: ConsentCheckStatus.Flagged, createdAt: now));
 
         StubReviewQueueDependencies([flagged, pending, rejected, unselected, merged]);
-        _userService.ApplyProfileOnboardingMutationAsync(
+        _userServiceWrite.ApplyProfileOnboardingMutationAsync(
                 Arg.Any<Guid>(), Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new OnboardingResult(true)));
 
@@ -529,7 +531,7 @@ public sealed class OnboardingServiceTests
 
         foreach (var cleared in new[] { flaggedId, pendingId })
         {
-            await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
+            await _userServiceWrite.Received(1).ApplyProfileOnboardingMutationAsync(
                 cleared,
                 Arg.Is<UserProfileOnboardingCommand>(cmd =>
                     cmd.Mutation == UserProfileOnboardingMutation.RecordConsentCheck
@@ -540,7 +542,7 @@ public sealed class OnboardingServiceTests
 
         foreach (var untouched in new[] { rejectedId, unselectedId, mergedId })
         {
-            await _userService.DidNotReceive().ApplyProfileOnboardingMutationAsync(
+            await _userServiceWrite.DidNotReceive().ApplyProfileOnboardingMutationAsync(
                 untouched, Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>());
         }
     }

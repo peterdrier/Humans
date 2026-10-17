@@ -30,7 +30,7 @@ public sealed class CommunicationPreferenceCountTests : ServiceTestHarness
 
         _service = new CommunicationPreferenceService(
             repository,
-            Substitute.For<IUserService>(),
+            Substitute.For<IUserManagement>(),
             tokenProvider,
             Clock,
             AuditLog,

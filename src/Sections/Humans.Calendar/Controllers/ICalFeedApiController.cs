@@ -17,7 +17,7 @@ namespace Humans.Calendar.Controllers;
 [Route("api/ical")]
 internal sealed class ICalFeedApiController(
     IICalFeedService feed,
-    IUserServiceRead users,
+    IUserService users,
     ILogger<ICalFeedApiController> logger) : ApiControllerBase(users)
 {
     [HttpGet("{userId:guid}/{token:guid}.ics")]

@@ -20,7 +20,7 @@ internal sealed class ShiftDashboardController(
     IBurnSettingsService burnSettings,
     IShiftManagement shiftMgmt,
     IShiftSignupService signupService,
-    IUserServiceRead userService,
+    IUserService userService,
     ShiftDashboardPageBuilder pageBuilder,
     ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)

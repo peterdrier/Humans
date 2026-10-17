@@ -12,7 +12,7 @@ namespace Humans.Users.Controllers;
 [ApiController]
 [Route("api/profiles")]
 internal sealed class ProfileApiController(
-    IUserServiceRead userService,
+    IUserService userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
@@ -22,7 +22,7 @@ internal sealed class ProfileApiController(
     // and the scrollable dropdown shows the best matches first. Mirrors SearchService's Unlimited.
     private const int Unlimited = int.MaxValue;
 
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("search")]
     public async Task<IActionResult> Search(

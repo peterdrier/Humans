@@ -1,6 +1,7 @@
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/NameBackfill")]
 internal sealed class UserNameBackfillAdminController(
-    IUserService userService,
+    IUserManagement userService,
     IUserNameSyncService nameSyncService,
     ILogger<UserNameBackfillAdminController> logger) : HumansControllerBase(userService)
 {

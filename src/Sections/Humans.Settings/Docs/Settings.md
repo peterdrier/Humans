@@ -170,7 +170,7 @@ keep in step by hand. Derive it from the call sites, not from here.
 | Direction | Section | Through |
 |---|---|---|
 | out | AuditLog | `IAuditLogService` — one entry per `SaveEventSettingsAsync` |
-| out | Users | `IUserServiceRead` (platform base-controller dependency, reached through Base) |
+| out | Users | `IUserService` (platform base-controller dependency, reached through Base) |
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes |

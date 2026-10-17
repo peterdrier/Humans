@@ -21,6 +21,7 @@ namespace Humans.Onboarding.Services;
 // deletion (IAccountDeletionService, in Humans.Users).
 internal sealed class OnboardingService(
     IUserService userService,
+    IUserWrite userWrite,
     IApplicationServiceRead applicationDecisionService,
     IEmailService emailService,
     OnboardingEmails emailMessages,
@@ -172,7 +173,7 @@ internal sealed class OnboardingService(
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
+        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RejectSignup,
@@ -255,7 +256,7 @@ internal sealed class OnboardingService(
         if (!hasAllConsents)
             return false;
 
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
+        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(UserProfileOnboardingMutation.SetConsentCheckPending),
             ct);
@@ -312,7 +313,7 @@ internal sealed class OnboardingService(
         string? notes,
         CancellationToken ct)
     {
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
+        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RecordConsentCheck,

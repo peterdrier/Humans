@@ -19,7 +19,7 @@ namespace Humans.Finance.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class FinanceController(
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedFinanceService holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)

@@ -25,7 +25,7 @@ namespace Humans.Events.Controllers;
 internal sealed class EventsApiController(
     IEventManagement guide,
     ICampService camps,
-    IUserServiceRead users,
+    IUserService users,
     ILogger<EventsApiController> logger)
     : ApiControllerBase(users)
 {

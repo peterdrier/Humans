@@ -44,7 +44,7 @@ public class SyncOutboxViewTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
-        builder.Services.AddSingleton(Substitute.For<IUserServiceRead>());
+        builder.Services.AddSingleton(Substitute.For<IUserService>());
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(GoogleIntegrationResource).Assembly)
