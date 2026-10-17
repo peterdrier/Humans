@@ -44,10 +44,9 @@ internal sealed class ProfileEditorService(
                 ct);
 
             profileId = storageResult.ProfileId;
+            if (request.VolunteerHistory is not null)
+                await userService.SaveProfileVolunteerHistoryAsync(userId, request.VolunteerHistory.ToList(), ct);
         }
-
-        if (request.VolunteerHistory is not null)
-            await userService.SaveProfileVolunteerHistoryAsync(userId, request.VolunteerHistory.ToList(), ct);
 
         logger.LogInformation("User {UserId} updated their profile", userId);
 

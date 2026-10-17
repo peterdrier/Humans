@@ -692,6 +692,54 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         saved.AllergyOtherText.Should().BeNull();
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task SaveProfileAsync_OverlappingSubmissions_PreserveEachProfilesCvDeclaration()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
+        var historyReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resumeHistory = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _userService.SaveProfileVolunteerHistoryAsync(userId, Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var entries = call.Arg<IReadOnlyList<CVEntry>>();
+                if (entries.Count == 0)
+                {
+                    historyReached.TrySetResult();
+                    await resumeHistory.Task.WaitAsync(ct);
+                }
+                return await _storageUserService.SaveProfileVolunteerHistoryAsync(userId, entries, call.Arg<CancellationToken>());
+            });
+        var first = _editor.SaveProfileAsync(userId, "Test", MakeRequest() with
+        {
+            NoPriorBurnExperience = true, VolunteerHistory = [],
+        }, ct);
+        try
+        {
+            await historyReached.Task.WaitAsync(ct);
+            var secondEditor = new ProfileEditorService(_userService, NullLogger<ProfileEditorService>.Instance);
+            var second = secondEditor.SaveProfileAsync(userId, "Test", MakeRequest() with
+            {
+                NoPriorBurnExperience = false,
+                VolunteerHistory = [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)],
+            }, ct);
+            await Task.WhenAny(second, Task.Delay(100, ct));
+            resumeHistory.TrySetResult();
+            var results = await Task.WhenAll(first, second);
+            results.Should().AllSatisfy(result => result.Succeeded.Should().BeTrue());
+        }
+        finally
+        {
+            resumeHistory.TrySetResult();
+        }
+
+        (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
+            .NoPriorBurnExperience.Should().BeFalse();
+        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct))
+            .Should().ContainSingle().Which.EventName.Should().Be("Nowhere");
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_WithCvPayload_SavesVolunteerHistory()
     {
