@@ -489,51 +489,15 @@ internal sealed class CachingUserService(
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
-    private static UserInfo WithUserFields(UserInfo current, User user)
-    {
-        var legacyDisplayName = user.DisplayName;
-        return current with
+    private static UserInfo WithUserFields(UserInfo current, User user) =>
+        UserInfo.Create(user, [], [], [], current.Profile, []) with
         {
-            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName),
-            // nobodies-collective/Humans#1742: never infer erasure from a user-editable name.
-            // Shares UserStateEvaluator's predicate so this projection and User.State cannot
-            // disagree; UserInfo.Create carries the same rule for the Contracts-side factory.
-            IsGdprAnonymized = UserStateEvaluator.IsGdprTombstoned(user),
-            PreferredLanguage = user.PreferredLanguage,
-            FallbackPictureUrl = user.ProfilePictureUrl,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
-            LastConsentReminderSentAt = user.LastConsentReminderSentAt,
-            DeletionRequestedAt = user.DeletionRequestedAt,
-            DeletionScheduledFor = user.DeletionScheduledFor,
-            DeletionEligibleAfter = user.DeletionEligibleAfter,
-            UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
-            SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
-            MagicLinkSentAt = user.MagicLinkSentAt,
-            // GoogleEmailStatus is computed from the canonical Google UserEmail row (#687) —
-            // UserEmails carry over via `with`, so no explicit assignment here.
-            ContactSource = user.ContactSource,
-            ExternalSourceId = user.ExternalSourceId,
-            MergedToUserId = user.MergedToUserId,
-            MergedAt = user.MergedAt,
-            IdentityEmailColumn = user.IdentityEmailColumn,
+            UserEmails = current.UserEmails,
+            EventParticipations = current.EventParticipations,
+            ExternalLogins = current.ExternalLogins,
+            CommunicationPreferences = current.CommunicationPreferences,
+            MergedUserIds = current.MergedUserIds,
         };
-    }
-
-    /// <summary>
-    /// nobodies-collective/Humans#1098: <c>User.BurnerName</c> is the sole source, with narrow
-    /// tombstone recognition for legacy anonymized rows. Cache-refresh twin of
-    /// <c>UserInfo.ResolveBurnerName</c> — see that doc comment for the detail.
-    /// </summary>
-    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
-    {
-        if (!string.IsNullOrWhiteSpace(userBurnerName))
-            return userBurnerName;
-
-        return string.Equals(legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal)
-            ? UserInfo.GdprAnonymizedBurnerName
-            : string.Empty;
-    }
 
     // ==========================================================================
     // Inner delegation — every other IUserService method passes through and

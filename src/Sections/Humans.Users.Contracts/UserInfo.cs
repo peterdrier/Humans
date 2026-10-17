@@ -457,7 +457,6 @@ public sealed record UserInfo(
     /// a blank <c>BurnerName</c> with the erasure sentinel still sitting in <c>DisplayName</c>
     /// (the old #1097 erasure path only nulled <c>BurnerName</c>). This is NOT a general
     /// fallback — it retires once the #1102 migration drops the <c>DisplayName</c> column.
-    /// <c>CachingUserService.ResolveBurnerName</c> is the cache-refresh twin of this.
     /// </summary>
     /// <summary>
     /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>

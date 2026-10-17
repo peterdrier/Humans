@@ -159,6 +159,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
         return new User
         {
             Id = user.Id,
+            State = user.State,
             DisplayName = user.DisplayName,
             BurnerName = user.BurnerName,
             FirstName = user.FirstName,
