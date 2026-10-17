@@ -1,4 +1,5 @@
 using Humans.Shifts.Domain;
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
@@ -28,7 +29,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             NewCalendarResolver(),
             Substitute.For<IUserService>(),
             Substitute.For<IShiftViewInvalidator>(),
-            Clock);
+            Clock,
+            AuditLog);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -45,6 +47,10 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.Should().NotBeNull();
         record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
+        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilitySet,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={esId}; AvailableDays=3; self-service update", userId,
+            relatedEntityId: esId, relatedEntityType: "EventSettings");
     }
 
     [HumansFact]
@@ -66,6 +72,26 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         records.Should().HaveCount(1);
         records[0].AvailableDayOffsets.Should().BeEquivalentTo([0, 1, 2]);
+    }
+
+    [HumansFact]
+    public async Task SetAvailability_ClearsTheDays_AndAuditsTheVolunteer()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
+        AuditLog.ClearReceivedCalls();
+
+        await _service.SetAvailabilityAsync(userId, esId, []);
+
+        var record = await ShiftsDb.GeneralAvailability.AsNoTracking().SingleAsync(
+            g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
+        record.AvailableDayOffsets.Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilityCleared,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={esId}; AvailableDays=0; self-service update", userId,
+            relatedEntityId: esId, relatedEntityType: "EventSettings");
     }
 
     [HumansFact]

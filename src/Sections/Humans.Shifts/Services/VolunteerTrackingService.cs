@@ -1,4 +1,5 @@
 using Humans.Shifts.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 using NodaTime;
@@ -14,12 +15,18 @@ internal sealed class VolunteerTrackingService(
     EventCalendarResolver calendarResolver,
     IUserServiceRead userService,
     IShiftViewInvalidator viewInvalidator,
-    IClock clock) : IVolunteerTrackingService, IUserMerge
+    IClock clock,
+    IAuditLogService audit) : IVolunteerTrackingService, IUserMerge
 {
     public async Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
     {
         var now = clock.GetCurrentInstant();
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
+        await audit.LogAsync(
+            dayOffsets.Count == 0 ? AuditAction.VolunteerAvailabilityCleared : AuditAction.VolunteerAvailabilitySet,
+            "GeneralAvailability", userId,
+            $"EventSettingsId={eventSettingsId}; AvailableDays={dayOffsets.Count}; self-service update", userId,
+            relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
         viewInvalidator.InvalidateUser(userId);
     }
 
