@@ -705,13 +705,13 @@ internal sealed class ShiftSignupService(
         EventSettingsInfo eventSettings)
     {
         var conflictingDays = new List<int>();
-        var existingSignupList = existingSignups as IReadOnlyList<ShiftSignup> ?? existingSignups.ToList();
+        var confirmedSignups = existingSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
         foreach (var shift in shiftsInRange)
         {
             var shiftStart = shift.GetAbsoluteStart(eventSettings);
             var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
-            foreach (var existing in existingSignupList)
+            foreach (var existing in confirmedSignups)
             {
                 var existingCalendar = await calendarResolver.GetAsync(existing.Shift.Rota.EventSettingsId);
                 if (existingCalendar is null) continue;

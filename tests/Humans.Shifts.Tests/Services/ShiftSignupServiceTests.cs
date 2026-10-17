@@ -1015,10 +1015,12 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         signups.Select(s => s.SignupBlockId).Distinct().Should().HaveCount(1);
     }
 
-    [HumansFact]
-    public async Task SignUpRange_BlocksIfAnyDayOverlaps()
+    [HumansTheory]
+    [InlineData(SignupStatus.Confirmed)]
+    [InlineData(SignupStatus.Pending)]
+    public async Task SignUpRange_BlocksIfAnyDayOverlaps(SignupStatus status)
     {
-        // Arrange: user already has a confirmed signup on day -2
+        // Arrange: user already has an active signup on day -2
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         for (var day = -5; day <= -1; day++)
@@ -1028,7 +1030,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, TestContext.Current.CancellationToken);
-        SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+        SeedSignup(userId, dayMinus2Shift.Id, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         // Act: try to sign up for days -3 to -1
@@ -1039,8 +1041,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Contain("Already signed up");
     }
 
-    [HumansFact]
-    public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays()
+    [HumansTheory]
+    [InlineData(SignupStatus.Confirmed)]
+    [InlineData(SignupStatus.Pending)]
+    public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays(SignupStatus status)
     {
         // Arrange: rota with 3 all-day shifts; user already signed up to day -2 in same rota.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -1052,7 +1056,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, TestContext.Current.CancellationToken);
-        var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+        var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         // Act
@@ -1298,8 +1302,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         newOffsets.Should().Equal(-4, -1);
     }
 
-    [HumansFact]
-    public async Task SignUpRange_StrictMode_TimeOverlap_PreservesHardFail()
+    [HumansTheory]
+    [InlineData(SignupStatus.Confirmed, false)]
+    [InlineData(SignupStatus.Pending, false)]
+    [InlineData(SignupStatus.Pending, true)]
+    public async Task SignUpRange_TimeOverlap_OnlyConfirmedSignupsConflict(SignupStatus status, bool skipConflicts)
     {
         // Arrange: cross-rota time conflict on day -2 (same shape as the skipConflicts time-overlap test).
         var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -1338,21 +1345,27 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftsDb.Shifts.Add(conflictingShift);
 
         var userId = Guid.NewGuid();
-        SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+        SeedSignup(userId, conflictingShift.Id, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act — no skipConflicts argument; defaults to false.
-        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1);
+        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1,
+            flags: skipConflicts ? ShiftSignupRequestFlags.SkipConflicts : ShiftSignupRequestFlags.None);
 
-        // Assert: hard-fails with the legacy error message; nothing new written.
-        result.Success.Should().BeFalse();
-        result.Error.Should().NotBeNull();
-        result.Error.Should().Contain("Time conflict");
+        if (status == SignupStatus.Confirmed)
+        {
+            result.Success.Should().BeFalse();
+            result.Error.Should().Contain("Time conflict");
+        }
+        else
+        {
+            result.Success.Should().BeTrue();
+            result.Warning.Should().NotContain("Time conflict");
+        }
 
         var newSignupCount = await ShiftsDb.ShiftSignups
             .Where(s => s.UserId == userId && s.Shift.RotaId == buildRota.Id)
             .CountAsync(TestContext.Current.CancellationToken);
-        newSignupCount.Should().Be(0);
+        newSignupCount.Should().Be(status == SignupStatus.Confirmed ? 0 : 3);
     }
 
     [HumansFact]
