@@ -1056,6 +1056,96 @@ internal sealed class ExpenseReportService(
 
         }, "Error coordinator-rejecting expense report {ReportId}", reportId);
 
+    public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, async () =>
+        {
+            var trimmed = reason?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return ExpenseMutationResult.OperatorFailure("A reason is required to decline a line.");
+            if (trimmed.Length > DeclineReasonMaxLength)
+                return ExpenseMutationResult.OperatorFailure(
+                    $"The reason can be at most {DeclineReasonMaxLength} characters.");
+
+            var (_, line, refusal) = await GetDeclinableLineAsync(
+                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            if (refusal is not null) return refusal;
+            if (line!.Declined)
+                return ExpenseMutationResult.OperatorFailure("That line is already declined.");
+
+            var ok = await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: true, trimmed, actorUserId, clock.GetCurrentInstant(), ct);
+            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not decline the line.");
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseLineDeclined,
+                AuditEntityTypes.Report, reportId,
+                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} declined line "
+                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
+        }, "Error declining line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, async () =>
+        {
+            var (_, line, refusal) = await GetDeclinableLineAsync(
+                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            if (refusal is not null) return refusal;
+            if (!line!.Declined)
+                return ExpenseMutationResult.OperatorFailure("That line is not declined.");
+
+            var ok = await repo.SetLineDeclinedAsync(
+                reportId, lineId, declined: false, reason: null, byUserId: null, clock.GetCurrentInstant(), ct);
+            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not undo the decline.");
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseLineDeclineUndone,
+                AuditEntityTypes.Report, reportId,
+                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} undid the decline of line "
+                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
+                    + $"it had been declined: {line.DeclinedReason}",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
+        }, "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
+
+    private const int DeclineReasonMaxLength = 1000;
+
+    /// <summary>
+    /// The service-side half of the DeclineLine gate (the resource-based handler is the first): the
+    /// report must still await a decision — a coordinator holds Endorse only while Submitted, a
+    /// finance admin through CoordinatorEndorsed — and the line must be a top-level one on this
+    /// report. Proof rows are display-only and never declinable.
+    /// </summary>
+    private async Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
+        GetDeclinableLineAsync(
+            Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct)
+    {
+        const string cannot = "Could not change the line. The report may no longer be awaiting a decision.";
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
+
+        var open = actorIsFinanceAdmin
+            ? report.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
+            : report.Status is ExpenseReportStatus.Submitted;
+        if (!open) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
+
+        if (!actorIsFinanceAdmin
+            && await GetCoordinatorRefusalAsync(report.BudgetCategoryId, actorUserId, ct) is { } coordinatorRefusal)
+            return (null, null, coordinatorRefusal);
+
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null) return (null, null, ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport"));
+        if (line.ParentLineId is not null)
+            return (null, null, ExpenseMutationResult.OperatorFailure("Proof rows cannot be declined; decline the invoice line instead."));
+        return (report, line, null);
+    }
+
     /// <summary>
     /// Tells the submitter their report was approved (peterdrier/Humans#1820). Re-reads the
     /// report after the flip so the amount is the DTO's own <c>Payable</c> — the cap the approver
@@ -1321,6 +1411,8 @@ internal sealed class ExpenseReportService(
             AuditAction.ExpensePaid,
             AuditAction.ExpenseAttachmentUploaded,
             AuditAction.ExpenseAttachmentRemoved,
+            AuditAction.ExpenseLineDeclined,
+            AuditAction.ExpenseLineDeclineUndone,
             AuditAction.IbanSet,
             AuditAction.IbanRemove,
             AuditAction.IbanReveal,
@@ -1372,6 +1464,9 @@ internal sealed class ExpenseReportService(
                     l.LineType,
                     l.ParentLineId,
                     l.SortOrder,
+                    l.Declined,
+                    l.DeclinedReason,
+                    DeclinedAt = l.DeclinedAt?.ToIso8601(),
                     Attachment = l.Attachment is null
                         ? null
                         : new

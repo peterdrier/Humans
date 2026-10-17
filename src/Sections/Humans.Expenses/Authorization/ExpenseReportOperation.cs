@@ -15,5 +15,8 @@ internal enum ExpenseReportOperation
     Approve,
     FinanceReject,
     /// <summary>Re-queue a stuck Holded push. Finance-admin only, and only after approval.</summary>
-    RequeueHoldedPush
+    RequeueHoldedPush,
+    /// <summary>Decline or un-decline one line. Whoever may Endorse or Approve the report, while it
+    /// awaits their decision — never the submitter.</summary>
+    DeclineLine
 }

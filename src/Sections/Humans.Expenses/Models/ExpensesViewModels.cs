@@ -139,6 +139,9 @@ internal sealed class ExpenseDetailViewModel
     /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
     public bool CanCoordinatorReject { get; init; }
 
+    /// <summary>The viewer may decline or un-decline individual lines (holds Endorse or Approve while the report awaits a decision).</summary>
+    public bool CanDeclineLines { get; init; }
+
     /// <summary>Accounts offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
     public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; init; } = [];
 }
@@ -194,6 +197,12 @@ internal sealed class EditLineInputModel
 }
 
 internal sealed class CoordinatorRejectInputModel
+{
+    [Required, StringLength(1000, MinimumLength = 1)]
+    public string Reason { get; set; } = "";
+}
+
+internal sealed class DeclineLineInputModel
 {
     [Required, StringLength(1000, MinimumLength = 1)]
     public string Reason { get; set; } = "";

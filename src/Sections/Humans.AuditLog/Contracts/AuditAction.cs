@@ -399,4 +399,6 @@ public enum AuditAction
     PreapprovalGrantAmountChanged,
     PreapprovalReminderSent,
     PreapprovalMergeDroppedApplication,
+    ExpenseLineDeclined,
+    ExpenseLineDeclineUndone,
 }

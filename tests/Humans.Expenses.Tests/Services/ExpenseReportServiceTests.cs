@@ -3277,6 +3277,330 @@ public sealed class ExpenseReportServiceTests
         line.Description.Should().Be("Per diem: 1 day day-trip @ €26.67 = €26.67");
     }
 
+    // ─────────────────────────── Per-line decline ────────────────────────────
+
+    private static readonly Guid DeclineFinanceAdmin = Guid.NewGuid();
+
+    /// <summary>Seeds a report holding lines of the given amounts (the first <paramref name="declinedCount"/>
+    /// already declined), with <c>Total</c> the accepted sum — the state the repository maintains.</summary>
+    private async Task<(Guid ReportId, Guid CategoryId, Guid TeamId, Guid[] LineIds)> SeedDeclineReportAsync(
+        ExpenseReportStatus status, Guid submitter, decimal? maxAmount, int declinedCount, params decimal[] amounts)
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(), status);
+
+        var lineIds = new List<Guid>();
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
+        var report = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
+        report.MaxAmount = maxAmount;
+        for (var i = 0; i < amounts.Length; i++)
+        {
+            var declined = i < declinedCount;
+            var id = Guid.NewGuid();
+            lineIds.Add(id);
+            ctx.ExpenseLines.Add(new ExpenseLine
+            {
+                Id = id,
+                ExpenseReportId = reportId,
+                Description = $"Line {i}",
+                Amount = amounts[i],
+                LineType = ExpenseLineType.Receipt,
+                SortOrder = i,
+                DeclinedAt = declined ? FakeNow : null,
+                DeclinedReason = declined ? "Not eligible" : null,
+                DeclinedByUserId = declined ? DeclineFinanceAdmin : null,
+            });
+            if (!declined) report.Total += amounts[i];
+        }
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return (reportId, category.Id, category.TeamId!.Value, [.. lineIds]);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_DropsTheLineFromTotalAndPayable_KeepsItOnTheReport_AndAudits()
+    {
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
+
+        var result = await _sut.DeclineLineWithResultAsync(
+            reportId, DeclineFinanceAdmin, true, lines[1], "  Alcohol is not reimbursable  ", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(100m);
+        loaded.Payable.Should().Be(100m);
+        loaded.Lines.Should().HaveCount(2);
+        var declined = loaded.Lines.Single(l => l.Id == lines[1]);
+        declined.Declined.Should().BeTrue();
+        declined.DeclinedReason.Should().Be("Alcohol is not reimbursable");
+        declined.DeclinedByUserId.Should().Be(DeclineFinanceAdmin);
+        declined.DeclinedAt.Should().Be(FakeNow);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseLineDeclined, "ExpenseReport", reportId,
+            Arg.Is<string>(d => d.Contains("Line 1") && d.Contains("Alcohol is not reimbursable")),
+            DeclineFinanceAdmin);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_LeavesTheCapAlone_PayableIsTheLesserOfAcceptedTotalAndCap()
+    {
+        // €500 of receipts, a €400 cap, €50 declined: accepted total €450, payout still €400.
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 450m, 50m);
+
+        (await _sut.DeclineLineWithResultAsync(
+            reportId, DeclineFinanceAdmin, true, lines[1], "Duplicate", Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(450m);
+        loaded.MaxAmount.Should().Be(400m);
+        loaded.Payable.Should().Be(400m);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_BringingTheAcceptedTotalUnderTheCap_PaysTheAcceptedTotal()
+    {
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 300m, 100m, 50m);
+
+        (await _sut.DeclineLineWithResultAsync(
+            reportId, DeclineFinanceAdmin, true, lines[0], "Personal", Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(150m);
+        loaded.Payable.Should().Be(150m);
+        loaded.MaxAmount.Should().Be(400m);
+    }
+
+    [HumansFact]
+    public async Task UndoDeclineLine_PutsTheLineBackInTotalAndPayable_AndAudits()
+    {
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.CoordinatorEndorsed, Guid.NewGuid(), null, 1, 50m, 100m);
+
+        var result = await _sut.UndoDeclineLineWithResultAsync(
+            reportId, DeclineFinanceAdmin, true, lines[0], Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(150m);
+        loaded.Payable.Should().Be(150m);
+        var line = loaded.Lines.Single(l => l.Id == lines[0]);
+        line.Declined.Should().BeFalse();
+        line.DeclinedReason.Should().BeNull();
+        line.DeclinedByUserId.Should().BeNull();
+        line.DeclinedAt.Should().BeNull();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseLineDeclineUndone, "ExpenseReport", reportId,
+            Arg.Is<string>(d => d.Contains("Line 0")), DeclineFinanceAdmin);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_ByACoordinatorOfTheCategory_WorksWhileSubmitted()
+    {
+        var coordinator = Guid.NewGuid();
+        var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
+        SetupCoordinatorAuthz(categoryId, teamId, coordinator);
+
+        var result = await _sut.DeclineLineWithResultAsync(
+            reportId, coordinator, false, lines[1], "Not for this budget", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_ByACoordinator_IsRefusedOnceTheReportIsEndorsed()
+    {
+        var coordinator = Guid.NewGuid();
+        var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.CoordinatorEndorsed, Guid.NewGuid(), null, 0, 100m, 50m);
+        SetupCoordinatorAuthz(categoryId, teamId, coordinator);
+
+        var result = await _sut.DeclineLineWithResultAsync(
+            reportId, coordinator, false, lines[1], "Too late", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Total.Should().Be(150m);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_ByTheSubmitterOrARandomMember_IsRefused()
+    {
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, submitter, null, 0, 100m, 50m);
+        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        foreach (var actor in new[] { submitter, Guid.NewGuid() })
+        {
+            var result = await _sut.DeclineLineWithResultAsync(
+                reportId, actor, false, lines[1], "Nope", Xunit.TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeFalse();
+        }
+
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(150m);
+        loaded.Lines.Should().OnlyContain(l => !l.Declined);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseLineDeclined, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task UndoDeclineLine_ByTheSubmitter_IsRefused()
+    {
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, submitter, null, 1, 50m, 100m);
+        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _sut.UndoDeclineLineWithResultAsync(
+            reportId, submitter, false, lines[0], Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task DeclineLine_OutsideTheDecisionWindow_IsRefusedEvenForFinanceAdmin(ExpenseReportStatus status)
+    {
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(status, Guid.NewGuid(), null, 0, 100m);
+
+        var result = await _sut.DeclineLineWithResultAsync(
+            reportId, DeclineFinanceAdmin, true, lines[0], "Too late", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task DeclineLine_RefusesABlankReason_AProofRow_AndADoubleDecline()
+    {
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
+        var proofId = Guid.NewGuid();
+        await using (var ctx = new ExpensesDbContext(_expensesOptions))
+        {
+            ctx.ExpenseLines.Add(new ExpenseLine
+            {
+                Id = proofId, ExpenseReportId = reportId, Description = "Proof", Amount = 90m,
+                LineType = ExpenseLineType.Receipt, ParentLineId = lines[0], SortOrder = 9,
+            });
+            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+
+        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "   ", Xunit.TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeFalse();
+        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, proofId, "Proof", Xunit.TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeFalse();
+
+        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "First", Xunit.TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "Second", Xunit.TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeFalse();
+
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Total.Should().Be(100m);
+        loaded.Lines.Single(l => l.Id == lines[1]).DeclinedReason.Should().Be("First");
+        loaded.Lines.Single(l => l.Id == proofId).Declined.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RemovingADeclinedLine_ClearsIt_WithoutTakingItsAmountOutOfTheTotalAgain()
+    {
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
+
+        var result = await _sut.RemoveLineWithResultAsync(
+            reportId, submitter, false, lines[0], Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Lines.Should().ContainSingle(l => l.Id == lines[1]);
+        loaded.Total.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task ReplacingTheFileOfADeclinedLine_ClearsTheDecline_AndCountsTheLineAgain()
+    {
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            reportId, submitter, false, lines[0], "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        var line = loaded.Lines.Single(l => l.Id == lines[0]);
+        line.Declined.Should().BeFalse();
+        line.DeclinedReason.Should().BeNull();
+        loaded.Total.Should().Be(150m);
+    }
+
+    [HumansFact]
+    public async Task HoldedPush_SendsAcceptedLinesOnly()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
+                burnerName: "Meri", firstName: "Maria", lastName: "Garcia", iban: "ES9121000418450200051332")));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocumentDto
+            {
+                Id = "doc-1", DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m, PaymentsPending = 0m,
+            });
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
+
+        var reportId = await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, "note", Xunit.TestContext.Current.CancellationToken);
+        var lineIds = new List<Guid>();
+        foreach (var (description, amount) in new[] { ("Wood", 50m), ("Nails", 20m) })
+        {
+            var lineId = (await _sut.AddLineWithResultAsync(reportId, userId, false, description, amount, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
+            lineIds.Add(lineId);
+            await using var stream = new MemoryStream([7, 8, 9]);
+            (await _sut.AttachFileToLineWithResultAsync(
+                reportId, userId, false, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        }
+        (await _sut.SubmitWithResultAsync(reportId, userId, false, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lineIds[1], "Personal", Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i =>
+                string.Equals(i.Description, "ER: Wood", StringComparison.Ordinal)
+                && i.Lines.Sum(l => l.Amount) == 50m),
+            Arg.Any<CancellationToken>());
+        var loaded = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Lines.Single(l => l.Id == lineIds[0]).HoldedDocId.Should().Be("doc-1");
+        loaded.Lines.Single(l => l.Id == lineIds[1]).HoldedDocId.Should().BeNull();
+    }
+
     // ─────────────────────── Holded contact enrichment ───────────────────────
 
     [HumansFact]

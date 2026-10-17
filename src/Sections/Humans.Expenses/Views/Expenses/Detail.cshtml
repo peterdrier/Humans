@@ -160,9 +160,47 @@
                                             <span class="badge bg-primary me-1">@Localizer["Expenses_Invoice"]</span>
                                         }
                                         @line.Description
+                                        @if (line.Declined)
+                                        {
+                                            <div>
+                                                <span class="badge bg-danger">@Localizer["Expenses_Line_Declined"]</span>
+                                                <span class="small text-muted">@Localizer["Expenses_Line_DeclinedReason", line.DeclinedReason ?? ""]</span>
+                                            </div>
+                                        }
+                                        @if (Model.CanDeclineLines)
+                                        {
+                                            @* Reviewer-only controls (operator-exempt: English). *@
+                                            @if (line.Declined)
+                                            {
+                                                <form asp-action="UndoDeclineLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id" method="post" class="mt-1">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Undo decline</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <details class="mt-1">
+                                                    <summary class="small text-danger">Decline this line</summary>
+                                                    <form asp-action="DeclineLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id" method="post" class="mt-1">
+                                                        @Html.AntiForgeryToken()
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="text" name="Reason" class="form-control" maxlength="1000" required placeholder="Reason (shown to the submitter)" />
+                                                            <button type="submit" class="btn btn-outline-danger">Decline</button>
+                                                        </div>
+                                                    </form>
+                                                </details>
+                                            }
+                                        }
                                     </td>
                                     <td class="text-end">
-                                        @line.Amount.ToEuro()
+                                        @if (line.Declined)
+                                        {
+                                            <s class="text-muted">@line.Amount.ToEuro()</s>
+                                        }
+                                        else
+                                        {
+                                            @line.Amount.ToEuro()
+                                        }
                                         @if (cappedAllocations is not null
                                              && cappedAllocations.TryGetValue(line.Id, out var alloc))
                                         {
@@ -185,7 +223,14 @@
                                     {
                                         <tr class="text-muted">
                                             <td></td>
-                                            <td class="ps-4"><i class="fa-solid fa-turn-up fa-rotate-90 me-1 small"></i>@proof.Description</td>
+                                            <td class="ps-4">
+                                                <i class="fa-solid fa-turn-up fa-rotate-90 me-1 small"></i>@proof.Description
+                                                @* Declining an invoice declines its proofs along with it, for display only. *@
+                                                @if (line.Declined)
+                                                {
+                                                    <span class="badge bg-danger">@Localizer["Expenses_Line_Declined"]</span>
+                                                }
+                                            </td>
                                             <td class="text-end">(@proof.Amount.ToEuro())</td>
                                             <td>@{ await AttachmentCell(proof); }</td>
                                         </tr>

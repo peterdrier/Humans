@@ -104,6 +104,20 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Declines one line, with a reason: it stays on the report but leaves <c>Total</c> and
+    /// <c>Payable</c> and is never pushed to Holded. The cap is untouched. Open to whoever holds
+    /// Endorse or Approve on the report while it awaits their decision; proof rows are not declinable.
+    /// </summary>
+    Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        CancellationToken ct = default);
+
+    /// <summary>Undoes a decline under the same conditions that allow one.</summary>
+    Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        CancellationToken ct = default);
+
     /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set; a non-null
     /// <paramref name="overrideAccountNumber"/> rebooks the report to that account.</summary>
     Task<ExpenseMutationResult> ApproveWithResultAsync(

@@ -84,8 +84,26 @@
                     {
                         var proofs = proofsByParent.TryGetValue(line.Id, out var p) ? p : [];
                         <tr>
-                            <td>@line.Description</td>
-                            <td class="text-end text-nowrap">@line.Amount.ToEuro()</td>
+                            <td>
+                                @line.Description
+                                @if (line.Declined)
+                                {
+                                    <div>
+                                        <span class="badge bg-danger">@Localizer["Expenses_Line_Declined"]</span>
+                                        <span class="small text-muted">@Localizer["Expenses_Line_DeclinedReason", line.DeclinedReason ?? ""]</span>
+                                    </div>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                @if (line.Declined)
+                                {
+                                    <s class="text-muted">@line.Amount.ToEuro()</s>
+                                }
+                                else
+                                {
+                                    @line.Amount.ToEuro()
+                                }
+                            </td>
                             <td>
                                 @switch (line.LineType)
                                 {

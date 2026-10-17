@@ -16,6 +16,8 @@ internal sealed class ExpenseLineConfiguration : IEntityTypeConfiguration<Expens
         b.Property(x => x.Amount).HasColumnType("decimal(12,2)");
 
         b.Property(x => x.HoldedDocId).HasMaxLength(64);
+        b.Property(x => x.DeclinedReason).HasMaxLength(1000);
+        b.Ignore(x => x.Declined);
 
         b.Property(x => x.LineType)
             .HasConversion<string>()

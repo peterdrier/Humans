@@ -86,6 +86,9 @@
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
   <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Comptabilise {0} sur {1} — maximum autorisé</value></data>
   <data name="Expenses_LineNotBooked" xml:space="preserve"><value>Non comptabilisé — maximum autorisé atteint</value></data>
+  <data name="Expenses_Line_Declined" xml:space="preserve"><value>Refusée</value></data>
+  <data name="Expenses_Line_DeclinedReason" xml:space="preserve"><value>Motif : {0}</value></data>
+  <data name="Expenses_Line_DeclinedBanner" xml:space="preserve"><value>Un relecteur a refusé cette ligne. Motif : {0}. Elle ne compte pas dans ton total. Remplace son fichier ou supprime la ligne pour annuler le refus.</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Montant maximum</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Mes notes de frais</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nouvelle note</value></data>

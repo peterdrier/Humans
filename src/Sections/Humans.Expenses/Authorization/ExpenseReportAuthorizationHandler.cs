@@ -44,6 +44,9 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
                 || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
                     && resource.Status == ExpenseReportStatus.Submitted)
                 // The push is queued at approval, so there is nothing to re-queue before it.
+                || (op is ExpenseReportOperation.DeclineLine
+                    && resource.Status is ExpenseReportStatus.Submitted
+                        or ExpenseReportStatus.CoordinatorEndorsed)
                 || (op is ExpenseReportOperation.RequeueHoldedPush
                     && resource.Status == ExpenseReportStatus.Approved)))
         {
@@ -83,8 +86,10 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
             }
         }
 
+        // A coordinator holds Endorse only while the report is Submitted, so DeclineLine follows it.
         if ((op is ExpenseReportOperation.Endorse
                 or ExpenseReportOperation.CoordinatorReject
+                or ExpenseReportOperation.DeclineLine
                 or ExpenseReportOperation.View)
             && await IsCoordinatorOfReportCategoryAsync(userId, resource)
             && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted))

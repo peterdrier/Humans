@@ -17,4 +17,10 @@ public sealed record ExpenseLineDto
     /// Null until pushed, on proof rows, and on lines the authorized cap zeroed out. Reports
     /// pushed before per-line docs carry their single doc id on the report instead.</summary>
     public string? HoldedDocId { get; init; }
+    /// <summary>A reviewer declined this line: kept for the record, out of the report's
+    /// <c>Total</c> and <c>Payable</c>, and never pushed to Holded.</summary>
+    public bool Declined { get; init; }
+    public string? DeclinedReason { get; init; }
+    public Guid? DeclinedByUserId { get; init; }
+    public NodaTime.Instant? DeclinedAt { get; init; }
 }
