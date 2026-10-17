@@ -25,7 +25,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
     string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default);
 ```
 
-**Implicit scope:** the service always filters to "not rejected, not deleted". Suspended profiles surface only when the `Admin` bit is set.
+**Implicit scope:** the service always filters to "not rejected, not deleted". Suspended and unapproved profiles remain searchable in public scopes, per [`profile-visibility-acceptable`](../product/profile-visibility-acceptable.md).
 
 **Hard invariants:**
 

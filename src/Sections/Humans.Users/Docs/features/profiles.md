@@ -207,7 +207,7 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 ## Admin Capabilities
 
 1. **View Any Profile**: Full access to all profile fields
-2. **Suspend Member**: Set `User.State` to `AdminSuspended` with AdminNotes
+2. **Suspend Member**: Set `User.State` to `AdminSuspended`; record the reason in the audit log and suspension notification
 3. **Unsuspend Member**: Clear suspension status
 4. **Edit Admin Notes**: Internal notes not visible to member
 
