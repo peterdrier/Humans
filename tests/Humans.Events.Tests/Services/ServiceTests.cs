@@ -787,7 +787,44 @@ public sealed class EventServiceTests
         campExport.GetProperty("CampId").GetGuid().Should().Be(camp.CampId!.Value);
         campExport.GetProperty("RecurrenceDays").GetString().Should().Be("0,2");
         json.GetProperty("Favourites").GetArrayLength().Should().Be(0);
-        json.GetProperty("Preference").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        json.GetProperty("Preferences").GetArrayLength().Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesMergedSubmissionsFavouritesAndPreferences(bool archivedId)
+    {
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var requestedId = archivedId ? sourceId : survivorId;
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
+                with { MergedUserIds = [sourceId] });
+        foreach (var id in new[] { survivorId, sourceId, strangerId })
+        {
+            _repo.Events.Add(new Event { Id = Guid.NewGuid(), SubmitterUserId = id, Title = id.ToString() });
+            _repo.Favourites.Add(new EventFavourite
+            {
+                Id = Guid.NewGuid(), UserId = id, GuideEventId = id, CreatedAt = _clock.GetCurrentInstant()
+            });
+        }
+        _repo.Preference = new EventPreference
+        {
+            Id = Guid.NewGuid(), UserId = sourceId, ExcludedCategorySlugs = "[\"adults\"]",
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+
+        var slices = await _service.ContributeForUserAsync(requestedId, TestContext.Current.CancellationToken);
+
+        var payload = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single().Data);
+        payload.GetProperty("SubmittedEvents").EnumerateArray().Select(e => e.GetProperty("Title").GetString())
+            .Should().BeEquivalentTo([survivorId.ToString(), sourceId.ToString()]);
+        payload.GetProperty("Favourites").EnumerateArray().Select(e => e.GetProperty("GuideEventId").GetGuid())
+            .Should().BeEquivalentTo([survivorId, sourceId]);
+        payload.GetProperty("Preferences").EnumerateArray().Select(e => e.GetProperty("ExcludedCategorySlugs").GetString())
+            .Should().BeEquivalentTo(["[\"adults\"]"]);
     }
 
     [HumansFact]

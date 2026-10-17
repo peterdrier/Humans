@@ -645,10 +645,18 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var favourites = await repo.GetFavouritesForContributorAsync(userId, ct);
-        var preference = await repo.GetPreferenceAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var userIds = info?.AllUserIds ?? [userId];
+        var favourites = new List<EventFavourite>();
+        var preferences = new List<EventPreference>();
+        foreach (var id in userIds)
+        {
+            favourites.AddRange(await repo.GetFavouritesForContributorAsync(id, ct));
+            if (await repo.GetPreferenceAsync(id, ct) is { } preference)
+                preferences.Add(preference);
+        }
         var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => e.SubmitterUserId == userId);
+            .Where(e => userIds.Contains(e.SubmitterUserId));
 
         var shaped = new
         {
@@ -682,11 +690,11 @@ internal sealed class EventService(
                     f.DayOffset,
                     CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
-            Preference = preference == null ? null : new
+            Preferences = preferences.OrderBy(p => p.UpdatedAt).Select(preference => new
             {
                 preference.ExcludedCategorySlugs,
                 UpdatedAt = preference.UpdatedAt.ToIso8601()
-            }
+            }).ToList()
         };
 
         return [new UserDataSlice(Events, shaped)];
