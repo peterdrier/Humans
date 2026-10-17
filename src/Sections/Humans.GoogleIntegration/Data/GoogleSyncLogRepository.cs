@@ -71,8 +71,10 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         {
             var needle = unlinkedDescriptionContains.ToLowerInvariant();
             var ids = resourceIds ?? [];
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             query = query.Where(e => ids.Contains(e.ResourceId)
-                || (e.ResourceId == Guid.Empty && e.Description.ToLowerInvariant().Contains(needle)));
+                || (e.ResourceId == Guid.Empty && e.Description.ToLower().Contains(needle)));
+#pragma warning restore MA0011
         }
         else if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
         if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);
