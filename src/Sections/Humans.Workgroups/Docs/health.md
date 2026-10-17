@@ -198,4 +198,4 @@ loader and must not be gated. The group-loading methods take the check from the 
 | Date | Run | Headline |
 |---|---|---|
 | 2026-09-16 | section-doctor | First run. The invariant doc said the test project did not exist and denied the Surveys dependency it documents elsewhere; comments disagreed with the slug index and the member log kinds; the rhythm pass's per-group failure swallow was unpinned. |
-| 2026-10-17 | section-doctor ([run](../../../../docs/health/runs/2026-10-17-Workgroups.md), PR pending) | The section outgrew its target: join approval, sensitive groups and budgets shipped and guards return refusals. Docs and comments caught up; the Active guard and the slug lookup collapsed; unpinned invariants got tests. |
+| 2026-10-17 | section-doctor ([run](../../../../docs/health/runs/2026-10-17-Workgroups.md), PR peterdrier/Humans#1995) | The section outgrew its target: join approval, sensitive groups and budgets shipped and guards return refusals. Docs and comments caught up; the Active guard and the slug lookup collapsed; unpinned invariants got tests. |
