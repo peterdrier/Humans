@@ -234,6 +234,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Volunteer XLSX exports split work by event-local calendar day, using elapsed time between instants for daily and primary-team hour totals. Repeated clock hours remain worked time; daylight-saving changes cannot remove a volunteer or distort team selection.
+
 Operator build/strike staffing and event-shift generation reject malformed numeric binding with HTTP 400 before generating shifts. Valid default staffing values and event day zero retain their existing meaning.
 
 - Department browse groups label all-phase rotas as “All phases”, using the shared localized phase labels rather than the event-only label.
