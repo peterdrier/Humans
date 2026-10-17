@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+Approval and rejection share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
 - Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures. The shared Asociado contribution prompt names Elsewhere in all six cultures, including profile editing.
