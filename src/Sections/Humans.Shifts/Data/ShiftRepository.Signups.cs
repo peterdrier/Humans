@@ -269,8 +269,10 @@ internal sealed partial class ShiftRepository
         // Shift.StartsAtUtc / EndsAtUtc are NOT stored columns: absolute times are
         // computed from (GateOpeningDate + DayOffset + StartTime + Duration) via
         // Shift.GetAbsoluteStart / GetAbsoluteEnd, which involve a NodaTime zone
-        // conversion that cannot be translated to SQL. We narrow in SQL by
-        // DayOffset and finalise the overlap check in memory. The calendar comes
+        // conversion that cannot be translated to SQL. Load this event/department's
+        // confirmed rows and check the real interval overlap in memory: durations
+        // can span several days, so a fixed DayOffset buffer can omit live work.
+        // The calendar comes
         // from the caller's Settings-sourced resolution, not this section's own row
         // (nobodies-collective/Humans#1630).
         var settings = calendar;
@@ -279,17 +281,10 @@ internal sealed partial class ShiftRepository
         var rangeStartUtc = startDate.AtStartOfDayInZone(zone).ToInstant();
         var rangeEndUtcExclusive = endDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
 
-        // DayOffset window matching [startDate, endDate] inclusive, with a one-day
-        // buffer on either side to defend against per-shift wall-time edge cases
-        // and DST. Final filter below clips to the real instant overlap.
-        var startOffset = Period.Between(settings.GateOpeningDate, startDate, PeriodUnits.Days).Days - 1;
-        var endOffset = Period.Between(settings.GateOpeningDate, endDate, PeriodUnits.Days).Days + 1;
-
         var query = _dbContext.ShiftSignups
             .AsNoTracking()
             .Where(s => s.Status == SignupStatus.Confirmed)
-            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId)
-            .Where(s => s.Shift.DayOffset >= startOffset && s.Shift.DayOffset <= endOffset);
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId);
 
         if (departmentId.HasValue)
         {

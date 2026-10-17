@@ -69,6 +69,45 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         days.Should().BeEquivalentTo([-3, -2]);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(40, false)]
+    [Xunit.InlineData(48, true)]
+    public async Task ConfirmedShiftsInRange_IncludesEarlierStartsOnlyWhenTheyStillOverlap(int durationHours, bool overlaps)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (settings, rota) = await SeedRotaAsync(RotaPeriod.Event);
+        var calendar = Humans.Testing.BurnFixtures.Burn(id: settings.Id,
+            gateOpeningDate: settings.GateOpeningDate, timeZoneId: settings.TimeZoneId);
+        var shift = NewShift(rota, dayOffset: 0);
+        shift.IsAllDay = false;
+        shift.StartTime = new LocalTime(8, 0);
+        shift.Duration = Duration.FromHours(durationHours);
+        var userId = Guid.NewGuid();
+        _shiftsDbContext.Shifts.Add(shift);
+        _shiftsDbContext.ShiftSignups.Add(new ShiftSignup
+        {
+            Id = Guid.NewGuid(), UserId = userId, ShiftId = shift.Id,
+            Status = SignupStatus.Confirmed, CreatedAt = TestNow, UpdatedAt = TestNow
+        });
+        await _shiftsDbContext.SaveChangesAsync(ct);
+        var day = calendar.GateOpeningDate.PlusDays(2);
+
+        var rows = await _repo.GetConfirmedShiftsInRangeAsync(calendar.Id, calendar, day, day, null, ct);
+
+        if (overlaps)
+        {
+            var row = rows.Should().ContainSingle().Subject;
+            row.UserId.Should().Be(userId);
+            row.StartsAtUtc.Should().Be(shift.GetAbsoluteStart(calendar));
+            row.EndsAtUtc.Should().Be(shift.GetAbsoluteEnd(calendar));
+        }
+        else
+        {
+            // Forty hours ends exactly at the requested day's midnight, which is exclusive.
+            rows.Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task SaveRotaAsync_UpdatesRotaWithoutRewritingLoadedShifts()
     {
