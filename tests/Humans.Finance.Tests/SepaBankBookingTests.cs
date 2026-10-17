@@ -869,7 +869,8 @@ public class SepaBankBookingTests
             Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
-        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer");
+        unmatched.Should().ContainSingle().Which.Reason.Should()
+            .Contain("cannot be booked").And.Contain("no Holded contact binding");
     }
 
     [HumansFact]
@@ -1033,6 +1034,38 @@ public class SepaBankBookingTests
         SeedMovements(bothLines
             ? [Movement(description: Textless), Movement("mov-2", -45m, Textless)]
             : [Movement(description: Textless)]);
+    }
+
+    [HumansFact]
+    public async Task Page_TextlessLine_RivalledByANotBookableTransfer_IsAmbiguous_AndTheFileIsNotOffered()
+    {
+        // File A: 30 and 45, both bookable. File B: another 45 whose member has no binding. The
+        // €45 line could be either — the page must say so with the same set booking uses, or
+        // Book file would book the 30 and then refuse the 45, leaving the file half-booked.
+        SeedMatchedFile(bothLines: true);
+        var otherUser = Guid.NewGuid();
+        SeedRows(
+            Row(TransferId, _userId, fileId: MatchedFileId),
+            Row(OtherTransferId, otherUser, OtherAccount, 45m, fileId: MatchedFileId),
+            Row(Guid.NewGuid(), Guid.NewGuid(), 40000099, 45m));
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact>
+            {
+                new() { UserId = _userId, HoldedContactId = "c1", SupplierAccountNum = Account, Source = CreditorContactSource.Auto },
+                new() { UserId = otherUser, HoldedContactId = "c1", SupplierAccountNum = OtherAccount, Source = CreditorContactSource.Auto },
+            });
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+        var result = await service.BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
+
+        rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
+        rows.Single(r => r.TransferId == OtherTransferId).CanBook.Should().BeFalse();
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 unbooked transfers are for");
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("1 of the file's 2 unbooked transfers have no Sabadell line");
+        await AssertNothingPosted();
     }
 
     [HumansFact]

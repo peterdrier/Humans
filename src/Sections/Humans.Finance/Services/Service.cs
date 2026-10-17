@@ -1358,7 +1358,6 @@ internal sealed class Service(
                 + ex.Message);
         }
 
-        var bookable = withReasons.Where(r => r.NotBookableReason is null).ToList();
         var unmatched = new List<SepaBankMovementVm>();
         var candidateByTransfer = new Dictionary<Guid, (HoldedBankMovementDto Line, bool ByText)>();
         var considered = movements
@@ -1369,14 +1368,16 @@ internal sealed class Service(
             .Select(m =>
             {
                 var account = RemittanceAccountNum(m.Description);
-                // Only rows that could actually be booked can claim a line; letting a not-bookable
-                // row claim one would hide the line from the "needs a human" panel as well as from
-                // the row. A textless line (Sabadell drops the remittance text) matches on amount
-                // and date alone — and never while it could also be a whole file's debit.
+                // Ambiguity is judged over every unbooked row, bookable or not — the same set
+                // PairingRefusal uses at booking time, so a line the page pairs is one the booking
+                // accepts. A not-bookable row can still be the line's only match; it then goes to
+                // the panel rather than claiming the row. A textless line (Sabadell drops the
+                // remittance text) matches on amount and date alone — and never while it could also
+                // be a whole file's debit.
                 return (Movement: m, Account: account, Matches:
                     account is null && TextlessLineFitsAFile(withReasons, m)
                         ? []
-                        : UnbookedMatches(bookable, account, Math.Abs(m.Amount), m.Date));
+                        : UnbookedMatches(withReasons, account, Math.Abs(m.Amount), m.Date));
             })
             .ToList();
 
@@ -1409,7 +1410,8 @@ internal sealed class Service(
 
         foreach (var (m, account, matches) in considered)
         {
-            if (matches.Count == 1 && claimants[matches[0].TransferId] == 1)
+            if (matches.Count == 1 && claimants[matches[0].TransferId] == 1
+                && matches[0].NotBookableReason is null)
             {
                 candidateByTransfer[matches[0].TransferId] = (m, account is not null);
                 continue;
@@ -1438,7 +1440,9 @@ internal sealed class Service(
                                     ? account is null
                                         ? $"{matches.Count} unbooked transfers are for {Euros(Math.Abs(m.Amount))} and its text names no creditor account — book it by hand"
                                         : $"{matches.Count} unbooked transfers match it — settle it in Holded by hand"
-                                    : "another bank line matches that transfer too — settle it in Holded by hand"));
+                                    : matches[0].NotBookableReason is { } why
+                                        ? $"the one transfer it matches (account {matches[0].SupplierAccountNum}) cannot be booked: {why}"
+                                        : "another bank line matches that transfer too — settle it in Holded by hand"));
         }
 
         var batchVmByFile = batchByFile.ToDictionary(kv => kv.Key, kv => BatchLineVm(kv.Key, kv.Value));
