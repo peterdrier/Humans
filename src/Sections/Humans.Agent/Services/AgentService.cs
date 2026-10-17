@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Humans.Base.Threading;
 using System.Runtime.CompilerServices;
 using System.Globalization;
 using Humans.Base.Extensions;
@@ -19,6 +21,9 @@ namespace Humans.Agent.Services;
 internal sealed class AgentService : IAgentService, IAgentConversationRetention
 {
     internal const string AgentConversations = "AgentConversations";
+
+    // Keep turns for one user serialized through final usage billing, across request scopes.
+    private static readonly ConcurrentDictionary<Guid, TrackedLock> TurnLocks = new();
 
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;
@@ -81,6 +86,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         AgentTurnRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var turnLock = TurnLocks.GetOrAdd(request.UserId, static userId =>
+            new TrackedLock($"Agent.Turn[{userId}]", timeout: TimeSpan.FromMinutes(5)));
+        using var turnLease = await turnLock.AcquireAsync(_logger, cancellationToken);
         var settings = _settings.Current;
         if (!settings.Enabled)
         {

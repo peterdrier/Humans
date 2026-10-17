@@ -61,7 +61,7 @@ Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holdin
 
 ### Rate-limit counters (in-memory)
 
-Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it.
+Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it. Turns for the same user are serialized within the process, across request scopes: each waits before reading current settings, conversation history and quotas, and releases only after normal or failed/disconnected-turn usage is recorded. Waiting honours request cancellation and times out after five minutes; cancellation while waiting writes nothing. Different users can stream independently.
 
 ### FeedbackReport additions (cross-section, legacy)
 
