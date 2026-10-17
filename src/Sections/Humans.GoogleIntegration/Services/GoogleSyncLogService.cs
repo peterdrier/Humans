@@ -22,6 +22,7 @@ internal sealed class GoogleSyncLogService(
     : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
 {
     internal const string GoogleSyncLog = "GoogleSyncLog";
+    private const int MaxRecentRows = 500;
 
     public async Task LogAsync(
         GoogleSyncLogAction action,
@@ -89,6 +90,20 @@ internal sealed class GoogleSyncLogService(
     {
         var entries = await repo.GetByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
         return await ToViewsAsync(entries, ct);
+    }
+
+    public async Task<IReadOnlyList<GoogleSyncLogView>> GetRecentAsync(
+        Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
+        string? resourceName, CancellationToken ct = default)
+    {
+        // Names live in another table, so a name filter reads every row the other filters match.
+        var byName = !string.IsNullOrWhiteSpace(resourceName);
+        var entries = await repo.GetRecentAsync(
+            from, to, action, source, success, byName ? int.MaxValue : MaxRecentRows, ct);
+        var views = await ToViewsAsync(entries, ct);
+        if (byName)
+            views = views.Where(v => v.ResourceName?.Contains(resourceName!.Trim(), StringComparison.OrdinalIgnoreCase) == true).ToList();
+        return views.Take(MaxRecentRows).ToList();
     }
 
     /// <summary>GDPR Article 15 slice — every sync row attributed to this human, uncapped.</summary>
@@ -186,7 +201,8 @@ internal sealed class GoogleSyncLogService(
                 e.Role,
                 e.Source,
                 e.Success,
-                e.ErrorMessage))
+                e.ErrorMessage,
+                e.UserId))
             .ToList();
     }
 }

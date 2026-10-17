@@ -1,0 +1,110 @@
+@using Microsoft.AspNetCore.Html
+@using Humans.Base.Enums
+@using Humans.GoogleIntegration.Contracts
+@model Humans.GoogleIntegration.Models.ActivityLogViewModel
+@{
+    ViewData["Title"] = "Activity Log";
+
+    Func<GoogleSyncLogView, IHtmlContent> whenCell =
+        @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+    Func<GoogleSyncLogView, IHtmlContent> whoCell = @<text>
+        @if (item.UserId is { } userId)
+        {
+            <vc:human user-id="@userId" link="Admin" />
+        }
+        else
+        {
+            @item.UserEmail
+        }
+    </text>;
+    Func<GoogleSyncLogView, IHtmlContent> actionCell =
+        @<text><span class="badge bg-secondary">@item.Action</span></text>;
+    Func<GoogleSyncLogView, IHtmlContent> resultCell = @<text>
+        @if (item.Success)
+        {
+            <span class="badge bg-success">OK</span>
+        }
+        else
+        {
+            <span class="badge bg-danger">Failed</span>
+            @if (!string.IsNullOrEmpty(item.ErrorMessage))
+            {
+                <br />
+                <small class="text-danger">@item.ErrorMessage</small>
+            }
+        }
+    </text>;
+    var table = TableModel.For(Model.Entries)
+        .Template("When", whenCell, c => c.NoSort())
+        .Template("Who", whoCell, c => c.NoSort())
+        .Column("Resource", e => e.ResourceName ?? "(unlinked)")
+        .Template("Action", actionCell, c => c.NoSort())
+        .Column("Role", e => e.Role)
+        .Column("Trigger", e => e.Source.ToString())
+        .Template("Result", resultCell, c => c.NoSort())
+        .RowCss(e => e.Success ? null : "table-danger")
+        .Build();
+}
+
+<page-header title="Activity Log">
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to Google</a>
+</page-header>
+
+<form method="get" asp-action="ActivityLog" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label" for="from">From</label>
+        <input type="date" id="from" name="from" class="form-control" value="@Model.From?.ToInvariantDate()" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="to">To</label>
+        <input type="date" id="to" name="to" class="form-control" value="@Model.To?.ToInvariantDate()" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="action">Action</label>
+        <select id="action" name="action" class="form-select">
+            <option value="">Any</option>
+            @foreach (var value in Enum.GetValues<GoogleSyncLogAction>())
+            {
+                <option value="@value" selected="@(Model.Action == value)">@(value == GoogleSyncLogAction.AccessGranted ? "Granted" : "Revoked")</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="source">Trigger</label>
+        <select id="source" name="source" class="form-select">
+            <option value="">Any</option>
+            @foreach (var value in Enum.GetValues<GoogleSyncSource>())
+            {
+                <option value="@value" selected="@(Model.Source == value)">@value</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="success">Result</label>
+        <select id="success" name="success" class="form-select">
+            <option value="">Any</option>
+            <option value="true" selected="@(Model.Success == true)">Success</option>
+            <option value="false" selected="@(Model.Success == false)">Failed</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="resource">Resource</label>
+        <input type="text" id="resource" name="resource" class="form-control" value="@Model.Resource" placeholder="Name contains" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a asp-action="ActivityLog" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-header">Newest 500 matching entries</div>
+    @if (Model.Entries.Count > 0)
+    {
+        <partial name="_Table" model="table" />
+    }
+    else
+    {
+        <div class="card-body text-muted">No sync log entries match.</div>
+    }
+</div>

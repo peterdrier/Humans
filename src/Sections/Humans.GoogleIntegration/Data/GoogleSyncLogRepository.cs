@@ -1,5 +1,8 @@
+using Humans.Base.Enums;
+using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Domain;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
@@ -54,6 +57,23 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .Where(e => e.ResourceId == resourceId)
             .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
             .Take(MaxRows)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
+        Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
+        int limit, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var query = ctx.GoogleSyncLog.AsNoTracking();
+        if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);
+        if (to.HasValue) query = query.Where(e => e.OccurredAt < to.Value);
+        if (action.HasValue) query = query.Where(e => e.Action == action.Value);
+        if (source.HasValue) query = query.Where(e => e.Source == source.Value);
+        if (success.HasValue) query = query.Where(e => e.Success == success.Value);
+        return await query
+            .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
+            .Take(limit)
             .ToListAsync(ct);
     }
 

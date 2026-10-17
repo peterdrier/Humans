@@ -70,6 +70,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/SyncSettings` | POST | Admin | Update sync mode for a service (posted from the `/Settings#google-sync` tab, no GET — peterdrier/Humans#1634) |
 | `/Google/SyncSystemTeams` | POST | Admin | Manual system-team sync trigger |
 | `/Google/SyncResults` | GET | Admin | PRG landing for sync report |
+| `/Google/ActivityLog` | GET | Admin | Newest-first `google_sync_log` (500 rows), filterable by date, action, trigger, success, resource name |
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
 | `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
 | `/Google/Human/{id}` | GET | HumanAdmin, Board, Admin | Sync history for one human |
@@ -207,7 +208,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ### `<vc:google-sync-log>` — the sync-log render path
 
-The section's `/Google/Resource/{id}` and `/Google/Human/{id}` pages emit `<vc:google-sync-log>` with the applicable predicate. The component owns the read (`IGoogleSyncLogViewer`) and render, while the page supplies its title, empty text, and back link. Keeping the host page here avoids a cross-section Razor tag-helper dependency. The render test seeds a row and asserts it reaches the page.
+The section's `/Google/Resource/{id}` and `/Google/Human/{id}` pages emit `<vc:google-sync-log>` with the applicable predicate. The component owns the read (`IGoogleSyncLogViewer`) and render, while the page supplies its title, empty text, and back link. Keeping the host page here avoids a cross-section Razor tag-helper dependency. The render test seeds a row and asserts it reaches the page. `/Google/ActivityLog` reads `IGoogleSyncLogViewer.GetRecentAsync`: a name filter reads every row the other filters match (names live in `google_resources`), then both paths cap at 500.
 
 The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLogView` DTO are public only because a cross-assembly ViewComponent's constructor parameters must be. The write side, `IGoogleSyncLogService`, stays `internal` — nothing outside this section appends to the log.
 
@@ -217,7 +218,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 
 - **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:34`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
 - **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox`. Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and, since #992, no FK constraint either — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
-- **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + two top-N reads (by resource, by user ids), capped at 200 rows each. Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
+- **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + three top-N reads (by resource, by user ids at 200 rows each; recent-across-resources for the Activity Log, limit set by the caller). Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
 - **`IGoogleResourceRepository`** — narrow writes to the sibling-owned `google_resources` table (Teams section §8 owner). Used by `GoogleWorkspaceSyncService` for reconciliation-loop atomic writes. All broader reads/writes route through `ITeamResourceService`.
 
 > `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceServiceRead`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).

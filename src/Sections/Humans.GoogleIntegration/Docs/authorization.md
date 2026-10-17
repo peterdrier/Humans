@@ -8,6 +8,7 @@
 | `GoogleController.UpdateSyncSetting` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncSystemTeams` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncResults` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `GoogleController.ActivityLog` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.CheckGroupSettings` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.GroupSettingsResults` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.RemediateGroupSettings` | Action | `Admin` | `PolicyNames.AdminOnly` |
