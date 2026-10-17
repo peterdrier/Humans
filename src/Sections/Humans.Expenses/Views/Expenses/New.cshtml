@@ -33,6 +33,15 @@
                         <div class="form-text">@Localizer["Expenses_ForMemberHelp"]</div>
                     </div>
 
+                    @if (Model.Grants.Count > 0)
+                    {
+                        <partial name="_PreapprovalSelect" model="@(new PreapprovalSelectModel(Model.Grants, Model.PreapprovalGrantId, "HoldedAccountNumber"))" />
+                        @if (Model.Grants.FirstOrDefault(g => g.Id == Model.PreapprovalGrantId) is { } selected)
+                        {
+                            <partial name="_PreapprovalBanner" model="@(new PreapprovalBannerModel(selected, Model.Today, ShowDeadline: true))" />
+                        }
+                    }
+
                     @* Budget-category accounts route through the team coordinator; other accounts go
                        straight to Finance. The service derives the category from the account. *@
                     <div class="mb-3">

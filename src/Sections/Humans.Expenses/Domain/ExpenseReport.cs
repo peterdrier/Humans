@@ -16,6 +16,9 @@ internal sealed class ExpenseReport
     public Guid? BudgetCategoryId { get; set; }
     /// <summary>Budget year of <see cref="BudgetCategoryId"/>; null when the report has no category.</summary>
     public Guid? BudgetYearId { get; set; }
+    /// <summary>Pre-approval grant this report files against (Preapprovals section), or null.
+    /// Set at draft; the account and cap are restamped from the grant at submit.</summary>
+    public Guid? PreapprovalGrantId { get; set; }
     public ExpenseReportStatus Status { get; set; }
     public string? Note { get; set; }
     public string PayeeName { get; set; } = "";

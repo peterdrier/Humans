@@ -276,4 +276,21 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Rien n’a encore été enregistré.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(catégorie inconnue)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ex. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Préapprobations ouvertes</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Déclarer la dépense</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>À réclamer avant le {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>jusqu’à {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Déclarer au titre d’une préapprobation</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Aucune préapprobation</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Une préapprobation fixe le compte et le plafond ; le compte ci-dessous en est repris.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Préapprouvé : {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>{0} jours restants pour soumettre (avant le {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Soumettez aujourd’hui : la date limite est le {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>La date limite {0} est dépassée ; cette note ne peut plus être soumise au titre de la préapprobation.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Déposée à temps : la date limite ne s’applique plus. Soumettez à nouveau quand elle est prête.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Impossible de déclarer au titre de cette préapprobation : elle n’appartient pas au membre, n’est pas ouverte ou sa date limite est dépassée.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La préapprobation et le compte d’une note soumise ne peuvent pas être modifiés.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La préapprobation a été révoquée ; cette note ne peut pas être soumise à son titre.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>La date limite {0} est dépassée ; cette note ne peut plus être soumise au titre de la préapprobation.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La préapprobation n’est plus disponible : elle a été réclamée par une autre note ou déjà utilisée.</value></data>
 </root>

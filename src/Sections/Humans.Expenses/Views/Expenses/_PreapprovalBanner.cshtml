@@ -1,0 +1,36 @@
+@model Humans.Expenses.Models.PreapprovalBannerModel
+@using Humans.Preapprovals.Contracts
+@{
+    var g = Model.Grant;
+    var alertClass = Model.Urgent ? "alert-danger" : "alert-info";
+}
+<div class="alert @alertClass mb-4">
+    <strong><i class="fa-solid fa-stamp me-1"></i>@Localizer["Expenses_Preapprovals_Banner", g.Label is null ? g.ProgramName : $"{g.ProgramName} · {g.Label}"]</strong>
+    · @Localizer["Expenses_Preapprovals_UpTo", g.MaxAmount.ToEuro()]
+    · @Localizer["Expenses_Preapprovals_ClaimBy", g.ClaimBy.ToDate()]
+    @if (Model.ShowDeadline)
+    {
+        <div class="small mt-1">
+            @if (Model.FiledInTime)
+            {
+                @Localizer["Expenses_Preapprovals_FiledInTime"]
+            }
+            else if (g.Status != GrantStatus.Open)
+            {
+                @Localizer["Expenses_Validation_PreapprovalUnavailable"]
+            }
+            else if (Model.DaysLeft < 0)
+            {
+                @Localizer["Expenses_Preapprovals_DeadlinePassed", g.ClaimBy.ToDate()]
+            }
+            else if (Model.DaysLeft == 0)
+            {
+                @Localizer["Expenses_Preapprovals_DueToday", g.ClaimBy.ToDate()]
+            }
+            else
+            {
+                @Localizer["Expenses_Preapprovals_DaysLeft", Model.DaysLeft, g.ClaimBy.ToDate()]
+            }
+        </div>
+    }
+</div>

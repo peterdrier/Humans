@@ -60,10 +60,15 @@ internal interface IExpenseRepository : IRepository
     Task<bool> UpdatePayeeIbanAsync(
         Guid reportId, string payeeIban, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="grantStamp"/> rebooks the report to its pre-approval's
+    /// account (no category, no year) and writes <paramref name="grantMaxAmount"/> as the cap, both
+    /// read from the grant at submit; null leaves the booking and cap as they are.</summary>
     Task<bool> SubmitAsync(
         Guid reportId,
         string payeeName, string payeeIban,
         NodaTime.Instant submittedAt,
+        ExpenseBooking? grantStamp = null,
+        decimal? grantMaxAmount = null,
         CancellationToken ct = default);
 
     Task<bool> WithdrawAsync(

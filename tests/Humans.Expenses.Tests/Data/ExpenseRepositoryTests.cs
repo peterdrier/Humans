@@ -253,7 +253,7 @@ public class ExpenseRepositoryTests
         await _sut.ReplaceLineAttachmentAsync(r.Id, line.Id, NewAttachment(), Xunit.TestContext.Current.CancellationToken);
 
         var ok = await _sut.SubmitAsync(r.Id, "Alice", "ES9121000418450200051332",
-            Instant.FromUtc(2026, 5, 2, 9, 0), Xunit.TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 5, 2, 9, 0), ct: Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
         var loaded = await _sut.GetByIdAsync(r.Id, Xunit.TestContext.Current.CancellationToken);

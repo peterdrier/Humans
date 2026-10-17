@@ -289,4 +289,21 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Nothing recorded yet.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(unknown category)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>e.g. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Open pre-approvals</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>File expense</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Claim by {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>up to {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>File against a pre-approval</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>No pre-approval</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>A pre-approval sets the account and the maximum; the account below is taken from it.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Pre-approved: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>{0} days left to submit (claim by {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Submit today: the claim deadline is {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>The claim deadline {0} has passed; this report can no longer be submitted against the pre-approval.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Filed in time: the claim deadline no longer applies. Resubmit when ready.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>That pre-approval cannot be filed against: it is not the member’s, not open, or past its claim deadline.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>The pre-approval and account of a submitted report cannot be changed.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>The pre-approval was revoked; this report cannot be submitted against it.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>The claim deadline {0} has passed; this report can no longer be submitted against the pre-approval.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>The pre-approval is no longer available: it was claimed by another report or already used.</value></data>
 </root>

@@ -276,4 +276,21 @@
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Encara no hi ha res registrat.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria desconeguda)</value></data>
   <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ex. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Preaprovacions obertes</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Presentar despesa</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Reclamar abans del {0}</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>fins a {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Presentar contra una preaprovació</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Sense preaprovació</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Una preaprovació fixa el compte i el màxim; el compte de sota es pren d’ella.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Preaprovat: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>Queden {0} dies per enviar (reclamar abans del {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Envia’l avui: el termini de reclamació acaba el {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>El termini de reclamació ({0}) ha vençut; aquest informe ja no es pot enviar contra la preaprovació.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Presentat a temps: el termini ja no aplica. Torna a enviar-lo quan estigui llest.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No es pot presentar contra aquesta preaprovació: no és del membre, no està oberta o el seu termini ha vençut.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprovació i el compte d’un informe enviat no es poden canviar.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprovació va ser revocada; aquest informe no es pot enviar contra ella.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>El termini de reclamació ({0}) ha vençut; aquest informe ja no es pot enviar contra la preaprovació.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preaprovació ja no està disponible: la va reclamar un altre informe o ja s’ha fet servir.</value></data>
 </root>

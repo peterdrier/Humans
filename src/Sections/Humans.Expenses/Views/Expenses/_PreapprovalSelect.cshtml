@@ -1,0 +1,31 @@
+@model Humans.Expenses.Models.PreapprovalSelectModel
+@* The pre-approval picker: choosing one locks the account select to the grant's account (the
+   service takes the account from the grant regardless; the lock is so the form says what will
+   happen). The account select's id is passed in so the same script serves both forms. *@
+<div class="mb-3">
+    <label class="form-label" for="preapproval-grant">@Localizer["Expenses_Preapprovals_FileAgainst"]</label>
+    <select class="form-select" id="preapproval-grant" name="PreapprovalGrantId" data-account-select="@Model.AccountSelectId">
+        <option value="">@Localizer["Expenses_Preapprovals_None"]</option>
+        @foreach (var g in Model.Grants)
+        {
+            <option value="@g.Id" data-account="@g.HoldedAccountNumber" selected="@(g.Id == Model.SelectedGrantId)">
+                @g.ProgramName@(g.Label is null ? "" : $" · {g.Label}") · @Localizer["Expenses_Preapprovals_UpTo", g.MaxAmount.ToEuro()] · @Localizer["Expenses_Preapprovals_ClaimBy", g.ClaimBy.ToDate()]
+            </option>
+        }
+    </select>
+    <div class="form-text">@Localizer["Expenses_Preapprovals_AccountLocked"]</div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var grant = document.getElementById('preapproval-grant');
+    var account = document.getElementById(grant.getAttribute('data-account-select'));
+    function sync() {
+        var opt = grant.options[grant.selectedIndex];
+        var num = opt ? opt.getAttribute('data-account') : null;
+        if (num) { account.value = num; account.disabled = true; }
+        else { account.disabled = false; }
+    }
+    grant.addEventListener('change', sync);
+    sync();
+});
+</script>

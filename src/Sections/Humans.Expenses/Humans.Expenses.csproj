@@ -48,6 +48,11 @@
       writes purchase documents through, from Humans.Holded's Contracts/ folder.
     -->
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
+    <!--
+      Pre-approval grants a report may file against: claim at submit, release at withdraw,
+      consume at approve, all through Preapprovals' contracts leaf.
+    -->
+    <ProjectReference Include="..\Humans.Preapprovals.Contracts\Humans.Preapprovals.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

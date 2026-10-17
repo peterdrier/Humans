@@ -302,12 +302,16 @@ internal sealed class Service(
             .ToDictionary(x => x.Id, x => x.Label)
             ?? new Dictionary<Guid, string>();
 
+        // A map row whose category is not in the active year (a past year's category, or one
+        // deleted since) is orphaned: it still labels old reports, but nothing new may book to it,
+        // so it is inactive here and dropped with activeOnly like a retired managed account.
         var options = map
             .Where(m => m.IsActive)
             .Select(m => new HoldedExpenseAccountOption(
                 m.HoldedAccountNumber, m.HoldedAccountId,
                 labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
-                IsBudgetCategory: true, IsActive: true))
+                IsBudgetCategory: true, IsActive: labels.ContainsKey(m.BudgetCategoryId)))
+            .Where(o => !activeOnly || o.IsActive)
             .Concat(managed
                 .Where(m => !activeOnly || m.IsActive)
                 .Select(m => new HoldedExpenseAccountOption(

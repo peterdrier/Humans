@@ -101,6 +101,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         tracked.HoldedAccountId = report.HoldedAccountId;
         tracked.BudgetCategoryId = report.BudgetCategoryId;
         tracked.BudgetYearId = report.BudgetYearId;
+        tracked.PreapprovalGrantId = report.PreapprovalGrantId;
         tracked.Note = report.Note;
         tracked.UpdatedAt = report.UpdatedAt;
         await ctx.SaveChangesAsync(ct);
@@ -234,12 +235,23 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
 
     public async Task<bool> SubmitAsync(
         Guid reportId, string payeeName, string payeeIban,
-        Instant submittedAt, CancellationToken ct = default)
+        Instant submittedAt, ExpenseBooking? grantStamp = null, decimal? grantMaxAmount = null,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Draft) return false;
+        if (grantStamp is { } stamp)
+        {
+            // The program may have changed since the draft: what the grant says now is what the
+            // report carries from here (docs/features/global/preapprovals.md).
+            r.HoldedAccountNumber = stamp.HoldedAccountNumber;
+            r.HoldedAccountId = stamp.HoldedAccountId;
+            r.BudgetCategoryId = stamp.BudgetCategoryId;
+            r.BudgetYearId = stamp.BudgetYearId;
+            r.MaxAmount = grantMaxAmount;
+        }
         r.Status = ExpenseReportStatus.Submitted;
         r.PayeeName = payeeName;
         r.PayeeIban = payeeIban;
