@@ -85,6 +85,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             "Shifts_Signup_RangeCapacityDays",
             "Shifts_Signup_RangeEarlyEntryCapacityDays",
             "Shifts_Signup_RangeNothingToAdd",
+            "Shifts_Signup_TimeConflict",
+            "Shifts_Signup_UnknownTeam",
         })
         {
             _localizer[key].Returns(new LocalizedString(key, resources.GetString(key, english)!));
@@ -283,21 +285,35 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Be("translated duplicate rejection");
     }
 
-    [HumansFact]
-    public async Task SignUp_OverlappingShift_ReturnsError()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task SignUp_OverlappingShift_ReturnsError(string cultureName)
     {
-        var (_, rota, shift1) = SeedShiftScenario(SignupPolicy.Public);
+        var (es, rota, shift1) = SeedShiftScenario(SignupPolicy.Public);
         // Create a second shift at overlapping time (same day, same start)
         var shift2 = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         var userId = Guid.NewGuid();
         SeedSignup(userId, shift1.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
+        using var culture = new CultureScope(cultureName);
+        LocalizeSignupMessages(cultureName);
         // shift1: day 1, 10:00-14:00 — shift2: day 1, 10:00-14:00 (identical times)
         var result = await _service.SignUpAsync(userId, shift2.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("Time conflict");
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        var expected = string.Format(CultureInfo.CurrentUICulture,
+            resources.GetString("Shifts_Signup_TimeConflict", CultureInfo.CurrentUICulture)!,
+            rota.Name, resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture),
+            es.GateOpeningDate.PlusDays(shift1.DayOffset).At(shift1.StartTime)
+                .ToDateTimeUnspecified().ToMonthDayTime());
+        result.Error.Should().Be(expected);
     }
 
     [HumansFact]
@@ -2000,6 +2016,52 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData("en", false)]
+    [InlineData("es", false)]
+    [InlineData("de", false)]
+    [InlineData("it", false)]
+    [InlineData("fr", false)]
+    [InlineData("ca", false)]
+    [InlineData("en", true)]
+    [InlineData("es", true)]
+    [InlineData("de", true)]
+    [InlineData("it", true)]
+    [InlineData("fr", true)]
+    [InlineData("ca", true)]
+    public async Task SignUp_EarlyEntryCapacityWarning_IsLocalizedAndStillConfirms(string cultureName, bool filledCapacity)
+    {
+        using var culture = new CultureScope(cultureName);
+        LocalizeSignupMessages(cultureName);
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        shift.DayOffset = -1;
+        es.EarlyEntryCapacity = new Dictionary<int, int> { [-1] = filledCapacity ? 1 : 0 };
+        if (filledCapacity)
+            SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(Guid.NewGuid(), shift.Id);
+
+        result.Success.Should().BeTrue();
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        result.Warning.Should().Be(string.Format(CultureInfo.CurrentUICulture,
+            resources.GetString("Shifts_Signup_RangeEarlyEntryCapacityDays", CultureInfo.CurrentUICulture)!,
+            es.GateOpeningDate.PlusDays(-1).ToWeekdayDayMonth()));
+    }
+
+    private void LocalizeSignupMessages(string cultureName)
+    {
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        var culture = CultureInfo.GetCultureInfo(cultureName);
+        foreach (var key in new[] { "Shifts_Signup_TimeConflict", "Shifts_Signup_UnknownTeam", "Shifts_Signup_RangeEarlyEntryCapacityDays" })
+        {
+            _localizer[key].Returns(new LocalizedString(key, resources.GetString(key, culture)!));
+            _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
+                string.Format(culture, resources.GetString(key, culture)!, call.Arg<object[]>())));
+        }
     }
 
     // ============================================================

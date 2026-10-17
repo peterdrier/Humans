@@ -322,7 +322,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
 - Range signup and assignment localize missing rota, empty range, already-assigned range, fully conflicting range, fully booked range and restricted-range rejections in all six cultures. Multi-day signup also localizes duplicate-day and time-conflict summaries, partially full shift and early-entry warnings, and the nothing-to-add result.
-- Duplicate signup, missing shift, closed browsing, restricted shift, closed early-entry signup and full-shift rejections use the six-culture Shifts resources across their single, range and coordinator assignment call sites.
+- Duplicate signup, missing shift, closed browsing, restricted shift, closed early-entry signup and full-shift rejections use the six-culture Shifts resources across their single, range and coordinator assignment call sites. Single-shift time conflicts (including the missing-team label) and advisory early-entry-capacity warnings also use those resources; capacity warnings identify the day and do not block signup.
 - Regular humans **cannot** approve, refuse, or bail other humans' signups. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
 - Regular humans **cannot** voluntell other humans.
 - Regular humans (no team coordinator / management role anywhere) **cannot** see the cross-department shift dashboard.

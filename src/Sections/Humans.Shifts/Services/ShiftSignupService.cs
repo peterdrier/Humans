@@ -1136,9 +1136,9 @@ internal sealed class ShiftSignupService(
                         .Where(teamsById.ContainsKey)
                         .ToDictionary(id => id, id => teamsById[id].Name);
                 }
-                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, "Unknown");
+                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, localizer["Shifts_Signup_UnknownTeam"]);
 
-                return $"Time conflict with '{existing.Shift.Rota.Name}' ({teamName}, {dateStr}).";
+                return localizer["Shifts_Signup_TimeConflict", existing.Shift.Rota.Name, teamName, dateStr];
             }
         }
 
@@ -1149,14 +1149,14 @@ internal sealed class ShiftSignupService(
     {
         var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
         if (availableSlots <= 0)
-            return "Early entry capacity reached for this day.";
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", FormatRangeDayList(es, [dayOffset])];
 
         var currentEeCount = (await repo
             .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
             .Count;
 
         if (currentEeCount >= availableSlots)
-            return "Early entry capacity reached.";
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", FormatRangeDayList(es, [dayOffset])];
 
         return null;
     }
