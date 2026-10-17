@@ -31,6 +31,7 @@
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
+  src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
 -->
 <!-- freshness:flag-on-change
