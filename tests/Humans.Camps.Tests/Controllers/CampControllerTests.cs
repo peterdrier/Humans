@@ -62,7 +62,7 @@ public class CampControllerTests
         _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId).Returns(CampUpdateResult.Failure(key));
         _camps.OptInToSeasonAsync(camp.Id, 2027, actorId).Returns(new CampWriteResult<CampSeason>(null, key));
         _camps.WithdrawSeasonAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
-        _camps.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorId).Returns(CampUpdateResult.Failure(key));
+        _camps.MarkSeasonFullAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId)
             .Returns(CampImageUploadResult.Failure(key));
         _camps.DeleteImageAsync(camp.Id, imageId, actorId).Returns(CampUpdateResult.Failure(key));
@@ -85,7 +85,7 @@ public class CampControllerTests
                 await _camps.Received(1).WithdrawSeasonAsync(camp.Id, season.Id, actorId); break;
             case "MarkFull":
                 await controller.MarkFull(camp.Slug, season.Id);
-                await _camps.Received(1).SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorId); break;
+                await _camps.Received(1).MarkSeasonFullAsync(camp.Id, season.Id, actorId); break;
             case "UploadImage":
                 await controller.UploadImage(camp.Slug, file);
                 await _camps.Received(1).UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId); break;

@@ -678,7 +678,7 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var result = await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full, actorUserId: user.Id);
+        var result = await _campService.MarkSeasonFullAsync(camp.Id, seasonId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}: {ErrorKey}", camp.Id, slug, seasonId, key);

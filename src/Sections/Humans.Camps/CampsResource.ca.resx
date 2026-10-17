@@ -340,4 +340,5 @@
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Missatge nou per a {0} - revisa el teu correu</value></data>
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Aquesta temporada no pertany a aquest barri.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Només es pot retirar una temporada pendent o activa.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Només es pot marcar com a plena una temporada activa.</value></data>
 </root>

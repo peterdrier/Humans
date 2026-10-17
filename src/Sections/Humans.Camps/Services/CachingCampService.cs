@@ -256,11 +256,11 @@ internal sealed class CachingCampService(
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
         });
 
-    public Task<CampUpdateResult> SetSeasonStatusAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<CampUpdateResult> MarkSeasonFullAsync(
+        Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.SetSeasonStatusAsync(scopedCampId, seasonId, status, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInner(inner => inner.MarkSeasonFullAsync(scopedCampId, seasonId, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
             return result;
         });

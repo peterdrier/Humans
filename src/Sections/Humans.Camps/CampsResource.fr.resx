@@ -340,4 +340,5 @@
   <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Nouveau message pour {0} - consultez vos e-mails</value></data>
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Cette saison n’appartient pas à ce camp.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Seule une saison en attente ou active peut être retirée.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Seule une saison active peut être marquée comme complète.</value></data>
 </root>

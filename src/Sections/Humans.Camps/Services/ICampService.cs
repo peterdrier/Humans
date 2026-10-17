@@ -47,13 +47,12 @@ internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyE
     /// <summary>CampAdmin-only verb (unscoped by design — the dashboard is cross-camp).</summary>
     Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>
-    /// Camp lead or CampAdmin sets a season's status directly (currently used to toggle
-    /// Full on/off). Informational only — does not gate join requests or anything else.
-    /// Returns a refusal if the season does not belong to <paramref name="scopedCampId"/>, matching the
+    /// Camp lead or CampAdmin marks an Active season Full. The Full label does not block join requests.
+    /// Returns a refusal for a non-Active season or one outside <paramref name="scopedCampId"/>, matching the
     /// scoping pattern used by ApproveCampMemberAsync/RejectCampMemberAsync/RemoveCampMemberAsync.
     /// </summary>
-    Task<CampUpdateResult> SetSeasonStatusAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> MarkSeasonFullAsync(
+        Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     // Camp updates
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);

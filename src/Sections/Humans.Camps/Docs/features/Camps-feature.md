@@ -433,7 +433,7 @@ Transitions:
 - Full → Active (CampAdmin reactivates)
 - Withdrawn → Pending (CampAdmin reactivates; requires re-approval)
 
-Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation).
+Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.MarkSeasonFullAsync` → `CampSeason.MarkFull`, both guarded to accept only Active seasons).
 
 ## Authorization
 

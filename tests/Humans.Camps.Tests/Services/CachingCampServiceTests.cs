@@ -552,7 +552,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampService.RejectSeasonAsync), (t, c, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
         { nameof(ICampService.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, actorUserId: TestActorId, ct) },
         { nameof(ICampService.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, actorUserId: TestActorId, ct) },
-        { nameof(ICampService.SetSeasonStatusAsync), (t, c, se, ct) => t._service.SetSeasonStatusAsync(c, se, CampSeasonStatus.Full, actorUserId: TestActorId, ct) },
+        { nameof(ICampService.MarkSeasonFullAsync), (t, c, se, ct) => t._service.MarkSeasonFullAsync(c, se, actorUserId: TestActorId, ct) },
         { nameof(ICampService.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", actorUserId: TestActorId, ct) },
         { nameof(ICampService.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), actorUserId: TestActorId, ct) },
         { nameof(ICampService.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", ct) },
@@ -641,14 +641,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var (camp, season) = await SeedCampWithSeasonAsync(2026);
         await _service.GetCampsForYearAsync(2026, ct);
         var failure = new InvalidOperationException("Post-write dependency failed");
-        _innerSubstitute.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, ct).Returns(async _ =>
+        _innerSubstitute.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, ct).Returns(async _ =>
         {
             season.Status = CampSeasonStatus.Full;
             await SaveAllAsync(ct);
             return await Task.FromException<CampUpdateResult>(failure);
         });
 
-        Func<Task> change = () => _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, ct);
+        Func<Task> change = () => _service.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, ct);
         (await change.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         var fresh = (await _service.GetCampsForYearAsync(2026, ct)).Single(c => c.Id == camp.Id);
         fresh.Seasons.Single().Status.Should().Be(CampSeasonStatus.Full);

@@ -763,8 +763,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         }
     }
 
-    public async Task<CampUpdateResult> SetSeasonStatusAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<CampUpdateResult> MarkSeasonFullAsync(
+        Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
@@ -778,7 +778,13 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
                 return;
             }
 
-            season.SetStatus(status, now);
+            if (season.Status != CampSeasonStatus.Active)
+            {
+                refusalKey = "Camps_Flash_SeasonFullRequiresActive";
+                return;
+            }
+
+            season.MarkFull(now);
             year = season.Year;
         }, cancellationToken);
 
@@ -790,7 +796,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {year} status set to {status}",
+            $"Season {year} status set to Full",
             actorUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
