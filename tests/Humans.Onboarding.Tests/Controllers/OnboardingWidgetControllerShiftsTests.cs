@@ -19,9 +19,8 @@ namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
 /// Step 2 of the onboarding widget — covers the SignUp POST and Skip POST
-/// endpoints. The Shifts GET is exercised separately at the integration layer
-/// because its response model is built from <see cref="IShiftManagementService"/>
-/// and does not affect step routing.
+/// endpoints, plus cancellation of the Shifts GET. Rendered response models
+/// are exercised separately at the integration layer.
 /// </summary>
 public class OnboardingWidgetControllerShiftsTests
 {
@@ -62,6 +61,26 @@ public class OnboardingWidgetControllerShiftsTests
         // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.
         ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
+    }
+
+    [HumansFact]
+    public async Task Shifts_Get_StopsBrowseReadWhenRequestIsAbandoned()
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn());
+        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId)));
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await request.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<UrgentShiftInfo>)Array.Empty<UrgentShiftInfo>();
+            });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildSut(userId).Shifts(ct: request.Token));
     }
 
     [HumansFact]

@@ -135,7 +135,7 @@ internal sealed class OnboardingWidgetController(
         // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
-            Flags: ShiftBrowseQueryFlags.IncludeSignups));
+            Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
         var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
         // Onboarding viewers are regular (non-privileged) volunteers, so the early-entry
