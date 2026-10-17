@@ -265,6 +265,8 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Coordinator-picker prefills pair the resolved human’s name and ID, including when the form holds an archived account ID.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
 - The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
