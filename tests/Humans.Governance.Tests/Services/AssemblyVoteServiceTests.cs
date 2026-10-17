@@ -1521,6 +1521,14 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public async Task OpenAsync_RaisesTheInAppNotificationBeforeTheRosterEmails()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var legacyTitle = new string('x', 300);
+        var stored = await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
+        stored.Title = new GovernanceLocalizedText(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["en"] = legacyTitle
+        });
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
         var asociado = Guid.NewGuid();
         _fx.StubActiveUsers(asociado);
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
@@ -1531,12 +1539,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // row that does not exist yet cannot be resolved — so the notification must not wait
         // behind a roster-long email loop.
         var order = new List<string>();
+        string? noticeTitle = null;
         _fx.Notifications.When(n => n.SendAsync(
                 Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<CancellationToken>()))
-            .Do(_ => order.Add("notification"));
+            .Do(call =>
+            {
+                order.Add("notification");
+                noticeTitle = call.ArgAt<string>(3);
+            });
         _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
             .Do(_ => order.Add("email"));
 
@@ -1546,6 +1559,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         order.Should().StartWith(["notification"], "the notification is emitted first");
         order.Should().Contain("email");
+        noticeTitle.Should().Be(legacyTitle, "Notifications owns storage previews and retains the full title in its body");
     }
 
     [HumansFact]

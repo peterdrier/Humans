@@ -58,7 +58,7 @@ internal sealed class AssemblyVoteService(
     // bounded columns elsewhere — the email outbox Subject (varchar(1000)) and Notification
     // Title (varchar(200)) — and those writes happen after a transition that cannot be undone.
     // A title is bounded at the draft so the Board hears about it while the vote is still
-    // editable; the sends below still trim, for drafts written before this bound existed.
+    // editable. Email subjects still trim legacy drafts; Notifications owns its previews.
     internal const int MaxTitleLength = 200;         // assembly_votes.Title, per culture
     internal const int MaxOptionKeyLength = 100;     // assembly_vote_options.Key
     internal const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
@@ -72,8 +72,8 @@ internal sealed class AssemblyVoteService(
     /// Mirrors <c>audit_log.description</c>. A near-maximum cancellation reason still fits
     /// its own column while the audit description, which prefixes it, would not — and
     /// AuditLogService swallows that failure, so the cancellation would go unaudited.
-    /// Trimmed here for the same reason the notification title is: a neighbouring section's
-    /// column width does not belong in Governance's validation rules.
+    /// Trimming here keeps the cancellation reason complete in Governance while fitting
+    /// the audit entry into its neighbouring section's bounded description.
     /// </summary>
     private const int MaxAuditDescriptionLength = 4000;
 
@@ -1413,7 +1413,7 @@ internal sealed class AssemblyVoteService(
                 NotificationSource.AssemblyVoteOpened,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                NotificationTitle(vote),
+                vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture),
                 userIds,
                 actionUrl: VoteUrl(vote.Id),
                 sourceKey: vote.Id.ToString(),
@@ -1503,14 +1503,6 @@ internal sealed class AssemblyVoteService(
 
         return notified;
     }
-
-    /// <summary>
-    /// The vote's title, trimmed to what <c>Notification.Title</c> holds (varchar(200)).
-    /// The title is jsonb and uncapped, so a long motion title would otherwise throw on
-    /// insert — after the vote is already irreversibly Open.
-    /// </summary>
-    private static string NotificationTitle(AssemblyVote vote) =>
-        Truncate(vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture), 200);
 
     /// <summary>
     /// The vote's title in the reader's language, bounded for the email subject that carries
