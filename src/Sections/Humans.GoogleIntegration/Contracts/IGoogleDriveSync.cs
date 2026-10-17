@@ -48,14 +48,4 @@ public interface IGoogleDriveSync
         CancellationToken ct = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
 
-    // Hangfire serializes the exact MethodInfo at enqueue time; the overload above
-    // added syncSource, so scoped jobs queued before that deploy carry the
-    // 3-param signature and cannot resolve without it. Same compatibility
-    // pattern as IGoogleGroupSync.ReconcileOneAsync. Do not remove without first
-    // draining queued ReconcileOneAsync jobs.
-    [ExternalWrite]
-    Task<ResourceSyncDiff> ReconcileOneAsync(
-        string folderId,
-        SyncAction action,
-        CancellationToken ct);
 }
