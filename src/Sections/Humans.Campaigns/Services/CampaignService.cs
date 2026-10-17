@@ -385,7 +385,9 @@ internal sealed class CampaignService(
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        var eligibleCount = notGranted.Count;
+        var users = await userService.GetUserInfosAsync(notGranted, ct);
+        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(notGranted, ct);
+        var eligibleCount = GetContactableRecipients(campaignId, notGranted, users, notificationEmails).Count;
         var availableCodes = await repository.CountAvailableCodesAsync(campaignId, ct);
 
         return new WaveSendPreview(
@@ -416,6 +418,9 @@ internal sealed class CampaignService(
 
         var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
         var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
+        eligibleUserIds = GetContactableRecipients(campaignId, eligibleUserIds, users, notificationEmails);
+        if (eligibleUserIds.Count == 0)
+            return new CampaignSendWaveResult(true, SentCount: 0);
 
         var availableCodes = await repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
@@ -436,21 +441,8 @@ internal sealed class CampaignService(
             var userId = eligibleUserIds[i];
             var code = availableCodes[i];
 
-            if (!users.TryGetValue(userId, out var user))
-            {
-                logger.LogWarning(
-                    "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
-                    userId, campaignId);
-                continue;
-            }
-
-            if (!notificationEmails.TryGetValue(userId, out var recipientEmail))
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for campaign {CampaignId}; skipping",
-                    userId, campaignId);
-                continue;
-            }
+            var user = users[userId];
+            var recipientEmail = notificationEmails[userId];
 
             var grant = new CampaignGrant
             {
@@ -701,6 +693,32 @@ internal sealed class CampaignService(
         logger.LogInformation(
             "Campaign {CampaignId}: retried {Count} failed grants, {StillFailedCount} still failed",
             campaignId, failedGrants.Count, stillFailedCount);
+    }
+
+    private List<Guid> GetContactableRecipients(
+        Guid campaignId, IReadOnlyList<Guid> candidates,
+        IReadOnlyDictionary<Guid, UserInfo> users, IReadOnlyDictionary<Guid, string> notificationEmails)
+    {
+        var recipients = new List<Guid>();
+        foreach (var userId in candidates)
+        {
+            if (!users.ContainsKey(userId))
+            {
+                logger.LogWarning(
+                    "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
+                    userId, campaignId);
+                continue;
+            }
+            if (!notificationEmails.ContainsKey(userId))
+            {
+                logger.LogWarning(
+                    "User {UserId} has no notification email for campaign {CampaignId}; skipping",
+                    userId, campaignId);
+                continue;
+            }
+            recipients.Add(userId);
+        }
+        return recipients;
     }
 
     private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)

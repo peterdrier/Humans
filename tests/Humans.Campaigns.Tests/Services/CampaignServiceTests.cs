@@ -1,3 +1,4 @@
+using AwesomeAssertions.Execution;
 using System.Security.Claims;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -823,6 +824,38 @@ public sealed class CampaignServiceTests
         // Second wave should send to nobody (both already granted)
         var wave2 = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         wave2.SentCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task WavePreviewAndSend_CountOnlyRecipientsThatCanReceiveAGrant(bool missingUser)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ONLY-ONE"]);
+        var skipped = SeedUser(displayName: "Skipped");
+        var recipient = SeedUser(displayName: "Recipient");
+        var team = SeedTeam("Recipient preflight");
+        SeedTeamMember(team.Id, skipped.Id);
+        SeedTeamMember(team.Id, recipient.Id);
+        if (missingUser)
+            _people.Remove(skipped.Id);
+        else
+            _people[skipped.Id] = skipped with { IdentityEmailColumn = null };
+        await SaveAllAsync(ct);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        using var assertions = new AssertionScope();
+        preview.EligibleCount.Should().Be(1);
+        preview.CodesRemainingAfterSend.Should().Be(0);
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(1);
+        var grants = await CampaignsDb.CampaignGrants.AsNoTracking().Where(g => g.CampaignId == campaign.Id).ToListAsync(ct);
+        grants.Select(grant => grant.UserId).Should().Equal(recipient.Id);
+        _emailService.ReceivedCalls().Select(call => ((EmailMessage)call.GetArguments()[0]!).RecipientEmail)
+            .Should().Equal(recipient.Email);
     }
 
     [HumansFact]
