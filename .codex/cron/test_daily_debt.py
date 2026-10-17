@@ -67,6 +67,7 @@ if name == "gh":
     if args[:2] == ["pr", "create"]:
         body = pathlib.Path(args[args.index("--body-file") + 1]).read_text()
         (root / "pr-body").write_text(body)
+        assert len(body.encode("utf-8")) <= 65536, "GitHub PR body limit exceeded"
         if scenario == "pr-create-failure":
             sys.exit(1)
         print("https://example.invalid/pull/1")
@@ -79,8 +80,19 @@ if name == "dotnet":
     assert os.environ["VSTestTestCaseFilter"] == "FullyQualifiedName!~Humans.Integration.Tests"
     if args[0] == "test":
         assert args[args.index("--filter") + 1] == os.environ["VSTestTestCaseFilter"]
-    sys.exit(1 if scenario == args[0] + "-failure" or
-             (scenario == "build-repair" and args[0] == "build" and not (root / "repaired").exists()) else 0)
+    failed = scenario == args[0] + "-failure" or (
+        scenario == "test-build-regression" and (
+            (args[0] == "test" and not (root / "repaired").exists()) or
+            (args[0] == "build" and (root / "repaired").exists()))) or (
+        args[0] == "build" and (
+            (scenario in ("build-repair", "giant-build-repair", "repair-dirty") and not (root / "repaired").exists()) or
+            scenario == "giant-build-failure" or
+            (scenario == "build-second-repair" and int((root / "sessions-started").read_text()) < 3)))
+    if failed:
+        print("Fixture.cs(1,1): error CS1234: repair this compilation failure")
+        if scenario.startswith("giant-"):
+            print("Long diagnostic starts: " + "x" * 1200000 + " :diagnostic ends")
+    sys.exit(1 if failed else 0)
 if args[:2] == ["login", "status"]:
     sys.exit()
 assert args[:2] == ["app-server", "--stdio"]
@@ -92,7 +104,7 @@ assert 'agents.default_subagent_reasoning_effort="medium"' in helper_config
 count_file = root / "sessions-started"
 count = int(count_file.read_text()) if count_file.exists() else 0
 count_file.write_text(str(count + 1))
-thread = "fixture-thread" if count == 0 else "fixture-repair"
+thread = "fixture-thread" if count == 0 else "fixture-repair" + (str(count) if count > 1 else "")
 started = 0
 objective = None
 
@@ -128,8 +140,8 @@ for line in sys.stdin:
         result = {"thread": {"id": thread}}
     elif method == "thread/goal/set":
         assert "tokenBudget" not in params
-        assert ("cap, not a target" in params["objective"]) == (thread == "fixture-repair")
-        assert ("ONLY stopping rule" in params["objective"]) == (thread != "fixture-repair")
+        assert ("cap, not a target" in params["objective"]) == (thread.startswith("fixture-repair"))
+        assert ("ONLY stopping rule" in params["objective"]) == (not thread.startswith("fixture-repair"))
         if objective is None:
             objective = params["objective"]
         else:
@@ -159,10 +171,15 @@ for line in sys.stdin:
             emit("turn/completed", {"turn": {"status": "completed"}})
             continue
         prompt = params["input"][0]["text"]
-        if thread == "fixture-repair":
+        if thread.startswith("fixture-repair"):
+            assert len(prompt.encode("utf-8")) < 30000
+            assert "error CS1234: repair this compilation failure" in prompt
+            assert "event-payload" not in prompt
             print(json.dumps({"id": request["id"], "result": {}}), flush=True)
             time.sleep(2)
-            commit(3)
+            commit(3 + count)
+            if scenario == "repair-dirty":
+                pathlib.Path("src/Fix" + str(3 + count) + ".cs").write_text("unfinished repair")
             (root / "repaired").touch()
             (root / "clock").write_text(str(int(time.time()) + 2))
             emit("thread/goal/updated", {"goal": {"status": "complete"}})
@@ -192,8 +209,13 @@ for line in sys.stdin:
     if not scenario.startswith("early-"):
         (root / "clock").write_text(str(int((root / "clock").read_text()) + 91))
     emit("thread/goal/updated", {"goal": {"status": "blocked" if scenario.startswith("blocked") else "complete"}})
+    if scenario.startswith("giant-"):
+        emit("item/completed", {"item": {"type": "commandExecution", "aggregatedOutput": "event-payload" * 100000}})
     if scenario != "missing-report":
-        emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 2"}})
+        report = "Cumulative fixes: 2"
+        if scenario in ("oversized-report", "giant-build-failure"):
+            report += "\\n" + "é🐱" * 100000
+        emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": report}})
     if scenario == "early-deadline-race":
         time.sleep(max(0, int((root / "clock").read_text()) + 3 - time.time()) + 0.05)
     emit("turn/completed", {"turn": {"status": "completed"}})
@@ -248,6 +270,97 @@ for line in sys.stdin:
         self.assertNotIn("- [ ]", body)
         self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 2)
+
+    def test_giant_events_and_diagnostics_do_not_block_gate_repair(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="30s")
+        result, calls, published = self.run_scenario("giant-build-repair")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertNotIn("--draft", published[0])
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "build", "test"])
+        prompt = next((self.root / "logs").glob("repair-prompt-*.md")).read_text()
+        self.assertIn("diagnostic ends", prompt)
+        self.assertIn("[line shortened]", prompt)
+        self.assertNotIn("event-payload", prompt)
+
+    def test_failed_gate_publishes_bounded_draft_even_with_giant_report_and_events(self):
+        result, _, published = self.run_scenario("giant-build-failure")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(published), 1, result.stdout + result.stderr)
+        self.assertIn("--draft", published[0])
+        body = (self.root / "pr-body").read_text()
+        self.assertLessEqual(len(body.encode("utf-8")), 60000)
+        self.assertIn("## Automated gate warning", body)
+        self.assertIn("- Build gate: fail", body)
+        self.assertIn("- Test gate: skipped", body)
+        self.assertIn("error CS1234", body)
+        self.assertNotIn("event-payload", body)
+        self.assertIn("Runner validation: build fail, tests skipped", body)
+        self.assertIn("exit_reason=pushed-draft-build-failed", result.stdout)
+
+    def test_oversized_green_report_still_publishes(self):
+        result, _, published = self.run_scenario("oversized-report")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertIn("Report shortened for GitHub", (self.root / "pr-body").read_text())
+        self.assertIn("Runner validation: build pass, tests pass", (self.root / "pr-body").read_text())
+
+    def test_recovered_oversized_report_preserves_warning_from_omitted_middle(self):
+        result, _, _ = self.run_scenario("pr-create-failure")
+        self.assertNotEqual(result.returncode, 0)
+        report = next((self.root / "logs").glob("last-message-*.md"))
+        report.write_text("Report start\n" + "a" * 100000 +
+                          "\n## Automated gate warning\n\nThe build gate failed.\n\n- Build gate: fail\n- Test gate: skipped\n\nRelevant failure output:\n" +
+                          "b" * 100000 + "\nReport end")
+        result, _, published = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("--draft", published[-1])
+        body = (self.root / "pr-body").read_text()
+        self.assertLessEqual(len(body.encode("utf-8")), 60000)
+        self.assertIn("## Automated gate warning", body)
+        self.assertIn("The build gate failed.", body)
+        self.assertIn("- Build gate: fail", body)
+        self.assertIn("- Test gate: skipped", body)
+        self.assertIn("Report start", body)
+        self.assertIn("Report end", body)
+
+    def test_repair_cap_allows_second_attempt(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="2", GATE_REPAIR_BUDGET="30s")
+        result, calls, published = self.run_scenario("build-second-repair")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertNotIn("--draft", published[0])
+        self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 3)
+        body = (self.root / "pr-body").read_text()
+        self.assertIn("## Gate repair 1", body)
+        self.assertIn("## Gate repair 2", body)
+
+    def test_repair_attempts_stop_at_cap_and_publish_failed_draft(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="2", GATE_REPAIR_BUDGET="30s")
+        result, calls, published = self.run_scenario("build-failure")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(published), 1, result.stdout + result.stderr)
+        self.assertIn("--draft", published[0])
+        self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 3)
+        self.assertIn("exit_reason=pushed-draft-build-failed", result.stdout)
+
+    def test_test_repair_that_breaks_build_reports_latest_gate_results(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="30s")
+        result, calls, published = self.run_scenario("test-build-regression")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(published), 1, result.stdout + result.stderr)
+        self.assertIn("--draft", published[0])
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test", "build"])
+        body = (self.root / "pr-body").read_text()
+        self.assertIn("final build gate failed", body)
+        self.assertIn("Runner validation: build fail, tests skipped", body)
+
+    def test_dirty_repair_never_publishes(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="2", GATE_REPAIR_BUDGET="30s")
+        result, _, published = self.run_scenario("repair-dirty")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(published, [])
+        self.assertIn("exit_reason=invalid-tree-after-gate-repair", result.stdout)
 
     def test_spend_includes_separate_repair_root(self):
         self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="30s")  # repair finishes early; must not be forced to the cap
