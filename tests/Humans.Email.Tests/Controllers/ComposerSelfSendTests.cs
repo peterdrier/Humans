@@ -34,14 +34,14 @@ public sealed class ComposerSelfSendTests
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("s", "[Test] {0}"));
         localizer["Email_ComposerSelfTest_DefaultSubject"].Returns(new LocalizedString("d", "[Test] Preview"));
         return new ComposerSelfSendService(
-            _userEmails, Substitute.For<IUserServiceRead>(), _email, _audit, localizer,
+            _userEmails, Substitute.For<IUserService>(), _email, _audit, localizer,
             NullLogger<ComposerSelfSendService>.Instance);
     }
 
     private EmailPreviewController BuildController(bool signedIn)
     {
         var controller = new EmailPreviewController(
-            Substitute.For<IUserServiceRead>(), Substitute.For<IEmailPreviewManagement>(), BuildService());
+            Substitute.For<IUserService>(), Substitute.For<IEmailPreviewManagement>(), BuildService());
         var claims = signedIn ? new[] { new Claim(ClaimTypes.NameIdentifier, UserId.ToString()) } : [];
         controller.ControllerContext = new ControllerContext
         {

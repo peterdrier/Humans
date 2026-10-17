@@ -106,8 +106,8 @@ contract fold-inward).
 - **`_ConsentReviewBody` uses `ResourceManager` directly** to hand per-language checkbox
   strings to inline JS that re-localises when the reader switches language tabs.
 - **Jobs are `public`** (HUM0034 exception) because Shell names the concrete types at
-  registration; `SendReConsentReminderJob` carries `[CrossSectionWrite]` for its cooldown
-  stamp on Users.
+  registration; `SendReConsentReminderJob` stamps its cooldown
+  on Users.
 - **Post-submit threshold check is a controller peer-call** (`ConsentController.Submit` →
   `IOnboardingIntake`), not a service call — avoids the inverted arrow into Onboarding.
 - **`ConsentService` takes `IServiceProvider`** to resolve `IMembershipCalculator`

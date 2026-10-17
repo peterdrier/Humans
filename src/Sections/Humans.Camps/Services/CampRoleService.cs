@@ -15,7 +15,7 @@ internal sealed class CampRoleService(
     ICampRoleCampAccess campAccess,
     ICampInfoInvalidator campInfoInvalidator,
     IUserEmailService userEmailService,
-    IUserServiceRead userServiceRead,
+    IUserService userServiceRead,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
     IOptions<GoogleWorkspaceOptions> googleOptions,

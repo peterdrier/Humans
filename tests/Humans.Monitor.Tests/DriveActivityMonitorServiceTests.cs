@@ -21,7 +21,7 @@ public class DriveActivityMonitorServiceTests
     private readonly IGoogleDriveActivityClient _client;
     private readonly ITeamResourceService _teamResources;
     private readonly ISettingsService _settingsStore;
-    private readonly IUserServiceRead _userService;
+    private readonly IUserService _userService;
     private readonly IAuditLogService _auditLog;
     private readonly FakeClock _clock;
     private readonly DriveActivityMonitorService _service;
@@ -35,7 +35,7 @@ public class DriveActivityMonitorServiceTests
         _client = Substitute.For<IGoogleDriveActivityClient>();
         _teamResources = Substitute.For<ITeamResourceService>();
         _settingsStore = Substitute.For<ISettingsService>();
-        _userService = Substitute.For<IUserServiceRead>();
+        _userService = Substitute.For<IUserService>();
         _auditLog = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
 

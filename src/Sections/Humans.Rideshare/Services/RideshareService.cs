@@ -23,7 +23,7 @@ internal sealed class RideshareService(
     IRideshareRepository repository,
     IRouteProvider routeProvider,
     ISettingsService settingsService,
-    IUserServiceRead users,
+    IUserService users,
     INotificationEmitter notifications,
     IAuditLogService auditLog,
     IClock clock,

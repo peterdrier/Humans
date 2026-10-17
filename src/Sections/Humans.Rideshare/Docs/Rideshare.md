@@ -8,7 +8,7 @@
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
-  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserService.cs
   src/Sections/Humans.Users.Contracts/UserInfo.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
   src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs
@@ -288,7 +288,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserServiceRead` — display name/picture for driver and rider cards, board
+- **Users**: `IUserService` — display name/picture for driver and rider cards, board
   properties, and notification "from" names. `IUserMerge` — on account merge,
   `ReassignAsync` re-points the archived user's trips, requests and interests at the survivor,
   then drops interests the fold made self-interest (rider on their own trip, driver answering
@@ -328,8 +328,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   This includes GDPR erasure and account merge; the original failure still propagates. A year-graph
   cache at this scale, cleared on any write, is acceptable rather than tracking per-year
   invalidation keys.
-- **Display stitching** — cross-section display data resolves through `IUserServiceRead.GetUserInfosAsync`.
-- **Cross-section calls** — `IUserServiceRead`, `ISettingsService`, `INotificationEmitter`, `IAuditLogService`, `IClock` (NodaTime).
+- **Display stitching** — cross-section display data resolves through `IUserService.GetUserInfosAsync`.
+- **Cross-section calls** — `IUserService`, `ISettingsService`, `INotificationEmitter`, `IAuditLogService`, `IClock` (NodaTime).
 - **Architecture test** — `tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs` pins the service/repository split, the canonical `Rideshare` / `api/rideshare` route names, and the caching-decorator shape.
 
 ### Routing provider

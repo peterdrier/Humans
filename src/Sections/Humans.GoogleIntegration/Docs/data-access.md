@@ -31,7 +31,7 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleSyncOutboxEvents | R/W |
 
 Implements the internal `IGoogleSyncManagement` (which extends the public `IGoogleSyncService` and `IGoogleSyncWrite`). Cross-section calls via `IUserService`,
-`ITeamServiceRead`, `ISyncSettingsService`,
+`ITeamService`, `ISyncSettingsService`,
 `IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
 `IGoogleGroupProvisioningClient`, `IGoogleGroupSync`, `IGoogleDriveSync`,
 and `IGoogleDriveAccessSource` (source-owned grant levels). No cache.
@@ -49,7 +49,7 @@ direct DB access, no cache.
 
 ### GoogleDriveAccessSyncService (Scoped)
 
-Uses its own `IGoogleResourceRepository` to load linked Drive metadata and record errors/sync stamps. Reconciles `IGoogleDriveAccessSource` claims from Teams and Workgroups through `IGoogleDrivePermissionsClient`; the connector never derives team membership. Cross-section calls use `IUserService`, `IUserEmailService`, `ITeamServiceRead` (retirement status only), `ISyncSettingsService`, `IAuditLogService`, `IGoogleSyncLogService`, and `IGoogleRemovalNotificationService`. Resource retirement goes through the existing `ITeamResourceManagement` audit path. No cache.
+Uses its own `IGoogleResourceRepository` to load linked Drive metadata and record errors/sync stamps. Reconciles `IGoogleDriveAccessSource` claims from Teams and Workgroups through `IGoogleDrivePermissionsClient`; the connector never derives team membership. Cross-section calls use `IUserService`, `IUserEmailService`, `ITeamService` (retirement status only), `ISyncSettingsService`, `IAuditLogService`, `IGoogleSyncLogService`, and `IGoogleRemovalNotificationService`. Resource retirement goes through the existing `ITeamResourceManagement` audit path. No cache.
 
 ### GoogleAdminService (Scoped)
 
@@ -68,8 +68,8 @@ No repository. Thin facade over `IWorkspaceUserDirectoryClient`
 ### EmailProvisioningService (Scoped)
 
 No repository. Wraps the section's `IGoogleWorkspaceUserService` to provision
-Google Workspace mailboxes; cross-section calls via `IUserServiceRead`,
-`IUserEmailService`, `ITeamServiceRead`, `IEmailService` (messages built by
+Google Workspace mailboxes; cross-section calls via `IUserService`,
+`IUserEmailService`, `ITeamService`, `IEmailService` (messages built by
 `GoogleIntegrationEmails`), `INotificationEmitter`, `IAuditLogService`. No direct
 DB access, no cache.
 
@@ -127,7 +127,7 @@ Implements the internal `IGoogleSyncLogService` (writes, plus the
 at Error and swallowed so a sync never fails on its own bookkeeping. The
 contributor read is uncapped, unlike the 200-row display reads. Cross-section
 calls: `ITeamResourceManagement` (resource display names) and
-`IUserServiceRead.GetUserInfoAsync`, whose `UserInfo.AllUserIds` chain-follows
+`IUserService.GetUserInfoAsync`, whose `UserInfo.AllUserIds` chain-follows
 merge tombstones on per-user reads. No cache.
 
 ### GoogleSyncHistoryMigrationService (Scoped, `internal`)
@@ -159,9 +159,9 @@ Sole owner of `google_resources`. All consumers call
 `DbSet<GoogleResource>`; ownership is enforced by the section's `internal`
 `GoogleIntegrationDbContext` and `IGoogleResourceRepository` plus
 HUM0008/HUM0009/HUM0025. Cross-section calls via
-`ITeamServiceRead`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
+`ITeamService`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
 `IAuditLogService`, plus `IServiceProvider` to lazy-resolve
-`IRoleAssignmentServiceRead` (breaks a DI cycle). No cache.
+`IRoleAssignmentService` (breaks a DI cycle). No cache.
 
 ### GoogleSyncOutboxProcessor (Scoped, `internal`)
 
@@ -178,10 +178,10 @@ The outbox drain, run via Hangfire.
 Outbox processing writes Google email status back to the user:
 `AddUserToTeamResources` / `RemoveUserFromTeamResources`
 events are dispatched via `IGoogleSyncManagement`, then the user's
-`GoogleEmailStatus` is written through `IUserService.TrySetGoogleEmailStatusFromSyncAsync`
+`GoogleEmailStatus` is written through `IUserWrite.TrySetGoogleEmailStatusFromSyncAsync`
 (`Valid` on a successful add with active resources, `Rejected` on a permanent
 vendor failure — HTTP 400/403/404). Cross-section calls via `IUserService`,
-`ITeamServiceRead`, `IGoogleSyncManagement`, plus `IHumansMetrics` and `IClock`.
+`ITeamService`, `IGoogleSyncManagement`, plus `IHumansMetrics` and `IClock`.
 No `IMemoryCache`.
 
 ### GoogleRemovalNotificationService (Scoped)

@@ -32,6 +32,6 @@ internal sealed class SurveyConfiguration : IEntityTypeConfiguration<Survey>
 
         // CreatedByUserId / AudienceTeamId are bare Guid columns: NO navigation property and NO
         // cross-section EF FK constraint. The service
-        // resolves the creator's display name / team via IUserServiceRead / ITeamServiceRead when needed.
+        // resolves the creator's display name / team via IUserService / ITeamService when needed.
     }
 }

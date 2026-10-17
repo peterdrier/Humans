@@ -23,7 +23,7 @@ internal sealed class TeamAdminController(
     ITeamResourceService teamResourceService,
     ITeamResourceWrite teamResourceWrite,
     IGoogleSyncWrite googleSyncWrite,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailProvisioningService emailProvisioningService,
     IAuthorizationService authorizationService,
     ILogger<TeamAdminController> logger,
@@ -32,7 +32,7 @@ internal sealed class TeamAdminController(
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamManagementService _teamService = teamService;
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
     private readonly ITicketService _tickets = tickets;
 
     [HttpPost("Requests/{requestId}/Approve")]

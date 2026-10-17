@@ -80,7 +80,7 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out)</div>
+    <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out; balance = running total after each line, positive = owed to the member)</div>
     @if (lines.Count == 0)
     {
         <div class="card-body text-muted text-center py-4">No cached ledger lines for this account.</div>
@@ -94,16 +94,19 @@
                 <th>Type</th>
                 <th class="text-end">In</th>
                 <th class="text-end">Out</th>
+                <th class="text-end">Balance</th>
             </tr></thead>
             <tbody>
-            @foreach (var l in lines)
+            @foreach (var row in lines)
             {
+                var l = row.Line;
                 <tr>
                     <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@l.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
                     <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
+                    <td class="text-end @(row.RunningBalance > 0 ? "finance-positive" : row.RunningBalance < 0 ? "finance-negative" : "")">@row.RunningBalance.ToEuro()</td>
                 </tr>
             }
             </tbody>

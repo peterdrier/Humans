@@ -18,7 +18,7 @@ internal interface ITeamMessageOptionsProvider
 
 // Owns no tables: coordinates Teams and GoogleIntegration through their public interfaces.
 internal sealed class TeamMessageOptionsProvider(
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ITeamResourceService teamResourceService) : ITeamMessageOptionsProvider, IOrchestrator
 {
     public async Task<IReadOnlyList<TeamMessageOption>> GetOptionsAsync(Guid viewerId, CancellationToken ct = default)

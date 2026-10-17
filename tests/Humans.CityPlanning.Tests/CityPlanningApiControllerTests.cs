@@ -40,7 +40,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private IStringLocalizer<ContainersResource> _containersLocalizer = Substitute.For<IStringLocalizer<ContainersResource>>();
     private IAuthorizationService _authorization;
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ILogger<CityPlanningApiController> _logger = Substitute.For<ILogger<CityPlanningApiController>>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();
     private readonly CityPlanningService _service;
@@ -57,7 +57,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserServiceRead>(), Substitute.For<IAuditLogService>());
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>());
         _authorization = MapAdminAuthorization(_service);
     }
 

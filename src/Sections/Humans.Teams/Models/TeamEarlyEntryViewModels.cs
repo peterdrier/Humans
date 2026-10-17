@@ -26,7 +26,7 @@ internal sealed class TeamEarlyEntryPageViewModel
 internal sealed class TeamEarlyEntryRowViewModel
 {
     public Guid GrantId { get; init; }
-    public string HumanName { get; init; } = string.Empty;  // resolved via IUserServiceRead
+    public string HumanName { get; init; } = string.Empty;  // resolved via IUserService
     public LocalDate EntryDate { get; init; }               // display only — not form-bound
     public string ProjectName { get; init; } = string.Empty;
 }

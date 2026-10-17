@@ -14,7 +14,7 @@ namespace Humans.Gdpr.Services;
 /// </summary>
 internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
-    IUserServiceRead users,
+    IUserService users,
     IClock clock,
     ILogger<GdprService> logger) : IGdprService
 {

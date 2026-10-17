@@ -6,7 +6,7 @@ namespace Humans.Teams.Domain;
 /// One early-entry grant owned by the Teams section: a human (<see cref="UserId"/>)
 /// may enter on <see cref="EntryDate"/> for a named project. Surfaced to the
 /// cross-section EE roster as "{TeamName}: {ProjectName}". No EF navigation to User —
-/// the bare FK is resolved through IUserServiceRead at the service layer.
+/// the bare FK is resolved through IUserService at the service layer.
 /// </summary>
 internal sealed class TeamEarlyEntryGrant
 {

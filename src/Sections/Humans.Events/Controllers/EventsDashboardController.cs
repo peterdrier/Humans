@@ -19,7 +19,7 @@ namespace Humans.Events.Controllers;
 [Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-internal sealed class EventsDashboardController(IEventManagement guide, ICampService camps, IUserServiceRead userService)
+internal sealed class EventsDashboardController(IEventManagement guide, ICampService camps, IUserService userService)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]

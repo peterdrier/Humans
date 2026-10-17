@@ -20,7 +20,7 @@ public class CantinaArchitectureTests
             .GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IShiftManagementService));
-        paramTypes.Should().Contain(typeof(IUserServiceRead));
+        paramTypes.Should().Contain(typeof(IUserService));
     }
 
     [HumansFact]

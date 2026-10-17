@@ -30,7 +30,7 @@ public sealed class TermRenewalReminderJobTests
     {
         using var serverCulture = new CultureScope("fr");
         var applications = Substitute.For<IGovernanceManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var email = Substitute.For<IEmailService>();
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));

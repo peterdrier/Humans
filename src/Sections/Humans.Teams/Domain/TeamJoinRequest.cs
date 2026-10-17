@@ -12,7 +12,7 @@ internal sealed class TeamJoinRequest
     public Team Team { get; set; } = null!;
     /// <summary>
     /// FK column only — no navigation property. Resolve the requester via
-    /// <c>IUserServiceRead.GetUserInfoAsync</c>.
+    /// <c>IUserService.GetUserInfoAsync</c>.
     /// </summary>
     public Guid UserId { get; init; }
     public TeamJoinRequestStatus Status { get; set; } = TeamJoinRequestStatus.Pending;
@@ -21,7 +21,7 @@ internal sealed class TeamJoinRequest
     public Instant? ResolvedAt { get; set; }
     /// <summary>
     /// FK column only — no navigation property. Resolve the reviewer via
-    /// <c>IUserServiceRead.GetUserInfoAsync</c>.
+    /// <c>IUserService.GetUserInfoAsync</c>.
     /// </summary>
     public Guid? ReviewedByUserId { get; set; }
     public string? ReviewNotes { get; set; }

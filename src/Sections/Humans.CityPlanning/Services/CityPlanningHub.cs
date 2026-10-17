@@ -14,7 +14,7 @@ namespace Humans.CityPlanning.Services;
 /// a <c>MapHub</c> call by concrete type from Shell would force it public again.
 /// </summary>
 [Authorize]
-internal sealed class CityPlanningHub(IUserServiceRead userService, UserManager<User> userManager) : Hub
+internal sealed class CityPlanningHub(IUserService userService, UserManager<User> userManager) : Hub
 {
     private static readonly ConcurrentDictionary<string, string> _displayNames = new(StringComparer.Ordinal);
 

@@ -1,9 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserService.cs
   src/Sections/Humans.Users.Contracts/IUserEmailService.cs
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentServiceRead.cs
+  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
@@ -50,11 +50,11 @@ Repository: `IWorkgroupRepository`.
 | workgroup_document_comments | R/W |
 | workgroups_settings | R/W |
 
-Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentServiceRead`,
+Cross-section calls: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
 `ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IHoldedFinanceWrite`,
 `IHoldedClient`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).
-The inner service has no `IMemoryCache`. `ITeamServiceRead` is used by
+The inner service has no `IMemoryCache`. `ITeamService` is used by
 `WorkgroupsController` and `WorkgroupDriveAccessSource` (Board membership), not the service.
 
 ### CachingWorkgroupService (Singleton, `Humans.Workgroups.Services`)
@@ -89,7 +89,7 @@ cache.
   `ICalendarFeedContributor` by reading the cached register through `IWorkgroupService` —
   no direct repository access.
 - `WorkgroupDriveAccessSource` (`Services/Contributors/`) implements
-  `IGoogleDriveAccessSource` the same way, plus `IUserServiceRead`/`ITeamServiceRead` for
+  `IGoogleDriveAccessSource` the same way, plus `IUserService`/`ITeamService` for
   the root folder's reader list.
 
 Neither owns a table or touches `WorkgroupsDbContext` directly — both go through

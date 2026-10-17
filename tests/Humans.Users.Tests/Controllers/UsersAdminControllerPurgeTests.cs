@@ -34,7 +34,7 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class UsersAdminControllerPurgeTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
     private readonly IHumanLifecycleService _lifecycle = Substitute.For<IHumanLifecycleService>();
@@ -68,6 +68,7 @@ public class UsersAdminControllerPurgeTests
             _userEmails,
             Substitute.For<IEmailOutboxService>(),
             _roleAssignments,
+            Substitute.For<IRoleAssignmentWrite>(),
             Substitute.For<IGovernanceService>(),
             Substitute.For<IConsentService>(),
             Substitute.For<ICampaignService>(),

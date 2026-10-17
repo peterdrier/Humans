@@ -18,8 +18,8 @@ namespace Humans.Notifications.Services;
 /// <summary>
 /// Provides live counter meters for admin/coordinator work queues. Counts
 /// are computed by calling into each owning section's read interface
-/// (<see cref="IUserServiceRead"/>, <see cref="IGoogleSyncService"/>,
-/// <see cref="ITeamServiceRead"/>, <see cref="ITicketSync"/>,
+/// (<see cref="IUserService"/>, <see cref="IGoogleSyncService"/>,
+/// <see cref="ITeamService"/>, <see cref="ITicketSync"/>,
 /// <see cref="IGovernanceService"/>, <see cref="ICampService"/>)
 /// and cached for ~2 minutes. No direct DB access.
 /// </summary>
@@ -31,9 +31,9 @@ namespace Humans.Notifications.Services;
 /// <see cref="Humans.Base.Interfaces.Caching.INotificationMeterCacheInvalidator"/>.
 /// </remarks>
 internal sealed class NotificationMeterProvider(
-    IUserServiceRead userService,
+    IUserService userService,
     IGoogleSyncService googleSyncService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ITicketSync ticketSyncService,
     IGovernanceService applicationDecisionService,
     ICampService campService,

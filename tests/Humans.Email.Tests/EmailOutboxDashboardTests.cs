@@ -26,7 +26,7 @@ public sealed class EmailOutboxDashboardTests
         outbox.GetDailySendCountsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new DailySendCountsDto([], []));
         var controller = new EmailController(
-            Substitute.For<IUserServiceRead>(), outbox, Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>(), outbox, Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings { OutboxBatchSize = 37 }))
         {
@@ -63,7 +63,7 @@ public sealed class EmailOutboxDashboardTests
             outbox.PreviewDailySendCountBackfillAsync(aborted.Token)
                 .Returns(Task.FromCanceled<BackfillPreviewDto>(aborted.Token));
         var controller = new EmailController(
-            Substitute.For<IUserServiceRead>(), outbox, Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>(), outbox, Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }

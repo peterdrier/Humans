@@ -28,7 +28,7 @@ public class BackdoorIssuesControllerTests
     private static readonly Guid KeyOwnerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private readonly IIssueTriage _issues = Substitute.For<IIssueTriage>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly BackdoorIssuesController _sut;
 
     [HumansTheory]

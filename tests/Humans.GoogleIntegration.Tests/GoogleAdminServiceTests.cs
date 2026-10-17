@@ -28,7 +28,9 @@ public class GoogleAdminServiceTests
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IGoogleSyncManagement _googleSyncService;
     private readonly ITeamService _teamService;
+    private readonly ITeamWrite _teamServiceWrite;
     private readonly IUserService _userService;
+    private readonly IUserWrite _userServiceWrite;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleAdminService _service;
@@ -41,8 +43,10 @@ public class GoogleAdminServiceTests
         _workspaceUserService = Substitute.For<IGoogleWorkspaceUserService>();
         _googleSyncService = Substitute.For<IGoogleSyncManagement>();
         _teamService = Substitute.For<ITeamService>();
+        _teamServiceWrite = Substitute.For<ITeamWrite>();
         var teamResourceService = Substitute.For<ITeamResourceManagement>();
         _userService = Substitute.For<IUserService>();
+        _userServiceWrite = Substitute.For<IUserWrite>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
@@ -65,9 +69,9 @@ public class GoogleAdminServiceTests
         _service = new GoogleAdminService(
             _workspaceUserService,
             _googleSyncService,
-            _teamService,
+            _teamService, _teamServiceWrite,
             teamResourceService,
-            _userService,
+            _userService, _userServiceWrite,
             _userEmailService,
             _auditLogService,
             _logger);
@@ -820,10 +824,10 @@ public class GoogleAdminServiceTests
         // reconciliation resumes.
         await _userEmailService.Received(1)
             .AddVerifiedEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
-        await _userService.Received(1)
+        await _userServiceWrite.Received(1)
             .TrySetGoogleEmailStatusFromSyncAsync(
                 userId, GoogleEmailStatus.Unknown, Arg.Any<CancellationToken>());
-        await _teamService.Received(1)
+        await _teamServiceWrite.Received(1)
             .EnqueueGoogleResyncForUserTeamsAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.WorkspaceAccountLinked,
@@ -871,7 +875,7 @@ public class GoogleAdminServiceTests
     public async Task LinkGroupToTeamAsync_LinksGroupAndSaves()
     {
         var teamId = Guid.NewGuid();
-        _teamService.SetGoogleGroupPrefixAsync(teamId, "test-team", Arg.Any<CancellationToken>())
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(teamId, "test-team", Arg.Any<CancellationToken>())
             .Returns((true, (string?)null));
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
@@ -883,14 +887,14 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("test-team@nobodies.team");
 
-        await _teamService.Received(1).SetGoogleGroupPrefixAsync(
+        await _teamServiceWrite.Received(1).SetGoogleGroupPrefixAsync(
             teamId, "test-team", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task LinkGroupToTeamAsync_ReturnsErrorIfTeamNotFound()
     {
-        _teamService.SetGoogleGroupPrefixAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((false, (string?)null));
 
         var result = await _service.LinkGroupToTeamAsync(Guid.NewGuid(), "prefix", Xunit.TestContext.Current.CancellationToken);
@@ -903,7 +907,7 @@ public class GoogleAdminServiceTests
     public async Task LinkGroupToTeamAsync_RevertsOnError()
     {
         var teamId = Guid.NewGuid();
-        _teamService.SetGoogleGroupPrefixAsync(teamId, "new-prefix", Arg.Any<CancellationToken>())
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(teamId, "new-prefix", Arg.Any<CancellationToken>())
             .Returns((true, "old-prefix"));
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
@@ -916,7 +920,7 @@ public class GoogleAdminServiceTests
         result.ErrorMessage.Should().Contain("Failed to create group");
 
         // Revert call — first SetGoogleGroupPrefixAsync with the new prefix, then with the previous.
-        await _teamService.Received(1).SetGoogleGroupPrefixAsync(
+        await _teamServiceWrite.Received(1).SetGoogleGroupPrefixAsync(
             teamId, "old-prefix", Arg.Any<CancellationToken>());
     }
 

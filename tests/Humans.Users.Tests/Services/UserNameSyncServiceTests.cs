@@ -34,7 +34,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
         _dbContext = new UsersDbContext(options);
         _repo = new UserRepository(new TestDbContextFactory(options), _clock);
 
-        var userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
 
@@ -46,7 +46,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
     [HumansFact]
     public async Task Profile_confirm_without_actor_refuses_before_backfill()
     {
-        var users = Substitute.For<IUserServiceInternal>();
+        var users = Substitute.For<IUserManagement>();
         var controller = new ProfileBackfillAdminController(users,
             NullLogger<ProfileBackfillAdminController>.Instance)
         {
@@ -61,7 +61,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
     public async Task Confirm_without_actor_refuses_before_backfill()
     {
         var sync = Substitute.For<IUserNameSyncService>();
-        var controller = new UserNameBackfillAdminController(Substitute.For<IUserService>(), sync,
+        var controller = new UserNameBackfillAdminController(Substitute.For<IUserManagement>(), sync,
             NullLogger<UserNameBackfillAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }

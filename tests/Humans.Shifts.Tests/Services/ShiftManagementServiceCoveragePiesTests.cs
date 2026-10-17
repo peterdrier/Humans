@@ -16,7 +16,7 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 {
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -24,7 +24,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     public ShiftManagementServiceCoveragePiesTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
 
         // Resolve teams from the same in-memory DB as the repo; production reads
         // the cached TeamInfo projection and walks parents in memory.
@@ -41,7 +41,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<IRoleAssignmentServiceRead>()
+            .With<IRoleAssignmentService>()
             .With<IUserService>()
             .Build();
 

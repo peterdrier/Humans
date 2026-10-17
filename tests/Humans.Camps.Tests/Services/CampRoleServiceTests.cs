@@ -15,7 +15,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userServiceRead = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly Guid _actorUserId = Guid.NewGuid();

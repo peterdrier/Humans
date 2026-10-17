@@ -13,7 +13,7 @@ namespace Humans.Cantina.Services;
 /// The on-site cohort (who is around each day) comes from
 /// <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>; the display
 /// name and the dietary data (preference, allergies, intolerances) both come from the
-/// cross-section <see cref="IUserServiceRead"/> — the name off <see cref="UserInfo"/>
+/// cross-section <see cref="IUserService"/> — the name off <see cref="UserInfo"/>
 /// already resolved, the dietary fields off its nested <see cref="ProfileInfo"/>,
 /// where they live. The service unions the days into a
 /// unique-humans cohort and computes the weekly aggregates the Cantina UI needs.
@@ -25,7 +25,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _settingsService;
-    private readonly IUserServiceRead _userRead;
+    private readonly IUserService _userRead;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit;
 
@@ -36,7 +36,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     public CantinaRosterService(
         IShiftManagementService shiftMgmt,
         ISettingsService settingsService,
-        IUserServiceRead userRead,
+        IUserService userRead,
         IClock clock,
         IAuditLogService audit)
     {

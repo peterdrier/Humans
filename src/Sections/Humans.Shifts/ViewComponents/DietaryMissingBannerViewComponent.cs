@@ -13,12 +13,12 @@ namespace Humans.Shifts.ViewComponents;
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftManagementService _shiftMgmt;
-    private readonly IUserServiceRead _userRead;
+    private readonly IUserService _userRead;
     private readonly ILogger<DietaryMissingBannerViewComponent> _logger;
 
     public DietaryMissingBannerViewComponent(
         IShiftManagementService shiftMgmt,
-        IUserServiceRead userRead,
+        IUserService userRead,
         ILogger<DietaryMissingBannerViewComponent> logger)
     {
         _shiftMgmt = shiftMgmt;

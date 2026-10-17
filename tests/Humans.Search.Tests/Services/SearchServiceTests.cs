@@ -26,8 +26,8 @@ public sealed class SearchServiceTests
     private const int ScoreExact = 100;
     private const int ScorePrefix = 80;
 
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IEventService _events = Substitute.For<IEventService>();
@@ -256,7 +256,7 @@ public sealed class SearchServiceTests
     public async Task SearchAsync_GuidQuery_AlsoAsksForPublicFieldsOnly()
     {
         // The id path must not widen the field mask. Users' own eligibility gate on the
-        // GUID branch is pinned where it lives; this harness stubs IUserServiceRead.
+        // GUID branch is pinned where it lives; this harness stubs IUserService.
         await Build().SearchAsync(Guid.NewGuid().ToString(), ct: TestContext.Current.CancellationToken);
 
         await _users.Received(1).SearchUsersAsync(

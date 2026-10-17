@@ -15,7 +15,7 @@ namespace Humans.Expenses.Services;
 internal sealed class ExpenseHoldedPublisher(
     IExpenseRepository repo,
     IFileStorage fileStorage,
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IHoldedFinanceWrite holdedFinanceWrite,

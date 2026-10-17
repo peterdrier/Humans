@@ -119,7 +119,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 - **No cross-section FK constraints and no navigation properties.**
   `Reporter`/`Assignee`/`ResolvedByUser`/`SenderUser` are bare `Guid` columns — no `HasOne<User>()`,
   no delete behaviour, nothing for EF to join across. Display names are stitched in memory via
-  `IUserServiceRead`. Account deletion anonymises the `User` row in place, but that's moot here:
+  `IUserService`. Account deletion anonymises the `User` row in place, but that's moot here:
   the section's own GDPR contributor erases or nulls these ids first.
 - **No `nameof`-derived audit discriminators.** `AuditEntityTypes.Issue` is a literal because
   it is persisted data.

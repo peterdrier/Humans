@@ -77,7 +77,7 @@ The layout those shapes imply, written fresh.
   instants for a timed one, whatever the row underneath actually holds.
 - **The repository is the only thing that names a `DbSet`**, and it takes and returns
   entities. `OwningTeamId` is a bare Guid; team names are stitched in memory from
-  `ITeamServiceRead` at the layer that renders them — once, not once per implementation.
+  `ITeamService` at the layer that renders them — once, not once per implementation.
 - **The feed is a separate object with no repository**: validate the token through the
   token service, fan out over contributors in registration order, sort, serialize.
 - **The token is its own small service over its own table**, uncached, with the

@@ -204,15 +204,15 @@ nobodies-collective/Humans#933.)
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
   peterdrier#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
-- **Users** — `IUserServiceRead` (scanner name; supervisor/claim display names; leaderboard
-  rendering via `<vc:human>`); and `IUserService.SetParticipationFromTicketSyncAsync` — on an
+- **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
+  rendering via `<vc:human>`); and `IUserWrite.SetParticipationFromTicketSyncAsync` — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).
   Same upsert the ticket sync uses; its Attended-is-permanent / CheckedInAt-write-once rules make
   the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
-- **Auth** — `IRoleAssignmentServiceRead.HasActiveRoleAsync` (is this user a supervisor?) and
+- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
   `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors — both now serve only the
   unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 

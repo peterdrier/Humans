@@ -12,7 +12,7 @@ No repository. Cross-section reads via `IShiftManagementService`
 (on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `ISettingsService`
 (active-burn metadata — `GetActiveAsync` returning `EventSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone) and
-`IUserServiceRead` (cached `UserInfo` + `ProfileInfo` for dietary
+`IUserService` (cached `UserInfo` + `ProfileInfo` for dietary
 preference, allergies, intolerances). Implements `ICantinaRosterService`.
 No direct DB access, no cache.
 

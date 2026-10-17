@@ -23,7 +23,7 @@ public class ScannerControllerTests
 {
     private static ScannerController NewController(
         ITicketService tickets,
-        IUserServiceRead? users = null,
+        IUserService? users = null,
         IEarlyEntryService? earlyEntry = null,
         IConsentService? consents = null,
         IICalFeedService? calendarFeed = null,
@@ -32,7 +32,7 @@ public class ScannerControllerTests
     {
         var ctrl = new ScannerController(
             tickets,
-            users ?? Substitute.For<IUserServiceRead>(),
+            users ?? Substitute.For<IUserService>(),
             earlyEntry ?? Substitute.For<IEarlyEntryService>(),
             consents ?? Substitute.For<IConsentService>(),
             calendarFeed ?? Substitute.For<IICalFeedService>(),
@@ -232,7 +232,7 @@ public class ScannerControllerTests
         var tickets = TicketsWithAttendee(Attendee(matchedUserId: null));
         var earlyEntry = Substitute.For<IEarlyEntryService>();
         var consents = Substitute.For<IConsentService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var ctrl = NewController(tickets, users: users, earlyEntry: earlyEntry, consents: consents);
 
         var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
@@ -267,7 +267,7 @@ public class ScannerControllerTests
         var burnSettings = Substitute.For<ISettingsService>();
         burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
 
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             [],

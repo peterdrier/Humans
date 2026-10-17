@@ -27,7 +27,7 @@ public class CampAdminControllerTests
     public async Task Export_AuditsAdministratorAndEmittedRows_IncludingEmptyExports(bool hasSeason)
     {
         var camps = Substitute.For<ICampManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var audit = Substitute.For<IAuditLogService>();
         var actorId = Guid.NewGuid();
         var leadId = Guid.NewGuid();
@@ -67,7 +67,7 @@ public class CampAdminControllerTests
     public async Task EeSlotCount_RejectsMalformedBinding_ButAcceptsExplicitZero(bool malformed)
     {
         var camps = Substitute.For<ICampManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
@@ -105,7 +105,7 @@ public class CampAdminControllerTests
     public async Task AuditedAdminAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
     {
         var camps = Substitute.For<ICampManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         if (userExists)
@@ -152,7 +152,7 @@ public class CampAdminControllerTests
     {
         var camps = Substitute.For<ICampManagement>();
         var roles = Substitute.For<ICampRoleService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
@@ -194,7 +194,7 @@ public class CampAdminControllerTests
     {
         var camps = Substitute.For<ICampManagement>();
         var roles = Substitute.For<ICampRoleService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -218,7 +218,7 @@ public class CampAdminControllerTests
     public async Task LifecycleAction_ExpectedRejection_LogsWarningWithoutException(string action)
     {
         var camps = Substitute.For<ICampManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         var logger = Substitute.For<ILogger<CampAdminController>>();
@@ -247,7 +247,7 @@ public class CampAdminControllerTests
     public async Task LifecycleAction_UnexpectedFailure_Propagates(string action)
     {
         var camps = Substitute.For<ICampManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
@@ -266,7 +266,7 @@ public class CampAdminControllerTests
     public async Task RoleForm_ExpectedRuleRejection_LogsWarningAndRetainsForm(bool edit)
     {
         var roles = Substitute.For<ICampRoleService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
@@ -295,7 +295,7 @@ public class CampAdminControllerTests
     public async Task EditRole_UnexpectedResult_LogsErrorAndRetainsForm()
     {
         var roles = Substitute.For<ICampRoleService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
@@ -337,7 +337,7 @@ public class CampAdminControllerTests
     };
 
     private static CampAdminController CreateController(
-        ICampManagement camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null, IAuditLogService? audit = null)
+        ICampManagement camps, ICampRoleService roles, IUserService users, Guid actorId, ILogger<CampAdminController>? logger = null, IAuditLogService? audit = null)
     {
         var controller = new CampAdminController(
             camps,

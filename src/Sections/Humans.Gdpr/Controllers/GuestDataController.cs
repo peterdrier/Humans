@@ -18,7 +18,7 @@ namespace Humans.Gdpr.Controllers;
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
-    IUserServiceRead userService,
+    IUserService userService,
     IGdprService gdprExportService,
     IClock clock,
     ILogger<GuestDataController> logger,

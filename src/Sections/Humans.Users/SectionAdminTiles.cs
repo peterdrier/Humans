@@ -38,5 +38,5 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
     }
 
     private static async Task<IReadOnlyCollection<UserInfo>> Snapshot(IServiceProvider sp, CancellationToken ct) =>
-        await sp.GetRequiredService<IUserServiceRead>().GetAllUserInfosAsync(ct);
+        await sp.GetRequiredService<IUserService>().GetAllUserInfosAsync(ct);
 }

@@ -16,7 +16,7 @@ namespace Humans.Users.ViewComponents;
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
 /// </remarks>
 internal sealed class PreferredLanguageCardViewComponent(
-    IUserServiceRead userService,
+    IUserService userService,
     IMembershipCalculator membershipCalculator) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

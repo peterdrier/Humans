@@ -22,7 +22,7 @@ namespace Humans.Events.Controllers;
 [ServiceFilter(typeof(EventsFeatureFilter))]
 internal sealed class EventsModerationController(
     IEventManagement guide,
-    IUserServiceRead userService,
+    IUserService userService,
     ICampService camps,
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {

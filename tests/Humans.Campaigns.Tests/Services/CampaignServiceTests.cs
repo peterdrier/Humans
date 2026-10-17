@@ -60,9 +60,9 @@ public sealed class CampaignServiceTests
         CampaignsDb = CampaignsDbFactory.CreateDbContext();
 
         var repository = new CampaignRepository(CampaignsDbFactory);
-        var teamService = Substitute.For<ITeamServiceRead>();
+        var teamService = Substitute.For<ITeamService>();
         var userEmailService = Substitute.For<IUserEmailService>();
-        var userService = Substitute.For<IUserServiceRead>();
+        var userService = Substitute.For<IUserService>();
         _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
 
         // Stubs read the in-memory registries the Seed* helpers write to, so the existing
@@ -158,7 +158,7 @@ public sealed class CampaignServiceTests
     [HumansFact]
     public async Task AdminMutationActions_without_a_current_actor_do_not_change_data()
     {
-        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        var controller = new CampaignController(_service, Substitute.For<IUserService>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -189,7 +189,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
         using var request = new CancellationTokenSource();
-        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        var controller = new CampaignController(_service, Substitute.For<IUserService>())
         {
             ControllerContext = new ControllerContext
             {
@@ -258,7 +258,7 @@ public sealed class CampaignServiceTests
             "ReplyToAddressInvalid" => "not-an-email",
             _ => "reply@example.com",
         };
-        var userRead = Substitute.For<IUserServiceRead>();
+        var userRead = Substitute.For<IUserService>();
         userRead.GetUserInfoAsync(viewer.Id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(viewer));
         CampaignController Controller()
         {

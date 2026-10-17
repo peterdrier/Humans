@@ -165,7 +165,7 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | Dependency | Used for |
 |---|---|
 | `ICampService` | resolve current user's lead camp season for the active year, fetch season name |
-| `ITeamServiceRead` | department (team order) lookups: team name, top-level check, coordinator check |
+| `ITeamService` | department (team order) lookups: team name, top-level check, coordinator check |
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification |

@@ -20,13 +20,13 @@ namespace Humans.Governance.Jobs;
 /// <remarks>
 /// Reads Applications and marks <c>RenewalReminderSentAt</c> through
 /// <see cref="IGovernanceManagement"/>, and stitches applicant display
-/// info via <see cref="IUserServiceRead"/>, so the job never touches a section
+/// info via <see cref="IUserService"/>, so the job never touches a section
 /// DbContext directly (design-rules §2c).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class TermRenewalReminderJob(
     IGovernanceManagement applicationDecisionService,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
     INotificationEmitter notificationService,

@@ -128,7 +128,7 @@ whether `Sources.Count > 1`.
 - **No parallel fan-out.** Sequential is the house shape for contributor orchestrators
   (Gdpr, Calendar) and a simplicity choice, not a thread-safety requirement (design-rules §8b);
   nothing here is slow enough to justify a second shape.
-- **No batch legal-name read on the roster.** One `IUserServiceRead` lookup per row through
+- **No batch legal-name read on the roster.** One `IUserService` lookup per row through
   `HumansControllerBase`, served from the Users cache; tens of rows, not thousands.
 - **No warmup, no expiry, no size bound on the per-person cache.** Eviction is the contract;
   the key space is the user table.

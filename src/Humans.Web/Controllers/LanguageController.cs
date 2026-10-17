@@ -6,7 +6,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 
-public class LanguageController(IUserService userService) : Controller
+public class LanguageController(IUserWrite userService) : Controller
 {
     [HttpPost]
     [ValidateAntiForgeryToken]

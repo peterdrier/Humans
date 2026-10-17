@@ -45,7 +45,7 @@ public sealed class BudgetServiceTests
             .Options);
 
     private readonly BudgetRepository _repository;
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly BudgetServiceImpl _service;
     private readonly Guid _yearId = Guid.NewGuid();
@@ -53,7 +53,7 @@ public sealed class BudgetServiceTests
     public BudgetServiceTests()
     {
         _repository = new BudgetRepository(BudgetDbFactory, NullLogger<BudgetRepository>.Instance);
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         // Nothing merged into anybody: the substitute's GetUserInfoAsync returns null and
         // the export reads the single id.
         _userService = Substitute.For<IUserService>();
@@ -117,7 +117,7 @@ public sealed class BudgetServiceTests
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
@@ -188,7 +188,7 @@ public sealed class BudgetServiceTests
     public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);

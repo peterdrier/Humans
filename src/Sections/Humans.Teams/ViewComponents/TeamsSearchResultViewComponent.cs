@@ -15,7 +15,7 @@ namespace Humans.Teams.ViewComponents;
 /// view component ships <c>&lt;vc:…&gt;</c> as inert markup on a green build
 /// (HUM0034's framework exception).
 /// </remarks>
-public sealed class TeamsSearchResultViewComponent(ITeamServiceRead teams) : ViewComponent
+public sealed class TeamsSearchResultViewComponent(ITeamService teams) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the team no longer resolves.</summary>
     /// <param name="teamId">The matched team.</param>

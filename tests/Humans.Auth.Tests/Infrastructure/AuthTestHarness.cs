@@ -14,12 +14,12 @@ namespace Humans.Auth.Tests.Infrastructure;
 /// <summary>
 /// Base class for the section's service tests: the in-memory <see cref="AuthDbContext"/>
 /// and its factory, a deterministic clock, the two substituted horizontal collaborators,
-/// and a dictionary-backed <see cref="IUserServiceRead"/>.
+/// and a dictionary-backed <see cref="IUserService"/>.
 /// </summary>
 /// <remarks>
 /// Campaigns' shape rather than Teams'. Teams copied <c>ServiceTestHarness</c> wholesale
 /// because 5,000 lines of test bodies read <c>Db.Teams</c>/<c>Db.Users</c>; Auth's service
-/// reads exactly two members of <c>IUserServiceRead</c> — <c>GetUserInfoAsync</c> and
+/// reads exactly two members of <c>IUserService</c> — <c>GetUserInfoAsync</c> and
 /// <c>GetUserInfosAsync</c>, both for display-name stitching (design-rules §6b) — so
 /// rewriting the *stub* keeps the test bodies unchanged and keeps
 /// <c>HumansDbContext</c> off a section test project's compile path entirely. That matters
@@ -92,9 +92,9 @@ public abstract class AuthTestHarness : IDisposable
         return assignment;
     }
 
-    private protected IUserServiceRead NewStubUserService()
+    private protected IUserService NewStubUserService()
     {
-        var svc = Substitute.For<IUserServiceRead>();
+        var svc = Substitute.For<IUserService>();
 
         svc.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(

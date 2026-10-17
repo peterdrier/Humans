@@ -38,7 +38,7 @@ public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IStringLocalizer<Base.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
@@ -80,6 +80,7 @@ public class AccountControllerOAuthReconcileTests
 
         _controller = new AccountController(
             _signInManager,
+            _userService,
             _userService,
             _userManager,
             _clock,

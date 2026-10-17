@@ -13,7 +13,7 @@ namespace Humans.GoogleIntegration.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Google/Admin/SyncHistoryMigration")]
 internal sealed class GoogleSyncHistoryMigrationAdminController(
-    IUserServiceRead users,
+    IUserService users,
     IGoogleSyncHistoryMigrationService migration) : HumansControllerBase(users)
 {
     [HttpGet("")]

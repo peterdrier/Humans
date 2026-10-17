@@ -13,7 +13,7 @@ namespace Humans.GoogleIntegration.ViewComponents;
 /// </summary>
 internal sealed class GoogleSyncSettingsTabViewComponent(
     ISyncSettingsService syncSettingsService,
-    IUserServiceRead userService) : ViewComponent
+    IUserService userService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -24,7 +24,7 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
             .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
             .ToList();
 
-        // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
+        // In-memory join: resolve UpdatedByUser display names via IUserService
         // rather than an EF .Include across the section boundary (design-rules §6).
         var updatedByUserIds = settings
             .Select(s => s.UpdatedByUserId)

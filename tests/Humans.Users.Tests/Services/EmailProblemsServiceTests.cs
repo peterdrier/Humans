@@ -10,7 +10,7 @@ namespace Humans.Users.Tests.Services;
 public sealed class EmailProblemsServiceTests : ServiceTestHarness
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
 
     private readonly List<UserInfo> _allInfos = [];
 

@@ -26,7 +26,7 @@ internal sealed class TeamEarlyEntryGrantConfiguration : IEntityTypeConfiguratio
             .HasForeignKey(g => g.TeamId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // NO navigation to User (cross-section). Bare Guid resolved via IUserServiceRead.
+        // NO navigation to User (cross-section). Bare Guid resolved via IUserService.
         builder.HasIndex(g => g.TeamId);
         builder.HasIndex(g => g.UserId);
     }

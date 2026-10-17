@@ -6,7 +6,7 @@ namespace Humans.Cantina.Services.Dtos;
 /// One human on the Cantina Weekly Roster. Deliberately excludes
 /// <c>MedicalConditions</c>: the cached profile the service reads does carry
 /// it, and this record is where it stops. The volunteer's <see cref="BurnerName"/>
-/// is stitched in by the service layer from <c>IUserServiceRead</c>'s cached
+/// is stitched in by the service layer from <c>IUserService</c>'s cached
 /// read-model.
 ///
 /// Cohort invariant: users with no confirmed signup and no arrival day in the

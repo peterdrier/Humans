@@ -95,7 +95,7 @@ public class HumanViewComponentTests
             volunteerHistory: [],
             communicationPreferences: []);
 
-        var userService = Substitute.For<IUserServiceRead>();
+        var userService = Substitute.For<IUserService>();
         userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
 
         await using var app = BuildUsersRoutedApp();

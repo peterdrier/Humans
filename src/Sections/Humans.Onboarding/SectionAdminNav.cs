@@ -23,7 +23,7 @@ internal static class PillCounts
     {
         // Pending-consent-review count lives on Users' UserInfo snapshot
         // (NeedsConsentReview) — read directly via the section's public read surface.
-        var users = sp.GetRequiredService<IUserServiceRead>();
+        var users = sp.GetRequiredService<IUserService>();
         var count = (await users.GetAllUserInfosAsync()).Count(u => u.NeedsConsentReview);
         return count > 0 ? count : null;
     }

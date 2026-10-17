@@ -59,7 +59,7 @@ public class AgentServiceTests
         var sourceId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
         var requestedId = archivedId ? sourceId : survivorId;
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
                 with
@@ -1001,7 +1001,7 @@ public class AgentServiceTests
         IAgentRateLimitStore? rateLimitStore = null,
         IAgentToolDispatcher? toolDispatcher = null,
         ILogger<AgentService>? logger = null,
-        IUserServiceRead? users = null)
+        IUserService? users = null)
     {
         var dbOptions = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -1048,7 +1048,7 @@ public class AgentServiceTests
         var resolvedLogger = logger ?? NullLogger<AgentService>.Instance;
 
         var svc = new AgentService(settingsService, ratelimit, abuse, repo, new AgentRetentionRunStore(),
-            snapshots, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserServiceRead>());
+            snapshots, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserService>());
         return (svc, client);
     }
 

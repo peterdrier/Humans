@@ -51,7 +51,7 @@ Repository: `ICampRepository`.
 |-------------------------|------------|
 | `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (camp-lead grant changes) |
 
-Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
+Cross-section calls via `IUserService`, `IAuditLogService`,
 `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
 `IEarlyEntryInvalidator`, `ISettingsService` (active event settings), plus
 `Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
@@ -88,7 +88,7 @@ Repository: `ICampRepository`.
 
 Cross-section calls via `ICampRoleCampAccess` (implemented by
 `CachingCampService` — camp-member status without the full camp surface),
-`IUserServiceRead`, `IUserEmailService`, `IAuditLogService`,
+`IUserService`, `IUserEmailService`, `IAuditLogService`,
 `INotificationEmitter`, plus `ICampInfoInvalidator` to evict the cached
 `CampInfo` after role-assignment writes. Implements
 `IGoogleGroupMembershipSource` (camp-role Google group membership). No
@@ -98,7 +98,7 @@ direct `IMemoryCache`.
 
 No repository. Rate-limited contact relay. Injects `IEmailService`,
 `IEmailMessageFactory`, `IAuditLogService`, `INotificationEmitter`,
-`IUserServiceRead`, `IMemoryCache`, `ILogger`. **No `ICampManagement` injection**
+`IUserService`, `IMemoryCache`, `ILogger`. **No `ICampManagement` injection**
 — the controller resolves the camp/lead data and passes display names,
 contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
 

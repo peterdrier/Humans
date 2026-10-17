@@ -16,7 +16,7 @@ internal sealed class SurveyReminderSender(
     ISurveyRepository repo,
     IAuditLogService auditLog,
     IClock clock,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
     SurveysEmails emailMessages,

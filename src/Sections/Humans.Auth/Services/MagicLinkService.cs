@@ -21,7 +21,7 @@ namespace Humans.Auth.Services;
 internal sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailService emailService,
     AuthEmails emailMessages,
     IMagicLinkUrlBuilder urlBuilder,

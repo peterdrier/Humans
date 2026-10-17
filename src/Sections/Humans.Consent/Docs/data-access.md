@@ -54,8 +54,8 @@ Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
 `ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync`). Calls
 `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each
 successful write. Cross-section calls via `INotificationEmitter`,
-`ITeamServiceRead` (team-name stitching for the admin list and
-the active-required-by-team read), `IUserServiceRead` (active-user
+`ITeamService` (team-name stitching for the admin list and
+the active-required-by-team read), `IUserService` (active-user
 fan-out for re-consent-required notifications), `IGitHubLegalDocumentConnector`,
 plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
 caching lives in the decorator. Periodic background sync of legal
@@ -75,8 +75,8 @@ document, narrows the affected teams' active members down to those without a
 consent record for the new version — `GetPairsForUsersAndVersionsAsync` is its
 only repository call, read-only — and mails them the re-consent notice.
 Cross-section calls via `IEmailService` plus the section's own `ConsentEmails`
-builder (`ReConsentsRequired`), `ITeamServiceRead` (team membership) and
-`IUserServiceRead`. No cache.
+builder (`ReConsentsRequired`), `ITeamService` (team membership) and
+`IUserService`. No cache.
 
 ### CachingLegalDocumentSyncService (Singleton, `Humans.Consent.Services`)
 
@@ -118,7 +118,7 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R/W |
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
-`INotificationAutoResolve`, `IHumanLifecycleService`, `IUserServiceRead`,
+`INotificationAutoResolve`, `IHumanLifecycleService`, `IUserService`,
 `IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculator`
 (cycle-breaking). Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching

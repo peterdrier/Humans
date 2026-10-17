@@ -20,7 +20,7 @@ namespace Humans.Users.ViewComponents;
 /// than a caller-supplied id — the page's own <c>CurrentUserId</c>/<c>CurrentUserDisplayName</c>
 /// are for the widgets it still renders itself.
 /// </remarks>
-internal sealed class UsersGalleryViewComponent(IUserServiceRead userService) : ViewComponent
+internal sealed class UsersGalleryViewComponent(IUserService userService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

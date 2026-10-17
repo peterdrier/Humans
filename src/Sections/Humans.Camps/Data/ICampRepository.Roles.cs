@@ -10,7 +10,7 @@ namespace Humans.Camps.Data;
 /// save changes atomically inside a single
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
 /// context. Cross-domain navigation is not resolved here; the application
-/// service stitches display names from <see cref="Humans.Users.Contracts.IUserServiceRead"/>.
+/// service stitches display names from <see cref="Humans.Users.Contracts.IUserService"/>.
 /// </remarks>
 internal partial interface ICampRepository
 {

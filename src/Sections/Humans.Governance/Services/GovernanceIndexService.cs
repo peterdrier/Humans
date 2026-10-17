@@ -7,7 +7,7 @@ namespace Humans.Governance.Services;
 internal sealed class GovernanceIndexService(
     IGovernanceService applicationDecisionService,
     ILegalDocumentService legalDocService,
-    IUserServiceRead userService) : IGovernanceIndexService
+    IUserService userService) : IGovernanceIndexService
 {
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {

@@ -16,7 +16,7 @@ namespace Humans.GoogleIntegration.Data;
 /// context so callers never reason about EF context lifetime. No cross-domain
 /// <c>Include</c>s: <c>TeamMembers</c>/<c>Teams</c> joins that the pre-migration
 /// <c>TeamResourceService.GetUserTeamResourcesAsync</c> used are resolved at
-/// the service layer via <see cref="Humans.Teams.Contracts.ITeamServiceRead"/>
+/// the service layer via <see cref="Humans.Teams.Contracts.ITeamService"/>
 /// per design-rules §2c/§6.
 /// </remarks>
 internal interface IGoogleResourceRepository : IRepository

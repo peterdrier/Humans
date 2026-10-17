@@ -21,7 +21,7 @@ public class HumanReadCancellationTests
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
         var userId = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             var token = call.Arg<CancellationToken>();

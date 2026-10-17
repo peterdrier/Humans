@@ -34,7 +34,7 @@ internal sealed record ShiftBrowsePageRequest(
 internal sealed class ShiftBrowsePageBuilder(
     IShiftManagement shiftManagement,
     IBurnSettingsService burnSettings,
-    ITeamServiceRead teamService)
+    ITeamService teamService)
 {
     /// <summary>
     /// Active (Confirmed / Pending) signups as shift-id set + status map.

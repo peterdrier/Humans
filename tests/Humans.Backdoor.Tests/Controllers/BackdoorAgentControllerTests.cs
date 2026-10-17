@@ -20,7 +20,7 @@ public sealed class BackdoorAgentControllerTests
         int prefixLength, string boundary, string expectedTail)
     {
         var agent = Substitute.For<IAgentTranscriptRead>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));

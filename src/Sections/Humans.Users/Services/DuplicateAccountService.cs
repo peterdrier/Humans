@@ -9,9 +9,9 @@ namespace Humans.Users.Services;
 // Detects duplicate accounts (same email across multiple User records). Resolution
 // is performed by AccountMergeService.MergeAsync — this service is detection-only.
 internal sealed class DuplicateAccountService(
-    IUserService userService,
-    ITeamServiceRead teamService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IUserManagement userService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService) : IDuplicateAccountService
 {
     /// <summary>

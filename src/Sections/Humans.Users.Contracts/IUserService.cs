@@ -1,28 +1,130 @@
-using Humans.Onboarding.Contracts;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// The write funnel's cross-section half: the User, Profile and UserEmail row writes other
-/// sections issue. The section-only writes live on the internal <c>IUserServiceInternal</c>.
+/// Public read contract of the Users section. External sections inject
+/// this interface; it exposes only UserInfo / HumanSearchResult / OnsiteUserRow
+/// projections — no EF entities, no writes, no cache hooks. Writes live on <see cref="IUserWrite"/>.
+///
+/// <para>
+/// Merge chains do not exist on this surface (#1704). An account merge leaves a
+/// tombstone row behind, and the six sections that deliberately keep rows keyed to
+/// the archived id read them back through here: every <see cref="UserInfo"/> accessor
+/// resolves such an id forward to the surviving account, so no caller follows a chain
+/// or knows there is one. <see cref="UserInfo.MergedUserIds"/> is the one place the
+/// archived ids surface, for callers that union rows by them.
+/// Users' own merge, deletion and admin code uses the raw reads (<see cref="GetRawUserInfoAsync"/> here, the unfiltered list on the internal <c>IUserManagement</c>).
+/// </para>
 /// </summary>
-/// <remarks>
-/// SurfaceBudget intentionally removed for the duration of the Users+Profile
-/// section merge — the interface is absorbing IProfileService methods over the
-/// next several PRs and per-PR budget churn is not useful while that is in
-/// flight. Owner re-adds [SurfaceBudget(N)] once the merged surface stabilizes.
-/// </remarks>
 // No marker interface — see Humans.Users.Contracts.csproj.
-public interface IUserService : IUserServiceRead, IUserMerge
+public interface IUserService
 {
+    /// <summary>
+    /// Returns the unified <see cref="UserInfo"/> read-model for the given
+    /// user, stitched from <c>users</c>, <c>user_emails</c>,
+    /// <c>event_participations</c>, <c>user_logins</c>, <c>profiles</c>,
+    /// <c>contact_fields</c>, <c>profile_languages</c>, and
+    /// <c>volunteer_history_entries</c>. Issue #703: the caching decorator
+    /// serves dict hits synchronously; the inner service rebuilds from
+    /// repositories on miss.
+    ///
+    /// <para>#1704: resolves a merge chain forward. An id that was merged away returns the
+    /// surviving account's record, so <c>(await GetUserInfoAsync(a)).Id</c> is the survivor's
+    /// id, not <c>a</c>. A GDPR-erased id resolves to its own row (<see cref="UserState.Deleted"/>),
+    /// which is how a deleted human still renders. Null only when no row exists for the id.</para>
+    /// </summary>
+    ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a snapshot of every cached <see cref="UserInfo"/>. The cache is
+    /// the canonical "everything-about-a-person" source; admin stat tiles,
+    /// debug surfaces, and cross-section aggregates read from this snapshot
+    /// rather than re-querying the contributing tables. Returns a new
+    /// collection per call — the underlying dictionary is mutable and callers
+    /// iterate without locking. Drives warmup on demand if the cache is cold.
+    ///
+    /// <para>#1704: tombstones are omitted — merge tombstones and GDPR-erased rows alike —
+    /// so this is one entry per living human. There is no requested id to key a redirect by.
+    /// Both kinds stay reachable through <see cref="GetUserInfoAsync"/>.</para>
+    /// </summary>
+    Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Batched <see cref="UserInfo"/> lookup. Returns a dictionary keyed by
+    /// user id; ids without a corresponding user are absent. Served from the
+    /// caching decorator's in-memory dict for any id already cached; missing
+    /// ids are refilled through the same per-user load path used by
+    /// <see cref="GetUserInfoAsync"/>. The single batched-lookup surface for
+    /// cross-section readers — no entity-returning equivalent exists
+    /// (nobodies-collective/Humans#979).
+    ///
+    /// <para>#1704: keyed by the <b>requested</b> id, valued by the <b>resolved</b> record,
+    /// per <see cref="GetUserInfoAsync"/>. Asked for all three ids of an A→B→C merge chain,
+    /// the result has three entries, every one of them C's record. Indexing by an id you
+    /// passed in therefore always hits, which is the point.</para>
+    /// </summary>
+    ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Single canonical person-search method. Matches <paramref name="query"/>
+    /// against the buckets named by <paramref name="fields"/> over the cached
+    /// <see cref="UserInfo"/> snapshot and returns up to <paramref name="limit"/>
+    /// matches in unspecified order — callers sort + take(N) at the presentation
+    /// layer per <c>memory/architecture/display-sort-in-controllers.md</c>.
+    ///
+    /// <para>Implicit scope: rows are filtered to "not rejected, has a
+    /// profile" — the only population anyone is searching. Emergency-contact
+    /// data is never reachable regardless of which bits are set.</para>
+    ///
+    /// <para>Auth boundary is the controller per design-rules §6: services
+    /// are auth-free, so a non-admin endpoint passing
+    /// <see cref="PersonSearchFields.Admin"/> or
+    /// <see cref="PersonSearchFields.LegalName"/> (which deanonymizes burners)
+    /// is a programmer error caught in code review, not a runtime check.</para>
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a flat list of every user currently on-site — that is, whose
+    /// participation record for <paramref name="year"/> has status Attended with a
+    /// non-null checked-in timestamp. Caller (Web layer) joins in
+    /// camp / team / governance-role names via the owning section services and
+    /// applies filters. Issue nobodies-collective/Humans#736.
+    /// </summary>
+    /// <remarks>
+    /// Implemented on the caching decorator only — the inner
+    /// <c>UserService</c> derives this from the cached <c>UserInfo</c>
+    /// snapshot and the inner implementation throws
+    /// <see cref="NotSupportedException"/>. Any DI registration that resolves
+    /// the inner service directly (test doubles aside) will hit that throw on
+    /// first call.
+    /// </remarks>
+    Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
+        int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all participation records for a given year, projected to the slim
+    /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
+    /// section). Served from the caching decorator's <see cref="UserInfo"/>
+    /// snapshot.
+    /// </summary>
+    Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(
+        int year, CancellationToken ct = default);
+
     /// <summary>
     /// The row as stored for <paramref name="userId"/>, with no merge redirect:
     /// a merge tombstone comes back as itself, <see cref="UserInfo.MergedToUserId"/>
     /// and <see cref="UserInfo.MergedAt"/> intact. <see cref="UserInfo.MergedUserIds"/>
     /// is still stamped. Returns null when no row exists.
     /// <para>
-    /// The counterpart to <see cref="IUserServiceRead.GetUserInfoAsync"/>, which
+    /// The counterpart to <see cref="GetUserInfoAsync"/>, which
     /// resolves the chain forward. This one exists for the two callers that must see
     /// the tombstone itself: Users' own merge/deletion/admin code, which acts on the
     /// row an admin named, and the claims transformation, which must stamp a
@@ -34,155 +136,41 @@ public interface IUserService : IUserServiceRead, IUserMerge
 
     /// <summary>
     /// Every row as stored, tombstones included — the unfiltered counterpart to
-    /// <see cref="IUserServiceRead.GetAllUserInfosAsync"/>, which omits tombstones.
+    /// <see cref="GetAllUserInfosAsync"/>, which omits tombstones.
     /// Served from the warmed snapshot, so filtering it by id is the cheap way to
-    /// read several raw rows at once.
+    /// read several raw rows at once. Public because Users' merged-accounts view component, which other
+    /// sections' views invoke, reads it.
     /// </summary>
     Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default);
 
-
     /// <summary>
-    /// Set participation status from ticket sync. Handles the lifecycle rules:
-    /// - Valid ticket → Ticketed (<paramref name="checkedInAt"/> ignored)
-    /// - Checked in → Attended (permanent)
-    /// - Ticket purchase overrides NotAttending
-    /// <para>
-    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
-    /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
-    /// Attended row is being created or upgraded. Never overwritten once
-    /// non-null — matches the "Attended is permanent" invariant (issue
-    /// nobodies-collective/Humans#736).
-    /// </para>
+    /// Finds the user with a <b>verified</b> <c>user_emails</c> address matching the given
+    /// address (case-insensitive), also checking the gmail/googlemail alternate form, and
+    /// returns the cached <see cref="UserInfo"/> read-model for them. An unverified address
+    /// never resolves. Returns null if no match.
     /// </summary>
-    Task SetParticipationFromTicketSyncAsync(
-        Guid userId,
-        int year,
-        ParticipationStatus status,
-        Instant? checkedInAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Remove a TicketSync-sourced participation record when a user no longer has valid tickets.
-    /// Does not remove UserDeclared or AdminBackfill records.
-    /// Does not remove Attended records (permanent).
-    /// </summary>
-    Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default);
-
-    // ---- User storage commands ----
-
-    /// <summary>
-    /// Sync-driven Google status write targeting the user's canonical verified
-    /// <see cref="UserEmail.IsGoogle"/> address — status is per-address (#687),
-    /// not on the user. Preserves the "Rejected is terminal" invariant: once the
-    /// address is flagged <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP
-    /// 403 on a group/drive add), a later successful sync MUST NOT flip that same
-    /// address back to <see cref="GoogleEmailStatus.Valid"/>. The user clears it
-    /// by selecting a different Google email — a fresh row that starts
-    /// <see cref="GoogleEmailStatus.Unknown"/> — so a rejection never strands sync
-    /// after the address changes. Call this from any outbox-processor /
-    /// reconciliation writer; the invariant lives here so a future second caller
-    /// cannot silently bypass it. Returns true if a write occurred, false if
-    /// short-circuited by the rule or the target row no longer exists. When
-    /// <c>googleEmailId</c> is supplied, updates that verified row owned by the user,
-    /// even if another address has since become their selected Google email.
-    /// </summary>
-    Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null);
-
-    /// <summary>
-    /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on
-    /// success. No-op if the user does not exist.
-    /// </summary>
-    Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
-
-    /// <summary>
-    /// Stamps <c>User.LastLoginAt = now</c> after a successful sign-in (any
-    /// method: OAuth, magic link, gate terminal) and refreshes the cached
-    /// UserInfo. The single owner of the login-stamp rule — sign-in flows must
-    /// not write <c>LastLoginAt</c> directly. No-op if the user does not exist.
-    /// </summary>
-    Task RecordLoginAsync(Guid userId, CancellationToken ct = default);
-
-    // ---- Profile storage commands ----
-
-    /// <summary>
-    /// Updates <c>Profile.MembershipTier</c> on the user's profile.
-    /// Returns false when no profile exists.
-    /// </summary>
-    Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Applies a consolidated onboarding/profile-state mutation to the user's
-    /// profile. Audit/logging policy remains with the caller.
-    /// </summary>
-    Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Sets or clears the profile IBAN. Returns false when no profile exists.
-    /// The caller owns validation and audit logging.
-    /// </summary>
-    Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
-
-    /// <summary>
-    /// Downgrades expired membership tiers and returns each user id with the
-    /// tier that was written.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default);
-
-    // ---- Consent-reminder storage command ----
-
-    /// <summary>
-    /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
-    /// No-op if the user does not exist. Used by the re-consent reminder job
-    /// so it does not write to the Users table directly (design-rules §2c).
-    /// </summary>
-    Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default);
-
-    // ---- Merge & admin cleanup commands ----
-
-    /// <summary>
-    /// Permanently deletes the requested user rows after the caller has cleared
-    /// cross-section references. Removes the users' email rows through
-    /// <c>IUserRepository</c> and removes external login rows through
-    /// <c>IUserRepository</c>. Requires the current authenticated user to hold the full Admin role.
-    /// </summary>
-    Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
+    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Summary returned from <c>IAccountDeletionService.AnonymizeExpiredAccountAsync</c>
-/// so the caller (account deletion job) can send a confirmation email and
-/// write the corresponding audit log entries without re-loading the
-/// anonymized row.
+/// Slim cross-section projection of an <c>EventParticipation</c> row for a given
+/// year, returned by <see cref="IUserService.GetAllParticipationsForYearAsync"/>.
+/// Carries only the facts consumers diff against (status, source, check-in
+/// instant) keyed by user — no EF entity crosses the section boundary.
 /// </summary>
-/// <param name="OriginalEmail">
-/// The effective email on the account before anonymization. May be null
-/// when the account never had an email set.
-/// </param>
-/// <param name="OriginalDisplayName">
-/// The display name on the account before anonymization.
-/// </param>
-/// <param name="PreferredLanguage">
-/// The user's preferred language, used to render the confirmation email.
-/// </param>
-public record AnonymizedAccountSummary(
-    string? OriginalEmail,
-    string OriginalDisplayName,
-    string PreferredLanguage);
+public sealed record UserParticipationRow(
+    Guid UserId,
+    ParticipationStatus Status,
+    ParticipationSource Source,
+    Instant? CheckedInAt);
 
+/// <summary>
+/// Per-user row returned from <see cref="IUserService.GetOnsiteUsersAsync"/>.
+/// Names of camps / teams / governance roles are not stitched in here; the Web
+/// layer joins them via the owning section services before rendering. Issue
+/// nobodies-collective/Humans#736.
+/// </summary>
+public sealed record OnsiteUserRow(
+    Guid UserId,
+    string DisplayName,
+    Instant? CheckedInAt);

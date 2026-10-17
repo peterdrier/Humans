@@ -6,8 +6,8 @@ Project: `src/Sections/Humans.Search`. No owned DB tables.
 
 ### SearchService (Scoped)
 
-No repository. Pure read-aggregation over `IUserServiceRead`,
-`ITeamServiceRead`, `ICampService`, `IShiftManagementService`,
+No repository. Pure read-aggregation over `IUserService`,
+`ITeamService`, `ICampService`, `IShiftManagementService`,
 `IEventService`, plus `IConfiguration` for the events feature flag. No
 DB access of its own, no cache. Humans, Teams, Camps and Events are served
 from their owners' cached projections; Shifts is answered by the Shifts

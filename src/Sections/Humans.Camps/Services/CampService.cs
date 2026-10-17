@@ -38,7 +38,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
-    private readonly IUserServiceRead _userServiceRead;
+    private readonly IUserService _userServiceRead;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
@@ -62,7 +62,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         Lazy<ICityPlanningWrite> cityPlanningService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
-        IUserServiceRead userServiceRead,
+        IUserService userServiceRead,
         ISettingsService settingsService,
         IClock clock,
         ILogger<CampService> logger)
@@ -1785,7 +1785,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     /// <summary>
     /// True when the user has an Attended participation row for the season's
     /// year (gate check-in via ticket sync). Cross-section read off the cached
-    /// <see cref="UserInfo"/> per the I*ServiceRead pattern.
+    /// <see cref="UserInfo"/> per the I{Section}Service read pattern.
     /// </summary>
     private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct)
     {

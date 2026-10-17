@@ -23,7 +23,7 @@ namespace Humans.AuditLog.Controllers;
 /// </remarks>
 [Route("AuditLog")]
 internal sealed class AuditLogController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAuditViewerService auditViewer) : HumansControllerBase(userService)
 {
     [HttpGet("")]

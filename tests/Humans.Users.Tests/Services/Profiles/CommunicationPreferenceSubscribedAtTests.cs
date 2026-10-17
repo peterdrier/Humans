@@ -31,7 +31,7 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
 
         _service = new CommunicationPreferenceService(
             _repository,
-            Substitute.For<IUserService>(),
+            Substitute.For<IUserManagement>(),
             tokenProvider,
             Clock,
             AuditLog,

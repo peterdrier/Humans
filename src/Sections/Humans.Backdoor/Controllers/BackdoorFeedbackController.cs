@@ -21,7 +21,7 @@ namespace Humans.Backdoor.Controllers;
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
 internal sealed class BackdoorFeedbackController(
     IFeedbackTriage feedback,
-    IUserServiceRead users,
+    IUserService users,
     ILogger<BackdoorFeedbackController> logger)
     : ApiControllerBase(users)
 {

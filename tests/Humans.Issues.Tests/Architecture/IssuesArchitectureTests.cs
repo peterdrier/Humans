@@ -44,11 +44,11 @@ public class IssuesArchitectureTests
         var ctor = typeof(IssuesService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IUserServiceRead),
+        paramTypes.Should().Contain(typeof(IUserService),
             because: "Issues reads user display names through the read-only user interface");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Issues reads the reporter's notification email through the Users section");
-        paramTypes.Should().Contain(typeof(IRoleAssignmentServiceRead),
+        paramTypes.Should().Contain(typeof(IRoleAssignmentService),
             because: "Issues reads section role-holders through the read-only role interface");
     }
 

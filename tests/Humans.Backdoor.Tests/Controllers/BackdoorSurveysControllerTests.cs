@@ -25,7 +25,7 @@ public class BackdoorSurveysControllerTests
 
     public BackdoorSurveysControllerTests()
     {
-        _sut = new BackdoorSurveysController(_surveys, Substitute.For<IUserServiceRead>())
+        _sut = new BackdoorSurveysController(_surveys, Substitute.For<IUserService>())
         {
             ControllerContext = new ControllerContext
             {

@@ -16,12 +16,12 @@ namespace Humans.Shifts.Controllers;
 [Authorize]
 [Route("Teams/{slug}/Shifts")]
 internal sealed class ShiftAdminController(
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
     IShiftRowView shiftView,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ShiftAdminPageBuilder pageBuilder,
@@ -30,7 +30,7 @@ internal sealed class ShiftAdminController(
     ILogger<ShiftAdminController> logger,
     IStringLocalizer<ShiftsResource> localizer) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamServiceRead _teamService = teamService;
+    private readonly ITeamService _teamService = teamService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false)

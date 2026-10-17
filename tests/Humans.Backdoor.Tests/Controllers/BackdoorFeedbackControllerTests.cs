@@ -28,7 +28,7 @@ public class BackdoorFeedbackControllerTests
     private static readonly Guid KeyOwnerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private readonly IFeedbackTriage _feedback = Substitute.For<IFeedbackTriage>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly BackdoorFeedbackController _sut;
 
     public BackdoorFeedbackControllerTests()

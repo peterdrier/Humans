@@ -76,7 +76,7 @@ public sealed class IssuesServiceTests
     private readonly IEmailService _emailService;
     private readonly IssuesEmails _emailMessages;
     private readonly List<string> _renderedEmailCultures = [];
-    private readonly IUserServiceRead _userService;
+    private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
@@ -150,9 +150,9 @@ public sealed class IssuesServiceTests
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
-    private IUserServiceRead NewRegistryBackedUserService()
+    private IUserService NewRegistryBackedUserService()
     {
-        var svc = Substitute.For<IUserServiceRead>();
+        var svc = Substitute.For<IUserService>();
 
         svc.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(Info(call.ArgAt<Guid>(0))));

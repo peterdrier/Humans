@@ -14,7 +14,7 @@ public class TeamMessageOptionsProviderTests
     private const string InfraUrl = "https://groups.google.com/a/nobodies.team/g/infra";
     private static readonly Instant Now = Instant.FromUtc(2026, 9, 1, 12, 0);
 
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
     private readonly Guid _viewerId = Guid.NewGuid();
     private readonly Guid _teamId = Guid.NewGuid();

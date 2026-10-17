@@ -13,7 +13,7 @@ namespace Humans.Calendar.Tests.Services;
 
 public class ICalFeedServiceTests
 {
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ILogger<ICalFeedService> _logger = Substitute.For<ILogger<ICalFeedService>>();
     private readonly ICalendarFeedTokenService _tokens = Substitute.For<ICalendarFeedTokenService>();
 

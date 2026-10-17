@@ -22,7 +22,7 @@ Repository: `INotificationRepository`.
 |-----------|-----|------|-------|------------|
 | `NotificationBadge:{userId}` | 2 min | | | yes (on dispatch) |
 
-Cross-section calls via `INotificationEmitter`, `IRoleAssignmentServiceRead`,
+Cross-section calls via `INotificationEmitter`, `IRoleAssignmentService`,
 `ICommunicationPreferenceService`, `IClock`. Implements `IUserMerge`.
 
 ### NotificationEmitter (Scoped)
@@ -58,7 +58,7 @@ Repository: `INotificationRepository`.
 
 Resolve/dismiss share class-scoped single and bulk repository writes; the service selects the eligible class.
 
-Cross-section calls via `IUserServiceRead`. Implements `IUserDataContributor`.
+Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
 
 ### NotificationMeterProvider (Scoped)
 
@@ -69,8 +69,8 @@ No repository. Pure read-aggregation over owning services.
 | `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
-Cross-section calls via `IUserServiceRead`, `IGoogleSyncService`,
-`ITeamServiceRead`, `ITicketSync`, `IGovernanceService`,
+Cross-section calls via `IUserService`, `IGoogleSyncService`,
+`ITeamService`, `ITicketSync`, `IGovernanceService`,
 `ICampService`. **No direct DB access** — every counter fans out
 through an owning-service interface call.
 

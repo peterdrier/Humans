@@ -27,7 +27,7 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         settings.GetAllAsync(aborted.Token)
             .Returns(Task.FromException<IReadOnlyList<SyncServiceSettingsInfo>>(
                 new OperationCanceledException(aborted.Token)));
-        var sut = new GoogleSyncSettingsTabViewComponent(settings, Substitute.For<IUserServiceRead>())
+        var sut = new GoogleSyncSettingsTabViewComponent(settings, Substitute.For<IUserService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -54,7 +54,7 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
                 Instant.FromUtc(2026, 1, 1, 0, 0), updaterId),
         });
 
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>())
             .Returns(new Dictionary<Guid, UserInfo> { [updaterId] = MakeUser(updaterId, "Roo") });
 

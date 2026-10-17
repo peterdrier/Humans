@@ -18,7 +18,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public class ShiftsSearchResultViewComponentTests
 {
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
 
     [HumansFact]
     public async Task Fetches_the_rota_and_its_owning_teams_name()

@@ -14,7 +14,7 @@ namespace Humans.Onboarding.Controllers;
 /// </summary>
 [Authorize]
 internal sealed class GuestController(
-    IUserServiceRead userService,
+    IUserService userService,
     IOnboardingWidgetState widgetState) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)

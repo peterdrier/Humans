@@ -22,7 +22,7 @@ public interface IShiftVolunteerProfiles
     /// <summary>
     /// Gets a user's shift profile (Skills / Quirks / Languages), or
     /// <c>null</c> when the user has none. Dietary and medical data moved to
-    /// Profile — read those via <c>IUserServiceRead</c>.
+    /// Profile — read those via <c>IUserService</c>.
     /// </summary>
     Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId);
 

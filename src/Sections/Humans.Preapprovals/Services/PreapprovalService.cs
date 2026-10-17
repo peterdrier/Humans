@@ -24,7 +24,7 @@ namespace Humans.Preapprovals.Services;
 /// </remarks>
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
-    IUserServiceRead users,
+    IUserService users,
     IUserEmailService userEmails,
     IHoldedFinanceService finance,
     INotificationEmitter notifications,

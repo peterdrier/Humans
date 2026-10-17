@@ -40,8 +40,8 @@ Repository: `ISurveyRepository`.
 | survey_responses | R/W |
 | survey_answers | R/W |
 
-Cross-section calls via `ITeamServiceRead` (audience resolution — team
-members for `SurveyAudienceType.Team`), `IUserServiceRead` (active-member
+Cross-section calls via `ITeamService` (audience resolution — team
+members for `SurveyAudienceType.Team`), `IUserService` (active-member
 enumeration, display-name stitching in results / export), `ITicketService`
 (audience resolution — current-event ticket holders for
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
@@ -64,13 +64,13 @@ Implements
 
 A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
 column) resolves from the cached `UserInfo.LastLoginAt` via the existing
-`IUserServiceRead` fan-out.
+`IUserService` fan-out.
 
 ### SurveyReminderSender (Scoped — `ISurveyReminderSender`)
 
 Owns the daily reminder batch through the existing job contract. Reads `surveys` and
 `survey_invitations` through `ISurveyRepository`, then stamps `ReminderSentAt` after
-Email outbox acceptance. Uses `IUserServiceRead`, `IUserEmailService`, `SurveysEmails`,
+Email outbox acceptance. Uses `IUserService`, `IUserEmailService`, `SurveysEmails`,
 `ISurveyInviteTokenProvider`, `IEmailService`, `IAuditLogService` and `IClock`.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
@@ -79,7 +79,7 @@ No repository, no `IMemoryCache`. Orchestrator (`IOrchestrator`) — sends a
 side-effect-free survey invitation preview to the requesting Board/Admin
 user, reusing the production invitation template/transport but creating no
 invitation, response, or funnel row. Calls `ISurveyService` (own section,
-for the survey content), `IUserEmailService` / `IUserServiceRead` (Users),
+for the survey content), `IUserEmailService` / `IUserService` (Users),
 `IEmailService` / `IEmailPreviewService` (Email — both via public service
 interfaces) plus the section's own `SurveysEmails`, and `SurveyPreviewTokenProvider`
 (local, HMAC preview tokens).

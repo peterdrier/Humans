@@ -19,7 +19,7 @@ namespace Humans.Workgroups.ViewComponents;
 /// constructor takes the section-internal <c>IWorkgroupService</c> (CS0051).
 /// </remarks>
 internal sealed class GovernanceWorkgroupsViewComponent(
-    IWorkgroupService workgroups, IUserServiceRead users, IClock clock) : ViewComponent
+    IWorkgroupService workgroups, IUserService users, IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

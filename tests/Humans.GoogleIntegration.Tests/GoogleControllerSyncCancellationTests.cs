@@ -27,7 +27,7 @@ namespace Humans.GoogleIntegration.Tests;
 public class GoogleControllerSyncCancellationTests
 {
     private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
@@ -80,7 +80,7 @@ public class GoogleControllerSyncCancellationTests
                 .Returns([new GoogleSyncOutboxEventSnapshot(Guid.NewGuid(), "test", teamId, userId, default, null, 0, null, false)]);
             _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, UserInfo>());
-            var teams = Substitute.For<ITeamServiceRead>();
+            var teams = Substitute.For<ITeamService>();
             teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
             _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>());

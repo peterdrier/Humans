@@ -56,7 +56,7 @@ internal sealed class CachingConsentService(
 
     // ILegalDocumentSyncManagement and IClock are Singletons — inject directly.
     // scopeFactory is still needed to resolve the keyed Scoped inner
-    // IConsentManagement and Scoped IUserServiceRead for the SubmitConsent /
+    // IConsentManagement and Scoped IUserService for the SubmitConsent /
     // pass-through paths.
 
     // ==========================================================================
@@ -195,7 +195,7 @@ internal sealed class CachingConsentService(
         // and trusting the inner is consistent (both go through IUserService).
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
-            var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             chainIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);

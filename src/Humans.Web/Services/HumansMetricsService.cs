@@ -146,7 +146,7 @@ public sealed class HumansMetricsService : PolledGaugeService, IHumansMetrics
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         // Read off cached UserInfo snapshot — avoids full profile scan per scrape.
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);

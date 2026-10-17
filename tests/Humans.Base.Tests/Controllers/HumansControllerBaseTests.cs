@@ -14,7 +14,7 @@ public sealed class HumansControllerBaseTests
     [HumansFact]
     public void SetError_without_service_provider_sets_the_toast()
     {
-        var controller = new TestController(Substitute.For<IUserServiceRead>());
+        var controller = new TestController(Substitute.For<IUserService>());
         var http = new DefaultHttpContext();
         controller.ControllerContext = new ControllerContext { HttpContext = http };
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
@@ -24,7 +24,7 @@ public sealed class HumansControllerBaseTests
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Failed.");
     }
 
-    private sealed class TestController(IUserServiceRead users) : HumansControllerBase(users)
+    private sealed class TestController(IUserService users) : HumansControllerBase(users)
     {
         public void Error(string message) => SetError(message);
     }

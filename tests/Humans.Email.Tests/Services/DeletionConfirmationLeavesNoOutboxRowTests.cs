@@ -78,7 +78,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
             Substitute.For<ICommunicationPreferenceService>(),
             NullLogger<OutboxEmailService>.Instance);
 
-        var userService = Substitute.For<IUserServiceRead>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([_userId]);
 

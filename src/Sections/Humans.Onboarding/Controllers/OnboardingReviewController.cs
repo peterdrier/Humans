@@ -20,13 +20,13 @@ namespace Humans.Onboarding.Controllers;
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]
 internal sealed class OnboardingReviewController(
-    IUserServiceRead userService,
+    IUserService userService,
     IOnboardingService onboardingService,
     ILogger<OnboardingReviewController> logger,
     IStringLocalizer<OnboardingResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

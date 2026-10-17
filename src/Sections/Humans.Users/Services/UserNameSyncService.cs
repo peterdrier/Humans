@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 /// </summary>
 internal sealed class UserNameSyncService(
     IUserRepository repo,
-    IUserService userService,
+    IUserManagement userService,
     IAuditLogService audit) : IUserNameSyncService
 {
     public async Task<IReadOnlyList<UnsyncedNameRow>> GetUnsyncedAsync(CancellationToken ct = default)

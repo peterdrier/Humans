@@ -28,9 +28,9 @@ internal sealed class ShiftsController(
     IShiftSignupService signupService,
     IVolunteerTrackingManagement volunteerTrackingService,
     IShiftRowView shiftView,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IAuditLogService auditLogService,
-    IUserServiceRead userService,
+    IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here (design §15 step 3b).
     IStringLocalizer<OnboardingResource> onboardingLocalizer,
@@ -38,7 +38,7 @@ internal sealed class ShiftsController(
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
@@ -533,9 +533,9 @@ internal sealed class ShiftsController(
     }
 
     private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
-        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserServiceRead userService, CancellationToken ct)
+        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
     {
-        // §2c: names via IUserServiceRead (this isn't a render-the-audit-log view).
+        // §2c: names via IUserService (this isn't a render-the-audit-log view).
         var userIds = orphans
             .Select(s => s.UserId)
             .Distinct()

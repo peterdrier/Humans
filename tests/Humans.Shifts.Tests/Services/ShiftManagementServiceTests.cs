@@ -22,7 +22,7 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 {
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ShiftManagementService _service;
@@ -32,7 +32,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     public ShiftManagementServiceTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
@@ -57,8 +57,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_userService)
-            .With<IUserServiceRead>(_userService)
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
+            .With<IUserService>(_userService)
+            .With<IRoleAssignmentService>(_roleAssignmentService)
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

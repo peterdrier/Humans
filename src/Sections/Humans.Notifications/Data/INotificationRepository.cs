@@ -19,7 +19,7 @@ namespace Humans.Notifications.Data;
 /// <para>
 /// Read methods never <c>.Include</c> cross-domain navigation properties.
 /// Callers look up the resolver's display name via
-/// <c>IUserServiceRead.GetUserInfosAsync</c> and stitch them in memory.
+/// <c>IUserService.GetUserInfosAsync</c> and stitch them in memory.
 /// </para>
 /// </remarks>
 internal interface INotificationRepository : IRepository

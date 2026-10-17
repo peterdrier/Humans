@@ -103,7 +103,7 @@ public class DebugControllerTests
     private DebugController BuildSut()
     {
         var controller = new DebugController(
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserService>(),
             _clientStats,
             Substitute.For<IHttpStatusTracker>(),
             _logger,

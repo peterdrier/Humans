@@ -18,7 +18,7 @@ namespace Humans.Tickets.Tests.ViewComponents;
 public sealed class MemberTicketStatusViewComponentTests
 {
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
 
     private static EventSettingsInfo Event(bool isOffSeason) => new(

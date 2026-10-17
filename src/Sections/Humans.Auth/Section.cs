@@ -60,19 +60,21 @@ public sealed class Section : ISection
         // keyed registration via cast so IUserDataContributor and IUserMerge reach the
         // undecorated inner through that one registration, rather than each getting a private
         // RoleAssignmentService.
-        services.AddKeyedScoped<IRoleAssignmentService, RoleAssignmentService>(
+        services.AddKeyedScoped<IRoleAssignmentManagement, RoleAssignmentService>(
             CachingRoleAssignmentService.InnerServiceKey);
         services.AddScoped<RoleAssignmentService>(sp =>
-            (RoleAssignmentService)sp.GetRequiredKeyedService<IRoleAssignmentService>(
+            (RoleAssignmentService)sp.GetRequiredKeyedService<IRoleAssignmentManagement>(
                 CachingRoleAssignmentService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<RoleAssignmentService>());
 
         services.AddSingleton<CachingRoleAssignmentService>();
-        services.AddSingleton<IRoleAssignmentService>(sp =>
+        services.AddSingleton<IRoleAssignmentManagement>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddSingleton<IRoleAssignmentServiceRead>(sp =>
-            sp.GetRequiredService<IRoleAssignmentService>());
+        services.AddSingleton<IRoleAssignmentService>(sp =>
+            sp.GetRequiredService<IRoleAssignmentManagement>());
+        services.AddSingleton<IRoleAssignmentWrite>(sp =>
+            sp.GetRequiredService<IRoleAssignmentManagement>());
         services.AddSingleton<IRoleAssignmentCacheInvalidator>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddSingleton<ICacheStats>(sp =>

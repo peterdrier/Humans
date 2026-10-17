@@ -12,7 +12,7 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/Backfill")]
 internal sealed class ProfileBackfillAdminController(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     ILogger<ProfileBackfillAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

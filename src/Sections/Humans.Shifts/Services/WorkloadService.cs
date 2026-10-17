@@ -15,8 +15,8 @@ namespace Humans.Shifts.Services;
 internal sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftRowView view,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     EventCalendarResolver calendarResolver) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(

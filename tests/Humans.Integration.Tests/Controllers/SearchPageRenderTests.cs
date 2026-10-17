@@ -127,7 +127,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
         using (var warmScope = Factory.Services.CreateScope())
         {
             await warmScope.ServiceProvider
-                .GetRequiredService<IUserServiceRead>()
+                .GetRequiredService<IUserService>()
                 .GetAllUserInfosAsync(ct);
         }
 

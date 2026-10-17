@@ -25,7 +25,7 @@ namespace Humans.Teams.Controllers;
 internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
-    IUserServiceRead userService,
+    IUserService userService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
@@ -35,7 +35,7 @@ internal sealed class TeamController(
     IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [AllowAnonymous]
     [HttpGet("")]

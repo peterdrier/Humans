@@ -75,7 +75,7 @@ public record TeamActiveMemberSnapshot(
 /// <summary>
 /// One active team membership of a user, flattened so cross-section callers can read the
 /// team's identity without the <c>TeamMember</c> entity or its <c>Team</c> navigation.
-/// Returned by <see cref="ITeamServiceRead.GetUserTeamMembershipsAsync"/> as a flat
+/// Returned by <see cref="ITeamService.GetUserTeamMembershipsAsync"/> as a flat
 /// membership projection.
 /// </summary>
 public sealed record UserTeamMembershipInfo(
@@ -88,104 +88,80 @@ public sealed record UserTeamMembershipInfo(
     Instant JoinedAt);
 
 /// <summary>
-/// The half of the Teams service that lives outside the section: the members Base and other
-/// sections call, expressed in flat projections so no Teams entity leaves the assembly. The
-/// section's own management surface is on the internal <c>ITeamManagementService</c>, which
-/// inherits this. A member with no caller outside the assembly does not belong here.
+/// Public read contract of the Teams section. Other sections inject this
+/// interface; only <see cref="TeamInfo"/> / <see cref="TeamSearchHit"/>
+/// projections, no EF entities. Writes live on <see cref="ITeamWrite"/>.
 /// </summary>
-public interface ITeamService : ITeamServiceRead, IApplicationService
+public interface ITeamService : IApplicationService
 {
     /// <summary>
-    /// Sets <c>Team.GoogleGroupPrefix</c> to <paramref name="prefix"/> (may be
-    /// null to clear) and persists the change. Returns the previous prefix so
-    /// callers can revert on downstream-service failure. Returns (<c>false</c>,
-    /// <c>null</c>) if the team does not exist. Narrow alternative to the
-    /// management surface's <c>UpdateTeamAsync</c> for flows that only touch the
-    /// Google-group wiring; GoogleIntegration is the caller.
+    /// Gets team read models keyed by ID, including active members.
     /// </summary>
-    Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
-        Guid teamId, string? prefix, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets the role of an active membership. Development's persona seeder is the
-    /// caller. No-op if the user has no active membership on the team.
+    /// Gets the team read model by ID, including active members.
     /// </summary>
-    Task SetMemberRoleAsync(
-        Guid teamId,
-        Guid userId,
-        TeamMemberRole role,
-        Guid actorUserId,
+    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the team read model by slug (matches the canonical
+    /// <c>Slug</c> or the optional <c>CustomSlug</c>).
+    /// </summary>
+    Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Active, non-hidden teams whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks.
+    /// </summary>
+    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+        string query, int max,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Enqueues AddUserToTeamResources sync events for all active team
-    /// memberships of a user. GoogleIntegration calls it when the user's Google
-    /// service email changes.
+    /// Gets all non-system team IDs where the user is a coordinator or has a management role.
+    /// Used by shift services for authorization without exposing Teams-owned rows.
     /// </summary>
-    Task EnqueueGoogleResyncForUserTeamsAsync(
+    Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the department-scoped team IDs the user can coordinate for budget purposes:
+    /// top-level teams where the user is a direct coordinator or holds a management role,
+    /// plus their active child teams.
+    /// </summary>
+    Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Permanently deletes a team and its Teams-owned child rows. Requires the
-    /// current authenticated user to hold the full Admin role. The team must
-    /// have no linked Google resources — <c>GoogleResource → Team</c> is
-    /// configured with <c>OnDelete(Restrict)</c>, so the caller must unlink
-    /// resources via <c>ITeamResourceService</c> first.
+    /// Checks if a user is a coordinator of a team.
     /// </summary>
-    Task<bool> PermanentlyDeleteTeamAsync(
+    Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Cache Helpers
-    // ==========================================================================
+    /// <summary>
+    /// The user's active team memberships as flat rows — the cross-section projection of the
+    /// the Teams section's internal membership data, without returning <c>TeamMember</c>
+    /// entities.
+    /// Same data source and same active-only filter; the team's name and slug are stitched in
+    /// so the caller never navigates <c>TeamMember.Team</c>.
+    /// </summary>
+    Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Drops the cached team graph after a user's memberships were changed underneath
-    /// the service (Users' account deletion). The inner service has no cache; only the
-    /// decorator does anything here.
+    /// Loads the teams for the requested IDs <b>and</b> any referenced parent teams, so the
+    /// caller can resolve the "department" (parent or self) for each team via dictionary
+    /// lookups. Returned teams are not active-filtered — other sections' rows may still
+    /// reference deactivated teams and the caller still needs the name.
     /// </summary>
-    void RemoveMemberFromAllTeamsCache(Guid userId);
-
-    /// <summary>
-    /// Drops the cached team graph so the next read repopulates from the database.
-    /// For callers that wrote around the service or rolled a transaction back — Users
-    /// evicts through <c>IActiveTeamsCacheInvalidator</c>. The inner service has no
-    /// cache; only the decorator does anything here.
-    /// </summary>
-    void InvalidateActiveTeamsCache();
-
-    /// <summary>
-    /// Ends all active team memberships for a user, removes their team role assignments,
-    /// and returns the count of ended memberships. Used during account deletion.
-    /// </summary>
-    Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    // ==========================================================================
-    // System team sync support — the bulk-apply protocol used by SystemTeamSyncJob and
-    // by Development's persona seeder. Each call commits in its own repository-owned
-    // unit of work; the caller fans out Google sync and audit calls afterwards.
-    // ==========================================================================
-
-    /// <summary>
-    /// Applies a system-team membership reconciliation in a single save:
-    /// inserts new membership rows for <paramref name="userIdsToAdd"/>
-    /// with <see cref="TeamMemberRole.Member"/> + <c>JoinedAt=now</c>, and
-    /// soft-removes the active memberships for <paramref name="userIdsToRemove"/>
-    /// by stamping <c>LeftAt</c> and cascade-deleting any attached role
-    /// assignments. Bumps the team's <c>UpdatedAt</c> and invalidates the cache
-    /// when at least one change lands. Returns true when any writes occur.
-    /// </summary>
-    /// <remarks>
-    /// The caller is expected to fan out Google-sync calls
-    /// (<c>AddUserToTeamResourcesAsync</c> / <c>RemoveUserFromTeamResourcesAsync</c>)
-    /// and audit entries per user after this method returns.
-    /// </remarks>
-    Task<bool> ApplySystemTeamMembershipDeltaAsync(
-        Guid teamId,
-        IReadOnlyCollection<Guid> userIdsToAdd,
-        IReadOnlyCollection<Guid> userIdsToRemove,
-        Instant now,
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
+        IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default);
 }
 

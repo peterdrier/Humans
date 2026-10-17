@@ -17,7 +17,7 @@ namespace Humans.Email.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
 internal sealed class EmailController(
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailOutboxManagement outboxService,
     IAuditLogService audit,
     ILogger<EmailController> logger,

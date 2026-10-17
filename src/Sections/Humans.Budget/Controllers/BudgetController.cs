@@ -16,7 +16,7 @@ namespace Humans.Budget.Controllers;
 internal sealed class BudgetController(
     IBudgetManagement budgetService,
     IAuthorizationService authService,
-    IUserServiceRead userService,
+    IUserService userService,
     IStringLocalizer<BudgetResource> localizer,
     ILogger<BudgetController> logger) : HumansControllerBase(userService)
 {

@@ -20,13 +20,13 @@ through `IGoogleSyncOutboxService` (the Google Integration section's write
 surface) inside a `TransactionScope`, not through `TeamRepository`. The
 table is therefore owned wholly by Google Integration.
 
-The `Humans.Teams.Contracts` leaf carries three interface levels:
-`ITeamServiceRead` (the cross-section read surface, `TeamInfo` /
+The `Humans.Teams.Contracts` leaf carries two public faces:
+`ITeamService` (the cross-section read surface, `TeamInfo` /
 `TeamSearchHit` / `UserTeamMembershipInfo` projections only)
-and `ITeamService` (flat projections — extends
-`ITeamServiceRead` + `IApplicationService`; only members some other section
-calls) on the leaf; the internal
-`ITeamManagementService : ITeamService` in `Services/` carries the rest
+and `ITeamWrite` (flat projections — only the writes some other section
+calls), both `IApplicationService`; the internal
+`ITeamManagement : ITeamService, ITeamWrite` and
+`ITeamManagementService : ITeamManagement` in `Services/` carry the rest
 (create/update/role-assignment/EE-grant mutation surface, the coordinator-role
 reconciliation the hourly job runs). The leaf also
 carries `ITeamSeeding` (implemented explicitly by `TeamService` /
@@ -61,7 +61,7 @@ The inner `ITeamService`
 registration is wrapped by
 `Humans.Teams.Services.CachingTeamService` (Singleton
 decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
-cross-section read surface as `ITeamServiceRead`.
+cross-section read surface as `ITeamService`.
 
 ### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
 
@@ -89,15 +89,15 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
-`IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentServiceRead`,
-`IEmailService`, `IUserServiceRead`, `ISystemTeamSync`. Implements `ITeamManagementService`
-(internal, `: ITeamService`), `ITeamSeeding`,
+`IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,
+`IEmailService`, `IUserService`, `ISystemTeamSync`. Implements `ITeamManagementService`
+(internal, `: ITeamManagement`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
 `IEarlyEntryProvider` (role-gated team early entry).
 
 ### TeamDriveAccessSource (Scoped)
 
-Implements `IGoogleDriveAccessSource` over the existing `ITeamServiceRead` and `ITeamResourceService` bulk projections. Owns membership union, maximum permission levels and active child-team rollup for linked Drive resources. Returns user-ID claims and team-link display metadata; inactive teams retain empty claims so reconciliation can revoke grants before retiring linked resources. No repository or cache.
+Implements `IGoogleDriveAccessSource` over the existing `ITeamService` and `ITeamResourceService` bulk projections. Owns membership union, maximum permission levels and active child-team rollup for linked Drive resources. Returns user-ID claims and team-link display metadata; inactive teams retain empty claims so reconciliation can revoke grants before retiring linked resources. No repository or cache.
 
 **Outbox write goes through the owning service:**
 `GoogleSyncOutboxEvents` is owned by the Google Integration section.
@@ -121,7 +121,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftManagementService`, `ISettingsService` and `IUserServiceRead`;
+`IShiftManagementService`, `ISettingsService` and `IUserService`;
 the mapper and the directory builder are pure.
 
 ### TeamsEmails (Scoped, internal)

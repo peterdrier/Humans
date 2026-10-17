@@ -14,7 +14,7 @@ namespace Humans.Web.Authorization;
 /// Runs per authenticated request; cached 60s per user.
 /// </summary>
 public class RoleAssignmentClaimsTransformation(
-    IRoleAssignmentServiceRead roleAssignments,
+    IRoleAssignmentService roleAssignments,
     IUserService userService,
     IMemoryCache cache) : IClaimsTransformation
 {

@@ -19,7 +19,7 @@ Repository: `IAuditLogRepository`.
 |-------|-----|
 | AuditLogEntries | R/W |
 
-Cross-section calls via `IUserServiceRead` (migrated to the read-split
+Cross-section calls via `IUserService` (migrated to the read-split
 surface). Implements `IUserDataContributor`, and — until the six Google
 columns are dropped — `ILegacyGoogleSyncAuditReader`, the read-only feed for
 GoogleIntegration's one-time history migration screen.

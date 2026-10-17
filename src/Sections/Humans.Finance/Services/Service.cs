@@ -36,7 +36,7 @@ internal sealed class Service(
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
-    IUserServiceRead users,
+    IUserService users,
     IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,

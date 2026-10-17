@@ -12,7 +12,7 @@ namespace Humans.EarlyEntry.Controllers;
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 internal sealed class EarlyEntryRosterController(
     IEarlyEntryService earlyEntryService,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct = default)

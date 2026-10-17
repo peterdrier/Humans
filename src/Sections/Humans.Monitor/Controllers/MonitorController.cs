@@ -14,7 +14,7 @@ namespace Humans.Monitor.Controllers;
 /// </summary>
 [Route("Monitor")]
 internal sealed class MonitorController(
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<MonitorController> logger) : HumansControllerBase(userService)
 {
     [HttpPost("CheckDriveActivity")]

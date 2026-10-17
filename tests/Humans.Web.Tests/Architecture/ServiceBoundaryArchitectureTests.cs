@@ -19,7 +19,7 @@ public class ServiceBoundaryArchitectureTests
     /// <remarks>
     /// <c>IApplicationService</c> and <c>IOrchestrator</c> live in <c>Humans.Interfaces</c>
     /// (Base). Base references <c>Humans.Users.Contracts</c> — <c>HumansControllerBase</c>
-    /// injects <c>IUserServiceRead</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
+    /// injects <c>IUserService</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
     /// that leaf must hold no reference back, or 4b-iii closes an assembly cycle when
     /// <c>HumansControllerBase</c> moves into Base. Peter's ruling: the migration outranks the
     /// marker. The markers were dropped; <c>Humans.Users.Contracts.csproj</c> carries the record.
@@ -177,7 +177,7 @@ public class ServiceBoundaryArchitectureTests
     // a leaf — with no Base-side interface deriving from it — leaves this sweep the moment
     // it is carved, and its baseline rows read as fixed on byte-identical code. The
     // GetInterfaces() walk in EntityReturnReadMembers only rescues the read-split shape
-    // (I<Section>Service : I<Section>ServiceRead, where the deriving half stays behind);
+    // (a public I<Section>Service with an internal I<Section>Management deriving from it);
     // Users' IAccountProvisioningService is the whole-interface case and is what surfaced
     // this (nobodies-collective/Humans#866, lane 2 PR A).
     // The Humans.Application half of this sweep is gone (G5 lane 5c): the assembly holds no

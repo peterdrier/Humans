@@ -25,8 +25,8 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     ITicketCacheInvalidator ticketCache,
     ITicketVendorCacheInvalidator vendorCache,
-    IUserServiceRead userServiceRead,
-    IUserService userService,
+    IUserService userServiceRead,
+    IUserWrite userService,
     ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService, IUserMerge
 {
@@ -433,7 +433,7 @@ internal sealed class TicketSyncService(
     /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
     /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
     /// scanned ticket's status "valid". The earliest scan across a user's tickets
-    /// is passed to <see cref="IUserService.SetParticipationFromTicketSyncAsync"/>;
+    /// is passed to <see cref="IUserWrite.SetParticipationFromTicketSyncAsync"/>;
     /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
     /// Issue nobodies-collective/Humans#736.
     /// </para>
@@ -471,7 +471,7 @@ internal sealed class TicketSyncService(
         // Diffing against it lets us skip the per-user upsert — and the cache-slice
         // refresh it triggers — for the vast majority of ticket-holders whose status
         // hasn't changed since the last 15-minute sync.
-        var current = (await userService.GetAllParticipationsForYearAsync(year, ct))
+        var current = (await userServiceRead.GetAllParticipationsForYearAsync(year, ct))
             .ToDictionary(ep => ep.UserId);
 
         foreach (var (userId, info) in userTickets)

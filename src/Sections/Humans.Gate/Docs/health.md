@@ -54,7 +54,7 @@ its continued presence is a pending ruling (see Seams), not a structural need.
   `override:shared`); a lockout never blocks scanning.
 - Scan attribution is the authenticated principal, never the request body.
 - An admit with a matched guest writes the Attended participation row for the active year via
-  `IUserService.SetParticipationFromTicketSyncAsync`; failure there never fails the admit.
+  `IUserWrite.SetParticipationFromTicketSyncAsync`; failure there never fails the admit.
 - Vendor mirror is best-effort, non-retrying (TicketTailor check-ins double-record), gated by
   `Gate:VendorMirrorEnabled`. The backfill claims the ledger atomically before enqueueing, so
   overlapping backfill sends never double-post; live admits mark the ledger *after* their

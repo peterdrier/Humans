@@ -22,7 +22,7 @@ public class BackdoorNotificationsControllerTests
     private readonly BackdoorNotificationsController _sut;
 
     public BackdoorNotificationsControllerTests() =>
-        _sut = new BackdoorNotificationsController(_inbox, Substitute.For<IUserServiceRead>());
+        _sut = new BackdoorNotificationsController(_inbox, Substitute.For<IUserService>());
 
     [HumansFact]
     public async Task Get_projects_rows_and_meters_for_the_keys_owner()

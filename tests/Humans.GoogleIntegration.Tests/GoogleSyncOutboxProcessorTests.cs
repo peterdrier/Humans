@@ -21,6 +21,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
     private readonly IGoogleSyncOutboxRepository _outboxRepository;
     private readonly IUserService _userService;
+    private readonly IUserWrite _userServiceWrite;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncManagement _googleSyncService;
     private readonly IGoogleDriveActivityClient _googleClient;
@@ -38,6 +39,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         var factory = new SingleContextFactory(options);
         _outboxRepository = new GoogleSyncOutboxRepository(factory);
         _userService = Substitute.For<IUserService>();
+        _userServiceWrite = Substitute.For<IUserWrite>();
         // No test here seeds a user; the drain only reads this lookup to name the human in
         // its failure log, so an empty result is the whole fixture. Was an empty in-memory
         // UsersDbContext through Humans.Application.Tests' stub helper before the G5 move.
@@ -61,7 +63,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
         _processor = new GoogleSyncOutboxProcessor(
             _outboxRepository,
-            _userService,
+            _userService, _userServiceWrite,
             _teamService,
             _googleSyncService,
             _googleClient,
@@ -109,7 +111,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         (await _outboxRepository.GetProcessingBatchAsync(10, 10, ct)).Should().BeEmpty();
         _metrics.Received(1).RecordSyncOperation("permanent_failure");
         _metrics.DidNotReceive().RecordSyncOperation("success");
-        await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default, default);
+        await _userServiceWrite.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default, default);
         var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(ct);
         stored.LastError.Should().Be("HTTP 403 — service account lacks access");
     }
@@ -160,7 +162,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
                 Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
             .Returns(_ => fail && grantFails ? throw failure : new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, outboxEvent.UserId, Guid.NewGuid()));
-        _userService.TrySetGoogleEmailStatusFromSyncAsync(
+        _userServiceWrite.TrySetGoogleEmailStatusFromSyncAsync(
                 outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>())
             .Returns(_ => fail ? throw failure : Task.FromResult(true));
 
@@ -180,14 +182,14 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         stored.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
         stored.LastError.Should().BeNull();
         _metrics.Received(1).RecordSyncOperation("success");
-        await _userService.Received(grantFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(grantFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
             outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
     [HumansFact]
     public async Task ProcessQueuedAsync_AccountLinkResyncEvent_RecordsManualSource()
     {
-        // The key shape ITeamService.EnqueueGoogleResyncForUserTeamsAsync writes when an
+        // The key shape ITeamWrite.EnqueueGoogleResyncForUserTeamsAsync writes when an
         // admin links a Workspace account.
         var outboxEvent = await SeedOutboxEventAsync(
             GoogleSyncOutboxEventTypes.AddUserToTeamResources,
@@ -217,7 +219,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         pending.FailedPermanently.Should().BeFalse();
         await _googleSyncService.DidNotReceiveWithAnyArgs()
             .AddUserToTeamResourcesAsync(default, default);
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(default, default);
     }
 
@@ -297,7 +299,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.Received(outcome == GoogleResourceGrantOutcome.Accepted ? 1 : 0)
+        await _userServiceWrite.Received(outcome == GoogleResourceGrantOutcome.Accepted ? 1 : 0)
             .TrySetGoogleEmailStatusFromSyncAsync(outboxEvent.UserId, GoogleEmailStatus.Valid,
                 Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         (await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
@@ -334,9 +336,9 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             survivorId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
-        await _userService.DidNotReceive().TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.DidNotReceive().TrySetGoogleEmailStatusFromSyncAsync(
             outboxEvent.UserId, Arg.Any<GoogleEmailStatus>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 }

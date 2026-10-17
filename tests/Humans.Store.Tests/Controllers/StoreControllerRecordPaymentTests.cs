@@ -57,7 +57,7 @@ public sealed class StoreControllerRecordPaymentTests
         settings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         _repo.GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var clock = new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0));
@@ -75,7 +75,7 @@ public sealed class StoreControllerRecordPaymentTests
         services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock));
         var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
 
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(call =>
             {

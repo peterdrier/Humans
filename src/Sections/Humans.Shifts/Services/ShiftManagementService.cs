@@ -55,10 +55,10 @@ internal sealed class ShiftManagementService(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
-    private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
-    private IRoleAssignmentServiceRead RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketService TicketQueryService => serviceProvider.GetRequiredService<ITicketService>();
-    private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
+    private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
     private ICampService CampService => serviceProvider.GetRequiredService<ICampService>();
     private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
 

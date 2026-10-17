@@ -17,7 +17,7 @@ namespace Humans.Shifts.ViewComponents;
 /// </remarks>
 public sealed class ShiftsSearchResultViewComponent(
     IShiftManagementService shifts,
-    ITeamServiceRead teams) : ViewComponent
+    ITeamService teams) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the rota no longer resolves.</summary>
     /// <param name="rotaId">The matched rota.</param>

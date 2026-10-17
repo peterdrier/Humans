@@ -66,7 +66,7 @@ internal sealed class FeedbackReportConfiguration : IEntityTypeConfiguration<Fee
 
         // UserId / ResolvedByUserId / AssignedToUserId / AssignedToTeamId are bare
         // cross-section Guid columns — no FK constraint, no nav. Resolve users via
-        // IUserServiceRead and teams via ITeamServiceRead.
+        // IUserService and teams via ITeamService.
         // No cross-section FK to agent_conversations. AgentConversationId is
         // a plain nullable Guid column on feedback_reports — Feedback owns the
         // column, Agent owns the referenced rows, and EF does not model the

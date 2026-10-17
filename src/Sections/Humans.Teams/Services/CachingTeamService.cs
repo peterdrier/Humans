@@ -13,7 +13,7 @@ using Humans.Users.Contracts;
 namespace Humans.Teams.Services;
 
 /// <summary>
-/// Transparent singleton decorator for <see cref="ITeamService"/> team reads.
+/// Transparent singleton decorator for <see cref="ITeamManagement"/> team reads.
 /// The scoped inner service owns Teams behavior and writes; this decorator owns the
 /// process-local team read model and invalidates it after writes. Inherits
 /// <see cref="TrackedCache{TKey, TValue}"/> for hit/miss/invalidation tracking
@@ -33,7 +33,7 @@ internal sealed class CachingTeamService(
     /// Secondary user→teams index, populated during <see cref="WarmAllAsync"/>
     /// alongside the primary <c>teamId → TeamInfo</c> dict. Serves
     /// <see cref="GetUserTeamMembershipsAsync"/> without touching the inner scoped
-    /// <see cref="ITeamService"/> / EF.
+    /// <see cref="ITeamManagement"/> / EF.
     ///
     /// <para>Every membership-mutating path on this decorator calls
     /// <see cref="InvalidateTeamsCache"/>, which clears the primary cache and
@@ -187,7 +187,7 @@ internal sealed class CachingTeamService(
         // GetBySlugWithRelationsAsync + GetRoleDefinitionsAsync — the previous
         // every-render bypass — are NOT called on this path. Pending-request
         // counts (per-user and per-team) remain real-time and route through
-        // the inner ITeamService.
+        // the inner ITeamManagement.
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         var team = TeamSlugResolver.Find(teamsById, slug);
         if (team is null)
@@ -236,7 +236,7 @@ internal sealed class CachingTeamService(
         var isCurrentUserCoordinator = TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
 
         await using var scope = scopeFactory.CreateAsyncScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamManagementService>(InnerServiceKey);
 
         var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
@@ -357,7 +357,7 @@ internal sealed class CachingTeamService(
         // Cache-served. Uses the user→teams inverse index from WarmAllAsync to
         // find the user's memberships, and TeamInfo.PendingRequestCount +
         // ChildTeamIds to compute manageable counts. The single remaining inner
-        // call is IRoleAssignmentServiceRead.IsUserBoardMemberAsync — that data is
+        // call is IRoleAssignmentService.IsUserBoardMemberAsync — that data is
         // owned by Auth (not Teams) and is not on TeamInfo.
         await EnsureWarmedAsync(cancellationToken);
         var teamsById = AsReadOnlyDictionary;
@@ -365,7 +365,7 @@ internal sealed class CachingTeamService(
             return [];
 
         await using var scope = scopeFactory.CreateAsyncScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
         var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
 
         var result = new List<MyTeamMembershipSummary>(teamIds.Count);

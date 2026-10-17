@@ -18,12 +18,12 @@ internal sealed class MailerLiteAdminController(
     IMailerLiteImportService import,
     IMailerLiteAudienceSyncService audienceSync,
     IEnumerable<IMailerLiteAudience> audiences,
-    IUserServiceRead users,
+    IUserService users,
     ICommunicationPreferenceService prefs,
     ILogger<MailerLiteAdminController> logger) : HumansControllerBase(users)
 {
     private readonly IReadOnlyList<IMailerLiteAudience> _audiences = audiences.ToList();
-    private readonly IUserServiceRead _users = users;
+    private readonly IUserService _users = users;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

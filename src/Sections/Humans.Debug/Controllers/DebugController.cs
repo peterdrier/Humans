@@ -33,7 +33,7 @@ namespace Humans.Debug.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug")]
 internal sealed class DebugController(
-    IUserServiceRead userService,
+    IUserService userService,
     IClientStatsTracker clientStats,
     IHttpStatusTracker httpStatus,
     ILogger<DebugController> logger,

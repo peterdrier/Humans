@@ -19,7 +19,7 @@ namespace Humans.Finance.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class FinanceController(
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
@@ -237,11 +237,19 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
-        // Controllers assemble and sort the presentation model: newest activity first.
+        // Controllers assemble and sort the presentation model. The running balance accumulates
+        // oldest-first from the account's first line (credit = owed to the member, debit = paid
+        // out); the page then shows newest activity first, lines within an entry in order.
+        var running = 0m;
         var lines = ledger.Lines
-            .OrderByDescending(l => l.Date)
-            .ThenByDescending(l => l.EntryNumber)
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.EntryNumber)
             .ThenBy(l => l.Line)
+            .Select(l => new CreditorStatementLineVm(l, running += l.Credit - l.Debit))
+            .ToList()
+            .OrderByDescending(r => r.Line.Date)
+            .ThenByDescending(r => r.Line.EntryNumber)
+            .ThenBy(r => r.Line.Line)
             .ToList();
         return View(new CreditorStatementVm(ledger, lines));
     }

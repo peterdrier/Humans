@@ -14,7 +14,7 @@ namespace Humans.Expenses.Services;
 internal sealed class ExpenseReportBackgroundProcessor(
     IExpenseRepository repo,
     IFileStorage fileStorage,
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IHoldedFinanceWrite holdedFinanceWrite,

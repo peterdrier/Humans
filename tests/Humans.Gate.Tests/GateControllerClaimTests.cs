@@ -29,7 +29,7 @@ public class GateControllerClaimTests
 
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 10, 12, 0));
     private readonly IGateService _gate = Substitute.For<IGateService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly GatePinThrottle _throttle;
     private readonly GateController _controller;
     private readonly TestSession _session = new();

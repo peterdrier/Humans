@@ -29,7 +29,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private static readonly LocalDate Today = new(2026, 5, 10);
 
     private readonly Guid _actorId = Guid.NewGuid();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IExpenseReportManagement _reports = Substitute.For<IExpenseReportManagement>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();

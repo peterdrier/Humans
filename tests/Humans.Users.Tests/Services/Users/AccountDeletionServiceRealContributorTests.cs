@@ -24,7 +24,7 @@ namespace Humans.Users.Tests.Services.Users;
 /// <see cref="AccountDeletionServiceTests"/> substitutes every contributor, which is
 /// why a second identity collapse layered on top of the Account contributor's went
 /// unnoticed. These run the orchestrator with the
-/// real <see cref="UserService"/> as both <see cref="IUserService"/> and the Account
+/// real <see cref="UserService"/> as both <see cref="IUserManagement"/> and the Account
 /// <see cref="IUserDataContributor"/>, over the harness's in-memory store, so the
 /// row the purge leaves behind is asserted rather than assumed.
 /// </summary>
@@ -32,7 +32,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
 {
     private readonly UserService _userService;
     private readonly AccountDeletionService _service;
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamWrite _teamService = Substitute.For<ITeamWrite>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
 
     public AccountDeletionServiceRealContributorTests()
@@ -68,7 +68,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             _userService,
             Substitute.For<IUserEmailService>(),
             _teamService,
-            Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<IRoleAssignmentWrite>(),
             gdprService,
             _ticketQueryService,
             Substitute.For<IUserInfoInvalidator>(),

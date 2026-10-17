@@ -17,10 +17,10 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 
 // Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
 internal sealed class AccountDeletionService(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     IUserEmailService userEmailService,
-    ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ITeamWrite teamService,
+    IRoleAssignmentWrite roleAssignmentService,
     IGdprService gdprService,
     ITicketService ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,

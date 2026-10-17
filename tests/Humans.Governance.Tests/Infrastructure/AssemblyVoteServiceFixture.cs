@@ -35,8 +35,8 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly IAuditLogService Audit = Substitute.For<IAuditLogService>();
     public readonly IApplicationRepository Applications = Substitute.For<IApplicationRepository>();
     public readonly IRoleAssignmentService RoleAssignments = Substitute.For<IRoleAssignmentService>();
-    public readonly ITeamServiceRead Teams = Substitute.For<ITeamServiceRead>();
-    public readonly IUserServiceRead Users = Substitute.For<IUserServiceRead>();
+    public readonly ITeamService Teams = Substitute.For<ITeamService>();
+    public readonly IUserService Users = Substitute.For<IUserService>();
     public readonly IUserEmailService UserEmails = Substitute.For<IUserEmailService>();
     public readonly IEmailService Email = Substitute.For<IEmailService>();
     public readonly GovernanceEmails Messages = TestGovernanceEmails.Create();

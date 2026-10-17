@@ -14,7 +14,7 @@ namespace Humans.MailerLite.Models;
 /// All Humans-side reads route through cached interfaces — the audience compute
 /// uses <c>IShiftView</c> + <c>ITicketService</c> (decorated by their
 /// caching layers), and name/email rendering reads <see cref="UserInfo"/>
-/// from <c>IUserServiceRead.GetAllUserInfosAsync</c>. The MailerLite read is
+/// from <c>IUserService.GetAllUserInfosAsync</c>. The MailerLite read is
 /// intentional (we're diffing against the remote we don't own).
 /// </remarks>
 internal static class MailerLiteAudienceDebugSnapshotBuilder
@@ -22,7 +22,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
     public static async Task<DebugSnapshot> BuildAsync(
         IMailerLiteAudience audience,
         IMailerLiteService ml,
-        IUserServiceRead users,
+        IUserService users,
         ILogger logger,
         CancellationToken ct)
     {

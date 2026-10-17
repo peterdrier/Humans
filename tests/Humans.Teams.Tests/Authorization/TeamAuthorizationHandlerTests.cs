@@ -13,7 +13,7 @@ namespace Humans.Teams.Tests.Authorization;
 
 public sealed class TeamAuthorizationHandlerTests
 {
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly TeamAuthorizationHandler _handler;
 
     private static readonly Guid ParentTeamId = Guid.NewGuid();

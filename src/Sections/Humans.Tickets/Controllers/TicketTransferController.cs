@@ -15,7 +15,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketTransferController(
     ITicketTransferService service,
     IEarlyEntryService earlyEntryService,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<TicketTransferController> logger,
     IStringLocalizer<TicketsResource> localizer) : HumansControllerBase(userService)
 {

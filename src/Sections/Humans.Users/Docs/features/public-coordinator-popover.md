@@ -56,7 +56,7 @@ Allowlisted in `EndpointAuthorizationTests` alongside the `[AllowAnonymous]` `/P
 
 ## Data Model
 
-No schema changes. The public-coordinator gate filters the existing `ITeamServiceRead.GetTeamsAsync()` projection inline on the controller — mirroring the existing inline `TeamInfo` filter in the authenticated `Popover` action. No new method is added to `ITeamServiceRead` (see [`memory/architecture/interface-method-additions-are-debt.md`](../../../../../memory/architecture/interface-method-additions-are-debt.md) and `docs/architecture/peters-hard-rules.md` — controllers own filtering).
+No schema changes. The public-coordinator gate filters the existing `ITeamService.GetTeamsAsync()` projection inline on the controller — mirroring the existing inline `TeamInfo` filter in the authenticated `Popover` action. No new method is added to `ITeamService` (see [`memory/architecture/interface-method-additions-are-debt.md`](../../../../../memory/architecture/interface-method-additions-are-debt.md) and `docs/architecture/peters-hard-rules.md` — controllers own filtering).
 
 `PublicPopoverViewModel` (web layer):
 

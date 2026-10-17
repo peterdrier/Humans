@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
-    IUserServiceInternal userService,
+    IUserManagement userService,
     IUserInfoInvalidator userInfoInvalidator,
     UserManager<User> userManager,
     IAuditLogService auditLogService,

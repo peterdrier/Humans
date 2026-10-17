@@ -23,7 +23,7 @@ internal sealed class UserService(
     IFileStorage fileStorage,
     IClock clock,
     ILogger<UserService> logger,
-    IAuditLogService audit) : IUserServiceInternal, IUserDataContributor
+    IAuditLogService audit) : IUserManagement, IUserDataContributor
 {
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
@@ -170,7 +170,7 @@ internal sealed class UserService(
         throw new NotSupportedException(
             "SearchUsersAsync runs against the cached UserInfo snapshot in " +
             "CachingUserService. If this is being called on the inner UserService " +
-            "it indicates a DI registration mistake — IUserService should resolve " +
+            "it indicates a DI registration mistake — IUserManagement should resolve " +
             "to CachingUserService.");
 
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
@@ -196,7 +196,7 @@ internal sealed class UserService(
     /// division of labour as <see cref="SearchUsersAsync"/>. Doing the match here too would
     /// re-derive that entire snapshot (<see cref="GetAllUserInfosAsync"/> = six bulk repository
     /// reads) on every miss, once per address, which is what a Google sync run with unknown
-    /// recipients actually hits. Callers resolve <c>IUserService</c> to the decorator; reaching
+    /// recipients actually hits. Callers resolve <c>IUserManagement</c> to the decorator; reaching
     /// the inner service directly is a DI registration mistake.
     /// See nobodies-collective/Humans#1102.
     /// </remarks>

@@ -12,7 +12,7 @@ namespace Humans.Auth.Data;
 /// <remarks>
 /// There are no cross-domain navigation properties to <c>.Include()</c>;
 /// <c>RoleAssignmentService</c> stitches display data in memory via
-/// <c>IUserServiceRead</c>.
+/// <c>IUserService</c>.
 ///
 /// Auth is low-traffic (handful of admin writes per month, a few reads per
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
@@ -45,7 +45,7 @@ internal interface IRoleAssignmentRepository : IRepository
     /// <summary>
     /// Filtered list of assignments plus total count for pagination. Read-only.
     /// Cross-domain navs are NOT populated — callers stitch User / CreatedByUser
-    /// via <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// via <c>IUserService.GetUserInfosAsync</c>.
     /// </summary>
     Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter,

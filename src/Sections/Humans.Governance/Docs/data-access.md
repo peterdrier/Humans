@@ -21,7 +21,7 @@ this section injects `IGovernanceService` — `OnboardingService`, `Notification
 injects `IGovernanceService` and `IGovernanceWrite` because it submits and updates drafts.
 
 Cross-section reads inside the section go through the read surfaces
-(`IUserServiceRead`, `ITeamServiceRead`, `IConsentService`).
+(`IUserService`, `ITeamService`, `IConsentService`).
 
 ### ApplicationDecisionService (Scoped)
 
@@ -42,7 +42,7 @@ Repository: `IApplicationRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `IRoleAssignmentServiceRead`,
+Cross-section calls via `IUserService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
@@ -71,8 +71,8 @@ Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationReposit
 
 No cache, no caching decorator — one vote at a time and ~120 voters.
 
-Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`IRoleAssignmentServiceRead`, `ITeamServiceRead`, `IEmailService`,
+Cross-section calls via `IUserService`, `IUserEmailService`,
+`IRoleAssignmentService`, `ITeamService`, `IEmailService`,
 the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
 `IClock`. Implements
@@ -113,27 +113,27 @@ output.
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
 Polls `IMembershipCalculator`, `IGovernanceManagement`,
-`IUserServiceRead` on a timer to publish `humans.asociados`,
+`IUserService` on a timer to publish `humans.asociados`,
 `humans.applications_pending`, `humans.pending_consents`,
 `humans.consent_deadline_approaching`.
 
 ### MembershipCalculator (Scoped)
 
 No repository. Pure read computation over `IMembershipQuery`,
-`IUserServiceRead`, `ILegalDocumentSyncService`, `IConsentService`
+`IUserService`, `ILegalDocumentSyncService`, `IConsentService`
 (resolved lazily via `IServiceProvider` to break a DI cycle), and
 `IClock`. Implements `IMembershipCalculator`. No DB access, no cache.
 
 ### MembershipQuery (Scoped)
 
-No repository. Read-only fan-out over `ITeamServiceRead`,
-`IRoleAssignmentServiceRead`. Exists to break the DI cycle through
+No repository. Read-only fan-out over `ITeamService`,
+`IRoleAssignmentService`. Exists to break the DI cycle through
 `ISystemTeamSync`. No DB access, no cache.
 
 ### GovernanceIndexService (Scoped)
 
 No repository. Read-only assembly of the governance index view over
-`IGovernanceService`, `ILegalDocumentService`, `IUserServiceRead`.
+`IGovernanceService`, `ILegalDocumentService`, `IUserService`.
 No DB access, no cache.
 
 ### GovernanceEmails (Scoped, internal)

@@ -26,8 +26,8 @@ internal sealed class SurveyService(
     IAuditLogService auditLog,
     IClock clock,
     ILogger<SurveyService> logger,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -1959,7 +1959,7 @@ internal sealed class SurveyService(
         }
     }
 
-    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserServiceRead</c>. Other tiers never appear (no identity exposure).</summary>
+    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserService</c>. Other tiers never appear (no identity exposure).</summary>
     private async Task<IReadOnlyList<RespondentDetail>> BuildIdentifiedRespondentsAsync(
         Survey survey, IReadOnlyList<SurveyResponse> responses, string culture, CancellationToken ct)
     {

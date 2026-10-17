@@ -142,7 +142,7 @@ public class AgentControllerTests
     private static AgentController MakeController(IAgentService agent, bool enabled)
     {
         var userId = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(call =>
             {

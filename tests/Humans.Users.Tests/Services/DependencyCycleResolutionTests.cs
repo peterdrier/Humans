@@ -50,8 +50,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         // graph.
         //
         // Keying on the "IFoo → Foo" naming convention passes silently when the
-        // convention is broken: there is no `UserServiceRead`
-        // class, because `IUserServiceRead` (and ITeamServiceRead / ICampService /
+        // convention is broken: the name-matched class
+        // may not be what is registered, because `IUserService` (and ITeamService / ICampService /
         // IEventService) is registered as a forwarder factory onto the matching
         // `Caching*Service` decorator. Any edge through a read interface therefore
         // vanished, so a cycle routed via a decorator resolved fine here and blew up
@@ -88,7 +88,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
                 if (pt.IsInterface && implsByInterface.TryGetValue(pt, out var impls))
                 {
                     // Drop the self-edge a decorator creates by injecting the very
-                    // interface it implements — `CachingUserService(IUserService inner)`
+                    // interface it implements — `CachingUserService(IUserManagement inner)`
                     // is the decorator pattern wrapping the separately-registered
                     // concrete, not a cycle.
                     foreach (var impl in impls)

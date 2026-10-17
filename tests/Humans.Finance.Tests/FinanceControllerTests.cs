@@ -29,7 +29,7 @@ public class FinanceControllerTests
 
     private readonly IHoldedFinanceManagement _finance = Substitute.For<IHoldedFinanceManagement>();
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)
@@ -317,7 +317,28 @@ public class FinanceControllerTests
             .Should().BeOfType<CreditorStatementVm>().Subject;
 
         model.OwedBalance.Should().Be(10m);
-        model.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+        model.Lines.Select(r => (r.Line.EntryNumber, r.Line.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_RunningBalance_AccumulatesOldestFirst_ShownNewestFirst()
+    {
+        var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
+        var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorLedger(40000002, -30m, 30m,
+            [
+                Ledger(entry: 9, line: 1, day2) with { Credit = 0m, Debit = 50m },  // paid out 50
+                Ledger(entry: 5, line: 1, day1) with { Credit = 100m }, // owed 100
+                Ledger(entry: 7, line: 1, day2) with { Credit = 0m, Debit = 20m },  // paid out 20
+            ]));
+
+        var model = (await MakeController().CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        // Chronological: +100 → 100, −20 → 80, −50 → 30; presented newest first.
+        model.Lines.Select(r => (r.Line.EntryNumber, r.RunningBalance)).Should().Equal((9, 30m), (7, 80m), (5, 100m));
+        model.Lines[0].RunningBalance.Should().Be(model.OwedBalance);
     }
 
     [HumansFact]

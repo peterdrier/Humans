@@ -15,7 +15,7 @@ namespace Humans.Teams.Authorization;
 ///   own team's early entry de facto)
 /// - Everyone else: deny
 /// </summary>
-internal sealed class TeamAuthorizationHandler(ITeamServiceRead teamService)
+internal sealed class TeamAuthorizationHandler(ITeamService teamService)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
     protected override async Task HandleRequirementAsync(

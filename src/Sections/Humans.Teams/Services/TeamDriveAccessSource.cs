@@ -5,7 +5,7 @@ namespace Humans.Teams.Services;
 
 /// <summary>Teams owns membership, child-team rollup and the union of shared-resource claims.</summary>
 internal sealed class TeamDriveAccessSource(
-    ITeamServiceRead teams,
+    ITeamService teams,
     ITeamResourceService resources) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(

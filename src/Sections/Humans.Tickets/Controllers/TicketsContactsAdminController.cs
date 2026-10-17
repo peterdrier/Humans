@@ -13,7 +13,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Contacts")]
 internal sealed class TicketsContactsAdminController(
     IAttendeeContactImportService import,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

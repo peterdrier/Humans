@@ -11,7 +11,7 @@ namespace Humans.Calendar.Tests.Controllers;
 public class ICalFeedApiControllerTests
 {
     private readonly IICalFeedService _feed = Substitute.For<IICalFeedService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private ICalFeedApiController CreateController() =>
         new(_feed, _users, NullLogger<ICalFeedApiController>.Instance);

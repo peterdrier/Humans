@@ -187,7 +187,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
+- **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
   display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
 - **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
@@ -225,9 +225,9 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
   tables; it hands over detached graphs and takes scalars back.
 - **Decorator decision** — no caching decorator. Rationale: a few programs a year, pages
   read by their holders and managers; every read is one query.
-- **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for names on the admin pages;
+- **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
   `<vc:human>` and `<vc:human-search>` for people.
-- **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
+- **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IHoldedFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`

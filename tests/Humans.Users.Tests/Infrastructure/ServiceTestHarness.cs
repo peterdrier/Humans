@@ -16,6 +16,7 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 
 using Humans.Teams.Contracts;
+using Humans.Users.Services;
 namespace Humans.Users.Tests.Infrastructure;
 
 /// <summary>
@@ -185,16 +186,16 @@ public abstract class ServiceTestHarness : IDisposable
     }
 
     /// <summary>
-    /// Creates an NSubstitute <see cref="IUserService"/> whose reader methods
+    /// Creates an NSubstitute <see cref="IUserManagement"/> whose reader methods
     /// (<c>GetUserInfoAsync</c>, <c>GetUserInfosAsync</c>)
     /// are wired to read from this harness's in-memory DB.
     /// Mirrors the production behavior of the User stitcher without requiring the real
-    /// caching/repository stack. Use for services that depend on <see cref="IUserService"/>
+    /// caching/repository stack. Use for services that depend on <see cref="IUserManagement"/>
     /// for cross-domain user lookups.
     /// </summary>
-    private protected IUserService NewDbBackedUserService()
+    private protected IUserManagement NewDbBackedUserService()
     {
-        var svc = Substitute.For<IUserService>();
+        var svc = Substitute.For<IUserManagement>();
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);

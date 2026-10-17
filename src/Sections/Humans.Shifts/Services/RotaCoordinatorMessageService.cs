@@ -16,8 +16,8 @@ namespace Humans.Shifts.Services;
 /// </summary>
 internal sealed class RotaCoordinatorMessageService(
     IShiftManagementRepository repo,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     IEmailService emailService,
     ShiftsEmails emailMessages,
     IAuditLogService auditLogService,

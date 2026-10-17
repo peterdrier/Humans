@@ -15,7 +15,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketTransferAdminController(
     ITicketTransferService service,
     ITicketManagement ticketQueryService,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(string? tab, CancellationToken ct)

@@ -40,7 +40,7 @@ internal sealed class BackdoorFinanceController(
     IHoldedFinanceService finance,
     IBudgetService budget,
     IAuthorizationService authService,
-    IUserServiceRead users) : ApiControllerBase(users), IResultFilter
+    IUserService users) : ApiControllerBase(users), IResultFilter
 {
     // ─── Expense reports ────────────────────────────────────────────────────────
 

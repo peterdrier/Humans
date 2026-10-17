@@ -30,8 +30,8 @@ public sealed class ShiftAdminPageBuilderTests
 
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     private static readonly TeamInfo Department = new(
         Guid.NewGuid(), "Test Department", null, "test-dept",

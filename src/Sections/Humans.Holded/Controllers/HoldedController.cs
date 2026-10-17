@@ -18,7 +18,7 @@ namespace Humans.Holded.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Holded")]
 internal sealed class HoldedController(
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedAdminService admin,
     IHoldedService holded,
     IHoldedFinanceService holdedFinance,

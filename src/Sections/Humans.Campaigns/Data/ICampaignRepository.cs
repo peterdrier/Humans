@@ -47,7 +47,7 @@ internal interface ICampaignRepository : IRepository
     /// Returns one row per grant (campaign id, code string, redemption,
     /// email status, user id) for every grant on an Active or Completed
     /// campaign. Recipient display names are resolved by the caller via
-    /// <c>IUserServiceRead.GetUserInfosAsync</c>; grant rows carry only the user id.
+    /// <c>IUserService.GetUserInfosAsync</c>; grant rows carry only the user id.
     /// </summary>
     Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
         CancellationToken ct = default);
@@ -186,7 +186,7 @@ internal sealed record CampaignCodeTrackingSummaryRow(
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
-/// The owning service stitches recipient display names via <c>IUserServiceRead</c>
+/// The owning service stitches recipient display names via <c>IUserService</c>
 /// so no cross-domain navigation is read at the repository layer.
 /// </summary>
 internal sealed record CampaignCodeTrackingGrantRow(

@@ -19,7 +19,7 @@ namespace Humans.Scanner.Controllers;
 [Route("Scanner")]
 internal sealed class ScannerController(
     ITicketService tickets,
-    IUserServiceRead users,
+    IUserService users,
     IEarlyEntryService earlyEntry,
     IConsentService consents,
     IICalFeedService calendarFeed,

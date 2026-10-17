@@ -387,7 +387,7 @@ public sealed class SurveyControllerTests
 
         return new SurveyController(
             surveys,
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserService>(),
             new FakeClock(Instant.FromUtc(2026, 8, 27, 9, 0)),
             new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-thankyou-tests")),
             localizer,

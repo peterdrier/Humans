@@ -10,7 +10,7 @@ namespace Humans.Shifts.Controllers;
 /// <summary>Site-wide workload dashboard (read-only).</summary>
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 [Route("Shifts/Admin/Workload")]
-internal sealed class ShiftWorkloadAdminController(IUserServiceRead userService, IWorkloadService workloadService)
+internal sealed class ShiftWorkloadAdminController(IUserService userService, IWorkloadService workloadService)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]

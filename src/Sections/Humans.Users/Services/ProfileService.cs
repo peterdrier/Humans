@@ -5,7 +5,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Users.Services;
 
 internal sealed class ProfileService(IUserRepository userRepository,
-    IUserServiceInternal userService,
+    IUserManagement userService,
     IFileStorage fileStorage) : IProfilePictureService
 {
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(

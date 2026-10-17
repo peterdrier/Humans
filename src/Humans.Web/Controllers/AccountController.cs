@@ -16,6 +16,7 @@ namespace Humans.Web.Controllers;
 public class AccountController(
     SignInManager<User> signInManager,
     IUserService userService,
+    IUserWrite userWrite,
     UserManager<User> userManager,
     IClock clock,
     ILogger<AccountController> logger,
@@ -205,7 +206,7 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
-        await userService.RecordLoginAsync(user.Id);
+        await userWrite.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: true);
         loginMethods.RecordMagicLink();
@@ -379,7 +380,7 @@ public class AccountController(
 
         gateThrottle.Reset(source);
 
-        await userService.RecordLoginAsync(user.Id);
+        await userWrite.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("Gate terminal signed in");

@@ -18,7 +18,7 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class HumanLifecycleServiceTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();

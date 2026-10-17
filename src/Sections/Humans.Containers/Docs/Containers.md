@@ -125,7 +125,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - **Camps:** `ICampService` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
 - **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 - **Audit Log:** `IAuditLogService.LogAsync` on every write, under the literal entity types in `Services/AuditEntityTypes.cs`.
-- **Users:** `IUserServiceRead`, injected by `ContainerController` for `HumansControllerBase`'s current-user resolution.
+- **Users:** `IUserService`, injected by `ContainerController` for `HumansControllerBase`'s current-user resolution.
 
 ## Architecture
 

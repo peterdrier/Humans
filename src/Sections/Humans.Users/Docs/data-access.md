@@ -34,14 +34,14 @@ storage paths).
 |-------|-----|
 | Profiles | R (storage-path lookup) |
 
-Uses `IUserServiceInternal` for migration-snapshot user lookups and `IFileStorage`
+Uses `IUserManagement` for migration-snapshot user lookups and `IFileStorage`
 to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
 the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
 
 No repository. Per-user serialization wrapper that fans out to
-`IUserServiceInternal.SaveProfileAsync` for row writes and picture upload bytes,
+`IUserManagement.SaveProfileAsync` for row writes and picture upload bytes,
 which are saved before publishing their content-type metadata. Uses `IFileStorage`
 only to clean up superseded files after that save. No `IMemoryCache`.
 
@@ -54,8 +54,8 @@ Repository: `IUserRepository` (profile and contact-field methods).
 | ContactFields | R/W |
 | Profiles | R |
 
-Cross-section reads via `IUserServiceRead`, `ITeamServiceRead`,
-`IRoleAssignmentServiceRead` (visibility / coordinator-team lookups). Implements
+Cross-section reads via `IUserService`, `ITeamService`,
+`IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
 `IUserMerge`. Invalidates the User+Profile read-model via
 `IUserInfoInvalidator`. No `IMemoryCache`.
 
@@ -67,7 +67,7 @@ Repository: `ICommunicationPreferenceRepository`.
 |-------|-----|
 | CommunicationPreferences | R/W |
 
-Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
+Cross-section calls via `IUserService`, `IAuditLogService`,
 `IUnsubscribeTokenProvider` (same section, `Services/`). Implements
 `IUserMerge`. No cache.
 
@@ -99,7 +99,7 @@ Read-only DTO assemblers — no repository, no cache. Fan out over
 
 `PersonSearchMatcher` is a pure static matcher (no DI, no repository, no
 cache) over the cached `UserInfo` read-model. It is consumed by
-`CachingUserService` (the person-search entry point on `IUserServiceRead`)
+`CachingUserService` (the person-search entry point on `IUserService`)
 so the search runs entirely in-memory against the unified User+Profile
 projection — no extra DB read. Each match carries a relevance
 `Score` (exact name 100 / name-prefix 85 / token-prefix 80 / contains 60 /
@@ -123,7 +123,7 @@ returns the
 No repository, no cache, no direct DB access. Section-internal
 `ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
 for — active teams the viewer coordinates whose linked Google Group is synced.
-Cross-section reads via `ITeamServiceRead.GetTeamsAsync` and
+Cross-section reads via `ITeamService.GetTeamsAsync` and
 `ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
 neither section's tables.
 
@@ -146,11 +146,11 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 (`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
-`ITeamServiceRead`, `IMembershipCalculator`, `IGoogleSyncWrite`,
+`ITeamService`, `IMembershipCalculator`, `IGoogleSyncWrite`,
 `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
 `IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
-for cache eviction. `[CrossSectionWrite]`-marked because suspension removes a
+for cache eviction. Suspension removes a
 user from their team's Google resources. No direct DB access or `IMemoryCache`.
 
 ### UsersEmails (Scoped, internal)
@@ -186,10 +186,10 @@ decorator inheriting `TrackedCache<Guid, UserInfo>`, in the section's
 own `Data/` folder) which holds the
 canonical `UserInfo` read-model spanning User + Profile sections. The
 decorator exposes the budgeted cross-section read surface as
-`IUserServiceRead`. `IUserService` carries the writes other sections call;
+`IUserService`. `IUserWrite` carries the writes other sections call;
 the section-only half of the write funnel (profile saves, deletion fields,
 `UserEmail` storage commands, merge tombstone) is the internal
-`IUserServiceInternal : IUserService`, registered as the same singleton.
+`IUserManagement : IUserService, IUserWrite, IUserMerge`, registered as the same singleton.
 `IUserService`'s `[SurfaceBudget]` is intentionally suspended.
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
@@ -223,7 +223,7 @@ Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, UserInfo>` (`User.UserInfo`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`IUserInfoInvalidator` — fired by UserService/ProfileService writes, by `IUserMerge` participants, and by `UserInfoSaveChangesInterceptor` for Identity-machinery writes) |
 
-Implements `IUserServiceInternal` (hence `IUserService`, `IUserServiceRead`), `IUserMerge`,
+Implements `IUserManagement` (hence `IUserService`, `IUserWrite`, `IUserMerge`),
 `IUserInfoInvalidator`, and the section-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
@@ -272,7 +272,7 @@ Unverified import replacements run deletion and provisioning in one serializable
 ### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
-`IUserServiceInternal`, `IUserEmailService`, `ITeamService`,
+`IUserManagement`, `IUserEmailService`, `ITeamService`,
 `IRoleAssignmentService`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
 `IEmailService` (messages built by `UsersEmails`). Invalidates
@@ -290,14 +290,14 @@ Repositories: `IUserRepository` (read-only — token validation / user guard).
 
 Calls `ICommunicationPreferenceService` to validate the token and flip
 per-category opt-outs; uses `IDataProtectionProvider` for legacy token
-validation. Also injects `IUserServiceRead` to resolve the user's
+validation. Also injects `IUserService` to resolve the user's
 `BurnerName` for the unsubscribe-confirm display (reads from the
 `CachingUserService` TrackedCache — no extra DB round-trip on hit).
 No cache on the service itself.
 
 ### UserParticipationBackfillService (Scoped)
 
-No repository. Fan-out over `IUserServiceInternal` and `ISettingsService`
+No repository. Fan-out over `IUserManagement` and `ISettingsService`
 (active event settings) to preview valid CSV rows and, only after operator confirmation, backfill `EventParticipations` with the acting admin. No direct DB access, no cache.
 
 ### AccountMergeService (Scoped)
@@ -335,7 +335,7 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService`, `ITeamService`, `IRoleAssignmentServiceRead`. No cache.
+`IUserService`, `ITeamService`, `IRoleAssignmentService`. No cache.
 
 ### ExternalLoginService (Scoped)
 

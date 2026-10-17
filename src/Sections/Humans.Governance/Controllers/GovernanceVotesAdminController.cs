@@ -22,7 +22,7 @@ namespace Humans.Governance.Controllers;
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Governance/Votes/Admin")]
 internal sealed class GovernanceVotesAdminController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAssemblyVoteService voteService,
     ILogger<GovernanceVotesAdminController> logger) : HumansControllerBase(userService)
 {

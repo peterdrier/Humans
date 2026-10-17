@@ -28,7 +28,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     public ShiftManagementReadMathTests()
         : base(TestNow)
     {
-        var teamService = Substitute.For<ITeamServiceRead>();
+        var teamService = Substitute.For<ITeamService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 
@@ -46,8 +46,8 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(userService)
-            .With<IUserServiceRead>(userService)
-            .With<IRoleAssignmentServiceRead>(Substitute.For<IRoleAssignmentService>())
+            .With<IUserService>(userService)
+            .With<IRoleAssignmentService>(Substitute.For<IRoleAssignmentService>())
             .Build();
 
         _service = new ShiftManagementService(

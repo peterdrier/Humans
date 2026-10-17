@@ -67,9 +67,9 @@ public sealed class FeedbackServiceTests
     {
         FeedbackDb = FeedbackDbFactory.CreateDbContext();
 
-        var userService = Substitute.For<IUserServiceRead>();
+        var userService = Substitute.For<IUserService>();
         var userEmailService = Substitute.For<IUserEmailService>();
-        var teamService = Substitute.For<ITeamServiceRead>();
+        var teamService = Substitute.For<ITeamService>();
 
         userService
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -138,9 +138,9 @@ public sealed class FeedbackServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "Admin", "admin@example.org");
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(_people[userId]);
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         var service = _service;
         if (dependencyFails)
         {
@@ -676,7 +676,7 @@ public sealed class FeedbackServiceTests
         reporters.Should().ContainSingle(r => r.UserId == aliceId && r.Count == 1);
         reporters.Should().ContainSingle(r => r.UserId == bobId && r.Count == 2);
 
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>()).Returns(_people[bobId]);
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -685,7 +685,7 @@ public sealed class FeedbackServiceTests
                 [aliceId] = _people[aliceId] with { BurnerName = "Alice current" },
                 [bobId] = _people[bobId] with { BurnerName = "Bob current" }
             });
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
         {
@@ -712,7 +712,7 @@ public sealed class FeedbackServiceTests
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
         SeedUser(id, "Viewer", "viewer@example.com");
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var cancelledAtViewer = false;
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -722,7 +722,7 @@ public sealed class FeedbackServiceTests
             return new ValueTask<UserInfo?>(_people[id]);
         });
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
         {
@@ -754,12 +754,12 @@ public sealed class FeedbackServiceTests
         SeedUser(id, "Viewer", "viewer@example.com");
         var description = new string('x', prefixLength) + suffix;
         await SeedReportAsync(id, description, "/test");
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(_people[id]));
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(_people);
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
         {

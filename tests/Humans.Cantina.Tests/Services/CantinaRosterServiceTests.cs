@@ -20,7 +20,7 @@ namespace Humans.Cantina.Tests.Services;
 /// <summary>
 /// Unit tests for <see cref="CantinaRosterService"/>. The on-site cohort comes
 /// from <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>;
-/// dietary data is read from <see cref="IUserServiceRead"/> (cached UserInfo —
+/// dietary data is read from <see cref="IUserService"/> (cached UserInfo —
 /// dietary lives on Profile). Tests exercise the "unique humans across the week"
 /// contract: a single human on-site multiple days contributes exactly once to
 /// every aggregate, while still showing up in the correct per-day counts.
@@ -29,7 +29,7 @@ public class CantinaRosterServiceTests
 {
     private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _burnSettings;
-    private readonly IUserServiceRead _userRead;
+    private readonly IUserService _userRead;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
@@ -42,7 +42,7 @@ public class CantinaRosterServiceTests
     {
         _shiftMgmt = Substitute.For<IShiftManagementService>();
         _burnSettings = Substitute.For<ISettingsService>();
-        _userRead = Substitute.For<IUserServiceRead>();
+        _userRead = Substitute.For<IUserService>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that
         // care about EventTodayDate semantics override on a per-test basis.
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
@@ -606,7 +606,7 @@ public class CantinaRosterServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
     /// <summary>
-    /// Stubs <see cref="IUserServiceRead.GetUserInfosAsync"/> to return a
+    /// Stubs <see cref="IUserService.GetUserInfosAsync"/> to return a
     /// <c>UserInfo</c> per profile. Dietary + burner name are read off the Profile.
     /// </summary>
     private void SetupHumans(params (Guid UserId, ProfileInfo Profile)[] profiles)

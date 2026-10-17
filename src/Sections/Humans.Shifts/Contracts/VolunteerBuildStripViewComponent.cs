@@ -17,7 +17,7 @@ namespace Humans.Shifts.Contracts;
 /// </remarks>
 public sealed class VolunteerBuildStripViewComponent(
     IVolunteerTrackingService tracking,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<VolunteerBuildStripViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)

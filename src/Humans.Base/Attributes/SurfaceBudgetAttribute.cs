@@ -11,7 +11,7 @@ namespace Humans.Base.Attributes;
 /// A <b>consolidation ratchet</b>: budgeted types should shrink over time.
 /// <b>Owner-applied only</b> — agents NEVER add this attribute or suggest
 /// adding it; they only keep an already-present <c>N</c> accurate. It lives
-/// predominantly on read interfaces (currently the <c>I…ServiceRead</c> types).
+/// predominantly on read interfaces (currently the public <c>I{Section}Service</c> read interfaces).
 /// Full rule: <c>memory/code/surface-budget-owner-applied.md</c>.
 ///
 /// <para>When editing a type that already carries it:</para>

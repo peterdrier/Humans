@@ -20,7 +20,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserServiceRead users)
+internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserService users)
     : ApiControllerBase(users)
 {
     /// <summary>One object per order line of <paramref name="year"/>, camp and team orders both.</summary>

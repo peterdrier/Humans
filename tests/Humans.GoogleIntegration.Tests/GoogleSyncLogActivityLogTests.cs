@@ -120,7 +120,7 @@ public sealed class GoogleSyncLogActivityLogTests
         var resources = Substitute.For<ITeamResourceManagement>();
         resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(
             new Dictionary<Guid, string> { [docs] = "Board Docs", [other] = "Camp Group" });
-        var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserServiceRead>(),
+        var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(), Substitute.For<IServiceProvider>(),
             new FakeClock(T0), NullLogger<GoogleSyncLogService>.Instance);
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -162,7 +162,7 @@ public sealed class GoogleSyncLogActivityLogTests
         repo.GetResourceIdsAsync(default).ReturnsForAnyArgs([Guid.NewGuid()]);
         var resources = Substitute.For<ITeamResourceManagement>();
         resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(new Dictionary<Guid, string>());
-        var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserServiceRead>(),
+        var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(), Substitute.For<IServiceProvider>(),
             new FakeClock(T0), NullLogger<GoogleSyncLogService>.Instance);
         var ct = Xunit.TestContext.Current.CancellationToken;
