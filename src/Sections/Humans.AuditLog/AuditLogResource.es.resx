@@ -365,4 +365,5 @@
   <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Token del calendario creado</value></data>
   <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Token del calendario renovado</value></data>
   <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Modo de sincronización cambiado</value></data>
+  <data name="Enum_AuditAction_AgentSettingsUpdated" xml:space="preserve"><value>Configuración del asistente actualizada</value></data>
 </root>

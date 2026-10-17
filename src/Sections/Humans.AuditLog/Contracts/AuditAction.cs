@@ -389,4 +389,5 @@ public enum AuditAction
     CalendarFeedTokenCreated,
     CalendarFeedTokenRotated,
     SyncModeChanged,
+    AgentSettingsUpdated,
 }
