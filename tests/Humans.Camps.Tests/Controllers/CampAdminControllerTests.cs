@@ -25,11 +25,16 @@ public class CampAdminControllerTests
     [InlineData("Open", false)]
     [InlineData("Close", false)]
     [InlineData("LockDate", false)]
-    public async Task SeasonSettingsAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
+    [InlineData("Reactivate", true)]
+    [InlineData("Delete", true)]
+    [InlineData("Reactivate", false)]
+    [InlineData("Delete", false)]
+    public async Task AuditedAdminAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
     {
         var camps = Substitute.For<ICampService>();
         var users = Substitute.For<IUserServiceRead>();
         var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
         if (userExists)
             users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
@@ -41,6 +46,8 @@ public class CampAdminControllerTests
             "Open" => await controller.OpenSeason(2027),
             "Close" => await controller.CloseSeason(2026),
             "LockDate" => await controller.SetNameLockDate(2026, "2026-03-01"),
+            "Reactivate" => await controller.Reactivate(targetId, null),
+            "Delete" => await controller.Delete(targetId),
             _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
 
@@ -56,6 +63,8 @@ public class CampAdminControllerTests
             case "Open": await camps.Received(1).OpenSeasonAsync(2027, actorId); break;
             case "Close": await camps.Received(1).CloseSeasonAsync(2026, actorId); break;
             case "LockDate": await camps.Received(1).SetNameLockDateAsync(2026, lockDate, actorId); break;
+            case "Reactivate": await camps.Received(1).ReactivateSeasonAsync(targetId, actorId); break;
+            case "Delete": await camps.Received(1).DeleteCampAsync(targetId, actorId); break;
         }
     }
 
@@ -239,8 +248,8 @@ public class CampAdminControllerTests
         {
             case "Approve": camps.ApproveSeasonAsync(targetId, actorId, null).ThrowsAsync(failure); break;
             case "Reject": camps.RejectSeasonAsync(targetId, actorId, "Rejected").ThrowsAsync(failure); break;
-            case "Reactivate": camps.ReactivateSeasonAsync(targetId).ThrowsAsync(failure); break;
-            case "Delete": camps.DeleteCampAsync(targetId).ThrowsAsync(failure); break;
+            case "Reactivate": camps.ReactivateSeasonAsync(targetId, actorUserId: actorId).ThrowsAsync(failure); break;
+            case "Delete": camps.DeleteCampAsync(targetId, actorUserId: actorId).ThrowsAsync(failure); break;
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
     }

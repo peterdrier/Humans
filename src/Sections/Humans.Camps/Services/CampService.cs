@@ -509,7 +509,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     }
 
     public async Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(
-        Guid campId, int year, CancellationToken cancellationToken = default)
+        Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default)
     {
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.OpenSeasons.Contains(year))
@@ -534,17 +534,28 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
         await _repo.AddSeasonAsync(newSeason, cancellationToken);
 
-        await _auditLog.LogAsync(
-            AuditAction.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
-            $"Opted in to season {year} (auto-approved: {hasApprovedSeason})",
-            "CampService",
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        var description = $"Opted in to season {year} (auto-approved: {hasApprovedSeason})";
+        if (actorUserId is { } actorId)
+        {
+            await _auditLog.LogAsync(
+                AuditAction.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
+                description, actorId,
+                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        }
+        else
+        {
+            // Dev-persona provisioning runs before sign-in and has no human actor.
+            await _auditLog.LogAsync(
+                AuditAction.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
+                description, nameof(CampService),
+                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        }
 
         return new(newSeason);
     }
 
     public async Task<CampUpdateResult> UpdateSeasonAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
@@ -589,7 +600,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampUpdated, nameof(CampSeason), seasonId,
             $"Updated season {year} details",
-            "CampService",
+            actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         return CampUpdateResult.Success();
@@ -653,7 +664,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     }
 
     public async Task<CampUpdateResult> WithdrawSeasonAsync(
-        Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
@@ -687,7 +698,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampSeasonWithdrawn, nameof(CampSeason), seasonId,
             $"Withdrew from season {year}",
-            "CampService",
+            actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
@@ -753,7 +764,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     }
 
     public async Task<CampUpdateResult> SetSeasonStatusAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
@@ -780,14 +791,14 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status set to {status}",
-            "CampService",
+            actorUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
         return CampUpdateResult.Success();
 
     }
 
-    public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
+    public async Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var year = 0;
@@ -811,14 +822,14 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status changed from {previousStatus} to {newStatus}",
-            "CampService",
+            actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
     }
 
     public async Task<CampUpdateResult> UpdateCampAsync(
         CampUpdateInput input,
-        CancellationToken cancellationToken = default)
+        Guid actorUserId, CancellationToken cancellationToken = default)
     {
         // Prove the season belongs to the camp before the first write: the scoped check
         // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
@@ -854,9 +865,9 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampUpdated, nameof(Camp), input.CampId,
             $"Updated camp {input.CampId}",
-            "CampService");
+            actorUserId);
 
-        var seasonUpdate = await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, cancellationToken);
+        var seasonUpdate = await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, actorUserId, cancellationToken);
         if (!seasonUpdate.Succeeded) return seasonUpdate;
 
         var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
@@ -868,7 +879,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
             var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
             if (!nameLocked)
             {
-                var nameUpdate = await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, cancellationToken);
+                var nameUpdate = await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, actorUserId, cancellationToken);
                 if (!nameUpdate.Succeeded) return nameUpdate;
             }
         }
@@ -876,7 +887,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         return CampUpdateResult.Success();
     }
 
-    public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
+    public async Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetByIdAsync(campId, cancellationToken)
             ?? throw new InvalidOperationException("Camp not found.");
@@ -928,7 +939,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampDeleted, nameof(Camp), campId,
             $"Camp {campId} permanently deleted",
-            "CampService");
+            actorUserId);
 
         // Metadata and audit have committed; file cleanup must finish independently of the request.
         foreach (var path in deletedImagePaths)
@@ -1008,7 +1019,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
 
     public async Task<CampImageUploadResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
-        CancellationToken cancellationToken = default)
+        Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var imageCount = await _repo.CountImagesAsync(campId, cancellationToken);
         if (imageCount >= 5)
@@ -1071,7 +1082,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampImageUploaded, nameof(CampImage), image.Id,
             $"Uploaded image '{fileName}'",
-            "CampService",
+            actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         return CampImageUploadResult.Success(image);
@@ -1080,7 +1091,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
 
     public async Task<CampUpdateResult> DeleteImageAsync(
-        Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken);
         if (image is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
@@ -1095,7 +1106,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
-            "CampService",
+            actorUserId,
             relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
 
         // Metadata and audit have committed; file cleanup must finish independently of the request.
@@ -1159,7 +1170,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
     }
 
     public async Task<CampUpdateResult> ChangeSeasonNameAsync(
-        Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
         var now = _clock.GetCurrentInstant();
@@ -1220,7 +1231,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, IUserDataC
         await _auditLog.LogAsync(
             AuditAction.CampNameChanged, nameof(CampSeason), seasonId,
             $"Name changed from '{oldName}' to '{newName}'",
-            "CampService",
+            actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         return CampUpdateResult.Success();

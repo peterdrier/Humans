@@ -39,6 +39,64 @@ public class CampControllerTests
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
     [HumansTheory]
+    [InlineData("Edit")]
+    [InlineData("OptIn")]
+    [InlineData("Withdraw")]
+    [InlineData("MarkFull")]
+    [InlineData("UploadImage")]
+    [InlineData("DeleteImage")]
+    public async Task CampWrite_PassesTheResolvedActor(string action)
+    {
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        var season = camp.Seasons.Single();
+        var imageId = Guid.NewGuid();
+        const string key = "Camps_Flash_CampNotFound";
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(c => new LocalizedString(c.Arg<string>(), c.Arg<string>()));
+        _campsLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(c => new LocalizedString(c.ArgAt<string>(0), c.ArgAt<string>(0)));
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId).Returns(CampUpdateResult.Failure(key));
+        _camps.OptInToSeasonAsync(camp.Id, 2027, actorId).Returns(new CampWriteResult<CampSeason>(null, key));
+        _camps.WithdrawSeasonAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
+        _camps.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorId).Returns(CampUpdateResult.Failure(key));
+        _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId)
+            .Returns(CampImageUploadResult.Failure(key));
+        _camps.DeleteImageAsync(camp.Id, imageId, actorId).Returns(CampUpdateResult.Failure(key));
+        var controller = BuildController(actorId);
+        using var image = new MemoryStream([1]);
+        var file = new FormFile(image, 0, 1, "file", "camp.jpg")
+            { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
+
+        switch (action)
+        {
+            case "Edit":
+                await controller.Edit(camp.Slug, new CampEditViewModel
+                    { CampId = camp.Id, SeasonId = season.Id, Name = "Alpha", ContactPhone = "+34600000000" });
+                await _camps.Received(1).UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId); break;
+            case "OptIn":
+                await controller.OptIn(camp.Slug, 2027);
+                await _camps.Received(1).OptInToSeasonAsync(camp.Id, 2027, actorId); break;
+            case "Withdraw":
+                await controller.Withdraw(camp.Slug, season.Id);
+                await _camps.Received(1).WithdrawSeasonAsync(camp.Id, season.Id, actorId); break;
+            case "MarkFull":
+                await controller.MarkFull(camp.Slug, season.Id);
+                await _camps.Received(1).SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorId); break;
+            case "UploadImage":
+                await controller.UploadImage(camp.Slug, file);
+                await _camps.Received(1).UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId); break;
+            case "DeleteImage":
+                await controller.DeleteImage(camp.Slug, imageId);
+                await _camps.Received(1).DeleteImageAsync(camp.Id, imageId, actorId); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action));
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings)
@@ -254,7 +312,7 @@ public class CampControllerTests
             "Camps_Flash_SeasonNotOpen", "Camps_Flash_SeasonAlreadyExists", "Camps_Flash_NoPreviousSeason"
         })
         {
-            _camps.OptInToSeasonAsync(camp.Id, 2027, Arg.Any<CancellationToken>())
+            _camps.OptInToSeasonAsync(camp.Id, 2027, actorUserId: Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
                 .Returns(new CampWriteResult<CampSeason>(null, key));
             (await controller.OptIn(camp.Slug, 2027)).Should().BeOfType<RedirectToActionResult>();
             expected = localizer[key, 2027];
@@ -320,7 +378,7 @@ public class CampControllerTests
             "Camps_Validation_ImageFilenameLength", "Camps_Validation_ImageExtension"
         })
         {
-            _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, Arg.Any<CancellationToken>())
+            _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorUserId: Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .Returns(CampImageUploadResult.Failure(key));
 
             await controller.UploadImage(camp.Slug, file);
@@ -428,7 +486,7 @@ public class CampControllerTests
                     _camps.RemoveHistoricalNameAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
                     result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
                 case "DeleteImage":
-                    _camps.DeleteImageAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
+                    _camps.DeleteImageAsync(camp.Id, targetId, actorUserId: Arg.Any<Guid>()).Returns(CampUpdateResult.Failure(key));
                     result = controller.DeleteImage(camp.Slug, targetId); break;
                 default: throw new InvalidOperationException("Unknown test action");
             }

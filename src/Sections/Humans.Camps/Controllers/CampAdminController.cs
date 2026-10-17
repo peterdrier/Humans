@@ -192,9 +192,12 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reactivate(Guid seasonId, string? returnSlug)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
         try
         {
-            await campService.ReactivateSeasonAsync(seasonId);
+            await campService.ReactivateSeasonAsync(seasonId, actorUserId: user.Id);
             SetSuccess("Season status updated.");
         }
         catch (InvalidOperationException ex)
@@ -233,9 +236,12 @@ internal sealed class CampAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Delete([FromForm] Guid campId)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
         try
         {
-            await campService.DeleteCampAsync(campId);
+            await campService.DeleteCampAsync(campId, actorUserId: user.Id);
             SetSuccess("Camp deleted.");
         }
         catch (InvalidOperationException ex)

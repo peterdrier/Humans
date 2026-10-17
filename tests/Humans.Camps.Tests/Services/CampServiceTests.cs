@@ -28,6 +28,7 @@ namespace Humans.Camps.Tests.Services;
 
 public sealed class CampServiceTests : CampsTestHarness
 {
+    private static readonly Guid TestActorId = Guid.NewGuid();
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator = Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>();
@@ -77,6 +78,88 @@ public sealed class CampServiceTests : CampsTestHarness
             NullLogger<CampService>.Instance);
     }
 
+    [HumansTheory]
+    [InlineData("OptIn", AuditAction.CampSeasonCreated)]
+    [InlineData("UpdateSeason", AuditAction.CampUpdated)]
+    [InlineData("Withdraw", AuditAction.CampSeasonWithdrawn)]
+    [InlineData("SetStatus", AuditAction.CampSeasonStatusChanged)]
+    [InlineData("Reactivate", AuditAction.CampSeasonStatusChanged)]
+    [InlineData("UpdateCamp", AuditAction.CampUpdated)]
+    [InlineData("DeleteCamp", AuditAction.CampDeleted)]
+    [InlineData("UploadImage", AuditAction.CampImageUploaded)]
+    [InlineData("DeleteImage", AuditAction.CampImageDeleted)]
+    [InlineData("ChangeName", AuditAction.CampNameChanged)]
+    public async Task HumanMutation_AuditsTheActorInsteadOfAJob(string action, AuditAction expectedAction)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var season = await CampsDb.CampSeasons.SingleAsync(ct);
+        var imageId = Guid.Empty;
+        switch (action)
+        {
+            case "OptIn":
+                var settings = await CampsDb.CampSettings.SingleAsync(ct);
+                settings.OpenSeasons.Add(2027);
+                await SaveAllAsync(ct);
+                break;
+            case "SetStatus":
+                season.Status = CampSeasonStatus.Active;
+                await SaveAllAsync(ct);
+                break;
+            case "Reactivate":
+                season.Status = CampSeasonStatus.Withdrawn;
+                await SaveAllAsync(ct);
+                break;
+            case "DeleteImage":
+                await _service.UploadImageAsync(camp.Id, Stream.Null, "camp.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+                imageId = (await CampsDb.CampImages.SingleAsync(ct)).Id;
+                break;
+        }
+        AuditLog.ClearReceivedCalls();
+
+        switch (action)
+        {
+            case "OptIn": await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, ct); break;
+            case "UpdateSeason": await _service.UpdateSeasonAsync(camp.Id, season.Id, MakeSeasonData(), actorUserId: TestActorId, ct); break;
+            case "Withdraw": await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
+            case "SetStatus": await _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, ct); break;
+            case "Reactivate": await _service.ReactivateSeasonAsync(season.Id, actorUserId: TestActorId, ct); break;
+            case "UpdateCamp":
+                await _service.UpdateCampAsync(new CampUpdateInput(camp.Id, "edited@camp.com", "+34600000000",
+                    null, null, false, 1, false, season.Id, "Changed Name", MakeSeasonData()), actorUserId: TestActorId, ct);
+                break;
+            case "DeleteCamp": await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct); break;
+            case "UploadImage": await _service.UploadImageAsync(camp.Id, Stream.Null, "camp.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct); break;
+            case "DeleteImage": await _service.DeleteImageAsync(camp.Id, imageId, actorUserId: TestActorId, ct); break;
+            case "ChangeName": await _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Changed Name", actorUserId: TestActorId, ct); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action));
+        }
+
+        var entries = AuditLog.ReceivedCalls().Select(c => c.GetArguments()).ToList();
+        entries.Should().Contain(e => Equals(e[0], expectedAction));
+        entries.Should().OnlyContain(e => e[4] is Guid && Equals(e[4], TestActorId));
+    }
+
+    [HumansFact]
+    public async Task AutomatedSeasonOptIn_KeepsJobAttribution()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var settings = await CampsDb.CampSettings.SingleAsync(ct);
+        settings.OpenSeasons.Add(2027);
+        await SaveAllAsync(ct);
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: null, ct);
+
+        result.ErrorKey.Should().BeNull();
+        var entry = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        entry[0].Should().Be(AuditAction.CampSeasonCreated);
+        entry[4].Should().Be(nameof(CampService));
+    }
+
     [HumansFact]
     public async Task CachedCamp_PriorSeasonLead_CanManagePendingRenewal()
     {
@@ -86,7 +169,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var leadId = Guid.NewGuid();
         var created = (await _service.CreateCampAsync(leadId, "Returning Camp", "camp@example.com",
             "+34600000000", null, null, false, 1, MakeSeasonData(), null, 2025, ct)).Value!;
-        await _service.OptInToSeasonAsync(created.Id, 2026, ct);
+        await _service.OptInToSeasonAsync(created.Id, 2026, actorUserId: TestActorId, ct);
 
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(CachingCampService.InnerServiceKey, (_, _) => _service);
@@ -363,7 +446,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var seasonsBefore = await CampsDb.CampSeasons.CountAsync(ct);
         var auditCallsBefore = AuditLog.ReceivedCalls().Count();
 
-        var act = () => _service.OptInToSeasonAsync(missingCamp ? Guid.NewGuid() : camp.Id, year, ct);
+        var act = () => _service.OptInToSeasonAsync(missingCamp ? Guid.NewGuid() : camp.Id, year, actorUserId: TestActorId, ct);
 
         (await act()).ErrorKey.Should().Be(key);
         (await CampsDb.CampSeasons.CountAsync(ct)).Should().Be(seasonsBefore);
@@ -383,7 +466,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, Xunit.TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Active);
         newSeason.Year.Should().Be(2027);
@@ -402,7 +485,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, Xunit.TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
@@ -418,7 +501,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, Xunit.TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
@@ -930,7 +1013,7 @@ public sealed class CampServiceTests : CampsTestHarness
         beforeUpload.Single(info => info.Id == camp.Id).Images.Should().BeEmpty();
 
         await using var imageStream = new MemoryStream([1, 2, 3, 4]);
-        var uploadResult = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, Xunit.TestContext.Current.CancellationToken);
+        var uploadResult = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         uploadResult.Succeeded.Should().BeTrue();
 
@@ -951,7 +1034,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.ChangeSeasonNameAsync(camp.Id, season.Id, "New Name", Xunit.TestContext.Current.CancellationToken);
+        await _service.ChangeSeasonNameAsync(camp.Id, season.Id, "New Name", actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Name.Should().Be("New Name");
@@ -975,7 +1058,7 @@ public sealed class CampServiceTests : CampsTestHarness
         season.NameLockDate = new LocalDate(2026, 3, 1);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Too Late", Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Too Late", actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
         (await act()).ErrorKey.Should().Be("Camp_Edit_NameLocked");
     }
 
@@ -1029,7 +1112,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCamp();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
-        await _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
 
@@ -1084,7 +1167,7 @@ public sealed class CampServiceTests : CampsTestHarness
         {
             case "approve": await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct); break;
             case "reject": await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct); break;
-            default: await _service.WithdrawSeasonAsync(camp.Id, season.Id, ct); break;
+            default: await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
         }
         var args = Notifier.ReceivedCalls().Single().GetArguments();
         var title = (string)args[3]!;
@@ -1711,7 +1794,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new IOException("First language group unavailable")), Task.CompletedTask);
 
-        await _service.WithdrawSeasonAsync(camp.Id, season.Id, ct);
+        await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct);
 
         var notices = Notifier.ReceivedCalls()
             .Where(call => call.GetArguments()[0] is NotificationSource source && source == NotificationSource.CampMembershipSeasonClosed)
@@ -1744,7 +1827,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
         Notifier.ClearReceivedCalls();
 
-        await _service.WithdrawSeasonAsync(camp.Id, season.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         var member = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         member.Status.Should().Be(CampMemberStatus.Pending);
@@ -1771,7 +1854,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(CampSeasonStatus.Full);
@@ -1779,13 +1862,13 @@ public sealed class CampServiceTests : CampsTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampSeasonStatusChanged,
             nameof(CampSeason), season.Id,
-            Arg.Any<string>(), "CampService", camp.Id, nameof(Camp));
+            Arg.Any<string>(), TestActorId, camp.Id, nameof(Camp));
     }
 
     [HumansFact]
     public async Task SetSeasonStatusAsync_SeasonNotFound_ReturnsRefusal()
     {
-        var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), Guid.NewGuid(), CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), Guid.NewGuid(), CampSeasonStatus.Full, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_RoleSeasonNotFound");
     }
@@ -1800,7 +1883,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         // Same scoping pattern as ApproveCampMemberAsync/RejectCampMemberAsync/RemoveCampMemberAsync:
         // a caller authorized against a different camp must not be able to flip this season's status.
-        var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), season.Id, CampSeasonStatus.Full, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_SeasonWrongCamp");
     }
@@ -1813,7 +1896,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var action = () => _service.UpdateSeasonAsync(Guid.NewGuid(), season.Id, MakeSeasonData(), Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.UpdateSeasonAsync(Guid.NewGuid(), season.Id, MakeSeasonData(), actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_SeasonWrongCamp");
     }
@@ -1834,7 +1917,7 @@ public sealed class CampServiceTests : CampsTestHarness
         AuditLog.ClearReceivedCalls();
         Notifier.ClearReceivedCalls();
 
-        var result = await _service.WithdrawSeasonAsync(camp.Id, season.Id, ct);
+        var result = await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct);
 
         result.ErrorKey.Should().Be("Camps_Flash_SeasonWithdrawRequiresOpen");
         (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(s => s.Id == season.Id, ct)).Should().BeEquivalentTo(before);
@@ -1850,7 +1933,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var action = () => _service.WithdrawSeasonAsync(Guid.NewGuid(), season.Id, Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.WithdrawSeasonAsync(Guid.NewGuid(), season.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_SeasonWrongCamp");
 
@@ -1866,7 +1949,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var action = () => _service.ChangeSeasonNameAsync(Guid.NewGuid(), season.Id, "Hijacked", Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.ChangeSeasonNameAsync(Guid.NewGuid(), season.Id, "Hijacked", actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_SeasonWrongCamp");
     }
@@ -1880,12 +1963,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.AsNoTracking().SingleAsync(s => s.CampId == camp.Id, ct);
         var failure = new InvalidOperationException("Private audit-store diagnostic");
         AuditLog.When(a => a.LogAsync(AuditAction.CampUpdated, Arg.Any<string>(), camp.Id,
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
             .Do(_ => throw failure);
         var input = new CampUpdateInput(camp.Id, camp.ContactEmail, camp.ContactPhone, null, null,
             false, 1, false, season.Id, season.Name, MakeSeasonData());
 
-        var act = () => _service.UpdateCampAsync(input, ct);
+        var act = () => _service.UpdateCampAsync(input, actorUserId: TestActorId, ct);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
@@ -1906,7 +1989,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var result = await _service.UpdateCampAsync(
             new CampUpdateInput(
                 campA.Id, "hijacked@camp.com", "+34999999999", null, null,
-                true, 9, true, seasonB.Id, "Hijacked", MakeSeasonData()),
+                true, 9, true, seasonB.Id, "Hijacked", MakeSeasonData()), actorUserId: TestActorId,
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -1960,9 +2043,9 @@ public sealed class CampServiceTests : CampsTestHarness
             Clock, NullLogger<CampService>.Instance);
 
         if (deleteCamp)
-            await service.DeleteCampAsync(camp.Id, cancellation.Token);
+            await service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, cancellation.Token);
         else
-            await service.DeleteImageAsync(camp.Id, image.Id, cancellation.Token);
+            await service.DeleteImageAsync(camp.Id, image.Id, actorUserId: TestActorId, cancellation.Token);
 
         auditBeforeCleanup.Should().BeTrue();
         cleanupFinished.Should().BeTrue();
@@ -1980,7 +2063,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         Func<Task<CampUpdateResult>> act = image
-            ? () => _service.DeleteImageAsync(Guid.NewGuid(), Guid.NewGuid(), ct)
+            ? () => _service.DeleteImageAsync(Guid.NewGuid(), Guid.NewGuid(), actorUserId: TestActorId, ct)
             : () => _service.RemoveHistoricalNameAsync(Guid.NewGuid(), Guid.NewGuid(), ct);
         (await act()).ErrorKey.Should().Be(key);
         _fileStorage.Files.Should().BeEmpty();
@@ -1993,10 +2076,10 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCamp();
         await ApproveLatestSeasonAsync(camp.Id);
         await using var imageStream = new MemoryStream([1, 2, 3, 4]);
-        var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, Xunit.TestContext.Current.CancellationToken);
+        var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
         upload.Succeeded.Should().BeTrue();
 
-        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_ImageWrongCamp");
 
@@ -2033,7 +2116,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
 
-        var act = () => service.UploadImageAsync(Guid.NewGuid(), image, "camp.png", "image/png", image.Length, ct);
+        var act = () => service.UploadImageAsync(Guid.NewGuid(), image, "camp.png", "image/png", image.Length, actorUserId: TestActorId, ct);
 
         var thrown = await act.Should().ThrowAsync<IOException>();
         thrown.Which.Should().BeSameAs(original);
@@ -2051,7 +2134,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var fileName = new string('a', 253) + ".jpg";
 
         var result = await _service.UploadImageAsync(
-            camp.Id, Stream.Null, fileName, "image/jpeg", 1,
+            camp.Id, Stream.Null, fileName, "image/jpeg", 1, actorUserId: TestActorId,
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2069,7 +2152,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
 
-        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, fileName, contentType, length,
+        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, fileName, contentType, length, actorUserId: TestActorId,
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2084,12 +2167,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, ct);
-        var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, ct);
-        var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, ct);
-        await _service.DeleteImageAsync(camp.Id, middle.Image!.Id, ct);
+        var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        await _service.DeleteImageAsync(camp.Id, middle.Image!.Id, actorUserId: TestActorId, ct);
 
-        var appended = await _service.UploadImageAsync(camp.Id, Stream.Null, "appended.jpg", "image/jpeg", 1, ct);
+        var appended = await _service.UploadImageAsync(camp.Id, Stream.Null, "appended.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
 
         appended.Succeeded.Should().BeTrue();
         appended.Image!.SortOrder.Should().Be(3);
@@ -2108,12 +2191,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCamp();
         for (var i = 0; i < 5; i++)
         {
-            var accepted = await _service.UploadImageAsync(camp.Id, Stream.Null, $"camp{i}.jpg", "image/jpeg", 1,
+            var accepted = await _service.UploadImageAsync(camp.Id, Stream.Null, $"camp{i}.jpg", "image/jpeg", 1, actorUserId: TestActorId,
                 Xunit.TestContext.Current.CancellationToken);
             accepted.Succeeded.Should().BeTrue();
         }
 
-        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, "extra.jpg", "image/jpeg", 1,
+        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, "extra.jpg", "image/jpeg", 1, actorUserId: TestActorId,
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2542,7 +2625,7 @@ public sealed class CampServiceTests : CampsTestHarness
             _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
-        var deletion = service.DeleteCampAsync(camp.Id, Xunit.TestContext.Current.CancellationToken);
+        var deletion = service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
         _earlyEntryInvalidator.DidNotReceive().InvalidateAll();
         if (saveFails) pending.SetException(failure);
         else pending.SetResult([]);
@@ -2562,7 +2645,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCamp();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, ct);
 
-        await _service.DeleteCampAsync(camp.Id, ct);
+        await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct);
 
         // The Camps section clears polygon rows through ICityPlanningService instead of orphaning them.
         await _cityPlanningService.Received(1).DeleteCampPolygonsForSeasonsAsync(
