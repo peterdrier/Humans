@@ -285,6 +285,7 @@ internal sealed class ShiftManagementService(
         await repo.UpdateRotaTeamAssignmentAsync(
             rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
         viewInvalidator.InvalidateRota(rota.Id);
+        earlyEntryInvalidator.InvalidateAll();
 
         await auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -760,6 +761,7 @@ internal sealed class ShiftManagementService(
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
+        earlyEntryInvalidator.InvalidateAll();
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 

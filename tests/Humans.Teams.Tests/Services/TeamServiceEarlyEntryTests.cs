@@ -86,15 +86,17 @@ public sealed class TeamServiceEarlyEntryTests
         result.GroupWarning.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task UpdateTeam_Deactivating_EvictsEarlyEntryCache()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateTeam_NameOrActiveChange_EvictsEarlyEntryCache(bool rename)
     {
         var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
         _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(TeamUpdateConflict.None);
 
         await _service.UpdateTeamAsync(
-            team.Id, team.Name, null, false, false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            team.Id, rename ? "Beta" : team.Name, null, false, rename, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _eeInvalidator.Received(1).InvalidateAll();
     }

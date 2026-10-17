@@ -497,6 +497,8 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
+        if (signup.Shift.IsEarlyEntry)
+            earlyEntryInvalidator.InvalidateUser(signup.UserId);
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,

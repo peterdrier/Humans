@@ -72,7 +72,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -312,6 +312,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
+        SeedSignup(shift, SeedUser("Builder"), SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
@@ -339,6 +340,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         updated.MaxVolunteers.Should().Be(6);
         updated.AdminOnly.Should().BeTrue();
         updated.UpdatedAt.Should().Be(TestNow);
+        EarlyEntryInvalidator.Received(1).InvalidateAll();
     }
 
     [HumansFact]
@@ -1239,7 +1241,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     public async Task MoveRotaToTeamAsync_WritesRotaMovedToTeamAuditEntry()
     {
         // Arrange: rota currently on team A, target team B (no parent).
-        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
+        SeedSignup(SeedShift(rota, -4), SeedUser("Builder"), SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var targetTeamId = Guid.NewGuid();
@@ -1265,6 +1268,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Be("Rota 'Test Rota' moved to Target Department.");
         result.RedirectSlug.Should().Be("target-dept");
+        EarlyEntryInvalidator.Received(1).InvalidateAll();
 
         // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
         await AuditLog.Received(1).LogAsync(

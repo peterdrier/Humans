@@ -102,7 +102,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Notifier,
             AdminAuthorization,
             _viewInvalidator,
-            Substitute.For<IEarlyEntryInvalidator>(),
+            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
@@ -936,15 +936,16 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Contain("before the shift ends");
     }
 
-    [HumansFact(Timeout = 10000)]
-    public async Task MarkNoShow_AfterShiftEnd_SetsNoShow()
+    [HumansTheory(Timeout = 10000)]
+    [InlineData(0, false)]
+    [InlineData(-1, true)]
+    public async Task MarkNoShow_AfterShiftEnd_SetsNoShow(int dayOffset, bool affectsEarlyEntry)
     {
-        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
-        // Make shift end in the past:
-        // Gate opening = 2026-06-14, shift day 0, start 08:00, 2h → ends 10:00 local = 08:00 UTC
-        // TestNow = 2026-06-15 12:00 UTC → well past shift end
+        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        // Both the event-day and build-day shift finish before TestNow.
         es.GateOpeningDate = new LocalDate(2026, 6, 14);
-        shift.DayOffset = 0;
+        rota.Period = affectsEarlyEntry ? RotaPeriod.Build : RotaPeriod.Event;
+        shift.DayOffset = dayOffset;
         shift.StartTime = new LocalTime(8, 0);
         shift.Duration = Duration.FromHours(2);
 
@@ -957,6 +958,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.NoShow);
+        EarlyEntryInvalidator.Received(affectsEarlyEntry ? 1 : 0).InvalidateUser(userId);
     }
 
     [HumansTheory]

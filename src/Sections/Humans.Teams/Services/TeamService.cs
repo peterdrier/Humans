@@ -446,7 +446,8 @@ internal sealed class TeamService(
             ? await repo.GetUserIdsWithManagementOnTeamAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
-        if (!string.Equals(team.Name, name, StringComparison.Ordinal))
+        var nameChanged = !string.Equals(team.Name, name, StringComparison.Ordinal);
+        if (nameChanged)
         {
             var newSlug = SlugHelper.GenerateSlug(name);
             if (!string.IsNullOrEmpty(newSlug) && !ReservedTeamSlugs.Contains(newSlug)
@@ -477,7 +478,7 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
-        var earlyEntryChanged = activeChanged;
+        var earlyEntryChanged = activeChanged || nameChanged;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
@@ -497,7 +498,7 @@ internal sealed class TeamService(
         }
         finally
         {
-            // Evict after the save attempt: a read during it still sees the old flag.
+            // Evict after the save attempt: a read during it still sees the old grant data.
             // A failed completion can also follow a committed write.
             if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
         }
