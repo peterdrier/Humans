@@ -137,6 +137,10 @@
     <div class="mb-3">
         <div class="text-muted mb-1" style="font-size: 0.75rem;">
             <strong>@msg.SenderName</strong> · @msg.CreatedAt.ToMonthDayTime()
+            @if (msg.EmailEnqueuePending)
+            {
+                <span class="text-warning"> · Email waiting to be queued; automatic retry scheduled.</span>
+            }
         </div>
         <div class="p-2 rounded border-start border-3 @borderClass bg-body-tertiary">@Html.SanitizedMarkdown(msg.Content)</div>
     </div>

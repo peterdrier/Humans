@@ -3,6 +3,7 @@ using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Npgsql;
 
 namespace Humans.Email.Data;
 
@@ -68,11 +69,23 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
             .CountAsync(m => m.SentAt == null && m.RetryCount < maxRetries, ct);
     }
 
-    public async Task AddAsync(EmailOutboxMessage message, CancellationToken ct = default)
+    public async Task<bool> AddAsync(EmailOutboxMessage message, CancellationToken ct = default, bool idempotent = false)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (idempotent && await ctx.EmailOutboxMessages.AnyAsync(m => m.Id == message.Id, ct))
+            return false;
         ctx.EmailOutboxMessages.Add(message);
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (idempotent && ex.InnerException is PostgresException
+               { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_email_outbox_messages" })
+        {
+            // Another handoff of this logical delivery won the primary-key insert.
+            return false;
+        }
     }
 
     public async Task<string?> RetryAsync(Guid id, CancellationToken ct = default)

@@ -44,6 +44,7 @@ namespace Humans.Email.Contracts;
 /// in order to retry with it.
 /// </param>
 /// <param name="Culture">Recipient/template culture for the shared footer; null falls back to English.</param>
+/// <param name="DeliveryId">Optional stable logical delivery id. Repeated persisted enqueues reuse the existing outbox row (first payload wins), until that row is removed by retention or erasure. Ignored for DoNotPersist.</param>
 public sealed record EmailMessage(
     string RecipientEmail,
     string? RecipientName,
@@ -56,4 +57,5 @@ public sealed record EmailMessage(
     Guid? CampaignGrantId = null,
     Guid? CampaignId = null,
     bool DoNotPersist = false,
-    string? Culture = null);
+    string? Culture = null,
+    Guid? DeliveryId = null);

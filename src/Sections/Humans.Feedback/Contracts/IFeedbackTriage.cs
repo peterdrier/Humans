@@ -24,7 +24,7 @@ public interface IFeedbackTriage : IApplicationService
 
     Task<FeedbackReportInfo?> GetFeedbackByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>Posts an admin reply, returning an explicit missing-report result when it is gone.</summary>
+    /// <summary>Posts a durable admin reply, returning an explicit missing-report result when it is gone. Pending email handoff is exposed on the returned message and retried automatically.</summary>
     Task<FeedbackMutationResult> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default);

@@ -28,6 +28,12 @@ internal interface IFeedbackRepository : IRepository
     /// </summary>
     Task<FeedbackReport?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>Loads replies still awaiting durable Email handoff; historical null flags are excluded.</summary>
+    Task<IReadOnlyList<FeedbackMessage>> GetPendingReplyEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>Clears only the owned reply's pending flag after handoff; false if absent or already complete.</summary>
+    Task<bool> CompleteReplyEmailAsync(Guid messageId, CancellationToken ct = default);
+
     /// <summary>
     /// Loads a feedback report by id (no navigation included) for mutation
     /// via <see cref="SaveTrackedReportAsync"/> or

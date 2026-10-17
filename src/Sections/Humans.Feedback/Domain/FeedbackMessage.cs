@@ -17,5 +17,8 @@ internal sealed class FeedbackMessage
 
     public string Content { get; set; } = string.Empty;
 
+    /// <summary>True until the reply is handed to Email; null marks historical messages.</summary>
+    public bool? EmailEnqueuePending { get; set; }
+
     public Instant CreatedAt { get; init; }
 }

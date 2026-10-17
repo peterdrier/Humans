@@ -23,7 +23,7 @@ namespace Humans.Feedback.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
+            modelBuilder.Entity("Humans.Feedback.Domain.FeedbackMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -36,6 +36,9 @@ namespace Humans.Feedback.Data.Migrations
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("EmailEnqueuePending")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("FeedbackReportId")
                         .HasColumnType("uuid");
@@ -52,7 +55,7 @@ namespace Humans.Feedback.Data.Migrations
                     b.ToTable("feedback_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
+            modelBuilder.Entity("Humans.Feedback.Domain.FeedbackReport", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -157,9 +160,9 @@ namespace Humans.Feedback.Data.Migrations
                     b.ToTable("feedback_reports", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
+            modelBuilder.Entity("Humans.Feedback.Domain.FeedbackMessage", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.FeedbackReport", "FeedbackReport")
+                    b.HasOne("Humans.Feedback.Domain.FeedbackReport", "FeedbackReport")
                         .WithMany("Messages")
                         .HasForeignKey("FeedbackReportId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -168,7 +171,7 @@ namespace Humans.Feedback.Data.Migrations
                     b.Navigation("FeedbackReport");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
+            modelBuilder.Entity("Humans.Feedback.Domain.FeedbackReport", b =>
                 {
                     b.Navigation("Messages");
                 });

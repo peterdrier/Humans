@@ -32,7 +32,7 @@ builder,
 `INotificationEmitter`, `IAuditLogService`, and `IFileStorage`
 (screenshot blob deletion during GDPR erasure). Implements `IFeedbackService`, `IFeedbackTriage`
 (Backdoor's machine-API triage surface, nobodies-collective/Humans#1128),
-`IUserDataContributor`, `IUserMerge`. Owns and caches `FeedbackBadgeCount`
+`IUserDataContributor`, `IUserMerge`, `IRecurringJob` (minute retry of owned pending reply emails). Reply creation commits its pending flag with the message and report timestamps; email handoff clears only that message flag through the repository. Owns and caches `FeedbackBadgeCount`
 inside `GetActionableCountAsync`.
 
 ### FeedbackEmails (Scoped, internal)

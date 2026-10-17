@@ -94,7 +94,7 @@ internal sealed class OutboxEmailService(
 
         var entity = new EmailOutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = message.DeliveryId ?? Guid.NewGuid(),
             RecipientEmail = message.RecipientEmail,
             RecipientName = message.RecipientName,
             Subject = message.Subject,
@@ -109,7 +109,8 @@ internal sealed class OutboxEmailService(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        await outboxRepo.AddAsync(entity, cancellationToken);
+        if (!await outboxRepo.AddAsync(entity, cancellationToken, idempotent: message.DeliveryId.HasValue))
+            return;
 
         metrics.RecordEmailQueued(message.TemplateName);
         logger.LogInformation("Email queued: {TemplateName} to {Recipient}", message.TemplateName, message.RecipientEmail);

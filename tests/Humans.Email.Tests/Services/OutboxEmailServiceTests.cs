@@ -97,6 +97,25 @@ public sealed class OutboxEmailServiceTests : IDisposable
             campaignGrantId, campaignId, doNotPersist);
 
     [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SendAsync_StableDeliveryId_ReusesOnlyExplicitlyIdentifiedDeliveries(bool stable)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var message = Message() with { DeliveryId = stable ? Guid.NewGuid() : null };
+        await _service.SendAsync(message, ct);
+        await _service.SendAsync(message with { Subject = "Changed on retry" }, ct);
+        var rows = await _emailDb.EmailOutboxMessages.AsNoTracking().ToListAsync(ct);
+        rows.Should().HaveCount(stable ? 1 : 2);
+        if (stable)
+        {
+            rows[0].Id.Should().Be(message.DeliveryId!.Value);
+            rows[0].Subject.Should().Be(message.Subject);
+        }
+        _metrics.Received(stable ? 1 : 2).RecordEmailQueued(message.TemplateName);
+    }
+
+    [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]

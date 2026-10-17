@@ -3,6 +3,7 @@ using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Humans.Email.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using Xunit;
@@ -550,6 +551,34 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData("23505", "PK_email_outbox_messages", true, true)]
+    [InlineData("23505", "Other_constraint", true, false)]
+    [InlineData("23503", "PK_email_outbox_messages", true, false)]
+    [InlineData("23505", "PK_email_outbox_messages", false, false)]
+    public async Task AddAsync_OnlyTreatsTheIdempotentPrimaryKeyAsPriorHandoff(
+        string state, string constraint, bool idempotent, bool duplicate)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", state, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<EmailDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
+        Func<Task<bool>> insert = () => repo.AddAsync(BuildMessage(), Xunit.TestContext.Current.CancellationToken, idempotent);
+        if (duplicate)
+            (await insert()).Should().BeFalse();
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class FailedInsert(Exception failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            => throw failure;
+    }
 
     private EmailOutboxMessage BuildMessage(
         Guid? userId = null,

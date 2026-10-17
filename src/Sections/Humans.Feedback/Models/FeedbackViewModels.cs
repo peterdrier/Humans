@@ -74,6 +74,7 @@ internal sealed class FeedbackMessageViewModel
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public bool IsReporter { get; set; }
+    public bool EmailEnqueuePending { get; set; }
 }
 
 internal sealed class UpdateFeedbackStatusModel

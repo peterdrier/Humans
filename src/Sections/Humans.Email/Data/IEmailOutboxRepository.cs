@@ -71,9 +71,11 @@ internal interface IEmailOutboxRepository : IRepository
     /// <summary>
     /// Enqueues a new message. The caller builds the entity (including
     /// <see cref="EmailOutboxMessage.Status"/> and <see cref="EmailOutboxMessage.CreatedAt"/>);
-    /// the repository is just the persistence gate.
+    /// the repository is just the persistence gate. With idempotent=true, an existing primary
+    /// key is a successful prior handoff: returns false without replacing its payload.
+    /// Returns true only for a new row; unrelated persistence failures propagate.
     /// </summary>
-    Task AddAsync(EmailOutboxMessage message, CancellationToken ct = default);
+    Task<bool> AddAsync(EmailOutboxMessage message, CancellationToken ct = default, bool idempotent = false);
 
     /// <summary>
     /// Resets a message back to <see cref="EmailOutboxStatus.Queued"/> so the
