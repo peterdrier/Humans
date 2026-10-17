@@ -239,10 +239,13 @@ def cmd_commit(a):
     (its own file — a line in the phase log would become a cost-report row)."""
     if not git("diff", "--cached", "--name-only"):
         sys.exit("nothing staged: `git add` first — doctor.py commit stages nothing")
-    must, advisory = prose_gate_hits(git("diff", "-U0", "--cached"), staged_file)
+    # A merge commit is judged against the merged-in side, so main's own prose is not this run's.
+    merging = subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], capture_output=True).returncode == 0
+    against = ["--cached", "MERGE_HEAD"] if merging else ["--cached"]
+    must, advisory = prose_gate_hits(git("diff", "-U0", *against), staged_file)
     with open(os.path.join(rundir(), "gates.log"), "a", encoding="utf-8") as f:
         f.write(f"{now()} prose-gate must-fix={len(must)} advisory={len(advisory)}\n")
-    prose_gate(["--cached"], staged_file)
+    prose_gate(against, staged_file)
     msg = ["-F", a.file] if a.file else ["-m", a.message]
     subprocess.run(["git", "commit", *msg], check=True)
 
