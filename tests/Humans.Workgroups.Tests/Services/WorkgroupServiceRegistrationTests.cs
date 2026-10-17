@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
@@ -236,5 +237,19 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         await using var ctx = OpenContext();
         var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
         saved.Slug.Length.Should().BeLessThanOrEqualTo(96);
+    }
+
+    [HumansTheory]
+    [InlineData("Admin", "admin-2")]
+    [InlineData("Apply", "apply-2")]
+    public async Task Apply_WithAReservedRouteName_GetsASuffixedSlug(string name, string expectedSlug)
+    {
+        var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+            name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
+            WorkgroupAudience.Board, TargetDate: null, DiscordChannelUrl: null,
+            SecondCoordinatorUserId: null), Ct)).Value;
+
+        await using var ctx = OpenContext();
+        (await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct)).Slug.Should().Be(expectedSlug);
     }
 }

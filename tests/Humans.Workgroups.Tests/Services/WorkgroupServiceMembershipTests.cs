@@ -717,4 +717,28 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansTheory]
+    [InlineData(nameof(WorkgroupLogKind.Registered))]
+    [InlineData(nameof(WorkgroupLogKind.MemberJoined))]
+    public async Task SystemLogEntries_CannotBeEditedOrDeleted(string kindName)
+    {
+        var kind = Enum.Parse<WorkgroupLogKind>(kindName);
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var entry = await AddLogEntryAsync(workgroup.Id, kind);
+
+        var edit = await NewService().UpdateLogEntryAsync(
+            entry.Id, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, entry.OccurredOn, "Rewritten", "Rewritten body"), Ct);
+        var delete = await NewService().DeleteLogEntryAsync(entry.Id, member, Ct);
+
+        edit.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        delete.Refusal!.Key.Should().Be(WorkgroupErrorKeys.SystemLogEntry);
+        await using var ctx = OpenContext();
+        var stored = await ctx.LogEntries.SingleAsync(e => e.Id == entry.Id, Ct);
+        stored.Kind.Should().Be(kind);
+        stored.Title.Should().BeNull();
+        stored.Body.Should().BeNull();
+    }
 }
