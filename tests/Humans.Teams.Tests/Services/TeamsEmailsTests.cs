@@ -52,9 +52,10 @@ public sealed class TeamsEmailsTests
     public void AddedToTeam_RendersResourcesWithAndWithoutLinks()
     {
         var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha",
-            [("Handbook", null), ("Drive", "https://drive.example/x")], "en");
+            [("Handbook", null), ("Drive", "https://drive.google.com/drive/folders/example?usp=sharing&resourcekey=0_key")], "en");
 
-        msg.HtmlBody.Should().Contain("<li><a href=\"https://drive.example/x\">Drive</a></li>");
+        msg.HtmlBody.Should().Contain(
+            "<li><a href=\"https://drive.google.com/drive/folders/example?usp=sharing&amp;resourcekey=0_key\">Drive</a></li>");
         msg.HtmlBody.IndexOf("Drive", StringComparison.Ordinal)
             .Should().BeLessThan(msg.HtmlBody.IndexOf("Handbook", StringComparison.Ordinal));
         msg.HtmlBody.Should().Contain("<li>Handbook</li>");
