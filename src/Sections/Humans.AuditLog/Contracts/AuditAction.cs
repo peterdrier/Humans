@@ -388,4 +388,5 @@ public enum AuditAction
     CampNameLockDateChanged,
     CalendarFeedTokenCreated,
     CalendarFeedTokenRotated,
+    SyncModeChanged,
 }

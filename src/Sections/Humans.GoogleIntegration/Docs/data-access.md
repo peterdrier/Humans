@@ -95,7 +95,7 @@ Repository: `ISyncSettingsRepository`.
 |-------|-----|
 | SyncServiceSettings | R/W |
 
-No cross-section calls, no cache.
+Calls `IAuditLogService` after each successful mode save, using the persisted row id and admin actor. No cache.
 
 ### GoogleSyncOutboxService (Scoped)
 

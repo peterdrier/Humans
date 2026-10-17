@@ -364,4 +364,5 @@
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Paramètres de la ressource Google mis à jour</value></data>
   <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Jeton du flux calendrier créé</value></data>
   <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Jeton du flux calendrier renouvelé</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Mode de synchronisation modifié</value></data>
 </root>

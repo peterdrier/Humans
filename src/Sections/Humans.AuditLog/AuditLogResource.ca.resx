@@ -364,4 +364,5 @@
   <data name="Enum_AuditAction_GoogleResourceUpdated" xml:space="preserve"><value>Configuració del recurs de Google actualitzada</value></data>
   <data name="Enum_AuditAction_CalendarFeedTokenCreated" xml:space="preserve"><value>Token del calendari creat</value></data>
   <data name="Enum_AuditAction_CalendarFeedTokenRotated" xml:space="preserve"><value>Token del calendari renovat</value></data>
+  <data name="Enum_AuditAction_SyncModeChanged" xml:space="preserve"><value>Mode de sincronització canviat</value></data>
 </root>

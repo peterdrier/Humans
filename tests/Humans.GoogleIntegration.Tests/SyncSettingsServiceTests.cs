@@ -1,4 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.AuditLog.Contracts;
+using NSubstitute;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -14,6 +16,7 @@ public class SyncSettingsServiceTests : IDisposable
     private readonly TestDbContextFactory<GoogleIntegrationDbContext> _factory;
     private readonly FakeClock _clock;
     private readonly SyncSettingsService _service;
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     public SyncSettingsServiceTests()
     {
@@ -26,7 +29,7 @@ public class SyncSettingsServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         var repository = new SyncSettingsRepository(_factory);
-        _service = new SyncSettingsService(repository, _clock);
+        _service = new SyncSettingsService(repository, _clock, _audit);
     }
 
     public void Dispose()
@@ -87,6 +90,12 @@ public class SyncSettingsServiceTests : IDisposable
         updated.SyncMode.Should().Be(SyncMode.AddAndRemove);
         updated.UpdatedByUserId.Should().Be(actorId);
         updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        audit[0].Should().Be(AuditAction.SyncModeChanged);
+        audit[1].Should().Be("SyncServiceSettings");
+        audit[2].Should().Be(updated.Id);
+        audit[3].Should().Be("GoogleGroups sync mode set to AddAndRemove");
+        audit[4].Should().Be(actorId);
     }
 
     [HumansFact]
@@ -99,6 +108,7 @@ public class SyncSettingsServiceTests : IDisposable
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Discord*");
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

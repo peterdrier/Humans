@@ -32,11 +32,11 @@ internal interface ISyncSettingsRepository : IRepository
 
     /// <summary>
     /// Atomically updates the sync mode for <paramref name="serviceType"/> and
-    /// records the actor and timestamp. Returns <c>false</c> when no row exists
+    /// records the actor and timestamp. Returns the saved row, or <c>null</c> when no row exists
     /// for the given service — callers should treat this as a configuration
     /// error and surface it rather than silently succeeding.
     /// </summary>
-    Task<bool> UpdateModeAsync(
+    Task<SyncServiceSettings?> UpdateModeAsync(
         SyncServiceType serviceType,
         SyncMode mode,
         Guid actorUserId,
