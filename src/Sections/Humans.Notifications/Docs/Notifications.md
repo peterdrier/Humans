@@ -81,6 +81,8 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 ## Invariants
 
+- Section-owned resource keys use the `Notifications_` prefix in all six cultures.
+
 - Known-recipient emission and shared role broadcasts use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
   oversized title is retained at the start of the body before the body is excerpted.
