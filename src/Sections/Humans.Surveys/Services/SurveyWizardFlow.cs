@@ -28,13 +28,23 @@ internal sealed record AnswerState(
 }
 
 /// <summary>
-/// Pure, stateless page-navigation logic over the ordered question graph. Sits on top of
+/// Pure, stateless wizard rules for public-entry privacy and page navigation. Sits on top of
 /// <see cref="SurveyBranchingEvaluator"/>: a page is reachable only when at least one of its
 /// questions is visible under the answers gathered so far. Operates on builder DTOs
 /// (<see cref="QuestionInput"/>) so the controller passes them straight through.
 /// </summary>
 internal static class SurveyWizardFlow
 {
+    /// <summary>Resolve the public response tier, or refuse an absent/invalid respondent choice.</summary>
+    public static ResponseAnonymity? ResolvePublicAnonymity(
+        SurveyEditInput editable, Guid? userId, ResponseAnonymity? requested)
+    {
+        if (editable.IsAsociadoVote) return ResponseAnonymity.CompletionTracked;
+        if (!editable.AllowAnonymous) return ResponseAnonymity.Identified;
+        if (userId is null) return ResponseAnonymity.Anonymous;
+        return requested.HasValue && Enum.IsDefined(requested.Value) ? requested : null;
+    }
+
     /// <summary>Distinct page numbers present in the graph, ascending.</summary>
     public static IReadOnlyList<int> OrderedPages(IReadOnlyList<QuestionInput> questions)
         => questions.Select(q => q.PageNumber).Distinct().OrderBy(p => p).ToList();
