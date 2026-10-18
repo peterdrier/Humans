@@ -1,3 +1,6 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Humans.Workgroups.Authorization;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -265,6 +268,65 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var members = await context.Members.Where(m => m.WorkgroupId == workgroup.Id).ToListAsync(Ct);
         members.Single(m => m.UserId == originalCoordinator).Role.Should().Be(WorkgroupMemberRole.Coordinator);
         members.Single(m => m.UserId == replacement).Role.Should().Be(WorkgroupMemberRole.Member);
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(WorkgroupsController.Done), false, true)]
+    [InlineData(nameof(WorkgroupsController.Done), true, true)]
+    [InlineData(nameof(WorkgroupsController.Done), false, false)]
+    [InlineData(nameof(WorkgroupsController.RespondToComment), false, true)]
+    [InlineData(nameof(WorkgroupsController.RespondToComment), true, true)]
+    [InlineData(nameof(WorkgroupsController.RespondToComment), false, false)]
+    [InlineData(nameof(WorkgroupsController.RespondToCategory), false, true)]
+    [InlineData(nameof(WorkgroupsController.RespondToCategory), true, true)]
+    [InlineData(nameof(WorkgroupsController.RespondToCategory), false, false)]
+    public async Task MemberDecisions_RequireExplicitChoiceBeforeChangingState(string action, bool present, bool asMember)
+    {
+        var (controller, workgroup) = await BuildAsync(asMember);
+        var document = await AddDocumentAsync(workgroup.Id, categories: ["Scope"]);
+        var comment = await AddCommentAsync(document.Id);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var parameter = typeof(WorkgroupsController).GetMethod(action)!.GetParameters().Single(p => p.ParameterType.IsEnum);
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = parameter
+        });
+        var values = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (present) values[parameter.Name!] = "0";
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(values), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+
+        var result = action switch
+        {
+            nameof(WorkgroupsController.Done) => await controller.Done(workgroup.Slug, default, Ct),
+            nameof(WorkgroupsController.RespondToCategory) => await controller.RespondToCategory(workgroup.Slug, document.Id, "Scope", default, "Response", Ct),
+            _ => await controller.RespondToComment(workgroup.Slug, comment.Id, document.Id, default, "Response", Ct)
+        };
+
+        if (!asMember) result.Should().BeOfType<ForbidResult>();
+        else if (!present) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        var isDone = string.Equals(action, nameof(WorkgroupsController.Done), StringComparison.Ordinal);
+        await using var context = OpenContext();
+        (await context.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should()
+            .Be(asMember && present && isDone ? WorkgroupStatus.Dormant : WorkgroupStatus.Active);
+        (await context.Comments.FindAsync([comment.Id], Ct))!.Response.Should()
+            .Be(asMember && present && !isDone ? "Response" : null);
+        if (!asMember || !present)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            Email.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansFact]

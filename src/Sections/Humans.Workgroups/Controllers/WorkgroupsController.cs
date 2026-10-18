@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -290,7 +291,7 @@ internal sealed class WorkgroupsController(
 
     [HttpPost("{slug}/Done")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Done(string slug, WorkgroupDormantReason reason, CancellationToken ct) =>
+    public Task<IActionResult> Done(string slug, [BindRequired] WorkgroupDormantReason reason, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.MarkDoneAsync(id, userId, reason, ct),
             "Workgroups_MarkedDone", ct);
 
@@ -402,7 +403,7 @@ internal sealed class WorkgroupsController(
         string slug,
         Guid id,
         string category,
-        WorkgroupCommentDisposition disposition,
+        [BindRequired] WorkgroupCommentDisposition disposition,
         string? response,
         CancellationToken ct) =>
         ActAsync(slug,
@@ -415,7 +416,7 @@ internal sealed class WorkgroupsController(
         string slug,
         Guid id,
         Guid documentId,
-        WorkgroupCommentDisposition disposition,
+        [BindRequired] WorkgroupCommentDisposition disposition,
         string? response,
         CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.RespondToCommentAsync(id, userId, disposition, response, ct),
