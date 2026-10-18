@@ -77,6 +77,7 @@
   <data name="Store_RemoveLineFailed" xml:space="preserve"><value>No s'ha pogut eliminar la línia.</value></data>
   <data name="Store_LineRemoved" xml:space="preserve"><value>Línia eliminada.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No s'ha pogut actualitzar la contrapart.</value></data>
+  <data name="Store_CounterpartyTooLong" xml:space="preserve"><value>Les dades de facturació són massa llargues. Escurça els valors i torna-ho a provar.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contrapart actualitzada.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrat.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagat de més — s'ha de retornar al campament.</value></data>

@@ -624,6 +624,11 @@ internal sealed class Service(
         if (order.TeamId is not null)
             return RefuseMutation("Store_NonBillableText", orderId, actorUserId);
 
+        if (input.Name is { Length: > 200 } || input.VatId is { Length: > 50 }
+            || input.Address is { Length: > 500 } || input.CountryCode is { Length: > 2 }
+            || input.Email is { Length: > 320 })
+            return RefuseMutation("Store_CounterpartyTooLong", orderId, actorUserId);
+
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
         order.CounterpartyAddress = input.Address;

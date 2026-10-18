@@ -976,6 +976,63 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData("Name", 200, false)]
+    [InlineData("Name", 200, true)]
+    [InlineData("VatId", 50, false)]
+    [InlineData("VatId", 50, true)]
+    [InlineData("Address", 500, false)]
+    [InlineData("Address", 500, true)]
+    [InlineData("CountryCode", 2, false)]
+    [InlineData("CountryCode", 2, true)]
+    [InlineData("Email", 320, false)]
+    [InlineData("Email", 320, true)]
+    public async Task UpdateCounterpartyAsync_rejects_overlong_fields_without_changing_billing_details(
+        string field, int maximum, bool oversized)
+    {
+        var before = new OrderCounterpartyInput("Before", "Old VAT", "Old address", "ES", "old@example.org");
+        var originalTime = _clock.GetCurrentInstant() - Duration.FromDays(1);
+        var order = new Order
+        {
+            Id = Guid.NewGuid(), State = OrderState.Open, UpdatedAt = originalTime,
+            CounterpartyName = before.Name, CounterpartyVatId = before.VatId,
+            CounterpartyAddress = before.Address, CounterpartyCountryCode = before.CountryCode,
+            CounterpartyEmail = before.Email
+        };
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        var value = new string('x', maximum + (oversized ? 1 : 0));
+        var input = new OrderCounterpartyInput("After", "New VAT", "New address", "DE", "new@example.org");
+        input = field switch
+        {
+            "Name" => input with { Name = value },
+            "VatId" => input with { VatId = value },
+            "Address" => input with { Address = value },
+            "CountryCode" => input with { CountryCode = value },
+            _ => input with { Email = value }
+        };
+
+        var result = await _service.UpdateCounterpartyAsync(order.Id, input, Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        var actual = new OrderCounterpartyInput(order.CounterpartyName, order.CounterpartyVatId,
+            order.CounterpartyAddress, order.CounterpartyCountryCode, order.CounterpartyEmail);
+        if (oversized)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.ErrorKey.Should().Be("Store_CounterpartyTooLong");
+            actual.Should().Be(before);
+            order.UpdatedAt.Should().Be(originalTime);
+            await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            actual.Should().Be(input);
+            await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task UpdateCounterpartyAsync_returns_failure_for_expected_rejection()
     {

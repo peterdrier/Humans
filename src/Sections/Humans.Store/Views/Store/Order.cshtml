@@ -379,15 +379,15 @@ else
                 @Html.AntiForgeryToken()
                 <div class="col-md-6">
                     <label class="form-label">@Localizer["Store_ColName"]</label>
-                    <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
+                    <input type="text" name="Name" class="form-control" maxlength="200" value="@order.CounterpartyName" />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">@Localizer["Store_ColVatId"]</label>
-                    <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
+                    <input type="text" name="VatId" class="form-control" maxlength="50" value="@order.CounterpartyVatId" />
                 </div>
                 <div class="col-md-12">
                     <label class="form-label">@Localizer["Store_ColAddress"]</label>
-                    <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
+                    <input type="text" name="Address" class="form-control" maxlength="500" value="@order.CounterpartyAddress" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">@Localizer["Store_ColCountry"]</label>
@@ -395,7 +395,7 @@ else
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">@Localizer["Store_ColEmail"]</label>
-                    <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
+                    <input type="email" name="Email" class="form-control" maxlength="320" value="@order.CounterpartyEmail" />
                 </div>
                 <div class="col-md-12">
                     <button type="submit" class="btn btn-primary">@Localizer["Store_SaveCounterparty"]</button>
