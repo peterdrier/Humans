@@ -299,6 +299,60 @@ public sealed class ExpensesControllerTests
             .Which.IsCoordinator.Should().BeTrue();
     }
 
+    [HumansFact]
+    public async Task Index_LabelsLegacyReportsFromTheirBookedYear()
+    {
+        var actorId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        var first = new ExpenseReportDto
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = actorId, BudgetYearId = yearId,
+            BudgetCategoryId = categoryId, HoldedAccountNumber = 0,
+            Status = ExpenseReportStatus.Approved, PayeeName = "Submitter", PayeeIban = "",
+            Total = 10, CreatedAt = default, UpdatedAt = default, Lines = []
+        };
+        var second = first with { Id = Guid.NewGuid() };
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetForSubmitterAsync(actorId, Arg.Any<CancellationToken>()).Returns([first, second]);
+        reports.GetCoordinatorQueueAsync(actorId, Arg.Any<CancellationToken>()).Returns([]);
+        var budget = Substitute.For<IBudgetService>();
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "Current", BudgetYearStatus.Active, false, []));
+        budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
+            [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
+                [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
+        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        using var request = new CancellationTokenSource();
+        var context = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(users, reports, budget,
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(),
+            Substitute.For<IAuthorizationService>(), TestClock,
+            NullLogger<ExpensesController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Index();
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ExpensesIndexViewModel>().Which;
+        model.BookingLabels[first.Id].Should().Be("Old group / Old category");
+        model.BookingLabels[second.Id].Should().Be("Old group / Old category");
+        await budget.Received(1).GetYearByIdAsync(yearId, context.RequestAborted);
+    }
+
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>
         action switch
         {

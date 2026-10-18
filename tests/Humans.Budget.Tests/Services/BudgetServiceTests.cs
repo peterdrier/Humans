@@ -66,13 +66,17 @@ public sealed class BudgetServiceTests
             NullLogger<BudgetServiceImpl>.Instance);
     }
 
-    [HumansFact]
-    public async Task GetActiveYearAsync_CancelledRead_AbortsRepositoryQuery()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task YearReads_CancelledRead_AbortsRepositoryQuery(bool active)
     {
         using var request = new CancellationTokenSource();
         await request.CancelAsync();
 
-        var read = () => _service.GetActiveYearAsync(request.Token);
+        var read = () => active
+            ? _service.GetActiveYearAsync(request.Token)
+            : _service.GetYearByIdAsync(_yearId, request.Token);
 
         await read.Should().ThrowAsync<OperationCanceledException>();
     }

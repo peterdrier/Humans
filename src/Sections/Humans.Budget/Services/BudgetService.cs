@@ -46,9 +46,9 @@ internal sealed class BudgetService(
                 .ToList(),
             year.VendorEventId);
 
-    public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id)
+    public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var year = await repository.GetYearByIdAsync(id);
+        var year = await repository.GetYearByIdAsync(id, ct);
         return year is null ? null : ToYearDetail(year);
     }
 

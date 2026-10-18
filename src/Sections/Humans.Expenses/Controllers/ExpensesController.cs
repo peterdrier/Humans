@@ -933,7 +933,7 @@ internal sealed class ExpensesController(
 
     /// <summary>Report id → what it books to, as a label: the Holded account's label (retired
     /// accounts included, so an old report still reads), or for reports that predate the account
-    /// column, their category in the active year.</summary>
+    /// column, their category in the booked year (active year only for unpinned legacy rows).</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
@@ -941,7 +941,8 @@ internal sealed class ExpensesController(
         if (reports.Count == 0) return labels;
 
         Dictionary<int, string>? accountLabels = null;
-        Dictionary<Guid, string>? categoryLabels = null;
+        Dictionary<Guid, string>? unpinnedCategoryLabels = null;
+        var categoryLabelsByYear = new Dictionary<Guid, Dictionary<Guid, string>>();
         foreach (var report in reports)
         {
             if (report.HoldedAccountNumber != 0)
@@ -955,10 +956,23 @@ internal sealed class ExpensesController(
             }
             else
             {
-                categoryLabels ??= (await budgetService.GetActiveYearAsync())?.Groups
-                    .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
-                    .ToDictionary(x => x.Id, x => x.Display)
-                    ?? [];
+                var categoryLabels = report.BudgetYearId is { } yearId
+                    ? categoryLabelsByYear.GetValueOrDefault(yearId)
+                    : unpinnedCategoryLabels;
+                if (categoryLabels is null)
+                {
+                    var year = report.BudgetYearId is { } bookedYearId
+                        ? await budgetService.GetYearByIdAsync(bookedYearId, ct)
+                        : await budgetService.GetActiveYearAsync(ct);
+                    categoryLabels = year?.Groups
+                        .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
+                        .ToDictionary(x => x.Id, x => x.Display)
+                        ?? [];
+                    if (report.BudgetYearId is { } loadedYearId)
+                        categoryLabelsByYear[loadedYearId] = categoryLabels;
+                    else
+                        unpinnedCategoryLabels = categoryLabels;
+                }
                 labels[report.Id] = report.BudgetCategoryId is { } categoryId
                                     && categoryLabels.TryGetValue(categoryId, out var categoryLabel)
                     ? categoryLabel
