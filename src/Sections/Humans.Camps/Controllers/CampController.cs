@@ -968,17 +968,23 @@ internal sealed class CampController(
     [HttpPost("{slug}/Members/{campMemberId:guid}/EarlyEntry")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetMemberEarlyEntry(
-        string slug, Guid campMemberId, bool granted, CancellationToken cancellationToken)
+        string slug, Guid campMemberId, bool? granted, CancellationToken cancellationToken)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid || granted is not { } requestedGrant)
+        {
+            logger.LogWarning("Rejected malformed Early Entry change for member {CampMemberId} in camp {CampId} by user {UserId}", campMemberId, camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var outcome = await _campService.SetEarlyEntryAsync(
-            camp.Id, campMemberId, granted, user.Id, cancellationToken);
+            camp.Id, campMemberId, requestedGrant, user.Id, cancellationToken);
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
         if (outcome == SetEarlyEntryOutcome.Success)
-            SetSuccess(campsLocalizer[granted ? "Camps_Flash_EarlyEntryGranted" : "Camps_Flash_EarlyEntryRevoked"].Value);
+            SetSuccess(campsLocalizer[requestedGrant ? "Camps_Flash_EarlyEntryGranted" : "Camps_Flash_EarlyEntryRevoked"].Value);
         else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
             SetError(campsLocalizer["Camps_Flash_EarlyEntryCapReached"].Value);
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)

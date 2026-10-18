@@ -676,6 +676,58 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(null, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(null, false, false)]
+    [InlineData(false, true, false)]
+    public async Task EarlyEntry_MissingOrMalformedDecision_DoesNotWrite(bool? granted, bool malformed, bool canManage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(canManage ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.SetEarlyEntryAsync(camp.Id, Arg.Any<Guid>(), Arg.Any<bool>(), actorId, ct)
+            .Returns(SetEarlyEntryOutcome.Success);
+        var controller = BuildController(actorId);
+        if (malformed)
+            controller.ModelState.AddModelError("granted", "Not a Boolean");
+
+        var result = await controller.SetMemberEarlyEntry(camp.Slug, Guid.NewGuid(), granted, ct);
+
+        if (canManage)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        await _camps.DidNotReceiveWithAnyArgs().SetEarlyEntryAsync(default, default, default, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EarlyEntry_ExplicitDecision_IsPreserved(bool granted)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.SetEarlyEntryAsync(camp.Id, memberId, granted, actorId, ct).Returns(SetEarlyEntryOutcome.Success);
+
+        var result = await BuildController(actorId).SetMemberEarlyEntry(camp.Slug, memberId, granted, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _camps.Received(1).SetEarlyEntryAsync(camp.Id, memberId, granted, actorId, ct);
+    }
+
+    [HumansTheory]
     [InlineData(false, true)]
     [InlineData(true, true)]
     [InlineData(false, false)]
