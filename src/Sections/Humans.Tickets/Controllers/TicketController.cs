@@ -248,7 +248,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -269,7 +269,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -341,7 +341,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

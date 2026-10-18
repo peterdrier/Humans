@@ -100,14 +100,14 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         WithInner(inner => inner.GetWhoHasntBoughtAsync(
             search, filterTeam, filterTier, filterTicketStatus, page, pageSize, ct));
 
-    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId));
+    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId, ct));
 
-    public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId));
+    public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId, ct));
 
-    public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetDonationExportDataAsync(actorUserId));
+    public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetDonationExportDataAsync(actorUserId, ct));
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));

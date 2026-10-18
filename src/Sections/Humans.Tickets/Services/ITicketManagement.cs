@@ -71,19 +71,19 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// <summary>
     /// Get all attendees for CSV export, ordered by name.
     /// </summary>
-    Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId);
+    Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Get all orders for CSV export, ordered by purchase date descending.
     /// </summary>
-    Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId);
+    Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// One row per donation on a paid order (VIP amount above the threshold, separate checkout
     /// donation), oldest first, dated in Europe/Madrid, for the accountant's donor list. Writes
     /// an audit entry for the actor: this is a bulk export of buyer identity leaving the system.
     /// </summary>
-    Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId);
+    Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns paid orders where the number of valid+checked-in attendees is

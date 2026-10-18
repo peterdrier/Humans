@@ -1,3 +1,10 @@
+using Humans.Tickets.Models;
+using Humans.Tickets.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using Xunit;
 using Humans.Tickets.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -180,6 +187,63 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             var result = await service.GetUserTicketHoldingsAsync(userId, aborted.Token);
             result.TicketCount.Should().Be(boundary is "matched" or "hold" ? 1 : 0);
             result.HasCurrentEventTicket.Should().Be(string.Equals(boundary, "hold", StringComparison.Ordinal));
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("attendees", true, true)]
+    [InlineData("orders", true, true)]
+    [InlineData("donations", true, true)]
+    [InlineData("attendees", false, true)]
+    [InlineData("orders", false, true)]
+    [InlineData("donations", false, true)]
+    [InlineData("attendees", true, false)]
+    [InlineData("orders", true, false)]
+    [InlineData("donations", true, false)]
+    public async Task Csv_export_reads_honor_browser_cancellation_and_preserve_completed_read_audits(string export, bool cancelled, bool hasActor)
+    {
+        var actor = Guid.NewGuid();
+        using var aborted = new CancellationTokenSource();
+        if (cancelled) await aborted.CancelAsync();
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), _service, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(_service, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, _userService, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = aborted.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity(hasActor
+                        ? [new Claim(ClaimTypes.NameIdentifier, actor.ToString())] : [], "Test"))
+                }
+            }
+        };
+        Func<Task<IActionResult>> read = export switch
+        {
+            "attendees" => controller.ExportAttendees,
+            "orders" => controller.ExportOrders,
+            _ => controller.ExportDonations
+        };
+
+        if (!hasActor)
+        {
+            (await read()).Should().BeOfType<ForbidResult>();
+            _auditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else if (cancelled)
+        {
+            (await read.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(aborted.Token);
+            _auditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            var result = (await read()).Should().BeOfType<FileContentResult>().Which;
+            result.FileDownloadName.Should().Be(string.Equals(export, "donations", StringComparison.Ordinal)
+                ? "ticketing-donations.csv" : export + "-export.csv");
+            result.FileContents.Should().NotBeEmpty();
+            _auditLog.ReceivedCalls().Should().ContainSingle();
         }
     }
 

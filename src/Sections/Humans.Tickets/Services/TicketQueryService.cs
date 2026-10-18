@@ -725,25 +725,25 @@ internal sealed class TicketQueryService(
         return filtered.ToList();
     }
 
-    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId)
+    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
-        var rows = await ticketRepository.GetAttendeeExportDataAsync();
+        var rows = await ticketRepository.GetAttendeeExportDataAsync(ct);
         await auditLog.LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
             $"Attendee list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 
-    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId)
+    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
-        var rows = await ticketRepository.GetOrderExportDataAsync();
+        var rows = await ticketRepository.GetOrderExportDataAsync(ct);
         await auditLog.LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
             $"Order list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 
-    public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId)
+    public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
-        var orders = (await ticketRepository.GetOrderExportDataAsync())
+        var orders = (await ticketRepository.GetOrderExportDataAsync(ct))
             .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal))
             .OrderBy(o => o.PurchasedAt);
 
