@@ -2384,11 +2384,15 @@ internal sealed class Service(
             return null;
         }
 
+        var refused = new List<HoldedReconcileDocumentRef>();
         if (chunked)
         {
-            var sent = 0;
+            // A refused chunk does not stop the rest: the chunks already through are linked, and
+            // one bad id must not strand the payments behind it. What Holded refused is named below.
+            var number = 0;
             foreach (var chunk in docs.Chunk(ReconcileChunkSize))
             {
+                number++;
                 try
                 {
                     await client.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, chunk, ct);
@@ -2396,18 +2400,25 @@ internal sealed class Service(
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
                     logger.LogWarning(ex,
-                        "Holded refused chunk {Chunk} of the reconcile of bank movement {MovementId} after "
-                        + "{Sent} of {Count} payment(s) went through; the transfer stays reconcile pending "
-                        + "and the sweep re-issues the full list.",
-                        sent / ReconcileChunkSize + 1, movementId, sent, docs.Count);
-                    return null;
+                        "Holded refused chunk {Chunk} ({Size} payment(s)) of the reconcile of bank movement "
+                        + "{MovementId}.", number, chunk.Length, movementId);
+                    refused.AddRange(chunk);
                 }
-                sent += chunk.Length;
             }
+
+            if (refused.Count > 0 && refused.Count < docs.Count)
+                // The line is now `partial`, which the sweep never re-issues (its payments are
+                // linked, and Holded does not say which): the refused ids are a human's to finish.
+                logger.LogWarning(
+                    "Holded linked {Linked} of {Count} payment(s) to bank movement {MovementId} and refused "
+                    + "{Refused}: {Ids}. The line reads partial, which the sweep does not re-issue — finish "
+                    + "it in Holded by hand.",
+                    docs.Count - refused.Count, docs.Count, movementId, refused.Count,
+                    string.Join(",", refused.Select(d => d.DocumentId)));
         }
 
         return incomplete || chunked
-            ? await StampIfReconciledAsync(movementId, movementDate, docs, incomplete, ct)
+            ? await StampIfReconciledAsync(movementId, movementDate, docs, incomplete || refused.Count > 0, ct)
             : clock.GetCurrentInstant();
     }
 

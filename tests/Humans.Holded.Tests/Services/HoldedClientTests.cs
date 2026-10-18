@@ -177,6 +177,24 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task GetPurchaseDocumentAsync_MalformedPaymentsDetailEntry_IsDropped_NotTheDocument()
+    {
+        // One GUI-entered payment in an unexpected shape must not fail every reader of the document
+        // (the publisher, the paid poll, the before-read of a payment mid-allocation).
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"id":"doc-123","total":"5.00","payments_detail":[
+              {"id":"pay-bad-date","amount":"5.00","date":"yesterday","bank_id":"b1"},
+              {"id":"pay-bad-amount","amount":{"x":1},"date":"2026-10-16","bank_id":"b1"},
+              {"id":42,"amount":"5.00","date":"2026-10-16"},
+              {"id":"pay-ok","amount":"5.00","date":"2026-10-16","bank_id":"b1"}]}
+            """));
+
+        var doc = await Make(handler).GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        doc.Payments.Select(p => p.Id).Should().Equal("pay-ok");
+    }
+
+    [HumansFact]
     public async Task GetPurchaseDocumentAsync_surfaces_an_unreadable_body_as_permanent_not_a_raw_parse_throw()
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad

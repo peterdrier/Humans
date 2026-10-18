@@ -204,7 +204,7 @@
                             }
                             else if (t.Row.ReconcilePending)
                             {
-                                <span class="badge text-bg-warning" title="The sweep re-issues the reconcile from the recorded payment ids every two hours.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
+                                <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
                             <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
                         }

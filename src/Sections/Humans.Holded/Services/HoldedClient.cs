@@ -164,21 +164,31 @@ internal sealed class HoldedClient : IHoldedClient
 
     /// <summary><c>payments_detail[]</c> as the single-GET reports it (live shape, 2026-10-18):
     /// <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or not an array reads as
-    /// no payments. An entry without an id is dropped: it can never be named in a reconcile, and the
-    /// caller's before/after diff only needs the ids that exist.</summary>
+    /// no payments. An entry without an id, or whose amount or date cannot be read, is dropped
+    /// rather than failing the document read: most callers never look at this list, and the one
+    /// that does (<see cref="PayPurchaseDocumentAsync"/>) only needs the entries that can match —
+    /// a dropped entry cannot, so the result is the <c>unconfirmed:</c> sentinel, as intended.</summary>
     private static IReadOnlyList<HoldedPaymentDetailDto> ReadPaymentsDetail(JsonNode? node)
     {
         if (node is not JsonArray arr) return [];
         var list = new List<HoldedPaymentDetailDto>();
         foreach (var item in arr)
         {
-            var id = Prop(item, "id")?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(id)) continue;
-            list.Add(new HoldedPaymentDetailDto(
-                id,
-                ReadDecimalV2(Prop(item, "amount")),
-                LocalDatePattern.Iso.Parse(Prop(item, "date")?.GetValue<string>() ?? "").Value,
-                Prop(item, "bank_id")?.GetValue<string>()));
+            try
+            {
+                var id = Prop(item, "id")?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(id)) continue;
+                list.Add(new HoldedPaymentDetailDto(
+                    id,
+                    ReadDecimalV2(Prop(item, "amount")),
+                    LocalDatePattern.Iso.Parse(Prop(item, "date")?.GetValue<string>() ?? "").Value,
+                    Prop(item, "bank_id")?.GetValue<string>()));
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException
+                or FormatException or OverflowException or UnparsableValueException)
+            {
+                // A GUI-entered payment in an unexpected shape must not fail the document.
+            }
         }
         return list;
     }

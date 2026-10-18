@@ -372,31 +372,60 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_AChunkIsRefused_LeavesTheRowPending_ForTheSweepToReissue()
+    public async Task Booking_AChunkIsRefused_TheRestStillGo_AndTheRefusedIdsAreAHumans()
     {
-        SeedTransfer(600m);
-        SeedRows(Row(TransferId, _userId, amount: 600m));
-        SeedMovements(Movement(amount: -600m));
-        SeedOwed(600m);
-        SeedOpenDocs(Enumerable.Range(1, 60).Select(i => Doc("d" + i, 10m, i)).ToArray());
-        var calls = 0;
+        // 110 payments → one call (refused), then chunks of 50, 50, 10. Chunk 2 is refused; chunk 3
+        // still goes, so one bad id strands nothing behind it. The chunks through left the line
+        // `partial`, which the sweep never re-issues: the refused ids are logged for a human, the row
+        // is booked (the money moved) but not stamped.
+        SeedTransfer(1100m);
+        SeedRows(Row(TransferId, _userId, amount: 1100m));
+        SeedOwed(1100m);
+        SeedOpenDocs(Enumerable.Range(1, 110).Select(i => Doc("d" + i, 10m, i)).ToArray());
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(amount: -1100m, status: reads++ == 0 ? "pending" : "partial")]);
+        var sent = new List<int>();
         _client.ReconcileBankMovementAsync(
-                "treasury-1", MovementId, Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(),
+                "treasury-1", MovementId, Arg.Do<IReadOnlyList<HoldedReconcileDocumentRef>>(d => sent.Add(d.Count)),
                 Arg.Any<CancellationToken>())
-            .Returns(_ => ++calls == 2
-                ? Task.CompletedTask
-                : Task.FromException(new HoldedPermanentException(400, "no", "Holded refused")));
+            .Returns(_ => sent.Count is 1 or 3
+                ? Task.FromException(new HoldedPermanentException(400, "no", "Holded refused"))
+                : Task.CompletedTask);
+        var logger = new CapturingLogger<Service>();
 
-        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+        var result = await MakeService(logger).BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        // Booked — the money moved — but not stamped: the second chunk never went through.
         result.Succeeded.Should().BeTrue();
-        calls.Should().Be(3);
+        sent.Should().Equal(110, 50, 50, 10);
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, null,
-            Arg.Is<string?>(r => r!.Split(',', StringSplitOptions.None).Length == 60),
+            Arg.Is<string?>(r => r!.Split(',', StringSplitOptions.None).Length == 110),
             Arg.Any<CancellationToken>());
+        logger.Entries.Should().Contain(e => e.Level == LogLevel.Warning
+            && e.Message.Contains("linked 60 of 110", StringComparison.Ordinal)
+            && e.Message.Contains("refused 50: pay-d51,", StringComparison.Ordinal)
+            && e.Message.Contains("pay-d100.", StringComparison.Ordinal)
+            && e.Message.Contains("by hand", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task Sweep_LineLeftPartialByARefusedChunk_IsNotReissued()
+    {
+        // The row a refused chunk left behind: booked, refs recorded, line `partial`. The sweep reads
+        // the line and leaves it alone — re-sending ids Holded already linked is not a re-issue.
+        var refs = string.Join(",", Enumerable.Range(1, 110).Select(i => "pay-" + i));
+        SeedRows(Row(TransferId, _userId, amount: 1100m, bookedAt: FixedNow, movementId: MovementId, paymentRefs: refs));
+        SeedMovements(Movement(amount: -1100m, status: "partial"));
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
     }
 
     [HumansFact]

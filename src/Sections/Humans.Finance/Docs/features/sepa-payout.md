@@ -132,7 +132,9 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    **those payment ids** (`{document_id: <payment id>, document_type: "payment"}`), all of them in
    one call first; when Holded refuses a list longer than `ReconcileChunkSize` (50) with a 4xx, the
    same ids go again in chunks of 50 against the same line, and the stamp then waits for the line
-   to read `reconciled` on the feed. A refused chunk leaves the row pending for the sweep. A line
+   to read `reconciled` on the feed. A refused chunk does not stop the chunks behind it: the
+   refused ids are logged at Warning, and since the chunks already through left the line
+   `partial`, which the sweep never re-issues, those ids are a human's to finish in Holded. A line
    that reads `partial` after every id was sent and the list was complete is logged at Warning with
    the line id, the amount and the ids sent. Never against the purchase document
    ids: a `purchase` ref reads as "this line pays that document", and Holded mints a brand-new
