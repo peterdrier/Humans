@@ -62,6 +62,15 @@ public class BackdoorIssuesControllerTests
         deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("Status");
     }
 
+    [HumansFact]
+    public void Json_issue_creation_requires_explicit_category()
+    {
+        Action deserialize = () => JsonSerializer.Deserialize<ApiCreateIssueModel>(
+            "{\"ReporterUserId\":\"11111111-1111-1111-1111-111111111111\",\"Title\":\"Title\",\"Description\":\"Description\"}");
+
+        deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("Category");
+    }
+
     public BackdoorIssuesControllerTests()
     {
         // GetUserInfosAsync never returns null; an unstubbed ValueTask would.

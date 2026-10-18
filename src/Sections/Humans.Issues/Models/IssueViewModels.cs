@@ -24,6 +24,7 @@ internal sealed class SubmitIssueViewModel
     public string Description { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public IssueCategory Category { get; set; }
 
     /// <summary>

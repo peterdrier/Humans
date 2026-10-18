@@ -312,6 +312,7 @@ internal sealed class ApiCreateIssueModel
     public Guid ReporterUserId { get; set; }
 
     [Required]
+    [JsonRequired]
     [EnumDataType(typeof(IssueCategory), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueCategory Category { get; set; }
