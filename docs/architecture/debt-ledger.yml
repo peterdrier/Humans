@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 86
+next_id: 87
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -252,16 +252,20 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 5
+    remaining: 6
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-17
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-18
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-10-17
     id: CENTRAL-85
     what: "Store Service.CreateStripeCheckoutSessionAsync creates a new Stripe checkout for every Pay POST when no local Payment is Pending; neither Order nor the Stripe connector retains a checkout attempt/idempotency key. Until the completed webhook records a payment, ordinary repeated Pay requests can therefore produce multiple payable sessions for the same outstanding balance, and both URLs remain payable after one settles. Coordinate a persistent checkout attempt with Stripe idempotency and session reuse/replacement; replacing an open session needs an explicit expiry operation in IStripeService and an amount-change policy. ListStoreCheckoutSessionsAsync is available but its DTO lacks session status and URL; a lookup alone does not serialize simultaneous requests or recover a lost create response. Found by nightly source audit of StoreController.Pay, Store Service.CreateStripeCheckoutSessionAsync and StripeService.CreateCheckoutSessionAsync."
+    review: panel
+  - added: 2026-10-18
+    id: CENTRAL-86
+    what: "GDPR erasure and durable Email enqueue have no shared per-user write guard. GdprService.EraseForUserAsync calls each contributor once, with identity last; EmailOutboxService deletes the user's queue rows, while OutboxEmailService.SendAsync can subsequently commit a new row from a captured recipient. For example, a pending Feedback reply retry can read its report and recipient while the identity is still live, enqueue after Email's erasure but before Feedback's report erasure, and leave recipient/body data behind after the cascade completes. Tombstone checks before enqueue and changing contributor order alone do not close the read/write handoff window. Coordinate erasure with durable email writes and fresh recipient validation through a shared per-user guard; preserve the intentional DoNotPersist deletion confirmation. Found by tracing the scheduled AccountDeletionService fan-out, contributor registration/order, Feedback retry handoff and both Email persistence/erasure paths."
     review: panel
