@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Resources;
+using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
@@ -264,6 +265,14 @@ internal sealed class CampaignService(
             var trimmed = code.Trim();
             if (string.IsNullOrEmpty(trimmed))
                 continue;
+
+            var characterCount = trimmed.EnumerateRunes().Count();
+            if (characterCount > CampaignCode.CodeMaxLength)
+            {
+                logger.LogWarning("Rejected campaign {CampaignId} code import: length {Length} exceeds {Limit}",
+                    campaignId, characterCount, CampaignCode.CodeMaxLength);
+                return new CampaignImportResult(false, ErrorKey: "CodeTooLong");
+            }
 
             if (existingCodes.Contains(trimmed))
             {

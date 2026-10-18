@@ -235,6 +235,50 @@ public sealed class CampaignServiceTests
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, 200)]
+    [Xunit.InlineData(false, 201)]
+    [Xunit.InlineData(true, 200)]
+    [Xunit.InlineData(true, 201)]
+    public async Task ImportCodes_EnforcesDatabaseCharacterLimitWithoutPartialWrites(bool supplementary, int length)
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        var code = string.Concat(Enumerable.Repeat(supplementary ? "😀" : "A", length));
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("VALID\n" + code));
+        var file = new FormFile(stream, 0, stream.Length, "file", "codes.csv");
+        _audit.ClearReceivedCalls();
+        var result = await controller.ImportCodes(campaign.Id, file);
+        result.Should().BeOfType<RedirectToActionResult>();
+        var stored = await CampaignsDb.CampaignCodes.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (length <= 200)
+        {
+            stored.Select(c => c.Code).Should().BeEquivalentTo("VALID", code);
+            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        }
+        else
+        {
+            stored.Should().BeEmpty();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("200");
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task GenerateCodes_ImportRefusal_IsNotReportedAsSuccess()
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns([new string('A', 201)]);
+        var result = await controller.GenerateCodes(campaign.Id, 1, "Fixed", 10m);
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
+        controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     private CampaignController CreateImportController()
     {
         var actor = SeedUser(_actorId);

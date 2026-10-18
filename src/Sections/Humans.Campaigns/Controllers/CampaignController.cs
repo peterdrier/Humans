@@ -204,7 +204,12 @@ internal sealed class CampaignController(
         }
 
         var result = await campaignService.ImportCodesAsync(currentUser.Id, id, codes);
-        if (!result.Success) return NotFound();
+        if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal)) return NotFound();
+        if (!result.Success)
+        {
+            SetError("Codes must be at most 200 characters. No codes were imported.");
+            return RedirectToAction(nameof(Detail), new { id });
+        }
 
         SetSuccess(result.Skipped > 0
             ? $"Imported {result.Imported} codes; skipped {result.Skipped} duplicates."
@@ -232,6 +237,10 @@ internal sealed class CampaignController(
             SetError("Count must be greater than zero.");
         else if (string.Equals(result.ErrorKey, "InvalidDiscountType", StringComparison.Ordinal))
             SetError("Invalid discount type.");
+        else if (string.Equals(result.ErrorKey, "CodeTooLong", StringComparison.Ordinal))
+            SetError("Codes must be at most 200 characters. No codes were imported.");
+        else if (!result.Success)
+            SetError("Codes could not be imported.");
         else
             SetSuccess($"Generated and imported {result.GeneratedCount} discount codes.");
 
