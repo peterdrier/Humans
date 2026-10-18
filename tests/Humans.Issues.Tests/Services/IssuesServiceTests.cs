@@ -479,6 +479,41 @@ public sealed class IssuesServiceTests
         finally { root.Delete(recursive: true); }
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitIssueAsync_AmbiguousCommit_PreservesReferencedScreenshot(bool verificationFails)
+    {
+        var repo = Substitute.For<IIssuesRepository>();
+        var failure = new IOException("Commit acknowledgement lost");
+        Guid issueId = default;
+        repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var issue = call.ArgAt<Issue>(0);
+            issueId = issue.Id;
+            await _repository.AddIssueAsync(issue, call.ArgAt<CancellationToken>(1));
+            throw failure;
+        });
+        repo.GetByIdAsync(Arg.Any<Guid>(), CancellationToken.None).Returns(call =>
+            verificationFails
+                ? Task.FromException<Issue?>(new IOException("Verification unavailable"))
+                : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
+        var service = new IssuesApplicationService(
+            repo, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _issuesBadge, Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+        var screenshot = PngUpload([1, 2, 3]);
+
+        var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
+            null, null, null, null, screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        var saved = await _repository.GetByIdAsync(issueId, Xunit.TestContext.Current.CancellationToken);
+        saved.Should().NotBeNull();
+        FileStorage.Files.Should().ContainKey(saved!.ScreenshotStoragePath!);
+        FileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
+    }
+
     [HumansFact]
     public async Task SubmitIssueAsync_with_oversized_screenshot_returns_refusal()
     {
