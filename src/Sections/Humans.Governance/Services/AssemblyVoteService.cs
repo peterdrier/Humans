@@ -68,15 +68,6 @@ internal sealed class AssemblyVoteService(
     /// <summary>Whether a value fits the column that will store it. Blank always fits.</summary>
     private static bool Fits(string? value, int max) => (value?.Length ?? 0) <= max;
 
-    /// <summary>
-    /// Mirrors <c>audit_log.description</c>. A near-maximum cancellation reason still fits
-    /// its own column while the audit description, which prefixes it, would not — and
-    /// AuditLogService swallows that failure, so the cancellation would go unaudited.
-    /// Trimming here keeps the cancellation reason complete in Governance while fitting
-    /// the audit entry into its neighbouring section's bounded description.
-    /// </summary>
-    private const int MaxAuditDescriptionLength = 4000;
-
     /// <summary>How far ahead of closing the reminder goes out.</summary>
     private static readonly Duration ReminderLeadTime = Duration.FromHours(24);
 
@@ -1282,7 +1273,7 @@ internal sealed class AssemblyVoteService(
             "auditing the vote cancellation", vote.Id,
             _ => audit.LogAsync(
                 AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
-                Truncate($"Cancelled assembly vote {vote.Id}: {reason}", MaxAuditDescriptionLength),
+                $"Cancelled assembly vote {vote.Id}: {reason}",
                 adminUserId));
 
         await AfterTransitionAsync(

@@ -1258,24 +1258,21 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn(bool splitPair)
+    public async Task CancelAsync_WithANearMaximumReason_PreservesTheFullAuditReason(bool splitPair)
     {
         var vote = await _fx.AddVoteAsync();
         var prefix = $"Cancelled assembly vote {vote.Id}: ";
         var reason = splitPair
             ? new string('x', 3998 - prefix.Length) + "😀" + new string('y', prefix.Length)
             : new string('x', 4000);
-        var expectedDescription = prefix
-            + new string('x', (splitPair ? 3998 : 3999) - prefix.Length) + "…";
+        var expectedDescription = prefix + reason;
 
         await _fx.Service.CancelAsync(
             vote.Id, reason, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        // The audit description prefixes the reason, so the untrimmed string would overrun
-        // audit_log.description — and AuditLogService swallows that, losing the entry.
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Is<string>(d => d.Length <= 4000 && d == expectedDescription), Arg.Any<Guid>(),
+            Arg.Is<string>(d => string.Equals(d, expectedDescription, StringComparison.Ordinal)), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
