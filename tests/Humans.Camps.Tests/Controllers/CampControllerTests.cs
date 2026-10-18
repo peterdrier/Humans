@@ -676,9 +676,42 @@ public class CampControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole)
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task MemberShortcuts_MalformedYear_DoesNotWrite(bool assignRole, bool canManage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Full, year: 2029);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(canManage ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(actorId);
+        controller.ModelState.AddModelError("year", "Not a year");
+        var userId = Guid.NewGuid();
+
+        var result = assignRole
+            ? await controller.AssignRoleByUser(camp.Slug, Guid.NewGuid(), userId, ct, year: null)
+            : await controller.AddMember(camp.Slug, userId, ct, year: null);
+
+        if (canManage)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData(false, 2029)]
+    [InlineData(true, 2029)]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole, int? year)
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -693,14 +726,14 @@ public class CampControllerTests
         var controller = BuildController(actorId);
 
         var result = assignRole
-            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, 2029)
-            : await controller.AddMember(camp.Slug, userId, ct, 2029);
+            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, year)
+            : await controller.AddMember(camp.Slug, userId, ct, year);
 
-        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(2029);
+        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(year);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, 2029);
+            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, year);
         else
-            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, 2029);
+            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, year);
     }
 
     [HumansTheory]

@@ -997,6 +997,12 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed member-add form for camp {CampId} by user {UserId}", camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct, year);
@@ -1047,6 +1053,12 @@ internal sealed class CampController(
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role-assignment form for camp {CampId} by user {UserId}", camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         if (userId == Guid.Empty)
         {
