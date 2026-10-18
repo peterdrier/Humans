@@ -89,7 +89,7 @@ public class VolunteerTrackingControllerTests
 
         var ctrl = new VolunteerTrackingController(
             _service, _shiftMgmt, _burnSettings, _exportService, _xlsxBuilder,
-            _userService, _auditLog, _localizer);
+            _userService, _auditLog, _localizer, NullLogger<VolunteerTrackingController>.Instance);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -614,6 +614,33 @@ public class VolunteerTrackingControllerTests
         var attr = method.GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull("ClearAvailabilityDay must require VolunteerTrackingWrite");
         attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+    }
+
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task AvailabilityDay_MalformedBinding_DoesNotMutate(bool adding, bool hasActor)
+    {
+        var target = adding ? Guid.Empty : Guid.NewGuid();
+        var dayOffset = adding ? -2 : 0;
+        var esId = Guid.NewGuid();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(esId));
+        _service.SetDayAvailabilityAsync(target, esId, dayOffset, adding, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var ctrl = BuildSut(hasActor ? new User { Id = Guid.NewGuid() } : null);
+        ctrl.ModelState.AddModelError(adding ? "userId" : "dayOffset", "Malformed value");
+
+        var result = adding
+            ? await ctrl.SetAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken)
+            : await ctrl.ClearAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken);
+
+        if (hasActor) result.Should().BeOfType<BadRequestResult>();
+        else result.Should().BeOfType<ForbidResult>();
+        await _service.DidNotReceive().SetDayAvailabilityAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

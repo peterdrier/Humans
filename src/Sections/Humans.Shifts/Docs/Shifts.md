@@ -83,7 +83,7 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 `UserId` is a bare Guid column with no navigation property and no FK constraint.
 
 <!-- wheat: docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md §Deviations from spec -->
-**Coordinator per-day writes:** `VolunteerTrackingService.SetDayAvailabilityAsync` accepts additions only for a known event calendar and an offset in `[BuildStartOffset, 0)`, matching the heatmap/build strip and day-off window. Invalid additions create no row, write no audit and invalidate no cache. Removing an existing offset remains allowed, including old entries outside that window; other availability offsets are preserved.
+**Coordinator per-day writes:** `VolunteerTrackingService.SetDayAvailabilityAsync` accepts additions only for a known event calendar and an offset in `[BuildStartOffset, 0)`, matching the heatmap/build strip and day-off window. Invalid additions create no row, write no audit and invalidate no cache. Removing an existing offset remains allowed, including old entries outside that window; other availability offsets are preserved. Coordinator per-day add/remove forms reject binding errors after actor resolution, before availability writes or audit entries; valid explicit offset `0` removals remain allowed.
 
 ### VolunteerBuildStatus
 

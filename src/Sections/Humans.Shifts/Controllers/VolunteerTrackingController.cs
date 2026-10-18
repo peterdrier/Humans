@@ -29,7 +29,8 @@ internal sealed class VolunteerTrackingController(
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserService userService,
     IAuditLogService auditLogService,
-    IStringLocalizer<ShiftsResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<ShiftsResource> localizer,
+    ILogger<VolunteerTrackingController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
 
@@ -351,6 +352,13 @@ internal sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed coordinator availability addition for user {UserId}, day {DayOffset}",
+                userId, dayOffset);
+            return BadRequest();
+        }
+
         var changed = await service.SetDayAvailabilityAsync(
             userId,
             es.Id,
@@ -378,6 +386,13 @@ internal sealed class VolunteerTrackingController(
 
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed coordinator availability removal for user {UserId}, day {DayOffset}",
+                userId, dayOffset);
+            return BadRequest();
+        }
 
         var changed = await service.SetDayAvailabilityAsync(
             userId,
