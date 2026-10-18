@@ -7,6 +7,7 @@ using Humans.Shifts.Models;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
@@ -756,7 +757,7 @@ internal sealed class ShiftAdminController(
 
     [HttpPost("VoluntellRange")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> VoluntellRange(string slug, Guid rotaId, int startDayOffset, int endDayOffset, Guid userId)
+    public async Task<IActionResult> VoluntellRange(string slug, Guid rotaId, [BindRequired] int startDayOffset, [BindRequired] int endDayOffset, Guid userId)
     {
         var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;

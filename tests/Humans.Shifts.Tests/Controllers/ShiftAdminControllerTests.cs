@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using System.Globalization;
 using Xunit;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
@@ -190,11 +194,16 @@ public class ShiftAdminControllerTests
     }
 
     [HumansTheory]
-    [InlineData("startDayOffset", true)]
-    [InlineData("endDayOffset", true)]
-    [InlineData("startDayOffset", false)]
-    [InlineData("endDayOffset", false)]
-    public async Task VoluntellRange_MalformedOffset_DoesNotAssign(string field, bool ownDepartment)
+    [InlineData("startDayOffset", true, false)]
+    [InlineData("endDayOffset", true, false)]
+    [InlineData("startDayOffset", false, false)]
+    [InlineData("endDayOffset", false, false)]
+    [InlineData("startDayOffset", true, true)]
+    [InlineData("endDayOffset", true, true)]
+    [InlineData("startDayOffset", false, true)]
+    [InlineData("endDayOffset", false, true)]
+    [InlineData(null, true, false)]
+    public async Task VoluntellRange_InvalidOrMissingOffset_DoesNotAssign(string? field, bool ownDepartment, bool missingOffset)
     {
         var rota = MakeRota(ownDepartment ? TeamId : OtherTeamId);
         _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
@@ -202,15 +211,41 @@ public class ShiftAdminControllerTests
         _signupService.VoluntellRangeAsync(beneficiary, rota.Id, 0, 0, UserId)
             .Returns(SignupResult.Ok(Guid.NewGuid()));
         var controller = BuildSut();
-        controller.ModelState.AddModelError(field, "Not a number");
+        if (field is not null && !missingOffset) controller.ModelState.AddModelError(field, "Not a number");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingOffset)
+        {
+            controller.HttpContext.RequestServices = services;
+            var parameter = typeof(ShiftAdminController).GetMethod(nameof(ShiftAdminController.VoluntellRange))!
+                .GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
         var result = await controller.VoluntellRange(Slug, rota.Id, 0, 0, beneficiary);
 
-        if (ownDepartment)
+        if (!ownDepartment)
+            result.Should().BeOfType<NotFoundResult>();
+        else if (field is not null)
             result.Should().BeOfType<BadRequestObjectResult>();
         else
-            result.Should().BeOfType<NotFoundResult>();
-        await _signupService.DidNotReceiveWithAnyArgs().VoluntellRangeAsync(default, default, default, default, default);
+            result.Should().BeOfType<RedirectToActionResult>();
+        if (!ownDepartment || field is not null)
+            await _signupService.DidNotReceiveWithAnyArgs().VoluntellRangeAsync(default, default, default, default, default);
+        else
+            await _signupService.Received(1).VoluntellRangeAsync(beneficiary, rota.Id, 0, 0, UserId);
     }
 
     [HumansTheory]

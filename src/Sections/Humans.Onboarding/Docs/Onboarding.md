@@ -78,8 +78,9 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 ## Invariants
 
-- Widget multi-day shift signup rejects malformed day offsets with 400 before enrollment;
-  an invalid value cannot silently select day zero.
+- Widget multi-day shift signup requires both day offsets and rejects missing or malformed
+  values with 400 before enrollment; omitted bounds cannot silently select day zero.
+  Explicit day zero remains valid.
 - Widget step selection resolves the surviving user and requires their saved names before consent completion. Complete means names plus all required Volunteer consents; merged aliases use the survivor’s consent state, and shift signup stays optional.
 
 - The widget saves names to the resolved account whose profile it preserves. Its dispatcher and Shifts page read that account’s commitments, so a merge alias cannot hide an existing signup or send name edits to an archived profile.

@@ -1,3 +1,8 @@
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using System.Globalization;
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
@@ -168,19 +173,52 @@ public class OnboardingWidgetControllerShiftsTests
     }
 
     [HumansTheory]
-    [InlineData("startDayOffset")]
-    [InlineData("endDayOffset")]
-    public async Task SignUpRange_MalformedOffset_DoesNotEnroll(string field)
+    [InlineData("startDayOffset", false)]
+    [InlineData("endDayOffset", false)]
+    [InlineData("startDayOffset", true)]
+    [InlineData("endDayOffset", true)]
+    [InlineData(null, false)]
+    public async Task SignUpRange_InvalidOrMissingOffset_DoesNotEnroll(string? field, bool missingOffset)
     {
         var userId = Guid.NewGuid();
         var rotaId = Guid.NewGuid();
         _signups.SignUpRangeAsync(userId, rotaId, 0, 0)
             .Returns(SignupResult.Ok(Guid.NewGuid()));
         var ctrl = BuildSut(userId);
-        ctrl.ModelState.AddModelError(field, "Not a number");
+        if (field is not null && !missingOffset) ctrl.ModelState.AddModelError(field, "Not a number");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingOffset)
+        {
+            ctrl.HttpContext.RequestServices = services;
+            var parameter = typeof(OnboardingWidgetController).GetMethod(nameof(OnboardingWidgetController.SignUpRange))!
+                .GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(ctrl.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
-        Assert.IsType<BadRequestObjectResult>(await ctrl.SignUpRange(rotaId, 0, 0));
-        await _signups.DidNotReceiveWithAnyArgs().SignUpRangeAsync(default, default, default, default);
+        var result = await ctrl.SignUpRange(rotaId, 0, 0);
+        if (field is not null)
+        {
+            Assert.IsType<BadRequestObjectResult>(result);
+            await _signups.DidNotReceiveWithAnyArgs().SignUpRangeAsync(default, default, default, default);
+        }
+        else
+        {
+            Assert.IsType<RedirectToActionResult>(result);
+            await _signups.Received(1).SignUpRangeAsync(userId, rotaId, 0, 0);
+        }
     }
 
     [HumansFact]

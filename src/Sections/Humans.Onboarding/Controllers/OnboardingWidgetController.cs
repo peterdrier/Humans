@@ -9,6 +9,7 @@ using Humans.Onboarding.Models;
 using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -168,7 +169,7 @@ internal sealed class OnboardingWidgetController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset)
+    public async Task<IActionResult> SignUpRange(Guid rotaId, [BindRequired] int startDayOffset, [BindRequired] int endDayOffset)
     {
         var userId = CurrentUserId();
         if (!ModelState.IsValid)
