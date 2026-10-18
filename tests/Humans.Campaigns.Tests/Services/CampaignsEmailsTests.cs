@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text;
+using System.Net;
 using AwesomeAssertions;
 using Humans.Campaigns.Services;
 using Humans.Email.Contracts;
@@ -104,6 +106,34 @@ public sealed class CampaignsEmailsTests
             Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: url));
 
         message.HtmlBody.Contains(url, StringComparison.Ordinal).Should().Be(allowed);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 899)]
+    [Xunit.InlineData(false, 900)]
+    [Xunit.InlineData(true, 899)]
+    [Xunit.InlineData(true, 900)]
+    public void CampaignCode_BoundsExpandedSubjectWithoutLosingItsContents(bool astral, int prefixLength)
+    {
+        var code = string.Concat(Enumerable.Repeat(astral ? "🎟" : "X", 100));
+        var prefix = new string('S', prefixLength) + " ";
+        var fullSubject = prefix + code;
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            subject: prefix + "{{Code}}", body: "Ready.", code: code);
+
+        var message = new CampaignsEmails().CampaignCode(request);
+
+        message.Subject.EnumerateRunes().Count().Should().Be(1000);
+        if (prefixLength == 899)
+        {
+            message.Subject.Should().Be(fullSubject);
+            message.HtmlBody.Should().Be("<p>Ready.</p>\n");
+        }
+        else
+        {
+            message.Subject.Should().EndWith("…");
+            WebUtility.HtmlDecode(message.HtmlBody).Should().Contain(fullSubject).And.Contain("Ready.");
+        }
     }
 
     [HumansFact]

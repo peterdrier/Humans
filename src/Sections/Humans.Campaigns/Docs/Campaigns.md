@@ -97,6 +97,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 ## Invariants
 
 - Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and preserve existing campaign data.
+- Placeholder expansion can make a valid subject template exceed the email queue's 1000-character limit. All campaign sends retain the complete rendered subject as an HTML-encoded leading body paragraph in that case, while shortening the subject header to 1000 Unicode characters including an ellipsis. Shorter subjects and their bodies remain unchanged; codes are preserved even when the authored body omits `{{Code}}`.
 
 - Index, edit, detail and Send Wave GETs pass request cancellation to their read-only service/repository calls, so abandoned pages stop loading data. Mutating requests retain their existing cancellation boundaries.
 

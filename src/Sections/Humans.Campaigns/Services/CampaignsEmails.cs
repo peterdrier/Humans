@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Text;
 using Humans.Base.Extensions;
+using Humans.Campaigns.Domain;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
@@ -34,6 +36,14 @@ internal sealed class CampaignsEmails
 
         // Subject is a plain-text field; no HTML encoding required.
         var subject = Substitute(request.Subject, request.Code, request.RecipientName);
+        var subjectRunes = subject.EnumerateRunes().Take(Campaign.EmailSubjectMaxLength + 1).ToArray();
+        if (subjectRunes.Length > Campaign.EmailSubjectMaxLength)
+        {
+            // Expansion can exceed the stored template's bound. Keep the complete subject
+            // in the body, including codes absent from the authored body, and shorten only the header.
+            html = "<p><strong>" + Encode(subject) + "</strong></p>\n" + html;
+            subject = string.Concat(subjectRunes.Take(Campaign.EmailSubjectMaxLength - 1).Select(rune => rune.ToString())) + "…";
+        }
 
         return new EmailMessage(
             request.RecipientEmail, request.RecipientName,

@@ -79,7 +79,7 @@ internal sealed class CampaignService(
         if (string.IsNullOrWhiteSpace(emailBodyTemplate)) return "EmailBodyTemplateRequired";
         if (title.Trim().Length > 200) return "TitleTooLong";
         if (description?.Trim().Length > 2000) return "DescriptionTooLong";
-        if (emailSubject.Trim().Length > 1000) return "EmailSubjectTooLong";
+        if (emailSubject.Trim().Length > Campaign.EmailSubjectMaxLength) return "EmailSubjectTooLong";
         if (!string.IsNullOrWhiteSpace(replyToAddress))
         {
             var address = replyToAddress.Trim();
