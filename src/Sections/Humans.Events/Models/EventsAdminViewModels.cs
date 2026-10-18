@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Settings.Contracts;
 
@@ -71,12 +72,15 @@ internal sealed class EventCategoryFormViewModel
     public string Slug { get; set; } = string.Empty;
 
     [Display(Name = "Sensitive")]
+    [BindRequired]
     public bool IsSensitive { get; set; }
 
     [Display(Name = "Active")]
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 
     [Display(Name = "Display Order")]
+    [BindRequired]
     public int DisplayOrder { get; set; }
 }
 
@@ -111,8 +115,10 @@ internal sealed class GuideVenueFormViewModel
     public string? LocationDescription { get; set; }
 
     [Display(Name = "Active")]
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 
     [Display(Name = "Display Order")]
+    [BindRequired]
     public int DisplayOrder { get; set; }
 }

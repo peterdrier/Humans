@@ -47,6 +47,99 @@ public class EventsControllerTests
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
     [HumansTheory]
+    [Xunit.InlineData("CreateCategory", "IsSensitive", false)]
+    [Xunit.InlineData("CreateCategory", "IsActive", false)]
+    [Xunit.InlineData("CreateCategory", "DisplayOrder", false)]
+    [Xunit.InlineData("CreateCategory", "", false)]
+    [Xunit.InlineData("CreateCategory", "", true)]
+    [Xunit.InlineData("EditCategory", "IsSensitive", false)]
+    [Xunit.InlineData("EditCategory", "IsActive", false)]
+    [Xunit.InlineData("EditCategory", "DisplayOrder", false)]
+    [Xunit.InlineData("EditCategory", "", false)]
+    [Xunit.InlineData("EditCategory", "", true)]
+    [Xunit.InlineData("CreateVenue", "IsActive", false)]
+    [Xunit.InlineData("CreateVenue", "DisplayOrder", false)]
+    [Xunit.InlineData("CreateVenue", "", false)]
+    [Xunit.InlineData("CreateVenue", "", true)]
+    [Xunit.InlineData("EditVenue", "IsActive", false)]
+    [Xunit.InlineData("EditVenue", "DisplayOrder", false)]
+    [Xunit.InlineData("EditVenue", "", false)]
+    [Xunit.InlineData("EditVenue", "", true)]
+    public async Task Taxonomy_forms_require_explicit_metadata_before_saving(string action, string omitted, bool choice)
+    {
+        var id = Guid.NewGuid();
+        _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new EventCategoryView(id, "Old category", "old-category", true, 7, false));
+        _guide.GetVenueAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new EventVenueView(id, "Old venue", null, null, 7, false));
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Updated", ["Slug"] = "updated-category", ["DisplayOrder"] = "0",
+            ["IsActive"] = choice ? "true" : "false", ["IsSensitive"] = choice ? "true" : "false"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var type = action.EndsWith("Category", StringComparison.Ordinal)
+            ? typeof(EventCategoryFormViewModel) : typeof(GuideVenueFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = action switch
+        {
+            "CreateCategory" => await controller.CreateCategory((EventCategoryFormViewModel)model),
+            "EditCategory" => await controller.EditCategory(id, (EventCategoryFormViewModel)model),
+            "CreateVenue" => await controller.CreateVenue((GuideVenueFormViewModel)model),
+            _ => await controller.EditVenue(id, (GuideVenueFormViewModel)model)
+        };
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.CreateCategoryAsync) or nameof(IEventManagement.UpdateCategoryAsync)
+            or nameof(IEventManagement.CreateVenueAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var saved = writes.Should().ContainSingle().Which.GetArguments()[0];
+            if (saved is EventCategory category)
+            {
+                category.IsSensitive.Should().Be(choice);
+                category.IsActive.Should().Be(choice);
+                category.DisplayOrder.Should().Be(0);
+            }
+            else
+            {
+                var venue = saved.Should().BeOfType<EventVenue>().Which;
+                venue.IsActive.Should().Be(choice);
+                venue.DisplayOrder.Should().Be(0);
+            }
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Create", "StartTime")]
     [Xunit.InlineData("Create", "DurationMinutes")]
     [Xunit.InlineData("Create", "IsRecurring")]
