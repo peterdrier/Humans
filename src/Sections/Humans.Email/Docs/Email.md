@@ -32,7 +32,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 |----------|------|---------|
 | Id | Guid | PK |
 | RecipientEmail | string | Delivery address |
-| RecipientName | string? | Display name |
+| RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
 | PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs and paragraph/heading/list/line-break separation |

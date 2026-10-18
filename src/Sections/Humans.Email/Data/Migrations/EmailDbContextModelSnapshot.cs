@@ -84,8 +84,8 @@ namespace Humans.Email.Data.Migrations
                         .HasColumnType("character varying(320)");
 
                     b.Property<string>("RecipientName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("ReplyTo")
                         .HasMaxLength(320)

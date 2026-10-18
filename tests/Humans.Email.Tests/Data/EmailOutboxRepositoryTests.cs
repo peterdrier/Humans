@@ -39,11 +39,18 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     public async Task AddAsync_PersistsRow()
     {
         var msg = BuildMessage();
+        // Imported member names may fill the Users display-name column.
+        msg.RecipientName = new string('n', 256);
         await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
 
         var persisted = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         persisted.Id.Should().Be(msg.Id);
         persisted.RecipientEmail.Should().Be(msg.RecipientEmail);
+        persisted.RecipientName.Should().Be(msg.RecipientName);
+        // InMemory does not enforce PostgreSQL varchar bounds.
+        _dbContext.Model.FindEntityType(typeof(EmailOutboxMessage))!
+            .FindProperty(nameof(EmailOutboxMessage.RecipientName))!.GetMaxLength()
+            .Should().BeGreaterThanOrEqualTo(msg.RecipientName.Length);
     }
 
     // ==========================================================================
