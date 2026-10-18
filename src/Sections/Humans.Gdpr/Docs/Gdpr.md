@@ -144,11 +144,11 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 ## Cross-Section Dependencies
 
 **Outbound:** `Humans.Gdpr` references `Humans.Users.Contracts`. `GdprService`
-injects `IUserServiceRead` and calls `GetUserInfoAsync` once per export to
+injects `IUserService` and calls `GetUserInfoAsync` once per export to
 stamp the envelope with the surviving account id and the merged-away ids,
 and pass that surviving id to every export contributor;
 `GuestDataController`'s base class `HumansControllerBase` also takes
-`IUserServiceRead`.
+`IUserService`.
 
 **Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
 user-scoped tables references `Humans.Gdpr` to implement

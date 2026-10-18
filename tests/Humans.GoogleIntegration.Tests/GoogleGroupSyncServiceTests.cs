@@ -20,9 +20,10 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly IGoogleGroupMembershipClient _membershipClient = Substitute.For<IGoogleGroupMembershipClient>();
     private readonly IGoogleGroupProvisioningClient _provisioningClient = Substitute.For<IGoogleGroupProvisioningClient>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
-    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     // nobodies-collective/Humans#1098: the resolver now reads only User.BurnerName, so
@@ -513,7 +514,7 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(403, "member does not have a Google account")));
         var failure = new IOException("Email status write failed");
-        _userService.TrySetGoogleEmailStatusFromSyncAsync(userId, GoogleEmailStatus.Rejected,
+        _userServiceWrite.TrySetGoogleEmailStatusFromSyncAsync(userId, GoogleEmailStatus.Rejected,
                 Arg.Any<CancellationToken>(), Arg.Any<Guid?>()).Returns(Task.FromException<bool>(failure));
 
         Func<Task> reconcile = () => service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute,
@@ -556,7 +557,7 @@ public sealed class GoogleGroupSyncServiceTests
             m.Contains("alice@nobodies.team", StringComparison.Ordinal)
             && m.Contains("team@nobodies.team", StringComparison.Ordinal)
             && m.Contains("Google email status marked Rejected", StringComparison.Ordinal));
-        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             userId,
             GoogleEmailStatus.Rejected,
             Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
@@ -590,7 +591,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain("Google rejected alice@external.test");
         diff.ErrorMessage.Should().Contain("HTTP 400");
-        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             userId,
             GoogleEmailStatus.Rejected,
             Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
@@ -616,7 +617,7 @@ public sealed class GoogleGroupSyncServiceTests
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("invalid argument 'roles'");
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _userService.DidNotReceiveWithAnyArgs()
             .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
@@ -639,7 +640,7 @@ public sealed class GoogleGroupSyncServiceTests
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("billing account disabled");
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
         await _userService.DidNotReceiveWithAnyArgs()
             .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
@@ -960,6 +961,7 @@ public sealed class GoogleGroupSyncServiceTests
         _teamResourceService,
         _teamService,
         _userService,
+        _userServiceWrite,
         _userEmailService,
         _syncSettingsService,
         _auditLogService,

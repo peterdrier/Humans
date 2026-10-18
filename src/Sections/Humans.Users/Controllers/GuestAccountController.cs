@@ -20,7 +20,7 @@ namespace Humans.Users.Controllers;
 /// </summary>
 [Authorize]
 internal sealed class GuestAccountController(
-    IUserServiceRead userService,
+    IUserService userService,
     ICommunicationPreferenceService commPrefService,
     ITicketService ticketQueryService,
     IAccountDeletionService accountDeletionService,

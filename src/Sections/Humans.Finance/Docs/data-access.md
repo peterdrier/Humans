@@ -36,7 +36,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
@@ -44,7 +44,7 @@ account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
 API calls, plus `PayPurchaseDocumentAsync` for SEPA booking) and `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked).
-Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
+Implements `IHoldedFinanceManagement` (the public `IHoldedFinanceService` and `IHoldedFinanceWrite`), `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
 Injects `IMemoryCache` for the 2-minute Holded contact-list entry
 (`CacheKeys.HoldedContacts`) and `IOptions<SepaOptions>` for the organisation's

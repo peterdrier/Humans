@@ -19,7 +19,7 @@ namespace Humans.Surveys.Services;
 
 /// <summary>
 /// Application-layer <see cref="ISurveyService"/>. Plain Scoped service (no caching decorator).
-/// Cross-domain display data is stitched from <c>I…ServiceRead</c> interfaces — the
+/// Cross-domain display data is stitched from <c>I&lt;Section&gt;Service</c> contracts — the
 /// repository never resolves user/team navs.
 /// </summary>
 internal sealed class SurveyService(
@@ -27,8 +27,8 @@ internal sealed class SurveyService(
     IAuditLogService auditLog,
     IClock clock,
     ILogger<SurveyService> logger,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -1966,7 +1966,7 @@ internal sealed class SurveyService(
         }
     }
 
-    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserServiceRead</c>. Other tiers never appear (no identity exposure).</summary>
+    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserService</c>. Other tiers never appear (no identity exposure).</summary>
     private async Task<IReadOnlyList<RespondentDetail>> BuildIdentifiedRespondentsAsync(
         Survey survey, IReadOnlyList<SurveyResponse> responses, string culture, CancellationToken ct)
     {

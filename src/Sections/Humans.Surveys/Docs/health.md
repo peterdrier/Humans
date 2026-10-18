@@ -192,7 +192,7 @@ them.
 - **No cross-section navigation properties.** Users, teams, tickets and shifts are bare `Guid`
   columns; display data is stitched in by the service through read interfaces. This is what keeps
   the schema from coupling to four other sections.
-- **No `ISurveyServiceRead`.** It shipped empty and was deleted; the machine API's needs are a
+- **No public `ISurveyService` contract.** It shipped empty and was deleted (the internal `ISurveyService` remains); the machine API's needs are a
   different shape and are served by `ISurveyAnalysisRead`.
 - **No "other — please specify" option flag.** Authored as a gated `ShortText` question instead,
   which keeps `SurveyQuestionOption` at three fields.

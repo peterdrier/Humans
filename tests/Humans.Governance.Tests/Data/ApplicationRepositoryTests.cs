@@ -443,16 +443,16 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp(tier: MembershipTier.Asociado); // A submitted application is not a term.
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var applications = Substitute.For<IApplicationServiceRead>();
+        var applications = Substitute.For<IGovernanceManagement>();
         applications.GetAdminStatsAsync(Arg.Any<CancellationToken>())
             .Returns(call => _repo.GetAdminStatsAsync(call.Arg<CancellationToken>()));
         applications.GetActiveApprovedTierUserIdsAsync(
                 Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(call => _repo.GetActiveApprovedTierUserIdsAsync(
                 call.Arg<MembershipTier>(), call.Arg<LocalDate>(), call.Arg<CancellationToken>()));
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<UserInfo>)[]);
-        var membership = Substitute.For<IMembershipCalculatorRead>();
+        var membership = Substitute.For<IMembershipCalculator>();
         membership.GetUsersWithAllRequiredConsentsAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());

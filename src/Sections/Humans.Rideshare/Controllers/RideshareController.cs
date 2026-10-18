@@ -21,7 +21,7 @@ namespace Humans.Rideshare.Controllers;
 [Route("Rideshare")]
 internal sealed class RideshareController(
     IRideshareService rideshare,
-    IUserServiceRead users,
+    IUserService users,
     IStringLocalizer<RideshareResource> localizer,
     IClock clock,
     ILogger<RideshareController> logger) : HumansControllerBase(users)

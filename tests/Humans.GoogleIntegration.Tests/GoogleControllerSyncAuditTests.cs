@@ -19,8 +19,8 @@ namespace Humans.GoogleIntegration.Tests;
 
 public sealed class GoogleControllerSyncAuditTests
 {
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
     private readonly IEmailProvisioningService _provisioning = Substitute.For<IEmailProvisioningService>();
 
@@ -122,7 +122,7 @@ public sealed class GoogleControllerSyncAuditTests
 
     private GoogleController BuildSut(CancellationToken token) => new(
         _users,
-        Substitute.For<IGoogleSyncService>(),
+        Substitute.For<IGoogleSyncManagement>(),
         Substitute.For<IGoogleGroupSync>(),
         _resources,
         _provisioning,

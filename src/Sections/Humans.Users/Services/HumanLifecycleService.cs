@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 
 // Suspend/unsuspend for onboarded humans. Owns no tables. See nobodies-collective#583 (umbrella #563).
 internal sealed class HumanLifecycleService(
-    IUserService userService,
+    IUserManagement userService,
     INotificationEmitter notificationService,
     INotificationAutoResolve notificationAutoResolve,
     IAuditLogService auditLogService,

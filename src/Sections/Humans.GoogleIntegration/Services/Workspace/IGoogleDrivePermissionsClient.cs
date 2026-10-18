@@ -101,7 +101,7 @@ internal interface IGoogleDrivePermissionsClient
     /// <summary>
     /// Creates a new folder named <paramref name="name"/> directly under
     /// <paramref name="parentFolderId"/>. Used by
-    /// <c>IGoogleSyncService.CreateSubfolderAsync</c> when a section
+    /// <c>IGoogleSyncManagement.CreateSubfolderAsync</c> when a section
     /// provisions a new Drive folder (e.g. a Workgroups group folder).
     /// </summary>
     Task<DriveFolderCreateResult> CreateFolderAsync(

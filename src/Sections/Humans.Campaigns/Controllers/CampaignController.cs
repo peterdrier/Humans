@@ -14,7 +14,7 @@ namespace Humans.Campaigns.Controllers;
 [Authorize]
 [Route("Campaigns/Admin")]
 internal sealed class CampaignController(
-    CampaignService campaignService, IUserServiceRead userService, ILogger<CampaignController> logger)
+    CampaignService campaignService, IUserService userService, ILogger<CampaignController> logger)
     : HumansControllerBase(userService)
 {
     [HttpGet("")]

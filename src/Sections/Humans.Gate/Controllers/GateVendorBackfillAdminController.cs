@@ -21,7 +21,7 @@ namespace Humans.Gate.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Gate/Admin/VendorCheckInBackfill")]
 internal sealed class GateVendorBackfillAdminController(
-    IUserServiceRead users,
+    IUserService users,
     IGateService gate,
     IConfiguration configuration,
     GateVendorMirrorLedger ledger,

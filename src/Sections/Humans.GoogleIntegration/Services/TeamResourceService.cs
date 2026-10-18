@@ -18,18 +18,18 @@ internal sealed partial class TeamResourceService(
     IGoogleResourceRepository repository,
     ITeamResourceGoogleClient googleClient,
     IGoogleDrivePermissionsClient drivePermissions,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IServiceProvider serviceProvider,
     IAuditLogService auditLogService,
     TeamResourceManagementOptions resourceOptions,
     IClock clock,
-    ILogger<TeamResourceService> logger) : ITeamResourceService
+    ILogger<TeamResourceService> logger) : ITeamResourceManagement
 {
-    // Lazy resolution: eagerly injecting IRoleAssignmentServiceRead creates a
-    // ctor cycle TeamResourceService → IRoleAssignmentServiceRead → ISystemTeamSync
-    // → IGoogleGroupSync → ITeamResourceService. Only one method uses it.
-    private IRoleAssignmentServiceRead RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+    // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
+    // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
+    // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses it.
+    private IRoleAssignmentService RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {

@@ -38,7 +38,7 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
 
-> **Retention, as actually implemented:** right-to-erasure clears the dietary fields. `GdprService.EraseForUserAsync` fans out to Users' erasure contributor (`UserService.EraseForUserAsync`), which calls `UserRepository.EraseProfileExtrasForUserAsync` — that nulls `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` and `MedicalConditions` — after the shared anonymization pass (`AnonymizeProfileForDeletionAsync`) has run over the rest of the profile, so a failure between the two leaves ordinary profile PII anonymized while the food and health fields await the retry (nobodies-collective/Humans#1446). The merge fold deliberately does *not* clear them: a merged account's surviving profile keeps its food answers. Cantina holds no copy of any of this — it owns no tables and reads through `IUserServiceRead`, so an erased profile drops off this page on the next read. nobodies-collective/Humans#1113 still moves the food fields into Cantina, at which point Cantina gains its own erasure contributor; it is a data-ownership move, not an erasure gap.
+> **Retention, as actually implemented:** right-to-erasure clears the dietary fields. `GdprService.EraseForUserAsync` fans out to Users' erasure contributor (`UserService.EraseForUserAsync`), which calls `UserRepository.EraseProfileExtrasForUserAsync` — that nulls `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` and `MedicalConditions` — after the shared anonymization pass (`AnonymizeProfileForDeletionAsync`) has run over the rest of the profile, so a failure between the two leaves ordinary profile PII anonymized while the food and health fields await the retry (nobodies-collective/Humans#1446). The merge fold deliberately does *not* clear them: a merged account's surviving profile keeps its food answers. Cantina holds no copy of any of this — it owns no tables and reads through `IUserService`, so an erased profile drops off this page on the next read. nobodies-collective/Humans#1113 still moves the food fields into Cantina, at which point Cantina gains its own erasure contributor; it is a data-ownership move, not an erasure gap.
 
 ## Week Boundary
 
@@ -181,7 +181,7 @@ Reads:
 | `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
 | `EventSettingsInfo.GateOpeningDate`, `EventSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `ISettingsService` |
 
-At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
+At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserService.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 
@@ -235,8 +235,8 @@ The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `ca
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
 - **Shifts (read, on-site cohort):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
-- **Users/Identity (read, dietary + names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
-- **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
+- **Users/Identity (read, dietary + names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
+- **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
 - **No new Domain entity, no schema change, no migration.**
@@ -245,7 +245,7 @@ New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `ISettingsService` + `IUserServiceRead` |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `ISettingsService` + `IUserService` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
 | Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |

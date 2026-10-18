@@ -26,18 +26,17 @@ section's own sync log, which other pages render for a resource or a person.
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "This person joined/left this team — update Google, later" | Teams | `IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` |
-| "Make sure this team has its Group" / "Reconcile this one resource now" | Teams | `IGoogleSyncService.EnsureTeamGroupAsync` / `SyncSingleResourceAsync` |
-| "Remove this person from a team's resources now" | Users (suspension), Teams | `IGoogleSyncService.RemoveUserFromTeamResourcesAsync` / `AddUserToTeamResourcesAsync` |
+| "Make sure this team has its Group" / "Reconcile this one resource now" | Teams | `IGoogleSyncWrite.EnsureTeamGroupAsync` / `SyncSingleResourceAsync` |
+| "Remove this person from a team's resources now" | Users (suspension), Teams | `IGoogleSyncWrite.RemoveUserFromTeamResourcesAsync` / `AddUserToTeamResourcesAsync` |
 | "Reconcile every group" (the system-team sync) | Teams | `IGoogleGroupSync.ReconcileAllAsync` |
 | "Who is supposed to be in group X?" — asked *by* this section | answered by Teams and Camps | `IGoogleGroupMembershipSource.GetExpectedAsync` |
-| "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' pages and this section's audit page | `ITeamResourceService` |
+| "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' pages and this section's audit page | `ITeamResourceService` (reads) / `ITeamResourceWrite` (mutations) |
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
-| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceServiceRead.GetActiveDriveFoldersAsync` |
+| "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
-| "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
-| "Can the service account read this Drive folder?" | Workgroups (root-folder setting) | `IGoogleSyncServiceRead.IsFolderReachableAsync` |
+| "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncService.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
+| "Can the service account read this Drive folder?" | Workgroups (root-folder setting) | `IGoogleSyncService.IsFolderReachableAsync` |
 | "What did sync do to this resource / person?" | `/Google/Resource/{id}` and `/Google/Human/{id}` | `IGoogleSyncLogViewer` |
-| "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |
 | Nightly: reconcile, settings, inheritance, paths; every 10 min: drain the queue | Hangfire | `GoogleResourceReconciliationJob`, `ProcessGoogleSyncOutboxJob` |
 
@@ -55,9 +54,10 @@ The shapes imply:
 
 - **A contracts leaf** carrying the cross-section interfaces above and the DTO/enum
   vocabulary, and nothing else. Each interface names one shape; the wide ones
-  (`IGoogleSyncService`, `ITeamResourceService`) should carry only the methods an outside
-  caller actually asks — the rest belong to internal interfaces
-  (nobodies-collective/Humans#1180).
+  (`IGoogleSyncService`, `ITeamResourceService`) carry only the methods an outside
+  caller actually asks; the cross-section writes sit on `IGoogleSyncWrite` /
+  `ITeamResourceWrite`, and the rest on the internal `IGoogleSyncManagement` /
+  `ITeamResourceManagement` (nobodies-collective/Humans#1180).
 - **One outbox service + one processor**: remember, then drain. The processor owns the
   retry and permanent-failure rules and marks the person's Google email valid or rejected.
   Without credentials it leaves the batch pending and reports the job as skipped.
@@ -115,7 +115,7 @@ The shapes imply:
 ## 5. Seams
 
 - **Resource reads have a narrow contract.** Monitor and other read-only callers use
-  `ITeamResourceServiceRead`; resource mutations remain on `ITeamResourceService`.
+  `ITeamResourceService`; resource mutations are on `ITeamResourceWrite`.
 - **`GoogleWorkspaceHealthCheck` calls `Google.Apis` directly** instead of a client
   interface (`debt-ledger.yml`); moving it behind a client is queued, so items touching
   the health check are shaped by it.
@@ -159,14 +159,14 @@ The shapes imply:
 - **Group sync queues the current signature.** Every Hangfire argument is explicit,
   including `CancellationToken.None` and the original sync trigger. Legacy signature
   overloads are forbidden by standing policy D13; jobs re-register at startup.
-- **`GoogleSyncOutboxProcessor` carries `[CrossSectionWrite]`** because marking the
-  person's Google email valid/rejected is Users' data, written through Users' own
-  `TrySetGoogleEmailStatusFromSyncAsync` — a declared, narrow write, not a leak.
+- **`GoogleSyncOutboxProcessor` writes to Users** — marking the person's Google email
+  valid/rejected is Users' data, written through Users' own
+  `TrySetGoogleEmailStatusFromSyncAsync` — a narrow public write, not a leak.
 - **Paired DI registrations per client type** (real vs stub) chosen by `hasGoogleCredentials`
   in `Section.cs`; the stubs are the test doubles for the whole section and are
   deliberately not in the test project.
 - **`GoogleWorkspaceSyncService` is the section's largest class** because it is the facade
-  every outside caller sees (`IGoogleSyncService`) *and* the Drive reconciler. The split
+  every outside caller sees (via `IGoogleSyncService` / `IGoogleSyncWrite`) *and* the Drive reconciler. The split
   into a thin facade over the group and Drive reconcilers is real work, not a doctor
   strike; until then its size is known, not news.
 - **`SyncServiceType.Discord` is seeded** although no Discord integration exists — the

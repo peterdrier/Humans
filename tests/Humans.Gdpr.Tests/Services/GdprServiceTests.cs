@@ -19,14 +19,14 @@ public class GdprServiceTests
         CreateService(users: null, contributors);
 
     private static GdprService CreateService(
-        IUserServiceRead? users, params IUserDataContributor[] contributors) =>
+        IUserService? users, params IUserDataContributor[] contributors) =>
         CreateService(users, NullLogger<GdprService>.Instance, contributors);
 
     private static GdprService CreateService(
-        IUserServiceRead? users, ILogger<GdprService> logger, params IUserDataContributor[] contributors) =>
+        IUserService? users, ILogger<GdprService> logger, params IUserDataContributor[] contributors) =>
         new(
             contributors,
-            users ?? Substitute.For<IUserServiceRead>(),
+            users ?? Substitute.For<IUserService>(),
             new FakeClock(FixedNow),
             logger);
 
@@ -35,10 +35,10 @@ public class GdprServiceTests
     /// plus <paramref name="survivor"/> reads back as the survivor's record, which is how
     /// Users reports a merged account.
     /// </summary>
-    private static IUserServiceRead StubMerged(Guid survivor, params Guid[] mergedFrom)
+    private static IUserService StubMerged(Guid survivor, params Guid[] mergedFrom)
     {
         var resolved = MinimalUserInfo(survivor) with { MergedUserIds = mergedFrom };
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(
                 (Guid)call[0] == survivor || mergedFrom.Contains((Guid)call[0]) ? resolved : null));

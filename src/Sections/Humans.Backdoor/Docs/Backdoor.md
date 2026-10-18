@@ -9,7 +9,7 @@
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Store/Contracts/IStoreAccountingRead.cs
   src/Sections/Humans.Expenses/Contracts/IExpenseReportService.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs
+  src/Sections/Humans.Finance.Contracts/IHoldedFinanceService.cs
 -->
 <!-- freshness:flag-on-change
   Re-read the surface table and the auth model whenever a controller, the key service or the auth filter changes: the routes are a published contract for agents, and the "one key = one human" rule is the whole point of the section.
@@ -62,7 +62,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/expense-reports?year=&status=` | read | The key owner's expense-report review queue — everything `/Expenses/Review` would show them, filterable by budget year and status — via `IExpenseReportService.GetReviewQueueAsync` |
 | `/api/backdoor/finance/expense-reports/{id}` | read | One report in full, including its lines, gated by the same `View` check `/Expenses` uses. The payee name, masked IBAN and Holded timeline fields are further narrowed to the report's submitter (payment half) or a finance admin (push half); the Holded contact/supplier-account/doc ids are finance-admin only — the same split `/Expenses` shows in the browser; a viewer whose `View` passes on another ground (e.g. a category coordinator) gets none of them |
 | `/api/backdoor/finance/expense-reports/{id}/attachments/{attachmentId}` | read | The stored bytes of one attachment, same `View` gate as the owning report |
-| `/api/backdoor/finance/creditor-accounts` | read | Every 400000xx creditor account, its bindings (all of them) and the bindings with no account at all, via `IHoldedFinanceServiceRead.ListCreditorAccountsAsync` |
+| `/api/backdoor/finance/creditor-accounts` | read | Every 400000xx creditor account, its bindings (all of them) and the bindings with no account at all, via `IHoldedFinanceService.ListCreditorAccountsAsync` |
 | `/api/backdoor/finance/creditor-accounts/{num}/ledger` | read | One account's balance and cached journal lines, contact header included, via `GetCreditorLedgerAsync` |
 | `/api/backdoor/finance/category-map` | read | Every live `holded_category_map` row, via `GetCategoryMapAsync` |
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
@@ -127,13 +127,13 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
 - **Store**: reads the accounting export — order lines and settled payments per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read; there is no role scoping.
 - **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportService` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportService` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
-- **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceServiceRead` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
+- **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceService` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
 - **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (`Humans.Notifications/Contracts`, not the contracts leaf: Backdoor is its only consumer). Rows are the owner's own; meters follow the owner's roles.
-- **Auth**: `IRoleAssignmentServiceRead.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse.
+- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
 - **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
-- **Users**: `IUserServiceRead.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.
+- **Users**: `IUserService.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 
 No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle. The Shell reads one constant from it, `BackdoorAuthentication.SchemeName`, so its onboarding gates can tell a machine request from a browsing session.
@@ -155,4 +155,4 @@ None. No other section consumes Backdoor; its whole surface is HTTP, and its ser
 - `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, §15b) is the only path to the table.
 - Rotation changes the old row's revocation fields and inserts its replacement in one repository `SaveChangesAsync` call. A concurrent or already-revoked old key writes neither row, so a failed rotation never strands its owner without a credential.
 - **Decorator decision** — no caching decorator. Key lookups are one indexed hash probe per API request at a handful of requests per minute, and a cache would have to be invalidated on every revoke to stay correct about the thing that matters most.
-- **Display stitching** — `IUserServiceRead.GetUserInfosAsync`.
+- **Display stitching** — `IUserService.GetUserInfosAsync`.

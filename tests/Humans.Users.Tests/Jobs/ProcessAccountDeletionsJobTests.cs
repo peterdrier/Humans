@@ -18,14 +18,14 @@ namespace Humans.Users.Tests.Jobs;
 /// <summary>
 /// Unit tests for <see cref="ProcessAccountDeletionsJob"/> after §15: the
 /// job is now a thin coordinator that delegates candidate enumeration and
-/// anonymization to <see cref="IUserService"/>. These tests exercise that
+/// anonymization to <see cref="IUserManagement"/>. These tests exercise that
 /// coordination — which users are enumerated, what audit entries are
 /// written, when the confirmation email fires, and error handling for a
 /// failing anonymization.
 /// </summary>
 public class ProcessAccountDeletionsJobTests : IDisposable
 {
-    private readonly IUserService _userService;
+    private readonly IUserManagement _userService;
     private readonly IAccountDeletionService _accountDeletionService;
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
@@ -39,7 +39,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
     public ProcessAccountDeletionsJobTests()
     {
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserManagement>();
         _accountDeletionService = Substitute.For<IAccountDeletionService>();
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();

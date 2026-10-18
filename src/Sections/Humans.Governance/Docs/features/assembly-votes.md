@@ -118,7 +118,7 @@ Daniel's Surveys section already carries an **Asociado vote** mode with ranked-c
 2. **Changeable ballots.** Surveys' CompletionTracked tier cannot resume or amend because there is no link to resume from. Statutes-compliant remote voting during a live assembly needs "change your vote until the chair closes it".
 3. **A different lifecycle.** A survey is Draft/Open/Closed with an audience diff and reminders. A binding vote has a roster snapshot at open, an admin stop, extend, cancel-with-reason, a stored immutable result, peeks that are themselves public, and a permanent-record export. None of that has a home in a questionnaire engine's state machine.
 4. **A different counting method.** Surveys precommitted to Ranked Pairs with equal ranks and rejection tiers. The association's votes need instant-runoff with visible elimination rounds, which is what the members were told and can follow by hand. Adding a second method with different ballot semantics to Surveys widens a surface that was carefully narrowed.
-5. **Ownership.** Eligibility, tiers, terms and the Asociado roster are Governance's data. A Surveys vote checks eligibility through `IUserServiceRead` at each request; a binding vote needs a frozen roster derived from Governance's own tables, which Surveys cannot own without reaching across the boundary.
+5. **Ownership.** Eligibility, tiers, terms and the Asociado roster are Governance's data. A Surveys vote checks eligibility through `IUserService` at each request; a binding vote needs a frozen roster derived from Governance's own tables, which Surveys cannot own without reaching across the boundary.
 6. **Scale of the thing.** A binding vote is one question. Surveys brings pages, branching, grids, three anonymity tiers, invite tokens, public slugs, and translation tooling. The Governance implementation is a service, a repository and a handful of mobile pages.
 
 What *is* reusable from Surveys: the select-per-option ranked ballot markup (`Views/Shared/_SurveyQuestions.cshtml`, `.survey-ranked-choice`) and the sanitized-Markdown renderer. The renderer is already shared; the ballot markup is view code, so a copy in Governance is fine (implementer's call).
@@ -329,9 +329,9 @@ Board members are de facto Asociados: they are on the official roster whether or
 
 ## Cross-section dependencies
 
-- **Users:** `IUserServiceRead` for names, preferred language, active state; `IUserEmailService` for the notification address.
+- **Users:** `IUserService` for names, preferred language, active state; `IUserEmailService` for the notification address.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
-- **Teams:** `ITeamServiceRead` for the Volunteers team membership (`AllMembers` indicative audience).
+- **Teams:** `ITeamService` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + `GovernanceEmails` messages (opened, reminder, cancelled).
 - **Notifications:** `INotificationEmitter` + `INotificationAutoResolve`; new `NotificationSource.AssemblyVoteOpened`.
 - **Audit:** `IAuditLogService.LogAsync` with the new `AuditAction` values listed above (appended at the end of the enum; entity-type strings pinned as literals in Governance's `AuditEntityTypes`).

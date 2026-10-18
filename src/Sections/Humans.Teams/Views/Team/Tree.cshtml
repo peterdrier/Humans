@@ -1,0 +1,55 @@
+@model Humans.Teams.Models.TeamTreeViewModel
+@{
+    ViewData["Title"] = Localizer["Teams_Tree_Title"].Value;
+}
+
+<style>
+    .team-tree, .team-tree ul { list-style: none; margin: 0; padding: 0; }
+    .team-tree ul { padding-left: 1.5rem; }
+    .team-tree li { position: relative; padding: 0.35rem 0 0.35rem 1.25rem; }
+    /* vertical rail: full height on every node, clipped at the elbow on the last one */
+    .team-tree li::before {
+        content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+        border-left: 2px solid var(--bs-border-color, #dee2e6);
+    }
+    .team-tree li:last-child::before { bottom: auto; height: 1.15rem; }
+    /* elbow into the node */
+    .team-tree li::after {
+        content: ""; position: absolute; left: 0; top: 1.15rem; width: 0.9rem;
+        border-top: 2px solid var(--bs-border-color, #dee2e6);
+    }
+    .team-tree > li { padding-left: 0; }
+    .team-tree > li::before, .team-tree > li::after { display: none; }
+    .team-tree > li + li { margin-top: 1.25rem; }
+    .team-tree .team-name { font-weight: 600; }
+    .team-tree > li > .team-name { font-size: 1.25rem; }
+    .team-tree .team-count { color: var(--bs-secondary-color); font-size: 0.875rem; margin-left: 0.4rem; }
+    .team-tree .team-desc { color: var(--bs-secondary-color); font-size: 0.875rem; max-width: 60ch; }
+    .team-tree .team-desc p:last-child { margin-bottom: 0; }
+</style>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Tree_Title"]</li>
+    </ol>
+</nav>
+
+<div class="mb-4">
+    <h1 class="mb-1">@Localizer["Teams_Tree_Title"]</h1>
+    <p class="text-muted mb-0">@Localizer["Teams_Tree_Subtitle"]</p>
+</div>
+
+@if (Model.Departments.Count == 0)
+{
+    <div class="alert alert-light">@Localizer["Teams_NoTeams"]</div>
+}
+else
+{
+    <ul class="team-tree">
+        @foreach (var department in Model.Departments)
+        {
+            <partial name="_TeamTreeNode" model="department" />
+        }
+    </ul>
+}

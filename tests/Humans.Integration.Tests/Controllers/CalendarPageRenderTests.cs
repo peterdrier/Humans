@@ -60,7 +60,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     private async Task<(Guid EventId, Guid TeamId)> SeedRecurringEventAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var teams = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
+        var teams = scope.ServiceProvider.GetRequiredService<ITeamService>();
         var calendar = scope.ServiceProvider.GetRequiredService<ICalendarService>();
 
         // Dev login seeds the persona's team membership through the team service, so the

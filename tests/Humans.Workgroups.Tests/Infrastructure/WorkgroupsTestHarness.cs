@@ -43,7 +43,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         DbFactory = new TestDbContextFactory<WorkgroupsDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        Users = Substitute.For<IUserServiceRead>();
+        Users = Substitute.For<IUserService>();
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -81,7 +81,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        Teams = Substitute.For<ITeamServiceRead>();
+        Teams = Substitute.For<ITeamService>();
         Teams.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
         Settings = Substitute.For<ISettingsService>();
@@ -89,12 +89,13 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, Arg.Any<CancellationToken>())
             .Returns(_ => RootFolderId);
 
-        GoogleSync = Substitute.For<IGoogleSyncService>();
+        GoogleSyncRead = Substitute.For<IGoogleSyncService>();
+        GoogleSync = Substitute.For<IGoogleSyncWrite>();
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => $"folder-{Guid.NewGuid()}");
-        GoogleSync.IsFolderReachableAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        GoogleSyncRead.IsFolderReachableAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        Finance = Substitute.For<IHoldedFinanceService>();
+        Finance = Substitute.For<IHoldedFinanceWrite>();
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(call => new HoldedExpenseAccountRef(
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
@@ -118,14 +119,15 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected WorkgroupsDbContext Db { get; }
     private protected TestDbContextFactory<WorkgroupsDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
-    private protected IUserServiceRead Users { get; }
+    private protected IUserService Users { get; }
     private protected ISurveyAnalysisRead Surveys { get; }
     private protected IUserEmailService UserEmails { get; }
     private protected IRoleAssignmentService Roles { get; }
-    private protected ITeamServiceRead Teams { get; }
+    private protected ITeamService Teams { get; }
     private protected ISettingsService Settings { get; }
-    private protected IGoogleSyncService GoogleSync { get; }
-    private protected IHoldedFinanceService Finance { get; }
+    private protected IGoogleSyncService GoogleSyncRead { get; }
+    private protected IGoogleSyncWrite GoogleSync { get; }
+    private protected IHoldedFinanceWrite Finance { get; }
     private protected IHoldedClient Holded { get; }
     private protected INotificationService Notifications { get; }
     private protected IEmailService Email { get; }
@@ -137,8 +139,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
-        repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
-        Finance, Holded, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
+        repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSyncRead,
+        GoogleSync, Finance, Holded, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();
@@ -153,7 +155,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         return surveyId;
     }
 
-    /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
+    /// <summary>Registers a human the <see cref="IUserService"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(
         string burnerName = "Test Human", Guid? id = null, ProfileInfo? profile = null, string language = "en",
         MembershipTier tier = MembershipTier.Volunteer)

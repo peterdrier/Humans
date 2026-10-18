@@ -25,9 +25,9 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     ITicketCacheInvalidator ticketCache,
     ITicketVendorCacheInvalidator vendorCache,
-    IUserServiceRead userServiceRead,
     IUserService userService,
-    ICampaignService campaignService,
+    IUserWrite userWrite,
+    ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService, IUserMerge
 {
     private readonly TicketVendorSettings _settings = settings.Value;
@@ -231,7 +231,7 @@ internal sealed class TicketSyncService(
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
         // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
-        var users = await userServiceRead.GetAllUserInfosAsync(ct);
+        var users = await userService.GetAllUserInfosAsync(ct);
         var (lookup, collisions) = VerifiedEmailLookup.Build(users);
         foreach (var (email, userCount) in collisions)
         {
@@ -433,7 +433,7 @@ internal sealed class TicketSyncService(
     /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
     /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
     /// scanned ticket's status "valid". The earliest scan across a user's tickets
-    /// is passed to <see cref="IUserService.SetParticipationFromTicketSyncAsync"/>;
+    /// is passed to <see cref="IUserWrite.SetParticipationFromTicketSyncAsync"/>;
     /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
     /// Issue nobodies-collective/Humans#736.
     /// </para>
@@ -490,7 +490,7 @@ internal sealed class TicketSyncService(
                     && existing.CheckedInAt is not null)
                     continue;
 
-                await userService.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Attended, info.CheckedInAt, ct);
             }
             else if (hasValidTicket)
@@ -501,7 +501,7 @@ internal sealed class TicketSyncService(
                     or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
                     continue;
 
-                await userService.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
@@ -517,7 +517,7 @@ internal sealed class TicketSyncService(
                 !info.Statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
-                await userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
+                await userWrite.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
             }
         }
     }

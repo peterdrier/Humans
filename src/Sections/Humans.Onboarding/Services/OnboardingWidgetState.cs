@@ -8,9 +8,9 @@ using Humans.Users.Contracts;
 namespace Humans.Onboarding.Services;
 
 internal sealed class OnboardingWidgetState(
-    IUserServiceRead users,
+    IUserService users,
     IShiftView shiftView,
-    IMembershipCalculatorRead membership,
+    IMembershipCalculator membership,
     ISettingsService settingsService,
     IConsentService consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState

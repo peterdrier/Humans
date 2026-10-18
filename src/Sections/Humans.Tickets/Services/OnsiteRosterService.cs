@@ -7,22 +7,22 @@ namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Builds the "Who's onsite" roster (#736): joins
-/// <see cref="IUserServiceRead.GetOnsiteUsersAsync"/> output with camp / team /
+/// <see cref="IUserService.GetOnsiteUsersAsync"/> output with camp / team /
 /// governance-role names and applies filters. Pure orchestration over existing
 /// section services — no DB access.
 /// </summary>
 internal sealed class OnsiteRosterService : IOnsiteRosterService
 {
-    private readonly IUserServiceRead _users;
+    private readonly IUserService _users;
     private readonly ICampService _camps;
-    private readonly ITeamServiceRead _teams;
-    private readonly IRoleAssignmentServiceRead _roles;
+    private readonly ITeamService _teams;
+    private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
-        IUserServiceRead users,
+        IUserService users,
         ICampService camps,
-        ITeamServiceRead teams,
-        IRoleAssignmentServiceRead roles)
+        ITeamService teams,
+        IRoleAssignmentService roles)
     {
         _users = users;
         _camps = camps;

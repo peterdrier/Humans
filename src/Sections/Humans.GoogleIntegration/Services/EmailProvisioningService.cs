@@ -15,10 +15,10 @@ namespace Humans.GoogleIntegration.Services;
 
 /// <summary>4-step @nobodies.team email provisioning flow. Used by GoogleController (Admin, HumanAdmin) and TeamAdminController (Coordinators).</summary>
 internal sealed class EmailProvisioningService(
-    IUserServiceRead userService,
+    IUserService userService,
     IGoogleWorkspaceUserService workspaceUserService,
     IUserEmailService userEmailService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IEmailService emailService,
     GoogleIntegrationEmails emailMessages,
     INotificationEmitter notificationService,

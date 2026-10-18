@@ -320,7 +320,7 @@ public class MembershipRequiredFilterTests
 
         if (nameGateHasNames is { } hasNames)
         {
-            var users = Substitute.For<IUserServiceRead>();
+            var users = Substitute.For<IUserService>();
             var profile = UserFixtures.Profile(
                 burnerName: hasNames ? "Member" : "", firstName: "Deleted", lastName: "User");
             var info = UserInfo.Create(

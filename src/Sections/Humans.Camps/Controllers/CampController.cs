@@ -21,7 +21,7 @@ internal sealed class CampController(
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
     IShiftView shiftView,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ILogger<CampController> logger,
@@ -30,7 +30,7 @@ internal sealed class CampController(
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
     private readonly ICampManagement _campService = campService;
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
 
     [AllowAnonymous]

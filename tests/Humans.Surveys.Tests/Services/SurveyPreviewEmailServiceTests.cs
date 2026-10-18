@@ -27,7 +27,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         var userEmails = Substitute.For<IUserEmailService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var emailService = Substitute.For<IEmailService>();
         var editable = new SurveyEditInput(
             Text("Volunteer survey"), LocalizedText.Empty, LocalizedText.Empty,
@@ -76,7 +76,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         var userEmails = Substitute.For<IUserEmailService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewService>();
@@ -129,7 +129,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         var userEmails = Substitute.For<IUserEmailService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewService>();
@@ -208,7 +208,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         var userEmails = Substitute.For<IUserEmailService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var emailService = Substitute.For<IEmailService>();
         var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewService>();

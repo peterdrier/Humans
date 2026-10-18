@@ -105,9 +105,8 @@ boot found it rather than with this host's endpoint gone and not yet recreated.
 
 ## 6. Deliberately not done
 
-- **No read/write interface split.** `I<Section>ServiceRead` separates table readers from
-  table writers; this section writes no table — its "write" is an HTTP call — so the split has
-  nothing to separate.
+- **No `I<Section>Write`.** That contract exists only where a foreign section writes a table;
+  this section writes no table — its "write" is an HTTP call — so there is nothing to expose.
 - **No retry, backoff or circuit breaker.** One server, low volume. A Stripe read that fails
   for a transport or rate-limit reason throws, and the next sync pass or page load asks
   again; nothing here treats a failure as a value.

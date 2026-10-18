@@ -69,7 +69,7 @@ through and owns nothing but sorting and file naming.
   this. The payload records have no such property, and that absence is pinned by a test.
 - **No domain writes.** No owned tables, notifications or POST routes. Existing weekly/daily CSV disclosures append AuditLog entries with actor, scope and person-row count.
 - **Live on every request.** No cached aggregate; the only cache it benefits from is the Users
-  section's, behind `IUserServiceRead`.
+  section's, behind `IUserService`.
 - **Access is `Admin` or `CantinaAdmin`, by policy.** An authenticated human without either is
   redirected to `/Account/AccessDenied` — not a bare 403. Team membership grants nothing.
   That gate is also what makes these pages localization-exempt

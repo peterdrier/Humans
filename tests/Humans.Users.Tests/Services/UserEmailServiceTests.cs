@@ -18,8 +18,8 @@ public class UserEmailServiceTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
-    private readonly ITicketService _ticketServiceRead = Substitute.For<ITicketService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
+    private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
@@ -34,11 +34,11 @@ public class UserEmailServiceTests
             store, null, null, null, null, null, null, null, null);
         // Default: user holds no ticket-linked emails, so the ticket-linked delete
         // guard is a no-op unless a test overrides GetTicketOrdersAsync.
-        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([]));
         _serviceProvider = new ServiceLocatorBuilder()
             .With(_mergeService)
-            .With(_ticketServiceRead)
+            .With(_ticketService)
             .Build();
 
         _service = new UserEmailService(
@@ -377,7 +377,7 @@ public class UserEmailServiceTests
             volunteerHistory: [],
             communicationPreferences: []);
 
-    // Stub IUserServiceInternal to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
+    // Stub IUserManagement to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
     private void StubAllUserInfosFromRows(IReadOnlyList<UserEmail> rows)
     {
         var infos = rows.GroupBy(r => r.UserId)
@@ -662,7 +662,7 @@ public class UserEmailServiceTests
             .Returns(ticketEmail);
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { ticketEmail, primary });
-        _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
                 new TicketOrderInfo(
                     Guid.NewGuid(),

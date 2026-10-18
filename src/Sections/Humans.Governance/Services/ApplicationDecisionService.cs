@@ -28,7 +28,8 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IUserWrite userWrite,
+    IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
@@ -41,7 +42,7 @@ internal sealed class ApplicationDecisionService(
     IVotingBadgeCacheInvalidator votingBadge,
     IMemoryCache cache,
     IClock clock,
-    ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
+    ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
     private static readonly TrackedLock SubmissionLock = new("Governance.SubmitApplication");
@@ -82,7 +83,7 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        await userService.SetMembershipTierAsync(
+        await userWrite.SetMembershipTierAsync(
             application.UserId, application.MembershipTier, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)

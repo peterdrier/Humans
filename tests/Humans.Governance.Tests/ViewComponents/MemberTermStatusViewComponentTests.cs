@@ -19,7 +19,7 @@ public sealed class MemberTermStatusViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
         var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };
@@ -27,7 +27,7 @@ public sealed class MemberTermStatusViewComponentTests
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
 
         var component = new MemberTermStatusViewComponent(
-            users, Substitute.For<IMembershipCalculatorRead>(), Substitute.For<IApplicationServiceRead>(),
+            users, Substitute.For<IMembershipCalculator>(), Substitute.For<IGovernanceService>(),
             SystemClock.Instance)
         {
             ViewComponentContext = new ViewComponentContext

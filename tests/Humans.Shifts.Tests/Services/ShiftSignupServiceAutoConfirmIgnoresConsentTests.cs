@@ -31,7 +31,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly UserInfo _userInfo;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -52,8 +52,8 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
-            .With<ITeamServiceRead>(teamService)
-            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
+            .With<ITeamService>(teamService)
+            .With<IRoleAssignmentService>(roleAssignmentService)
             .With(_users)
             .Build();
 

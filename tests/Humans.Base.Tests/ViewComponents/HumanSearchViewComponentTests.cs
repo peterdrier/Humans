@@ -19,7 +19,7 @@ public class HumanSearchViewComponentTests
     {
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var info = UserInfo.Create(
             new User { Id = userId, BurnerName = "Member", State = UserState.Active }, [], [], [],
             UserFixtures.Profile(burnerName: "Member"), []);

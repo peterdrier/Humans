@@ -61,7 +61,7 @@ dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
 
 **Seed (verify each, then delete the row / fix the note):**
 - `src/Sections/Humans.Teams/Docs/debt.yml` — the `IShiftManagementService`
-  data-access.md row: already reads `IShiftManagementServiceRead`, both sites.
+  data-access.md row: already reads `IShiftManagementService`, both sites.
 - `src/Sections/Humans.Users/Docs/debt.yml` — the `AccountDeletionService`
   "false thread-safety rationale" row: `grep -i thread` now returns nothing.
 - `src/Sections/Humans.Email/Docs/debt.yml` — the `ISystemSettingsService`

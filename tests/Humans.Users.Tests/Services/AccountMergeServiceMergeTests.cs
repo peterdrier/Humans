@@ -24,9 +24,9 @@ public class AccountMergeServiceMergeTests
     private readonly IUserRepository _userEmailRepo = Substitute.For<IUserRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly IRoleAssignmentWrite _roles = Substitute.For<IRoleAssignmentWrite>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly IConsentCacheInvalidator _consentCache = Substitute.For<IConsentCacheInvalidator>();
     private readonly List<IUserMerge> _userMerges = [];

@@ -1268,4 +1268,10 @@
     <value>Torn eliminat.</value>
   </data>
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Selecciona dies del calendari de l’esdeveniment.</value></data>
+  <data name="Dashboard_OffSeasonTitle" xml:space="preserve">
+    <value>Temporada tancada</value>
+  </data>
+  <data name="Dashboard_OffSeasonBody" xml:space="preserve">
+    <value>Gràcies per aquest any. Els torns tornaran a obrir-se quan la Junta publiqui el proper esdeveniment.</value>
+  </data>
 </root>

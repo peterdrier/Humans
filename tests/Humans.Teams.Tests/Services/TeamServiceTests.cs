@@ -52,8 +52,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly RoleAssignmentService _roleAssignmentService;
-    private readonly ITeamResourceService _teamResourceService;
-    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly ITeamResourceManagement _teamResourceService;
+    private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
@@ -69,7 +69,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-        _teamResourceService = Substitute.For<ITeamResourceService>();
+        _teamResourceService = Substitute.For<ITeamResourceManagement>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
@@ -81,16 +81,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamService>()
-            .With<IRoleAssignmentServiceRead>(_roleAssignmentService)
+            .With<ITeamManagement>()
+            .With<IRoleAssignmentService>(_roleAssignmentService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
-            .With<ITeamResourceServiceRead>(_teamResourceService)
+            .With<ITeamResourceService>(_teamResourceService)
             .With(userService)
-            .With<IUserServiceRead>(userService)
+            .With<IUserService>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
@@ -834,6 +834,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedRenameKeepsTheExistingUrl(string name)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -858,6 +859,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedCustomSlugRefusesTheUpdate(string slug)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -2218,7 +2220,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
-    // GetTeamBySlugAsync (TeamInfo? â€” ITeamServiceRead surface)
+    // GetTeamBySlugAsync (TeamInfo? â€” ITeamService surface)
     // ==========================================================================
 
     [HumansFact]

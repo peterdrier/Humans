@@ -19,8 +19,8 @@ namespace Humans.Finance.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class FinanceController(
-    IUserServiceRead userService,
-    IHoldedFinanceService holdedFinance,
+    IUserService userService,
+    IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
@@ -150,9 +150,10 @@ internal sealed class FinanceController(
     /// <summary>Generated payout files and their transfers, newest file first, with the booking
     /// state of each transfer.</summary>
     [HttpGet("Sepa")]
-    public async Task<IActionResult> Sepa(CancellationToken ct)
+    public async Task<IActionResult> Sepa(
+        CancellationToken ct, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(ct);
+        var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(days, ct);
 
         var names = new Dictionary<Guid, string>();
         var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
@@ -180,7 +181,7 @@ internal sealed class FinanceController(
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
-        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError));
+        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError, days));
     }
 
     /// <summary>Books one transfer against the Sabadell line it was paired with on the page. No
@@ -188,28 +189,48 @@ internal sealed class FinanceController(
     /// even if the admin closes the tab.</summary>
     [HttpPost("Sepa/Book")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BookSepaTransfer(Guid transferId, string bankMovementId)
+    public async Task<IActionResult> BookSepaTransfer(
+        Guid transferId, string bankMovementId,
+        int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
-        var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId);
+        var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
-        return RedirectToAction(nameof(Sepa));
+        return RedirectToAction(nameof(Sepa), new { days });
     }
 
     /// <summary>Books a whole file against the one Sabadell line the bank debited it as — the
     /// Process button. No <c>CancellationToken</c>, as for a single booking.</summary>
     [HttpPost("Sepa/BookFile")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BookSepaFile(Guid fileId, string bankMovementId)
+    public async Task<IActionResult> BookSepaFile(
+        Guid fileId, string bankMovementId,
+        int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
-        var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId);
+        var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
-        return RedirectToAction(nameof(Sepa));
+        return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    /// <summary>Approves a file whose every unbooked transfer is matched to its own Sabadell line,
+    /// booking them all — the Book file button. No <c>CancellationToken</c>, as for a single
+    /// booking.</summary>
+    [HttpPost("Sepa/BookMatches")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookSepaFileMatches(
+        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId, days);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa), new { days });
     }
 
     /// <summary>Every column on /Finance/Creditors is sortable; ties resolve on the account number
@@ -237,11 +258,19 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
-        // Controllers assemble and sort the presentation model: newest activity first.
+        // Controllers assemble and sort the presentation model. The running balance accumulates
+        // oldest-first from the account's first line (credit = owed to the member, debit = paid
+        // out); the page then shows newest activity first, lines within an entry in order.
+        var running = 0m;
         var lines = ledger.Lines
-            .OrderByDescending(l => l.Date)
-            .ThenByDescending(l => l.EntryNumber)
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.EntryNumber)
             .ThenBy(l => l.Line)
+            .Select(l => new CreditorStatementLineVm(l, running += l.Credit - l.Debit))
+            .ToList()
+            .OrderByDescending(r => r.Line.Date)
+            .ThenByDescending(r => r.Line.EntryNumber)
+            .ThenBy(r => r.Line.Line)
             .ToList();
         return View(new CreditorStatementVm(ledger, lines));
     }

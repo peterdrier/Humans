@@ -21,7 +21,7 @@ public class UserEmailServiceReconcileOAuthTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();

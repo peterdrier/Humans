@@ -34,8 +34,8 @@ public class SurveyServiceTests
             .Returns(new List<Survey>());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();

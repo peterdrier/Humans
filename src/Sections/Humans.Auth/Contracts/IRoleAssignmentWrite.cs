@@ -1,0 +1,54 @@
+using Humans.Base.Interfaces;
+
+namespace Humans.Auth.Contracts;
+
+/// <summary>
+/// The role-assignment writes and cache hooks other sections genuinely call. The section's
+/// own management surface is the internal <c>IRoleAssignmentManagement</c>, which inherits this.
+/// </summary>
+public interface IRoleAssignmentWrite : IApplicationService
+{
+    Task<RoleAssignmentResult> AssignRoleAsync(
+        Guid userId, string roleName, Guid assignerId,
+        string? notes,
+        CancellationToken ct = default);
+
+    Task<RoleAssignmentResult> EndRoleAsync(
+        Guid assignmentId, Guid enderId,
+        string? notes,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Ends all active governance role assignments for a user by setting
+    /// <c>ValidTo</c> to now. Returns the count of ended assignments.
+    /// Used during account deletion.
+    /// </summary>
+    Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Evicts the cached claims for <paramref name="userId"/> so the next
+    /// request re-derives roles from <c>role_assignments</c>. Called
+    /// post-commit by <c>AccountMergeService.MergeAsync</c> after a fold,
+    /// since the fold can change either user's effective role set.
+    /// </summary>
+    void InvalidateClaimsCacheForUser(Guid userId);
+
+    /// <summary>
+    /// Bumps the global nav-badge cache so governance role lists (Board,
+    /// Coordinators, etc.) re-derive on the next badge read. Called
+    /// post-commit by <c>AccountMergeService.MergeAsync</c> after a fold.
+    /// </summary>
+    void InvalidateNavBadgeCache();
+
+    /// <summary>
+    /// Evicts the singleton role-assignment row cache (the one backing
+    /// <c>GetActiveCountsByRoleAsync</c>). Called post-commit by
+    /// <c>AccountMergeService.MergeAsync</c> after a fold, since the fold's
+    /// bulk re-FK happens through <c>IRoleAssignmentRepository.ReassignToUserAsync</c>
+    /// without flowing through one of this service's standalone write
+    /// methods. Other writes (<see cref="AssignRoleAsync"/>,
+    /// <see cref="EndRoleAsync"/>, <see cref="RevokeAllActiveAsync"/>)
+    /// invalidate themselves and do not require the caller to do so.
+    /// </summary>
+    void InvalidateRoleAssignmentCache();
+}

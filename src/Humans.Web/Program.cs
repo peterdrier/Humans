@@ -529,7 +529,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
             var userIdRaw = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (Guid.TryParse(userIdRaw, out var userId))
             {
-                var users = context.RequestServices.GetRequiredService<IUserServiceRead>();
+                var users = context.RequestServices.GetRequiredService<IUserService>();
                 var user = await users.GetUserInfoAsync(userId, context.RequestAborted);
                 if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
                 {

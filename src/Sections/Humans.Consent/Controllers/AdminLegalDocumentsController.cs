@@ -14,9 +14,9 @@ namespace Humans.Consent.Controllers;
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Legal/Admin")]
 internal sealed class AdminLegalDocumentsController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAdminLegalDocumentService adminLegalDocumentService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IClock clock,
     ILogger<AdminLegalDocumentsController> logger) : HumansControllerBase(userService)
 {

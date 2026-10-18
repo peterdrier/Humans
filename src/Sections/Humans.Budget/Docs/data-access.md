@@ -21,8 +21,8 @@ Repository: `IBudgetRepository`.
 | BudgetAuditLogs | R/W |
 | TicketingProjections | R/W |
 
-Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`, plus `IClock`.
-Team labels are stitched at the service layer via `ITeamServiceRead`.
+Cross-section calls via `ITeamService`, `IUserService`, plus `IClock`.
+Team labels are stitched at the service layer via `ITeamService`.
 Implements `IUserDataContributor`. No `IMemoryCache`.
 
 ### TicketingBudgetService (Scoped)

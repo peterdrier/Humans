@@ -37,7 +37,7 @@ internal sealed class ShiftSignupService(
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,
-    IUserServiceRead users,
+    IUserService users,
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ShiftsResource));
@@ -52,7 +52,7 @@ internal sealed class ShiftSignupService(
     internal const string ShiftTagPreferences = "ShiftTagPreferences";
 
     // Lazy-resolved for notification coordinator / team-name lookups.
-    private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
+    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
 
     public async Task<SignupResult> SignUpAsync(
         Guid userId,
@@ -1430,7 +1430,7 @@ internal sealed class ShiftSignupService(
             .ToList();
         if (signups.Count == 0) return [];
 
-        // Team names cross-section via ITeamServiceRead (same as the GDPR contributor).
+        // Team names cross-section via ITeamService (same as the GDPR contributor).
         var teamsById = await TeamService.GetTeamsAsync(ct);
 
         var calendarsById = new Dictionary<Guid, EventSettingsInfo>();

@@ -50,9 +50,11 @@ public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
-    private readonly IApplicationDecisionService _applicationDecisionService =
-        Substitute.For<IApplicationDecisionService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
+    private readonly IGovernanceService _governanceService =
+        Substitute.For<IGovernanceService>();
+    private readonly IGovernanceWrite _governanceWrite =
+        Substitute.For<IGovernanceWrite>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
@@ -61,7 +63,7 @@ public class ProfileControllerEditTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IEmailOutboxService _emailOutbox = Substitute.For<IEmailOutboxService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
-    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -106,7 +108,8 @@ public class ProfileControllerEditTests
             Substitute.For<ICampaignService>(),
             _emailOutbox,
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
-            _applicationDecisionService,
+            _governanceService,
+            _governanceWrite,
             _accountDeletionService,
             _membershipCalculator);
 
@@ -121,11 +124,11 @@ public class ProfileControllerEditTests
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
         userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
-        // Tier-application field rules live in IApplicationDecisionService and are
+        // Tier-application field rules live in IGovernanceWrite and are
         // pre-flighted by Edit POST before any save. Default to "passes" so tests
         // that aren't about tier validation reach the save path; the tier-validation
         // tests below override this with the specific failure they exercise.
-        _applicationDecisionService
+        _governanceWrite
             .ValidateSubmission(
                 Arg.Any<MembershipTier>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
@@ -138,7 +141,7 @@ public class ProfileControllerEditTests
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
-        // also call IUserServiceInternal.GetUserInfoAsync. Default stub returns a UserInfo
+        // also call IUserManagement.GetUserInfoAsync. Default stub returns a UserInfo
         // with no profile so the initial-setup branch is taken; per-test overrides
         // (e.g. approved profile) replace it.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
@@ -461,9 +464,9 @@ public class ProfileControllerEditTests
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
         // CV rides on the save request — SaveProfileAsync owns persisting it.
         await _profileEditorService.Received(1).SaveProfileAsync(
@@ -474,7 +477,7 @@ public class ProfileControllerEditTests
             _profileId, Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>());
     }
 
-    // The tier-application field rules live in IApplicationDecisionService (the service that
+    // The tier-application field rules live in IGovernanceWrite (the service that
     // owns tier-application state), not in a controller-private helper — see
     // memory/architecture/no-business-logic-in-controllers.md. The controller's remaining job
     // is to pre-flight them before any save and map the ErrorKey onto a localized,
@@ -490,7 +493,7 @@ public class ProfileControllerEditTests
     public async Task Edit_InitialSetup_TierValidationFailure_RerendersWithFieldError_AndDoesNotSave(
         string errorKey, string expectedField)
     {
-        _applicationDecisionService
+        _governanceWrite
             .ValidateSubmission(
                 Arg.Any<MembershipTier>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
@@ -506,27 +509,27 @@ public class ProfileControllerEditTests
         // Validation runs before persistence so a rejected submit cannot half-save.
         await _profileEditorService.DidNotReceiveWithAnyArgs()
             .SaveProfileAsync(Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Edit_InitialSetup_Colaborador_NoExistingApp_CallsSubmitAsync()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "to help");
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.Received(1).SubmitAsync(
+        await _governanceWrite.Received(1).SubmitAsync(
             _userId, MembershipTier.Colaborador, "to help",
             Arg.Any<string?>(),
             Arg.Is<string?>(x => x == null),
             Arg.Is<string?>(x => x == null),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
     }
 
@@ -553,20 +556,20 @@ public class ProfileControllerEditTests
             AdditionalInfo: null,
             SignificantContribution: null,
             RoleUnderstanding: null);
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([existingDraft]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "updated motivation");
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.Received(1).UpdateDraftApplicationAsync(
+        await _governanceWrite.Received(1).UpdateDraftApplicationAsync(
             existingDraftId, MembershipTier.Colaborador, "updated motivation",
             Arg.Any<string?>(),
             Arg.Is<string?>(x => x == null),
             Arg.Is<string?>(x => x == null),
             Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
     }
 
@@ -592,11 +595,11 @@ public class ProfileControllerEditTests
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceWrite.DidNotReceiveWithAnyArgs()
             .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+        await _governanceService.DidNotReceiveWithAnyArgs()
             .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
@@ -630,7 +633,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var tagId1 = Guid.NewGuid();
@@ -648,7 +651,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
@@ -687,7 +690,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToProfile()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
@@ -714,7 +717,7 @@ public class ProfileControllerEditTests
         // The Edit page owns only meal-pref + allergies (carried on ProfileSaveRequest,
         // which has no intolerance/medical fields). Intolerances + medical are written
         // only by the DietaryMedical page via SaveDietaryMedicalAsync — never from Edit.
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
@@ -734,7 +737,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveProfile()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
@@ -753,7 +756,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
         _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
         var model = MakeValidModel(MembershipTier.Volunteer);

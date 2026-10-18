@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Services.Workspace;
@@ -15,7 +16,7 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 /// Team resource management splits into three clean pieces:
 /// <list type="bullet">
 ///   <item><description>
-///     <see cref="ITeamResourceService"/> in <c>Humans.GoogleIntegration.Services</c>
+///     <see cref="ITeamResourceManagement"/> in <c>Humans.GoogleIntegration.Services</c>
 ///     owns business rules + persistence orchestration. The service was
 ///     relocated from <c>Services.Teams</c> to <c>Services.GoogleIntegration</c>
 ///     so it sits in the same section as the <see cref="IGoogleResourceRepository"/>

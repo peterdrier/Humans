@@ -27,7 +27,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
@@ -35,7 +35,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     public ShiftManagementWriteGuardTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
         _roleAssignments = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
@@ -55,8 +55,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(userService)
-            .With<IUserServiceRead>(userService)
-            .With<IRoleAssignmentServiceRead>(_roleAssignments)
+            .With<IUserService>(userService)
+            .With<IRoleAssignmentService>(_roleAssignments)
             .Build();
 
         _service = new ShiftManagementService(

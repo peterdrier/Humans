@@ -28,9 +28,10 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly IGoogleGroupMembershipClient _groupMembership = Substitute.For<IGoogleGroupMembershipClient>();
     private readonly IGoogleGroupProvisioningClient _groupProvisioning = Substitute.For<IGoogleGroupProvisioningClient>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
-    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -70,7 +71,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _teamResourceClient,
             _teamResourceService,
             _teamService,
-            _userService,
+            _userService, _userServiceWrite,
             _userEmailService,
             _syncSettingsService,
             _auditLogService,

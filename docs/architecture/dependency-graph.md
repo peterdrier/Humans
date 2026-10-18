@@ -645,10 +645,10 @@ repository only), `EmailProblemsService`, `GoogleWorkspaceUserService`, `GuideCo
 
 Each pair below would fail constructor injection if both sides eager-injected the other.
 
-1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamServiceRead`; TeamService eagerly injects `IShiftAuthorizationInvalidator` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamServiceRead`.)
-2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentService` for required-docs-given checks. Both lazy because the cycle is two-way hot.
-3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamServiceRead`.
-4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamServiceRead`.
+1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftAuthorizationInvalidator` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamService`.)
+2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentService` for required-docs-given checks. Both lazy because the cycle is two-way hot.
+3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamService`.
+4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncWrite` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamService`.
 5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningWrite>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampService`.
 6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketService` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
 
@@ -665,9 +665,9 @@ When adding a new cross-service call, default to ctor injection. Reach for the l
 
 The most depended-on cross-section surfaces (read the counts off the diagram):
 
-- **`UserService`** — largest fan-in by far; nearly every section reads users through `IUserServiceRead`. No outbound edges except `IAdminAuthorizationService`, which is what keeps it foundational.
+- **`UserService`** — largest fan-in by far; nearly every section reads users through `IUserService`; the few cross-section writes go through `IUserWrite`; the internal `IUserManagement` joins both with the section-only members. No outbound edges except `IAdminAuthorizationService`, which is what keeps it foundational.
 - **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules §7a, not a decorator).
-- **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamServiceRead`; batch methods exist to avoid N+1 at call sites.
+- **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamService`, cross-section writes through `ITeamWrite` (internal `ITeamManagement` joins them); batch methods exist to avoid N+1 at call sites.
 - **`UserEmailService`** — email-identity lookups across the system.
 - **`OutboxEmailService`** (`IEmailService`) / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
 - **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` and `WorkgroupService` take the full `INotificationService`.

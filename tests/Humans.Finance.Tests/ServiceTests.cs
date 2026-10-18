@@ -43,15 +43,15 @@ public class HoldedFinanceServiceTests
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Guid Admin = Guid.NewGuid();
-    private readonly IUserServiceRead _users = NoUsers();
+    private readonly IUserService _users = NoUsers();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly SepaOptions _sepa = new();
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
-    private static IUserServiceRead NoUsers()
+    private static IUserService NoUsers()
     {
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         return users;
@@ -2872,7 +2872,7 @@ public class HoldedFinanceServiceTests
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
                     Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
-                    bookedAt, null, null, null, null, null),
+                    bookedAt, null, null, null, null, null, null),
             });
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -3037,7 +3037,7 @@ public class HoldedFinanceServiceTests
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
     }
 
     [HumansFact]
@@ -3055,7 +3055,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -3117,7 +3117,7 @@ public class HoldedFinanceServiceTests
             BankLineDate, 40000004, 57200001, 20m,
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
@@ -3144,7 +3144,7 @@ public class HoldedFinanceServiceTests
         await _client.Received(1).PostLedgerEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -3168,7 +3168,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
@@ -3219,7 +3219,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
@@ -3249,7 +3249,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+            default, default, default, default!, default, default, default);
     }
 
     [HumansFact]
@@ -3285,8 +3285,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryAccountId = "";
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3321,8 +3320,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryLedgerAccount = null;
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryLedgerAccount");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3336,8 +3334,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.NotBookableReason.Should().Contain("no Holded contact binding");
     }
@@ -3352,8 +3349,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000099 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3373,8 +3369,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3393,8 +3388,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
@@ -3413,8 +3407,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
@@ -3438,7 +3431,7 @@ public class HoldedFinanceServiceTests
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
                     Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
-                    null, null, null, null, null, null),
+                    null, null, null, null, null, null, null),
             });
         return userId;
     }

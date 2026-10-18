@@ -11,9 +11,9 @@ namespace Humans.Governance.ViewComponents;
 /// 90 days, renewal pending, or active. Renders nothing for a plain Volunteer.
 /// </summary>
 public sealed class MemberTermStatusViewComponent(
-    IUserServiceRead userService,
-    IMembershipCalculatorRead membershipCalculator,
-    IApplicationServiceRead applicationService,
+    IUserService userService,
+    IMembershipCalculator membershipCalculator,
+    IGovernanceService applicationService,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

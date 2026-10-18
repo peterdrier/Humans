@@ -27,7 +27,7 @@ namespace Humans.Web.Authorization;
 /// open on the very next request — no stale-cache redirect loop.
 /// </para>
 /// </summary>
-public sealed class NameRequiredFilter(IUserServiceRead userService) : IAsyncActionFilter
+public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionFilter
 {
     // Allow-list (whole controllers) — reaching these must never be gated, or the
     // gate redirects to itself / locks the user out of escaping it.

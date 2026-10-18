@@ -231,6 +231,24 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UpsertEventSettingsAsync_UpdatesIsOffSeasonOnAnExistingRow()
+    {
+        var id = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var edited = MakeEvent(id, EventSettingsStatus.Active);
+        edited.IsOffSeason = true;
+
+        await _repository.UpsertEventSettingsAsync(
+            edited, NodaTime.Instant.FromUtc(2026, 10, 17, 4, 5), Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _seedContext.EventSettings.AsNoTracking()
+            .SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
+        row.IsOffSeason.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task DeleteEventSettingsAsync_ReturnsZeroWhenRowDoesNotExist()
     {
         var deleted = await _repository.DeleteEventSettingsAsync(

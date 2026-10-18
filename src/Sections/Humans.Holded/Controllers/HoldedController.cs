@@ -18,10 +18,11 @@ namespace Humans.Holded.Controllers;
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Holded")]
 internal sealed class HoldedController(
-    IUserServiceRead userService,
+    IUserService userService,
     IHoldedAdminService admin,
     IHoldedService holded,
     IHoldedFinanceService holdedFinance,
+    IHoldedFinanceWrite holdedFinanceWrite,
     ILogger<HoldedController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -60,7 +61,7 @@ internal sealed class HoldedController(
     {
         try
         {
-            var docs = await holdedFinance.SyncAsync(ct);
+            var docs = await holdedFinanceWrite.SyncAsync(ct);
             var swept = await holded.SyncLedgerAsync(full: false, ct);
             if (swept)
                 SetSuccess($"Synced {docs.DocCount} purchase doc(s) and swept the trailing ledger window.");

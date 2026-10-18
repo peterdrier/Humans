@@ -157,7 +157,7 @@ public class AgentUserSnapshotProviderTests
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         // Build a TeamInfo dict that mirrors the desired memberships so the
         // reshape idiom (GetTeamsAsync → filter by member) returns the same data.
         var membershipsToReturn = teamMemberships ?? [];

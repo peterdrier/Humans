@@ -27,7 +27,7 @@ public class OrderAuthorizationHandlerTests
     private static readonly LocalDate FutureDeadline = new(2026, 12, 31);
 
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly OrderAuthorizationHandler _handler;

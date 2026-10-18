@@ -23,7 +23,7 @@ namespace Humans.Events.Services;
 internal sealed class EventService(
     IEventRepository repo,
     ISettingsService settingsService,
-    IUserServiceRead userService,
+    IUserService userService,
     ICampService camps,
     IAuditLogService audit,
     IEmailService emailService,

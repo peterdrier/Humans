@@ -39,7 +39,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
         DbFactory = new TestDbContextFactory<PreapprovalsDbContext>(options);
         Clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        Users = Substitute.For<IUserServiceRead>();
+        Users = Substitute.For<IUserService>();
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(_users.GetValueOrDefault(call.Arg<Guid>())));
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -63,7 +63,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
                 return Task.FromResult(dict);
             });
 
-        Finance = Substitute.For<IHoldedFinanceServiceRead>();
+        Finance = Substitute.For<IHoldedFinanceService>();
         Finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountOption>>(
             [
@@ -82,9 +82,9 @@ public abstract class PreapprovalsTestHarness : IDisposable
     private protected PreapprovalsDbContext Db { get; }
     private protected TestDbContextFactory<PreapprovalsDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
-    private protected IUserServiceRead Users { get; }
+    private protected IUserService Users { get; }
     private protected IUserEmailService UserEmails { get; }
-    private protected IHoldedFinanceServiceRead Finance { get; }
+    private protected IHoldedFinanceService Finance { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationAutoResolve NotificationResolve { get; }
     private protected IEmailService Email { get; }
@@ -107,7 +107,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
     // ── Seeders ───────────────────────────────────────────────────────────
 
-    /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
+    /// <summary>Registers a human the <see cref="IUserService"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(string burnerName = "Test Human", Guid? id = null, string language = "en", IReadOnlyList<Guid>? mergedIds = null)
     {
         var userId = id ?? Guid.NewGuid();

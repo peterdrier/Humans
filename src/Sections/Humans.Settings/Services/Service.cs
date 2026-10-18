@@ -164,7 +164,8 @@ internal sealed class Service(
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose,
         Status: src.Status,
-        EarlyEntryStartOffset: src.EarlyEntryStartOffset);
+        EarlyEntryStartOffset: src.EarlyEntryStartOffset,
+        IsOffSeason: src.IsOffSeason ?? false);
 
     private static EventSettings ToEntity(EventSettingsInfo src) => new()
     {
@@ -186,5 +187,6 @@ internal sealed class Service(
         EarlyEntryClose = src.EarlyEntryClose,
         Status = src.Status,
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
+        IsOffSeason = src.IsOffSeason,
     };
 }

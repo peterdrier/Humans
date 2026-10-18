@@ -18,7 +18,7 @@ namespace Humans.Application.Services.Users;
 // the OAuth callback, so nothing else can reach the reconcile primitive.
 internal sealed class ExternalLoginService(
     UserManager<User> userManager,
-    IUserServiceInternal userService,
+    IUserManagement userService,
     IUserEmailService userEmailService,
     IMagicLinkService magicLinkService,
     IClock clock,

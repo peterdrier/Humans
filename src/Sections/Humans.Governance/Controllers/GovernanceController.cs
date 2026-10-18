@@ -11,7 +11,7 @@ namespace Humans.Governance.Controllers;
 [Authorize]
 [Route("[controller]")]
 internal sealed class GovernanceController(
-    IUserServiceRead userService,
+    IUserService userService,
     IGovernanceIndexService governanceIndexService) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index()

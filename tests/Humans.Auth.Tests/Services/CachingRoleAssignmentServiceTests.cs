@@ -14,13 +14,13 @@ namespace Humans.Auth.Tests.Services;
 /// Exercises <see cref="CachingRoleAssignmentService"/>'s cache-served paths
 /// (<c>GetActiveCountsByRoleAsync</c>, <c>GetActiveForUserAsync</c>) and
 /// wholesale invalidation. Pass-through methods are not tested here — the
-/// build verifies they satisfy <see cref="IRoleAssignmentService"/>; their
+/// build verifies they satisfy <see cref="IRoleAssignmentManagement"/>; their
 /// behavior is the inner service's behavior, covered by
 /// <c>RoleAssignmentServiceTests</c>.
 /// </summary>
 /// <remarks>
 /// The decorator's only collaborator is the keyed inner
-/// <see cref="IRoleAssignmentService"/>, resolved per call through
+/// <see cref="IRoleAssignmentManagement"/>, resolved per call through
 /// <c>IServiceScopeFactory</c> — it never sees a repository. So the warm-count
 /// assertions below are made against the inner service itself, and
 /// <c>GetFilteredAsync</c> is stubbed with <c>Arg.Any</c>: matching the warm
@@ -169,22 +169,22 @@ public sealed class CachingRoleAssignmentServiceTests
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
 
-        scope.ServiceProvider.GetRequiredService<IRoleAssignmentServiceRead>()
-            .Should().BeSameAs(provider.GetRequiredService<IRoleAssignmentService>());
+        scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>()
+            .Should().BeSameAs(provider.GetRequiredService<IRoleAssignmentManagement>());
     }
 
-    private static (CachingRoleAssignmentService Service, IRoleAssignmentService Inner) BuildService(
+    private static (CachingRoleAssignmentService Service, IRoleAssignmentManagement Inner) BuildService(
         IReadOnlyList<RoleAssignmentSummarySnapshot> rows,
         IClock clock)
     {
-        var inner = Substitute.For<IRoleAssignmentService>();
+        var inner = Substitute.For<IRoleAssignmentManagement>();
         inner.GetFilteredAsync(
                 Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<int>(), Arg.Any<int>(),
                 Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult((rows, rows.Count)));
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<IRoleAssignmentService>(
+        services.AddKeyedScoped<IRoleAssignmentManagement>(
             CachingRoleAssignmentService.InnerServiceKey, (_, _) => inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 

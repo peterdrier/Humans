@@ -21,7 +21,7 @@ internal sealed class Service(
     IStoreRepository repo,
     IAuditLogService audit,
     ICampService campService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IClock clock,
     ISettingsService settingsService,
     IStripeService stripeService,

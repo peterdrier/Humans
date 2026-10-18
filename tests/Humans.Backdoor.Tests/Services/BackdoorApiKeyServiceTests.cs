@@ -22,7 +22,7 @@ public class BackdoorApiKeyServiceTests
 
     private readonly IBackdoorApiKeyRepository _repository = Substitute.For<IBackdoorApiKeyRepository>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly BackdoorApiKeyService _sut;
 

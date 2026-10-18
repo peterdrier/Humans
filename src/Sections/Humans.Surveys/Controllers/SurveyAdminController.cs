@@ -29,8 +29,8 @@ namespace Humans.Surveys.Controllers;
 [Route("Survey/Admin")]
 internal sealed class SurveyAdminController(
     ISurveyService surveyService,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     IAuthorizationService authorizationService,
     IStringLocalizer<SurveysResource> localizer,
     ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)

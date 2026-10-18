@@ -45,7 +45,7 @@ public class TicketControllerTests
                 ? [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())] : [], "Test"))
         };
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            backfill, dashboard, Substitute.For<IUserServiceRead>(), NullLogger<TicketController>.Instance)
+            backfill, dashboard, Substitute.For<IUserService>(), NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -88,7 +88,7 @@ public class TicketControllerTests
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            backfill, dashboard, Substitute.For<IUserServiceRead>(), NullLogger<TicketController>.Instance)
+            backfill, dashboard, Substitute.For<IUserService>(), NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -115,7 +115,7 @@ public class TicketControllerTests
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
             NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext

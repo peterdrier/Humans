@@ -32,8 +32,9 @@ public sealed class Section : ISection
         services.AddScoped<IEmailPreviewContributor, CampaignsEmailPreviews>();
 
         services.AddScoped<CampaignService>();
+        services.AddScoped<ICampaignManagement>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
-        services.AddScoped<ICampaignServiceRead>(sp => sp.GetRequiredService<CampaignService>());
+        services.AddScoped<ICampaignWrite>(sp => sp.GetRequiredService<CampaignService>());
         // Owns the user-scoped campaign_grants table → GDPR export contributor and
         // account-merge fold participant.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());

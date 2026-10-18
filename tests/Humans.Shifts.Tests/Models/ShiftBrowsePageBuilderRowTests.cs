@@ -20,7 +20,7 @@ public class ShiftBrowsePageBuilderRowTests
 
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     private static readonly BurnSettingsInfo Event = new(
         Id: Guid.NewGuid(),

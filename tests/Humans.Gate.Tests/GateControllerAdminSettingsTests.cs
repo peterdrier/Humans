@@ -30,7 +30,7 @@ public sealed class GateControllerAdminSettingsTests
     public GateControllerAdminSettingsTests()
     {
         _controller = new GateController(
-            _gate, Substitute.For<IUserServiceRead>(), new ConfigurationBuilder().Build(),
+            _gate, Substitute.For<IUserService>(), new ConfigurationBuilder().Build(),
             new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock),
             new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())),
             Substitute.For<IBackgroundJobClient>(), _clock);

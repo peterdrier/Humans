@@ -32,7 +32,7 @@ public class CampControllerTests
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
     private readonly ICityPlanningService _cityPlanning = Substitute.For<ICityPlanningService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();

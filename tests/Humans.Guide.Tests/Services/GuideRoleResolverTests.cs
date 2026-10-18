@@ -15,7 +15,7 @@ namespace Humans.Guide.Tests.Services;
 public class GuideRoleResolverTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ICampLeadDirectory _campLeads = Substitute.For<ICampLeadDirectory>();
 
     public GuideRoleResolverTests()

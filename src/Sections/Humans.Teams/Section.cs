@@ -44,8 +44,9 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamManagementService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamManagement>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
-        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamWrite>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<ITeamSeeding>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
         // Guid → display-name fan-out (nobodies-collective/Humans#1059).

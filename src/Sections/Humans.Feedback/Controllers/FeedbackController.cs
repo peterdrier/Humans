@@ -23,8 +23,8 @@ namespace Humans.Feedback.Controllers;
 [Route("Feedback")]
 internal sealed class FeedbackController(
     FeedbackService feedbackService,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
     /// <summary>

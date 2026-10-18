@@ -15,7 +15,7 @@ namespace Humans.Debug.ViewComponents;
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
 /// </remarks>
 internal sealed class UserSetMembershipCardViewComponent(
-    IUserServiceRead userService,
+    IUserService userService,
     ISettingsService settingsService,
     IShiftView shiftView) : ViewComponent
 {

@@ -18,7 +18,7 @@ namespace Humans.Consent.Jobs;
 /// <remarks>
 /// Reads user display/email data via <see cref="IUserService"/> and persists
 /// <c>User.LastConsentReminderSentAt</c> through
-/// <see cref="IUserService.SetLastConsentReminderSentAsync"/>, so the job
+/// <see cref="IUserWrite.SetLastConsentReminderSentAsync"/>, so the job
 /// never touches a section DbContext
 /// directly (design-rules §2c).
 ///
@@ -31,13 +31,14 @@ namespace Humans.Consent.Jobs;
 /// <c>ISectionJobs</c>.
 ///
 /// The cooldown stamp is a Users column, set through Users' own service, so the class
-/// injects <c>IUserService</c> rather than <c>IUserServiceRead</c>, which cannot set it.
+/// injects <c>IUserWrite</c> beside <c>IUserService</c>, which cannot set it.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     ILegalDocumentSyncManagement legalDocService,
     IUserService userService,
+    IUserWrite userWrite,
     IEmailService emailService,
     ConsentEmails emailMessages,
     IOptions<EmailSettings> emailSettings,
@@ -107,7 +108,7 @@ internal sealed class SendReConsentReminderJob(
                             language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                             cancellationToken);
 
-                        await userService.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
+                        await userWrite.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
                         sentCount++;
 
                         logger.LogInformation(

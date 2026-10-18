@@ -19,7 +19,7 @@ namespace Humans.Preapprovals.Controllers;
 [Route("Preapprovals")]
 internal sealed class PreapprovalsController(
     IPreapprovalManagement preapprovals,
-    IUserServiceRead users,
+    IUserService users,
     IStringLocalizer<PreapprovalsResource> localizer,
     IAuthorizationService authorization,
     IClock clock,

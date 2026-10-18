@@ -17,7 +17,7 @@ namespace Humans.Camps.Controllers;
 internal sealed class CampComplianceController(
     ICampService campService,
     ICampRoleService campRoleService,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("Compliance")]
     public async Task<IActionResult> Compliance(int? year, CancellationToken ct)

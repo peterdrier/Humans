@@ -26,9 +26,9 @@ namespace Humans.Feedback.Services;
 /// </summary>
 internal sealed class FeedbackService(
     IFeedbackRepository repository,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IEmailService emailService,
     FeedbackEmails emailMessages,
     INotificationEmitter notificationService,

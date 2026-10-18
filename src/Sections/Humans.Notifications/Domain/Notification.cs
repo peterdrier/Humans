@@ -54,7 +54,7 @@ internal sealed class Notification
 
     /// <summary>
     /// Bare cross-section User id — no FK constraint, no navigation property.
-    /// Display names are stitched in memory via <c>IUserServiceRead</c>.
+    /// Display names are stitched in memory via <c>IUserService</c>.
     /// </summary>
     public Guid? ResolvedByUserId { get; set; }
 

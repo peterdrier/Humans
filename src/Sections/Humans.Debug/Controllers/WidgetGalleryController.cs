@@ -25,8 +25,8 @@ namespace Humans.Debug.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug/WidgetGallery")]
 internal sealed class WidgetGalleryController(
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
+    IUserService userService,
+    ITeamService teamService,
     ICampService campService,
     IShiftManagementService shiftService,
     ISettingsService settingsService,

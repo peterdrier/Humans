@@ -721,7 +721,7 @@ Git Bash.)
    - **A horizontal section's read+render layer belongs to the section, and the leaves it
      needs come with it — this bullet used to say the opposite, and cost a lane to reverse.**
      `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
-     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` and
+     team display names, so it names `IUserService`, `ITeamService` and
      `ITeamResourceService`. That was read as "a horizontal referencing three verticals,
      forbidden at any size", and the type was parked in `Humans.Application` with its
      `AuditEvent` DTO and verb table, registered from Shell, pinned by an assembly-level
@@ -1120,7 +1120,7 @@ Git Bash.)
      Users/Profiles and are parked in `Humans.UI` under the rule above. Read "public lives
      only on the leaf" and that lane converts 129 call sites to runtime-resolved strings on
      the codebase's most-used component; read HUM0034 correctly and both go `public` under
-     `Humans.Users/Contracts/` — `IUserServiceRead` belongs on a leaf anyway and
+     `Humans.Users/Contracts/` — `IUserService` belongs on a leaf anyway and
      `IUrlHelperFactory` is framework, so neither constructor blocks it — and nothing changes
      at the call sites.
    - **Fourth case, a rider on City Planning's: invoking by name still needs the component's
@@ -1473,7 +1473,7 @@ Git Bash.)
      `Db.Users`, `SeedUser`, `NewDbBackedUserService()` and the section pair — by call count,
      Teams' "copy the harness". But `NewDbBackedUserService` stubs over an in-memory
      `HumansDbContext`, which §858 peel 15 deletes, so copying would have taken a fresh
-     dependency on it. The service reads exactly two members of `IUserServiceRead`, so the
+     dependency on it. The service reads exactly two members of `IUserService`, so the
      harness became a `Dictionary<Guid, UserInfo>` with `SeedUser` keeping its signature and the
      seeding call sites unchanged — Campaigns' "rewrite the stub" reached from the other
      direction, and `UserInfo.Create` (Governance's `UserInfoFixtures`) is what makes the

@@ -16,7 +16,7 @@ namespace Humans.Events.Controllers;
 [Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Admin")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-internal sealed class EventsAdminController(IEventManagement guide, ILogger<EventsAdminController> logger, IUserServiceRead userService)
+internal sealed class EventsAdminController(IEventManagement guide, ILogger<EventsAdminController> logger, IUserService userService)
     : HumansControllerBase(userService)
 {
     // ─── Settings ────────────────────────────────────────────

@@ -34,18 +34,20 @@ internal sealed class DevPersonaSeeder(
     IProfileEditorService profileEditorService,
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentWrite roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
+    ITeamWrite teamWrite,
     ITeamSeeding teamSeeding,
     ISystemTeamSync systemTeamSync,
     IUserService userService,
+    IUserWrite userWrite,
     IAuditLogService auditLogService,
     ICampService campService,
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
     IConsentSubmission consentService,
-    IMembershipCalculatorRead membershipCalculator,
+    IMembershipCalculator membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IMemoryCache cache,
@@ -133,7 +135,7 @@ internal sealed class DevPersonaSeeder(
         // and lands on the dashboard. The CachingUserService decorator handles
         // the UserInfo profile-slice refresh after the storage write.
         const string consentNotes = "Dev persona - auto-seeded";
-        var consentCheckResult = await userService.ApplyProfileOnboardingMutationAsync(
+        var consentCheckResult = await userWrite.ApplyProfileOnboardingMutationAsync(
             id,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RecordConsentCheck,
@@ -186,7 +188,7 @@ internal sealed class DevPersonaSeeder(
         // Board membership has no per-user sync arm in SystemTeamSyncJob, so apply directly.
         if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
         {
-            await teamService.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
+            await teamWrite.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
         }
 
         foreach (var role in roles)
@@ -581,7 +583,7 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            teamService.InvalidateActiveTeamsCache();
+            teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(coordinatorUserId);
@@ -608,7 +610,7 @@ internal sealed class DevPersonaSeeder(
         if (existingMember.Role == expectedRole)
             return false;
 
-        await teamService.SetMemberRoleAsync(teamId, userId, expectedRole, userId);
+        await teamWrite.SetMemberRoleAsync(teamId, userId, expectedRole, userId);
         return true;
     }
 
@@ -648,7 +650,7 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            teamService.InvalidateActiveTeamsCache();
+            teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(userId);

@@ -31,7 +31,7 @@ public class TeamAdminControllerMembersTests
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
@@ -51,7 +51,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IGoogleSyncService>(), users, provisioning, authorization,
+            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users, provisioning, authorization,
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<ITicketService>())
         {
@@ -89,10 +89,11 @@ public class TeamAdminControllerMembersTests
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
-        var sync = Substitute.For<IGoogleSyncService>();
+        var resourceWrite = Substitute.For<ITeamResourceWrite>();
+        var sync = Substitute.For<IGoogleSyncWrite>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
         teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
@@ -103,7 +104,7 @@ public class TeamAdminControllerMembersTests
                 new GoogleResourceSnapshot(resourceId,
                     string.Equals(scenario, "foreign", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id,
                     "google-id", "Folder", GoogleResourceType.DriveFolder, null));
-        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
+        resourceWrite.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
             .Returns(TeamResourceMutationResult.Success());
         sync.SyncSingleResourceAsync(resourceId, SyncAction.Execute, CancellationToken.None)
             .Returns(new ResourceSyncDiff { ResourceId = resourceId });
@@ -114,7 +115,7 @@ public class TeamAdminControllerMembersTests
         };
         var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new TeamAdminController(teams, resources, sync, users,
+        var controller = new TeamAdminController(teams, resources, resourceWrite, sync, users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, localizer,
             Substitute.For<ITicketService>())
@@ -133,9 +134,7 @@ public class TeamAdminControllerMembersTests
         if (string.Equals(scenario, "denied", StringComparison.Ordinal)) Assert.IsType<ForbidResult>(result);
         else if (!string.Equals(scenario, "own", StringComparison.Ordinal)) Assert.IsType<NotFoundResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
-        var mutationCalls = resources.ReceivedCalls().Where(c =>
-            !string.Equals(c.GetMethodInfo().Name, nameof(ITeamResourceService.CanManageTeamResourcesAsync), StringComparison.Ordinal)
-            && !string.Equals(c.GetMethodInfo().Name, nameof(ITeamResourceService.GetResourceByIdAsync), StringComparison.Ordinal));
+        var mutationCalls = resourceWrite.ReceivedCalls();
         if (string.Equals(scenario, "own", StringComparison.Ordinal))
         {
             if (string.Equals(action, "sync", StringComparison.Ordinal)) Assert.Single(sync.ReceivedCalls());
@@ -157,23 +156,24 @@ public class TeamAdminControllerMembersTests
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
+        var resourceWrite = Substitute.For<ITeamResourceWrite>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
         teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
         resources.GetResourceByIdAsync(resourceId, Arg.Any<CancellationToken>()).Returns(
             new GoogleResourceSnapshot(resourceId, team.Id, "google-id", "Folder", GoogleResourceType.DriveFolder, null));
         resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(allowed);
-        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
+        resourceWrite.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
             .Returns(TeamResourceMutationResult.Success());
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
-        var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
+        var controller = new TeamAdminController(teams, resources, resourceWrite, Substitute.For<IGoogleSyncWrite>(), users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<ITicketService>())
@@ -190,9 +190,9 @@ public class TeamAdminControllerMembersTests
         else if (invalidBinding) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
         if (!allowed || invalidBinding)
-            await resources.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
+            await resourceWrite.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
                 Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
-        else await resources.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);
+        else await resourceWrite.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);
     }
 
     [HumansTheory]
@@ -211,7 +211,7 @@ public class TeamAdminControllerMembersTests
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, instant, []);
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -233,7 +233,7 @@ public class TeamAdminControllerMembersTests
         var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IGoogleSyncService>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
+            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
             logger, localizer, Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -278,7 +278,7 @@ public class TeamAdminControllerMembersTests
         await aborted.CancelAsync();
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         var resources = Substitute.For<ITeamResourceService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -306,7 +306,7 @@ public class TeamAdminControllerMembersTests
                 resources.GetServiceAccountEmailAsync(aborted.Token).Returns(Task.FromCanceled<string>(aborted.Token));
                 break;
         }
-        var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
+        var controller = new TeamAdminController(teams, resources, Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {
@@ -331,7 +331,7 @@ public class TeamAdminControllerMembersTests
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var instant = Instant.FromUtc(2026, 1, 1, 0, 0);
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, instant,
@@ -347,7 +347,7 @@ public class TeamAdminControllerMembersTests
             .Returns(AuthorizationResult.Success());
         var resources = Substitute.For<ITeamResourceService>();
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
-        var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
+        var controller = new TeamAdminController(teams, resources, Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {

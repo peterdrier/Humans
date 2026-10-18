@@ -165,7 +165,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Contracts
             {
-                public interface ITestServiceRead { }
+                public interface ITestService { }
             }
             """;
 

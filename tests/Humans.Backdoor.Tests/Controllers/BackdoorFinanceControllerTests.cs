@@ -30,7 +30,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
-/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceServiceRead"/>
+/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceService"/>
 /// (peterdrier/Humans#1838). Everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
@@ -38,10 +38,10 @@ namespace Humans.Backdoor.Tests.Controllers;
 public class BackdoorFinanceControllerTests
 {
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
-    private readonly IHoldedFinanceServiceRead _finance = Substitute.For<IHoldedFinanceServiceRead>();
+    private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly BackdoorFinanceController _sut;
 
     public BackdoorFinanceControllerTests()
@@ -598,7 +598,7 @@ public class BackdoorFinanceControllerTests
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 6, 1, 9, 0),
                     generatedBy, member, 40000060, "c-ana", "Ana Torres", maskedIban, 50m,
-                    Instant.FromUtc(2026, 6, 2, 9, 0), generatedBy, "mv-1", null, null, null),
+                    Instant.FromUtc(2026, 6, 2, 9, 0), generatedBy, "mv-1", null, null, null, null),
             ],
             (string?)null));
 
@@ -731,7 +731,7 @@ public class BackdoorFinanceControllerTests
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 6, 1, 9, 0),
                     userId, userId, 40000060, Tainted, Tainted, Tainted, 50m,
-                    null, null, Tainted, null, Tainted, Tainted),
+                    null, null, Tainted, null, Tainted, Tainted, Tainted),
             ],
             (string?)Tainted));
         _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(

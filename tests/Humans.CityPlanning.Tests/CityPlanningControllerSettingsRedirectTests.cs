@@ -32,7 +32,7 @@ namespace Humans.CityPlanning.Tests;
 public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTestBase
 {
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly CityPlanningService _service;
     private readonly CityPlanningController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -45,7 +45,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, Substitute.For<ITeamServiceRead>(), _userService, Substitute.For<IAuditLogService>());
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>());
 
         _controller = new CityPlanningController(
             _service, _campService, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,

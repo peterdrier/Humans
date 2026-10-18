@@ -8,7 +8,7 @@ namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
 /// Owns the GoogleIntegration-section observable gauges: total Google resources
-/// (<see cref="ITeamResourceService"/> — the resource-count read moved with the section that
+/// (<see cref="ITeamResourceManagement"/> — the resource-count read moved with the section that
 /// owns <c>google_resources</c>, not Teams) and the unprocessed sync outbox.
 /// </summary>
 internal sealed class GoogleIntegrationMetricsService : PolledGaugeService
@@ -34,8 +34,8 @@ internal sealed class GoogleIntegrationMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
-        var googleSyncService = scope.ServiceProvider.GetRequiredService<IGoogleSyncServiceRead>();
+        var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceManagement>();
+        var googleSyncService = scope.ServiceProvider.GetRequiredService<IGoogleSyncManagement>();
 
         var googleResources = await teamResourceService.GetResourceCountAsync();
         var pendingOutboxEvents = await googleSyncService.GetPendingSyncEventCountAsync();

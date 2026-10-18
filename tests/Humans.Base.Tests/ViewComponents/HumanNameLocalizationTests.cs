@@ -26,7 +26,7 @@ public class HumanNameLocalizationTests
     {
         using var culture = new CultureScope(cultureName);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>())
         {

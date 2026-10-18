@@ -18,7 +18,7 @@ namespace Humans.Governance.Controllers;
 [Route("Governance/Applications")]
 internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
-    IUserServiceRead userService,
+    IUserService userService,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ILogger<GovernanceApplicationsController> logger,
     IClock clock) : HumansControllerBase(userService)

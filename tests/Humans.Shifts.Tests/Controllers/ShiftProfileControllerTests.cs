@@ -38,7 +38,7 @@ public class ShiftProfileControllerTests
         var validator = services.GetRequiredService<IObjectModelValidator>();
         var shared = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var shifts = Substitute.For<IShiftManagement>();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));

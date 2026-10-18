@@ -46,7 +46,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
                 Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
             Substitute.For<IEarlyEntryInvalidator>(), Substitute.For<ICampInfoInvalidator>(),
-            Substitute.For<Humans.Users.Contracts.IUserServiceRead>(), _settingsService,
+            Substitute.For<Humans.Users.Contracts.IUserService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         _innerSubstitute.GetActiveYearAsync(Arg.Any<CancellationToken>())
             .Returns(ci => inner.GetActiveYearAsync(ci.Arg<CancellationToken>()));

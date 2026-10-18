@@ -12,7 +12,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/agent")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserServiceRead users)
+internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserService users)
     : ControllerBase
 {
     [HttpGet("conversations")]

@@ -11,7 +11,7 @@ internal sealed class FeedbackMessage
 
     /// <summary>
     /// FK column only — no navigation property. Resolve the sender's
-    /// display name via <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// display name via <c>IUserService.GetUserInfosAsync</c>.
     /// </summary>
     public Guid? SenderUserId { get; init; }
 

@@ -59,7 +59,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
     public async Task Build_NoDbQueries_OnlyCachedUserInfoAndMlReads()
     {
         // Sanity: the builder only takes IMailerLiteAudience / IMailerLiteService /
-        // IUserServiceRead — no DB context, no email service, no preference service.
+        // IUserService — no DB context, no email service, no preference service.
         // Reflection confirms the parameter surface to lock the criterion.
         var method = typeof(MailerLiteAudienceDebugSnapshotBuilder)
             .GetMethod(nameof(MailerLiteAudienceDebugSnapshotBuilder.BuildAsync))!;
@@ -68,11 +68,11 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         paramTypes.Should().ContainInOrder(
             typeof(IMailerLiteAudience),
             typeof(IMailerLiteService),
-            typeof(IUserServiceRead),
+            typeof(IUserService),
             typeof(ILogger),
             typeof(CancellationToken));
         paramTypes.Should().HaveCount(5,
-            "the debug snapshot must reach Humans-side state only via cached IUserServiceRead + a logger — no IUserEmailService, no DbContext, no preference service.");
+            "the debug snapshot must reach Humans-side state only via cached IUserService + a logger — no IUserEmailService, no DbContext, no preference service.");
 
         // Also exercise the path so we catch any later regression that
         // sneaks a DB-touching service in via a side door.

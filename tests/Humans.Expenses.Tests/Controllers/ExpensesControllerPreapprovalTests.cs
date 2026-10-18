@@ -29,10 +29,10 @@ public sealed class ExpensesControllerPreapprovalTests
     private static readonly LocalDate Today = new(2026, 5, 10);
 
     private readonly Guid _actorId = Guid.NewGuid();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IExpenseReportManagement _reports = Substitute.For<IExpenseReportManagement>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
-    private readonly IHoldedFinanceServiceRead _holdedFinance = Substitute.For<IHoldedFinanceServiceRead>();
+    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();

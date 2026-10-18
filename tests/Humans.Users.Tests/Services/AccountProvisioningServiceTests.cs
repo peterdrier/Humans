@@ -386,7 +386,7 @@ public class AccountProvisioningServiceTests
     private readonly FakeUserRepository _userRepo;
     private readonly FakeUserEmailService _userEmailFake;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserServiceInternal _userService;
+    private readonly IUserManagement _userService;
     private readonly AccountProvisioningService _service;
     private readonly IUserInfoInvalidator _invalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -439,7 +439,7 @@ public class AccountProvisioningServiceTests
                 return Task.FromResult(IdentityResult.Success);
             });
 
-        _userService = Substitute.For<IUserServiceInternal>();
+        _userService = Substitute.For<IUserManagement>();
 
         _service = new AccountProvisioningService(
             _userRepo,

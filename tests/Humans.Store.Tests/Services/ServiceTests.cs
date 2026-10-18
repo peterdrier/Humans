@@ -38,7 +38,7 @@ public class ServiceTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -1303,7 +1303,7 @@ public class ServiceTests
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
                 .Returns(Task.FromException(failure));
         var actor = Guid.NewGuid();
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null, null,
             false, false, null, null, null, null, null, null, [], [], [], null, []));
@@ -1469,7 +1469,7 @@ public class ServiceTests
         _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(failure));
-        var users = Substitute.For<IUserServiceRead>();
+        var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();

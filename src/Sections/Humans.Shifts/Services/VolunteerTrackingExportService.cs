@@ -20,14 +20,14 @@ internal sealed class VolunteerTrackingExportService(
     IShiftManagementRepository shiftManagementRepository,
     IShiftManagement shiftManagementService,
     IBurnSettingsService burnSettingsService,
-    IUserServiceRead userService,
+    IUserService userService,
     IAuditLogService audit)
     : IVolunteerTrackingExportService, IEarlyEntryProvider
 {
     private readonly IShiftManagementRepository _shiftManagementRepository = shiftManagementRepository;
     private readonly IShiftManagement _shiftManagementService = shiftManagementService;
     private readonly IBurnSettingsService _burnSettingsService = burnSettingsService;
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
     private readonly IAuditLogService _audit = audit;
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)

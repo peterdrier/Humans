@@ -739,7 +739,7 @@ public class VolunteerTrackingServiceTests
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
         var calendarResolver = new EventCalendarResolver(settingsService);
 
-        var userService = Substitute.For<IUserServiceRead>();
+        var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ =>
             {

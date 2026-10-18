@@ -24,7 +24,7 @@ namespace Humans.Auth.Tests.Services;
 public sealed class RoleAssignmentServiceTests : AuthTestHarness
 {
     private readonly IRoleAssignmentRepository _repository;
-    private readonly IUserServiceRead _userService;
+    private readonly IUserService _userService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
     private readonly IRoleAssignmentCacheInvalidator _rowCache;

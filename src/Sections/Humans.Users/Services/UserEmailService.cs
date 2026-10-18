@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 
 internal sealed class UserEmailService(
     IUserRepository repository,
-    IUserServiceInternal userService,
+    IUserManagement userService,
     UserManager<User> userManager,
     IClock clock,
     IAuditLogService auditLogService,
@@ -25,7 +25,7 @@ internal sealed class UserEmailService(
 
     // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketService.
     // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
-    private Humans.Tickets.Contracts.ITicketService TicketServiceRead =>
+    private Humans.Tickets.Contracts.ITicketService TicketService =>
         serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
@@ -117,7 +117,7 @@ internal sealed class UserEmailService(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        // Storage mutation is owned by IUserService so its caching decorator can refresh UserInfo.
+        // Storage mutation is owned by IUserManagement so its caching decorator can refresh UserInfo.
         var addResult = await userService.AddUserEmailAsync(
             userId,
             new UserEmailAddCommand(
@@ -509,7 +509,7 @@ internal sealed class UserEmailService(
     private async Task<bool> IsAddressTicketLinkedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
     {
-        var orders = await TicketServiceRead.GetTicketOrdersAsync(cancellationToken);
+        var orders = await TicketService.GetTicketOrdersAsync(cancellationToken);
 
         foreach (var order in orders)
         {

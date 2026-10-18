@@ -21,7 +21,7 @@ internal sealed class ConsentService(
     ILegalDocumentSyncManagement legalDocumentSyncService,
     INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
-    IUserServiceRead userService,
+    IUserService userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,
@@ -42,7 +42,7 @@ internal sealed class ConsentService(
     {
         var now = clock.GetCurrentInstant();
 
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
         var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
         var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
@@ -180,7 +180,7 @@ internal sealed class ConsentService(
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try
         {
-            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
+            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
             {
                 await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
@@ -272,7 +272,7 @@ internal sealed class ConsentService(
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
     {
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
         var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)

@@ -18,13 +18,12 @@
     },
     "readServiceInterface": {
       "namePatterns": [
-        "I*ServiceRead",
-        "I*ReadService"
+        "I*Service"
       ]
     },
     "fullServiceInterface": {
       "namePatterns": [
-        "I*Service"
+        "I*Management"
       ]
     },
     "repositoryInterface": {

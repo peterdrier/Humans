@@ -20,8 +20,8 @@ internal sealed class AgentController(
     IAgentService agent,
     IAuthorizationService auth,
     IAgentSettingsService settings,
-    IUserServiceRead users,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService users,
+    IUserService userService) : HumansControllerBase(userService)
 {
     private static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions
     {
@@ -221,7 +221,7 @@ internal sealed record AgentConversationsViewModel(
 
 /// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
 /// for non-admin views (the column is hidden) and stitched in from
-/// <c>IUserServiceRead</c> for admin views.</summary>
+/// <c>IUserService</c> for admin views.</summary>
 internal sealed record AgentConversationRow(AgentConversationListSnapshot Conversation, string? DisplayName);
 
 /// <summary>Conversation detail with display name (admin only) and an admin flag

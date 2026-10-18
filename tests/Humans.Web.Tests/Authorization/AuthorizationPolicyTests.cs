@@ -38,7 +38,7 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
-        services.AddScoped(_ => Substitute.For<ITeamServiceRead>());
+        services.AddScoped(_ => Substitute.For<ITeamService>());
         // Agent's rate-limit handler moved into Humans.Agent with the section and is registered
         // by its Section.Register, so this graph no longer needs its collaborators; its coverage
         // lives in Humans.Agent.Tests.

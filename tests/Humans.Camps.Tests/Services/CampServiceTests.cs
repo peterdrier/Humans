@@ -37,7 +37,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
-    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -72,7 +72,7 @@ public sealed class CampServiceTests : CampsTestHarness
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator,
             _campInfoInvalidator,
-            _userServiceRead,
+            _userService,
             _settingsService,
             Clock,
             NullLogger<CampService>.Instance);
@@ -1194,11 +1194,11 @@ public sealed class CampServiceTests : CampsTestHarness
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
         var request = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
-        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = userId, PreferredLanguage = "es" }, [], [], [], null, [])));
         if (string.Equals(action, "lookup-failure", StringComparison.Ordinal))
-            _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
 
         var rejected = string.Equals(action, "reject", StringComparison.Ordinal);
@@ -1519,7 +1519,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 MergedAt = Clock.GetCurrentInstant(),
                 MergedToUserId = string.Equals(kind, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : null,
             }, [], [], [], null, []);
-            _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(terminal));
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(terminal));
         }
 
         if (assignRole)
@@ -1548,7 +1548,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var sourceId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         // A live Bare account is allowed; admission state is not a new membership restriction.
-        _userServiceRead.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = survivorId }, [], [], [], null, [])));
 
         if (assignRole)
@@ -1589,7 +1589,7 @@ public sealed class CampServiceTests : CampsTestHarness
         if (hasPublicSeason) CampsDb.CampSeasons.Add(current);
         await SaveAllAsync(ct);
         var userId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
         _campRoleService.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>())
             .Returns(AssignCampRoleOutcome.Assigned);
@@ -1625,7 +1625,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = targetUserId }, [], [], [], null, [])));
         var actorUserId = Guid.NewGuid();
         var roleDefinitionId = Guid.NewGuid();
@@ -1662,7 +1662,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "active-add-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = targetUserId }, [], [], [], null, [])));
         var actorUserId = Guid.NewGuid();
         CampsDb.Camps.Add(camp);
@@ -1692,7 +1692,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "full-add-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Full };
         var targetUserId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = targetUserId }, [], [], [], null, [])));
         var actorUserId = Guid.NewGuid();
         CampsDb.Camps.Add(camp);
@@ -1712,7 +1712,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "full-role-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Full };
         var targetUserId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = targetUserId }, [], [], [], null, [])));
         var actorUserId = Guid.NewGuid();
         var roleDefinitionId = Guid.NewGuid();
@@ -1735,7 +1735,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp-2" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var userId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
         var existing = new CampMember
         {
@@ -1777,7 +1777,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var inactiveSeason = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2025, Status = CampSeasonStatus.Pending };
         var activeSeason = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
-        _userServiceRead.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(new User { Id = targetUserId }, [], [], [], null, [])));
         var actorUserId = Guid.NewGuid();
         var roleDefinitionId = Guid.NewGuid();
@@ -1907,7 +1907,7 @@ public sealed class CampServiceTests : CampsTestHarness
         {
             await SeedUserAsync(userId, "Requester");
             await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
-            _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User
                 {
                     Id = userId,
@@ -1915,7 +1915,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 }, [], [], [], null, [])));
         }
         if (lookupFailure)
-            _userServiceRead.GetUserInfoAsync(englishId, Arg.Any<CancellationToken>())
+            _userService.GetUserInfoAsync(englishId, Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
         var season = camp.Seasons.Single();
         Notifier.ClearReceivedCalls();
@@ -2198,7 +2198,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         if (deleteCamp)
@@ -2271,7 +2271,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
 
@@ -2627,7 +2627,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var userId = Guid.NewGuid();
         var archivedId = Guid.NewGuid();
         var requestedId = requestArchivedId ? archivedId : userId;
-        _userServiceRead.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = userId }, [], [], [], null, []) with { MergedUserIds = [archivedId] }));
         var otherUserId = Guid.NewGuid();
@@ -2788,7 +2788,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         var deletion = service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);

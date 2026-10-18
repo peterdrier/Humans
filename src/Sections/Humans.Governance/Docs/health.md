@@ -49,10 +49,10 @@ The external surface, grouped by the question each group answers.
 |---|---|---|---|
 | S1 | *What tier applications does this person have, and what happened to them?* | contracts read surface + own pages | `GetUserApplicationsAsync`, `GetUserApplicationDetailAsync`, `GetSubmittedApplicationForUserAsync`, `GetUserIdsWithPendingApplicationAsync`; `GET /Governance`, `GET /Governance/Applications`, `GET /Governance/Applications/Details/{id}` |
 | S2 | *Does this person hold an active tier today?* | contracts read surface | `HasActiveApprovedTierAsync`, `GetActiveApprovedTierUserIdsAsync`, `GetOtherActiveTierAssignmentsAsync` |
-| S3 | *What is still on the Board's plate?* | contracts read surface + admin pages | `GetUnvotedApplicationCountAsync`, `GetPendingApplicationCountAsync`, `GetAdminStatsAsync`; `GET /Governance/Applications/Admin`, `GET /Governance/BoardVoting` |
-| S4 | *Move one application along its state machine* | write surface + own pages | `ValidateSubmission`, `SubmitAsync`, `UpdateDraftApplicationAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |
-| S5 | *Who needs a renewal nudge, and has it gone out?* | write surface, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`; `TermRenewalReminderJob` |
-| S6 | *Is this person in good standing, and what are they missing?* | membership-calculator read surface | the whole of `IMembershipCalculatorRead` — consent completeness (per person, per team, batched), the consolidated snapshot, the standing partition, required-team resolution |
+| S3 | *What is still on the Board's plate?* | contracts read surface (`GetUnvotedApplicationCountAsync`) + internal management + admin pages | `GetUnvotedApplicationCountAsync`, `GetPendingApplicationCountAsync`, `GetAdminStatsAsync`; `GET /Governance/Applications/Admin`, `GET /Governance/BoardVoting` |
+| S4 | *Move one application along its state machine* | `IGovernanceWrite` (submit path) + internal management + own pages | `ValidateSubmission`, `SubmitAsync`, `UpdateDraftApplicationAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |
+| S5 | *Who needs a renewal nudge, and has it gone out?* | internal management, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`; `TermRenewalReminderJob` |
+| S6 | *Is this person in good standing, and what are they missing?* | membership-calculator read surface | the whole of `IMembershipCalculator` — consent completeness (per person, per team, batched), the consolidated snapshot, the standing partition, required-team resolution |
 | S7 | *What is the association voting on, and may I vote?* | own pages only | `GetVotesForMemberAsync`, `GetVoteForMemberAsync`; `GET /Governance/Votes`, `GET /Governance/Votes/{id}` |
 | S8 | *Record what I choose, and let me change it* | own pages only | `CastBallotAsync`; `POST /Governance/Votes/{id}/Ballot` |
 | S9 | *Author a motion and run its lifecycle* | own admin pages only | `GetAllForAdminAsync`, `GetDraftAsync`, `CreateDraftAsync`, `UpdateDraftAsync`, `PreFillTranslationsAsync`, `DeleteDraftAsync`, `OpenAsync`, `StopAsync`, `ExtendAsync`, `CancelAsync`; `GET /Governance/Votes/Admin`, `GET/POST /Governance/Votes/Admin/Create`, `GET/POST /Governance/Votes/Admin/{id}/Edit`, `POST /Governance/Votes/Admin/{id}/Delete`, `POST /Governance/Votes/Admin/{id}/Open`, `POST /Governance/Votes/Admin/{id}/Stop`, `POST /Governance/Votes/Admin/{id}/Extend`, `POST /Governance/Votes/Admin/{id}/Cancel` |
@@ -216,7 +216,7 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
   that already has one. A result that could be recomputed is a result that could change after
   it was published.
 - **No cross-domain navigation properties.** Applicant, reviewer, voter, history author, vote
-  actor and roster member are Guids; display names are stitched from `IUserServiceRead` at the
+  actor and roster member are Guids; display names are stitched from `IUserService` at the
   call site.
 - **No `nameof` for the audit entity discriminators.** They are persisted strings; a CLR rename
   must not silently change the schema.
@@ -230,8 +230,8 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 
 Settled decisions. Do not re-litigate.
 
-- `IMembershipQuery` looks like a pointless pass-through over `ITeamServiceRead` and
-  `IRoleAssignmentServiceRead`. It is not: injecting them directly closes a DI cycle through
+- `IMembershipQuery` looks like a pointless pass-through over `ITeamService` and
+  `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
 - `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for

@@ -37,8 +37,8 @@ Repository: `IEmailOutboxRepository`.
 Drains the outbox queue (the G5 playbook, step 6b): claims a processing batch,
 sends via the section-internal `IEmailTransport`, and records each outcome.
 Checks the pause flag through `IEmailOutboxManagement.IsEmailPausedAsync` before
-each run. Cross-section calls via `ICampaignService` (mirrors campaign-grant
-email status after send — `[CrossSectionWrite]`-marked) and `IHumansMetrics` /
+each run. Cross-section calls via `ICampaignWrite` (mirrors campaign-grant
+email status after send) and `IHumansMetrics` /
 `IMeters`, plus `IClock`. No `IMemoryCache`.
 
 ### OutboxEmailService (Scoped)
@@ -97,7 +97,7 @@ No repository. Backs the `_EmailComposer` "Send to me" button
 through `SanitizedMarkdownRenderer`, and hands one `composer_self_test`
 `MessageCategory.System` message to `IEmailService.SendAsync` (the outbox
 row is `OutboxEmailService`'s write), then audits `EmailComposerSelfTestSent`
-through `IAuditLogService`. `IUserServiceRead` supplies the caller's display name.
+through `IAuditLogService`. `IUserService` supplies the caller's display name.
 Section-internal; its only consumer is `EmailPreviewController`. No cache.
 
 ---

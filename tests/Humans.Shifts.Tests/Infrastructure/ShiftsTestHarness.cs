@@ -217,14 +217,14 @@ public abstract class ShiftsTestHarness : IDisposable
         EarlyEntryClose: src.EarlyEntryClose);
 
     /// <summary>
-    /// An <see cref="IUserServiceRead"/> substitute whose batch read projects this
+    /// An <see cref="IUserService"/> substitute whose batch read projects this
     /// harness's in-memory users. The section's only consumer is
     /// <c>WorkloadService</c>, which calls <c>GetUserInfosAsync</c> and reads display
     /// names off the result — mapped via <see cref="UserInfoStubHelpers.ToUserInfo"/>.
     /// </summary>
-    private protected IUserServiceRead NewDbBackedUserService()
+    private protected IUserService NewDbBackedUserService()
     {
-        var svc = Substitute.For<IUserServiceRead>();
+        var svc = Substitute.For<IUserService>();
 
         svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>

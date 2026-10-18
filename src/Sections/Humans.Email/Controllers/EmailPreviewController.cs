@@ -16,7 +16,7 @@ namespace Humans.Email.Controllers;
 [Authorize]
 [Route("Email")]
 internal sealed class EmailPreviewController(
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailPreviewManagement emailPreviews,
     ComposerSelfSendService selfSend) : ApiControllerBase(userService)
 {

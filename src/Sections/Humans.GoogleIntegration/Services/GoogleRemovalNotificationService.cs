@@ -11,7 +11,7 @@ namespace Humans.GoogleIntegration.Services;
 /// </summary>
 internal sealed class GoogleRemovalNotificationService(
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailService emailService,
     GoogleIntegrationEmails emailMessages,
     ILogger<GoogleRemovalNotificationService> logger) : IGoogleRemovalNotificationService

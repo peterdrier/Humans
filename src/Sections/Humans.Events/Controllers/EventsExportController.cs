@@ -19,7 +19,7 @@ namespace Humans.Events.Controllers;
 internal sealed class EventsExportController(
     IEventManagement guide,
     ICampService camps,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public IActionResult Index() => View();

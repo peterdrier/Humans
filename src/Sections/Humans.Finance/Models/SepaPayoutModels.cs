@@ -85,11 +85,14 @@ internal sealed record SepaPayoutFileVm(
 /// <param name="BankFeedError">Set when the live bank-feed call failed; every row then falls back to
 /// "waiting for the Sabadell line" and the page renders a warning banner instead of failing.</param>
 /// <param name="Files">Generated payout files and their transfers.</param>
+/// <param name="ToleranceDays">How many days from its file's date a bank line may be dated and
+/// still be paired — the page's editable matching window, posted back with every booking.</param>
 internal sealed record SepaPayoutsPageVm(
     IReadOnlyList<SepaPayoutFileVm> Files,
     string? UnavailableReason,
     IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
-    string? BankFeedError);
+    string? BankFeedError,
+    int ToleranceDays);
 
 /// <summary>The outcome of one booking attempt. <paramref name="Message"/> is admin-facing either
 /// way — on failure it is the reason, on success what was posted.</summary>

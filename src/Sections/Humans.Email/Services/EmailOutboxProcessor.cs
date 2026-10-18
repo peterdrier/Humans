@@ -22,14 +22,14 @@ namespace Humans.Email.Services;
 /// The job is the scheduler shim; the queue semantics are here (the G5 playbook, step 6b).
 /// </summary>
 /// <remarks>
-/// The grant mirror goes through <see cref="ICampaignService"/> so Campaigns owns
+/// The grant mirror goes through <see cref="ICampaignWrite"/> so Campaigns owns
 /// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to Settings
 /// through <see cref="IEmailOutboxManagement.IsEmailPausedAsync"/>.
 /// </remarks>
 internal sealed class EmailOutboxProcessor(
     IEmailOutboxRepository outboxRepo,
     IEmailOutboxManagement emailOutboxService,
-    ICampaignService campaignService,
+    ICampaignWrite campaignService,
     IEmailTransport transport,
     IHumansMetrics metrics,
     IMeters meters,
@@ -131,7 +131,7 @@ internal sealed class EmailOutboxProcessor(
             await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
 
             // Update campaign grant status if applicable — routed via
-            // ICampaignService so the Campaigns section owns campaign_grants.
+            // ICampaignWrite so the Campaigns section owns campaign_grants.
             // Bookkeeping failure is logged without interrupting the batch.
             if (message.CampaignGrantId.HasValue)
             {

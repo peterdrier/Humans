@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Onboarding.Contracts;
+using Humans.Users.Services;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -8,7 +9,7 @@ namespace Humans.Users.Contracts;
 /// Sole orchestrator for the user/profile account-deletion cascade. Owns the
 /// cross-section write order for every deletion path — user-requested
 /// (30-day-scheduled), admin-initiated (immediate purge), and expiry-triggered
-/// (scheduled anonymization job). Foundational services (<see cref="IUserService"/>,
+/// (scheduled anonymization job). Foundational services (<see cref="IUserManagement"/>,
 /// Profile-section services keep only own-data deletion; this
 /// service invokes them as part of the cascade so the call graph flows in one
 /// direction (higher-level → foundational).
@@ -41,7 +42,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// Cancels a pending user-initiated deletion request by clearing the
     /// deletion fields on the user. Returns <c>NotFound</c> if the user
     /// does not exist; <c>NoDeletionPending</c> if no request is open.
-    /// UserInfo cache is refreshed via <see cref="Humans.Users.Services.IUserServiceInternal.ClearDeletionAsync"/>.
+    /// UserInfo cache is refreshed via <see cref="Humans.Users.Services.IUserManagement.ClearDeletionAsync"/>.
     /// </summary>
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 

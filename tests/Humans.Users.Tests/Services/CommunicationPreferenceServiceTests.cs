@@ -37,10 +37,10 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
             dataProtectionProvider, emailSettings,
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
-        // The service now reads preferences through IUserService.GetUserInfoAsync (the cache layer).
+        // The service now reads preferences through IUserManagement.GetUserInfoAsync (the cache layer).
         // For these tests, project the in-memory db state into UserInfo on each read so the
         // write-then-read semantics that this suite verifies still hold end-to-end.
-        var userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserManagement>();
         userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {

@@ -40,7 +40,7 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class ProfileApiControllerTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IContactFieldService _contactFieldService = Substitute.For<IContactFieldService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly UserManager<User> _userManager;

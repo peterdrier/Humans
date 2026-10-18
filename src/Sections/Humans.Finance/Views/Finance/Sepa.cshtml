@@ -19,8 +19,21 @@
     purchase documents are paid oldest first from the configured treasury account, and whatever they
     do not cover — a loan the member made, say — is posted as one journal entry, debit the creditor
     account, credit the bank. Booking is what closes the loop after the file has been uploaded to the
-    bank; a booked transfer cannot be booked again.
+    bank; a booked transfer cannot be booked again. Sabadell debits one line per transfer but drops
+    the remittance text, so each line is matched to a transfer on amount and date; once every
+    transfer in a file has its line, <strong>Book file</strong> books them all in one go. Two
+    unbooked transfers of one amount, or two lines for one transfer, are flagged below and settled by
+    hand.
 </p>
+
+<form method="get" asp-action="Sepa" class="d-flex align-items-center gap-2 mb-3">
+    <label for="days" class="form-label mb-0">Pair a bank line dated within</label>
+    <input type="number" id="days" name="days" class="form-control form-control-sm" style="width: 5rem"
+           min="0" max="90" value="@Model.ToleranceDays" />
+    <span>days of the file date</span>
+    <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+    <span class="text-muted small">Default @Humans.Finance.Services.IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
+</form>
 
 @if (Model.UnavailableReason is { } unavailable)
 {
@@ -77,12 +90,49 @@
 @foreach (var file in Model.Files)
 {
     <div class="card mb-4">
+        @{
+            var unbooked = file.Transfers.Where(t => !t.Row.IsBooked).ToList();
+            var matched = unbooked.Count(t => t.Row.CanBook);
+            var allMatched = unbooked.Count > 0 && matched == unbooked.Count
+                             && Model.UnavailableReason is null;
+        }
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span class="font-monospace">@file.FileName</span>
+            <span>
+                <span class="font-monospace">@file.FileName</span>
+                @if (unbooked.Count == 0)
+                {
+                    <span class="badge text-bg-success ms-2">Done</span>
+                }
+            </span>
             <span class="text-muted small">
                 @file.GeneratedAt.ToDateTime(madrid) by @file.GeneratedByName
             </span>
         </div>
+        @if (allMatched)
+        {
+            <div class="card-body border-bottom d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <strong>Every unbooked transfer in this file has its Sabadell line</strong>
+                    <span class="text-muted">(@matched of @matched)</span> — check the lines below, then book them all.
+                </div>
+                <form asp-action="BookSepaFileMatches" method="post"
+                      data-confirm="Book all @matched transfers of @file.FileName, each against the Sabadell line shown on its row? This posts real payments, and a journal entry for anything a member's documents do not cover.">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="fileId" value="@file.FileId" />
+                    <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                        <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book file
+                    </button>
+                </form>
+            </div>
+        }
+        else if (unbooked.Count > 0 && matched > 0 && Model.UnavailableReason is null)
+        {
+            <div class="card-body border-bottom text-muted small">
+                @matched of @unbooked.Count unbooked transfers have a Sabadell line; the file is booked
+                only once all of them do.
+            </div>
+        }
         @if (file.BatchLine is { } batch && Model.UnavailableReason is null)
         {
             <div class="card-body border-bottom">
@@ -114,6 +164,7 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="fileId" value="@file.FileId" />
                             <input type="hidden" name="bankMovementId" value="@batch.MovementId" />
+                            <input type="hidden" name="days" value="@Model.ToleranceDays" />
                             <button type="submit" class="btn btn-sm btn-primary text-nowrap">
                                 <i class="fa-solid fa-file-invoice-dollar me-1"></i>Process
                             </button>
@@ -149,7 +200,7 @@
                             <span class="badge text-bg-success">Booked</span>
                             @if (t.Row.ReconcilePending)
                             {
-                                <span class="badge text-bg-warning">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
+                                <span class="badge text-bg-warning" title="The sweep re-issues the reconcile from the recorded payment ids every two hours. A payout that needed a journal entry cannot be reconciled by API: reconcile the line in Holded by hand.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
                             <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
                         }
@@ -174,15 +225,25 @@
                         }
                         else if (t.Row.CanBook)
                         {
-                            <form asp-action="BookSepaTransfer" method="post"
-                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName against Sabadell line @t.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
-                                <input type="hidden" name="bankMovementId" value="@t.Row.CandidateBankMovementId" />
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
-                                </button>
-                            </form>
+                            @if (t.Row.CandidateMatchedByText)
+                            {
+                                <form asp-action="BookSepaTransfer" method="post"
+                                      data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName against Sabadell line @t.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="transferId" value="@t.Row.TransferId" />
+                                    <input type="hidden" name="bankMovementId" value="@t.Row.CandidateBankMovementId" />
+                                    <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
+                                    </button>
+                                </form>
+                                <span class="badge text-bg-success">Line names this account</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-warning">Matched on amount and date only</span>
+                                <div class="small">booked with the file, above</div>
+                            }
                             <div class="text-muted small">
                                 @(t.Row.CandidateBankMovementDate?.ToInvariantDate() ?? "—")
                                 · @(t.Row.CandidateBankMovementAmount?.ToEuro() ?? "—")

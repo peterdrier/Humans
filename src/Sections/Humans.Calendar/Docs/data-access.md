@@ -14,7 +14,7 @@ The decorator exposes the cross-section read surface as
 `ICalendarQueries` and is its only implementation — it answers them
 from its snapshot, so the inner does not implement that interface at all. Writes
 delegate to the inner service then refresh the affected event row. `CalendarRepository` does not join the `Teams`
-table — the decorator stitches team names via `ITeamServiceRead` at the
+table — the decorator stitches team names via `ITeamService` at the
 application layer.
 
 ### CalendarService (Scoped — wrapped by CachingCalendarService Singleton decorator)
@@ -27,7 +27,7 @@ Repository: `ICalendarRepository`.
 | CalendarEventExceptions | R/W |
 
 Cross-section calls via `IAuditLogService`. Team names are stitched by the
-decorator (`ITeamServiceRead`), on the read path the inner does not serve.
+decorator (`ITeamService`), on the read path the inner does not serve.
 Recurrence expansion is in-section and static (`CalendarOccurrenceExpander`),
 not an injected dependency.
 
@@ -38,7 +38,7 @@ not an injected dependency.
 | `TrackedCache<Guid, CalendarEventInfo>` (`Calendar.Event`, warmed on startup) | Per-Entity | yes | yes | yes (per-event `ReplaceAsync` after each delegated write) |
 
 Implements `ICalendarService`, `ICalendarQueries`. Resolves the keyed
-Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
+Scoped inner per-call; resolves `ITeamService` for occurrence team
 names, and (when `teamId` is null) `IEnumerable<ICalendarFeedContributor>`
 for community-calendar items — fanned out fresh per call, never cached, and
 never routed through the repository. Surfaced on `/Debug/CacheStats`.
@@ -59,7 +59,7 @@ table, reached through the internal `ICalendarFeedTokenService`.
 ### ICalFeedService (Scoped)
 
 No repository. Injects `ICalendarFeedTokenService` (token validation),
-`IUserServiceRead` (the user guard — a missing or merged user is a 404 before
+`IUserService` (the user guard — a missing or merged user is a 404 before
 the token is ever compared) and `IEnumerable<ICalendarFeedContributor>`.
 
 | Table | R/W |

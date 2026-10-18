@@ -8,7 +8,8 @@ namespace Humans.Holded.Contracts;
 public sealed record HoldedBankMovementDto
 {
     public required string Id { get; init; }
-    /// <summary>Booking date, Europe/Madrid. A <c>LocalDate</c> rather than the <c>Instant</c> the
+    /// <summary>Holded's <c>booking_date</c> (falling back to <c>value_date</c>), its date part as Holded sends it,
+    /// never zone-shifted. A <c>LocalDate</c> rather than the <c>Instant</c> the
     /// ledger DTOs carry: this date is fed straight back into a posting date
     /// (<see cref="IHoldedClient.PayPurchaseDocumentAsync"/> takes a <c>LocalDate</c>), and a
     /// round-trip through a midnight instant can only lose in a zone conversion.</summary>
@@ -26,12 +27,17 @@ public sealed record HoldedBankMovementDto
 /// <summary>One document a bank line is reconciled against.</summary>
 public sealed record HoldedReconcileDocumentRef(string DocumentId, string DocumentType);
 
-/// <summary>The <c>document_type</c> values reconcile accepts. <see cref="Purchase"/> is confirmed;
-/// <see cref="LedgerEntry"/> is NOT — the probe could not confirm a daily-ledger entry is a valid
-/// reconcile target, so callers must tolerate it being refused
-/// (see the fallback ladder in the SEPA booking flow).</summary>
+/// <summary>The one <c>document_type</c> a reconcile may carry. A bank line is reconciled against
+/// the <b>payment</b> ids <c>POST purchases/{id}/payments</c> returned, never against the purchase
+/// documents: a <c>purchase</c> ref reads as "this line pays that document", and Holded then mints
+/// a brand-new payment for the whole line amount on the first document named, leaving the payments
+/// already posted as unmatched legs (seen in production 2026-10-17). A journal entry cannot be named
+/// at all — <c>dailyledger</c> / <c>entry</c> are accepted and silently do nothing — so a line whose
+/// money partly went to an entry stays <c>partial</c> until a human reconciles it in Holded.
+/// Verified live 2026-10-17: Holded returns <c>200 null</c>, the line reads <c>reconciled</c> with
+/// <c>reconciled_amount</c> equal to the line amount, and every payment leg reads
+/// <c>reconciliation_status: reconciled</c>.</summary>
 public static class HoldedReconcileDocumentType
 {
-    public const string Purchase = "purchase";
-    public const string LedgerEntry = "dailyledger";
+    public const string Payment = "payment";
 }

@@ -31,7 +31,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     private readonly ILegalDocumentRepository _repository;
     private readonly IGitHubLegalDocumentConnector _gitHub = Substitute.For<IGitHubLegalDocumentConnector>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ILegalDocumentCacheInvalidator _invalidator = Substitute.For<ILegalDocumentCacheInvalidator>();
     private readonly LegalDocumentSyncService _service;
     private readonly TeamInfo _team;

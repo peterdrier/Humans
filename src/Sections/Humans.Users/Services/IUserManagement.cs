@@ -5,12 +5,23 @@ using NodaTime;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// The section-only half of the write funnel: the row writes and lookups that only this
-/// section's own services, jobs and controllers issue. <see cref="IUserService"/> keeps what
-/// other sections call. Both resolve to the same <c>CachingUserService</c> instance.
+/// The Users section's internal face: the public <see cref="IUserService"/> reads and
+/// <see cref="IUserWrite"/> writes, the merge seam, and the row writes and lookups that only
+/// this section's own services, jobs and controllers issue. Every face resolves to the same
+/// <c>CachingUserService</c> instance.
 /// </summary>
-internal interface IUserServiceInternal : IUserService
+internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
 {
+    /// <summary>
+    /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
+    /// in the past (or equal to <paramref name="now"/>) and with
+    /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
+    /// the account deletion job to enumerate candidates without reading the
+    /// Users table directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
+        Instant now, CancellationToken ct = default);
+
     /// <summary>
     /// Declare that the user is not attending this year's event. Upserts a
     /// UserDeclared NotAttending row unless the user is already Attended (in

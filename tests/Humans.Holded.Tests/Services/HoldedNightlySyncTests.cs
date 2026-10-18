@@ -19,7 +19,7 @@ namespace Humans.Holded.Tests.Services;
 public class HoldedNightlySyncTests
 {
     private static HoldedNightlySync MakeSync(
-        IHoldedFinanceService finance,
+        IHoldedFinanceWrite finance,
         IHoldedService holded,
         string apiKey,
         ILogger<HoldedNightlySync>? logger = null) =>
@@ -29,7 +29,7 @@ public class HoldedNightlySyncTests
     [HumansFact]
     public async Task RunAsync_SkipsHolded_WhenNoApiKey()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedFinanceWrite>();
         var holded = Substitute.For<IHoldedService>();
         var sync = MakeSync(finance, holded, apiKey: "");
 
@@ -42,7 +42,7 @@ public class HoldedNightlySyncTests
     [HumansFact]
     public async Task RunAsync_RunsBothSyncs_WhenApiKeyPresent()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedFinanceWrite>();
         var holded = Substitute.For<IHoldedService>();
         var sync = MakeSync(finance, holded, apiKey: "k");
 
@@ -55,7 +55,7 @@ public class HoldedNightlySyncTests
     [HumansFact]
     public async Task RunAsync_WarnsWhenSweepSkipped()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedFinanceWrite>();
         var holded = Substitute.For<IHoldedService>();
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(false);
         var logger = new CapturingLogger<HoldedNightlySync>();
@@ -70,7 +70,7 @@ public class HoldedNightlySyncTests
     [HumansFact]
     public async Task RunAsync_IsQuietWhenSweepRan()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedFinanceWrite>();
         var holded = Substitute.For<IHoldedService>();
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(true);
         var logger = new CapturingLogger<HoldedNightlySync>();

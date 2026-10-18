@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Services;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
@@ -20,8 +21,8 @@ namespace Humans.GoogleIntegration.Jobs;
 /// public job types.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class GoogleResourceReconciliationJob(
-    IGoogleSyncService googleSyncService,
+internal sealed class GoogleResourceReconciliationJob(
+    IGoogleSyncManagement googleSyncService,
     IGoogleGroupSync googleGroupSync,
     IGoogleDriveSync googleDriveSync,
     IGoogleDriveActivityClient googleClient,

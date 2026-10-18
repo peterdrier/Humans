@@ -94,7 +94,7 @@ public class AgentConversationRetentionTests
             Options.Create(new AnthropicOptions()),
             clock,
             NullLogger<AgentService>.Instance,
-            Substitute.For<Humans.Users.Contracts.IUserServiceRead>());
+            Substitute.For<Humans.Users.Contracts.IUserService>());
     }
 
     private static AgentDbContext InMemoryDb() =>

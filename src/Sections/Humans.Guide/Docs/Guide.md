@@ -93,7 +93,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Cross-Section Dependencies
 
-- **Teams**: `GuideRoleResolver` calls `ITeamServiceRead.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
+- **Teams**: `GuideRoleResolver` calls `ITeamService.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampService.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
 - **Base (inward, publishing)**: `SectionAnnotations` (`ISectionAnnotations`) publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.

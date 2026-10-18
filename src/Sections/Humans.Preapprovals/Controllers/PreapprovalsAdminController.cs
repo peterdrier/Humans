@@ -21,8 +21,8 @@ namespace Humans.Preapprovals.Controllers;
 [Route("Preapprovals/Admin")]
 internal sealed class PreapprovalsAdminController(
     IPreapprovalManagement preapprovals,
-    IUserServiceRead users,
-    IHoldedFinanceServiceRead finance,
+    IUserService users,
+    IHoldedFinanceService finance,
     IStringLocalizer<PreapprovalsResource> localizer,
     IAuthorizationService authorization,
     IClock clock,

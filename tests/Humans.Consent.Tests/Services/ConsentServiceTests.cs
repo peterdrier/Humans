@@ -23,7 +23,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 {
     private readonly ConsentService _service;
     private readonly IConsentCacheInvalidator _consentCacheInvalidator = Substitute.For<IConsentCacheInvalidator>();
-    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
@@ -127,7 +127,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         var services = new ServiceCollection();
         services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _service);
-        services.AddScoped<IUserServiceRead>(_ => _userService);
+        services.AddScoped<IUserService>(_ => _userService);
         using var provider = services.BuildServiceProvider();
         var cached = new CachingConsentService(_legalDocumentSyncService, Clock,
             provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<CachingConsentService>.Instance);

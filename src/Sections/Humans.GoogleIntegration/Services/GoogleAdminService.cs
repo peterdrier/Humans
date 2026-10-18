@@ -10,14 +10,16 @@ namespace Humans.GoogleIntegration.Services;
 /// Workspace admin operations: account provisioning, suspend/reactivate, credential
 /// recovery, group linking, rename detection. All cross-section reads go through the owning
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
-/// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
+/// <see cref="ITeamService"/>, <see cref="ITeamResourceManagement"/>).
 /// </summary>
 internal sealed class GoogleAdminService(
     IGoogleWorkspaceUserService workspaceUserService,
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncManagement googleSyncService,
     ITeamService teamService,
-    ITeamResourceService teamResourceService,
+    ITeamWrite teamWrite,
+    ITeamResourceManagement teamResourceService,
     IUserService userService,
+    IUserWrite userWrite,
     IUserEmailService userEmailService,
     IAuditLogService auditLogService,
     ILogger<GoogleAdminService> logger) : IGoogleAdminService
@@ -531,11 +533,11 @@ internal sealed class GoogleAdminService(
 
             // Add verified email; orchestrator stamps IsGoogle. Reset GoogleEmailStatus so reconciliation resumes (#687).
             await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-            await userService.TrySetGoogleEmailStatusFromSyncAsync(
+            await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
                 userId, GoogleEmailStatus.Unknown, ct);
 
             // Enqueue re-sync for team memberships (outbox writes owned by Teams service).
-            await teamService.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
+            await teamWrite.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
             // Audit AFTER all business writes.
             await auditLogService.LogAsync(
@@ -564,7 +566,7 @@ internal sealed class GoogleAdminService(
         (bool updated, string? previousPrefix) setResult;
         try
         {
-            setResult = await teamService.SetGoogleGroupPrefixAsync(
+            setResult = await teamWrite.SetGoogleGroupPrefixAsync(
                 teamId, normalizedPrefix, ct);
         }
         catch (Exception ex)
@@ -621,7 +623,7 @@ internal sealed class GoogleAdminService(
             {
                 try
                 {
-                    await teamService.SetGoogleGroupPrefixAsync(teamId, setResult.previousPrefix, ct);
+                    await teamWrite.SetGoogleGroupPrefixAsync(teamId, setResult.previousPrefix, ct);
                 }
                 catch (Exception revertEx)
                 {

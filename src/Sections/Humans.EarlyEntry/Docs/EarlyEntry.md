@@ -108,7 +108,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 
 Outbound (the `.csproj` references `Humans.Base`, `Humans.Users.Contracts` and `Humans.Settings` only):
 
-- **Users** — `IUserServiceRead` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
+- **Users** — `IUserService` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
   roster's legal-name column.
 - **Settings** — `CachingEarlyEntryService` implements `IEventSettingsChangeListener`; Settings'
   event-settings save fans out to it and it evicts every cached answer.
@@ -149,7 +149,7 @@ consumer references the whole section, and only `internal` keeps them off the in
 - **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed,
   `warmOnStartup: false`; not a hosted service, there is nothing to warm. Negative results are
   cached by hand (`TryGet` / `Set`) because `TrackedCache.GetAsync` never stores a null.
-- **Cross-section calls** — `IUserServiceRead`; Settings' `IEventSettingsChangeListener`
+- **Cross-section calls** — `IUserService`; Settings' `IEventSettingsChangeListener`
   (implemented, not called).
 - **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the
   rendered page is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`

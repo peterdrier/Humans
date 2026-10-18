@@ -5,16 +5,17 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;
+using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin")]
 internal sealed class ProfileAdminController(
-    IUserServiceRead userService,
+    IUserService userService,
     IEmailProblemsService emailProblems,
     IUserEmailService userEmails,
-    IUserService users,
+    IUserManagement users,
     IAuditLogService audit) : HumansControllerBase(userService)
 {
     [HttpGet("EmailProblems")]

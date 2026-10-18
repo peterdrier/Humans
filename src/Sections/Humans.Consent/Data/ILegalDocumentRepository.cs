@@ -23,7 +23,7 @@ namespace Humans.Consent.Data;
 ///
 /// <para>
 /// Legal documents carry a cross-section TeamId only. Callers that need team
-/// data call <see cref="ITeamServiceRead"/> and stitch by
+/// data call <see cref="ITeamService"/> and stitch by
 /// <see cref="LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
@@ -43,7 +43,7 @@ internal interface ILegalDocumentRepository : IRepository
     /// <summary>
     /// Loads legal documents, optionally filtered by team id. Includes
     /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking). Callers
-    /// that need per-team grouping stitch with <see cref="ITeamServiceRead"/>.
+    /// that need per-team grouping stitch with <see cref="ITeamService"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default);

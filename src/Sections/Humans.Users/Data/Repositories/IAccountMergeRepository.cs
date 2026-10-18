@@ -1,5 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces.Repositories;
+using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -10,7 +11,7 @@ namespace Humans.Users.Data.Repositories;
 /// <remarks>
 /// Read methods return the merge-request rows with scalar user IDs only.
 /// Display info for the source/target/resolver users is stitched in
-/// <c>AccountMergeService</c> via <c>IUserService</c> (§6b), never via the
+/// <c>AccountMergeService</c> via <c>IUserManagement</c> (§6b), never via the
 /// cross-domain <c>AspNetUsers</c> navigation properties.
 /// </remarks>
 internal interface IAccountMergeRepository : IRepository
@@ -18,13 +19,13 @@ internal interface IAccountMergeRepository : IRepository
     /// <summary>
     /// Returns all pending merge requests for admin review, ordered by
     /// <c>CreatedAt</c> ascending. Scalar user IDs only — the service stitches
-    /// display info via <c>IUserService</c>. Read-only (AsNoTracking).
+    /// display info via <c>IUserManagement</c>. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns a single merge request by id. Scalar user IDs only — the service
-    /// stitches display info via <c>IUserService</c>. Tracked for modification.
+    /// stitches display info via <c>IUserManagement</c>. Tracked for modification.
     /// </summary>
     Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
 

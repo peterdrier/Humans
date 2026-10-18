@@ -17,7 +17,7 @@ namespace Humans.Workgroups.Services.Contributors;
 /// </remarks>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
-    ITeamServiceRead teams) : IGoogleDriveAccessSource
+    ITeamService teams) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)

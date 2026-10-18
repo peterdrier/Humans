@@ -4,11 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Catches writes to UserInfo-contributing tables that bypass IUserService
+/// Catches writes to UserInfo-contributing tables that bypass IUserManagement
 /// (Identity machinery, OAuth callbacks, direct-repo) and invalidates UserInfo.
 /// Profile-section writes are handled by CachingUserService directly. See #703.
 /// </summary>

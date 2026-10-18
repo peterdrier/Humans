@@ -53,7 +53,7 @@ public class ProfileEmailsControllerGridTests
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly ProfileEmailsController _controller;
@@ -128,7 +128,7 @@ public class ProfileEmailsControllerGridTests
             .Returns(new User { Id = _userId });
         _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
-        // GetCurrentUserInfoAsync helper reads through IUserServiceInternal; default
+        // GetCurrentUserInfoAsync helper reads through IUserManagement; default
         // stub returns a minimal UserInfo for the test user so the actions
         // continue past the null-guard. Per-test overrides can replace this.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())

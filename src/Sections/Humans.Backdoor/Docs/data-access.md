@@ -19,8 +19,8 @@ No `IMemoryCache` — a cache would have to be invalidated on every revoke to
 stay correct about the thing that matters most, and key lookups are one
 indexed hash probe per API request at a handful of requests per minute.
 
-Cross-section calls via `IRoleAssignmentServiceRead` (Admin/Board eligibility),
-`IUserServiceRead` (account-state check, display-name stitching),
+Cross-section calls via `IRoleAssignmentService` (Admin/Board eligibility),
+`IUserService` (account-state check, display-name stitching),
 `IAuditLogService` (key lifecycle). Implements `IUserDataContributor`
 (GDPR export slice `BackdoorApiKeyService.BackdoorApiKeys`, hash excluded),
 `IUserMerge` (folds an eliminated account's keys onto the survivor).
@@ -29,7 +29,7 @@ The `/api/backdoor/*` machine APIs that serve another section (`agent`,
 `issues`, `feedback`, `store`, `surveys`, `finance`, `notifications`) are thin controller orchestrators over that
 section's contracts interface (`IAgentTranscriptRead`, `IIssueTriage`,
 `IFeedbackTriage`, `IStoreAccountingRead`, `ISurveyAnalysisRead`,
-`IExpenseReportService`, `IHoldedFinanceServiceRead`, `IBudgetService`, `INotificationInboxRead`) — Backdoor's own repository is
+`IExpenseReportService`, `IHoldedFinanceService`, `IBudgetService`, `INotificationInboxRead`) — Backdoor's own repository is
 never touched by them, and they carry no `###` heading here since each is
 documented in the section that owns the interface. `logs` alone reads
 `InMemoryLogSink` from `Humans.Base` and owns no data either.

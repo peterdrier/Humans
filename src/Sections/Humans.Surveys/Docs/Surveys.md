@@ -40,7 +40,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | AudienceLoggedInSince | Instant? | cutoff (when `AudienceType = LoggedInSince`); users with `LastLoginAt >= cutoff` match, `null` LastLoginAt never matches |
 | PublicSlug | string? | max 80; shareable answering link; identified surveys require sign-in and current audience access; null = invite-only |
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
-| CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
+| CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserService` |
 | SubmittedAt | Instant? | stamped entering PendingApproval; cleared on approve/reject |
 | RejectionNote | string? | max 4000; validated before rejection persists; invalid notes remain in the queue form for correction; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
 | CreatedAt / UpdatedAt | Instant | |
@@ -240,7 +240,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **The anonymity chooser pre-selects Identified.** The answer view model defaults `Anonymity` to `ResponseAnonymity.Identified` and `Views/Survey/Intro.cshtml` marks that radio `checked`; the unlinked tiers are opt-in per respondent.
 - **Self-service authoring runs behind an approval gate (Workgroups §11 — Surveys never references Workgroups).** Any Human with an approved profile may create/edit a Draft survey they own. The status machine is exactly: Draft → PendingApproval (author, their own Draft only); PendingApproval → Open (Board/Admin only, via **Approve and send** — opens the survey and sends invitations in one step); PendingApproval → Draft (Board/Admin only, reject, requires a non-empty note stamped into `RejectionNote`). Board/Admin retain the pre-existing direct Draft → Open path (unaffected by this gate). Both status verbs that could walk a submission back out of the gate refuse it: `OpenAsync` and `CloseAsync` each throw for a `PendingApproval` survey, so approve and reject are the only exits and `PendingApproval → Closed → Open` is not a route to an unapproved Open survey. **Approve and send** also resolves the audience to real recipients before persisting the approval, so a well-formed audience that resolves to nobody — a Team whose team is gone — fails while the survey is still in the queue rather than opening with no one invited. Per-recipient send failures are recorded for retry. Audience preparation remains cancellable; once invitation writes begin, the batch finishes independently of request cancellation. Every transition writes an audit entry (`AuditAction.SurveySubmittedForApproval` / `SurveyApproved` / `SurveyRejected`).
 - **Single-repo ownership.** Only `SurveyRepository` touches the six `survey_*` tables; a `survey_*` table appears in no other repository.
-- **Cross-domain refs are bare `Guid` FK columns** — no navigation properties, no `[Obsolete]` navs, and no cross-section EF FK constraints. Display data (creator/respondent names, recipient languages/emails) is stitched into DTOs by the service via `I…ServiceRead` interfaces.
+- **Cross-domain refs are bare `Guid` FK columns** — no navigation properties, no `[Obsolete]` navs, and no cross-section EF FK constraints. Display data (creator/respondent names, recipient languages/emails) is stitched into DTOs by the service via other sections' `I<Section>Service` contracts.
 
 ## Negative Access Rules
 
@@ -276,8 +276,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserServiceRead` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
-- **Teams:** `ITeamServiceRead` — `Team`-audience member ids and team display data.
+- **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
+- **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
 - **Tickets:** `ITicketService` — `TicketHolders`-audience recipient ids.
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
 - **Users/Identity:** `IUserEmailService` — effective notification target email per recipient when queueing invite/reminder mail.
@@ -301,11 +301,11 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Aggregate-local navs kept:** `Survey.Questions ↔ SurveyQuestion.Survey`, `SurveyQuestion.Options ↔ SurveyQuestionOption.Question`, `SurveyResponse.Answers ↔ SurveyAnswer.Response`. All within Survey-owned tables, so these `.Include`s are legal inside the repository.
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (`memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints**. The service resolves display data via the cross-section read interfaces and returns DTOs.
-- **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketService`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewService`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
+- **Cross-section calls — the public interfaces this section consumes:** `IUserService`, `ITeamService`, `ITicketService`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailPreviewService`, `IAuditLogService`, `IGoogleTranslationService`, `IFileStorage`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider` and `SurveyPreviewTokenProvider`).
 - **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal — a per-consumer allow-list test would only assert absence ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ### Cross-section read interface
 
-`ISurveyAnalysisRead` (public, in `Contracts/`): survey list, one survey's resolved question graph (`GetDefinitionAsync` → `SurveyDefinitionSnapshot`), the raw per-response export, and the per-question aggregates. Read-only — a survey is authored only in the admin UI, never over the API. Its sole consumer is `Humans.Backdoor`'s `BackdoorSurveysController` behind `/api/backdoor/surveys`. The section's only other public behaviour surface is `ISurveyReminderSender`, consumed by `Jobs/SendSurveyReminderJob`. There is deliberately **no `ISurveyServiceRead`**: it shipped empty, no other section consumed it, and it was deleted — the machine API's needs are a different shape and are served by `ISurveyAnalysisRead`.
+`ISurveyAnalysisRead` (public, in `Contracts/`): survey list, one survey's resolved question graph (`GetDefinitionAsync` → `SurveyDefinitionSnapshot`), the raw per-response export, and the per-question aggregates. Read-only — a survey is authored only in the admin UI, never over the API. Its sole consumer is `Humans.Backdoor`'s `BackdoorSurveysController` behind `/api/backdoor/surveys`. The section's only other public behaviour surface is `ISurveyReminderSender`, consumed by `Jobs/SendSurveyReminderJob`. There is deliberately **no public `ISurveyService` contract**: the empty public read contract was deleted (no other section consumed it); the internal `ISurveyService` remains — the machine API's needs are a different shape and are served by `ISurveyAnalysisRead`.
 
 Response exports (admin CSV/JSON and Backdoor analysis) record `SurveyResponsesExported` with the requesting human, survey id and row count in the owner service. Missing surveys and embargoed open Asociado votes return no export and no disclosure audit. Privacy shaping and results authorization remain unchanged.

@@ -57,10 +57,17 @@ internal interface IHoldedRepository : IRepository
     Task<SepaPayoutTransfer?> GetSepaTransferAsync(Guid transferId, CancellationToken ct = default);
 
     /// <summary>Stamps a completed booking: when, who (null = the sweep), the bank line it was booked
-    /// against, and whether the reconcile already succeeded.</summary>
+    /// against, whether the reconcile already succeeded, and the Holded payment ids it posted
+    /// (comma-joined; null when it posted none).</summary>
     Task SaveSepaTransferBookingAsync(
         Guid transferId, Instant bookedAt, Guid? bookedByUserId,
-        string bankMovementId, Instant? reconciledAt, CancellationToken ct = default);
+        string bankMovementId, Instant? reconciledAt, string? holdedPaymentRefs,
+        CancellationToken ct = default);
+
+    /// <summary>Records the Holded payment ids a run posted before it stopped short of booking, so a
+    /// retry refuses instead of posting over them. Touches nothing else on the row.</summary>
+    Task SaveSepaTransferPaymentRefsAsync(
+        Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
     /// <summary>Stamps a reconcile that succeeded on a later pass, without touching the booking.</summary>
     Task MarkSepaTransferReconciledAsync(

@@ -291,7 +291,7 @@ public sealed class SurveyAdminControllerTests
         var surveyId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
-        var teams = Substitute.For<ITeamServiceRead>();
+        var teams = Substitute.For<ITeamService>();
         var editable = new SurveyEditInput(
             Text("Team survey"),
             LocalizedText.Empty,
@@ -330,7 +330,7 @@ public sealed class SurveyAdminControllerTests
         var sut = new SurveyAdminController(
             surveys,
             teams,
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserService>(),
             Substitute.For<IAuthorizationService>(),
             Substitute.For<IStringLocalizer<SurveysResource>>(),
             NullLogger<SurveyAdminController>.Instance);
@@ -367,8 +367,8 @@ public sealed class SurveyAdminControllerTests
         };
         var sut = new SurveyAdminController(
             surveys,
-            Substitute.For<ITeamServiceRead>(),
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<ITeamService>(),
+            Substitute.For<IUserService>(),
             Substitute.For<IAuthorizationService>(),
             Substitute.For<IStringLocalizer<SurveysResource>>(),
             logger)
@@ -460,7 +460,7 @@ public sealed class SurveyAdminControllerTests
 
     private static SurveyAdminController CreateController(
         ISurveyService surveys,
-        ITeamServiceRead? teams = null,
+        ITeamService? teams = null,
         IAuthorizationService? authorizationService = null,
         Guid? userId = null,
         bool isBoardOrAdmin = false,
@@ -471,8 +471,8 @@ public sealed class SurveyAdminControllerTests
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
         return new(
             surveys,
-            teams ?? Substitute.For<ITeamServiceRead>(),
-            Substitute.For<IUserServiceRead>(),
+            teams ?? Substitute.For<ITeamService>(),
+            Substitute.For<IUserService>(),
             authorizationService ?? Substitute.For<IAuthorizationService>(),
             localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>(),
             NullLogger<SurveyAdminController>.Instance)

@@ -32,7 +32,7 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
             .Options;
         _seedContext = new GoogleIntegrationDbContext(options);
 
-        var teamResources = Substitute.For<ITeamResourceService>();
+        var teamResources = Substitute.For<ITeamResourceManagement>();
         teamResources.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 

@@ -64,7 +64,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   account and is not re-registered). Audited (`HoldedExpenseAccountCreated` / `…Linked`).
 - `IHoldedFinanceService.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
   — flips the registry row. No-op when the number is a category account or unknown.
-- `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
+- `IHoldedFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
   → `IReadOnlyList<HoldedExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
   Union of the category map (label `Group / Category` from the active budget year, always active)
   and the managed registry (its `Label`). Cache reads only — no Holded call. This is what the
@@ -116,7 +116,7 @@ it. No `WorkgroupAdmin` role exists; adding one is a separate change.
 **UI.**
 - Group page: a "Budget" block showing the amount and the Holded account number/name. Rendered
   for Board/Admin and for viewers whose `MembershipTier` is Colaborador or Asociado; hidden from
-  Volunteers. (Tier via `IUserServiceRead`, as the page already stitches for the roster.)
+  Volunteers. (Tier via `IUserService`, as the page already stitches for the roster.)
 - Admin form (Board/Admin, on the group page beside the other admin controls): checkbox "This
   workgroup has a budget" → amount field → radio "Create `Workgroups / {Name}` in Holded"
   (default) / "Link an existing account" with a select of the live chart (number — name).
@@ -152,7 +152,7 @@ An expense report names the Holded account it goes to, not a budget category.
   become nullable and are derived at selection time for category-mapped accounts (account →
   category via Finance's map) so endorsement routing and year pinning keep working for
   department reports.
-- The New/Edit dropdown is `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)`,
+- The New/Edit dropdown is `IHoldedFinanceService.ListExpenseAccountsAsync(activeOnly: true)`,
   grouped "Budget categories" / "Other accounts".
 - Reports on an unmapped account skip coordinator endorsement: Submitted → Finance review.
   Peter's decision; the Finance admin is the gate.

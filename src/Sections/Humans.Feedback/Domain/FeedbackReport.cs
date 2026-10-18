@@ -9,7 +9,7 @@ internal sealed class FeedbackReport
 
     /// <summary>
     /// FK column only — no navigation property. Resolve the reporter's
-    /// display name via <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// display name via <c>IUserService.GetUserInfosAsync</c>.
     /// </summary>
     public Guid UserId { get; init; }
 
@@ -49,19 +49,19 @@ internal sealed class FeedbackReport
 
     /// <summary>
     /// FK column only — no navigation property. Resolve via
-    /// <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// <c>IUserService.GetUserInfosAsync</c>.
     /// </summary>
     public Guid? ResolvedByUserId { get; set; }
 
     /// <summary>
     /// FK column only — no navigation property. Resolve via
-    /// <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// <c>IUserService.GetUserInfosAsync</c>.
     /// </summary>
     public Guid? AssignedToUserId { get; set; }
 
     /// <summary>
     /// FK column only — no navigation property. Resolve via
-    /// <c>ITeamServiceRead</c>.
+    /// <c>ITeamService</c>.
     /// </summary>
     public Guid? AssignedToTeamId { get; set; }
 

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Users.Services.UserService;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Architecture;
 
@@ -17,29 +18,13 @@ namespace Humans.Users.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    // ── IUserServiceRead split (memory/architecture/section-read-write-split.md) ──
+    // ── Public faces share one instance ──────────────────────────────────────
 
     [HumansFact]
-    public void IUserService_InheritsIUserServiceRead()
-    {
-        typeof(IUserServiceRead).IsAssignableFrom(typeof(IUserService))
-            .Should().BeTrue(
-                because: "IUserService is the full Users surface; external sections inject the narrow IUserServiceRead. " +
-                         "See memory/architecture/section-read-write-split.md.");
-    }
-
-    [HumansFact]
-    public void CachingUserService_ImplementsIUserServiceRead()
-    {
-        typeof(IUserServiceRead).IsAssignableFrom(typeof(CachingUserService))
-            .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void IUserService_IUserServiceRead_And_IUserInfoInvalidator_ResolveToSameSingleton()
+    public void IUserManagement_IUserService_IUserWrite_And_IUserInfoInvalidator_ResolveToSameSingleton()
     {
         // The real section registration: the same CachingUserService singleton
-        // must back all three interface keys, or an external "user changed"
+        // must back every interface key, or an external "user changed"
         // signal misses the cache owner.
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());
@@ -47,13 +32,15 @@ public class UserArchitectureTests
 
         using var provider = services.BuildServiceProvider();
 
-        var fromFull = provider.GetRequiredService<IUserService>();
-        var fromRead = provider.GetRequiredService<IUserServiceRead>();
+        var fromManagement = provider.GetRequiredService<IUserManagement>();
+        var fromRead = provider.GetRequiredService<IUserService>();
+        var fromWrite = provider.GetRequiredService<IUserWrite>();
         var fromInvalidator = provider.GetRequiredService<IUserInfoInvalidator>();
         var concrete = provider.GetRequiredService<CachingUserService>();
 
-        ReferenceEquals(fromFull, concrete).Should().BeTrue();
+        ReferenceEquals(fromManagement, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        ReferenceEquals(fromWrite, concrete).Should().BeTrue();
         ReferenceEquals(fromInvalidator, concrete).Should().BeTrue();
     }
 

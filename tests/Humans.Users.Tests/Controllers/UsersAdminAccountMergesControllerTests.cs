@@ -11,12 +11,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Controllers;
 
 public class UsersAdminAccountMergesControllerTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IDuplicateAccountService _duplicateService = Substitute.For<IDuplicateAccountService>();
     private readonly Guid _adminUserId = Guid.NewGuid();

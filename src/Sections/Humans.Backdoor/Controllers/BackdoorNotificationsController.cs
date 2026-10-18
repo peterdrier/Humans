@@ -18,7 +18,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/notifications")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorNotificationsController(INotificationInboxRead inbox, IUserServiceRead users)
+internal sealed class BackdoorNotificationsController(INotificationInboxRead inbox, IUserService users)
     : ApiControllerBase(users)
 {
     /// <summary>Unread rows newest first and meters highest priority first, for the key's owner.</summary>

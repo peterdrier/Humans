@@ -24,7 +24,7 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class GuestAccountControllerTests
 {
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();

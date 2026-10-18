@@ -33,18 +33,20 @@ public class DevPersonaSeederTests
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly IRoleAssignmentWrite _roleAssignments = Substitute.For<IRoleAssignmentWrite>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly ITeamWrite _teamsWrite = Substitute.For<ITeamWrite>();
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IUserWrite _usersWrite = Substitute.For<IUserWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
     private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
-    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -63,9 +65,11 @@ public class DevPersonaSeederTests
         _roleAssignments,
         _userInfoInvalidator,
         _teams,
+        _teamsWrite,
         _teamSeeding,
         _systemTeamSync,
         _users,
+        _usersWrite,
         _audit,
         _camps,
         _campSeeding,

@@ -7,8 +7,9 @@ and its two collaborators. **DbContext:** `AuthDbContext`, internal to the
 section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.
 
-`IRoleAssignmentServiceRead` aliases the same singleton as the full interface.
-The inner `IRoleAssignmentService` is wrapped by
+`IRoleAssignmentService`, `IRoleAssignmentWrite` and the internal
+`IRoleAssignmentManagement` all alias the same singleton.
+The inner `IRoleAssignmentManagement` is wrapped by
 `Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).
 The full `role_assignments` row set is held in memory so
@@ -31,7 +32,7 @@ Repository: `IRoleAssignmentRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserServiceRead`, `ISystemTeamSync`,
+Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
@@ -41,14 +42,14 @@ and `IUserMerge` for account merges.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, RoleAssignmentRow>` (`Auth.RoleAssignmentRow`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (wholesale, via `IRoleAssignmentCacheInvalidator.InvalidateAll`) |
 
-Implements `IRoleAssignmentService`, `IRoleAssignmentCacheInvalidator`.
+Implements `IRoleAssignmentManagement` (hence `IRoleAssignmentService`, `IRoleAssignmentWrite`), `IRoleAssignmentCacheInvalidator`.
 Resolves the keyed Scoped inner per-call via `IServiceScopeFactory`.
 Surfaced on `/Debug/CacheStats`.
 
 ### MagicLinkService (Scoped)
 
 No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
-`IUserServiceRead`, `IEmailService`, the section's own `AuthEmails` builder,
+`IUserService`, `IEmailService`, the section's own `AuthEmails` builder,
 `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and

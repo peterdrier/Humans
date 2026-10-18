@@ -24,12 +24,12 @@ namespace Humans.Users.Tests.Services.Users;
 /// </summary>
 public class CachingUserServiceTests
 {
-    private readonly IUserServiceInternal _inner = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _inner = Substitute.For<IUserManagement>();
 
     private CachingUserService CreateSut()
     {
         var services = new ServiceCollection();
-        services.AddKeyedScoped<IUserServiceInternal>(CachingUserService.InnerServiceKey, (_, _) => _inner);
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         return new CachingUserService(
             scopeFactory, NullLogger<CachingUserService>.Instance);

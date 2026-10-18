@@ -32,7 +32,7 @@ public class ShiftVolunteerSearchBuilderTests
         MakeBurn(PastBurnId, "Europe/Madrid", new LocalDate(2025, 7, 9));
 
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();

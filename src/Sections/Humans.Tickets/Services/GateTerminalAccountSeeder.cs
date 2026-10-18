@@ -25,7 +25,7 @@ internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, In
 internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
-    IUserService userService,
+    IUserWrite userService,
     IUserInfoInvalidator userInfoInvalidator,
     IAuditLogService auditLogService,
     IClock clock,

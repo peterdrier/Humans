@@ -24,7 +24,7 @@ internal sealed class TicketTransferService(
     ITicketRepository ticketRepo,
     ITicketService holdings,
     ITicketVendorService vendor,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
     TicketsEmails emailMessages,

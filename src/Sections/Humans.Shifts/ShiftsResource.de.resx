@@ -1268,4 +1268,10 @@
     <value>Schicht gelöscht.</value>
   </data>
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Wähle Tage innerhalb des Veranstaltungskalenders.</value></data>
+  <data name="Dashboard_OffSeasonTitle" xml:space="preserve">
+    <value>Saison abgeschlossen</value>
+  </data>
+  <data name="Dashboard_OffSeasonBody" xml:space="preserve">
+    <value>Danke für dieses Jahr. Die Schichten öffnen wieder, sobald der Vorstand das nächste Event veröffentlicht.</value>
+  </data>
 </root>

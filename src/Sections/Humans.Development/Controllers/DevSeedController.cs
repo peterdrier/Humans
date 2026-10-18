@@ -20,7 +20,7 @@ internal sealed class DevSeedController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IServiceProvider serviceProvider,
-    IUserServiceRead userService,
+    IUserService userService,
     ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
     // The admin nav's landing page for the seed buttons below: the seeds are POST-only.

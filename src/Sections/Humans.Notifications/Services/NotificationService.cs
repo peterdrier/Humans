@@ -18,7 +18,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationService(
     INotificationEmitter emitter,
     INotificationRepository repo,
-    IRoleAssignmentServiceRead roleAssignmentService,
+    IRoleAssignmentService roleAssignmentService,
     ICommunicationPreferenceService preferenceService,
     IClock clock,
     IMemoryCache cache,

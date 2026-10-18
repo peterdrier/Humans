@@ -1,3 +1,4 @@
+using Humans.Governance.Services;
 using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace Humans.Governance.ViewComponents;
 /// application counts. Contributed into the admin dashboard's <c>admin-dashboard</c>
 /// chrome slot (<see cref="Humans.Governance.SectionChrome"/>).
 /// </summary>
-internal sealed class TierApplicationsCardViewComponent(IApplicationServiceRead applicationService) : ViewComponent
+internal sealed class TierApplicationsCardViewComponent(IGovernanceManagement applicationService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {

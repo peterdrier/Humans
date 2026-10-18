@@ -197,7 +197,7 @@ public class TicketDashboardViewTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(TicketsResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly);
-        builder.Services.AddSingleton(Substitute.For<IUserServiceRead>());
+        builder.Services.AddSingleton(Substitute.For<IUserService>());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());

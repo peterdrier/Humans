@@ -11,12 +11,12 @@ using Humans.Users.Contracts;
 namespace Humans.Budget.Services;
 
 /// <summary>
-/// Budget service. Cross-section reads (teams) via ITeamServiceRead. budget_audit_logs is append-only (§12).
+/// Budget service. Cross-section reads (teams) via ITeamService. budget_audit_logs is append-only (§12).
 /// </summary>
 internal sealed class BudgetService(
     IBudgetRepository repository,
-    ITeamServiceRead teamService,
-    IUserServiceRead userService,
+    ITeamService teamService,
+    IUserService userService,
     IClock clock,
     ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {

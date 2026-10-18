@@ -7,7 +7,7 @@ namespace Humans.Users.ViewComponents;
 /// The member's tier badge beside their name on the dashboard. Renders nothing for a plain
 /// Volunteer, which is nearly everyone.
 /// </summary>
-public sealed class MembershipTierBadgeViewComponent(IUserServiceRead userService) : ViewComponent
+public sealed class MembershipTierBadgeViewComponent(IUserService userService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {

@@ -530,6 +530,8 @@
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Equips ocults</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visible només per als administradors)</value></data>
   <data name="Teams_Summary" xml:space="preserve"><value>Resum</value></data>
+  <data name="Teams_Tree_Title" xml:space="preserve"><value>Arbre d'equips</value></data>
+  <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Cada departament i els equips que el formen.</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Estat de sincronització</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Equips del sistema</value></data>
   <data name="Teams_TeamAdminResources_Title" xml:space="preserve">

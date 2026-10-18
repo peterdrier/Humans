@@ -11,7 +11,7 @@ using Humans.Base.Helpers;
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Issue #703. Singleton caching decorator for <see cref="IUserService"/>.
+/// Issue #703. Singleton caching decorator for <see cref="IUserManagement"/>.
 /// Inherits <see cref="TrackedCache{TKey, TValue}"/> for a hit/miss-tracked cache of
 /// <see cref="UserInfo"/> entries keyed by userId — the canonical
 /// "everything-about-a-person" cache.
@@ -19,7 +19,7 @@ namespace Humans.Users.Data;
 /// <remarks>
 /// <para>
 /// Dict hits served synchronously; a cache miss refills via the inner Scoped
-/// <see cref="IUserService"/>, and every write through this surface delegates
+/// <see cref="IUserManagement"/>, and every write through this surface delegates
 /// and then refreshes the affected entry. Identity-machinery write paths
 /// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c> bumps) are
 /// caught by <c>UserInfoSaveChangesInterceptor</c>, which invokes
@@ -28,7 +28,7 @@ namespace Humans.Users.Data;
 /// </para>
 /// <para>
 /// Registered as Singleton so the dict persists across requests. Scoped
-/// dependencies (the inner <see cref="IUserService"/>) are resolved per-call
+/// dependencies (the inner <see cref="IUserManagement"/>) are resolved per-call
 /// via <see cref="IServiceScopeFactory"/> to avoid the captured-scoped
 /// anti-pattern. Cache warm and miss paths also go through the keyed inner
 /// service so the decorator does not bypass the repository-owning
@@ -38,13 +38,13 @@ namespace Humans.Users.Data;
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserServiceInternal, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
+    IUserManagement, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
 {
     /// <summary>
-    /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
+    /// DI service key under which the undecorated (inner) <see cref="IUserManagement"/>
     /// is registered. Used by the Singleton decorator to resolve the Scoped inner
     /// service per-call without triggering self-resolution on the unkeyed
-    /// <see cref="IUserService"/> registration.
+    /// <see cref="IUserManagement"/> registration.
     /// </summary>
     public const string InnerServiceKey = "user-inner";
 
@@ -196,17 +196,17 @@ internal sealed class CachingUserService(
 
     /// <summary>
     /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
-    /// Resolves the Scoped inner <see cref="IUserService"/> per call; the base
+    /// Resolves the Scoped inner <see cref="IUserManagement"/> per call; the base
     /// caches the result via <see cref="TrackedCache{TKey,TValue}.Set"/>.
     /// </summary>
     protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserManagement>(InnerServiceKey);
         return await inner.GetUserInfoAsync(userId, ct);
     }
 
-    /// <inheritdoc cref="IUserServiceRead.GetAllUserInfosAsync" />
+    /// <inheritdoc cref="IUserService.GetAllUserInfosAsync" />
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
@@ -216,7 +216,7 @@ internal sealed class CachingUserService(
         return Values.Where(r => !r.IsTombstone).Select(Stamp).ToArray();
     }
 
-    /// <inheritdoc cref="IUserServiceRead.GetUserInfosAsync" />
+    /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -279,7 +279,7 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    /// <inheritdoc cref="IUserServiceRead.SearchUsersAsync" />
+    /// <inheritdoc cref="IUserService.SearchUsersAsync" />
     public async Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
     {
@@ -500,21 +500,21 @@ internal sealed class CachingUserService(
         };
 
     // ==========================================================================
-    // Inner delegation — every other IUserService method passes through and
+    // Inner delegation — every other IUserManagement method passes through and
     // refreshes the affected entry on writes.
     // ==========================================================================
 
-    private async Task<T> WithInnerAsync<T>(Func<IUserServiceInternal, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IUserManagement, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserManagement>(InnerServiceKey);
         return await work(inner);
     }
 
-    private async Task WithInnerAsync(Func<IUserServiceInternal, Task> work)
+    private async Task WithInnerAsync(Func<IUserManagement, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserManagement>(InnerServiceKey);
         await work(inner);
     }
 

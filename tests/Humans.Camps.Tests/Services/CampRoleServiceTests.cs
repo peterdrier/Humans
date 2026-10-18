@@ -15,7 +15,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly Guid _actorUserId = Guid.NewGuid();
@@ -34,7 +34,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             _campAccess,
             _campInfoInvalidator,
             _userEmailService,
-            _userServiceRead,
+            _userService,
             AuditLog,
             Notifier,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
@@ -276,11 +276,11 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var def = await SeedDefinitionAsync();
         _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
-        _userServiceRead.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+        _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = member.UserId, PreferredLanguage = "es" }, [], [], [], null, [])));
         if (lookupFails)
-            _userServiceRead.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+            _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
 
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, ct);

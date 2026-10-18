@@ -12,7 +12,7 @@ namespace Humans.Store.Services;
 internal sealed class StoreOrderReader(
     IStoreRepository repo,
     ICampService campService,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IClock clock,
     ISettingsService settingsService) : IApplicationService
 {

@@ -13,6 +13,7 @@ internal sealed class AttendeeContactImportService(
     IUserEmailService userEmails,
     IAccountProvisioningService provisioning,
     IUserService users,
+    IUserWrite userWrite,
     ISettingsService settingsService,
     ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
@@ -111,7 +112,7 @@ internal sealed class AttendeeContactImportService(
             foreach (var group in importState.ToUpsert.GroupBy(a => a.MatchedUserId!.Value))
             {
                 var earliestScan = group.Min(a => a.CheckedInAt);
-                await users.SetParticipationFromTicketSyncAsync(
+                await userWrite.SetParticipationFromTicketSyncAsync(
                     group.Key, active.Year,
                     earliestScan is not null ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
                     earliestScan, ct);

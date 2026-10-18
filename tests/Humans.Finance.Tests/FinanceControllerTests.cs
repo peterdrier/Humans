@@ -27,9 +27,9 @@ public class FinanceControllerTests
     private static readonly Guid Ana = Guid.NewGuid();
     private static readonly Guid Bo = Guid.NewGuid();
 
-    private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
+    private readonly IHoldedFinanceManagement _finance = Substitute.For<IHoldedFinanceManagement>();
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)
@@ -317,7 +317,28 @@ public class FinanceControllerTests
             .Should().BeOfType<CreditorStatementVm>().Subject;
 
         model.OwedBalance.Should().Be(10m);
-        model.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+        model.Lines.Select(r => (r.Line.EntryNumber, r.Line.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_RunningBalance_AccumulatesOldestFirst_ShownNewestFirst()
+    {
+        var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
+        var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorLedger(40000002, -30m, 30m,
+            [
+                Ledger(entry: 9, line: 1, day2) with { Credit = 0m, Debit = 50m },  // paid out 50
+                Ledger(entry: 5, line: 1, day1) with { Credit = 100m }, // owed 100
+                Ledger(entry: 7, line: 1, day2) with { Credit = 0m, Debit = 20m },  // paid out 20
+            ]));
+
+        var model = (await MakeController().CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        // Chronological: +100 → 100, −20 → 80, −50 → 30; presented newest first.
+        model.Lines.Select(r => (r.Line.EntryNumber, r.RunningBalance)).Should().Equal((9, 30m), (7, 80m), (5, 100m));
+        model.Lines[0].RunningBalance.Should().Be(model.OwedBalance);
     }
 
     [HumansFact]
@@ -356,7 +377,7 @@ public class FinanceControllerTests
         var older = Guid.NewGuid();
         var newer = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow>
             {
                 Transfer(newer, "new.xml", Stamp(2), admin, Bo, 40000007),
@@ -378,7 +399,7 @@ public class FinanceControllerTests
     public async Task Sepa_CanceledRead_StopsMemberNameLookup()
     {
         using var cancellation = new CancellationTokenSource();
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
             null, [], null));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -397,7 +418,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
     {
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
                 (IReadOnlyList<SepaBankMovementVm>)[], (string?)null));
 
@@ -415,7 +436,7 @@ public class FinanceControllerTests
             new("mov-1", new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null,
                 "pending", "its text names no creditor account"),
         };
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), (string?)null,
                 (IReadOnlyList<SepaBankMovementVm>)unmatched, (string?)null));
 
@@ -427,7 +448,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Sepa_BankFeedUnreadable_RendersTheBannerAndStillListsFiles()
     {
-        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
             (string?)null, (IReadOnlyList<SepaBankMovementVm>)[], "Holded's bank feed did not answer."));
         NameThem((Ana, "Ada"));
@@ -464,12 +485,37 @@ public class FinanceControllerTests
         await _connector.Received(1).BookSepaFileAsync(fileId, "mov-batch", Ana);
     }
 
+    [HumansFact]
+    public async Task BookSepaFileMatches_PassesTheFileIdAndToleranceThrough()
+    {
+        var fileId = Guid.NewGuid();
+        _connector.BookSepaFileMatchesAsync(fileId, Ana, 7)
+            .Returns(new SepaBookingResult(true, "Booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        await controller.BookSepaFileMatches(fileId, days: 7);
+
+        await _connector.Received(1).BookSepaFileMatchesAsync(fileId, Ana, 7);
+    }
+
+    [HumansFact]
+    public async Task Sepa_PassesThePostedToleranceToTheServiceAndThePage()
+    {
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken, days: 7));
+
+        page.ToleranceDays.Should().Be(7);
+        await _connector.Received(1).GetSepaPayoutsAsync(7, Arg.Any<CancellationToken>());
+    }
+
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
 
     private static SepaPayoutTransferRow Transfer(
         Guid fileId, string fileName, Instant generatedAt, Guid generatedBy, Guid userId, int account) =>
         new(Guid.NewGuid(), fileId, fileName, generatedAt, generatedBy,
-            userId, account, "c1", "Ana Ruiz", "ES79****789", 12.34m, null, null, null, null, null, null);
+            userId, account, "c1", "Ana Ruiz", "ES79****789", 12.34m, null, null, null, null, null, null, null);
 
     private static SepaPayoutsPageVm SepaPageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model

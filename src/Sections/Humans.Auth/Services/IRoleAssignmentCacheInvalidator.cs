@@ -7,7 +7,7 @@ namespace Humans.Auth.Services;
 /// Cross-section signal for the global role-assignment cache. Implemented
 /// by the Singleton <c>CachingRoleAssignmentService</c> decorator and
 /// called by <c>RoleAssignmentService</c>'s mutating methods (and, via
-/// <c>IRoleAssignmentService.InvalidateRoleAssignmentCache()</c>, by
+/// <c>IRoleAssignmentManagement.InvalidateRoleAssignmentCache()</c>, by
 /// <c>AccountMergeService</c> after a merge fold). No EF interceptor —
 /// all <c>role_assignments</c> writes go through <c>RoleAssignmentService</c>.
 /// </summary>
@@ -21,7 +21,7 @@ namespace Humans.Auth.Services;
 /// the claims invalidator targets per-user authentication claims (cookie /
 /// per-request roles), while this invalidator targets the singleton list
 /// cache that backs cross-section reads such as
-/// <c>IRoleAssignmentService.GetActiveCountsByRoleAsync</c>.
+/// <c>IRoleAssignmentManagement.GetActiveCountsByRoleAsync</c>.
 /// </remarks>
 [Grandfathered(
     ruleId: "HUM0028",

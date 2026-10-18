@@ -15,7 +15,7 @@ namespace Humans.Governance.Controllers;
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Governance/BoardVoting")]
 internal sealed class GovernanceBoardVotingController(
-    IUserServiceRead userService,
+    IUserService userService,
     ApplicationDecisionService applicationDecisionService,
     ILogger<GovernanceBoardVotingController> logger,
     IStringLocalizer<GovernanceResource> localizer) : HumansControllerBase(userService)

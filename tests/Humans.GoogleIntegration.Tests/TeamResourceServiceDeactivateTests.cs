@@ -14,7 +14,7 @@ using Humans.AuditLog.Contracts;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// Coverage for <see cref="ITeamResourceService.DeactivateResourcesForTeamAsync"/> — the
+/// Coverage for <see cref="ITeamResourceManagement.DeactivateResourcesForTeamAsync"/> — the
 /// side of #494 that flips <c>IsActive</c> and writes audit entries. After the
 /// <c>#540c</c> migration there is a single <see cref="TeamResourceService"/>
 /// implementation in the Application layer; this test drives it through an

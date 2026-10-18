@@ -42,19 +42,19 @@ internal sealed class TeamService(
     private const int MaxTeamSlugLength = 256;
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
     {
-        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search"
+        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search", "tree"
     };
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
-    // Lazy resolution — UserService injects ITeamService, closing the cycle.
-    private ITeamResourceServiceRead TeamResourceService
-        => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
+    // Lazy resolution — UserService injects ITeamManagement, closing the cycle.
+    private ITeamResourceService TeamResourceService
+        => serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    private IRoleAssignmentServiceRead RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
+    private IRoleAssignmentService RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();
@@ -65,14 +65,14 @@ internal sealed class TeamService(
     private ISystemTeamSync SystemTeamSync
         => serviceProvider.GetRequiredService<ISystemTeamSync>();
 
-    private IUserServiceRead UserService
-        => serviceProvider.GetRequiredService<IUserServiceRead>();
+    private IUserService UserService
+        => serviceProvider.GetRequiredService<IUserService>();
 
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
 
-    private IGoogleSyncService GoogleSyncService
-        => serviceProvider.GetRequiredService<IGoogleSyncService>();
+    private IGoogleSyncWrite GoogleSyncService
+        => serviceProvider.GetRequiredService<IGoogleSyncWrite>();
 
     public async Task<Team> CreateTeamAsync(
         string name,
@@ -185,7 +185,7 @@ internal sealed class TeamService(
         throw new NotSupportedException(
             "Team search runs against the cached TeamInfo snapshot in CachingTeamService. " +
             "If this is being called on the inner TeamService it indicates a DI registration " +
-            "mistake — ITeamServiceRead must resolve to the caching decorator.");
+            "mistake — ITeamService must resolve to the caching decorator.");
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)

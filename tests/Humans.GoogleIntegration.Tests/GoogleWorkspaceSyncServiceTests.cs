@@ -57,11 +57,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository =
         Substitute.For<IGoogleSyncOutboxRepository>();
 
-    private readonly ITeamServiceRead _teamService =
-        Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService =
+        Substitute.For<ITeamService>();
 
-    private readonly IUserService _userService =
-        Substitute.For<IUserService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
 
     private readonly IUserEmailService _userEmailService =
         Substitute.For<IUserEmailService>();
@@ -116,9 +116,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 return new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal) { [call.ArgAt<string?>(0) ?? TestGoogleFolderId] = new(access) };
             });
         var driveSync = new GoogleDriveAccessSyncService(
-            [_driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
+            [_driveSource], _drivePermissions, _userService, _userServiceWrite, _userEmailService, _syncSettingsService,
             _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
-            Substitute.For<ITeamResourceService>(), clock,
+            Substitute.For<ITeamResourceManagement>(), clock,
             Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
 
         _syncService = new GoogleWorkspaceSyncService(
@@ -128,7 +128,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _resourceRepository,
             _googleSyncOutboxRepository,
             _teamService,
-            _userService,
+            _userService, _userServiceWrite,
             _googleGroupSync,
             driveSync,
             [_driveSource],
@@ -208,7 +208,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         result.GoogleEmailId.Should().Be(attempted.UserEmails.Single().Id);
         result.Outcome.Should().Be(rejectsTarget ? GoogleResourceGrantOutcome.Failed : GoogleResourceGrantOutcome.Accepted);
         if (rejectsTarget)
-            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+            await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
                 TestUserId, GoogleEmailStatus.Rejected, ct, attempted.UserEmails.Single().Id);
         await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default, default);
     }
@@ -512,7 +512,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             TestUserId,
             GoogleEmailStatus.Rejected,
             Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
@@ -805,7 +805,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 
@@ -867,7 +867,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
     }
 

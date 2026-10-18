@@ -33,7 +33,7 @@ public class GateControllerOverridePinTests
     private readonly Guid _gateAccount = Guid.NewGuid();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 2, 12, 0));
     private readonly IGateService _gate = Substitute.For<IGateService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     public GateControllerOverridePinTests()
     {

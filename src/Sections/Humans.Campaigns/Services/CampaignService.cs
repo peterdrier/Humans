@@ -21,22 +21,23 @@ using NodaTime;
 namespace Humans.Campaigns.Services;
 
 /// <summary>
-/// The Campaigns section's service. Implements the cross-assembly
-/// <see cref="ICampaignService"/> contract; the section's own controller injects this
+/// The Campaigns section's service. Implements the internal
+/// <see cref="ICampaignManagement"/> surface (the cross-assembly <see cref="ICampaignService"/>
+/// and <see cref="ICampaignWrite"/> contracts); the section's own controller injects this
 /// concrete type for the members that stay inside.
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     IUserEmailService userEmailService,
-    IUserServiceRead userService,
+    IUserService userService,
     INotificationEmitter notificationService,
     IEmailService emailService,
     CampaignsEmails emailMessages,
     ITicketDiscountCodes ticketDiscountCodes,
     IClock clock,
     IAuditLogService audit,
-    ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
+    ILogger<CampaignService> logger) : ICampaignManagement, IUserDataContributor, IUserMerge
 {
     private static readonly ResourceManager NoticeResources = new(typeof(CampaignsResource));
 

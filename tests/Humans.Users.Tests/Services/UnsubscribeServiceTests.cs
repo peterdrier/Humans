@@ -16,7 +16,7 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class UnsubscribeServiceTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly UnsubscribeService _service;

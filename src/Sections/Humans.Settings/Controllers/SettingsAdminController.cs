@@ -23,7 +23,7 @@ namespace Humans.Settings.Controllers;
 [Route("Settings/Admin")]
 internal sealed class SettingsAdminController(
     ISettingsWriteService settingsService,
-    IUserServiceRead userService) : HumansControllerBase(userService)
+    IUserService userService) : HumansControllerBase(userService)
 {
     [HttpPost("")]
     [ValidateAntiForgeryToken]

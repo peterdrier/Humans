@@ -1269,4 +1269,10 @@
     <value>Turno eliminado.</value>
   </data>
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Selecciona días del calendario del evento.</value></data>
+  <data name="Dashboard_OffSeasonTitle" xml:space="preserve">
+    <value>Temporada cerrada</value>
+  </data>
+  <data name="Dashboard_OffSeasonBody" xml:space="preserve">
+    <value>Gracias por este año. Los turnos volverán a abrirse cuando la Junta publique el próximo evento.</value>
+  </data>
 </root>

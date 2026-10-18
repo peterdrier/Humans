@@ -166,7 +166,7 @@ shaped by it.
 
 ## 6. Deliberately not done
 
-- **No Contracts leaf, no `IRideshareServiceRead`.** Nothing outside the section reads
+- **No Contracts leaf, no `IRideshareService`.** Nothing outside the section reads
   rideshare data. The first consumer earns the interface; until then every type is internal.
 - **No automated matching, booking or payment.** The section is a map and two buttons; the
   humans do the matching and settle costs off-platform. Stated in the design record and the

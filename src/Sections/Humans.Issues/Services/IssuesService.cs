@@ -25,9 +25,9 @@ namespace Humans.Issues.Services;
 /// </summary>
 internal sealed class IssuesService(
     IIssuesRepository repo,
-    IUserServiceRead users,
+    IUserService users,
     IUserEmailService userEmails,
-    IRoleAssignmentServiceRead roles,
+    IRoleAssignmentService roles,
     IEmailService email,
     IssuesEmails emailMessages,
     INotificationEmitter notifications,

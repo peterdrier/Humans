@@ -6,7 +6,7 @@ using NodaTime;
 namespace Humans.Governance.Services;
 
 internal sealed class GovernanceIndexService(
-    IApplicationServiceRead applicationDecisionService,
+    IGovernanceService applicationDecisionService,
     ILegalDocumentService legalDocService,
     IClock clock) : IGovernanceIndexService
 {

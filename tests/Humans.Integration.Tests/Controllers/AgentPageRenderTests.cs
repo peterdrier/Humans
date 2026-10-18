@@ -196,7 +196,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     private async Task SetPreferredLanguageAsync(Guid userId, string culture, CancellationToken ct)
     {
         using var scope = Factory.Services.CreateScope();
-        var users = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var users = scope.ServiceProvider.GetRequiredService<IUserWrite>();
         await users.SetPreferredLanguageAsync(userId, culture, ct);
     }
 

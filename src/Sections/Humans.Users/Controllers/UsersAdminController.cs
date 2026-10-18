@@ -25,13 +25,14 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 [Route("Users/Admin")]
 internal sealed class UsersAdminController(
-    IUserService userService,
+    IUserManagement userService,
     IUserEmailService userEmailService,
     IEmailOutboxService emailOutboxService,
     IRoleAssignmentService roleAssignmentService,
-    IApplicationServiceRead applicationDecisionService,
+    IRoleAssignmentWrite roleAssignmentWrite,
+    IGovernanceService applicationDecisionService,
     IConsentService consentService,
-    ICampaignServiceRead campaignService,
+    ICampaignService campaignService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IAuditLogService auditLogService,
@@ -43,7 +44,7 @@ internal sealed class UsersAdminController(
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserManagement _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> AdminList(
@@ -301,7 +302,7 @@ internal sealed class UsersAdminController(
             return Forbid();
         }
 
-        var result = await roleAssignmentService.AssignRoleAsync(
+        var result = await roleAssignmentWrite.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
         if (result.Success)
@@ -339,7 +340,7 @@ internal sealed class UsersAdminController(
             return NotFound();
         }
 
-        var result = await roleAssignmentService.EndRoleAsync(
+        var result = await roleAssignmentWrite.EndRoleAsync(
             roleId, currentUser.Id, notes);
 
         if (result.Success)

@@ -15,11 +15,11 @@ namespace Humans.AuditLog.Services;
 /// Callers must audit AFTER business save. Also <see cref="IUserDataContributor"/> for GDPR export.
 /// </summary>
 [DontFix(
-    reason: "Audit (crosscut) reads merged-account source IDs via IUserServiceRead so queries follow merged identities. Extracting merge-id resolution to a standalone leaf is deferred and Peter-owned.",
+    reason: "Audit (crosscut) reads merged-account source IDs via IUserService so queries follow merged identities. Extracting merge-id resolution to a standalone leaf is deferred and Peter-owned.",
     since: "2026-05-25")]
 internal sealed class AuditLogService(
     IAuditLogRepository repo,
-    IUserServiceRead userService,
+    IUserService userService,
     IClock clock,
     ILogger<AuditLogService> logger)
     : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader

@@ -25,7 +25,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 {
     private const int PublicYear = 2026;
 
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ShiftManagementService _service;
@@ -123,7 +123,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<IUserServiceRead>(_userService)
+            .With<IUserService>(_userService)
             .With(_campService)
             .Build();
 

@@ -83,7 +83,7 @@ public class ShiftManagementArchitectureTests
         services.AddSingleton(Substitute.For<IAuditLogService>());
         services.AddSingleton(Substitute.For<IAdminAuthorizationService>());
         services.AddSingleton(Substitute.For<IEarlyEntryInvalidator>());
-        services.AddSingleton(Substitute.For<IUserServiceRead>());
+        services.AddSingleton(Substitute.For<IUserService>());
         // Only constructed, never connected: the repositories build their contexts lazily.
         services.AddSingleton(Substitute.For<IHostEnvironment>());
         services.AddSingleton<QueryStatistics>();

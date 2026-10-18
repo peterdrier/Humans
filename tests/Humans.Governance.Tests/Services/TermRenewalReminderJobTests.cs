@@ -1,3 +1,4 @@
+using Humans.Governance.Services;
 using System.Globalization;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
@@ -28,8 +29,8 @@ public sealed class TermRenewalReminderJobTests
     public async Task ExecuteAsync_LocalizesNoticeAndDateWithoutLeakingRecipientCulture(string language)
     {
         using var serverCulture = new CultureScope("fr");
-        var applications = Substitute.For<IApplicationDecisionService>();
-        var users = Substitute.For<IUserServiceRead>();
+        var applications = Substitute.For<IGovernanceManagement>();
+        var users = Substitute.For<IUserService>();
         var email = Substitute.For<IEmailService>();
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));

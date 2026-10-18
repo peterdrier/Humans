@@ -44,7 +44,7 @@ namespace Humans.Users.Controllers;
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileViewController(
-    IUserServiceInternal userService,
+    IUserManagement userService,
     IProfilePictureService profilePictureService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
@@ -55,12 +55,12 @@ internal sealed class ProfileViewController(
     IShiftManagementService shiftMgmt,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ITeamServiceRead teamService,
+    ITeamService teamService,
     ITeamMessageOptionsProvider teamMessageOptionsProvider,
     ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceInternal _userService = userService;
+    private readonly IUserManagement _userService = userService;
 
     // ─── Shared (Profile Picture) ────────────────────────────────────
 
@@ -247,7 +247,7 @@ internal sealed class ProfileViewController(
     // its coordinators (IsPublicPage && ShowCoordinatorsOnPublicPage). Returns
     // 404 otherwise so anonymous probes can't enumerate users. Filtering on the
     // controller per peters-hard-rules.md ("controllers ... responsible for
-    // formatting, sorting, filtering") and to avoid expanding ITeamServiceRead
+    // formatting, sorting, filtering") and to avoid expanding ITeamService
     // surface (memory/architecture/interface-method-additions-are-debt.md);
     // mirrors the inline TeamInfo filter the authenticated Popover uses above.
     [AllowAnonymous]

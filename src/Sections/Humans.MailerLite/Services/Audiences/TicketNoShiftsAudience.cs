@@ -19,7 +19,7 @@ namespace Humans.MailerLite.Services.Audiences;
 internal sealed class TicketNoShiftsAudience(
     ITicketService tickets,
     IShiftView shiftView,
-    IUserServiceRead users) : MailerLiteAudienceBase(users)
+    IUserService users) : MailerLiteAudienceBase(users)
 {
     public override string Key => "ticket-no-shifts";
     public override string DisplayName => "Ticket holders without a shift";

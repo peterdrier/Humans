@@ -103,7 +103,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();
 
     private CachingCalendarService CreateSut(params ICalendarFeedContributor[] contributors)

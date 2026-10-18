@@ -21,17 +21,17 @@ namespace Humans.Expenses.Controllers;
 [Authorize]
 [Route("Expenses")]
 internal sealed class ExpensesController(
-    IUserServiceRead userService,
+    IUserService userService,
     IExpenseReportManagement service,
     IBudgetService budgetService,
-    IHoldedFinanceServiceRead holdedFinance,
+    IHoldedFinanceService holdedFinance,
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
     IClock clock,
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     /// <summary>Pre-approval claim deadlines are Europe/Madrid dates, the zone the association books in.</summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];

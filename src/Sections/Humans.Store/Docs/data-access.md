@@ -22,7 +22,7 @@ The section's `Service` class (`Services/Service.cs`); its only published contra
 | StoreTreasurySyncStates | — (table ships; no code reads or writes it) |
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
-`ITeamServiceRead` (team-order counterparty surface),
+`ITeamService` (team-order counterparty surface),
 `ISettingsService`, `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), `IHoldedClient` (the

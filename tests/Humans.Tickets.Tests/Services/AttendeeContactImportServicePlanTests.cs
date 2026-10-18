@@ -303,6 +303,6 @@ internal sealed class PlanHarness
     public void AddUnmatched(TicketAttendee a) => _unmatched.Add(a);
 
     public AttendeeContactImportService Service => new(
-        TicketRepo, UserEmails, Provisioning, Users, Shifts, TicketCacheInvalidator, Audit, Clock,
+        TicketRepo, UserEmails, Provisioning, Users, Substitute.For<IUserWrite>(), Shifts, TicketCacheInvalidator, Audit, Clock,
         NullLogger<AttendeeContactImportService>.Instance);
 }

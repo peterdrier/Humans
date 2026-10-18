@@ -22,7 +22,7 @@ access.
 ### GuideRoleResolver (Scoped)
 
 No repository, no DB access, no cache. Resolves the viewer's guide role context
-from cross-section reads: `ITeamServiceRead` (team coordinator membership) and
+from cross-section reads: `ITeamService` (team coordinator membership) and
 `ICampLeadDirectory` (Camps — camp-lead status).
 
 ---

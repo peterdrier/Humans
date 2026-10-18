@@ -22,7 +22,7 @@ namespace Humans.Events.Tests.Controllers;
 public sealed class EventsModerationControllerTests
 {
     private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     [HumansTheory]
     [Xunit.InlineData(false)]

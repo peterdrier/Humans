@@ -83,6 +83,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | EarlyEntryClose | Instant, nullable | |
 | EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |
 | Status | EventSettingsStatus | |
+| IsOffSeason | bool | Admin-set "this cycle is wrapped" switch, a checkbox on the event form. Tickets' and Shifts' member-dashboard cards hide behind it. Deriving it from `StrikeEndOffset` is deferred to the settings revamp. |
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
 **Indexes / constraints:** PKs only — both invariants below are service-enforced
@@ -171,7 +172,7 @@ keep in step by hand. Derive it from the call sites, not from here.
 | Direction | Section | Through |
 |---|---|---|
 | out | AuditLog | `IAuditLogService` — one entry per `SaveEventSettingsAsync` |
-| out | Users | `IUserServiceRead` (platform base-controller dependency, reached through Base) |
+| out | Users | `IUserService` (platform base-controller dependency, reached through Base) |
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes |

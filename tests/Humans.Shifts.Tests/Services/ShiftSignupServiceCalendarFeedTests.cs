@@ -28,7 +28,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly ShiftSignupService _service;
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     public ShiftSignupServiceCalendarFeedTests()
         : base(TestNow)
@@ -62,7 +62,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserService>(),
             new StringLocalizer<ShiftsResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
     }

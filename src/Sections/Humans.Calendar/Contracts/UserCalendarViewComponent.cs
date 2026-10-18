@@ -17,7 +17,7 @@ namespace Humans.Calendar.Contracts;
 /// </remarks>
 public sealed class UserCalendarViewComponent(
     IICalFeedService feed,
-    IUserServiceRead users,
+    IUserService users,
     ILogger<UserCalendarViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)

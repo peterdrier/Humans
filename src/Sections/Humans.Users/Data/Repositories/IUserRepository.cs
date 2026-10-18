@@ -1,6 +1,7 @@
 using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;
+using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -95,7 +96,7 @@ internal partial interface IUserRepository : IRepository
 
     /// <summary>
     /// Returns userIds of users that have at least one row in
-    /// <c>AspNetUserLogins</c>. Used by <c>IUserService</c> together with
+    /// <c>AspNetUserLogins</c>. Used by <c>IUserManagement</c> together with
     /// UserEmail methods on this repository to surface ghost auth artifacts.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default);

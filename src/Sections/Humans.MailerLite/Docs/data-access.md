@@ -12,7 +12,7 @@ services.
 
 `IMailerLiteRepository` for the `import-reconciliation` sync-state row
 (upsert after apply, read for the dashboard). Cross-section calls via
-`IMailerLiteService` (external), `IUserEmailService`, `IUserServiceRead`,
+`IMailerLiteService` (external), `IUserEmailService`, `IUserService`,
 `IAccountProvisioningService`, `ICommunicationPreferenceService`,
 `IAuditLogService`. Inbound import slice — reads MailerLite subscribers
 and provisions matching accounts. No cache.
@@ -51,7 +51,7 @@ Audience-membership computation classes under `Services/Audiences/`:
 `MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerLiteAudienceBase`,
 `ShiftViewAudienceBase`, `CurrentEventTicketHolders`.
 No repository; compute over read-split / section service interfaces
-(`ITicketService`, `IShiftView`, `IUserServiceRead`). No direct DB
+(`ITicketService`, `IShiftView`, `IUserService`). No direct DB
 access, no cache.
 
 ---

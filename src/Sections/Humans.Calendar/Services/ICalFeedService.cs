@@ -16,7 +16,7 @@ namespace Humans.Calendar.Services;
 /// with the other contributor fan-outs.
 /// </summary>
 internal sealed class ICalFeedService(
-    IUserServiceRead users,
+    IUserService users,
     ICalendarFeedTokenService tokens,
     IEnumerable<ICalendarFeedContributor> contributors,
     IOptions<EmailSettings> emailSettings,

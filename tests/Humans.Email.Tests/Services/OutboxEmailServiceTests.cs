@@ -114,7 +114,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = "self@example.com" });
         var selfSend = new ComposerSelfSendService(
-            _userEmailService, Substitute.For<IUserServiceRead>(), _service,
+            _userEmailService, Substitute.For<IUserService>(), _service,
             Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,
             NullLogger<ComposerSelfSendService>.Instance);
         var subject = string.Concat(Enumerable.Repeat(character, 1000));

@@ -76,6 +76,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     private readonly ApplicationRepository _repository;
     private readonly IUserService _userService;
+    private readonly IUserWrite _userServiceWrite;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly GovernanceEmails _emailMessages = TestGovernanceEmails.Create();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
@@ -97,6 +98,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         // No test seeds a user through the fixture — every user read that matters is stubbed
         // per-test below — so the default is an empty map rather than a DB-backed stitcher.
         _userService = Substitute.For<IUserService>();
+        _userServiceWrite = Substitute.For<IUserWrite>();
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _roleAssignmentService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -112,6 +114,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private ApplicationDecisionService CreateService(IApplicationRepository? repository = null) => new(
         repository ?? _repository,
         _userService,
+        _userServiceWrite,
         _roleAssignmentService,
         AuditLog,
         _emailService,
@@ -475,7 +478,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.Received().SetMembershipTierAsync(
+        await _userServiceWrite.Received().SetMembershipTierAsync(
             userId, MembershipTier.Asociado, Arg.Any<CancellationToken>());
     }
 
@@ -881,7 +884,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.DidNotReceive().SetMembershipTierAsync(
+        await _userServiceWrite.DidNotReceive().SetMembershipTierAsync(
             Arg.Any<Guid>(), Arg.Any<MembershipTier>(), Arg.Any<CancellationToken>());
     }
 

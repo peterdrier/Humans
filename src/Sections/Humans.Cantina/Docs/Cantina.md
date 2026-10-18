@@ -28,8 +28,8 @@ expected to stay table-less; see [`health.md`](health.md) §5.
 The current sources:
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
-- Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserServiceRead.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
-- `profiles` / `users` — owned by **Users/Identity**. Burner names are read via the cross-section **`IUserServiceRead.GetUserInfosAsync`** (cached `UserInfo`); no entity reads, no new surface.
+- Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserService.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
+- `profiles` / `users` — owned by **Users/Identity**. Burner names are read via the cross-section **`IUserService.GetUserInfosAsync`** (cached `UserInfo`); no entity reads, no new surface.
 
 ## Routing
 
@@ -61,7 +61,7 @@ The current sources:
 - Domain data stays read-only: no membership, schedule or dietary writes, and no notifications. Weekly and daily CSV downloads append `CantinaRosterExported` through AuditLog with the authenticated actor, event/date scope and emitted person-row count, including empty/repeated downloads. No dietary values are logged; HTML reads do not add export audits.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable. The arrival day is a real on-site day, so the `ArrivesOn`-is-non-nullable invariant holds for all roster humans including arrival-day humans.
-- Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserServiceRead`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
+- Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserService`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
 
 ## Negative Access Rules
 
@@ -82,22 +82,22 @@ The current sources:
 - **AuditLog:** `IAuditLogService` records existing weekly/daily personal-data CSV disclosures.
 
 - **Shifts:** `IShiftManagementService.GetOnSiteUserIdsForDayAsync` (on-site cohort) + `ISettingsService.GetActiveEventSettingsAsync` (active event/burn). Service-layer reads only; the cantina never touches the Shifts repository.
-- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo` for burner-name stitching. No entity reads.
+- **Users/Identity:** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo` for burner-name stitching. No entity reads.
 
 ## Architecture
 
 **Project:** `src/Sections/Humans.Cantina` (G5, nobodies-collective/Humans#866)
 **Owning services:** `CantinaRosterService`
-**Owned tables:** None today — orchestrator over `IShiftManagementService`, `ISettingsService`, and `IUserServiceRead`. Changing under nobodies-collective/Humans#1113.
+**Owned tables:** None today — orchestrator over `IShiftManagementService`, `ISettingsService`, and `IUserService`. Changing under nobodies-collective/Humans#1113.
 **Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built directly on the §15 pattern from day one, moved into its own project unchanged.
 **Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 
 - Everything but `Section` and `CantinaResource` is `internal` (HUM0034). `Contracts/` is an empty folder: nothing outside the section names a Cantina type, and `ICantinaRosterService` stayed in `Services/`, `internal`, because its only consumer is the section's own controller.
 - **No EF Core package.** The section owns no tables, so there is no `DbContext`, no repository, no migration and no `AddSectionDbContext` line — Scanner's shape. ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md): documentation, not a pinned assertion.)
-- **No dedicated repository, no repository reads.** Cantina is a read-side aggregator that calls **only section services** (`IShiftManagementService`, `ISettingsService`, `IUserServiceRead`) — never a repository. This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
+- **No dedicated repository, no repository reads.** Cantina is a read-side aggregator that calls **only section services** (`IShiftManagementService`, `ISettingsService`, `IUserService`) — never a repository. This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `SectionPolicies.cs` via `ISectionPolicies` (the G5 split design's §8 parked policy registration in the Shell; `ISectionPolicies` superseded that). `RoleNames.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` moved from `Humans.Web/Cantina/` into the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).
-- **Decorator decision — no caching decorator on the roster itself.** Roster aggregation is live per request; the page is low-traffic (coordinator surface). The user reads it composes ride on the Users-section cache via `IUserServiceRead`.
+- **Decorator decision — no caching decorator on the roster itself.** Roster aggregation is live per request; the page is low-traffic (coordinator surface). The user reads it composes ride on the Users-section cache via `IUserService`.
 - **Cross-domain navs** — none declared; the section owns no entities. All cross-section linkage is via service interfaces, by id.
-- **Cross-section calls** — `IShiftManagementService` (on-site cohort), `ISettingsService` (active event/burn), `IUserServiceRead` (burner names + dietary, from the cached `UserInfo`).
+- **Cross-section calls** — `IShiftManagementService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names + dietary, from the cached `UserInfo`).
 - **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property. `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` renders both pages, both CSV exports and the access gate, in English and Spanish.

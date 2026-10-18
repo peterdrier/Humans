@@ -21,9 +21,9 @@ internal sealed record ShiftAdminPageRequest(
 
 internal sealed class ShiftAdminPageBuilder(
     IShiftManagement shiftManagement,
-    IMembershipCalculatorRead membership,
-    IUserServiceRead userService,
-    ITeamServiceRead teamService)
+    IMembershipCalculator membership,
+    IUserService userService,
+    ITeamService teamService)
 {
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)
     {

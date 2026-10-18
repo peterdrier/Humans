@@ -16,7 +16,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
     public async Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         // CampaignGrant carries a bare UserId — no User nav to include. Recipient
-        // display names come from IUserServiceRead, keyed on CampaignGrant.UserId.
+        // display names come from IUserService, keyed on CampaignGrant.UserId.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .Include(c => c.Codes)

@@ -165,7 +165,7 @@ A section's `Contracts/` (or `.Contracts` leaf) is its whole public face. Code o
 - `ITeamService` returns `TeamInfo` / `TeamSearchHit` projections for external Teams reads.
 - `IUserService` returns `UserInfo`, `HumanSearchResult`, `OnsiteUserRow`, and merge-chain read projections for external Users reads.
 - `IConsentService` is the external Consent read surface.
-- Some sections still carry the retired `*ServiceRead` / full-`*Service` split until their rename lands; treat `I<Section>ServiceRead` as the public `I<Section>Service` and the old full interface as `I<Section>Management`.
+- The `*ServiceRead` / full-`*Service` split is retired: `I<Section>Service` is the public read contract, `I<Section>Write` the public write contract (only where a foreign writer exists), `I<Section>Management` internal.
 
 Migration strategy:
 

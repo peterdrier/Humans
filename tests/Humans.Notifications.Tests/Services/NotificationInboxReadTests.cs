@@ -25,11 +25,11 @@ namespace Humans.Notifications.Tests.Services;
 public sealed class NotificationInboxReadTests : IDisposable
 {
     private readonly INotificationInboxService _inbox = Substitute.For<INotificationInboxService>();
-    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly IGoogleSyncServiceRead _google = Substitute.For<IGoogleSyncServiceRead>();
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IGoogleSyncService _google = Substitute.For<IGoogleSyncService>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITicketSync _tickets = Substitute.For<ITicketSync>();
-    private readonly IApplicationServiceRead _applications = Substitute.For<IApplicationServiceRead>();
+    private readonly IGovernanceService _applications = Substitute.For<IGovernanceService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();

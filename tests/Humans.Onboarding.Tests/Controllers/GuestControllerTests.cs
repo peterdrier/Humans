@@ -18,7 +18,7 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// </summary>
 public class GuestControllerTests
 {
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
 
     private GuestController BuildSut(User user)

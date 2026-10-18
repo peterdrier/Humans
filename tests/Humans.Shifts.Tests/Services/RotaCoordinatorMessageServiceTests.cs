@@ -30,7 +30,7 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class RotaCoordinatorMessageServiceTests
 {
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly ShiftsEmails _emailMessages = TestShiftsEmails.Create();
@@ -960,7 +960,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     /// <summary>
-    /// Stubs <see cref="IUserServiceRead.GetUserInfosAsync"/> so the sender and all
+    /// Stubs <see cref="IUserService.GetUserInfosAsync"/> so the sender and all
     /// recipient ids resolve to UserInfo with letter-suffix emails (a@, b@, …).
     /// </summary>
     private void StubUsers(Guid sender, params Guid[] recipients)

@@ -48,7 +48,7 @@ public abstract class RideshareTestHarness : IDisposable
         DbFactory = new TestDbContextFactory<RideshareDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        Users = Substitute.For<IUserServiceRead>();
+        Users = Substitute.For<IUserService>();
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -76,7 +76,7 @@ public abstract class RideshareTestHarness : IDisposable
     private protected RideshareDbContext Db { get; }
     private protected TestDbContextFactory<RideshareDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
-    private protected IUserServiceRead Users { get; }
+    private protected IUserService Users { get; }
     private protected ISettingsService BurnSettings { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected IAuditLogService AuditLog { get; }
@@ -95,7 +95,7 @@ public abstract class RideshareTestHarness : IDisposable
 
     // ── Seeders ───────────────────────────────────────────────────────────
 
-    /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
+    /// <summary>Registers a human the <see cref="IUserService"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(string burnerName = "Test Human", Guid? id = null)
     {
         var userId = id ?? Guid.NewGuid();

@@ -11,7 +11,7 @@ repairing prose about it.
 a declared type from an identifier's *name*. On the 2026-09-18 Governance doctor run, a thread
 reported that `Docs/Governance.md` named the wrong interface for a Notifications call site; the
 local there is called `applicationDecisionService` and its actual declared type is
-`IApplicationServiceRead`, so the doc was right and the finding was not. The same run's tests thread
+`IGovernanceService`, so the doc was right and the finding was not. The same run's tests thread
 assumed a service method had the same signature as the repository method behind it and proposed
 deleting tests that covered the string-parsing the service does and the repository does not.
 

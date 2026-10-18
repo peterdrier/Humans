@@ -9,7 +9,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class HasTicketAudience(
     ITicketService tickets,
-    IUserServiceRead users) : MailerLiteAudienceBase(users)
+    IUserService users) : MailerLiteAudienceBase(users)
 {
     public override string Key => "has-ticket";
     public override string DisplayName => "Ticket holders";

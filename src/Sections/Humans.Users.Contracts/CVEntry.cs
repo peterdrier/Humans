@@ -4,7 +4,7 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Slim projection of a volunteer-history entry passed to
-/// <c>IUserServiceInternal.SaveProfileAsync</c>.
+/// <c>IUserManagement.SaveProfileAsync</c>.
 /// Date is rendered as "MMM'yy" in the UI.
 /// </summary>
 /// <remarks>

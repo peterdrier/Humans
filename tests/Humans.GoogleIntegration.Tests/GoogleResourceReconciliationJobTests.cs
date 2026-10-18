@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Jobs;
 using AwesomeAssertions;
@@ -16,7 +17,7 @@ namespace Humans.GoogleIntegration.Tests;
 
 public class GoogleResourceReconciliationJobTests : IDisposable
 {
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleSyncManagement _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
     private readonly IGoogleDriveSync _googleDriveSync;
     private readonly IGoogleDriveActivityClient _googleClient;
@@ -27,7 +28,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
     public GoogleResourceReconciliationJobTests()
     {
-        _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleSyncService = Substitute.For<IGoogleSyncManagement>();
         _googleGroupSync = Substitute.For<IGoogleGroupSync>();
         _googleDriveSync = Substitute.For<IGoogleDriveSync>();
         _googleClient = Substitute.For<IGoogleDriveActivityClient>();

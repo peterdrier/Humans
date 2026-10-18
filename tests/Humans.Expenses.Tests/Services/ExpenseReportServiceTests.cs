@@ -67,12 +67,14 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
-    private readonly ITeamServiceRead _teamService;
+    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IUserWrite _userServiceWrite;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
+    private readonly IHoldedFinanceWrite _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly IPreapprovalWrite _preapprovalWrites = Substitute.For<IPreapprovalWrite>();
     private readonly ExpenseReportService _sut;
@@ -98,15 +100,16 @@ public sealed partial class ExpenseReportServiceTests
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
-        _teamService = Substitute.For<ITeamServiceRead>();
+        _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
+        _userServiceWrite = Substitute.For<IUserWrite>();
 
         _sut = new ExpenseReportService(
             _expenseRepo,
             _fileStorage,
             _budgetService,
             _teamService,
-            _userService,
+            _userService, _userServiceWrite,
             _userEmailService,
             _emailService,
             TestExpensesEmails.Create(),
@@ -119,7 +122,7 @@ public sealed partial class ExpenseReportServiceTests
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
-            _expenseRepo, _fileStorage, _userService, _holdedClient, _holdedFinance, AuditLog, Clock,
+            _expenseRepo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, AuditLog, Clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
@@ -834,7 +837,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -955,7 +958,7 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(false);
 
         var sut = new ExpenseReportService(
-            failingRepo, _fileStorage, _budgetService, _teamService, _userService,
+            failingRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1078,7 +1081,7 @@ public sealed partial class ExpenseReportServiceTests
         var factory = new TestDbContextFactory<ExpensesDbContext>(options);
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _userServiceWrite, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -1392,7 +1395,7 @@ public sealed partial class ExpenseReportServiceTests
             .AddInterceptors(interceptor).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _userServiceWrite, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
@@ -1753,7 +1756,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1782,7 +1785,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1797,7 +1800,7 @@ public sealed partial class ExpenseReportServiceTests
         // NOT the service's own ExpenseValidationException — must still log at Error with the
         // exception attached, not be misclassified as a validation rejection.
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("IUserService: profile cache not initialized"));
+            .Throws(new InvalidOperationException("IUserWrite: profile cache not initialized"));
 
         var result = await sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
 
@@ -1807,7 +1810,7 @@ public sealed partial class ExpenseReportServiceTests
             because: "a dependency fault (even one thrown as InvalidOperationException) is not a validation rejection");
         var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
         error.Exception.Should().BeOfType<InvalidOperationException>()
-            .Which.Message.Should().Be("IUserService: profile cache not initialized");
+            .Which.Message.Should().Be("IUserWrite: profile cache not initialized");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
     }
 
@@ -1821,7 +1824,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
-            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService, _userServiceWrite,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
@@ -1845,7 +1848,7 @@ public sealed partial class ExpenseReportServiceTests
         }
         else
         {
-            _userService.SetProfileIbanAsync(submitter, "ES9121000418450200051332", cancellation.Token)
+            _userServiceWrite.SetProfileIbanAsync(submitter, "ES9121000418450200051332", cancellation.Token)
                 .Throws(_ =>
                 {
                     if (callerCancelled) cancellation.Cancel();
@@ -1952,7 +1955,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -1988,7 +1991,7 @@ public sealed partial class ExpenseReportServiceTests
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_InvalidFormat");
-        await _userService.DidNotReceive().SetProfileIbanAsync(
+        await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(
             Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -2243,7 +2246,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2296,7 +2299,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2323,7 +2326,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2347,7 +2350,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Approved, payeeIban: "ES1000750000010000000000");
-        _userService
+        _userServiceWrite
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -2376,7 +2379,7 @@ public sealed partial class ExpenseReportServiceTests
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_RequiredForPendingReport");
         // Neither half of the change lands — profile and snapshot stay in agreement.
-        await _userService.DidNotReceive().SetProfileIbanAsync(
+        await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(
             Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());
         (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!
             .PayeeIban.Should().Be("ES1000750000010000000000");
@@ -3619,7 +3622,7 @@ public sealed partial class ExpenseReportServiceTests
                 burnerName: "Meri", firstName: "Maria", lastName: "Garcia", iban: "ES9121000418450200051332")));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
-        _holdedFinance.EnsureCreditorContactAsync(
+        _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -3686,7 +3689,7 @@ public sealed partial class ExpenseReportServiceTests
                 iban: "ES9121000418450200051332")));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
-        _holdedFinance.EnsureCreditorContactAsync(
+        _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -3712,6 +3715,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedApprovedReportWithAttachmentAsync(userId);
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
         _holdedFinance.ClearReceivedCalls();
+        _holdedFinanceWrite.ClearReceivedCalls();
 
         // Act — a fresh report for the same member carries no contact id of its own.
         await SeedApprovedReportWithAttachmentAsync(userId);
@@ -3719,7 +3723,7 @@ public sealed partial class ExpenseReportServiceTests
 
         // Assert — the earlier report's contact id (and its account number) are passed as the seed,
         // so Finance updates the existing contact instead of creating a duplicate.
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
             "contact-123", 40000007, Arg.Any<CancellationToken>());
     }
@@ -3737,7 +3741,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId);
         var line = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0];
 
-        _holdedFinance.EnsureCreditorContactAsync(
+        _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -3767,12 +3771,12 @@ public sealed partial class ExpenseReportServiceTests
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
         // Assert — both the binding and its account number land on the survivor, never the tombstone.
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
-        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+        await _holdedFinanceWrite.Received(1).SetCreditorAccountNumAsync(
             survivorId, 40000007, Arg.Any<CancellationToken>());
-        await _holdedFinance.DidNotReceive().SetCreditorAccountNumAsync(
+        await _holdedFinanceWrite.DidNotReceive().SetCreditorAccountNumAsync(
             tombstoneId, Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
@@ -3803,7 +3807,7 @@ public sealed partial class ExpenseReportServiceTests
         var line = reportBefore!.Lines[0];
 
         // Configure Holded substitutes — contact enrichment is delegated to Finance now.
-        _holdedFinance.EnsureCreditorContactAsync(
+        _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -3836,12 +3840,12 @@ public sealed partial class ExpenseReportServiceTests
 
         // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
         // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             userId, legalName, burnerName, iban,
             Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
         // Assert — the resolved 400000xx number is written back to the member's binding
-        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+        await _holdedFinanceWrite.Received(1).SetCreditorAccountNumAsync(
             userId, 40000007, Arg.Any<CancellationToken>());
 
         // Assert — contact link mirrored onto the report

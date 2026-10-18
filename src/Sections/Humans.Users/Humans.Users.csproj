@@ -99,7 +99,7 @@
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       Both added at G5 lane 4b-2d with the body of SuspendNonCompliantMembersJob:
-      Governance for IMembershipCalculatorRead (who is now non-compliant) and
+      Governance for IMembershipCalculator (who is now non-compliant) and
       GoogleIntegration for IGoogleSyncService (drop the suspended human from their
       teams' Drive/Groups). Both edges are acyclic: neither names a Humans.Users type.
       Note that Humans.Governance.Contracts gained a reference to Humans.Users.Contracts at

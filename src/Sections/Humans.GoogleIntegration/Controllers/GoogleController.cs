@@ -15,10 +15,10 @@ namespace Humans.GoogleIntegration.Controllers;
 
 [Route("Google")]
 internal sealed class GoogleController(
-    IUserServiceRead userService,
-    IGoogleSyncService googleSyncService,
+    IUserService userService,
+    IGoogleSyncManagement googleSyncService,
     IGoogleGroupSync googleGroupSync,
-    ITeamResourceService teamResourceService,
+    ITeamResourceManagement teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
     IGoogleSyncLogService syncLog,
@@ -613,7 +613,7 @@ internal sealed class GoogleController(
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] ITeamServiceRead teamService,
+        [FromServices] ITeamService teamService,
         [FromServices] IGoogleDriveActivityClient googleClient)
     {
         var ct = HttpContext.RequestAborted;

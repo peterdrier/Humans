@@ -18,7 +18,7 @@ public sealed class HumansUserClaimsPrincipalFactory(
     UserManager<User> userManager,
     RoleManager<IdentityRole<Guid>> roleManager,
     IOptions<IdentityOptions> options,
-    IUserServiceRead users)
+    IUserService users)
     : UserClaimsPrincipalFactory<User, IdentityRole<Guid>>(userManager, roleManager, options)
 {
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(User user)

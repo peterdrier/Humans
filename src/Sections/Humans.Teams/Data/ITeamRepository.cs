@@ -20,7 +20,7 @@ namespace Humans.Teams.Data;
 /// <c>TeamRoleAssignment.TeamMember</c>) are <c>.Include</c>-d here where
 /// needed. Cross-domain navs (<c>TeamMember.User</c>, <c>TeamJoinRequest.User</c>,
 /// etc.) are never navigated — callers stitch display data from
-/// <see cref="Humans.Users.Contracts.IUserServiceRead"/>. See design-rules §6.
+/// <see cref="Humans.Users.Contracts.IUserService"/>. See design-rules §6.
 /// </para>
 /// </summary>
 internal interface ITeamRepository : IRepository
@@ -442,7 +442,7 @@ internal interface ITeamRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     // GoogleEmailStatus.Rejected suppresses outbox events for users whose Google account is dead.
-    // The application service owns that decision and reads it through IUserServiceRead.GetUserInfoAsync;
+    // The application service owns that decision and reads it through IUserService.GetUserInfoAsync;
     // there is no corresponding method on this repository.
 
     // ==========================================================================

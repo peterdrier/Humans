@@ -25,8 +25,8 @@ namespace Humans.Teams.Controllers;
 internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
-    IUserServiceRead userService,
-    ITeamResourceServiceRead teamResourceService,
+    IUserService userService,
+    ITeamResourceService teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IConfiguration configuration,
@@ -35,7 +35,7 @@ internal sealed class TeamController(
     IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -571,6 +571,18 @@ internal sealed class TeamController(
         }
 
         return RedirectToAction(nameof(MyTeams));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("Tree")]
+    public async Task<IActionResult> Tree(CancellationToken ct)
+    {
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+        return View(new TeamTreeViewModel
+        {
+            Departments = TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated),
+        });
     }
 
     [HttpGet("Summary")]

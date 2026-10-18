@@ -13,8 +13,8 @@ namespace Humans.GoogleIntegration.Services;
 /// <summary>Write and read sides of <c>google_sync_log</c>; one class, three interfaces.</summary>
 internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
-    ITeamResourceService teamResourceService,
-    IUserServiceRead userService,
+    ITeamResourceManagement teamResourceService,
+    IUserService userService,
     IUserEmailService userEmailService,
     IServiceProvider serviceProvider,
     IClock clock,
@@ -96,7 +96,7 @@ internal sealed class GoogleSyncLogService(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
         string? resourceName, CancellationToken ct = default)
     {
-        // Names live in google_resources (ITeamResourceService), so resolve the name filter to ids first.
+        // Names live in google_resources (ITeamResourceManagement), so resolve the name filter to ids first.
         IReadOnlyCollection<Guid>? resourceIds = null;
         if (!string.IsNullOrWhiteSpace(resourceName))
         {
@@ -151,7 +151,7 @@ internal sealed class GoogleSyncLogService(
         var workspaceEmail = await userEmailService.GetNobodiesTeamEmailAsync(userId, ct);
         if (workspaceEmail is not null)
         {
-            // Resolved here, not injected: GoogleAdminService -> IGoogleSyncService ->
+            // Resolved here, not injected: GoogleAdminService -> IGoogleSyncManagement ->
             // IGoogleSyncLogService closes a constructor cycle back onto this class.
             // Same lazy-resolve the section already uses in GoogleWorkspaceSyncService.
             var googleAdminService = serviceProvider.GetRequiredService<IGoogleAdminService>();

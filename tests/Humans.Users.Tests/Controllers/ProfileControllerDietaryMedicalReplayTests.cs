@@ -56,7 +56,7 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerDietaryMedicalReplayTests
 {
     private readonly UserManager<User> _userManager;
-    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
+    private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftSignups _signupService = Substitute.For<IShiftSignups>();
@@ -102,9 +102,10 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
-            Substitute.For<IApplicationDecisionService>(),
+            Substitute.For<IGovernanceService>(),
+            Substitute.For<IGovernanceWrite>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>());
+            Substitute.For<IMembershipCalculator>());
 
         var identity = new ClaimsIdentity(new[]
         {

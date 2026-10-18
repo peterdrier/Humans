@@ -32,13 +32,14 @@ namespace Humans.Workgroups.Services;
 /// </remarks>
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
-    IUserServiceRead users,
+    IUserService users,
     ISurveyAnalysisRead surveys,
     IUserEmailService userEmails,
-    IRoleAssignmentServiceRead roles,
+    IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
-    IHoldedFinanceService finance,
+    IGoogleSyncWrite googleSyncWrite,
+    IHoldedFinanceWrite finance,
     IHoldedClient holded,
     INotificationService notifications,
     IEmailService email,

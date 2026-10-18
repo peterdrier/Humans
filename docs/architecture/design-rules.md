@@ -157,9 +157,9 @@ Services are cached by **wrapping them in a decorator**, not by inlining `IMemor
 
 ```
 Controllers / other services
-          ↓ IApplicationDecisionService
+          ↓ IGovernanceManagement
 CachingApplicationDecisionService (decorator)   [Infrastructure]
-          ↓ IApplicationDecisionService
+          ↓ IGovernanceManagement
 ApplicationDecisionService (business logic)     [Application]
           ↓ IApplicationRepository, IApplicationStore
 ApplicationRepository, ApplicationStore         [Infrastructure]
@@ -281,7 +281,7 @@ The table-owning sections are listed below. The other section projects own no ta
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService`, `CalendarFeedTokenService`, `ICalFeedService` (the personal iCal feed fan-out — owns no tables) | `calendar_events`, `calendar_event_exceptions`, `calendar_feed_tokens` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
-| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `ISettingsService`, and dietary fields via `IUserServiceRead`)* |
+| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `ISettingsService`, and dietary fields via `IUserService`)* |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Finance** | `IHoldedFinanceService` (`Humans.Finance`; implemented by the section-internal `Service`) | `holded_expense_docs`, `holded_category_map`, `holded_creditor_contacts`, `holded_doc_sync_state`, `sepa_payout_files`, `sepa_payout_transfers` |
@@ -345,7 +345,7 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 ### 8b. Cross-Section Fanout — Contributor Pattern
 
-§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. Contributors use their own section's context instances, whether scoped (for example, `AgentRepository`) or factory-created. EF forbids concurrent operations against the same context instance; independent instances can run concurrently. Sequential iteration remains a consistency and simplicity choice.
+§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}Service` contracts. The orchestrator iterates sequentially and never appears in §8's table-ownership map. Contributors use their own section's context instances, whether scoped (for example, `AgentRepository`) or factory-created. EF forbids concurrent operations against the same context instance; independent instances can run concurrently. Sequential iteration remains a consistency and simplicity choice.
 
 The fanouts:
 
@@ -555,7 +555,7 @@ Some entities are append-only. They have database triggers or application-level 
 
 The two trigger-backed tables now live in peeled contexts, and their `prevent_*_update` / `prevent_*_delete` triggers were re-issued in the peel baselines: `consent_records` in `src/Sections/Humans.Consent/Data/Migrations/…_BaselineLegal.cs` (`LegalDbContext`), `audit_log` in `src/Sections/Humans.AuditLog/Data/Migrations/…_BaselineAuditLog.cs` (`AuditLogDbContext`). A section peel must carry its triggers forward — dropping them silently converts a DB-enforced invariant into a convention.
 
-**Merge chain-follow on append-only reads.** Account merge folds a source User into a target by re-FKing live rows, but append-only history (`audit_log`, `consent_records`, `budget_audit_logs`, plus per-user Expenses reads) stays at the source by design. Per-user reads of these tables therefore query over `UserInfo.AllUserIds` of the record the read returned (the record's own id first, then `MergedUserIds`), never over the id they were given: a merged-away id resolves to the survivor, and a union seeded from the caller's id would miss the survivor's own rows. Users stamps that list itself: `CachingUserService` builds a transitive merge index over its warmed snapshot and stamps every `UserInfo` it hands out, so a caller never walks `MergedToUserId`. The same reads redirect a tombstone id forward to its survivor, so no section outside Users decides what a merged id means, `IUserServiceRead.GetUserInfoAsync`, `GetUserInfosAsync` and `GetAllUserInfosAsync` all resolve and stamp. Raw, unresolved rows are `IUserService.GetRawUserInfoAsync` / `GetAllRawUserInfosAsync`, for Users' own merge machinery and for the claims transformation, which must stamp a tombstone principal as Merged rather than inherit the survivor's state.
+**Merge chain-follow on append-only reads.** Account merge folds a source User into a target by re-FKing live rows, but append-only history (`audit_log`, `consent_records`, `budget_audit_logs`, plus per-user Expenses reads) stays at the source by design. Per-user reads of these tables therefore query over `UserInfo.AllUserIds` of the record the read returned (the record's own id first, then `MergedUserIds`), never over the id they were given: a merged-away id resolves to the survivor, and a union seeded from the caller's id would miss the survivor's own rows. Users stamps that list itself: `CachingUserService` builds a transitive merge index over its warmed snapshot and stamps every `UserInfo` it hands out, so a caller never walks `MergedToUserId`. The same reads redirect a tombstone id forward to its survivor, so no section outside Users decides what a merged id means, `IUserService.GetUserInfoAsync`, `GetUserInfosAsync` and `GetAllUserInfosAsync` all resolve and stamp. Raw, unresolved rows are `IUserService.GetRawUserInfoAsync` / `GetAllRawUserInfosAsync`, for Users' own merge machinery and for the claims transformation, which must stamp a tombstone principal as Merged rather than inherit the survivor's state.
 
 ## 13. Google Resource Ownership
 

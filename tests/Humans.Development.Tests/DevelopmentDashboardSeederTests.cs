@@ -81,8 +81,8 @@ public class DevelopmentDashboardSeederTests
         var eventSettingsSeeding = Substitute.For<IEventSettingsSeeding>();
         var sut = new DevelopmentDashboardSeeder(
             shifts, Substitute.For<ISettingsService>(), eventSettingsSeeding, signups,
-            Substitute.For<ITeamService>(), teams, Substitute.For<IUserEmailService>(),
-            Substitute.For<IUserService>(), profileEditor, userManager, new FakeClock(now),
+            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, Substitute.For<IUserEmailService>(),
+            Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
         var result = await sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);
@@ -151,8 +151,8 @@ public class DevelopmentDashboardSeederTests
 
         var sut = new DevelopmentDashboardSeeder(
             shifts, store, store, signups,
-            Substitute.For<ITeamService>(), teams, Substitute.For<IUserEmailService>(),
-            Substitute.For<IUserService>(), profileEditor, userManager, new FakeClock(now),
+            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, Substitute.For<IUserEmailService>(),
+            Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
         var firstSeed = await sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);

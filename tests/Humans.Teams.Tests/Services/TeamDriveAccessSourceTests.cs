@@ -10,8 +10,8 @@ namespace Humans.Teams.Tests.Services;
 
 public sealed class TeamDriveAccessSourceTests
 {
-    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
-    private readonly ITeamResourceServiceRead _resources = Substitute.For<ITeamResourceServiceRead>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
 
     [HumansFact]
     public async Task SharedResource_UnionsMembersAndRollsActiveChildrenUpWithTheirMaximumLevel()

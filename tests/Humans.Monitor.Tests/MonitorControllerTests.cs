@@ -34,7 +34,7 @@ public sealed class MonitorControllerTests
     private static MonitorController BuildSut()
     {
         var controller = new MonitorController(
-            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IUserService>(),
             NullLogger<MonitorController>.Instance);
         var http = new DefaultHttpContext();
         controller.ControllerContext = new ControllerContext { HttpContext = http };

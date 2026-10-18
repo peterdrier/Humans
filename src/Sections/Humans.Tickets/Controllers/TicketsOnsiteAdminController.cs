@@ -22,7 +22,7 @@ namespace Humans.Tickets.Controllers;
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Tickets/Admin/Onsite")]
 internal sealed class TicketsOnsiteAdminController(
-    IUserServiceRead userService,
+    IUserService userService,
     ISettingsService settingsService,
     IOnsiteRosterService roster) : HumansControllerBase(userService)
 {

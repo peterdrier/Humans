@@ -23,7 +23,7 @@ namespace Humans.Governance.Controllers;
 [Authorize]
 [Route("Governance/Votes")]
 internal sealed class GovernanceVotesController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAssemblyVoteService voteService,
     IStringLocalizer<GovernanceResource> localizer,
     ILogger<GovernanceVotesController> logger) : HumansControllerBase(userService)

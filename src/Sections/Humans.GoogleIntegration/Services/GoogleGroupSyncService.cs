@@ -15,9 +15,10 @@ internal sealed class GoogleGroupSyncService(
     IGoogleGroupMembershipClient membershipClient,
     IGoogleGroupProvisioningClient provisioningClient,
     ITeamResourceGoogleClient teamResourceClient,
-    ITeamResourceService teamResourceService,
-    ITeamServiceRead teamService,
+    ITeamResourceManagement teamResourceService,
+    ITeamService teamService,
     IUserService userService,
+    IUserWrite userWrite,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IAuditLogService auditLogService,
@@ -432,7 +433,7 @@ internal sealed class GoogleGroupSyncService(
                 if (failure.RejectTarget)
                 {
                     var target = plan.ExpectedByEmail[member.Email];
-                    await userService.TrySetGoogleEmailStatusFromSyncAsync(
+                    await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
                         target.UserId, GoogleEmailStatus.Rejected, ct, target.GoogleEmailId);
                     logger.LogWarning(
                         "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +

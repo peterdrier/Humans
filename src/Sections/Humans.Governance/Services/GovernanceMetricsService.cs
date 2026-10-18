@@ -11,7 +11,7 @@ namespace Humans.Governance.Services;
 /// <summary>
 /// Governance's observable gauges: asociado count, pending tier applications, and the two
 /// consent-completeness gauges (pending_consents also needs the total user count, read
-/// cross-section via <see cref="IUserServiceRead"/>).
+/// cross-section via <see cref="IUserService"/>).
 /// </summary>
 internal sealed class GovernanceMetricsService : PolledGaugeService
 {
@@ -52,9 +52,9 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculatorRead>();
-        var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationServiceRead>();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
+        var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
+        var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IGovernanceManagement>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var allUserIds = userInfos.Select(u => u.Id).ToList();

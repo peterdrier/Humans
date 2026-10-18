@@ -16,7 +16,7 @@
   src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
 -->
 <!-- freshness:flag-on-change
-  IGoogleSyncService surface, ITeamResourceService, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
+  IGoogleSyncService/Write/Management surface, ITeamResourceService/Write/Management, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
 -->
 
 # Google Integration
@@ -40,7 +40,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 > The system does not create Drive folders. Linking is the only way a Drive
-> resource enters the system (`ITeamResourceService.LinkDriveResourceAsync`);
+> resource enters the system (`ITeamResourceWrite.LinkDriveResourceAsync`);
 > only Google Groups are provisioned automatically.
 
 ### US-7.2: Automatic Access Grants
@@ -198,42 +198,22 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 
 ## Service Interface
 
-### IGoogleSyncService
+### IGoogleSyncService / IGoogleSyncWrite / IGoogleSyncManagement
+Public reads (`IGoogleSyncService`):
 ```csharp
-public interface IGoogleSyncService
-{
-    // Drive resource sync (Groups are delegated to IGoogleGroupSync)
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
-    Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
-
-    // Team membership changes
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
-    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
-
-    // Google Group lifecycle
-    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
-
-    // Group settings drift detection/remediation
-    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken ct = default);
-    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken ct = default);
-    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken ct = default);
-
-    // Drive folder path / inherited-permission maintenance
-    Task<int> UpdateDriveFolderPathsAsync(CancellationToken ct = default);
-    Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken ct = default);
-    Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken ct = default);
-
-    // Admin outbox recovery
-    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken ct = default);
-    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken ct = default);
-    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken ct = default);
-
-    // Provision folders and enqueue source-owned Drive reconciliation (Teams and Workgroups)
-    Task<string> CreateSubfolderAsync(string parentFolderId, string name, CancellationToken ct = default);
-    Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default); // declared on IGoogleSyncServiceRead
-    Task RequestSyncAsync(string folderId, CancellationToken ct = default);
-}
+Task<int> GetFailedSyncEventCountAsync(CancellationToken ct = default);
+Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default);
 ```
+Public writes (`IGoogleSyncWrite`, only what other sections call):
+```csharp
+Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ...);
+Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, ...);
+Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, ...);
+Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, ...);
+Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);
+Task RequestSyncAsync(string folderId, ...);
+```
+Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
 
 ### IGoogleGroupSync
 ```csharp
@@ -433,19 +413,11 @@ Instead of creating resources with domain-wide delegation, admins can link exist
 - **Google Groups**: Admin adds the service account as a Group Manager
 - The service account authenticates as itself (no impersonation) for validation/linking
 
-### ITeamResourceService
-Separate interface from IGoogleSyncService for linking/validation (not provisioning):
-```csharp
-public interface ITeamResourceService
-{
-    Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, ...);
-    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, ...);
-    Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, ...);
-    Task UnlinkResourceAsync(Guid resourceId, ...);
-    Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, ...);
-    Task<string> GetServiceAccountEmailAsync(...);
-}
-```
+### ITeamResourceService / ITeamResourceWrite / ITeamResourceManagement
+Separate from the IGoogleSync* interfaces: linking/validation, not provisioning.
+- `ITeamResourceService` (public reads): `GetTeamResourcesAsync`, `GetResourcesByTeamIdsAsync`, `GetTeamResourceSummariesAsync`, `GetActiveDriveFoldersAsync`, `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`, `GetResourceByIdAsync`.
+- `ITeamResourceWrite` (public writes): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`.
+- `ITeamResourceManagement : ITeamResourceService, ITeamResourceWrite` (internal): `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetUserTeamResourcesAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
 
 ### Resource Linking Flow
 ```
@@ -545,7 +517,7 @@ Admin-only tab for configuring per-service sync modes, contributed by `GoogleSyn
 
 ## Stub Implementations
 
-Both `IGoogleSyncService` and `ITeamResourceService` have stub implementations for development without Google credentials:
+Both the IGoogleSync* and ITeamResource* interface sets have stub implementations for development without Google credentials:
 - `StubGoogleSyncService`: logs provisioning/sync actions, returns empty preview
 - `StubTeamResourceService`: performs real DB operations but simulates Google API validation
 
@@ -623,7 +595,7 @@ On Google API error (resource sync):
 
 ### Failed-Sync Admin Meter
 
-Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`.
+Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncService.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`.
 
 ## Security Considerations
 

@@ -14,7 +14,9 @@ namespace Humans.Settings.Contracts;
 /// <see cref="Id"/> is what a section stores when it needs to point at an event
 /// cycle — <c>Rota.EventSettingsId</c>, <c>EventGuideSettings.EventSettingsId</c>.
 /// <see cref="Status"/> is on the DTO so a save round-trips: reads that go
-/// through <c>GetActiveEventSettingsAsync</c> can ignore it.
+/// through <c>GetActiveEventSettingsAsync</c> can ignore it. <see cref="IsOffSeason"/>
+/// is the admin-set "cycle is wrapped" switch the member dashboard's in-season cards
+/// (tickets, shifts) hide behind.
 /// </remarks>
 public sealed record EventSettingsInfo(
     Guid Id,
@@ -33,7 +35,8 @@ public sealed record EventSettingsInfo(
     IReadOnlyDictionary<int, int>? BarriosEarlyEntryAllocation,
     Instant? EarlyEntryClose,
     EventSettingsStatus Status = EventSettingsStatus.Active,
-    int? EarlyEntryStartOffset = null) : IEventSettingsInfo
+    int? EarlyEntryStartOffset = null,
+    bool IsOffSeason = false) : IEventSettingsInfo
 {
     /// <summary>
     /// Step-function lookup: returns the cumulative EE capacity for the

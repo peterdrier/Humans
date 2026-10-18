@@ -1,0 +1,28 @@
+@model Humans.Teams.Services.TeamTreeNode
+
+<li>
+    <span class="team-name">
+        @if (Model.IsLinkable)
+        {
+            <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">@Model.Name</a>
+        }
+        else
+        {
+            @Model.Name
+        }
+    </span>
+    <span class="team-count" title="@string.Format(Localizer["Teams_MemberCount"].Value, Model.MemberCount)"><i class="fa-solid fa-user fa-xs"></i> @Model.MemberCount</span>
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <div class="team-desc">@Html.SanitizedMarkdown(Model.Description)</div>
+    }
+    @if (Model.Children.Count > 0)
+    {
+        <ul>
+            @foreach (var child in Model.Children)
+            {
+                <partial name="_TeamTreeNode" model="child" />
+            }
+        </ul>
+    }
+</li>

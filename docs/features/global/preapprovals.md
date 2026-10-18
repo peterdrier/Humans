@@ -64,7 +64,7 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | Kind | enum `ProgramKind` | `FixedPerPerson` (every grant is `PerPersonAmount`) / `PerGrantAmount` (amount set on each grant) |
 | PerPersonAmount | decimal(18,2)? | Required when `FixedPerPerson`; refused otherwise. Must be greater than zero |
 | TotalCeiling | decimal(18,2)? | Null = no ceiling. Creativity: 25 000 → 50 000 → 60 000, edited in place; each edit audited so the history is in the log |
-| HoldedAccountNumber | int | From `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)` |
+| HoldedAccountNumber | int | From `IHoldedFinanceService.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
 | AcceptsApplications | bool | Public apply page open |
 | ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also resolves each `Open` grant holder's `pre-grant:{id}` notification and emits a new one with the new date, so the stale prompt never sits beside the replacement. Reminder markers carry the deadline they announced (see `pre_reminders_sent`), so the reminders run again against the new date with nothing to clear. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
@@ -364,7 +364,7 @@ Documented in [background-jobs.md](background-jobs.md) when built.
 - Partial draw-down of one grant across several reports. One grant, one report. A creativity
   lead who needs two reports gets two grants.
 - Spent-vs-granted from the Holded ledger on the program page. Later pull via
-  `IHoldedFinanceServiceRead.GetCreditorLedgerAsync`, same posture as Workgroups.
+  `IHoldedFinanceService.GetCreditorLedgerAsync`, same posture as Workgroups.
 - A Creativity section. When it exists it gets one narrow command on the public contract
   (`IssueAsync(programId, beneficiaryUserId, amount, label)`, added then, not now); it never
   sees the management interface.

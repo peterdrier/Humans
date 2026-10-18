@@ -26,13 +26,13 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
-    private readonly IUserServiceInternal _userService;
+    private readonly IUserManagement _userService;
     private readonly ITeamService _teamService;
-    private readonly IMembershipCalculatorRead _membershipCalculator;
+    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleSyncWrite _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
@@ -45,12 +45,12 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
     public NonCompliantMemberSuspensionTests()
     {
-        _userService = Substitute.For<IUserServiceInternal>();
+        _userService = Substitute.For<IUserManagement>();
         _teamService = Substitute.For<ITeamService>();
-        _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+        _membershipCalculator = Substitute.For<IMembershipCalculator>();
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationEmitter>();
-        _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleSyncService = Substitute.For<IGoogleSyncWrite>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();

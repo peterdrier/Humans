@@ -42,8 +42,8 @@ public class ShiftAdminControllerTests
     private const string Slug = "gate";
 
     private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
@@ -471,7 +471,7 @@ public class ShiftAdminControllerTests
             _userService,
             Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
-            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
+            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
             _logger,

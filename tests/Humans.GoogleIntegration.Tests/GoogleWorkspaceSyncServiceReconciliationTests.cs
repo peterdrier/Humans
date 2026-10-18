@@ -45,8 +45,9 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     private readonly StubGoogleDrivePermissionsClient _drivePermissions =
         new(NullLogger<StubGoogleDrivePermissionsClient>.Instance);
 
-    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IGoogleDriveAccessSource _driveSource = Substitute.For<IGoogleDriveAccessSource>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
@@ -98,7 +99,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
                     && (call.ArgAt<string?>(0) is null || string.Equals(r.GoogleId, call.ArgAt<string?>(0), StringComparison.Ordinal)))
                 .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
         var driveSync = new GoogleDriveAccessSyncService(
-            [_driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
+            [_driveSource], _drivePermissions, _userService, _userServiceWrite, _userEmailService, _syncSettingsService,
             _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
             Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
 
@@ -111,7 +112,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
-            _userService,
+            _userService, _userServiceWrite,
             Substitute.For<IGoogleGroupSync>(),
             driveSync,
             [_driveSource],

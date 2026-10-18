@@ -35,7 +35,7 @@ namespace Humans.Gate.Controllers;
 [Route("Gate")]
 internal sealed class GateController(
     IGateService gate,
-    IUserServiceRead users,
+    IUserService users,
     IConfiguration configuration,
     GatePinThrottle pinThrottle,
     GateVendorMirrorLedger mirrorLedger,

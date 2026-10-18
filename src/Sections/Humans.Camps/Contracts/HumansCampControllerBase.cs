@@ -6,7 +6,7 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Contracts;
 
 public abstract class HumansCampControllerBase(
-    IUserServiceRead userService,
+    IUserService userService,
     ICampService campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {

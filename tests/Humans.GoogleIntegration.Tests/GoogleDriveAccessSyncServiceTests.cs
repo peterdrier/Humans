@@ -18,6 +18,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 {
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
@@ -123,7 +124,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .Returns(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(403, "Cannot share a shared drive with non Google accounts.")));
-        _userService.TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), attemptedEmailId)
+        _userServiceWrite.TrySetGoogleEmailStatusFromSyncAsync(alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), attemptedEmailId)
             .Returns(call =>
             {
                 _usersById[alice] = _usersById[alice] with
@@ -142,7 +143,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             alice, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>(), attemptedEmailId);
         await _drivePermissions.Received(1)
             .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
@@ -169,7 +170,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _userServiceWrite.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
         await _drivePermissions.Received(2)
             .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
@@ -920,10 +921,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Is<string>(error => error.Contains(message)), ct);
         await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
         if (rejected)
-            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+            await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
                 userId, GoogleEmailStatus.Rejected, ct, _usersById[userId].UserEmails.Single().Id);
         else
-            await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
+            await _userServiceWrite.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
         await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, resource.Id,
             Arg.Any<string>(), nameof(GoogleDriveAccessSyncService), "alice@nobodies.team", "writer",
             GoogleSyncSource.ManualSync, success: false, errorMessage: Arg.Any<string?>(), userId: userId, ct: ct);
@@ -933,13 +934,14 @@ public sealed class GoogleDriveAccessSyncServiceTests
         sources,
         _drivePermissions,
         _userService,
+        _userServiceWrite,
         _userEmailService,
         _syncSettingsService,
         _googleSyncLog,
         _removalNotifications,
         _resources,
-        Substitute.For<ITeamServiceRead>(),
-        Substitute.For<ITeamResourceService>(),
+        Substitute.For<ITeamService>(),
+        Substitute.For<ITeamResourceManagement>(),
         new FakeClock(_now),
         _logger);
 
