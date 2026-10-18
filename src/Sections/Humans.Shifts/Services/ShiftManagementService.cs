@@ -513,7 +513,7 @@ internal sealed class ShiftManagementService(
     {
         if (Guid.TryParse(query, out var id))
         {
-            var rota = await repo.GetRotaAsync(id, RotaReadShape.None);
+            var rota = await repo.GetRotaAsync(id, RotaReadShape.None, cancellationToken);
             return rota is null
                 ? []
                 : [new RotaSearchHit(rota.Id, rota.Name, StringSearchExtensions.ExactNameScore)];

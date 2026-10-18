@@ -888,6 +888,19 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task SearchAsync_GuidQuery_ObservesCallerCancellation()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+
+        Func<Task> action = () => _service.SearchAsync(rota.Id.ToString(), int.MaxValue, request.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task SearchAsync_TextQuery_ReturnsNothing_WhenNoEventIsActive()
     {
         var results = await _service.SearchAsync(
