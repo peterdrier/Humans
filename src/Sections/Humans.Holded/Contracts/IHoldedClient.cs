@@ -98,6 +98,10 @@ public interface IHoldedClient
     /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 
+    /// <summary>Deletes one contact via DELETE v2/contacts/{id}. A contact already gone (404) is success.
+    /// Used to retract a contact minted by a push that lost a binding race.</summary>
+    Task DeleteContactAsync(string contactId, CancellationToken ct = default);
+
     /// <summary>Lists journal lines from GET v2/ledger-entries across a date window. Paginates internally
     /// via cursor; optionally scoped to one account number.</summary>
     Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(

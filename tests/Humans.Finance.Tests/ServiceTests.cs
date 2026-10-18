@@ -48,6 +48,12 @@ public class HoldedFinanceServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly SepaOptions _sepa = new();
 
+    public HoldedFinanceServiceTests() =>
+        // An unstubbed Task<bool> yields false, which the service reads as a lost unique-index race.
+        _repo.UpsertCreditorContactAsync(
+                Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
     private static IUserService NoUsers()
     {
@@ -800,6 +806,108 @@ public class HoldedFinanceServiceTests
 
     // ─── EnsureCreditorContact (binding write path) ──────────────────────────────
 
+    private static HoldedCreditorContact BoundTo(Guid userId, string contactId) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        HoldedContactId = contactId,
+        Source = CreditorContactSource.Auto,
+        CreatedAt = FixedNow,
+        UpdatedAt = FixedNow,
+    };
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_TwoConcurrentDrains_LeaveOneContactAndOneBinding()
+    {
+        // Production: two outbox drains both read "no binding", both POSTed a contact. Run 1 is parked
+        // inside its POST while run 2 completes and binds; run 1 then must delete its own contact.
+        var userId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var posts = 0;
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                if (Interlocked.Increment(ref posts) == 1)
+                {
+                    await gate.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+                    return "contact-A";
+                }
+                return "contact-B";
+            });
+        var winner = BoundTo(userId, "contact-B");
+        // Reads: run 1 initial, run 2 initial, run 2 re-read (still none) — then run 2's binding.
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null, (HoldedCreditorContact?)null, (HoldedCreditorContact?)null, winner);
+
+        var run1 = MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, ct);
+        while (Volatile.Read(ref posts) < 1) await Task.Yield();
+        var id2 = await MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, ct);
+        gate.SetResult();
+        var id1 = await run1;
+
+        id2.Should().Be("contact-B");
+        id1.Should().Be("contact-B");
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-B"),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-A"),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _client.Received(1).DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_BindingAppearedBeforeWrite_DeletesMintedContact_AndUsesTheBoundOne()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null, BoundTo(userId, "contact-B"));
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("contact-B");
+        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_UniqueViolationOnInsert_DeletesMintedContact_AndUsesTheBoundOne()
+    {
+        var userId = Guid.NewGuid();
+        // Initial read and the pre-write re-read see nothing; the insert loses; the next read finds the winner.
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null, (HoldedCreditorContact?)null, BoundTo(userId, "contact-B"));
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+        _repo.UpsertCreditorContactAsync(
+                Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("contact-B");
+        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+        await _repo.Received(3).GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_NoRace_DeletesNothing()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("contact-A");
+        await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!, default);
+    }
+
     [HumansFact]
     public async Task EnsureCreditorContact_NewMember_CreatesContact_AndRecordsAutoBinding()
     {
@@ -1065,11 +1173,13 @@ public class HoldedFinanceServiceTests
                 userId, "Peter Drier", null, null, null, null,
                 Xunit.TestContext.Current.CancellationToken);
 
-        id.Should().Be("c-new");
+        // The admin's bind stands; the contact this push minted is retracted, not left as a second one.
+        id.Should().Be("c-admin");
+        await _client.Received(1).DeleteContactAsync("c-new", Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
-            .Which.Message.Should().Contain("c-admin");
+            .Which.Message.Should().Contain("c-admin").And.Contain("c-new");
     }
 
     [HumansFact]

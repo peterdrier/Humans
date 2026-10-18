@@ -33,7 +33,10 @@ internal interface IHoldedRepository : IRepository
     // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
-    Task UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
+    /// <summary>Inserts the member's binding, or updates it in place. False only when a concurrent insert
+    /// won the member's unique <c>UserId</c> slot between this call's read and write — nothing was
+    /// written, and the caller re-reads to adopt the winner's binding. True otherwise.</summary>
+    Task<bool> UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
 
     /// <summary>Removes the member's binding row and returns it as deleted; null when there was none.</summary>
     Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);

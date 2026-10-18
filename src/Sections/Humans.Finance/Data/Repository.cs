@@ -130,7 +130,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedCreditorContacts.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task UpsertCreditorContactAsync(
+    public async Task<bool> UpsertCreditorContactAsync(
         HoldedCreditorContact row, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -148,7 +148,20 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             row.UpdatedAt = now;
             ctx.HoldedCreditorContacts.Add(row);
         }
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // Another run bound this member after the existence check above.
+            return false;
+        }
+        return true;
     }
 
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
