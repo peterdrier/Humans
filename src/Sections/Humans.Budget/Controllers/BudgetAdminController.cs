@@ -370,7 +370,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Categories/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, decimal allocatedAmount,
+    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, [BindRequired] decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -398,7 +398,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Categories/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateCategory(Guid id, string name, decimal allocatedAmount,
+    public async Task<IActionResult> UpdateCategory(Guid id, string name, [BindRequired] decimal allocatedAmount,
         ExpenditureType expenditureType)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -447,7 +447,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
+    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -477,7 +477,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
+    public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate, Guid budgetCategoryId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();

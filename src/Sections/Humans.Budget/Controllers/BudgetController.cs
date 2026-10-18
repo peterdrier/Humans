@@ -5,6 +5,7 @@ using Humans.Budget.Authorization;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -143,7 +144,7 @@ internal sealed class BudgetController(
 
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
+    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -177,7 +178,7 @@ internal sealed class BudgetController(
 
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
+    public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();

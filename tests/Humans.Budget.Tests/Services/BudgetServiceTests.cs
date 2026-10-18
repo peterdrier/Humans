@@ -251,27 +251,8 @@ public sealed class BudgetServiceTests
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
         var (controller, _, _) = CreateAdminController(viewerExists, _service);
         if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
         if (missingStatus)
-        {
-            controller.HttpContext.RequestServices = services;
-            var parameter = typeof(BudgetAdminController).GetMethod(nameof(BudgetAdminController.UpdateYearStatus))!
-                .GetParameters().Single(p => p.ParameterType == typeof(BudgetYearStatus));
-            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
-            var descriptor = new ControllerParameterDescriptor
-            {
-                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
-            };
-            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-            {
-                Metadata = metadata, CacheToken = parameter
-            });
-            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
-                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
-                descriptor, metadata, value: null);
-        }
+            await BindMissingParameterAsync(controller, nameof(BudgetAdminController.UpdateYearStatus), "status");
 
         var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
         var refused = malformed || missingStatus || !viewerExists;
@@ -312,6 +293,28 @@ public sealed class BudgetServiceTests
         }
     }
 
+    private static async Task BindMissingParameterAsync(Controller controller, string actionName, string field)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var parameter = controller.GetType().GetMethod(actionName)!.GetParameters()
+            .Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = parameter
+        });
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+    }
+
     private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
@@ -339,22 +342,41 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(0, "amount", true)]
-    [InlineData(0, "amount", false)]
-    [InlineData(0, null, true)]
-    [InlineData(1, "amount", true)]
-    [InlineData(1, "amount", false)]
-    [InlineData(1, null, true)]
-    [InlineData(2, "amount", true)]
-    [InlineData(2, "amount", false)]
-    [InlineData(2, null, true)]
-    [InlineData(3, "amount", true)]
-    [InlineData(3, "amount", false)]
-    [InlineData(3, null, true)]
-    public async Task FinancialForm_InvalidBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists)
+    [InlineData(0, "amount", true, false)]
+    [InlineData(0, "amount", false, false)]
+    [InlineData(0, null, true, false)]
+    [InlineData(1, "amount", true, false)]
+    [InlineData(1, "amount", false, false)]
+    [InlineData(1, null, true, false)]
+    [InlineData(2, "amount", true, false)]
+    [InlineData(2, "amount", false, false)]
+    [InlineData(2, null, true, false)]
+    [InlineData(3, "amount", true, false)]
+    [InlineData(3, "amount", false, false)]
+    [InlineData(3, null, true, false)]
+    [InlineData(0, "amount", true, true)]
+    [InlineData(0, "amount", false, true)]
+    [InlineData(1, "amount", true, true)]
+    [InlineData(1, "amount", false, true)]
+    [InlineData(2, "amount", true, true)]
+    [InlineData(2, "amount", false, true)]
+    [InlineData(3, "amount", true, true)]
+    [InlineData(3, "amount", false, true)]
+    public async Task FinancialForm_InvalidOrMissingBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists, bool missingAmount)
     {
         var (controller, budget, viewerId) = CreateAdminController(viewerExists);
-        if (invalidField is not null)
+        if (missingAmount)
+        {
+            var actionName = action switch
+            {
+                0 => nameof(BudgetAdminController.CreateCategory),
+                1 => nameof(BudgetAdminController.UpdateCategory),
+                2 => nameof(BudgetAdminController.CreateLineItem),
+                _ => nameof(BudgetAdminController.UpdateLineItem)
+            };
+            await BindMissingParameterAsync(controller, actionName, action < 2 ? "allocatedAmount" : "amount");
+        }
+        else if (invalidField is not null)
             controller.ModelState.AddModelError(action < 2 ? "allocatedAmount" : invalidField, "Invalid number.");
 
         var result = action switch
@@ -378,13 +400,17 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed)
+    [InlineData(false, true, true, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, false, false, true)]
+    [InlineData(true, false, false, true)]
+    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed, bool missingAmount)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
         var users = Substitute.For<IUserService>();
@@ -406,14 +432,18 @@ public sealed class BudgetServiceTests
             TempData = admin.TempData,
             Url = admin.Url
         };
-        if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        if (missingAmount)
+            await BindMissingParameterAsync(controller,
+                update ? nameof(BudgetController.UpdateLineItem) : nameof(BudgetController.CreateLineItem), "amount");
+        else if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        var invalid = malformed || missingAmount;
         budget.ClearReceivedCalls();
         var result = update
             ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0)
             : await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0);
-        if (allowed && malformed) Assert.IsType<BadRequestObjectResult>(result);
+        if (allowed && invalid) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
-        if (allowed && !malformed)
+        if (allowed && !invalid)
         {
             if (update) await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
             else await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);

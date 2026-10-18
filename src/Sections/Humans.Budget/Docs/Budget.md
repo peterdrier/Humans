@@ -224,7 +224,7 @@ Stored as string via `HasConversion<string>()`.
 - `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
 - Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
 - The coordinator-facing category detail at `/Budget/Category/{id}` uses `BudgetResource` for every label, action, guidance message, tooltip, confirmation, and accessibility label in all supported cultures.
-- Category, line-item and group create/update forms reject binding errors with HTTP 400 (and log a warning) before writing anything; current-user resolution (not found when missing) and, for `/Budget` line items, coordinator category authorization run first; explicit zero amounts, false flags and empty optional fields are valid input.
+- Category and line-item create/update forms require an explicit amount; omission cannot save a zero allocation or line amount. These forms and group forms reject binding errors with HTTP 400 (and log a warning) before writing anything; current-user resolution (not found when missing) and, for `/Budget` line items, coordinator category authorization run first; explicit zero amounts, false flags and empty optional fields are valid input.
 - On member and finance pages, displayed percentages, currency and number cells and chart money tooltips follow the selected UI culture, while sort values, chart JSON data and progress-bar widths stay invariant (machine) formatting.
 
 ## Negative Access Rules
