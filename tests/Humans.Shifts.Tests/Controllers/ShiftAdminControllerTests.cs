@@ -89,6 +89,30 @@ public class ShiftAdminControllerTests
     }
 
     [HumansTheory]
+    [InlineData("startDayOffset", true)]
+    [InlineData("endDayOffset", true)]
+    [InlineData("startDayOffset", false)]
+    [InlineData("endDayOffset", false)]
+    public async Task VoluntellRange_MalformedOffset_DoesNotAssign(string field, bool ownDepartment)
+    {
+        var rota = MakeRota(ownDepartment ? TeamId : OtherTeamId);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        var beneficiary = Guid.NewGuid();
+        _signupService.VoluntellRangeAsync(beneficiary, rota.Id, 0, 0, UserId)
+            .Returns(SignupResult.Ok(Guid.NewGuid()));
+        var controller = BuildSut();
+        controller.ModelState.AddModelError(field, "Not a number");
+
+        var result = await controller.VoluntellRange(Slug, rota.Id, 0, 0, beneficiary);
+
+        if (ownDepartment)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<NotFoundResult>();
+        await _signupService.DidNotReceiveWithAnyArgs().VoluntellRangeAsync(default, default, default, default, default);
+    }
+
+    [HumansTheory]
     [InlineData("Staffing", false)]
     [InlineData("Staffing", true)]
     [InlineData("Generation", false)]

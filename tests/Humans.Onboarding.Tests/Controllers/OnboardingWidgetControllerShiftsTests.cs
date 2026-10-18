@@ -53,7 +53,7 @@ public class OnboardingWidgetControllerShiftsTests
         _http.Session = new TestSession();
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -165,6 +165,22 @@ public class OnboardingWidgetControllerShiftsTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
         Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
+    }
+
+    [HumansTheory]
+    [InlineData("startDayOffset")]
+    [InlineData("endDayOffset")]
+    public async Task SignUpRange_MalformedOffset_DoesNotEnroll(string field)
+    {
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        _signups.SignUpRangeAsync(userId, rotaId, 0, 0)
+            .Returns(SignupResult.Ok(Guid.NewGuid()));
+        var ctrl = BuildSut(userId);
+        ctrl.ModelState.AddModelError(field, "Not a number");
+
+        Assert.IsType<BadRequestObjectResult>(await ctrl.SignUpRange(rotaId, 0, 0));
+        await _signups.DidNotReceiveWithAnyArgs().SignUpRangeAsync(default, default, default, default);
     }
 
     [HumansFact]

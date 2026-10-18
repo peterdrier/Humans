@@ -760,6 +760,12 @@ internal sealed class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed range assignment on {RotaId} by {UserId}", rotaId, currentUser.Id);
+            return BadRequest(ModelState);
+        }
+
         var result = await signupService.VoluntellRangeAsync(
             userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)

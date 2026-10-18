@@ -47,7 +47,7 @@ public class OnboardingWidgetControllerDispatcherTests
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],

@@ -32,7 +32,8 @@ internal sealed class OnboardingWidgetController(
     IOnboardingService onboardingService,
     IClock clock,
     IStringLocalizer<OnboardingResource> localizer,
-    IStringLocalizer<ConsentResource> consentLocalizer) : HumansControllerBase(userService)
+    IStringLocalizer<ConsentResource> consentLocalizer,
+    ILogger<OnboardingWidgetController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
 
@@ -169,8 +170,15 @@ internal sealed class OnboardingWidgetController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset)
     {
-        // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
-        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
+        var userId = CurrentUserId();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed range signup for {UserId} on {RotaId}", userId, rotaId);
+            return BadRequest(ModelState);
+        }
+
+        // Multi-day Build/Strike signup, routed back through the widget dispatcher.
+        var result = await signupService.SignUpRangeAsync(userId, rotaId, startDayOffset, endDayOffset);
         if (!result.Success)
         {
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpRangeFailed"].Value);
