@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Calendar.Services.Dtos;
 using NodaTime;
 
@@ -36,6 +37,7 @@ internal sealed class CalendarEventFormViewModel
 
     public bool IsAllDay { get; set; }
 
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]

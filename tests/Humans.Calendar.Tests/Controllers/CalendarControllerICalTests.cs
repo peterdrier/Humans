@@ -19,6 +19,9 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -57,6 +60,72 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("not-a-bool")]
+    [Xunit.InlineData("false")]
+    [Xunit.InlineData("true")]
+    public async Task Edit_requires_an_explicit_recurrence_choice(string? choice)
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 2, 10, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, start, start.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "UTC", _now, _now));
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Title"] = "Updated", ["OwningTeamId"] = teamId.ToString(), ["IsAllDay"] = "false",
+            ["StartLocal"] = "2026-06-02T10:00:00", ["EndLocal"] = "2026-06-02T11:00:00",
+            ["RecurrenceRule"] = "FREQ=WEEKLY", ["RecurrenceTimezone"] = "UTC"
+        };
+        if (choice is not null) fields["IsRecurring"] = choice;
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var controller = CreateController();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        var metadata = services.GetRequiredService<IModelMetadataProvider>()
+            .GetMetadataForType(typeof(CalendarEventFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(CalendarEventFormViewModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var form = (CalendarEventFormViewModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = await controller.Edit(id, form, ct);
+        var errors = string.Join("; ", controller.ModelState.Select(p =>
+            $"{p.Key}: {p.Value!.ValidationState} {string.Join(", ", p.Value.Errors.Select(e => e.ErrorMessage))}"));
+
+        if (choice is null || string.Equals(choice, "not-a-bool", StringComparison.Ordinal))
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState.ContainsKey(nameof(form.IsRecurring)).Should().BeTrue(errors);
+            // A malformed required property reports both conversion failure and the missing bound value.
+            controller.ModelState[nameof(form.IsRecurring)]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>(errors);
+            var expectedRule = string.Equals(choice, "true", StringComparison.Ordinal) ? "FREQ=WEEKLY" : null;
+            await _calendar.Received(1).UpdateEventWithResultAsync(id,
+                Arg.Is<CreateCalendarEventDto>(d => d.RecurrenceRule == expectedRule), _viewer, ct);
+        }
     }
 
     [HumansTheory]
