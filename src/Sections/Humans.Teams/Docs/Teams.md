@@ -212,7 +212,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - The Teams GDPR slices follow the subject’s resolved merge chain, including ended memberships retained on archived IDs. Requests under an archived ID return the same data.
 - The `TeamJoinRequests` GDPR export includes the person’s request and review notes plus chronological status-history entries (status, UTC change time and notes). Other users’ requests are excluded.
 
-- Member-facing team details, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all six supported cultures.
+- Member-facing team details, tree, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all six supported cultures.
 
 - The team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
 
