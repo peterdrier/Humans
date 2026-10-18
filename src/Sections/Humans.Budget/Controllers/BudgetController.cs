@@ -145,7 +145,7 @@ internal sealed class BudgetController(
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -179,7 +179,7 @@ internal sealed class BudgetController(
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;

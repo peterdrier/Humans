@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using System.Security.Claims;
@@ -341,6 +342,63 @@ public sealed class BudgetServiceTests
         }
     }
 
+    [HumansTheory]
+    [InlineData("InitialSalesCount", false, true)]
+    [InlineData("DailySalesRate", false, true)]
+    [InlineData("AverageTicketPrice", false, true)]
+    [InlineData("VatRate", false, true)]
+    [InlineData("StripeFeePercent", false, true)]
+    [InlineData("StripeFeeFixed", false, true)]
+    [InlineData("TicketTailorFeePercent", false, true)]
+    [InlineData("", false, true)]
+    [InlineData("", true, true)]
+    [InlineData("VatRate", false, false)]
+    public async Task Projection_form_requires_explicit_financial_assumptions(string omitted, bool zero, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["budgetYearId"] = _yearId.ToString(), ["initialSalesCount"] = zero ? "0" : "123",
+            ["dailySalesRate"] = zero ? "0" : "5", ["averageTicketPrice"] = zero ? "0" : "120",
+            ["vatRate"] = zero ? "0" : "21", ["stripeFeePercent"] = zero ? "0" : "1.5",
+            ["stripeFeeFixed"] = zero ? "0" : "0.3", ["ticketTailorFeePercent"] = zero ? "0" : "0.5"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(TicketingProjectionUpdateForm));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(TicketingProjectionUpdateForm)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (TicketingProjectionUpdateForm)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = await controller.UpdateTicketingProjection(_yearId, model);
+
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
+                zero ? 0 : 123, zero ? 0m : 5m, zero ? 0m : 120m, zero ? 0 : 21,
+                zero ? 0m : 1.5m, zero ? 0m : 0.3m, zero ? 0m : 0.5m, viewerId);
+            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+        }
+        if (!viewerExists || omitted.Length > 0) budget.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static async Task BindMissingParameterAsync(Controller controller, string actionName, string field)
     {
         var registrations = new ServiceCollection().AddLogging();
@@ -410,10 +468,18 @@ public sealed class BudgetServiceTests
     [InlineData(2, "amount", false, true)]
     [InlineData(3, "amount", true, true)]
     [InlineData(3, "amount", false, true)]
-    public async Task FinancialForm_InvalidOrMissingBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists, bool missingAmount)
+    [InlineData(0, "expenditureType", true, true)]
+    [InlineData(0, "expenditureType", false, true)]
+    [InlineData(1, "expenditureType", true, true)]
+    [InlineData(1, "expenditureType", false, true)]
+    [InlineData(2, "vatRate", true, true)]
+    [InlineData(2, "vatRate", false, true)]
+    [InlineData(3, "vatRate", true, true)]
+    [InlineData(3, "vatRate", false, true)]
+    public async Task FinancialForm_InvalidOrMissingBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists, bool missingValue)
     {
         var (controller, budget, viewerId) = CreateAdminController(viewerExists);
-        if (missingAmount)
+        if (missingValue)
         {
             var actionName = action switch
             {
@@ -422,7 +488,8 @@ public sealed class BudgetServiceTests
                 2 => nameof(BudgetAdminController.CreateLineItem),
                 _ => nameof(BudgetAdminController.UpdateLineItem)
             };
-            await BindMissingParameterAsync(controller, actionName, action < 2 ? "allocatedAmount" : "amount");
+            await BindMissingParameterAsync(controller, actionName,
+                invalidField is "expenditureType" or "vatRate" ? invalidField : action < 2 ? "allocatedAmount" : "amount");
         }
         else if (invalidField is not null)
             controller.ModelState.AddModelError(action < 2 ? "allocatedAmount" : invalidField, "Invalid number.");
@@ -448,17 +515,21 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false, true, true, false)]
-    [InlineData(true, true, true, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(true, true, false, false)]
-    [InlineData(false, false, true, false)]
-    [InlineData(true, false, true, false)]
-    [InlineData(false, false, true, true)]
-    [InlineData(true, false, true, true)]
-    [InlineData(false, false, false, true)]
-    [InlineData(true, false, false, true)]
-    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed, bool missingAmount)
+    [InlineData(false, true, true, false, "amount")]
+    [InlineData(true, true, true, false, "amount")]
+    [InlineData(false, true, false, false, "amount")]
+    [InlineData(true, true, false, false, "amount")]
+    [InlineData(false, false, true, false, "amount")]
+    [InlineData(true, false, true, false, "amount")]
+    [InlineData(false, false, true, true, "amount")]
+    [InlineData(true, false, true, true, "amount")]
+    [InlineData(false, false, false, true, "amount")]
+    [InlineData(true, false, false, true, "amount")]
+    [InlineData(false, false, false, true, "vatRate")]
+    [InlineData(false, false, true, true, "vatRate")]
+    [InlineData(true, false, false, true, "vatRate")]
+    [InlineData(true, false, true, true, "vatRate")]
+    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed, bool missingValue, string missingField)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
         var users = Substitute.For<IUserService>();
@@ -480,11 +551,11 @@ public sealed class BudgetServiceTests
             TempData = admin.TempData,
             Url = admin.Url
         };
-        if (missingAmount)
+        if (missingValue)
             await BindMissingParameterAsync(controller,
-                update ? nameof(BudgetController.UpdateLineItem) : nameof(BudgetController.CreateLineItem), "amount");
+                update ? nameof(BudgetController.UpdateLineItem) : nameof(BudgetController.CreateLineItem), missingField);
         else if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
-        var invalid = malformed || missingAmount;
+        var invalid = malformed || missingValue;
         budget.ClearReceivedCalls();
         var result = update
             ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0)
