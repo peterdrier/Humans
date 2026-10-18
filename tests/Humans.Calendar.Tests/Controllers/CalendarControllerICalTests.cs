@@ -60,6 +60,54 @@ public class CalendarControllerICalTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("unknown")]
+    [Xunit.InlineData("empty")]
+    [Xunit.InlineData("valid")]
+    [Xunit.InlineData("missing-event")]
+    public async Task Edit_requires_an_existing_destination_team(string scenario)
+    {
+        var id = Guid.NewGuid();
+        var teamId = string.Equals(scenario, "empty", StringComparison.Ordinal) ? Guid.Empty : Guid.NewGuid();
+        var originalTeamId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 2, 10, 0);
+        var missingEvent = string.Equals(scenario, "missing-event", StringComparison.Ordinal);
+        var validTeam = string.Equals(scenario, "valid", StringComparison.Ordinal);
+        if (!missingEvent)
+            _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+                id, "Existing", null, null, null, originalTeamId, start, start.Plus(Duration.FromHours(1)),
+                IsAllDay: false, RecurrenceRule: null, RecurrenceTimezone: null, _now, _now));
+        if (validTeam)
+            _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+                new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                    false, false, false, false, _now, []));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        var form = new CalendarEventFormViewModel
+        {
+            Title = "Updated", OwningTeamId = teamId,
+            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
+            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0), RecurrenceTimezone = "UTC"
+        };
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = await CreateController().Edit(id, form, ct);
+
+        if (validTeam)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _calendar.Received(1).UpdateEventWithResultAsync(id,
+                Arg.Is<CreateCalendarEventDto>(d => d.OwningTeamId == teamId), _viewer, ct);
+        }
+        else
+        {
+            result.Should().BeOfType<NotFoundResult>();
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
+        if (missingEvent)
+            await _teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("explicit-max")]
     [Xunit.InlineData("implicit-max")]
     [Xunit.InlineData("valid")]

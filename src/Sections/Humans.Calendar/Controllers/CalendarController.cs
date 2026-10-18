@@ -330,6 +330,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (await _teams.GetTeamAsync(form.OwningTeamId, ct) is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end, out var startDate, out var endDate);
         if (!ModelState.IsValid)

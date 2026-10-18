@@ -131,6 +131,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Index, List and Team reject malformed month queries and dates outside the representable navigation/grid window with HTTP 400 before reading occurrences or minting a feed token. Omitted dates still use the viewer’s current month.
 - Agenda rejects malformed, reversed or unrepresentable date ranges with HTTP 400 and a Warning log before reading occurrences. Its end date remains inclusive; omitted dates retain the viewer-local today → today+60d defaults.
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
+- Create and edit forms reject missing or unknown destination teams with 404 before mutation. Edit checks the event exists before looking up its submitted team.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
