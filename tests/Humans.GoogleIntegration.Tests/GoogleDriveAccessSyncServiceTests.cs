@@ -494,13 +494,15 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ReconcileOneAsync_SuspendedUser_IsFilteredOut()
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Suspended)]
+    [Xunit.InlineData(UserState.Rejected)]
+    public async Task ReconcileOneAsync_SuspendedOrRejectedUser_IsFilteredOut(UserState state)
     {
         var alice = Guid.NewGuid();
         var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Viewer)));
         StubUsers((alice, "Alice", "alice@nobodies.team"));
-        SuspendUser(alice);
+        _usersById[alice] = _usersById[alice] with { State = state };
         StubFolder("folder-1");
 
         var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
@@ -999,11 +1001,6 @@ public sealed class GoogleDriveAccessSyncServiceTests
                         Visibility: null, VerificationSentAt: null, CreatedAt: _now, UpdatedAt: _now)
                 ]
             });
-    }
-
-    private void SuspendUser(Guid userId)
-    {
-        _usersById[userId] = _usersById[userId] with { State = UserState.Suspended };
     }
 
     private void WireUserLookups((Guid UserId, string Email)[] emails)

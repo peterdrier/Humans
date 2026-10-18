@@ -521,6 +521,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansTheory]
     [Xunit.InlineData(UserState.Suspended, false)]
     [Xunit.InlineData(UserState.AdminSuspended, false)]
+    [Xunit.InlineData(UserState.Rejected, false)]
     [Xunit.InlineData(UserState.Active, true)]
     public async Task AddUserToTeamResourcesAsync_IneligibleMember_DoesNotRestoreAccess(
         UserState state, bool deletionPending)

@@ -888,6 +888,34 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_RejectedSignup_RemovesTheStillClaimedMembership()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        var resource = StageResource("team@nobodies.team");
+        StubUsers((userId, "Rejected member", "rejected@nobodies.team"));
+        _usersByUserId[userId].State = UserState.Rejected;
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("rejected@nobodies.team", "groups/group-1/memberships/rejected"));
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("rejected@nobodies.team", userId, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/rejected", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _membershipClient.Received(1).DeleteMembershipAsync(
+            "groups/group-1/memberships/rejected", Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, resource.Id, Arg.Any<string>(), nameof(GoogleGroupSyncService),
+            "rejected@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync,
+            success: true, errorMessage: null, userId: userId, ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_Revoke_ResolvesTheExtraMemberFromAGmailAliasRow()
     {
         // nobodies-collective/Humans#1101: Google reports the canonical address, but the

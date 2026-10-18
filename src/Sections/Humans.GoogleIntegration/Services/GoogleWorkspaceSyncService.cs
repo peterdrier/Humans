@@ -178,9 +178,9 @@ internal sealed class GoogleWorkspaceSyncService(
         // An old outbox event must not restore access excluded by reconciliation.
         if (!GoogleSyncMemberHydration.CanReceiveAccess(user!))
         {
-            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — suspended, deletion pending, or Google email rejected", userId);
+            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — signup rejected, suspended, deletion pending, or Google email rejected", userId);
             return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, user!.Id, target.Id,
-                ErrorMessage: "Member is ineligible for Google access: suspended, deletion pending, or email rejected");
+                ErrorMessage: "Member is ineligible for Google access: signup rejected, suspended, deletion pending, or email rejected");
         }
         var googleEmail = target.Email;
 
