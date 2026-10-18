@@ -29,7 +29,7 @@ Members need to maintain personal information for organizational records while p
 **Acceptance Criteria:**
 - Profile displays all personal information
 - Shows membership status badge
-- Displays list of team memberships
+- Displays list of team memberships; public cards omit hidden teams and hidden parent-name prefixes, while self/admin cards retain them
 - Shows consent status for legal documents
 - Shows tier application status banner (Submitted/Approved/Rejected) linking to Governance page, if the user has a non-withdrawn tier application
 

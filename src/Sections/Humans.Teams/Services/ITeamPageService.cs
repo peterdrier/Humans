@@ -6,6 +6,16 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
+internal sealed record MyTeamMembershipSummary(
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    bool IsSystemTeam,
+    TeamMemberRole Role,
+    Instant JoinedAt,
+    bool CanLeave,
+    int PendingRequestCount);
+
 internal sealed record TeamDetailMemberSummary(
     Guid UserId,
     string DisplayName,
@@ -107,6 +117,13 @@ internal sealed record TeamPageDetailResult(
 
 internal interface ITeamPageService : IApplicationService
 {
+    /// <summary>
+    /// Gets the current user's team memberships with viewer-specific pending-request counts.
+    /// </summary>
+    Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
     Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,

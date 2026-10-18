@@ -83,6 +83,53 @@ public sealed class ProfileCardViewComponentTests
         writer.ToString().Should().Contain(HtmlEncoder.Default.Encode(prefix + (fits ? "😀" : "") + "..."));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Public")]
+    [Xunit.InlineData("Self")]
+    [Xunit.InlineData("Admin")]
+    public async Task TeamNames_PublicCardHidesHiddenParents_WhileSelfAndAdminKeepThem(string mode)
+    {
+        var viewMode = Enum.Parse<ProfileCardViewMode>(mode);
+        var userId = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            UserInfo.Create(new User { Id = userId, BurnerName = "Ada" }, [], [], [], null, [])));
+        var parent = new TeamInfo(Guid.NewGuid(), "Hidden", null, "hidden", true, false,
+            SystemTeamType.None, false, false, true, false, now,
+            [new(Guid.NewGuid(), userId, "Ada", null, null, TeamMemberRole.Member, now)]);
+        var child = parent with { Id = Guid.NewGuid(), Name = "Visible", Slug = "visible", IsHidden = false, ParentTeamId = parent.Id };
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [parent.Id] = parent, [child.Id] = child
+        });
+        var membership = Substitute.For<IMembershipCalculator>();
+        membership.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        var component = new ProfileCardViewComponent(
+            users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(), teams,
+            Substitute.For<IRoleAssignmentService>(), membership, Substitute.For<ICommunicationPreferenceService>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext(),
+                    ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync(userId, viewMode);
+
+        var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData
+            ?? throw new InvalidOperationException("Profile card returned no view data.");
+        var model = viewData.Model.Should().BeOfType<ProfileCardViewModel>().Which;
+        model.Teams.Select(team => team.TeamName).Should().Equal(viewMode == ProfileCardViewMode.Public
+            ? new[] { "Visible" } : new[] { "Hidden", "Hidden - Visible" });
+    }
+
     [HumansFact]
     public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
     {

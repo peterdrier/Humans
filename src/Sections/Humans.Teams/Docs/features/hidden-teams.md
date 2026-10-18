@@ -28,11 +28,12 @@ Campaigns (code distribution) target teams to determine who receives codes. Some
 
 ## Touchpoints
 
-- **Team directory** (`GetTeamDirectoryAsync`): hidden teams excluded for non-admin users
-- **Team detail page** (`TeamPageService.GetTeamDetailAsync`): returns null for hidden teams when viewer is not Admin/Board/TeamsAdmin
-- **Profile card** (`ProfileCardViewComponent`): hidden teams filtered alongside the existing Volunteers filter
+- **Team directory** (`GetTeamDirectoryAsync`): hidden teams and hidden parent metadata excluded for non-admin users
+- **Team detail page** (`TeamPageService.GetTeamDetailAsync`): returns null for hidden teams when viewer is not Admin/Board/TeamsAdmin; hidden parent metadata and hidden child links/rollups are excluded for those viewers too
+- **Profile card** (`ProfileCardViewComponent`): public cards hide hidden teams and hidden parent-name prefixes; self/admin cards retain them alongside the existing Volunteers filter
+- **Roster** (`TeamController.Roster`): hidden teams’ role slots require Admin/Board/TeamsAdmin
 - **Birthday team names** (`TeamController.Birthdays`): hidden teams excluded via inline filter on `GetTeamsAsync`
-- **My Teams** (`GetMyTeamMembershipsAsync`): hidden teams excluded for non-admin users
+- **My Teams** (`TeamPageService.GetMyTeamMembershipsAsync`): hidden teams excluded for non-admin users; hidden parent names, hidden child-request totals and pending requests for hidden teams are excluded too
 - **Join flow**: hidden teams return 404 for non-admin users
 - **Admin summary**: shows "Hidden" badge on hidden teams
 - **Create/Edit team forms**: checkbox toggle for IsHidden

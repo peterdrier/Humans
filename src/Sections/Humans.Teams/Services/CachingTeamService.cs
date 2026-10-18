@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces;
@@ -200,76 +199,6 @@ internal sealed class CachingTeamService(
             result.Add(new UserTeamMembershipInfo(
                 membership.TeamMemberId, team.Id, team.Name, team.Slug, team.IsSystemTeam,
                 membership.Role, membership.JoinedAt));
-        }
-
-        return result;
-    }
-
-    public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        // Cache-served. Uses the user→teams inverse index from WarmAllAsync to
-        // find the user's memberships, and TeamInfo.PendingRequestCount +
-        // ChildTeamIds to compute manageable counts. The single remaining inner
-        // call is IRoleAssignmentService.IsUserBoardMemberAsync — that data is
-        // owned by Auth (not Teams) and is not on TeamInfo.
-        await EnsureWarmedAsync(cancellationToken);
-        var teamsById = AsReadOnlyDictionary;
-        if (!_teamIdsByUserId.TryGetValue(userId, out var teamIds) || teamIds.Count == 0)
-            return [];
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
-        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-
-        var result = new List<MyTeamMembershipSummary>(teamIds.Count);
-        foreach (var teamId in teamIds)
-        {
-            if (!teamsById.TryGetValue(teamId, out var team))
-                continue;
-
-            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
-            if (membership is null)
-                continue;
-
-            // Inherited coordinator: a user can manage a team if they're a
-            // direct Coordinator, a board member, or coordinate any ancestor
-            // team (matches CanUserApproveRequestsForTeamAsync's recursive
-            // parent walk via IsUserCoordinatorOfActiveTeam).
-            var canManage =
-                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
-                && !team.IsSystemTeam;
-
-            var pendingCount = 0;
-            if (canManage)
-            {
-                pendingCount += team.PendingRequestCount;
-                if (team.ChildTeamIds is not null)
-                {
-                    foreach (var childId in team.ChildTeamIds)
-                    {
-                        if (!teamsById.TryGetValue(childId, out var child) || !child.IsActive)
-                            continue;
-                        pendingCount += child.PendingRequestCount;
-                    }
-                }
-            }
-
-            var displayName = team.ParentTeamId.HasValue
-                && teamsById.TryGetValue(team.ParentTeamId.Value, out var parent)
-                ? $"{parent.Name} - {team.Name}"
-                : team.Name;
-
-            result.Add(new MyTeamMembershipSummary(
-                team.Id,
-                displayName,
-                team.Slug,
-                team.IsSystemTeam,
-                membership.Role,
-                membership.JoinedAt,
-                CanLeave: !team.IsSystemTeam,
-                PendingRequestCount: pendingCount));
         }
 
         return result;

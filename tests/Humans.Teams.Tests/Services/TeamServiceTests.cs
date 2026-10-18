@@ -2350,7 +2350,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedJoinRequest(systemTeam.Id, SeedUser(displayName: "Requester B").Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Single(m => m.TeamId == managedTeam.Id).PendingRequestCount.Should().Be(1);
@@ -2372,7 +2372,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Role.Should().Be(TeamMemberRole.Member);

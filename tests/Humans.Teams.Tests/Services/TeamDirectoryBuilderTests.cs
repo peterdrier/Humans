@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
@@ -43,6 +44,30 @@ public sealed class TeamDirectoryBuilderTests
 
     private static IReadOnlyDictionary<Guid, TeamInfo> Graph(params TeamInfo[] teams) =>
         teams.ToDictionary(t => t.Id);
+
+    [HumansTheory]
+    [Xunit.InlineData("anonymous")]
+    [Xunit.InlineData("member")]
+    [Xunit.InlineData(RoleNames.Admin)]
+    [Xunit.InlineData(RoleNames.Board)]
+    [Xunit.InlineData(RoleNames.TeamsAdmin)]
+    public async Task HiddenParentMetadata_RequiresPrivilegedRole(string role)
+    {
+        var viewer = Guid.NewGuid();
+        _roles.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
+        _roles.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
+        _roles.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.TeamsAdmin, StringComparison.Ordinal));
+        var parent = Team("Private", isHidden: true);
+        var child = Team("Visible", parentId: parent.Id, isPromoted: true);
+
+        var result = await TeamDirectoryBuilder.BuildAsync(Graph(parent, child), _roles,
+            string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer, Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.Departments.Should().ContainSingle().Subject;
+        var privileged = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin;
+        row.ParentTeamName.Should().Be(privileged ? parent.Name : null);
+        row.ParentTeamSlug.Should().Be(privileged ? parent.Slug : null);
+    }
 
     [HumansFact]
     public async Task Anonymous_SeesPublicDepartmentsAndPromotedSubTeamsOnly()

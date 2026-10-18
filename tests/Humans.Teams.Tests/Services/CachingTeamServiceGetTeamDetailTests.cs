@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Teams.Contracts;
@@ -156,6 +157,40 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.ChildTeams.Should().ContainSingle(c => c.Id == child.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("anonymous")]
+    [Xunit.InlineData("member")]
+    [Xunit.InlineData(RoleNames.Admin)]
+    [Xunit.InlineData(RoleNames.Board)]
+    [Xunit.InlineData(RoleNames.TeamsAdmin)]
+    public async Task Detail_HiddenParentAndChildLinks_RequirePrivilegedRole(string role)
+    {
+        var root = MakeTeam("VisibleRoot", isPublicPage: true);
+        var hiddenChild = MakeTeam("PrivateChild", isHidden: true);
+        hiddenChild.ParentTeamId = root.Id;
+        var hiddenParent = MakeTeam("PrivateParent", isHidden: true);
+        var child = MakeTeam("VisibleChild");
+        child.ParentTeamId = hiddenParent.Id;
+        child.IsPromotedToDirectory = true;
+        SeedTeams(root, hiddenChild, hiddenParent, child);
+        var viewer = Guid.NewGuid();
+        _roleAssignmentService.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
+        _roleAssignmentService.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
+        _roleAssignmentService.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.TeamsAdmin, StringComparison.Ordinal));
+        Guid? userId = string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer;
+
+        var rootPage = await _pages.GetTeamDetailAsync(root.Slug, userId, Xunit.TestContext.Current.CancellationToken);
+        var childPage = await _pages.GetTeamDetailAsync(child.Slug, userId, Xunit.TestContext.Current.CancellationToken);
+
+        rootPage.Should().NotBeNull();
+        childPage.Should().NotBeNull();
+        var privileged = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin;
+        rootPage.ChildTeams.Select(team => team.Id).Should().Equal(privileged ? new[] { hiddenChild.Id } : []);
+        var parentId = childPage.Team.ParentTeam?.Id;
+        parentId.Should().Be(privileged ? hiddenParent.Id : (Guid?)null);
+        childPage.Team.DisplayName.Should().Be(privileged ? "PrivateParent - VisibleChild" : "VisibleChild");
     }
 
     [HumansFact]

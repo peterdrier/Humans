@@ -229,56 +229,6 @@ internal sealed class TeamService(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        // Entities (not the flat GetUserTeamMembershipsAsync projection) so DisplayName can
-        // carry the parent-team prefix for sub-team rows on the My Teams page.
-        var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-
-        var coordinatorTeamIds = memberships
-            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
-            .Select(m => m.TeamId)
-            .ToHashSet();
-
-        var childTeamsByParent = coordinatorTeamIds.Count > 0
-            ? await repo.GetActiveChildIdsByParentsAsync(coordinatorTeamIds.ToList(), cancellationToken)
-            : [];
-
-        var allManageableTeamIds = coordinatorTeamIds
-            .Union(childTeamsByParent.Select(c => c.ChildId))
-            .ToList();
-
-        var pendingCounts = allManageableTeamIds.Count > 0
-            ? await repo.GetPendingCountsByTeamIdsAsync(allManageableTeamIds, cancellationToken)
-            : new Dictionary<Guid, int>();
-
-        return memberships
-            .Select(m =>
-            {
-                var directCount = pendingCounts.GetValueOrDefault(m.TeamId, 0);
-
-                var childCount = coordinatorTeamIds.Contains(m.TeamId)
-                    ? childTeamsByParent
-                        .Where(c => c.ParentId == m.TeamId)
-                        .Sum(c => pendingCounts.GetValueOrDefault(c.ChildId, 0))
-                    : 0;
-
-                return new MyTeamMembershipSummary(
-                    m.TeamId,
-                    m.Team.DisplayName,
-                    m.Team.Slug,
-                    m.Team.IsSystemTeam,
-                    m.Role,
-                    m.JoinedAt,
-                    CanLeave: !m.Team.IsSystemTeam,
-                    PendingRequestCount: directCount + childCount);
-            })
-            .ToList();
-    }
-
     public async Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,

@@ -90,6 +90,75 @@ internal sealed class TeamPageService(
             subteamMembers);
     }
 
+    public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+        var teamIds = (await teamService.GetUserTeamMembershipsAsync(userId, cancellationToken))
+            .Select(membership => membership.TeamId)
+            .ToList();
+        if (teamIds.Count == 0) return [];
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
+        var canSeeHiddenTeams = isBoardMember
+            || await roleAssignmentService.IsUserAdminAsync(userId, cancellationToken)
+            || await roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+
+        var result = new List<MyTeamMembershipSummary>(teamIds.Count);
+        foreach (var teamId in teamIds)
+        {
+            if (!teamsById.TryGetValue(teamId, out var team) || (team.IsHidden && !canSeeHiddenTeams))
+                continue;
+
+            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership is null)
+                continue;
+
+            // Inherited coordinator: a user can manage a team if they're a
+            // direct Coordinator, a board member, or coordinate any ancestor
+            // team (matches CanUserApproveRequestsForTeamAsync's recursive
+            // parent walk via IsUserCoordinatorOfActiveTeam).
+            var canManage =
+                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
+                && !team.IsSystemTeam;
+
+            var pendingCount = 0;
+            if (canManage)
+            {
+                pendingCount += team.PendingRequestCount;
+                if (team.ChildTeamIds is not null)
+                {
+                    foreach (var childId in team.ChildTeamIds)
+                    {
+                        if (!teamsById.TryGetValue(childId, out var child) || !child.IsActive
+                            || (child.IsHidden && !canSeeHiddenTeams))
+                            continue;
+                        pendingCount += child.PendingRequestCount;
+                    }
+                }
+            }
+
+            var displayName = team.ParentTeamId.HasValue
+                && teamsById.TryGetValue(team.ParentTeamId.Value, out var parent)
+                && (!parent.IsHidden || canSeeHiddenTeams)
+                ? $"{parent.Name} - {team.Name}"
+                : team.Name;
+
+            result.Add(new MyTeamMembershipSummary(
+                team.Id,
+                displayName,
+                team.Slug,
+                team.IsSystemTeam,
+                membership.Role,
+                membership.JoinedAt,
+                CanLeave: !team.IsSystemTeam,
+                PendingRequestCount: pendingCount));
+        }
+
+        return result;
+    }
+
     internal async Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
         Guid? userId,
@@ -120,7 +189,7 @@ internal sealed class TeamPageService(
                 .ToList();
 
             return new TeamDetailResult(
-                Team: MapTeamSummary(team, parent),
+                Team: MapTeamSummary(team, parent?.IsHidden == true ? null : parent),
                 Members: coordinators,
                 ChildTeams: EnumerateChildren(team, teamsById)
                     .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
@@ -146,9 +215,10 @@ internal sealed class TeamPageService(
         var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
         var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
         var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
-        var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
+        var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
+        var canManage = isCurrentUserCoordinator || canSeeHiddenTeams;
 
-        if (team.IsHidden && !isBoardMember && !isAdmin && !isTeamsAdmin)
+        if (team.IsHidden && !canSeeHiddenTeams)
             return null;
 
         var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
@@ -157,14 +227,14 @@ internal sealed class TeamPageService(
             : 0;
 
         return new TeamDetailResult(
-            Team: MapTeamSummary(team, parent),
+            Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
             Members: team.Members
                 .OrderBy(m => m.Role)
                 .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(MapTeamDetailMemberSummary)
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)
-                .Where(c => c.IsActive)
+                .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
                 .OrderBy(c => c.Name, StringComparer.Ordinal)
                 .Select(MapTeamLink)
                 .ToList(),

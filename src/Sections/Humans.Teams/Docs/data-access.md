@@ -124,8 +124,11 @@ over `ITeamManagementService`, `ITeamResourceService`,
 `IShiftManagementService`, `ISettingsService`, `IUserService` and Auth’s
 `IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
 member/child projections over the cached `TeamInfo` snapshot, with live
-pending-request reads through `ITeamManagementService`;
-the mapper and the directory builder are pure.
+pending-request reads through `ITeamManagementService`. The My Teams projection
+uses the cached team and user-membership reads for parent names and manageable
+pending counts, keeping Auth role checks out of the decorator;
+the mapper is pure, while the directory builder combines the canonical snapshot
+with Auth role checks to hide private parent metadata.
 
 ### TeamsEmails (Scoped, internal)
 

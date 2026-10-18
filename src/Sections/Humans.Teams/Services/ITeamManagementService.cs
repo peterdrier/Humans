@@ -41,16 +41,6 @@ internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage
     public static TeamPageUpdateResult Failed(string message) => new(false, message);
 }
 
-internal sealed record MyTeamMembershipSummary(
-    Guid TeamId,
-    string TeamName,
-    string TeamSlug,
-    bool IsSystemTeam,
-    TeamMemberRole Role,
-    Instant JoinedAt,
-    bool CanLeave,
-    int PendingRequestCount);
-
 internal sealed record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -169,13 +159,6 @@ internal interface ITeamManagementService : ITeamManagement
     /// Gets the summarized team directory for anonymous or authenticated viewers.
     /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the current user's team memberships with viewer-specific pending-request counts.
-    /// </summary>
-    Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates a team's details, returning expected validation or unique-constraint refusals.

@@ -289,8 +289,14 @@ internal sealed class TeamController(
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
         var roster = await teamService.GetRosterAsync(priority, status, period, ct);
+        var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+        var visibleTeamSlugs = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(team => !team.IsHidden)
+            .Select(team => team.Slug)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var slots = roster
+            .Where(slot => canSeeHiddenTeams || visibleTeamSlugs.Contains(slot.TeamSlug))
             .OrderBy(slot => slot.Priority switch
             {
                 nameof(SlotPriority.Critical) => 0,
@@ -361,7 +367,9 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        var membershipVMs = (await teamService.GetMyTeamMembershipsAsync(user.Id, ct))
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+        var membershipVMs = (await teamPageService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
                 TeamId = m.TeamId,
@@ -379,6 +387,8 @@ internal sealed class TeamController(
         {
             Memberships = membershipVMs,
             PendingRequests = (await teamService.GetPendingRequestsForUserAsync(user.Id, ct))
+                .Where(request => canSeeHiddenTeams
+                    || (teamsById.TryGetValue(request.TeamId, out var team) && !team.IsHidden))
                 .Select(request => new TeamJoinRequestSummaryViewModel
                 {
                     Id = request.Id,
