@@ -170,11 +170,6 @@ internal sealed class CachingTeamService(
             .ToList();
     }
 
-    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
-        Guid? userId,
-        CancellationToken cancellationToken = default)
-        => await WithInner(inner => inner.GetTeamDirectoryAsync(userId, cancellationToken));
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId,

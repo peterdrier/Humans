@@ -6,6 +6,32 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
+internal sealed record TeamDirectorySummary(
+    Guid Id,
+    string Name,
+    string? Description,
+    string Slug,
+    int MemberCount,
+    bool IsSystemTeam,
+    bool IsHidden,
+    bool RequiresApproval,
+    bool IsPublicPage,
+    bool IsCurrentUserMember,
+    bool IsCurrentUserCoordinator,
+    string? ParentTeamName,
+    string? ParentTeamSlug)
+{
+    public string SortKey => ParentTeamName is not null ? $"{ParentTeamName} - {Name}" : Name;
+}
+
+internal sealed record TeamDirectoryResult(
+    bool IsAuthenticated,
+    bool CanCreateTeam,
+    IReadOnlyList<TeamDirectorySummary> MyTeams,
+    IReadOnlyList<TeamDirectorySummary> Departments,
+    IReadOnlyList<TeamDirectorySummary> SystemTeams,
+    IReadOnlyList<TeamDirectorySummary> HiddenTeams);
+
 internal sealed record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -132,6 +158,11 @@ internal sealed record TeamPageDetailResult(
 
 internal interface ITeamPageService : IApplicationService
 {
+    /// <summary>
+    /// Gets the summarized team directory for anonymous or authenticated viewers.
+    /// </summary>
+    Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets the public roster summary with optional filters applied.
     /// </summary>

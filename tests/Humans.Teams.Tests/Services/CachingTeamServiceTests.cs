@@ -174,16 +174,19 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             JoinedAt: Instant.MinValue);
 
     [HumansFact]
-    public async Task GetTeamDirectoryAsync_DelegatesToTheInnerService()
+    public async Task GetTeamDirectoryAsync_ReusesTheCanonicalSnapshotAcrossReads()
     {
-        var userId = Guid.NewGuid();
-        var expected = new TeamDirectoryResult(true, false, [], [], [], []);
-        _innerTeamService.GetTeamDirectoryAsync(userId, Arg.Any<CancellationToken>()).Returns(expected);
+        var team = SeedTeam("Public department");
+        team.IsPublicPage = true;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamDirectoryAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var first = await _pages.GetTeamDirectoryAsync(null, Xunit.TestContext.Current.CancellationToken);
+        var second = await _pages.GetTeamDirectoryAsync(null, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeSameAs(expected);
-        await _innerTeamService.Received(1).GetTeamDirectoryAsync(userId, Arg.Any<CancellationToken>());
+        first.IsAuthenticated.Should().BeFalse();
+        first.Departments.Should().ContainSingle().Which.Name.Should().Be(team.Name);
+        second.Departments.Should().BeEquivalentTo(first.Departments);
+        await _innerTeamService.Received(1).GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

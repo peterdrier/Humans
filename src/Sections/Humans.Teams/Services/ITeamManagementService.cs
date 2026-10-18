@@ -6,32 +6,6 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
-internal sealed record TeamDirectorySummary(
-    Guid Id,
-    string Name,
-    string? Description,
-    string Slug,
-    int MemberCount,
-    bool IsSystemTeam,
-    bool IsHidden,
-    bool RequiresApproval,
-    bool IsPublicPage,
-    bool IsCurrentUserMember,
-    bool IsCurrentUserCoordinator,
-    string? ParentTeamName,
-    string? ParentTeamSlug)
-{
-    public string SortKey => ParentTeamName is not null ? $"{ParentTeamName} - {Name}" : Name;
-}
-
-internal sealed record TeamDirectoryResult(
-    bool IsAuthenticated,
-    bool CanCreateTeam,
-    IReadOnlyList<TeamDirectorySummary> MyTeams,
-    IReadOnlyList<TeamDirectorySummary> Departments,
-    IReadOnlyList<TeamDirectorySummary> SystemTeams,
-    IReadOnlyList<TeamDirectorySummary> HiddenTeams);
-
 internal sealed record TeamPageCallToActionInput(string? Text, string? Url, CallToActionStyle Style);
 
 internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage)
@@ -140,11 +114,6 @@ internal interface ITeamManagementService : ITeamManagement
     /// Gets a team by its ID.
     /// </summary>
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the summarized team directory for anonymous or authenticated viewers.
-    /// </summary>
-    Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates a team's details, returning expected validation or unique-constraint refusals.

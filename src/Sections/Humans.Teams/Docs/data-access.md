@@ -128,8 +128,8 @@ pending-request reads through `ITeamManagementService`. The My Teams projection
 uses the cached team and user-membership reads for parent names and manageable
 pending counts, keeping Auth role checks out of the decorator;
 the roster expands the cached role definitions of active non-system teams and resolves assigned-user names through Users.
-The mapper is pure, while the directory builder combines the canonical snapshot
-with Auth role checks to hide private parent metadata.
+The mapper is pure. The directory page service passes the same cached snapshot and Auth role checks
+to the directory builder, which hides private parent metadata; directory reads do not reload the inner dataset.
 
 ### TeamsEmails (Scoped, internal)
 

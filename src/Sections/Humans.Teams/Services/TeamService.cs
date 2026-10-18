@@ -210,14 +210,6 @@ internal sealed class TeamService(
         return (updated, previous);
     }
 
-    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
-        Guid? userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        return await TeamDirectoryBuilder.BuildAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
-    }
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)

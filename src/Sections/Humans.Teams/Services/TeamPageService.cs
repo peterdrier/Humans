@@ -16,6 +16,14 @@ internal sealed class TeamPageService(
     IUserService userService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
+    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+        return await TeamDirectoryBuilder.BuildAsync(teamsById, roleAssignmentService, userId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
         string? priority,
         string? status,

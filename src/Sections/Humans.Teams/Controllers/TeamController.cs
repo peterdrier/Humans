@@ -42,7 +42,7 @@ internal sealed class TeamController(
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
-        var directory = await teamService.GetTeamDirectoryAsync(
+        var directory = await teamPageService.GetTeamDirectoryAsync(
             user is { HasProfile: true } ? user.Id : null, ct);
 
         var viewModel = new TeamIndexViewModel
