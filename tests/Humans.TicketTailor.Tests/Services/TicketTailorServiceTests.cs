@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Base.Diagnostics;
@@ -20,12 +21,12 @@ public class TicketTailorServiceTests
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_1", issued_ticket_id = "ticket_1", quantity = 1, total = 100, status = "completed", created_at = 1716811200L } },
+            data = new[] { new { id = "ord_1", issued_ticket_id = "ticket_1", quantity = 1, total = 100, currency = new { code = "eur" }, status = "completed", created_at = 1716811200L } },
             links = new { next = "more" }
         });
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_2", issued_ticket_id = "ticket_2", quantity = 1, total = 100, status = "completed", created_at = 1716811200L } },
+            data = new[] { new { id = "ord_2", issued_ticket_id = "ticket_2", quantity = 1, total = 100, currency = new { code = "eur" }, status = "completed", created_at = 1716811200L } },
             links = new { next = (string?)null }
         });
 
@@ -52,8 +53,10 @@ public class TicketTailorServiceTests
         (after - before).Should().Be(2, "one timing scope should be recorded per page, not once for the whole call");
     }
 
-    [HumansFact]
-    public async Task GetOrdersAsync_ParsesOrderResponse()
+    [HumansTheory]
+    [Xunit.InlineData("eur")]
+    [Xunit.InlineData("EUR")]
+    public async Task GetOrdersAsync_ParsesOrderResponse(string currency)
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -65,7 +68,7 @@ public class TicketTailorServiceTests
                     id = "ord_001",
                     buyer_details = new { first_name = "Jane", last_name = "Doe", email = "jane@example.com", name = "Jane Doe" },
                     total = 15000,
-                    currency = new { code = "eur", base_multiplier = 100 },
+                    currency = new { code = currency, base_multiplier = 100 },
                     status = "completed",
                     created_at = 1716811200L,
                     line_items = new[]
@@ -84,7 +87,58 @@ public class TicketTailorServiceTests
         orders.Should().HaveCount(1);
         orders[0].BuyerName.Should().Be("Jane Doe");
         orders[0].TotalAmount.Should().Be(150m);
+        orders[0].Currency.Should().Be("EUR");
         orders[0].DiscountCode.Should().Be("NOBO25");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("total", null)]
+    [Xunit.InlineData("total", "null")]
+    [Xunit.InlineData("status", null)]
+    [Xunit.InlineData("status", "null")]
+    [Xunit.InlineData("status", "\" \"")]
+    [Xunit.InlineData("currency", null)]
+    [Xunit.InlineData("currency", "null")]
+    [Xunit.InlineData("currency", "{}")]
+    [Xunit.InlineData("currency", "{\"code\":null}")]
+    [Xunit.InlineData("currency", "{\"code\":\" \"}")]
+    [Xunit.InlineData("currency", "{\"code\":\"usd\"}")]
+    public async Task GetOrdersAsync_RejectsIncompleteFinancialFieldsWithoutReturningAPartialList(string field, string? jsonValue)
+    {
+        const string validJson = """{"id":"ord_good","created_at":1716811200,"total":15000,"currency":{"code":"eur"},"status":"completed"}""";
+        var document = JsonNode.Parse(validJson)!.AsObject();
+        document["id"] = "ord_bad";
+        if (jsonValue is null) document.Remove(field);
+        else document[field] = JsonNode.Parse(jsonValue);
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { JsonNode.Parse(validJson)!, document },
+            links = new { next = (string?)null }
+        });
+
+        var act = async () => await TicketTailorTestHost.CreateService(handler)
+            .GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HttpRequestException>()).Which.Message.Should().Contain(field);
+    }
+
+    [HumansFact]
+    public async Task GetOrdersAsync_PreservesExplicitZeroAndPendingStatus()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "ord_free", created_at = 1716811200L, total = 0, currency = new { code = "eur" }, status = "pending" } },
+            links = new { next = (string?)null }
+        });
+
+        var orders = await TicketTailorTestHost.CreateService(handler)
+            .GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        orders.Should().ContainSingle();
+        orders[0].TotalAmount.Should().Be(0m);
+        orders[0].PaymentStatus.Should().Be("pending");
     }
 
     [HumansTheory]
@@ -457,7 +511,7 @@ public class TicketTailorServiceTests
             foreach (var id in pageIds)
                 handler.EnqueueResponse(HttpStatusCode.OK, new
                 {
-                    data = new[] { new { id, created_at = 1716811200L } },
+                    data = new[] { new { id, created_at = 1716811200L, total = 100, currency = new { code = "eur" }, status = "completed" } },
                     links = new { next = "more" }
                 });
         }
