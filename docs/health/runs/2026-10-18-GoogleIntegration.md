@@ -52,7 +52,7 @@ Independence check: pass. Findings 1, 2 and 3 came from the target's shapes and 
 
 The section ledger `src/Sections/Humans.GoogleIntegration/Docs/debt.yml` holds no rows, and the central ledger has none for this section, so there was nothing to verify. The previous target's two ledger citations (the health check's `Google.Apis` use and inline `SyncExecute`) named rows that never existed. Both are judged sound and now sit in the target's load-bearing weirdness without a citation.
 
-Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/debt.yml`. `Docs/Teams.md` still says `GoogleResource.Team` is declared.
+Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/debt.yml`. `src/Sections/Humans.Teams/Docs/Teams.md` still says `GoogleResource.Team` is declared.
 
 ## Worked
 

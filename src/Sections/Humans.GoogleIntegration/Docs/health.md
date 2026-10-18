@@ -94,7 +94,7 @@ The shapes imply:
 - **Only direct permissions are ever removed** on Drive resources; inherited Shared Drive
   permissions are classified `Inherited` and never deleted, and a delete Google refuses as
   inherited is recorded as such (`GoogleDriveAccessSyncService.cs:385`,
-  `GoogleDriveAccessSyncService.cs:564`).
+  `GoogleDriveAccessSyncService.cs:561`).
 - **A membership change is never lost**: it is written to the outbox before the caller
   returns, left pending while credentials are absent (`GoogleSyncOutboxProcessor.cs:54`),
   retried up to ten times (`GoogleSyncOutboxProcessor.cs:31`), and a permanent failure
@@ -102,10 +102,10 @@ The shapes imply:
   per-event retry (`GoogleSyncOutboxProcessor.cs:128`), never silently dropped.
 - **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
   `AddOnly` means adds only; an admin's "Sync Now" has no bypass
-  (`GoogleDriveAccessSyncService.cs:318`, `GoogleGroupSyncService.cs:382`,
+  (`GoogleDriveAccessSyncService.cs:315`, `GoogleGroupSyncService.cs:382`,
   `GoogleWorkspaceSyncService.cs:52`).
 - **Every Drive/Group permission grant or revocation leaves a sync-log row**, success or
-  failure (`GoogleDriveAccessSyncService.cs:469`, `GoogleGroupSyncService.cs:448`); account,
+  failure (`GoogleDriveAccessSyncService.cs:466`, `GoogleGroupSyncService.cs:448`); account,
   rename and group-settings writes leave audit entries instead.
 - **Outbox-driven grants record their trigger**: `TeamMemberJoined` for a membership event,
   `ManualSync` for an admin rerun (`GoogleSyncOutboxProcessor.cs:81`).
@@ -114,20 +114,20 @@ The shapes imply:
 - **The person's Google-email status is only set from sync when Google actually answered**:
   valid after an accepted grant (`GoogleSyncOutboxProcessor.cs:118`), rejected after Google
   refused the target (`GoogleWorkspaceSyncService.cs:148`,
-  `GoogleDriveAccessSyncService.cs:490`, `GoogleGroupSyncService.cs:437`), untouched
+  `GoogleDriveAccessSyncService.cs:487`, `GoogleGroupSyncService.cs:437`), untouched
   otherwise.
 - **Provisioning captures the recovery address before linking the new mailbox**
   (`EmailProvisioningService.cs:91`), rejects any address already bound to another human
   or to a team's group (`EmailProvisioningService.cs:55`, `EmailProvisioningService.cs:70`),
   and audits the act (`EmailProvisioningService.cs:119`).
 - **Without credentials the section boots, stubbed**: registration swaps real clients for
-  stubs by configuration alone, in every environment (`Section.cs:47`); the missing
+  stubs by configuration alone, in every environment (`Section.cs:82`); the missing
   credentials surface through the health check, never as a refusal to start. The
   reconciliation job (`GoogleResourceReconciliationJob.cs:39`) and the scoped sync
   schedulers (`HangfireGoogleDriveAccessSyncScheduler.cs:14`,
   `HangfireGoogleGroupSyncScheduler.cs:14`) skip rather than reconcile against stubs.
 - **A reconcile never stops mid-list**: one resource's failure is recorded against that
-  resource and the walk continues (`GoogleDriveAccessSyncService.cs:223`), and one phase's
+  resource and the walk continues (`GoogleDriveAccessSyncService.cs:220`), and one phase's
   failure in the nightly job does not stop the next phase
   (`GoogleResourceReconciliationJob.cs:108`).
 - **Every `/Google/*` screen and action denies Volunteers and Coordinators**: the sync page
