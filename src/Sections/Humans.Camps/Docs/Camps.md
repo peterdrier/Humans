@@ -145,6 +145,8 @@ Aggregate-local navs: `CampRoleAssignment.CampSeason`, `CampRoleAssignment.Defin
 
 All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb array.
 
+Registration and edit forms require all eight enum select fields to be posted before any camp write. Missing choices cannot reset saved community or placement settings. Explicit zero-valued choices and blank SoundZone, SpaceRequirement or ElectricalGrid selections remain valid.
+
 ## Routing
 
 Four controllers serve this section. The MVC URL surface is dual-routed under `/Camps/*` (English) and `/Barrios/*` (Spanish); the API surface is dual-routed under `/api/camps/*` and `/api/barrios/*`. The dual-route alias is governed by an invariant below — no other section may add aliases.

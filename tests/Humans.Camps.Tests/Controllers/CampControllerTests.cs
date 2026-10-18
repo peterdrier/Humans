@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Reflection;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
@@ -11,12 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
@@ -37,6 +40,91 @@ public class CampControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+
+    [HumansTheory]
+    [InlineData(false, "AcceptingMembers")]
+    [InlineData(false, "KidsWelcome")]
+    [InlineData(false, "KidsVisiting")]
+    [InlineData(false, "HasPerformanceSpace")]
+    [InlineData(false, "AdultPlayspace")]
+    [InlineData(false, "SpaceRequirement")]
+    [InlineData(false, "SoundZone")]
+    [InlineData(false, "ElectricalGrid")]
+    [InlineData(false, "")]
+    [InlineData(true, "AcceptingMembers")]
+    [InlineData(true, "KidsWelcome")]
+    [InlineData(true, "KidsVisiting")]
+    [InlineData(true, "HasPerformanceSpace")]
+    [InlineData(true, "AdultPlayspace")]
+    [InlineData(true, "SpaceRequirement")]
+    [InlineData(true, "SoundZone")]
+    [InlineData(true, "ElectricalGrid")]
+    [InlineData(true, "")]
+    public async Task Camp_forms_require_posted_choices_and_preserve_explicit_zero_or_blank(bool edit, string omitted)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), userId).Returns(CampUpdateResult.Success());
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, 0, default)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(new Camp { Id = camp.Id, Slug = camp.Slug }));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Alpha Camp", ["ContactEmail"] = "alpha@example.com", ["ContactPhone"] = "+34600000000",
+            ["BlurbLong"] = "Long description", ["BlurbShort"] = "Short description", ["Languages"] = "en",
+            ["SeasonId"] = camp.Seasons[0].Id.ToString(), ["MemberCount"] = "1",
+            ["AcceptingMembers"] = "0", ["KidsWelcome"] = "0", ["KidsVisiting"] = "0",
+            ["HasPerformanceSpace"] = "0", ["AdultPlayspace"] = "0",
+            ["SpaceRequirement"] = "", ["SoundZone"] = "", ["ElectricalGrid"] = ""
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CampRegisterViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
+        var writes = _camps.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "CreateCampAsync" or "UpdateCampAsync").ToList();
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var arguments = writes.Should().ContainSingle().Which.GetArguments();
+            var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
+            data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
+            data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
+            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
+            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
+            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.SpaceRequirement.Should().BeNull();
+            data.SoundZone.Should().BeNull();
+            data.ElectricalGrid.Should().BeNull();
+        }
+    }
 
     [HumansTheory]
     [InlineData("Edit")]
