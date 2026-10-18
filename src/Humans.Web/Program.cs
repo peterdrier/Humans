@@ -684,9 +684,9 @@ app.UseMiddleware<PrivateUploadMiddleware>();
 // all, so after a release some long-running kiosk tablets kept serving week-old CSS/JS while others
 // didn't. Fingerprinted URLs (asp-append-version / FileVersionProvider) change per release, but
 // unfingerprinted paths — and nested JS module imports, which no tag helper can reach — need this.
-// /uploads/profile-pictures/ (GDPR gate, via /Profile/Picture/{id}) and /uploads/issues/ (reach check, via
-// /Issues/{id}/Screenshot) are structurally unreachable here: GatedUploadsFileProvider canonicalizes the
-// subpath, so alternate spellings like /uploads//issues/ cannot bypass the gate.
+// Profile pictures, issue screenshots and expense attachments are served through their authorized
+// controller routes. Their upload folders are structurally unreachable here: GatedUploadsFileProvider
+// canonicalizes the subpath, so alternate spellings like /uploads//issues/ cannot bypass the gate.
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Humans.Web.Hosting.GatedUploadsFileProvider(app.Environment.WebRootFileProvider),

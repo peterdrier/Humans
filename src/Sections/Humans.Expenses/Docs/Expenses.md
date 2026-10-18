@@ -214,7 +214,9 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Negative Access Rules
 
-- Regular members **cannot** see other users' expense reports or attachments.
+- Regular members **cannot** see other users' expense reports or attachments. The Shell blocks
+  `uploads/expense-attachments/` from static delivery, including alternate path spellings;
+  files are available only through the report-authorized attachment download/view routes.
 - Regular members **cannot** approve, reject, or endorse (unless they are a coordinator for the relevant category).
 - Coordinators **cannot** approve — that requires FinanceAdmin/Admin.
 - Coordinators **cannot** edit, submit, or file a report for anyone else — endorsement is as far as the role goes. Neither can a plain member on another member's report.
