@@ -5,8 +5,9 @@ namespace Humans.Consent.Contracts;
 
 /// <summary>
 /// Cross-section signal for the per-user Consent cache (T-04). Implemented by
-/// the Singleton <c>CachingConsentService</c> decorator and consumed by the
-/// account-merge orchestrator so the surviving target's <c>UserConsentInfo</c>
+/// the Singleton <c>CachingConsentService</c> decorator. Consent writes evict
+/// entries before post-save required-consent checks; the account-merge
+/// orchestrator evicts them so the surviving target's <c>UserConsentInfo</c>
 /// is rebuilt against the post-merge source-id chain.
 /// </summary>
 /// <remarks>

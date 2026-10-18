@@ -224,6 +224,12 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index));
         }
 
+        if (model.IsRecurring && !EventRecurrenceDays.HasOnlyEventOffsets(model.RecurrenceDays, eventSettings.EventEndOffset))
+        {
+            logger.LogWarning("Moderator event edit rejected: invalid recurrence days for event {EventId}", eventId);
+            ModelState.AddModelError(nameof(model.RecurrenceDays), "Choose each recurrence day once from this event's calendar.");
+        }
+
         if (!ModelState.IsValid)
         {
             if (isCampEvent)

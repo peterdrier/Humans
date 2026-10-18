@@ -40,11 +40,11 @@ internal sealed class GovernanceEmails(
             Lf("Governance_Email_ApplicationRejected_Body", Encode(userName), tier, ReasonLine(reason), _settings.AdminAddress),
             "application_rejected", MessageCategory.Governance));
 
-    public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null)
+    public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, LocalDate expiresAt, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
             Lf("Governance_Email_TermRenewalReminder_Subject", tierName),
-            Lf("Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt), _settings.BaseUrl),
+            Lf("Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt.ToDate()), _settings.BaseUrl),
             "term_renewal_reminder", MessageCategory.Governance));
 
     public EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)

@@ -93,14 +93,15 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 - When a contributing section changes a single human's EE-relevant data, it evicts that human
   through `IEarlyEntryInvalidator.InvalidateUser` — Camps on `SetEarlyEntryAsync`, member
   removal, GDPR erasure and account merge; Shifts on every build-shift
-  confirm/bail/remove/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
+  confirm/bail/remove/no-show/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
   erasure and merge.
 - When an event-settings save moves every holder's date at once (the gate date, the build
   offset, `EventSettings.EarlyEntryStartOffset`), Settings fans out over
   `IEventSettingsChangeListener` and `CachingEarlyEntryService` evicts everyone — Settings
   names no consumer.
+- Shift edits and rota-team moves evict all cached answers, so shift dates and source labels reload.
 - When a team's `EarlyEntryEnabled` flag flips, Teams calls `InvalidateAll`, because that
-  changes *who* contributes.
+  changes *who* contributes. Team-name changes also evict all answers so source labels reload.
 - Eviction is pure: the next read lazy-reloads.
 
 ## Cross-Section Dependencies

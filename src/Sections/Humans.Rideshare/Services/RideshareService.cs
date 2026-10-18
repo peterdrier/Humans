@@ -3,6 +3,7 @@ using System.Resources;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Data;
@@ -35,6 +36,7 @@ internal sealed class RideshareService(
 
     private const string MineUrl = "/Rideshare/Mine";
     private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
+    private static readonly TrackedLock InterestMutationLock = new("Rideshare.Interest");
 
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
@@ -109,6 +111,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.UserId != actorUserId)
@@ -152,6 +155,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.UserId != actorUserId)
@@ -191,6 +195,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var request = await repository.GetRequestAsync(requestId, ct)
             ?? throw new KeyNotFoundException($"Request {requestId} not found.");
         if (request.UserId != actorUserId)
@@ -210,6 +215,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var request = await repository.GetRequestAsync(requestId, ct)
             ?? throw new KeyNotFoundException($"Request {requestId} not found.");
         if (request.UserId != actorUserId)
@@ -228,6 +234,7 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> ExpressInterestAsync(
         Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.Status != TripStatus.Active)
@@ -271,6 +278,7 @@ internal sealed class RideshareService(
             CreatedAt = clock.GetCurrentInstant(),
         };
         await repository.AddInterestAsync(interest, ct);
+        mutation.Dispose();
 
         var recipient = request?.UserId ?? trip.UserId;
         var (titleKey, place, date) = request is null
@@ -289,6 +297,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
         if (interest.Status != InterestStatus.Pending)
             return new(Refusal: new("Rideshare_Error_InterestNotPending"));
@@ -302,6 +311,7 @@ internal sealed class RideshareService(
         interest.Status = InterestStatus.Accepted;
         interest.RespondedAt = clock.GetCurrentInstant();
         await repository.UpdateInterestAsync(interest, ct);
+        mutation.Dispose();
 
         await NotifyAsync(
             NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
@@ -315,6 +325,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
         if (interest.Status != InterestStatus.Pending)
             return new(Refusal: new("Rideshare_Error_InterestNotPending"));
@@ -322,6 +333,7 @@ internal sealed class RideshareService(
         interest.Status = InterestStatus.Declined;
         interest.RespondedAt = clock.GetCurrentInstant();
         await repository.UpdateInterestAsync(interest, ct);
+        mutation.Dispose();
 
         // Declines are private: neutral wording, no reason captured or shown.
         // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
@@ -337,6 +349,7 @@ internal sealed class RideshareService(
 
     public async Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
+        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
         var interest = await repository.GetInterestAsync(interestId, ct)
             ?? throw new KeyNotFoundException($"Interest {interestId} not found.");
         if (interest.FromUserId != actorUserId && PostingOwner(interest) != actorUserId)
@@ -346,6 +359,7 @@ internal sealed class RideshareService(
 
         interest.Status = InterestStatus.Withdrawn;
         await repository.UpdateInterestAsync(interest, ct);
+        mutation.Dispose();
         return new();
     }
 
@@ -384,6 +398,7 @@ internal sealed class RideshareService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await users.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var trips = await repository.GetTripsForUserAsync(userId, ct);
         var requests = await repository.GetRequestsForUserAsync(userId, ct);
         var interests = await repository.GetInterestsForUserAsync(userId, ct);

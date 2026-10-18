@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text;
+using System.Net;
 using AwesomeAssertions;
 using Humans.Campaigns.Services;
 using Humans.Email.Contracts;
@@ -62,6 +64,78 @@ public sealed class CampaignsEmailsTests
         msg.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         msg.HtmlBody.Should().NotContain("<script>");
         msg.HtmlBody.Should().Contain("<img src=\"https://example.com/poster.png\"");
+    }
+
+    [HumansFact]
+    public void CampaignCode_DoesNotExpandPlaceholdersInsideInsertedValues()
+    {
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            subject: "{{Code}} / {{Name}} / {{Code}} / {{code}}",
+            body: "**{{Code}}** / {{Name}}", code: "Value {{Name}} & $1")
+            with
+        { RecipientName = "Name {{Code}} <Admin>" };
+        var message = new CampaignsEmails().CampaignCode(request);
+        message.Subject.Should().Be("Value {{Name}} & $1 / Name {{Code}} <Admin> / Value {{Name}} & $1 / {{code}}");
+        message.HtmlBody.Should().Contain("<strong>Value {{Name}} &amp; $1</strong>")
+            .And.Contain("Name {{Code}} &lt;Admin&gt;");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Hi {{Name}} / {{Code}}")]
+    [Xunit.InlineData("`{{Name}}` / `{{Code}}`")]
+    [Xunit.InlineData("```\n{{Name}} / {{Code}}\n```")]
+    public void CampaignCode_InsertedValuesRemainLiteralMarkdownData(string body)
+    {
+        const string name = "![portrait](https://example.org/tracker.png)";
+        const string code = "`[redeem](https://example.org/redirect)`";
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: code)
+            with
+        { RecipientName = name };
+
+        var message = new CampaignsEmails().CampaignCode(request);
+
+        message.HtmlBody.Should().NotContain("<img").And.NotContain("<a ");
+        message.HtmlBody.Should().Contain(name).And.Contain(code);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("[Redeem]({{Code}})", "javascript:alert(1)", false)]
+    [Xunit.InlineData("![{{Name}}]({{Code}})", "http://example.org/tracker.png", false)]
+    [Xunit.InlineData("![{{Name}}]({{Code}})", "https://example.org/poster.png", true)]
+    public void CampaignCode_AuthoredDestinationsAreSanitizedAfterSubstitution(string body, string url, bool allowed)
+    {
+        var message = new CampaignsEmails().CampaignCode(Request(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: url));
+
+        message.HtmlBody.Contains(url, StringComparison.Ordinal).Should().Be(allowed);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 899)]
+    [Xunit.InlineData(false, 900)]
+    [Xunit.InlineData(true, 899)]
+    [Xunit.InlineData(true, 900)]
+    public void CampaignCode_BoundsExpandedSubjectWithoutLosingItsContents(bool astral, int prefixLength)
+    {
+        var code = string.Concat(Enumerable.Repeat(astral ? "🎟" : "X", 100));
+        var prefix = new string('S', prefixLength) + " ";
+        var fullSubject = prefix + code;
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            subject: prefix + "{{Code}}", body: "Ready.", code: code);
+
+        var message = new CampaignsEmails().CampaignCode(request);
+
+        message.Subject.EnumerateRunes().Count().Should().Be(1000);
+        if (prefixLength == 899)
+        {
+            message.Subject.Should().Be(fullSubject);
+            message.HtmlBody.Should().Be("<p>Ready.</p>\n");
+        }
+        else
+        {
+            message.Subject.Should().EndWith("…");
+            WebUtility.HtmlDecode(message.HtmlBody).Should().Contain(fullSubject).And.Contain("Ready.");
+        }
     }
 
     [HumansFact]

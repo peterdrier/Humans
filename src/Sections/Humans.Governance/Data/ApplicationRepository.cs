@@ -210,16 +210,24 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
     }
 
     public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
-        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default)
+    {
+        var approved = await WithContextAsync(async ctx => await ctx.Applications
             .AsNoTracking()
-            .Where(a =>
-                a.Status == ApplicationStatus.Approved &&
-                a.TermExpiresAt != null &&
-                a.TermExpiresAt <= reminderThreshold &&
-                a.TermExpiresAt >= today &&
-                a.RenewalReminderSentAt == null)
+            .Where(a => a.Status == ApplicationStatus.Approved)
             .ToListAsync(ct), ct);
+
+        // Select the current approval before filtering: an older term must not
+        // reappear after a renewal or after the latest reminder was sent.
+        return approved
+            .GroupBy(a => new { a.UserId, a.MembershipTier })
+            .Select(g => g.MaxBy(a => a.SubmittedAt)!)
+            .Where(a => a.TermExpiresAt != null
+                && a.TermExpiresAt <= reminderThreshold
+                && a.TermExpiresAt >= today
+                && a.RenewalReminderSentAt == null)
+            .ToList();
+    }
 
     public async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default)

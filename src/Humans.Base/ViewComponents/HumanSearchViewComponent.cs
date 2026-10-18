@@ -33,6 +33,7 @@ public sealed class HumanSearchViewComponent(IUserService userService) : ViewCom
             if (info?.IsActive == true)
             {
                 selectedBurnerName = info.BurnerName;
+                selectedUserId = info.Id;
             }
             else
             {

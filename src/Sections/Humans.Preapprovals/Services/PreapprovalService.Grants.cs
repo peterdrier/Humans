@@ -247,8 +247,8 @@ internal sealed partial class PreapprovalService
             $"{(grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);
         var info = ToInfo(grant, program);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", Euros(old), ct);
-        await EmailAsync(info, PreapprovalNoticeKind.AmountChanged, Euros(old), ct);
+        await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);
+        await EmailAsync(info, PreapprovalNoticeKind.AmountChanged, null, ct, previousAmount: old);
         return PreapprovalMutationResult.Ok;
     }
 
@@ -305,7 +305,7 @@ internal sealed partial class PreapprovalService
 
     private async Task AnnounceApplicationAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
-        await NotifyManagersAsync(program, info, ct);
-        await EmailManagersAsync(program, info, ct);
+        await SafeAsync(() => NotifyManagersAsync(program, info, ct), "notify managers", info.Id);
+        await SafeAsync(() => EmailManagersAsync(program, info, ct), "email managers", info.Id);
     }
 }

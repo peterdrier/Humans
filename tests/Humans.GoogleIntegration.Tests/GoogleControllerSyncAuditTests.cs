@@ -9,6 +9,7 @@ using Humans.GoogleIntegration.Models;
 using NodaTime;
 using Humans.GoogleIntegration.Services;
 using Humans.Users.Contracts;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,6 +22,30 @@ public sealed class GoogleControllerSyncAuditTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
+    private readonly IEmailProvisioningService _provisioning = Substitute.For<IEmailProvisioningService>();
+
+    [HumansFact]
+    public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
+    {
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var controller = BuildSut(Xunit.TestContext.Current.CancellationToken);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        const string warning = "Account created; ask an admin to reset the password.";
+        _provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
+            .Returns(new EmailProvisioningResult(true, "person@nobodies.team", "personal@example.org", WarningMessage: warning));
+
+        var result = await controller.ProvisionEmail(targetId, "person");
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
+        controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
+    }
 
     [HumansFact]
     public async Task Resource_WithUnknownId_ReturnsNotFound()
@@ -100,7 +125,7 @@ public sealed class GoogleControllerSyncAuditTests
         Substitute.For<IGoogleSyncManagement>(),
         Substitute.For<IGoogleGroupSync>(),
         _resources,
-        Substitute.For<IEmailProvisioningService>(),
+        _provisioning,
         Substitute.For<IGoogleAdminService>(),
         _syncLog,
         NullLogger<GoogleController>.Instance)

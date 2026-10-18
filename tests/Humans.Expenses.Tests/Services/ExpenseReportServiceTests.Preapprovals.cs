@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;
@@ -163,6 +164,34 @@ public sealed partial class ExpenseReportServiceTests
         loaded.HoldedAccountNumber.Should().Be(CategoryAccountNumber);
         loaded.BudgetCategoryId.Should().Be(category.Id);
         loaded.BudgetYearId.Should().Be(year.Id);
+    }
+
+    [HumansTheory]
+    [InlineData(ExpenseReportStatus.Draft, 62900600, "acc-new-program")]
+    [InlineData(ExpenseReportStatus.Submitted, GrantAccountNumber, GrantAccountId)]
+    [InlineData(ExpenseReportStatus.CoordinatorEndorsed, GrantAccountNumber, GrantAccountId)]
+    public async Task UpdateDraft_ProgramAccountChange_DoesNotMoveASubmittedStamp(
+        ExpenseReportStatus status, int expectedAccountNumber, string expectedAccountId)
+    {
+        var submitter = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var held = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, held.Id, status, maxAmount: 150m);
+        _preapprovals.GetGrantAsync(held.Id, Arg.Any<CancellationToken>())
+            .Returns(held with { HoldedAccountNumber = 62900600, HoldedAccountId = "acc-new-program" });
+
+        var result = await _sut.UpdateDraftWithResultAsync(
+            id, admin, true, GrantAccountNumber, "Corrected subject", held.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.HoldedAccountNumber.Should().Be(expectedAccountNumber);
+        loaded.HoldedAccountId.Should().Be(expectedAccountId);
+        loaded.MaxAmount.Should().Be(150m);
+        loaded.BudgetCategoryId.Should().BeNull();
+        loaded.BudgetYearId.Should().BeNull();
+        loaded.Note.Should().Be("Corrected subject");
     }
 
     [HumansFact]

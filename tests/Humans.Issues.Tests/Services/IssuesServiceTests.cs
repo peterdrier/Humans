@@ -720,7 +720,7 @@ public sealed class IssuesServiceTests
     [Xunit.InlineData(NotificationSource.IssueComment)]
     [Xunit.InlineData(NotificationSource.IssueStatusChanged)]
     [Xunit.InlineData(NotificationSource.IssueAssigned)]
-    public async Task IssueNotices_LongTitleAndDetail_FitStorageAndLinkToFullContent(NotificationSource source)
+    public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSource source)
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
@@ -763,17 +763,22 @@ public sealed class IssuesServiceTests
         }
 
         var args = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        var noticeTitle = (string)args[3]!;
-        var body = (string)args[5]!;
-        noticeTitle.EnumerateRunes().Count().Should().Be(200);
-        noticeTitle.Should().EndWith("…");
-        body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(2000);
-        body.Should().Contain(title);
-        if (source != NotificationSource.IssueStatusChanged)
+        var titlePrefix = source switch
         {
-            body.EnumerateRunes().Count().Should().Be(2000);
-            body.Should().EndWith("…");
-        }
+            NotificationSource.IssueSubmitted => "Se presentó un asunto nuevo: ",
+            NotificationSource.IssueComment => "Nuevo comentario sobre el asunto: ",
+            NotificationSource.IssueStatusChanged => "El estado del asunto cambió: ",
+            NotificationSource.IssueAssigned => "Se te asignó un asunto: ",
+            _ => throw new ArgumentOutOfRangeException(nameof(source))
+        };
+        args[3].Should().Be(titlePrefix + title);
+        var resources = new System.Resources.ResourceManager(typeof(IssuesResource));
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("es");
+        args[5].Should().Be(source == NotificationSource.IssueStatusChanged
+            ? string.Format(culture, resources.GetString("Issue_Notice_StatusChangedBody", culture)!,
+                resources.GetString("Enum_IssueStatus_Open", culture),
+                resources.GetString("Enum_IssueStatus_InProgress", culture))
+            : detail);
         args[0].Should().Be(source);
         args[6].Should().Be($"/Issues/{issueId}");
         ((IReadOnlyList<Guid>)args[4]!).Should().Equal(recipientId);
@@ -874,6 +879,67 @@ public sealed class IssuesServiceTests
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "issue_comment"),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task HandlerReply_RequestedResolutionIsDurableBeforeEmailStarts()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        IssueStatus? observedStatus = null;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                observedStatus = (await _issuesDb.Issues.AsNoTracking().SingleAsync(
+                    i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Status;
+            });
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Comment.Should().NotBeNull();
+        observedStatus.Should().Be(IssueStatus.Resolved);
+    }
+
+    [HumansTheory]
+    [InlineData("name")]
+    [InlineData("address")]
+    [InlineData("enqueue")]
+    public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(string failure)
+    {
+        var reporterId = Guid.NewGuid();
+        var reporter = SeedUser(reporterId, "Reporter");
+        reporter.Email = "reporter@test.com";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        var error = new IOException("Email preparation unavailable");
+        if (string.Equals(failure, "name", StringComparison.Ordinal))
+            _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
+                .Returns(_ => ValueTask.FromException<UserInfo?>(error));
+        else if (string.Equals(failure, "address", StringComparison.Ordinal))
+            _userEmailService.GetNotificationTargetEmailsAsync(
+                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(error));
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(error));
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Comment.Should().NotBeNull();
+        result.Comment.Content.Should().Be("Fixed this");
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(
+            i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(IssueStatus.Resolved);
+        (await _issuesDb.IssueComments.CountAsync(c => c.IssueId == issueId,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        await _notificationService.Received().SendAsync(
+            NotificationSource.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        _navBadge.Received().Invalidate();
     }
 
     [HumansFact]

@@ -105,6 +105,7 @@
                                     <div class="collapse mt-2" id="@addId">
                                         <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2" style="max-width: 22rem;">
                                             @Html.AntiForgeryToken()
+                                            <input type="hidden" name="year" value="@Model.Year" />
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
                                             <vc:human-search field-name="userId"
                                                              instance-key="@($"role-{role.DefinitionId:N}")"
@@ -136,6 +137,7 @@
                 <div class="card-body">
                     <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
                         @Html.AntiForgeryToken()
+                        <input type="hidden" name="year" value="@Model.Year" />
                         <vc:human-search field-name="userId" scope="Name" placeholder="@SharedLocalizer["Search_Title"].Value" />
                         <button type="submit" class="btn btn-outline-success" title="@Localizer["Camps_Members_AddActiveMember"]">
                             <i class="fa-solid fa-user-plus"></i>

@@ -91,8 +91,6 @@ public class AccountProvisioningServiceTests
         // --- Methods not exercised by these tests ---
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
@@ -186,9 +184,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task AddAsync(Profile profile, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -204,11 +200,8 @@ public class AccountProvisioningServiceTests
             Instant now,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task ReassignSubAggregatesToUserAsync(
+        public Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task ReconcileCVEntriesAsync(
-            Guid profileId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>

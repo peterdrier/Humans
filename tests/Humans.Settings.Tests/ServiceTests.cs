@@ -269,6 +269,34 @@ public sealed class ServiceTests
         _listenerTwo.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, -1, 9)]
+    [Xunit.InlineData(true, -1, 9)]
+    [Xunit.InlineData(false, 6, 5)]
+    [Xunit.InlineData(true, 6, 5)]
+    public async Task EventWrites_RejectInvertedWindowsBeforeChangingRows(bool seed, int eventEnd, int strikeEnd)
+    {
+        var current = MakeEntity(Guid.NewGuid());
+        _repository.GetActiveEventSettingsAsync(TestContext.Current.CancellationToken).Returns(current);
+        var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
+        {
+            EventEndOffset = eventEnd,
+            StrikeEndOffset = strikeEnd,
+        };
+        var sut = BuildSut();
+        var act = () => seed
+            ? sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken)
+            : sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repository.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name,
+            nameof(ISettingsRepository.UpsertEventSettingsAsync), StringComparison.Ordinal)).Should().BeEmpty();
+        current.Status.Should().Be(EventSettingsStatus.Active);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _listenerOne.ReceivedCalls().Should().BeEmpty();
+        _listenerTwo.ReceivedCalls().Should().BeEmpty();
+    }
+
     // ── The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
 
     [HumansFact]

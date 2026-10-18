@@ -19,9 +19,8 @@ namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
 /// Step 2 of the onboarding widget — covers the SignUp POST and Skip POST
-/// endpoints. The Shifts GET is exercised separately at the integration layer
-/// because its response model is built from <see cref="IShiftManagementService"/>
-/// and does not affect step routing.
+/// endpoints, plus cancellation of the Shifts GET. Rendered response models
+/// are exercised separately at the integration layer.
 /// </summary>
 public class OnboardingWidgetControllerShiftsTests
 {
@@ -61,22 +60,76 @@ public class OnboardingWidgetControllerShiftsTests
         };
         // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.
         ctrl.Url = Substitute.For<IUrlHelper>();
+        ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            _http,
+            Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
         return ctrl;
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Shifts_Get_ShowsResolvedAccountsExistingSignup(bool mergedAlias)
+    {
+        var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        var shiftId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [], [],
+                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last"), []));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn());
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UrgentShiftInfo>());
+        _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(c => new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(c.Arg<Guid>())));
+        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(userId,
+                [ShiftFixtures.Signup(shiftId: shiftId, status: SignupStatus.Pending)])));
+
+        var result = await BuildSut(inputId).Shifts(ct: TestContext.Current.CancellationToken);
+
+        var model = Assert.IsType<Humans.Onboarding.Models.ShiftsStepViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Contains(shiftId, model.UserSignupShiftIds);
+        Assert.Equal(SignupStatus.Pending, model.UserSignupStatuses[shiftId]);
+    }
+
     [HumansFact]
-    public async Task SignUp_Post_CallsService_AndRedirectsToConsents()
+    public async Task Shifts_Get_StopsBrowseReadWhenRequestIsAbandoned()
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn());
+        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId)));
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await request.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<UrgentShiftInfo>)Array.Empty<UrgentShiftInfo>();
+            });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildSut(userId).Shifts(ct: request.Token));
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("localized early-entry capacity warning")]
+    public async Task SignUp_Post_CallsService_AndRedirectsToConsents(string? warning)
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
-            .Returns(SignupResult.Ok(Guid.NewGuid()));
+            .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.SignUp(shiftId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
         await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
     }
 
@@ -88,9 +141,6 @@ public class OnboardingWidgetControllerShiftsTests
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
-        ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
-            _http,
-            Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
 
         var result = await ctrl.SignUp(shiftId);
 
@@ -98,6 +148,23 @@ public class OnboardingWidgetControllerShiftsTests
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
         // Use the canonical TempData key so <vc:temp-data-alerts /> reads it.
         Assert.Equal("nope", ctrl.TempData[TempDataKeys.ErrorMessage]);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_Post_PreservesPartialSignupWarningAcrossRedirect()
+    {
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        const string warning = "localized warning naming full days omitted from signup";
+        _signups.SignUpRangeAsync(userId, rotaId, -3, -1)
+            .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.SignUpRange(rotaId, -3, -1);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
     }
 
     [HumansFact]

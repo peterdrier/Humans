@@ -13,8 +13,8 @@ namespace Humans.Governance.Services;
 internal interface IGovernanceManagement : IGovernanceService, IGovernanceWrite, IApplicationService
 {
     /// <summary>
-    /// Returns every <see cref="ApplicationStatus.Approved"/> application
-    /// whose <c>TermExpiresAt</c> falls between <paramref name="today"/>
+    /// Returns the latest <see cref="ApplicationStatus.Approved"/> application per user and tier
+    /// when its <c>TermExpiresAt</c> falls between <paramref name="today"/>
     /// (inclusive) and <paramref name="reminderThreshold"/> (inclusive) and
     /// whose <c>RenewalReminderSentAt</c> is still null. Used by the term
     /// renewal reminder job so it can enumerate candidates without reading

@@ -150,22 +150,25 @@ public class OnboardingWidgetStateTests
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
 
-    [HumansFact]
-    public async Task ProfileWithCurrentEventSignup_ReturnsConsents()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProfileWithCurrentEventSignup_ReturnsConsents(bool mergedAlias)
     {
         var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var eventId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(
                 userId,
                 [ShiftFixtures.Signup(shiftId: shiftId, status: SignupStatus.Pending)])));
 
-        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
+        var step = await BuildSut().GetCurrentStepAsync(inputId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }

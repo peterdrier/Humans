@@ -153,6 +153,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La categoría '{0}' coincide con más de una categoría activa.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>El campo Date es obligatorio.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date debe tener el formato yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>El inicio y el final del evento deben estar entre los años 0001 y 9999, tanto en UTC como en la zona horaria del evento.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>El campo StartTime es obligatorio.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime debe tener el formato HH:mm.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes debe estar entre 15 y 480.</value></data>
@@ -177,4 +178,5 @@
   <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;Tu evento &lt;strong&gt;{1}&lt;/strong&gt; no fue aprobado para la guía de eventos.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Puedes editar y volver a enviar tu evento aquí: &lt;a href="{3}"&gt;Editar evento&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Se han solicitado cambios en el envío de tu evento</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;El equipo de moderación ha solicitado cambios en tu evento &lt;strong&gt;{1}&lt;/strong&gt; antes de poder aprobarlo.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Comentarios:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Actualízalo y vuelve a enviarlo aquí: &lt;a href="{3}"&gt;Editar evento&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Elige cada día de repetición una sola vez en el calendario de este evento.</value></data>
 </root>

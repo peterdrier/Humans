@@ -107,7 +107,8 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
+    public async Task UpdateAsync(
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Attach the detached entity and mark only its own scalar properties as
@@ -116,12 +117,14 @@ internal sealed partial class UserRepository
         // existing related rows when those collections are empty on the in-memory entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+        if (volunteerHistory is not null)
+            await ReconcileCVEntriesAsync(ctx, profile.Id, volunteerHistory, ct);
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct, displayName);
         await ctx.SaveChangesAsync(ct);
     }
 
     private static async Task UpdateUserStateFromProfileAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+        UsersDbContext ctx, Profile profile, CancellationToken ct, string? displayName = null)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is null)
@@ -130,6 +133,8 @@ internal sealed partial class UserRepository
         // #1097 dual-write: the names belong to the human, not the membership profile.
         // Every Profile write funnels through AddAsync/UpdateAsync, so this is the one seam.
         CopyNamesToUser(user, profile);
+        if (displayName is not null)
+            user.DisplayName = displayName;
         user.State = UserStateEvaluator.Classify(user, profile);
     }
 
@@ -154,12 +159,6 @@ internal sealed partial class UserRepository
             CopyNamesToUser(user, profile);
     }
 
-    public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        AnonymizeProfileInternalAsync(userId, "Merged", "User", ct);
-
-    public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        AnonymizeProfileInternalAsync(userId, "Deleted", "User", ct);
-
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -168,7 +167,7 @@ internal sealed partial class UserRepository
         if (profile is not null)
         {
             // Article 9 special-category data — health and diet. Not touched by the
-            // shared anonymization path because the merge fold must not drop them.
+            // profile fold because a merge must not drop them.
             profile.DietaryPreference = null;
             profile.Allergies = [];
             profile.Intolerances = [];
@@ -271,7 +270,7 @@ internal sealed partial class UserRepository
         return result;
     }
 
-    public async Task ReassignSubAggregatesToUserAsync(
+    public async Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -280,12 +279,16 @@ internal sealed partial class UserRepository
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
         if (sourceProfile is null)
-            return;
+            return null;
 
         var targetProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == targetUserId, ct);
         if (targetProfile is null)
-            return;
+            return null;
+
+        var previousPicture = (ProfileId: sourceProfile.Id,
+            ContentType: sourceProfile.ProfilePictureContentType,
+            StorageKey: sourceProfile.ProfilePictureStorageKey);
 
         var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == sourceProfile.Id)
@@ -343,8 +346,7 @@ internal sealed partial class UserRepository
             }
         }
 
-        // Anonymize the source profile in place (rolls in the work of
-        // AnonymizeForMergeByUserIdAsync). The row is kept as a tombstone
+        // Anonymize the source profile in place. The row is kept as a tombstone
         // counterpart to User.MergedToUserId; only identifying scalars are
         // cleared. ContactField rows belong to the ContactFields section
         // (IContactFieldService) and are re-FK'd by the merge orchestrator's
@@ -376,10 +378,11 @@ internal sealed partial class UserRepository
         sourceProfile.UpdatedAt = updatedAt;
 
         await ctx.SaveChangesAsync(ct);
+        return previousPicture;
     }
 
-    private async Task<bool> AnonymizeProfileInternalAsync(
-        Guid userId, string firstName, string lastName, CancellationToken ct)
+    public async Task<bool> AnonymizeForDeletionByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
@@ -388,8 +391,8 @@ internal sealed partial class UserRepository
         if (profile is null)
             return false;
 
-        profile.FirstName = firstName;
-        profile.LastName = lastName;
+        profile.FirstName = "Deleted";
+        profile.LastName = "User";
         profile.BurnerName = string.Empty;
         // #1097 dual-write — see MirrorProfileNamesToUserAsync.
         await MirrorProfileNamesToUserAsync(ctx, profile, ct);
@@ -424,13 +427,12 @@ internal sealed partial class UserRepository
         return true;
     }
 
-    public async Task ReconcileCVEntriesAsync(
+    private async Task ReconcileCVEntriesAsync(
+        UsersDbContext ctx,
         Guid profileId,
         IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
         // Load tracked entities so the change tracker can detect in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == profileId)
@@ -487,7 +489,5 @@ internal sealed partial class UserRepository
                 });
             }
         }
-
-        await ctx.SaveChangesAsync(ct);
     }
 }

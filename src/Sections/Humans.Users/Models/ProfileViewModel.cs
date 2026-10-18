@@ -378,13 +378,13 @@ internal sealed class ContactFieldViewModel
     };
 
     /// <summary>
-    /// Short label for visibility badge pill. Null for public fields (no badge needed).
+    /// Resource key for a visibility badge pill. Null for public fields (no badge needed).
     /// </summary>
-    public string? VisibilityBadgeText => Visibility switch
+    public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Board only",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Coordinators + Board",
-        ContactFieldVisibility.MyTeams => "My teams",
+        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
         _ => null
     };
 }
@@ -483,13 +483,13 @@ internal sealed class UserEmailDisplayViewModel
     public ContactFieldVisibility? Visibility { get; set; }
 
     /// <summary>
-    /// Short label for visibility badge pill. Null for public fields (no badge needed).
+    /// Resource key for a visibility badge pill. Null for public fields (no badge needed).
     /// </summary>
-    public string? VisibilityBadgeText => Visibility switch
+    public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Board only",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Coordinators + Board",
-        ContactFieldVisibility.MyTeams => "My teams",
+        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
         _ => null
     };
 }

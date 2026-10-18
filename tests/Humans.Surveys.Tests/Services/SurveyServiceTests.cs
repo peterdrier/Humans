@@ -13,6 +13,7 @@ using Humans.Base.Interfaces;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -54,8 +55,8 @@ public class SurveyServiceTests
             .Returns(Array.Empty<SurveyInvitation>());
     }
 
-    private SurveyService CreateService(ILogger<SurveyService>? logger = null) => new(
-        _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
+    private SurveyService CreateService(ILogger<SurveyService>? logger = null, ISurveyRepository? repository = null) => new(
+        repository ?? _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
@@ -2664,6 +2665,93 @@ public class SurveyServiceTests
         captured.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
         await _repo.Received(1).FinalizeCompletionTrackedResponseAsync(
             invitationId, userId, captured, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitResponseAsync_concurrent_writes_preserve_one_final_response(bool identified)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pause = new PauseFirstResponseSave();
+        var options = new DbContextOptionsBuilder<SurveysDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(pause).Options;
+        await using var db = new SurveysDbContext(options);
+        var repository = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
+        var survey = SurveyForSubmit(out _, out var questionId);
+        var invitation = InvitationFor(survey.Id, Guid.NewGuid());
+        db.Surveys.Add(survey);
+        db.SurveyInvitations.Add(invitation);
+        var anonymity = identified ? ResponseAnonymity.Identified : ResponseAnonymity.CompletionTracked;
+        Guid? draftId = identified ? Guid.NewGuid() : null;
+        if (draftId is { } id)
+            db.SurveyResponses.Add(new SurveyResponse
+            {
+                Id = id,
+                SurveyId = survey.Id,
+                UserId = invitation.UserId,
+                InvitationId = invitation.Id,
+                Anonymity = anonymity,
+                InputMethod = SurveyInputMethod.UserSpecificLink,
+                Culture = "en"
+            });
+        await db.SaveChangesAsync(ct);
+        var submission = new SurveySubmission(
+            survey.Id, invitation.Id, invitation.UserId, draftId,
+            anonymity, SurveyInputMethod.UserSpecificLink, "en",
+            [TextAns(questionId, "My answer")]);
+
+        var first = CreateService(repository: repository).SubmitResponseAsync(submission, ct);
+        Task second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first ballot save must be paused");
+            var otherService = CreateService(repository: repository);
+            second = identified
+                ? otherService.SaveDraftAnswersAsync(draftId!.Value,
+                    [TextAns(questionId, "Later draft")], SurveyInputMethod.Slug, "es", ct)
+                : otherService.SubmitResponseAsync(submission, ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        await Task.WhenAll(first, second);
+
+        db.ChangeTracker.Clear();
+        var response = (await db.SurveyResponses.Include(item => item.Answers).ToListAsync(ct))
+            .Should().ContainSingle().Subject;
+        response.UserId.Should().Be(identified ? invitation.UserId : null);
+        response.InvitationId.Should().Be(identified ? invitation.Id : null);
+        response.Anonymity.Should().Be(anonymity);
+        response.Culture.Should().Be("en");
+        response.InputMethod.Should().Be(SurveyInputMethod.UserSpecificLink);
+        response.Answers.Should().ContainSingle().Which.TextValue.Should().Be("My answer");
+        (await db.SurveyInvitations.SingleAsync(ct)).Completed.Should().BeTrue();
+    }
+
+    private sealed class PauseFirstResponseSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<SurveyResponse>().Any(entry =>
+                    entry.Entity.SubmittedAt is not null && entry.State is EntityState.Added or EntityState.Modified)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansFact]

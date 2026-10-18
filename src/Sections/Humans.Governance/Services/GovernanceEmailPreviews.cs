@@ -32,7 +32,7 @@ internal sealed class GovernanceEmailPreviews(GovernanceEmails emails) : IEmailP
             new EmailPreviewSample("application-rejected", "Application Rejected",
                 emails.ApplicationRejected(email, name, MembershipTier.Asociado, SampleReason, culture)),
             new EmailPreviewSample("term-renewal-reminder", "Term Renewal Reminder",
-                emails.TermRenewalReminder(email, name, "Colaborador", "April 1, 2026", culture)),
+                emails.TermRenewalReminder(email, name, "Colaborador", SampleClosesAt.Date, culture)),
 
             // Official on the opened sample, indicative on the reminder, so the gallery shows
             // the "not counted" caveat in both of its states rather than only the empty one.

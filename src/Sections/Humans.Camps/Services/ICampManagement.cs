@@ -100,10 +100,10 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Bypasses the request/approve flow for the camp's active season. Idempotent. Caller authorizes.</summary>
+    /// <summary>Bypasses the request/approve flow for the selected year's open season (public year by default). Idempotent. Caller authorizes.</summary>
     Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, int? year = null);
 
     /// <summary>
     /// Adds the human as an active member of the season (idempotent — no-op if
@@ -113,7 +113,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// </summary>
     Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, int? year = null);
 
     /// <summary>Returns a CampsResource refusal key if the row is missing, belongs to another user, or is not Pending.</summary>
     Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(

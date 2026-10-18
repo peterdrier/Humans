@@ -142,18 +142,21 @@ rows on the archived id (audit entries, consent records, assembly-vote rosters
 and ballots), so without this header a row reading `UserId: 3` inside an export
 for account 5 looks like somebody else's data.
 
-Each contributor resolves the merge for itself, and the two directions are both
-correct: a slice over rows the merge **left behind** reads every id in
+The orchestrator passes the resolved survivor's ID to every export contributor,
+so requests under either ID reach the same record without making crosscuts call
+Users. A slice over rows the merge **left behind** still reads every ID in
 `UserInfo.AllUserIds`, while a slice over columns the merge **moved** (Governance's
 assembly-vote actor columns, reassigned by `ReassignAsync`) reads the survivor's
-id alone. Asking with either id has to reach the same record.
+ID alone. Erasure keeps its per-ID input: Users separately calls it for each
+archived account and the survivor.
 
 | Section | Contributor | Shape |
 |---------|-------------|-------|
-| `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, deletion request/scheduled instants, created/last-login instants. |
-| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
+| `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, lifecycle state, deletion request/scheduled/post-event-hold instants, created/last-login instants. |
+| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
 | `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, Visibility }`. |
 | `Profile` | `UserService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, membership tier, approval/suspension state, consent check state, emergency contact, created/updated instants. |
+| `MergedProfiles` | `UserService` | Array of `{ UserId, Profile }` for archived profiles in the transitive merge chain. Reuses the current profile shape, including retained dietary and medical data; requests under an archived ID resolve to the survivor first. |
 | `ContactFields` | `UserService` | Array of `{ FieldType, Label, Value, Visibility }`. |
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
@@ -176,7 +179,7 @@ id alone. Asking with either id has to reach the same record.
 | `TicketAttendeeMatches` | `TicketQueryService` | Array of `{ AttendeeName, AttendeeEmail, TicketTypeName, Price, Status }`. |
 | `CampaignGrants` | `CampaignService` | Array of `{ CampaignTitle, Code, AssignedAt, RedeemedAt, EmailStatus }`. |
 | `CampRoleAssignments` | `CampService` | Array of `{ CampSlug, SeasonYear, RoleName, AssignedAt, AssignedByUserId }`. |
-| `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"). |
+| `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"), covering every account in the resolved merge chain without duplicate requests. |
 | `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
 | `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
 | `AgentConversations` | `AgentService` | Array of `{ Id, StartedAt, LastMessageAt, Locale, MessageCount, Messages: [{ Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId }] }` — the user's AI assistant conversations with full message history. |

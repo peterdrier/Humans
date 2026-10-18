@@ -27,6 +27,7 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     // The build window is [BuildStartOffset, 0) and the four sub-periods below
     // partition it, so build starts on the first-crew day.
     public int BuildStartOffset { get; set; } = -25;
+    [Range(0, int.MaxValue, ErrorMessage = "Event end must be on or after gate-opening day.")]
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
 
@@ -63,6 +64,13 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (StrikeEndOffset < EventEndOffset)
+        {
+            yield return new ValidationResult(
+                "Strike end must be on or after event end.",
+                [nameof(StrikeEndOffset), nameof(EventEndOffset)]);
+        }
+
         // The build window opens on the first-crew day at the latest — a first-crew
         // boundary before it would name days no build shift can occupy.
         if (BuildStartOffset > FirstCrewStartOffset)

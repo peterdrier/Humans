@@ -1,4 +1,6 @@
 using Humans.Base.Caching;
+using Humans.Notifications.Domain;
+using Xunit;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
@@ -176,6 +178,43 @@ public class NotificationEmitterTests : IDisposable
 
         var rows = await _notificationsDb.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle(r => r.UserId == suppressed);
+    }
+
+    [HumansTheory]
+    [InlineData(200, null)]
+    [InlineData(201, null)]
+    [InlineData(200, 2000)]
+    [InlineData(201, 20)]
+    [InlineData(40, 2001)]
+    [InlineData(201, 2001)]
+    public async Task SendAsync_CopyFitsStorageWithoutSplittingUnicodeOrLosingTheFullTitle(
+        int titleLength, int? bodyLength)
+    {
+        var title = string.Concat(Enumerable.Repeat("🚀", titleLength));
+        var body = bodyLength is { } length ? new string('Ω', length) : null;
+        var entity = _notificationsDb.Model.FindEntityType(typeof(Notification))!;
+        var titleLimit = entity.FindProperty(nameof(Notification.Title))!.GetMaxLength()!.Value;
+        var bodyLimit = entity.FindProperty(nameof(Notification.Body))!.GetMaxLength()!.Value;
+
+        await _emitter.SendAsync(NotificationSource.PreapprovalFileBy, NotificationClass.Actionable,
+            NotificationPriority.Normal, title, [Guid.NewGuid()], body,
+            cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _notificationsDb.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.Title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(titleLimit);
+        if (stored.Body is not null)
+            stored.Body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(bodyLimit);
+        if (titleLength > titleLimit)
+        {
+            stored.Title.Should().Be(string.Concat(Enumerable.Repeat("🚀", titleLimit - 1)) + "…");
+            stored.Body.Should().StartWith(title);
+        }
+        else
+        {
+            stored.Title.Should().Be(title);
+            if (bodyLength is null || bodyLength <= bodyLimit) stored.Body.Should().Be(body);
+        }
+        if (bodyLength > bodyLimit) stored.Body.Should().EndWith("…");
     }
 
     [HumansFact]

@@ -1,6 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Resources;
+using System.Net.Mail;
 using Humans.Base.Extensions;
 using System.Text;
 using Humans.Base.Helpers;
@@ -25,6 +26,7 @@ internal sealed class EmailProvisioningService(
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GoogleIntegrationResource));
+    internal const string InvalidEmailPrefixMessage = "Enter a valid Workspace username of at most 64 characters. Don't include @, reserved names, or leading, trailing or repeated periods.";
 
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
@@ -41,7 +43,10 @@ internal sealed class EmailProvisioningService(
 
         var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);
         if (string.IsNullOrEmpty(sanitizedPrefix))
-            return new EmailProvisioningResult(false, ErrorMessage: "Email prefix contains characters that cannot be transliterated to ASCII. Please choose a different prefix.");
+        {
+            logger.LogWarning("Workspace provisioning rejected an invalid username for user {UserId}", userId);
+            return new EmailProvisioningResult(false, ErrorMessage: InvalidEmailPrefixMessage);
+        }
 
         var fullEmail = $"{sanitizedPrefix}@nobodies.team";
 
@@ -124,11 +129,27 @@ internal sealed class EmailProvisioningService(
             var language = user.PreferredLanguage.IsSupportedCultureCode()
                 ? user.PreferredLanguage
                 : CultureCatalog.DefaultCultureCode;
+            var credentialsQueued = false;
+            string? warningMessage = null;
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
-                await emailService.SendAsync(emailMessages.WorkspaceCredentials(
-                    recoveryEmail, user.BurnerName, fullEmail, tempPassword,
-                    language));
+                try
+                {
+                    await emailService.SendAsync(emailMessages.WorkspaceCredentials(
+                        recoveryEmail, user.BurnerName, fullEmail, tempPassword,
+                        language));
+                    credentialsQueued = true;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Workspace account created but credentials email handoff failed for user {UserId}", userId);
+                    warningMessage = $"Account {fullEmail} provisioned and linked, but the credentials email could not be confirmed. If credentials do not arrive, ask an admin to reset the password.";
+                }
+            }
+            else
+            {
+                logger.LogWarning("Workspace account created without a credentials recovery address for user {UserId}", userId);
+                warningMessage = $"Account {fullEmail} provisioned and linked. No recovery email found; ask an admin to reset the password.";
             }
 
             try
@@ -141,7 +162,9 @@ internal sealed class EmailProvisioningService(
                     NoticeResources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", culture)!,
                     [userId],
                     body: string.Format(culture,
-                        NoticeResources.GetString("GoogleIntegration_Notification_WorkspaceReadyBody", culture)!, fullEmail),
+                        NoticeResources.GetString(credentialsQueued
+                            ? "GoogleIntegration_Notification_WorkspaceReadyBody"
+                            : "GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody", culture)!, fullEmail),
                     actionUrl: "/Profile",
                     actionLabel: NoticeResources.GetString("GoogleIntegration_Notification_ViewProfile", culture));
             }
@@ -150,9 +173,7 @@ internal sealed class EmailProvisioningService(
                 logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
             }
 
-            return !string.IsNullOrEmpty(recoveryEmail)
-                ? new EmailProvisioningResult(true, fullEmail, recoveryEmail)
-                : new EmailProvisioningResult(true, fullEmail);
+            return new EmailProvisioningResult(true, fullEmail, recoveryEmail, WarningMessage: warningMessage);
         }
         catch (Exception ex)
         {
@@ -171,13 +192,15 @@ internal sealed class EmailProvisioningService(
         var candidate = target?.Email ?? oauthEmail;
 
         if (candidate?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
-            return oauthEmail;
+            return oauthEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true
+                ? null : oauthEmail;
 
         return candidate;
     }
 
     /// <summary>
-    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics. Null on invalid local-part chars; empty on blank input.
+    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics.
+    /// Returns null for an invalid Workspace username; empty on blank input.
     /// </summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {
@@ -216,13 +239,27 @@ internal sealed class EmailProvisioningService(
 
         var ascii = result.ToString().ToLowerInvariant();
 
-        // Validate result contains only valid ASCII email local-part characters
         foreach (var ch in ascii)
         {
             if (ch > 127 || ch <= ' ' || ch == 0x7F)
                 return null;
         }
 
-        return ascii;
+        return ascii.Length == 0 || IsValidWorkspaceUsername(ascii) ? ascii : null;
+    }
+
+    /// <summary>Checks mailbox syntax and Workspace's primary-username bounds without rewriting the value.</summary>
+    internal static bool IsValidWorkspaceUsername(string prefix)
+    {
+        // https://knowledge.workspace.google.com/admin/users/name-guidelines-for-users-and-groups
+        if (string.IsNullOrEmpty(prefix) || prefix.EnumerateRunes().Take(65).Count() > 64
+            || prefix.StartsWith('.') || prefix.EndsWith('.') || prefix.Contains("..", StringComparison.Ordinal)
+            || string.Equals(prefix, "abuse", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(prefix, "postmaster", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var email = $"{prefix}@nobodies.team";
+        return MailAddress.TryCreate(email, out var address)
+            && string.Equals(address.Address, email, StringComparison.Ordinal);
     }
 }

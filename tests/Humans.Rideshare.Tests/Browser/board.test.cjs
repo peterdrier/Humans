@@ -61,3 +61,18 @@ for (const [name, expected] of [['😀 Driver', '😀'], ['e\u0301 Rider', 'E\u0
         assert.ok(html.includes(`>${expected}</span>`), html);
     });
 }
+
+test('popups render escaped server-localized dates instead of machine dates', () => {
+    const context = { document: { querySelectorAll: () => [], getElementById: () => null } };
+    vm.createContext(context); vm.runInContext(source, context);
+    const offer = context.tripPopupHtml({
+        departureDate: '2026-07-03', departureDateLabel: 'ven. 3 juil. <local>',
+    }, key => key);
+    const request = context.requestPopupHtml({
+        desiredDate: '2026-07-03', desiredDateLabel: 'ven. 3 juil. <local>',
+    }, key => key);
+    for (const html of [offer, request]) {
+        assert.ok(html.includes('ven. 3 juil. &lt;local&gt;'), html);
+        assert.ok(!html.includes('2026-07-03'), html);
+    }
+});

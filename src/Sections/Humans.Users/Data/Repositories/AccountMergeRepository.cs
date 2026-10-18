@@ -36,15 +36,15 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
     }
 
     public async Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
-        Guid userId, CancellationToken ct = default)
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.AccountMergeRequests
             .AsNoTracking()
-            .Where(amr => amr.TargetUserId == userId || amr.SourceUserId == userId)
+            .Where(amr => userIds.Contains(amr.TargetUserId) || userIds.Contains(amr.SourceUserId))
             .Select(amr => new AccountMergeRequestGdprRow(
                 amr.Status.ToString(),
-                amr.TargetUserId == userId,
+                userIds.Contains(amr.TargetUserId),
                 amr.CreatedAt,
                 amr.ResolvedAt))
             .ToListAsync(ct);

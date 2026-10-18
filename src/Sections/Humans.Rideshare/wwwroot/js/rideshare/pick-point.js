@@ -6,11 +6,25 @@
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const el = document.getElementById('pick-map');
-if (el) init(el);
+if (el) {
+    try { init(el); }
+    catch (err) { console.error('Rideshare point picker init failed:', err); }
+}
 
 function init(el) {
     const latInput = document.getElementById(el.dataset.latInput);
     const lngInput = document.getElementById(el.dataset.lngInput);
+    let marker = null;
+
+    const placeInput = document.getElementById(el.dataset.placeInput);
+    if (placeInput) {
+        placeInput.addEventListener('change', () => {
+            latInput.value = '';
+            lngInput.value = '';
+            if (marker) { marker.remove(); marker = null; }
+        });
+    }
+
     const initial = readPoint(latInput, lngInput);
 
     const map = new maplibregl.Map({
@@ -25,7 +39,6 @@ function init(el) {
     });
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    let marker = null;
     const place = (lng, lat) => {
         if (!marker) marker = new maplibregl.Marker({ color: '#0d6efd' }).setLngLat([lng, lat]).addTo(map);
         else marker.setLngLat([lng, lat]);
@@ -46,15 +59,6 @@ function init(el) {
     };
     latInput.addEventListener('change', onEdit);
     lngInput.addEventListener('change', onEdit);
-
-    const placeInput = document.getElementById(el.dataset.placeInput);
-    if (placeInput) {
-        placeInput.addEventListener('change', () => {
-            latInput.value = '';
-            lngInput.value = '';
-            if (marker) { marker.remove(); marker = null; }
-        });
-    }
 }
 
 function readPoint(latInput, lngInput) {

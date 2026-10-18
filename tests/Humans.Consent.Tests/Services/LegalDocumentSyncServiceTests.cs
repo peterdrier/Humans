@@ -361,7 +361,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SyncDocumentAsync_LongNamesKeepNoticeWithinStorageLimit(bool update)
+    public async Task SyncDocumentAsync_LongNamesDispatchFullNoticeCopy(bool update)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         StubActiveUser();
@@ -387,12 +387,10 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         await _service.SyncDocumentAsync(document.Id, ct);
 
         var args = Notifier.ReceivedCalls().Single().GetArguments();
-        var title = (string)args[3]!;
-        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-        title.Should().EndWith("…").And.Contain("😀");
-        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-        encode.Should().NotThrow();
-        ((string)args[5]!).Should().Contain(update ? "new version" : "new required legal document");
+        args[3].Should().Be(update ? $"{name} has been updated — re-consent required" : $"New legal document published: {name}");
+        args[5].Should().Be(update
+            ? "A required legal document has been updated. Please review and sign the new version."
+            : "A new required legal document has been published. Please review and sign it.");
     }
 
     [HumansTheory]
@@ -463,7 +461,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
         StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
         _gitHub.GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>())
-            .Returns(new GitHubFileContent("es-content", "sha-1"), new GitHubFileContent("later-content", "sha-2"));
+            .Returns(new GitHubFileContent("es-content", "sha-1", "commit-sha-1"), new GitHubFileContent("later-content", "sha-2", "commit-2"));
 
         var result = await _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -477,6 +475,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             because: "the first synced version never invalidates prior consent — there is none");
         version.CommitSha.Should().Be("sha-1");
         version.Content["es"].Should().Be("es-content");
+        version.ChangesSummary.Should().Be("Initial commit");
         await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
             Arg.Any<string>(), nameof(LegalDocumentSyncService), version.Id, "DocumentVersion");
         await _gitHub.Received(1).GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>());
@@ -588,8 +587,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _gitHub.DiscoverLanguageFilesAsync(folderPath, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<string, string>)new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = canonicalPath });
         _gitHub.GetFileContentAsync(canonicalPath, Arg.Any<CancellationToken>())
-            .Returns(new GitHubFileContent(content, sha));
-        _gitHub.GetCommitMessageAsync(sha, Arg.Any<CancellationToken>())
+            .Returns(new GitHubFileContent(content, sha, $"commit-{sha}"));
+        _gitHub.GetCommitMessageAsync($"commit-{sha}", Arg.Any<CancellationToken>())
             .Returns(commitMessage);
     }
 

@@ -43,11 +43,8 @@ public sealed class FeedbackServiceTests
 {
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 18, 12, 0));
 
-    private readonly TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory =
-        new(new DbContextOptionsBuilder<FeedbackDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+    private readonly TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory;
+    private readonly ReplyFailureInterceptor _failure = new();
 
     private readonly FeedbackDbContext FeedbackDb;
 
@@ -65,6 +62,10 @@ public sealed class FeedbackServiceTests
 
     public FeedbackServiceTests()
     {
+        FeedbackDbFactory = new(new DbContextOptionsBuilder<FeedbackDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(_failure).Options);
         FeedbackDb = FeedbackDbFactory.CreateDbContext();
 
         var userService = Substitute.For<IUserService>();
@@ -351,26 +352,127 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansFact]
-    public async Task PostMessageAsync_EmailThrow_PersistsNothing()
+    public async Task PostMessageAsync_SaveFailure_QueuesNoEmail()
     {
-        // The email is sent before the persist on purpose: an SMTP throw must
-        // leave no committed message row and no LastAdminMessageAt, so the admin
-        // can simply retry.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         SeedUser(userId, "Reporter", "reporter@test.com");
         var report = await SeedReportAsync(userId, "Test", "/test");
-
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("SMTP down"));
-
+        _failure.FailAdded = true;
         var act = () => _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
         await act.Should().ThrowAsync<InvalidOperationException>();
-
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         (await FeedbackDb.FeedbackMessages.AsNoTracking().CountAsync(ct)).Should().Be(0);
-        var unchanged = await FeedbackDb.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == report.Id, ct);
-        unchanged.LastAdminMessageAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task PostMessageAsync_EnqueueFailure_PersistsReplyAndRetriesWithoutAnotherMessage()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Reporter", "reporter@test.com");
+        var report = await SeedReportAsync(userId, "Test", "/test");
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Queue unavailable")), Task.CompletedTask);
+
+        var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        result.Succeeded.Should().BeTrue();
+        result.Message!.EmailEnqueuePending.Should().BeTrue();
+        (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeTrue();
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).LastAdminMessageAt.Should().NotBeNull();
+
+        await _service.ExecuteAsync(ct);
+        await _service.ExecuteAsync(ct);
+        var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
+        reply.EmailEnqueuePending.Should().BeFalse();
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.DeliveryId == reply.Id && m.UserId == userId), Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(AuditAction.FeedbackResponseSent, AuditEntityTypes.FeedbackReport,
+            report.Id, Arg.Is<string>(m => m.Contains("Queued", StringComparison.Ordinal)), reply.SenderUserId!.Value);
+    }
+
+    [HumansFact]
+    public async Task PostMessageAsync_AcknowledgementFailure_RetriesSameDeliveryId()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Reporter", "reporter@test.com");
+        var report = await SeedReportAsync(userId, "Test", "/test");
+        _failure.FailModified = true;
+        var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        result.Succeeded.Should().BeTrue();
+        result.Message!.EmailEnqueuePending.Should().BeTrue();
+        _failure.FailModified = false;
+        await _service.ExecuteAsync(ct);
+        await _service.ExecuteAsync(ct);
+        var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
+        reply.EmailEnqueuePending.Should().BeFalse();
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.DeliveryId == reply.Id), Arg.Any<CancellationToken>());
+        (await _service.GetFeedbackByIdAsync(report.Id, ct))!.Messages.Single().EmailEnqueuePending.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_HistoricalReply_IsNotResent()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Reporter", "reporter@test.com");
+        var report = await SeedReportAsync(userId, "Test", "/test");
+        FeedbackDb.FeedbackMessages.Add(new FeedbackMessage
+        {
+            Id = Guid.NewGuid(),
+            FeedbackReportId = report.Id,
+            SenderUserId = Guid.NewGuid(),
+            Content = "Historical reply",
+            CreatedAt = Clock.GetCurrentInstant()
+        });
+        await FeedbackDb.SaveChangesAsync(ct);
+        await _service.ExecuteAsync(ct);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostMessageAsync_MissingOrErasedReporter_CompletesWithoutRecreatingNotifications(bool erased)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        if (erased)
+            _people[userId] = SeedUser(userId, "Reporter", "reporter@test.com") with { IsGdprAnonymized = true };
+        var report = await SeedReportAsync(userId, "Test", "/test");
+        var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        result.Message!.EmailEnqueuePending.Should().BeFalse();
+        await _service.ExecuteAsync(ct);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeFalse();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task PostMessageAsync_RequestAndRetryOverlap_HandOffOnce()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "Reporter", "reporter@test.com");
+        var report = await SeedReportAsync(userId, "Test", "/test");
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            entered.TrySetResult();
+            await release.Task.WaitAsync(ct);
+        });
+        var posted = _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
+        await entered.Task.WaitAsync(ct);
+        var retry = _service.ExecuteAsync(ct);
+        retry.IsCompleted.Should().BeFalse();
+        release.SetResult();
+        await Task.WhenAll(posted, retry);
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _notificationService.ReceivedCalls().Should().ContainSingle();
+        (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeFalse();
     }
 
     [HumansFact]
@@ -459,24 +561,47 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
-    [InlineData("Browser/1.0", "Roles: Volunteer")]
-    [InlineData(null, null)]
-    public async Task ContributeForUserAsync_ExportsStoredSubmissionContext(string? userAgent, string? context)
+    [InlineData("Browser/1.0", "Roles: Volunteer", false)]
+    [InlineData(null, null, false)]
+    [InlineData("Browser/1.0", "Roles: Volunteer", true)]
+    public async Task ContributeForUserAsync_ExportsStoredSubmissionContext(
+        string? userAgent, string? context, bool requestArchivedId)
     {
         var userId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var info = SeedUser(userId, "Reporter") with { MergedUserIds = [archivedId] };
+        _people[userId] = info;
+        _people[archivedId] = info;
         var report = await SeedReportAsync(userId, "Historical bug", "/profile");
+        await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
+        await FeedbackDb.FeedbackMessages.AddRangeAsync(
+            [new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = userId,
+                Content = "Member response", CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = Guid.NewGuid(),
+                Content = "Staff response", CreatedAt = Clock.GetCurrentInstant()
+            }], Xunit.TestContext.Current.CancellationToken);
         report.UserAgent = userAgent;
         report.AdditionalContext = context;
         await FeedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? archivedId : userId, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(s.SectionName, FeedbackServiceImpl.FeedbackReports, StringComparison.Ordinal));
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
-        var exportedReport = json.RootElement[0];
+        json.RootElement.GetArrayLength().Should().Be(1);
+        var exportedReport = json.RootElement.EnumerateArray().Single();
         exportedReport.GetProperty("UserAgent").GetString().Should().Be(userAgent);
         exportedReport.GetProperty("AdditionalContext").GetString().Should().Be(context);
         exportedReport.GetProperty("Description").GetString().Should().Be("Historical bug");
+        var messages = exportedReport.GetProperty("Messages").EnumerateArray().ToDictionary(
+            m => m.GetProperty("Content").GetString()!, m => m.GetProperty("IsFromUser").GetBoolean(), StringComparer.Ordinal);
+        messages["Member response"].Should().BeTrue();
+        messages["Staff response"].Should().BeFalse();
     }
 
     [HumansFact]
@@ -852,4 +977,18 @@ public sealed class FeedbackServiceTests
     }
 
     private Task SaveAllAsync(CancellationToken ct = default) => FeedbackDb.SaveChangesAsync(ct);
+    private sealed class ReplyFailureInterceptor : SaveChangesInterceptor
+    {
+        public bool FailAdded { get; set; }
+        public bool FailModified { get; set; }
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<FeedbackMessage>().Any(e =>
+                    (FailAdded && e.State == EntityState.Added) || (FailModified && e.State == EntityState.Modified)))
+                throw new InvalidOperationException("Feedback persistence unavailable");
+            return ValueTask.FromResult(result);
+        }
+    }
+
 }

@@ -10,10 +10,8 @@ namespace Humans.GoogleIntegration;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set is the <c>GoogleAccounts_*</c> keys, which the section's own
-/// <c>Views/Google/Accounts.cshtml</c> is the sole renderer of, plus the
-/// <c>GoogleIntegration_Email_*</c> and <c>GoogleIntegration_Notification_*</c> keys used by
-/// <c>Services/GoogleIntegrationEmails.cs</c> and <c>Services/EmailProvisioningService.cs</c>.
-/// Everything else on the section's pages is admin-only English.
+/// Keys use the <c>GoogleIntegration_</c> section prefix. The account page renders
+/// <c>GoogleIntegration_Accounts_*</c>; email templates and member resource views
+/// use the same resource set. Other operator pages use English copy.
 /// </remarks>
 public class GoogleIntegrationResource;

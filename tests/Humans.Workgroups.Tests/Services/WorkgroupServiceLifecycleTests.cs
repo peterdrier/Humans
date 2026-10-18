@@ -1,4 +1,7 @@
 using Xunit;
+using Humans.Notifications.Contracts;
+using Humans.Users.Contracts;
+using NSubstitute.ExceptionExtensions;
 using NSubstitute;
 using AwesomeAssertions;
 using Humans.Workgroups.Domain;
@@ -16,6 +19,67 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reactivate_NotificationFault_DoesNotSkipEmailDriveOrAccountRestore(bool failRecipientLookup)
+    {
+        var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Dormant);
+        group.HoldedAccountNumber = 62900160;
+        await Db.SaveChangesAsync(Ct);
+        if (failRecipientLookup)
+        {
+            var lookups = 0;
+            var coordinator = group.Members.Single().UserId;
+            var person = await Users.GetUserInfoAsync(coordinator, Ct);
+            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(_ => ++lookups == 1
+                    ? throw new IOException("Recipient lookup failed")
+                    : new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                        new Dictionary<Guid, UserInfo> { [coordinator] = person! }));
+        }
+        else
+        {
+            Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                    Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                    Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                    Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .ThrowsAsync(new IOException("Notification storage unavailable"));
+        }
+
+        var result = await NewService().ReactivateAsync(group.Id, group.Members.Single().UserId, Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        (await db.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Status.Should().Be(WorkgroupStatus.Active);
+        (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id, Ct)).Should().Be(1);
+        AuditLog.ReceivedCalls().Should().ContainSingle();
+        Email.ReceivedCalls().Should().ContainSingle();
+        await GoogleSync.Received(1).RequestSyncAsync(group.DriveFolderId!, CancellationToken.None);
+        await Finance.Received(1).SetExpenseAccountActiveAsync(62900160, true, CancellationToken.None);
+        Logger.Entries.Should().Contain(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+    }
+
+    [HumansFact]
+    public async Task Refer_BoardNoticeFault_DoesNotFailTheDecisionOrSkipEmail()
+    {
+        var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
+        var actor = group.Members.Single().UserId;
+        Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([actor]);
+        Notifications.SendToRoleAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Notification storage unavailable"));
+
+        var result = await NewService().ReferAsync(group.Id, actor, "Review", Ct);
+
+        result.Refusal.Should().BeNull();
+        Email.ReceivedCalls().Should().ContainSingle();
+        AuditLog.ReceivedCalls().Should().ContainSingle();
+        await using var db = OpenContext();
+        (await db.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Status.Should().Be(WorkgroupStatus.Referred);
+    }
+
     [HumansTheory]
     [InlineData("refer")]
     [InlineData("refuse")]
@@ -92,7 +156,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData("apply")]
     [InlineData("refer")]
     [InlineData("refuse")]
-    public async Task Notices_LongGroupNameAndDetail_FitStorageAndKeepFullRecords(string action)
+    public async Task Notices_LongGroupNameAndDetail_DispatchFullCopyAndKeepFullRecords(string action)
     {
         var name = new string('x', 200);
         var detail = string.Concat(Enumerable.Repeat("🚀", 1998)) + "tail";
@@ -124,18 +188,14 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         }
 
         var args = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        ((string)args[3]!).Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
-        var body = (string)args[5]!;
-        body.Should().StartWith(fullTitle + "\n\n");
-        body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(2000);
-        body.Should().NotContain("�");
+        args[3].Should().Be(fullTitle);
+        args[5].Should().Be(string.Equals(action, "apply", StringComparison.Ordinal)
+            ? "A new working group is waiting on the Secretary." : detail);
         await using var ctx = OpenContext();
         var stored = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
         stored.Name.Should().Be(name);
         if (!string.Equals(action, "apply", StringComparison.Ordinal))
         {
-            body.EnumerateRunes().Count().Should().Be(2000);
-            body.Should().EndWith("…");
             (await ctx.LogEntries.SingleAsync(e => e.WorkgroupId == id, Ct)).Body.Should().Be(detail);
         }
         if (string.Equals(action, "refuse", StringComparison.Ordinal))

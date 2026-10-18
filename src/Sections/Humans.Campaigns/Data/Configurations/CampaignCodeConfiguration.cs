@@ -11,7 +11,7 @@ internal sealed class CampaignCodeConfiguration : IEntityTypeConfiguration<Campa
         builder.ToTable("campaign_codes");
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.Code).HasMaxLength(200).IsRequired();
+        builder.Property(c => c.Code).HasMaxLength(CampaignCode.CodeMaxLength).IsRequired();
 
         builder.HasIndex(c => new { c.CampaignId, c.Code }).IsUnique();
 

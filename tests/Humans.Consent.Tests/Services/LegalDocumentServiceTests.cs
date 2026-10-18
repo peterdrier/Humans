@@ -196,9 +196,31 @@ public sealed class LegalDocumentServiceTests : IDisposable
         file.Should().NotBeNull();
         file!.Sha.Should().Be("abc");
         file.Content.Should().Be("Consentimiento: sí 😀");
-        handler.Requests.Should().HaveCount(2);
-        handler.Requests[0].Query.Should().Be("?ref=legal-preview");
-        handler.Requests[1].AbsolutePath.Should().Be("/repos/nobodies/legal/git/blobs/abc");
+        file.CommitSha.Should().Be("commit-1");
+        handler.Requests.Should().HaveCount(3);
+        Uri.UnescapeDataString(handler.Requests[0].Query).Should()
+            .Contain("sha=legal-preview").And.Contain("path=Estatutos/ESTATUTOS.md");
+        handler.Requests[1].Query.Should().Be("?ref=commit-1");
+        handler.Requests[2].AbsolutePath.Should().Be("/repos/nobodies/legal/git/blobs/abc");
+    }
+
+    [HumansFact]
+    public async Task FileRead_ProvidesTheCommitReferenceForItsSummary()
+    {
+        using var handler = new LegalContentHandler("Update policy\nDetails", branchAdvances: true);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal", Branch = "legal-preview" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var file = await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", TestContext.Current.CancellationToken);
+        var summary = await connector.GetCommitMessageAsync(file!.CommitSha, TestContext.Current.CancellationToken);
+
+        summary.Should().Be("Update policy");
     }
 
     [HumansTheory]
@@ -227,6 +249,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
     [InlineData("discovery", 1)]
     [InlineData("file", 1)]
     [InlineData("file", 2)]
+    [InlineData("file", 3)]
     [InlineData("commit", 1)]
     [InlineData("prefix", 1)]
     [InlineData("prefix", 2)]
@@ -290,14 +313,29 @@ public sealed class LegalDocumentServiceTests : IDisposable
                 Started.SetResult();
                 await Release.Task.WaitAsync(cancellationToken);
             }
+            if (request.RequestUri!.AbsolutePath.EndsWith("/commits", StringComparison.Ordinal))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[{\"sha\":\"commit-1\"}]", Encoding.UTF8, "application/json")
+                };
+            if (branchAdvances && request.RequestUri!.AbsolutePath.EndsWith("/commits/commit-1", StringComparison.Ordinal))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(new { commit = new { message = commitMessage } }), Encoding.UTF8, "application/json")
+                };
+            if (branchAdvances && request.RequestUri!.AbsolutePath.EndsWith("/commits/abc", StringComparison.Ordinal))
+                return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    Content = new StringContent("{\"message\":\"No commit found\"}", Encoding.UTF8, "application/json")
+                };
             if (branchAdvances)
             {
-                var body = Requests.Count == 1
+                var body = request.RequestUri!.AbsolutePath.Contains("/contents/", StringComparison.Ordinal)
                     ? """{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}"""
                     : request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
                         ? JsonSerializer.Serialize(new { content = Convert.ToBase64String(Encoding.UTF8.GetBytes("Consentimiento: sí 😀")), encoding = "base64", sha = "abc" })
                         : "Changed after metadata was read";
-                var mediaType = Requests.Count == 1 || request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
+                var mediaType = request.RequestUri!.AbsolutePath.Contains("/contents/", StringComparison.Ordinal) || request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
                     ? "application/json" : "application/octet-stream";
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) };
             }

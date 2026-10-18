@@ -1,5 +1,6 @@
 using Humans.Calendar.Contracts;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
@@ -73,6 +74,7 @@ internal sealed class ICalFeedService(
             return null;
         }
 
+        using var ownerCulture = new CultureScope(user.PreferredLanguage, logger);
         var items = await GetFeedItemsAsync(userId, ct);
 
         var calendar = new Ical.Net.Calendar { ProductId = "-//Nobodies Collective//Humans//EN" };

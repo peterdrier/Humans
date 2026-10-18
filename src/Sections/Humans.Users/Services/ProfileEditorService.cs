@@ -41,13 +41,11 @@ internal sealed class ProfileEditorService(
                 userId,
                 ToUserProfileSaveCommand(displayName, request),
                 request.ProfilePictureData,
-                ct);
+                ct,
+                request.VolunteerHistory);
 
             profileId = storageResult.ProfileId;
         }
-
-        if (request.VolunteerHistory is not null)
-            await userService.SaveProfileVolunteerHistoryAsync(userId, request.VolunteerHistory.ToList(), ct);
 
         logger.LogInformation("User {UserId} updated their profile", userId);
 

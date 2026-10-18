@@ -191,7 +191,7 @@ Legal first name(s), last name, emergency contact, board notes. Prefixed with lo
 - `ShowPrivateFirst` is true when FirstName, LastName, and EmergencyContactName are all empty (new user hasn't filled them in yet)
 
 ### Burner CV Validation
-Users must provide at least one Burner CV entry **or** check the "No prior burn experience" checkbox. Validated both client-side (on submit) and server-side.
+Users must provide at least one Burner CV entry **or** check the "No prior burn experience" checkbox. Validated both client-side (on submit) and server-side. Profile fields and submitted CV history commit together and finish in order per member, keeping the declaration and history from the same submission together even if saving fails.
 
 ## Validation Rules
 
@@ -207,7 +207,7 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 ## Admin Capabilities
 
 1. **View Any Profile**: Full access to all profile fields
-2. **Suspend Member**: Set `User.State` to `AdminSuspended` with AdminNotes
+2. **Suspend Member**: Set `User.State` to `AdminSuspended`; record the reason in the audit log and suspension notification
 3. **Unsuspend Member**: Clear suspension status
 4. **Edit Admin Notes**: Internal notes not visible to member
 

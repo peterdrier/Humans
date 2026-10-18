@@ -7,6 +7,7 @@ using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
@@ -37,10 +38,11 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
+    private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
     private const int MaxTeamSlugLength = 256;
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
     {
-        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search"
+        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search", "tree"
     };
 
     internal const string TeamMemberships = "TeamMemberships";
@@ -446,7 +448,8 @@ internal sealed class TeamService(
             ? await repo.GetUserIdsWithManagementOnTeamAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
-        if (!string.Equals(team.Name, name, StringComparison.Ordinal))
+        var nameChanged = !string.Equals(team.Name, name, StringComparison.Ordinal);
+        if (nameChanged)
         {
             var newSlug = SlugHelper.GenerateSlug(name);
             if (!string.IsNullOrEmpty(newSlug) && !ReservedTeamSlugs.Contains(newSlug)
@@ -477,7 +480,7 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
-        var earlyEntryChanged = activeChanged;
+        var earlyEntryChanged = activeChanged || nameChanged;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
@@ -497,7 +500,7 @@ internal sealed class TeamService(
         }
         finally
         {
-            // Evict after the save attempt: a read during it still sees the old flag.
+            // Evict after the save attempt: a read during it still sees the old grant data.
             // A failed completion can also follow a committed write.
             if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
         }
@@ -751,6 +754,7 @@ internal sealed class TeamService(
         if (!team.RequiresApproval)
             return new TeamJoinRequestResult(ErrorKey: "Teams_JoinPolicyChanged");
 
+        using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
         if (existingRequest is not null)
             return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
@@ -770,6 +774,7 @@ internal sealed class TeamService(
         };
 
         await repo.AddRequestAsync(request, cancellationToken);
+        joinRequest.Dispose();
 
         logger.LogInformation("User {UserId} requested to join team {TeamId}", userId, teamId);
         await SendTeamJoinRequestSubmittedNotificationAsync(team, userId, cancellationToken);
@@ -854,14 +859,14 @@ internal sealed class TeamService(
         try
         {
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
-            var noticeCopy = PrepareNoticeCopy($"New join request for {team.Name}", $"{displayName} has requested to join {team.Name}.");
+            var title = $"New join request for {team.Name}";
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 coordinatorUserIds,
-                body: noticeCopy.Body,
+                body: $"{displayName} has requested to join {team.Name}.",
                 actionUrl: $"/Teams/{team.Slug}/Members",
                 actionLabel: "Review request",
                 cancellationToken: cancellationToken);
@@ -886,14 +891,14 @@ internal sealed class TeamService(
         try
         {
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
-            var noticeCopy = PrepareNoticeCopy($"{displayName} joined {team.Name}", $"{displayName} has joined {team.Name}.");
+            var title = $"{displayName} joined {team.Name}";
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 coordinatorUserIds,
-                body: noticeCopy.Body,
+                body: $"{displayName} has joined {team.Name}.",
                 actionUrl: $"/Teams/{team.Slug}/Members",
                 actionLabel: "View members",
                 cancellationToken: cancellationToken);
@@ -910,16 +915,6 @@ internal sealed class TeamService(
             .Select(member => member.UserId)
             .Distinct()
             .ToList();
-
-    // Notification storage holds 200 Unicode characters; retain the full title in the body.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
-    {
-        if (title.EnumerateRunes().Count() <= 200)
-            return (title, body);
-
-        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
-            body is null ? title : string.Concat(title, "\n\n", body));
-    }
 
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
     {
@@ -983,16 +978,17 @@ internal sealed class TeamService(
     }
 
     private async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
-        Guid teamMemberId,
-        Instant leftAt,
-        GoogleSyncOutboxEvent? outboxEvent,
+        TeamMember member,
         CancellationToken ct)
     {
+        var outboxEvent = await BuildOutboxEventAsync(
+            member.Id, member.TeamId, member.UserId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, ct);
+        var leftAt = clock.GetCurrentInstant();
         if (outboxEvent is null)
-            return await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+            return await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
 
         using var scope = CreateTransactionScope();
-        var removedAssignments = await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+        var removedAssignments = await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
         await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
         scope.Complete();
         return removedAssignments;
@@ -1061,12 +1057,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var outboxEvent = await BuildOutboxEventAsync(
-            member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
-
-        var now = clock.GetCurrentInstant();
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
-            member.Id, now, outboxEvent, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
@@ -1173,14 +1164,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name), string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name));
+            var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name);
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [requesterUserId],
-                body: noticeCopy.Body,
+                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name),
                 actionUrl: $"/Teams/{team.Slug}",
                 actionLabel: NoticeResources.GetString("Teams_Notification_ViewTeam", culture),
                 cancellationToken: cancellationToken);
@@ -1227,14 +1218,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name), string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".");
+            var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name);
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [requesterUserId],
-                body: noticeCopy.Body,
+                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".",
                 actionUrl: "/Teams",
                 actionLabel: NoticeResources.GetString("Teams_MyTeams_BrowseTeams", culture),
                 cancellationToken: cancellationToken);
@@ -1328,12 +1319,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var outboxEvent = await BuildOutboxEventAsync(
-            member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
-
-        var now = clock.GetCurrentInstant();
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
-            member.Id, now, outboxEvent, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamMemberRemoved, nameof(Team), teamId,
@@ -1346,14 +1332,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(userId, cancellationToken);
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name));
+            var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name);
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberRemoved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [userId],
-                body: noticeCopy.Body,
+                body: null,
                 actionUrl: "/Teams",
                 cancellationToken: cancellationToken);
         }
@@ -2133,9 +2119,16 @@ internal sealed class TeamService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var memberships = await repo.GetAllMembershipsForUserAsync(userId, ct);
-        var joinRequests = await repo.GetAllJoinRequestsForUserAsync(userId, ct);
-        var eeGrants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
+        var info = await UserService.GetUserInfoAsync(userId, ct);
+        List<TeamMember> memberships = [];
+        List<TeamJoinRequest> joinRequests = [];
+        List<TeamEarlyEntryGrant> eeGrants = [];
+        foreach (var id in info?.AllUserIds ?? [userId])
+        {
+            memberships.AddRange(await repo.GetAllMembershipsForUserAsync(id, ct));
+            joinRequests.AddRange(await repo.GetAllJoinRequestsForUserAsync(id, ct));
+            eeGrants.AddRange(await repo.GetEarlyEntryGrantsForUserAsync(id, ct));
+        }
         var teamIds = memberships.Select(tm => tm.TeamId)
             .Concat(joinRequests.Select(tjr => tjr.TeamId))
             .Concat(eeGrants.Select(g => g.TeamId))
@@ -2472,14 +2465,14 @@ internal sealed class TeamService(
 
         try
         {
-            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Email_AddedToTeam_Subject", culture)!, team.Name));
+            var title = string.Format(culture, NoticeResources.GetString("Teams_Email_AddedToTeam_Subject", culture)!, team.Name);
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 [userId],
-                body: noticeCopy.Body,
+                body: null,
                 actionUrl: $"/Teams/{team.Slug}",
                 cancellationToken: cancellationToken);
         }

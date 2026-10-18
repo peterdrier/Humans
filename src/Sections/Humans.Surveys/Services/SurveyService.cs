@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
@@ -37,6 +38,8 @@ internal sealed class SurveyService(
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, IUserDataContributor, IUserMerge
 {
+    private static readonly TrackedLock ResponseFinalizationLock = new("Surveys.ResponseFinalization");
+
     internal const string SurveyResponses = "SurveyResponses";
     internal const string AuthoredSurveys = "AuthoredSurveys";
     internal const string SurveyInvitations = "SurveyInvitations";
@@ -1038,18 +1041,21 @@ internal sealed class SurveyService(
     public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
         => repo.IncrementPublicStartedAsync(surveyId, ct);
 
-    public Task SaveDraftAnswersAsync(
+    public async Task SaveDraftAnswersAsync(
         Guid draftResponseId,
         IReadOnlyList<SurveyAnswerInput> answers,
         SurveyInputMethod inputMethod,
         string culture,
         CancellationToken ct = default)
-        => repo.SaveDraftAnswersAsync(
+    {
+        using var finalization = await ResponseFinalizationLock.AcquireAsync(logger, ct);
+        await repo.SaveDraftAnswersAsync(
             draftResponseId,
             MapAnswers(draftResponseId, answers),
             inputMethod,
             culture,
             ct);
+    }
 
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
@@ -1140,6 +1146,7 @@ internal sealed class SurveyService(
         IReadOnlyList<SurveyAnswerInput> visibleAnswers,
         CancellationToken ct)
     {
+        using var finalization = await ResponseFinalizationLock.AcquireAsync(logger, ct);
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:

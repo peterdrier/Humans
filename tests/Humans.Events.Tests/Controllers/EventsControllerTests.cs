@@ -44,6 +44,64 @@ public class EventsControllerTests
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
     [HumansTheory]
+    [Xunit.InlineData("Create")]
+    [Xunit.InlineData("Update")]
+    [Xunit.InlineData("BarrioCreate")]
+    [Xunit.InlineData("BarrioUpdate")]
+    public async Task Authoring_RejectsRecurrenceOutsideTheConfiguredEvent(string route)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { LeadUserIds = [userId] };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        StubEditableGuideSettings();
+        var guideEvent = MakeEvent(route.StartsWith("Barrio", StringComparison.Ordinal) ? campId : null,
+            userId, EventStatus.ResubmitRequested);
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _guide.GetCampEventAsync(guideEvent.Id, campId, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("/Events");
+        var individual = new IndividualEventFormViewModel
+        {
+            Title = "Changed",
+            StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true,
+            RecurrenceDays = "0,3"
+        };
+        var barrio = new CampEventFormViewModel
+        {
+            Title = "Changed",
+            StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true,
+            RecurrenceDays = "0,3"
+        };
+
+        var result = route switch
+        {
+            "Create" => await controller.Create(individual),
+            "Update" => await controller.Update(guideEvent.Id, individual),
+            "BarrioCreate" => await controller.BarrioCreate(camp.Slug, barrio),
+            _ => await controller.BarrioUpdate(camp.Slug, guideEvent.Id, barrio)
+        };
+
+        result.Should().BeOfType<ViewResult>();
+        controller.ModelState[nameof(individual.RecurrenceDays)]!.Errors.Should().ContainSingle();
+        guideEvent.Title.Should().Be("Test Event");
+        _guide.ReceivedCalls().Should().NotContain(call =>
+            call.GetMethodInfo().Name == nameof(IEventManagement.SubmitEventAsync)
+            || call.GetMethodInfo().Name == nameof(IEventManagement.UpdateAndResubmitAsync));
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Viewer")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Guide")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Burn")]

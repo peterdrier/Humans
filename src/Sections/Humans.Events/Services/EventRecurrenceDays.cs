@@ -13,6 +13,16 @@ internal static class EventRecurrenceDays
 {
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+    /// <summary>Checks form offsets against the offered calendar, preserving the empty-selection fallback.</summary>
+    internal static bool HasOnlyEventOffsets(string? offsets, int eventEndOffset)
+    {
+        if (string.IsNullOrWhiteSpace(offsets)) return true;
+        var seen = new HashSet<int>();
+        return offsets.Split(',', StringSplitOptions.TrimEntries)
+            .All(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var day)
+                && day >= 0 && day <= eventEndOffset && seen.Add(day));
+    }
+
     internal static IReadOnlyList<Instant> GetOccurrenceInstants(
         Instant startAt, bool isRecurring, string? recurrenceDays,
         LocalDate? gateOpeningDate, DateTimeZone? timeZone, int? dayOffset = null)

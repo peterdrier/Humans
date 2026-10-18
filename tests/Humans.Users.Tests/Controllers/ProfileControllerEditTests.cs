@@ -154,9 +154,6 @@ public class ProfileControllerEditTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(true, _profileId));
-        _userService.SaveProfileVolunteerHistoryAsync(
-                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(true));
         _userService.SaveProfileLanguagesAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserProfileLanguagesSaveResult(true, _userId)));
@@ -403,6 +400,35 @@ public class ProfileControllerEditTests
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(10)]
+    [InlineData(30)]
+    [InlineData(60)]
+    public async Task DeletionPages_report_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
+    {
+        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
+        var user = new User
+        {
+            Id = _userId,
+            DeletionRequestedAt = now,
+            DeletionScheduledFor = now + Duration.FromDays(30),
+            DeletionEligibleAfter = holdDays is { } days ? now + Duration.FromDays(days) : null,
+        }.ToUserInfo();
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
+        var expectedDate = (now + Duration.FromDays(Math.Max(30, holdDays ?? 0))).ToDateTimeUtc();
+
+        var privacy = (await _controller.Privacy()).Should().BeOfType<ViewResult>().Subject;
+        privacy.Model.Should().BeOfType<PrivacyViewModel>().Which.DeletionScheduledFor.Should().Be(expectedDate);
+
+        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
+        {
+            ControllerContext = _controller.ControllerContext,
+        };
+        var deletion = (await wall.Deletion()).Should().BeOfType<ViewResult>().Subject;
+        deletion.Model.Should().BeOfType<PendingDeletionViewModel>().Which.ScheduledFor.Should().Be(expectedDate);
     }
 
     [HumansFact]

@@ -4,6 +4,7 @@ using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NodaTime;
 
 namespace Humans.Governance.Services;
 
@@ -64,12 +65,13 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
         var usersRequiringUpdate = await membershipCalc.GetUsersRequiringStatusUpdateAsync();
         var consentDeadlineApproaching = usersRequiringUpdate.Count;
 
-        var applicationStats = await applicationDecisionService.GetAdminStatsAsync();
+        var today = scope.ServiceProvider.GetRequiredService<IClock>().GetCurrentInstant().InUtc().Date;
+        var asociados = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today);
         var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();
 
         _snapshot = new GaugeSnapshot
         {
-            Asociados = applicationStats.Approved,
+            Asociados = asociados.Count,
             ApplicationsSubmitted = applicationsSubmitted,
             PendingConsents = pendingConsents,
             ConsentDeadlineApproaching = consentDeadlineApproaching

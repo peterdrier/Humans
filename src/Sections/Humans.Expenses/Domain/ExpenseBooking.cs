@@ -4,6 +4,6 @@ namespace Humans.Expenses.Domain;
 /// and year it maps to when the account is a budget category (both null otherwise).</summary>
 internal sealed record ExpenseBooking(
     int HoldedAccountNumber,
-    string HoldedAccountId,
+    string? HoldedAccountId,
     Guid? BudgetCategoryId,
     Guid? BudgetYearId);

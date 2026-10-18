@@ -40,10 +40,10 @@ the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
 
-No repository. Per-user serialization wrapper that fans out to
-`IUserManagement.SaveProfileAsync` for row writes and picture upload bytes,
-which are saved before publishing their content-type metadata. Uses `IFileStorage`
-only to clean up superseded files after that save. No `IMemoryCache`.
+No repository or cache. Serializes profile/CV submissions per user and delegates
+fields, CV history and picture bytes to `IUserManagement.SaveProfileAsync`.
+`UserService` writes picture bytes before publishing metadata, commits fields and
+CV together with the legacy identity name, and cleans superseded files after the save.
 
 ### ContactFieldService (Scoped)
 

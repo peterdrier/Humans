@@ -30,7 +30,7 @@ internal sealed class TeamsEmails(
             userEmail, userName,
             Lf("Teams_Email_AddedToTeam_Subject", teamName),
             Lf("Teams_Email_AddedToTeam_Body", Encode(userName), Encode(teamName),
-                ResourcesSection(resources), $"{_settings.BaseUrl}/Teams/{teamSlug}"),
+                ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")),
             "added_to_team", MessageCategory.TeamUpdates));
 
     /// <summary>The team's resource list — omitted entirely rather than rendered as an empty list.</summary>
@@ -41,7 +41,7 @@ internal sealed class TeamsEmails(
             ? Lf("Teams_Email_ResourcesSection",
                 string.Join("\n", items.Select(r =>
                     !string.IsNullOrEmpty(r.Url)
-                        ? $"<li><a href=\"{r.Url}\">{Encode(r.Name)}</a></li>"
+                        ? $"<li><a href=\"{Encode(r.Url)}\">{Encode(r.Name)}</a></li>"
                         : $"<li>{Encode(r.Name)}</li>")))
             : "";
     }

@@ -28,12 +28,15 @@ internal sealed class UserService(
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
     internal const string Profile = "Profile";
+    internal const string MergedProfiles = "MergedProfiles";
     internal const string ContactFields = "ContactFields";
     internal const string UserEmails = "UserEmails";
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
     internal const string CommunicationPreferences = "CommunicationPreferences";
     internal const string EventParticipations = "EventParticipations";
+
+    private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
 
     private static readonly TrackedLock[] ProfileStubLocks = Enumerable
         .Range(0, 32)
@@ -434,7 +437,8 @@ internal sealed class UserService(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<CVEntry>? volunteerHistory = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 
@@ -540,7 +544,7 @@ internal sealed class UserService(
         // saved names and carries any existing suspension forward.
         try
         {
-            await repo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct, volunteerHistory, command.DisplayName);
         }
         catch when (newPictureKey is not null)
         {
@@ -558,7 +562,6 @@ internal sealed class UserService(
             await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
         }
 
-        await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
 
         return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
@@ -639,19 +642,6 @@ internal sealed class UserService(
                     profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
     }
 
-    public async Task<bool> SaveProfileVolunteerHistoryAsync(
-        Guid userId,
-        IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return false;
-
-        await repo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
-        return true;
-    }
-
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
         IReadOnlyList<ProfileLanguageInfo> languages,
@@ -667,8 +657,8 @@ internal sealed class UserService(
             })
             .ToList();
 
-        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
         var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
+        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
         return new UserProfileLanguagesSaveResult(
             ownerUserId is not null,
             ownerUserId);
@@ -713,6 +703,7 @@ internal sealed class UserService(
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
+        using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);
         var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
         var existing = rows.FirstOrDefault(e => e.UserId == userId);
         if (existing is not null)
@@ -986,14 +977,22 @@ internal sealed class UserService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var user = await repo.GetByIdAsync(userId, ct);
-        if (user is null)
+        var allUsers = (await repo.GetAllAsync(ct)).ToDictionary(u => u.Id);
+        if (!allUsers.TryGetValue(userId, out var user))
         {
             return [
                 new UserDataSlice(Account, null),
                 new UserDataSlice(Profile, null)
             ];
         }
+
+        var visited = new HashSet<Guid> { userId };
+        while (user.MergedToUserId is { } next && visited.Add(next) &&
+               allUsers.TryGetValue(next, out var target))
+        {
+            user = target;
+        }
+        userId = user.Id;
 
         // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
@@ -1017,8 +1016,10 @@ internal sealed class UserService(
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
+            State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
             DeletionScheduledFor = user.DeletionScheduledFor.ToIso8601(),
+            DeletionEligibleAfter = user.DeletionEligibleAfter.ToIso8601(),
             CreatedAt = user.CreatedAt.ToIso8601(),
             LastLoginAt = user.LastLoginAt.ToIso8601()
         };
@@ -1030,7 +1031,8 @@ internal sealed class UserService(
                 ep.Year,
                 Status = ep.Status.ToString(),
                 Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToIso8601()
+                DeclaredAt = ep.DeclaredAt.ToIso8601(),
+                CheckedInAt = ep.CheckedInAt.ToIso8601()
             })
             .ToList();
 
@@ -1054,47 +1056,33 @@ internal sealed class UserService(
 
         var profileSlice = profile is null
             ? new UserDataSlice(Profile, null)
-            : new UserDataSlice(Profile, new
+            : new UserDataSlice(Profile, ShapeProfileForExport(profile,
+                user.State is UserState.Suspended or UserState.AdminSuspended));
+
+        // Profile folds deliberately retain health data on archived rows.
+        // Walk backwards from the survivor so every retained profile follows it into the export.
+        var sourcesByTarget = allUsers.Values.Where(u => u.MergedToUserId is not null)
+            .ToLookup(u => u.MergedToUserId!.Value);
+        var mergedIds = new HashSet<Guid> { userId };
+        var pending = new Queue<Guid>([userId]);
+        while (pending.TryDequeue(out var targetId))
+        {
+            foreach (var source in sourcesByTarget[targetId])
             {
-                profile.BurnerName,
-                profile.FirstName,
-                profile.LastName,
-                Birthday = profile.DateOfBirth is not null
-                    ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}"
-                    : null,
-                profile.City,
-                profile.CountryCode,
-                profile.Latitude,
-                profile.Longitude,
-                profile.Bio,
-                profile.Pronouns,
-                profile.ContributionInterests,
-                profile.BoardNotes,
-                profile.MembershipTier,
-                profile.IsApproved,
-                // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
-                IsSuspended = user.State is UserState.Suspended or UserState.AdminSuspended,
-                profile.NoPriorBurnExperience,
-                ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
-                ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),
-                profile.ConsentCheckNotes,
-                profile.RejectionReason,
-                RejectedAt = profile.RejectedAt.ToIso8601(),
-                profile.EmergencyContactName,
-                profile.EmergencyContactPhone,
-                profile.EmergencyContactRelationship,
-                // Dietary + medical (moved here from VolunteerEventProfile). Included in
-                // the data-subject export — this is the owner's own export of their data.
-                profile.DietaryPreference,
-                profile.Allergies,
-                profile.AllergyOtherText,
-                profile.Intolerances,
-                profile.IntoleranceOtherText,
-                profile.MedicalConditions,
-                profile.HasCustomProfilePicture,
-                CreatedAt = profile.CreatedAt.ToIso8601(),
-                UpdatedAt = profile.UpdatedAt.ToIso8601()
-            });
+                if (mergedIds.Add(source.Id))
+                    pending.Enqueue(source.Id);
+            }
+        }
+        mergedIds.Remove(userId);
+        var mergedProfiles = mergedIds.Count == 0 ? [] : await repo.GetAllProfilesAsync(ct);
+        var mergedProfileSlice = new UserDataSlice(MergedProfiles, mergedProfiles
+            .Where(p => mergedIds.Contains(p.UserId))
+            .Select(p => new
+            {
+                p.UserId,
+                Profile = ShapeProfileForExport(p,
+                    allUsers[p.UserId].State is UserState.Suspended or UserState.AdminSuspended)
+            }).ToList());
 
         var contactFieldSlice = new UserDataSlice(ContactFields, contactFields.Select(cf => new
         {
@@ -1148,6 +1136,7 @@ internal sealed class UserService(
             new UserDataSlice(Account, shaped),
             new UserDataSlice(EventParticipations, participationsShaped),
             profileSlice,
+            mergedProfileSlice,
             contactFieldSlice,
             userEmailsSlice,
             volunteerHistorySlice,
@@ -1155,6 +1144,49 @@ internal sealed class UserService(
             commPrefsSlice
         ];
     }
+
+    private static object ShapeProfileForExport(Humans.Users.Domain.Profile profile, bool isSuspended) =>
+        new
+        {
+            profile.BurnerName,
+            profile.FirstName,
+            profile.LastName,
+            Birthday = profile.DateOfBirth is not null
+                ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}"
+                : null,
+            profile.City,
+            profile.CountryCode,
+            profile.Latitude,
+            profile.Longitude,
+            profile.Bio,
+            profile.Pronouns,
+            profile.ContributionInterests,
+            profile.BoardNotes,
+            profile.MembershipTier,
+            profile.IsApproved,
+            // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
+            IsSuspended = isSuspended,
+            profile.NoPriorBurnExperience,
+            ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
+            ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),
+            profile.ConsentCheckNotes,
+            profile.RejectionReason,
+            RejectedAt = profile.RejectedAt.ToIso8601(),
+            profile.EmergencyContactName,
+            profile.EmergencyContactPhone,
+            profile.EmergencyContactRelationship,
+            // Dietary + medical (moved here from VolunteerEventProfile). Included in
+            // the data-subject export — this is the owner's own export of their data.
+            profile.DietaryPreference,
+            profile.Allergies,
+            profile.AllergyOtherText,
+            profile.Intolerances,
+            profile.IntoleranceOtherText,
+            profile.MedicalConditions,
+            profile.HasCustomProfilePicture,
+            CreatedAt = profile.CreatedAt.ToIso8601(),
+            UpdatedAt = profile.UpdatedAt.ToIso8601()
+        };
 
     // --- IUserDataContributor — GDPR erasure ---
 
@@ -1172,6 +1204,7 @@ internal sealed class UserService(
                 "user id, is the association's register of who was a member in which year — " +
                 "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
             [Profile] = null,
+            [MergedProfiles] = null,
             [ContactFields] = null,
             [UserEmails] = null,
             [VolunteerHistory] = null,
@@ -1369,7 +1402,12 @@ internal sealed class UserService(
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
         await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        if (previousPicture is { } picture &&
+            ProfilePictureKeys.Resolve(picture.ProfileId, picture.ContentType, picture.StorageKey) is { } key)
+        {
+            await DeleteSupersededPictureAsync(picture.ProfileId, key);
+        }
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)

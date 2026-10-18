@@ -11,7 +11,7 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Groups active signups by user and enqueues one personalised email per recipient via the outbox.
+/// Groups active signups by user and requests one personalised email per recipient via Email.
 /// One audit row per dispatch (recipient rows are auditable through the outbox).
 /// </summary>
 internal sealed class RotaCoordinatorMessageService(
@@ -83,18 +83,18 @@ internal sealed class RotaCoordinatorMessageService(
         await auditLogService.LogAsync(
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
-            $"Sent rota message '{Truncate(messageText, 120)}' to {summary.Queued} recipient(s) on '{rota.Name}'"
+            $"Requested rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) on '{rota.Name}'"
                 + auditSuffix,
             senderUserId);
 
         // Total-failure path: every enqueue threw. Audit row already records
         // the failures; surface a Failure result so the controller does not
-        // render a misleading "Queued 0 email(s)" success toast.
-        if (summary.Queued == 0 && summary.Failed > 0)
+        // render a misleading successful-request toast.
+        if (summary.Requested == 0 && summary.Failed > 0)
             return RotaMessageDispatchResult.Failure(
                 $"Failed to enqueue any emails ({summary.Failed} enqueue error(s)); check server logs.");
 
-        return RotaMessageDispatchResult.Success(summary.Queued, rota.Name);
+        return RotaMessageDispatchResult.Success(summary.Requested, rota.Name);
     }
 
     public async Task<TeamRotasMessageDispatchResult> SendTeamRotasMessageAsync(
@@ -147,16 +147,16 @@ internal sealed class RotaCoordinatorMessageService(
             AuditAction.CoordinatorTeamRotasMessageSent,
             // "Team" persisted literal — see memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
-            $"Sent team-wide rota message '{Truncate(messageText, 120)}' to {summary.Queued} recipient(s) "
+            $"Requested team-wide rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"
                 + auditSuffix,
             senderUserId);
 
-        if (summary.Queued == 0 && summary.Failed > 0)
+        if (summary.Requested == 0 && summary.Failed > 0)
             return TeamRotasMessageDispatchResult.Failure(
                 $"Failed to enqueue any emails ({summary.Failed} enqueue error(s)); check server logs.");
 
-        return TeamRotasMessageDispatchResult.Success(summary.Queued, groups.Count, team.Name);
+        return TeamRotasMessageDispatchResult.Success(summary.Requested, groups.Count, team.Name);
     }
 
     public async Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(
@@ -283,7 +283,7 @@ internal sealed class RotaCoordinatorMessageService(
         var recipientIds = byUser.Keys.ToList();
         var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
 
-        var queued = 0;
+        var requested = 0;
         var skipped = 0;
         var failed = 0;
 
@@ -337,7 +337,8 @@ internal sealed class RotaCoordinatorMessageService(
             try
             {
                 await enqueue(request, ct);
-                queued++;
+                // Email may suppress an opted-out recipient without throwing.
+                requested++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -348,7 +349,7 @@ internal sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(queued, skipped, failed);
+        return new DispatchSummary(requested, skipped, failed);
     }
 
     // Chronologically ordered "ddd MMMM d [@ HH:mm]" lines in the rota's timezone.
@@ -393,7 +394,7 @@ internal sealed class RotaCoordinatorMessageService(
         IReadOnlyList<ShiftSignup> Signups);
 
     private sealed record DispatchSummary(
-        int Queued,
+        int Requested,
         int Skipped,
         int Failed);
 }

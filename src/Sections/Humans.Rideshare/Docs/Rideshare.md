@@ -231,6 +231,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - The cached snapshot leaves display ordering to the board, Mine, map and day-roster builders. Creation time breaks display ties; day-roster riders remain chronological.
 
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
+- **Map popup dates follow the UI culture.** GeoJSON retains ISO departure/desired dates and provides display labels from the same formatter as the list; popups escape and render those labels.
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
 - **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or year) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
@@ -239,7 +240,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request.
 - **Route geometry is computed once at save and frozen.** Recomputed only on create, on an update that changes the member point, waypoints, or direction, or on an update of a trip saved without a route (a retry after a provider outage) — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
-- **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it.
+- **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it. Changing the place label clears the previous coordinates even when the map library or WebGL fails, so saving geocodes the new place.
 - **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90 and longitude within −180…180. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
@@ -250,6 +251,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
 - **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
 - **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active` and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
+- **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
 
@@ -299,8 +301,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
   notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
-- **Gdpr**: `IUserDataContributor` — exports three slices (`RideshareTrips`,
-  `RideshareRequests`, `RideshareInterests`); erasure deletes the user's interests, then their
+- **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
+  `RideshareInterests` for the resolved survivor, including requests under archived account IDs;
+  erasure deletes the user's interests, then their
   trips (cascades the trips' interests), then other drivers' answers to their requests and the
   requests themselves — idempotent. (The FK's `SetNull` is a database safety net, never the
   intended path: an orphaned answer would read as the driver riding their own trip.)

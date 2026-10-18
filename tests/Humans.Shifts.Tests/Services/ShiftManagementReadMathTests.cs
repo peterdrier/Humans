@@ -139,7 +139,46 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
 
         hours.EssentialHours.Should().Be(12);
         hours.ImportantHours.Should().Be(10);
-        hours.NormalHours.Should().Be(6);
+        hours.NormalHours.Should().Be(5);
+        (await _service.GetStaffingSnapshotAsync(es.Id))
+            .StaffingHours.Single(h => h.DayOffset == 3).NormalHours.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(6, 2, 4, 0)]
+    [InlineData(30, 2, 24, 4)]
+    [InlineData(48, 2, 24, 22)]
+    public async Task GetStaffingSnapshot_SplitsOvernightHoursAtLocalDayBoundaries(
+        double durationHours, double firstDayHours, double secondDayHours, double thirdDayHours)
+    {
+        var (es, rota) = SeedScenario();
+        SeedShift(rota, dayOffset: 2, min: 1, max: 3, durationHours: durationHours, startHour: 22);
+        await SaveAllAsync(Ct);
+
+        var snapshot = await _service.GetStaffingSnapshotAsync(es.Id);
+
+        snapshot.StaffingHours.Single(h => h.DayOffset == 2).NormalHours.Should().Be(firstDayHours * 3);
+        snapshot.StaffingHours.Single(h => h.DayOffset == 3).NormalHours.Should().Be(secondDayHours * 3);
+        snapshot.StaffingHours.Single(h => h.DayOffset == 4).NormalHours.Should().Be(thirdDayHours * 3);
+        snapshot.StaffingHours.Sum(h => h.NormalHours).Should().Be(durationHours * 3);
+    }
+
+    [HumansTheory]
+    [InlineData(3, 29, 24, 23)]
+    [InlineData(10, 25, 26, 25)]
+    public async Task GetStaffingSnapshot_UsesElapsedHoursOnDaylightSavingDays(
+        int month, int day, double durationHours, double transitionDayHours)
+    {
+        var (es, rota) = SeedScenario();
+        es.GateOpeningDate = new LocalDate(2026, month, day);
+        SeedShift(rota, dayOffset: 0, min: 1, max: 2, durationHours: durationHours, startHour: 0);
+        await SaveAllAsync(Ct);
+
+        var snapshot = await _service.GetStaffingSnapshotAsync(es.Id);
+
+        snapshot.StaffingHours.Single(h => h.DayOffset == 0).NormalHours.Should().Be(transitionDayHours * 2);
+        snapshot.StaffingHours.Single(h => h.DayOffset == 1).NormalHours.Should().Be(2);
+        snapshot.StaffingHours.Sum(h => h.NormalHours).Should().Be(durationHours * 2);
     }
 
     [HumansFact]

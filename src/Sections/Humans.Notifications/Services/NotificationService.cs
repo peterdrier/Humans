@@ -64,6 +64,8 @@ internal sealed class NotificationService(
         var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
             roleUserIds, category, cancellationToken);
 
+        (title, body) = NotificationEmitter.FitCopyToStorage(title, body);
+
         var notification = new Notification
         {
             Id = Guid.NewGuid(),

@@ -221,6 +221,11 @@ public sealed record UserInfo(
     /// <summary>Deletion request pending — mirrors <see cref="User.IsDeletionPending"/>.</summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
+    /// <summary>Earliest deletion eligibility: the grace deadline, extended by any later ticket hold.</summary>
+    public Instant? EffectiveDeletionDate =>
+        DeletionScheduledFor is { } scheduled && DeletionEligibleAfter is { } hold && hold > scheduled
+            ? hold : DeletionScheduledFor;
+
     /// <summary>Account was merged into another account — the row is a merge-source tombstone.</summary>
     public bool IsMerged => MergedAt is not null;
 
@@ -452,7 +457,6 @@ public sealed record UserInfo(
     /// a blank <c>BurnerName</c> with the erasure sentinel still sitting in <c>DisplayName</c>
     /// (the old #1097 erasure path only nulled <c>BurnerName</c>). This is NOT a general
     /// fallback — it retires once the #1102 migration drops the <c>DisplayName</c> column.
-    /// <c>CachingUserService.ResolveBurnerName</c> is the cache-refresh twin of this.
     /// </summary>
     /// <summary>
     /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>

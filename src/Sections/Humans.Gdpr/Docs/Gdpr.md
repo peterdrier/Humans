@@ -70,6 +70,11 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Invariants
 
+- **Export resolves the subject before fan-out.** Every contributor receives the
+  surviving account ID, matching the envelope, so moved rows remain visible when
+  the request names an archived account. Contributors with retained history still
+  read the survivor's merge-chain IDs. An unknown account keeps the requested ID.
+  Erasure remains a separate per-ID fan-out; its input is never redirected.
 - **The export is complete or it fails.** A contributor that throws is logged
   and the exception is re-thrown: omitting a category silently is worse than
   failing the download. Erasure holds the same rule — a contributor that throws
@@ -140,7 +145,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 **Outbound:** `Humans.Gdpr` references `Humans.Users.Contracts`. `GdprService`
 injects `IUserService` and calls `GetUserInfoAsync` once per export to
-stamp the envelope with the surviving account id and the merged-away ids;
+stamp the envelope with the surviving account id and the merged-away ids,
+and pass that surviving id to every export contributor;
 `GuestDataController`'s base class `HumansControllerBase` also takes
 `IUserService`.
 

@@ -255,7 +255,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
-            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains(rota.Name)),
+            Arg.Is<string>(d => d.StartsWith("Requested rota message", StringComparison.Ordinal) && d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains(rota.Name)),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
@@ -616,7 +616,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             AuditAction.CoordinatorTeamRotasMessageSent,
             nameof(Team),
             teamId,
-            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains("Test Team")),
+            Arg.Is<string>(d => d.StartsWith("Requested team-wide rota message", StringComparison.Ordinal) && d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains("Test Team")),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());

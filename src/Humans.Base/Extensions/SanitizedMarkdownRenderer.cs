@@ -13,7 +13,8 @@ public static class SanitizedMarkdownRenderer
         .UseSoftlineBreakAsHardlineBreak()
         .Build();
 
-    public static string Render(string? markdown, bool allowImages = true)
+    /// <summary>Renders Markdown, applies optional HTML composition, then sanitizes the complete result.</summary>
+    public static string Render(string? markdown, bool allowImages = true, Func<string, string>? transformHtml = null)
     {
         if (string.IsNullOrWhiteSpace(markdown))
         {
@@ -21,6 +22,8 @@ public static class SanitizedMarkdownRenderer
         }
 
         var rendered = Markdown.ToHtml(markdown, MarkdownPipeline);
+        if (transformHtml is not null)
+            rendered = transformHtml(rendered);
         var sanitizer = new HtmlSanitizer();
 
         // Allow task list checkboxes rendered by Markdig's UseTaskLists extension.

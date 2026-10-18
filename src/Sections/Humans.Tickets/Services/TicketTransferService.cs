@@ -34,16 +34,15 @@ internal sealed class TicketTransferService(
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
 
-    // Hold the gate from the status read through the vendor outcome and local decision.
-    // Fixed stripes bound memory and coordinate separate service instances on this single server.
-    // A Process holds the gate through two TicketTailor calls (90s client timeout each), so waiters
-    // must outlast that rather than the 60s TrackedLock default.
+    // Fixed stripes coordinate instances: attendee id for creation, request id for decisions.
+    // The gate covers the status read through the durable outcome. Processing has two 90s
+    // vendor calls, so the five-minute acquisition timeout must outlast them.
     private static readonly TrackedLock[] DecisionLocks = Enumerable.Range(0, 32)
         .Select(i => new TrackedLock($"TicketTransfer.Decision[{i}]", timeout: TimeSpan.FromMinutes(5)))
         .ToArray();
 
-    private static TrackedLock DecisionLockFor(Guid requestId) =>
-        DecisionLocks[(uint)requestId.GetHashCode() % (uint)DecisionLocks.Length];
+    private static TrackedLock DecisionLockFor(Guid key) =>
+        DecisionLocks[(uint)key.GetHashCode() % (uint)DecisionLocks.Length];
 
     public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default)
@@ -96,6 +95,7 @@ internal sealed class TicketTransferService(
         if (dto.ReceiverUserId == senderUserId)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
+        using var creation = await DecisionLockFor(dto.OriginalAttendeeId).AcquireAsync(logger, ct);
         var attendee = await ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct);
         if (attendee is null)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");

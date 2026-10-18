@@ -158,6 +158,40 @@ public class EventServiceCalendarFeedTests
         items.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, 1)]
+    [Xunit.InlineData(true, 2)]
+    public async Task GetCalendarItems_PreviouslyDaySpecificFavourites_FollowCurrentRecurrence(bool stillRecurring, int expectedCount)
+    {
+        var userId = Guid.NewGuid();
+        StubBurnSettings();
+        var ev = MakeEvent(EventStatus.Approved, isRecurring: true, recurrenceDays: "0,2");
+        var favourites = new[] { 0, 2 }.Select(day => new EventFavourite
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            GuideEventId = ev.Id,
+            DayOffset = day,
+            CreatedAt = FixedNow,
+            Event = ev,
+        }).ToList();
+        _repo.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(favourites);
+        // In-place moderator edits retain approval and the member's existing bookmarks.
+        ev.IsRecurring = stillRecurring;
+
+        var items = await _service.GetCalendarItemsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        items.Should().HaveCount(expectedCount);
+        items.Select(item => item.Uid).Should().OnlyHaveUniqueItems();
+        items[0].Start.Should().Be(EventStart);
+        var projected = await _service.GetFavouritesWithEventsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        projected.Should().HaveCount(expectedCount);
+        if (stillRecurring)
+            projected.Select(f => f.DayOffset).Should().Equal(0, 2);
+        else
+            projected.Single().DayOffset.Should().BeNull("the existing whole-event removal path clears all retained day bookmarks");
+    }
+
     [HumansFact]
     public async Task GetCalendarItems_RecurringEvent_OneItemPerOccurrence()
     {

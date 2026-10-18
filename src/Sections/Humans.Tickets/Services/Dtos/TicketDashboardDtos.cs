@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Tickets.Contracts;
@@ -196,7 +197,8 @@ internal sealed class BreakEvenResult
 }
 
 /// <summary>A single row in the orders list page.</summary>
-internal sealed class OrderRow
+[method: JsonConstructor]
+internal sealed record OrderRow()
 {
     public Guid Id { get; init; }
     public Instant PurchasedAt { get; init; }
@@ -228,7 +230,8 @@ internal sealed class OrdersPageResult
 }
 
 /// <summary>A single row in the attendees list page.</summary>
-internal sealed class AttendeeRow
+[method: JsonConstructor]
+internal sealed record AttendeeRow()
 {
     public Guid Id { get; init; }
     public string AttendeeName { get; init; } = string.Empty;

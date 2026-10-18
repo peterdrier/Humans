@@ -168,11 +168,16 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`AuditAction.Preapproval*`), related to the program, the expense report, or the
   affected user.
+- Member notices and emails format amounts and claim deadlines in the recipient’s culture.
+  Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the
   notification; release re-raises it.
 - Apply: `PreapprovalApplicationReceived` to every manager (source key `pre-request:{id}`)
-  plus email; approve, decline and a merge-drop resolve it.
+  plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
+  belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
+  save, leaves the successful application successful, and does not skip the other channel.
+  Caller cancellation still propagates.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
@@ -180,8 +185,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
   once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
-  (created, managed, decided; null when empty). Erasure deletes Applied rows and manager
-  rows and keeps every decided grant (Art. 17(3)(b), fiscal retention). Merge re-keys every
+  (created, managed, decided; null when empty). Export follows the resolved identity chain,
+  so archived IDs return the same grants and decisions. Erasure deletes Applied and
+  manager rows and keeps every decided grant (Art. 17(3)(b), fiscal retention). Merge re-keys every
   user-id column, dedups manager rows, collapses duplicate pending applications to the older
   one with an audit entry.
 

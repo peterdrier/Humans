@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Humans.Base.Threading;
 using System.Runtime.CompilerServices;
 using System.Globalization;
 using Humans.Base.Extensions;
@@ -19,6 +21,9 @@ namespace Humans.Agent.Services;
 internal sealed class AgentService : IAgentService, IAgentConversationRetention
 {
     internal const string AgentConversations = "AgentConversations";
+
+    // Keep turns for one user serialized through final usage billing, across request scopes.
+    private static readonly ConcurrentDictionary<Guid, TrackedLock> TurnLocks = new();
 
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;
@@ -81,6 +86,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         AgentTurnRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var turnLock = TurnLocks.GetOrAdd(request.UserId, static userId =>
+            new TrackedLock($"Agent.Turn[{userId}]", timeout: TimeSpan.FromMinutes(5)));
+        using var turnLease = await turnLock.AcquireAsync(_logger, cancellationToken);
         var settings = _settings.Current;
         if (!settings.Enabled)
         {
@@ -248,6 +256,14 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         public int CacheReadTokens;
         public int CacheCreationTokens;
 
+        public void Include(AgentTurnFinalizer current, AgentTurnFinalizer? previous)
+        {
+            PromptTokens += current.InputTokens - (previous?.InputTokens ?? 0);
+            OutputTokens += current.OutputTokens - (previous?.OutputTokens ?? 0);
+            CacheReadTokens += current.CacheReadTokens - (previous?.CacheReadTokens ?? 0);
+            CacheCreationTokens += current.CacheCreationTokens - (previous?.CacheCreationTokens ?? 0);
+        }
+
         // Cache writes are input too; stream finalizers retain the separate provider counters.
         public int InputTokensIncludingCacheWrites => PromptTokens + CacheCreationTokens;
     }
@@ -309,6 +325,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         {
             // A stop reason belongs to this provider request, never the preceding tool iteration.
             finalFinalizer = null;
+            AgentTurnFinalizer? iterationUsage = null;
             var iterationAssistantText = new StringBuilder();
             var pendingToolCalls = new List<AnthropicToolCall>();
 
@@ -317,6 +334,12 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     MaxOutputTokens: MaxOutputTokensPerIteration, DisallowToolUse: withholdTools),
                 cancellationToken))
             {
+                // Record reported usage before yielding text: disposal at that yield must still bill it.
+                if ((token.Finalizer ?? token.Usage) is { } latestUsage)
+                {
+                    usage.Include(latestUsage, iterationUsage);
+                    iterationUsage = latestUsage;
+                }
                 if (token.TextDelta is { Length: > 0 } delta)
                 {
                     iterationAssistantText.Append(delta);
@@ -330,10 +353,6 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 else if (token.Finalizer is { } f)
                 {
                     finalFinalizer = f;
-                    usage.PromptTokens += f.InputTokens;
-                    usage.OutputTokens += f.OutputTokens;
-                    usage.CacheReadTokens += f.CacheReadTokens;
-                    usage.CacheCreationTokens += f.CacheCreationTokens;
                 }
             }
 

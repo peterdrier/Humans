@@ -147,12 +147,13 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email. Emails use the recipient’s supported saved language, with English fallback for missing or unsupported preferences.
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
-- Synced version content is fetched by each file’s immutable blob SHA. The canonical Spanish content and version SHA come from the same fetch, reused without a second branch read.
+- Synced version content is fetched by each file’s immutable blob SHA, after resolving the latest commit changing that path on the configured branch and pinning its metadata read to that commit. The canonical Spanish content and version SHA come from the same fetch, reused without a second branch read. Change summaries use that canonical file’s commit reference; the blob SHA remains the version identity.
 - GitHub document reads use the configured `GitHub:Branch`, including both directory discovery and translated file content for the anonymous `/Legal` pages.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
+- New signatures use the resolved survivor ID, including when a widget submits an archived account ID. Required-consent checks and post-save suspension-notification cleanup use that same ID; existing immutable signatures keep their original attribution.
 
-- Once a consent record is saved, required-consent checks, suspension-notification resolution, suspension restoration, and inline cache refreshes finish independently of request cancellation. Validation and the consent write retain the caller token.
+- Once a consent record is saved, required-consent checks, suspension-notification resolution, suspension restoration, and inline cache refreshes finish independently of request cancellation. The write evicts every merge-chain cache entry before the required-consent check, so suspension cleanup sees the new signature even when the cache was warm. Validation and the consent write retain the caller token.
 - A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
 
 ## Negative Access Rules
@@ -173,7 +174,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - The reminder job attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
 - A background job suspends humans who no longer have valid consents for required documents.
 
-- Legal document names in notices may outgrow the 200-character title limit. These producers bound titles by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
+- Legal document names in notices may outgrow the 200-character title limit. Consent sends full copy to Notifications, which bounds stored previews by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
 
 - Successful document create, settings edit, archive, and version-summary edit write audit events attributed to the Board/Admin actor, after persistence. A created document remains audited if initial GitHub sync fails.
 - Every persisted new document version writes a publication audit linked to its version ID, before notification fan-out: manual and initial sync name the initiating administrator; scheduled sync names `LegalDocumentSyncService`. Missing rows, failed publication and unchanged-content sync touches do not emit publication events. Signed consent records remain immutable and separate.

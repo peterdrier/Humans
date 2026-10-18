@@ -30,6 +30,7 @@ Members sign in using their Google account, which provides their primary email a
 
 **Acceptance Criteria:**
 - Can add any valid email address
+- Overlapping additions of the same address create one row and one verification token; the other request receives the existing-address refusal
 - Must verify the email before it becomes active
 - Verification email contains a secure link
 - 5-minute cooldown between verification requests (rate limiting)

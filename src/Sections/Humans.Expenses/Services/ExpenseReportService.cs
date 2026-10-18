@@ -366,7 +366,13 @@ internal sealed class ExpenseReportService(
                 // the report leaves the pending window (withdraw releases, approval consumes).
                 return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalLocked");
             }
-            if (preapprovalGrantId is { } grantId)
+            if (report.Status != ExpenseReportStatus.Draft && report.PreapprovalGrantId is not null)
+            {
+                // A program edit must not rebook a submitted report during an unrelated header edit.
+                booking = new ExpenseBooking(report.HoldedAccountNumber, report.HoldedAccountId,
+                    report.BudgetCategoryId, report.BudgetYearId);
+            }
+            else if (preapprovalGrantId is { } grantId)
             {
                 var (grantBooking, grantRefusal) = await ResolveGrantBookingAsync(
                     grantId, report.SubmitterUserId, report.PreapprovalGrantId, ct);

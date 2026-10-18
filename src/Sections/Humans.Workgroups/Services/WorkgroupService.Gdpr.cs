@@ -139,11 +139,9 @@ internal sealed partial class WorkgroupService
 
         foreach (var info in orphaned)
         {
-            await notifications.SendToRoleAsync(NotificationSource.WorkgroupRegistrationPending,
-                NotificationClass.Actionable, NotificationPriority.Normal,
-                $"No coordinator: {info.Name}", RoleNames.Board,
-                "The group's only coordinator was erased under GDPR. Name a coordinator from its members.",
-                actionUrl: "/Workgroups/Admin", cancellationToken: ct);
+            await NotifyBoardAsync(NotificationSource.WorkgroupRegistrationPending,
+                $"No coordinator: {info.Name}", info,
+                "The group's only coordinator was erased under GDPR. Name a coordinator from its members.", ct);
         }
     }
 

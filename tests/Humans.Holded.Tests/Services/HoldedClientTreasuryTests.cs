@@ -380,15 +380,15 @@ public class HoldedClientTreasuryTests
         await client.ReconcileBankMovementAsync(
             "tr-1", "m1",
             [
-                new HoldedReconcileDocumentRef("d1", HoldedReconcileDocumentType.Purchase),
-                new HoldedReconcileDocumentRef("d2", HoldedReconcileDocumentType.LedgerEntry),
+                new HoldedReconcileDocumentRef("pay-1", HoldedReconcileDocumentType.Payment),
+                new HoldedReconcileDocumentRef("pay-2", HoldedReconcileDocumentType.Payment),
             ],
             Xunit.TestContext.Current.CancellationToken);
 
         capturedPath.Should().Be("/api/v2/treasury/accounts/tr-1/bank-movements/m1/reconcile");
         capturedMethod.Should().Be("POST");
         capturedBody.Should().Be(
-            """{"documents":[{"document_id":"d1","document_type":"purchase"},{"document_id":"d2","document_type":"dailyledger"}]}""");
+            """{"documents":[{"document_id":"pay-1","document_type":"payment"},{"document_id":"pay-2","document_type":"payment"}]}""");
     }
 
     [HumansFact]
@@ -397,7 +397,7 @@ public class HoldedClientTreasuryTests
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.BadRequest, "{}")));
 
         var act = async () => await client.ReconcileBankMovementAsync(
-            "tr-1", "m1", [new HoldedReconcileDocumentRef("d1", HoldedReconcileDocumentType.Purchase)],
+            "tr-1", "m1", [new HoldedReconcileDocumentRef("pay-1", HoldedReconcileDocumentType.Payment)],
             Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();

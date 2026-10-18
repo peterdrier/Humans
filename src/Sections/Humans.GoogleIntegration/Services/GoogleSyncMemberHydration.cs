@@ -43,7 +43,8 @@ internal static class GoogleSyncMemberHydration
     }
 
     internal static bool CanReceiveAccess(UserInfo user) =>
-        !user.IsSuspended && !user.IsDeletionPending && user.GoogleEmailStatus != GoogleEmailStatus.Rejected;
+        user.State != UserState.Rejected && !user.IsSuspended
+        && !user.IsDeletionPending && user.GoogleEmailStatus != GoogleEmailStatus.Rejected;
 
     internal static UserEmailInfo? SelectTargetEmail(UserInfo user) =>
         user.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)

@@ -38,12 +38,8 @@ internal sealed class ExpensesEmails(
             userEmail, userName,
             L("Expenses_Email_Approved_Subject"),
             Lf("Expenses_Email_Approved_Body",
-                Encode(userName), Euros(payable), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")),
+                Encode(userName), payable.ToEuro(), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")),
             "expense_approved", MessageCategory.System));
-
-    /// <summary>Amount in the recipient's own number format — "1.234,56 €" in es, "1,234.56 €" in en.</summary>
-    private static string Euros(decimal amount) =>
-        amount.ToString("N2", CultureInfo.CurrentCulture) + " €";
 
     /// <summary>
     /// Webmail has no Humans origin, so a root-relative path in an email resolves against

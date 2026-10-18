@@ -95,9 +95,9 @@ public abstract class PreapprovalsTestHarness : IDisposable
     private protected static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
-    private protected PreapprovalService NewService() => new(
+    private protected PreapprovalService NewService(PreapprovalsEmails? emailFactory = null) => new(
         new PreapprovalRepository(DbFactory), Users, UserEmails, Finance, Notifications, NotificationResolve,
-        Email, EmailFactory, AuditLog, Clock, Logger);
+        Email, emailFactory ?? EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected PreapprovalsDbContext OpenContext() => DbFactory.CreateDbContext();

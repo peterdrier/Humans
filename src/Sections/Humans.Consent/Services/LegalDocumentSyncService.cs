@@ -543,7 +543,7 @@ internal sealed partial class LegalDocumentSyncService(
             content[lang] = file.Content;
         }
 
-        var commitMessage = await gitHub.GetCommitMessageAsync(commitSha, cancellationToken);
+        var commitMessage = await gitHub.GetCommitMessageAsync(canonicalResult.CommitSha, cancellationToken);
 
         var isNew = document.Versions.Count == 0;
         var versionNumber = $"v{document.Versions.Count + 1}.0";
@@ -636,11 +636,6 @@ internal sealed partial class LegalDocumentSyncService(
                     var culture = CultureInfo.GetCultureInfo(group.Key);
                     var title = string.Format(culture, NoticeResources.GetString(titleKey, culture)!, document.Name);
                     var body = NoticeResources.GetString(bodyKey, culture);
-                    if (title.EnumerateRunes().Count() > 200)
-                    {
-                        body = string.Concat(title, "\n\n", body);
-                        title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-                    }
                     await notificationService.SendAsync(
                         source,
                         NotificationClass.Actionable,

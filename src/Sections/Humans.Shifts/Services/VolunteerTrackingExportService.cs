@@ -133,17 +133,15 @@ internal sealed class VolunteerTrackingExportService(
         var rangeEnd = days[^1];
         foreach (var s in shifts)
         {
-            var localStart = s.StartsAtUtc.InZone(zone).LocalDateTime;
-            var localEnd = s.EndsAtUtc.InZone(zone).LocalDateTime;
-            var firstDay = LocalDate.Max(localStart.Date, rangeStart);
-            var lastDay = LocalDate.Min(localEnd.Date, rangeEnd);
+            var firstDay = LocalDate.Max(s.StartsAtUtc.InZone(zone).Date, rangeStart);
+            var lastDay = LocalDate.Min(s.EndsAtUtc.InZone(zone).Date, rangeEnd);
             for (var d = firstDay; d <= lastDay; d = d.PlusDays(1))
             {
-                var dayStart = d.AtStartOfDayInZone(zone).LocalDateTime;
-                var dayEnd = d.PlusDays(1).AtStartOfDayInZone(zone).LocalDateTime;
-                var overlapStart = LocalDateTime.Max(dayStart, localStart);
-                var overlapEnd = LocalDateTime.Min(dayEnd, localEnd);
-                var hours = (overlapEnd - overlapStart).ToDuration().TotalHours;
+                var dayStart = d.AtStartOfDayInZone(zone).ToInstant();
+                var dayEnd = d.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
+                var overlapStart = Instant.Max(dayStart, s.StartsAtUtc);
+                var overlapEnd = Instant.Min(dayEnd, s.EndsAtUtc);
+                var hours = (overlapEnd - overlapStart).TotalHours;
                 if (hours <= 0) continue;
                 var key = (s.UserId, d);
                 if (!result.TryGetValue(key, out var list))

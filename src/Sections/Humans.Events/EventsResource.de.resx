@@ -153,6 +153,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>Die Kategorie '{0}' stimmt mit mehreren aktiven Kategorien überein.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Date ist erforderlich.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date muss das Format yyyy-MM-dd haben.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>Beginn und Ende der Veranstaltung müssen sowohl in UTC als auch in der Veranstaltungszeitzone in den Jahren 0001 bis 9999 liegen.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>StartTime ist erforderlich.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime muss das Format HH:mm haben.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes muss zwischen 15 und 480 liegen.</value></data>
@@ -177,4 +178,5 @@
   <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde nicht für den Veranstaltungsführer freigegeben.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Du kannst deine Veranstaltung hier bearbeiten und erneut einreichen: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Änderungen an deiner Veranstaltung angefordert</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Das Moderationsteam bittet um Änderungen an deiner Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt;, bevor sie freigegeben werden kann.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Rückmeldung:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Bitte aktualisiere sie und reiche sie hier erneut ein: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Wähle jeden Wiederholungstag nur einmal aus dem Kalender dieser Veranstaltung.</value></data>
 </root>

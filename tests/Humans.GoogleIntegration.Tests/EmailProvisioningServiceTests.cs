@@ -43,7 +43,9 @@ public class EmailProvisioningServiceTests
     [HumansTheory]
     [InlineData("müller.garcía", "mueller.garcia")]
     [InlineData("Böhm-López", "boehm-lopez")]
-    public void SanitizeEmailPrefix_HandlesMixedGermanAndAccented(string input, string expected)
+    [InlineData("O'Neill_9-", "o'neill_9-")]
+    [InlineData("Name+tag", "name+tag")]
+    public void SanitizeEmailPrefix_NormalizesAllowedCharacters(string input, string expected)
     {
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);
     }
@@ -84,6 +86,45 @@ public class EmailProvisioningServiceTests
         EmailProvisioningService.SanitizeEmailPrefix("te\tst").Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData("name@other")]
+    [InlineData("na..me")]
+    [InlineData(".name")]
+    [InlineData("name.")]
+    [InlineData("abuse")]
+    [InlineData("postmaster")]
+    public void SanitizeEmailPrefix_RejectsInvalidWorkspaceUsernames(string prefix)
+    {
+        EmailProvisioningService.SanitizeEmailPrefix(prefix).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("a", 64, true)]
+    [InlineData("a", 65, false)]
+    [InlineData("ü", 32, true)]
+    [InlineData("ü", 33, false)]
+    public void SanitizeEmailPrefix_LimitsTheNormalizedUsername(string character, int count, bool valid)
+    {
+        var result = EmailProvisioningService.SanitizeEmailPrefix(string.Concat(Enumerable.Repeat(character, count)));
+        if (valid) result.Should().HaveLength(64);
+        else result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_RejectsInvalidUsernameBeforeWorkspaceReadsOrWrites()
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        StubTargetUser(f, userId);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bad@name", userId);
+
+        result.Success.Should().BeFalse();
+        f.WorkspaceUserService.ReceivedCalls().Should().BeEmpty();
+        f.UserEmailService.ReceivedCalls().Should().BeEmpty();
+        f.Audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     // --- ProvisionNobodiesEmailAsync: cross-user conflict checks ---
     // These tests verify that provisioning rejects prefixes already in use
     // by another human in our system BEFORE calling Workspace or writing DB.
@@ -97,7 +138,8 @@ public class EmailProvisioningServiceTests
         IUserEmailService UserEmailService,
         ITeamService TeamService,
         INotificationEmitter Notifications,
-        IEmailService Emails);
+        IEmailService Emails,
+        IAuditLogService Audit);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -117,7 +159,7 @@ public class EmailProvisioningServiceTests
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService, notify, email);
+            teamService, notify, email, audit);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null) => UserInfo.Create(
@@ -139,6 +181,70 @@ public class EmailProvisioningServiceTests
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Target", lastName: "Two")));
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionNobodiesEmailAsync_ReportsCommittedAccountWhenCredentialsCannotBeQueued(bool hasRecoveryEmail)
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
+            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"),
+            email: hasRecoveryEmail ? "personal@example.org" : null));
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailEditDto>());
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        f.Emails.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Queue unavailable")));
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeTrue();
+        result.FullEmail.Should().Be("person@nobodies.team");
+        result.WarningMessage.Should().Contain("admin");
+        await f.UserEmailService.Received(1).AddVerifiedEmailAsync(userId, "person@nobodies.team", Arg.Any<CancellationToken>());
+        await f.Audit.Received(1).LogAsync(AuditAction.WorkspaceAccountProvisioned,
+            "WorkspaceAccount", userId, Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        var notice = f.Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments();
+        ((string)notice[5]!).Should().Contain("person@nobodies.team")
+            .And.NotContain("Check your personal email");
+    }
+
+    [HumansTheory]
+    [InlineData(null, "Person@NOBODIES.TEAM", null)]
+    [InlineData("old@nobodies.team", "Person@NOBODIES.TEAM", null)]
+    [InlineData("old@nobodies.team", "personal@example.org", "personal@example.org")]
+    [InlineData("primary@example.org", "person@nobodies.team", "primary@example.org")]
+    public async Task ProvisionNobodiesEmailAsync_RecoveryNeverTargetsWorkspace(
+        string? primaryEmail, string oauthEmail, string? recoveryEmail)
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
+            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: oauthEmail));
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>()).Returns(primaryEmail is null
+            ? new List<UserEmailEditDto>()
+            : [new UserEmailEditDto(Guid.NewGuid(), primaryEmail, IsVerified: true, IsGoogle: false,
+                Provider: null, ProviderKey: null, IsPrimary: true, Visibility: null,
+                IsPendingVerification: false, GoogleEmailStatus: GoogleEmailStatus.Unknown)]);
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeTrue();
+        result.RecoveryEmail.Should().Be(recoveryEmail);
+        await f.WorkspaceUserService.Received(1).ProvisionAccountAsync("person@nobodies.team", "Person", "Test",
+            Arg.Any<string>(), recoveryEmail, Arg.Any<CancellationToken>());
+        if (recoveryEmail is null)
+            f.Emails.ReceivedCalls().Should().BeEmpty();
+        else
+            await f.Emails.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(message => message.RecipientEmail == recoveryEmail), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

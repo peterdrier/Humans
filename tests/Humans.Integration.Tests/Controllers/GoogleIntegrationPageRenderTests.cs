@@ -81,7 +81,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
             var html = await response.Content.ReadAsStringAsync(ct);
 
             html.Should().NotContain("-view-component", $"GET {url} has a ReSharper-rewritten vc tag");
-            html.Should().NotContain("GoogleAccounts_",
+            html.Should().NotContain("GoogleIntegration_Accounts_",
                 $"GET {url} rendered a raw resource key — the resx carve missed one, or a type bound the wrong localizer");
         }
     }
@@ -106,7 +106,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     [HumansFact(Timeout = 120000)]
     public async Task Accounts_page_renders_the_sections_own_resource_set()
     {
-        // The section's only localized copy is the three GoogleAccounts_* keys, and
+        // The account page's localized copy uses GoogleIntegration_Accounts_* keys, and
         // Accounts.cshtml is their sole renderer. A resource set whose manifest prefix is
         // wrong degrades every string to its raw key without failing anything else, so this
         // asserts the resolved English value rather than the absence of the key.
@@ -117,7 +117,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().Contain("Actions", "GoogleAccounts_Actions must resolve out of GoogleIntegrationResource");
+        html.Should().Contain("Actions", "GoogleIntegration_Accounts_Actions must resolve out of GoogleIntegrationResource");
     }
 
     [HumansFact(Timeout = 120000)]

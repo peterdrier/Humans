@@ -57,10 +57,11 @@ internal sealed partial class WorkgroupService
             return;
 
         var coordinators = info.CoordinatorUserIds();
-        await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
+        var dispatched = await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
             "Workgroups_Todo_UpdateDue_Title", info, body: null, ct);
-        await AuditJobAsync(AuditAction.WorkgroupUpdateDueNotified,
-            workgroup, $"Notified the coordinators that an update is due after {days} days of silence");
+        if (dispatched > 0)
+            await AuditJobAsync(AuditAction.WorkgroupUpdateDueNotified,
+                workgroup, $"Requested update notices for {dispatched} coordinators after {days} days of silence");
     }
 
     /// <summary>Clause 1's fourteen days: the Board is told once; the queue keeps showing it.</summary>

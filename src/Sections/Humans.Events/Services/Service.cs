@@ -349,7 +349,15 @@ internal sealed class EventService(
     {
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
         return favourites.Select(f => new EventFavouriteInfo(
-            f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event))).ToList();
+                f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
+            .GroupBy(f => f.GuideEventId)
+            .SelectMany(group =>
+            {
+                // A recurrence edit can leave several day bookmarks for one single event.
+                // Project a whole-event target so the existing remove path clears them all.
+                var wholeEvent = group.FirstOrDefault(f => !f.Event.IsRecurring || f.DayOffset is null);
+                return wholeEvent is null ? group.ToArray() : [wholeEvent with { DayOffset = null }];
+            }).ToList();
     }
 
     public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
@@ -592,7 +600,7 @@ internal sealed class EventService(
     {
         // Favourited events that are still Approved — moderation changes drop
         // an event out of the feed without touching the favourite row.
-        var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
+        var favourites = await GetFavouritesWithEventsAsync(userId, ct);
         var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
         if (approved.Count == 0) return [];
 
@@ -615,13 +623,13 @@ internal sealed class EventService(
             var e = favourite.Event;
             var occurrences = e.GetOccurrenceInstants(burn?.GateOpeningDate, tz, favourite.DayOffset);
 
-            var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
+            var location = string.Join(" — ", new[] { e.VenueName, e.LocationNote }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));
             var description = string.Join("\n\n", new[]
             {
                 e.Description,
                 string.IsNullOrWhiteSpace(e.Host) ? null : $"{localizer["Events_Submission_FieldHost"]}: {e.Host}",
-                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"{localizer["Events_Submission_FieldCategory"]}: {e.Category.Name}",
+                string.IsNullOrWhiteSpace(e.CategoryName) ? null : $"{localizer["Events_Submission_FieldCategory"]}: {e.CategoryName}",
             }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             foreach (var start in occurrences)

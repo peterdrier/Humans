@@ -62,10 +62,13 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task ReconcileCVEntriesAsync_AddsUpdatesAndRemovesEntries()
+    public async Task UpdateAsync_Cv_AddsUpdatesAndRemovesEntries()
     {
         // Arrange: profile with two existing CV entries
-        var profileId = Guid.NewGuid();
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        var profileId = profile.Id;
         var keepId = Guid.NewGuid();
         var removeId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -103,7 +106,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
             new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, Xunit.TestContext.Current.CancellationToken);
+        await _repo.UpdateAsync(profile, Xunit.TestContext.Current.CancellationToken, newEntries);
 
         // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
         // store directly rather than returning stale entities from _dbContext's identity map.
@@ -131,9 +134,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReconcileCVEntriesAsync_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
+    public async Task UpdateAsync_Cv_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
     {
-        var profileId = Guid.NewGuid();
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        var profileId = profile.Id;
         var entryId = Guid.NewGuid();
         var seededAt = _clock.GetCurrentInstant();
 
@@ -156,7 +162,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
+        await _repo.UpdateAsync(profile, Xunit.TestContext.Current.CancellationToken, entries);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
@@ -166,12 +172,15 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReconcileCVEntriesAsync_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
+    public async Task UpdateAsync_Cv_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
     {
         // The whole point of Id-keyed reconcile: editing Date or EventName
         // must update the existing row in place, not delete-and-insert (which
         // would lose Id and CreatedAt).
-        var profileId = Guid.NewGuid();
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        var profileId = profile.Id;
         var entryId = Guid.NewGuid();
         var createdAt = _clock.GetCurrentInstant();
 
@@ -195,7 +204,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
+        await _repo.UpdateAsync(profile, Xunit.TestContext.Current.CancellationToken, entries);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()

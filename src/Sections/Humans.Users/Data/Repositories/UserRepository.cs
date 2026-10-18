@@ -47,20 +47,6 @@ internal sealed partial class UserRepository : IUserRepository
 
     // Writes — User
 
-    /// <summary>Keeps the legacy fallback column synced to BurnerName so merge/purge/GDPR labels stay accurate if the Profile is later gone.</summary>
-    public async Task<bool> UpdateDisplayNameAsync(
-        Guid userId, string displayName, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        user.DisplayName = displayName;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> SetPreferredLanguageAsync(
         Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
@@ -166,8 +152,8 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = "Merged User";
 
-        // #1097: overwrite the User-side names with the same tombstone labels
-        // AnonymizeProfileInternalAsync writes, so the resolver (User.BurnerName first) cannot
+        // #1097: overwrite the User-side names with the profile fold's tombstone labels,
+        // so the resolver (User.BurnerName first) cannot
         // render the merged human's real name and the two sides stay in sync.
         user.BurnerName = "Merged User";
         user.FirstName = "Merged";
@@ -341,6 +327,7 @@ internal sealed partial class UserRepository : IUserRepository
                 targetRow.Source = sourceRow.Source;
                 targetRow.DeclaredAt = sourceRow.DeclaredAt;
             }
+            targetRow.CheckedInAt ??= sourceRow.CheckedInAt;
             ctx.EventParticipations.Remove(sourceRow);
         }
 
@@ -497,16 +484,19 @@ internal sealed partial class UserRepository : IUserRepository
         EventParticipation persisted;
         if (existing is not null)
         {
-            // Attended is permanent — never revert.
+            // Preserve attended metadata; a later real scan may fill a missing arrival.
             if (existing.Status == ParticipationStatus.Attended)
-                return null;
-
-            existing.Status = status;
-            existing.Source = source;
-            existing.DeclaredAt = declaredAt;
-            // CheckedInAt is set on the first transition into Attended and is
-            // permanent afterwards. Don't overwrite an already-non-null value
-            // (issue nobodies-collective/Humans#736).
+            {
+                if (status != ParticipationStatus.Attended || existing.CheckedInAt is not null || checkedInAt is null)
+                    return null;
+            }
+            else
+            {
+                existing.Status = status;
+                existing.Source = source;
+                existing.DeclaredAt = declaredAt;
+            }
+            // Arrival is write-once, including when attendance was known before its timestamp.
             if (existing.CheckedInAt is null)
                 existing.CheckedInAt = checkedInAt;
             persisted = existing;

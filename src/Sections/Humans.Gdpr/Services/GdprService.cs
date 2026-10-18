@@ -20,11 +20,10 @@ internal sealed class GdprService(
 {
     public async Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // Resolved once, here, rather than per contributor: the envelope names the surviving
-        // account and the ids merged into it, so a slice keyed to an archived id reads as this
-        // person's row instead of a stranger's. Contributors still resolve for themselves —
-        // each one decides whether its rows follow the chain or moved with the merge.
+        // Resolve once for both the envelope and contributors. Moved rows belong to the
+        // survivor; contributors with retained history still expand its merge chain.
         var info = await users.GetUserInfoAsync(userId, ct);
+        var resolvedUserId = info?.Id ?? userId;
 
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);
 
@@ -33,7 +32,7 @@ internal sealed class GdprService(
             IReadOnlyList<UserDataSlice> slices;
             try
             {
-                slices = await contributor.ContributeForUserAsync(userId, ct);
+                slices = await contributor.ContributeForUserAsync(resolvedUserId, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

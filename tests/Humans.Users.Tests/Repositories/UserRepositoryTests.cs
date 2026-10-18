@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -75,29 +76,6 @@ public sealed class UserRepositoryTests : IDisposable
             Guid.NewGuid(), _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
-    }
-
-    // ==========================================================================
-    // UpdateDisplayNameAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task UpdateDisplayNameAsync_ReturnsFalse_WhenUserDoesNotExist()
-    {
-        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", Xunit.TestContext.Current.CancellationToken);
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task UpdateDisplayNameAsync_UpdatesAndReturnsTrue_WhenUserExists()
-    {
-        var user = await SeedUserAsync();
-
-        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
-        reloaded.DisplayName.Should().Be("Renamed Person");
     }
 
     // ==========================================================================
@@ -210,6 +188,37 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UpsertParticipationAsync_FillsMissingArrivalOnExistingAttendedRow()
+    {
+        var userId = Guid.NewGuid();
+        var participationId = Guid.NewGuid();
+        _dbContext.EventParticipations.Add(new EventParticipation
+        {
+            Id = participationId,
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.AdminBackfill,
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var arrival = _clock.GetCurrentInstant() + Duration.FromHours(1);
+
+        var result = await _repo.UpsertParticipationAsync(
+            userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
+            declaredAt: null, checkedInAt: arrival, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .SingleAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
+        persisted.Id.Should().Be(participationId);
+        persisted.Status.Should().Be(ParticipationStatus.Attended);
+        persisted.Source.Should().Be(ParticipationSource.AdminBackfill);
+        persisted.DeclaredAt.Should().BeNull();
+        persisted.CheckedInAt.Should().Be(arrival);
+        result.CheckedInAt.Should().Be(arrival);
+    }
+
+    [HumansFact]
     public async Task UpsertParticipationAsync_NeverOverwritesNonNullCheckedInAt()
     {
         // Pre-existing Attended row with CheckedInAt set. Repo's Attended-is-
@@ -292,6 +301,48 @@ public sealed class UserRepositoryTests : IDisposable
             .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.Status.Should().Be(ParticipationStatus.Attended);
         persisted.Source.Should().Be(ParticipationSource.TicketSync);
+    }
+
+    [HumansTheory]
+    [InlineData(ParticipationStatus.Ticketed, false)]
+    [InlineData(ParticipationStatus.Attended, false)]
+    [InlineData(ParticipationStatus.Attended, true)]
+    public async Task ReassignEventParticipationToUserAsync_PreservesKnownArrival(
+        ParticipationStatus targetStatus, bool targetHasArrival)
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetRowId = Guid.NewGuid();
+        var sourceArrival = _clock.GetCurrentInstant();
+        var targetArrival = targetHasArrival ? sourceArrival + Duration.FromHours(1) : (Instant?)null;
+        await _dbContext.EventParticipations.AddRangeAsync(new[]
+        {
+            new EventParticipation
+            {
+                Id = Guid.NewGuid(), UserId = sourceUserId, Year = 2026,
+                Status = ParticipationStatus.Attended, Source = ParticipationSource.TicketSync,
+                CheckedInAt = sourceArrival,
+            },
+            new EventParticipation
+            {
+                Id = targetRowId, UserId = targetUserId, Year = 2026,
+                Status = targetStatus, Source = ParticipationSource.AdminBackfill,
+                CheckedInAt = targetArrival,
+            }
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.ReassignEventParticipationToUserAsync(sourceUserId, targetUserId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var persisted = await _dbContext.EventParticipations.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        persisted.Id.Should().Be(targetRowId);
+        persisted.UserId.Should().Be(targetUserId);
+        persisted.Status.Should().Be(ParticipationStatus.Attended);
+        persisted.Source.Should().Be(targetStatus == ParticipationStatus.Ticketed
+            ? ParticipationSource.TicketSync : ParticipationSource.AdminBackfill);
+        persisted.CheckedInAt.Should().Be(targetArrival ?? sourceArrival);
     }
 
     // ==========================================================================

@@ -108,25 +108,27 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
 
-        _service = new ApplicationDecisionService(
-            _repository,
-            _userService,
-            _userServiceWrite,
-            _roleAssignmentService,
-            AuditLog,
-            _emailService,
-            _emailMessages,
-            _userEmailService,
-            _notificationService,
-            _syncJob,
-            _metrics,
-            _navBadge,
-            _notificationMeter,
-            _votingBadge,
-            _cache,
-            Clock,
-            NullLogger<ApplicationDecisionService>.Instance);
+        _service = CreateService();
     }
+
+    private ApplicationDecisionService CreateService(IApplicationRepository? repository = null) => new(
+        repository ?? _repository,
+        _userService,
+        _userServiceWrite,
+        _roleAssignmentService,
+        AuditLog,
+        _emailService,
+        _emailMessages,
+        _userEmailService,
+        _notificationService,
+        _syncJob,
+        _metrics,
+        _navBadge,
+        _notificationMeter,
+        _votingBadge,
+        _cache,
+        Clock,
+        NullLogger<ApplicationDecisionService>.Instance);
 
     // --- Submit flow ---
 
@@ -187,6 +189,63 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_ConcurrentPosts_CreateOnlyOneSubmittedApplication()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pause = new PauseFirstApplicationSave();
+        var options = new DbContextOptionsBuilder<GovernanceDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var repository = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
+        var userId = Guid.NewGuid();
+        var first = CreateService(repository).SubmitAsync(userId, MembershipTier.Colaborador,
+            ValidMotivation, null, null, null, "en", ct);
+        Task<ApplicationDecisionResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first application save must be paused");
+            second = CreateService(repository).SubmitAsync(userId, MembershipTier.Asociado,
+                ValidMotivation, null, "An active contribution", "I understand the role", "en", ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        await using var db = new GovernanceDbContext(options);
+        var stored = (await db.Applications.ToListAsync(ct)).Should().ContainSingle().Subject;
+        stored.UserId.Should().Be(userId);
+        stored.Status.Should().Be(ApplicationStatus.Submitted);
+        results.Should().ContainSingle(result => result.Success);
+        results.Should().ContainSingle(result => string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal));
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+    }
+
+    private sealed class PauseFirstApplicationSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<MemberApplication>()
+                    .Any(entry => entry.State == EntityState.Added)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansFact]
@@ -289,7 +348,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo()));
         var controller = new GovernanceApplicationsController(_service, _userService, localizer,
-            NullLogger<GovernanceApplicationsController>.Instance)
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1114,6 +1173,37 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    public async Task ApplicationIndex_ColaboradorPromptRequiresAnActiveTerm(int expiryOffset, bool expectedPrompt)
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        app.MembershipTier = MembershipTier.Colaborador;
+        app.Approve(Guid.NewGuid(), null, Clock);
+        app.TermExpiresAt = Clock.GetCurrentInstant().InUtc().Date.PlusDays(expiryOffset);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test"))
+                }
+            }
+        };
+
+        var result = (await controller.Index()).Should().BeOfType<ViewResult>().Subject;
+        result.Model.Should().BeOfType<ApplicationIndexViewModel>().Subject
+            .IsApprovedColaborador.Should().Be(expectedPrompt);
+    }
+
+    [HumansTheory]
     [InlineData("Index")]
     [InlineData("Create")]
     [InlineData("Details")]
@@ -1132,7 +1222,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
         });
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1242,7 +1332,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.Motivation = motivation;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

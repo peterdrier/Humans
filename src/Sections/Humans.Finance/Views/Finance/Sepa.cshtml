@@ -200,7 +200,7 @@
                             <span class="badge text-bg-success">Booked</span>
                             @if (t.Row.ReconcilePending)
                             {
-                                <span class="badge text-bg-warning">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
+                                <span class="badge text-bg-warning" title="The sweep re-issues the reconcile from the recorded payment ids every two hours. A payout that needed a journal entry cannot be reconciled by API: reconcile the line in Holded by hand.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
                             <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
                         }

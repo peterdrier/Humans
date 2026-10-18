@@ -302,7 +302,8 @@ internal sealed class AccountMergeService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = await mergeRepository.GetForUserGdprAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var rows = await mergeRepository.GetForUserGdprAsync(info?.AllUserIds ?? [userId], ct);
 
         var shaped = rows.Select(r => new
         {

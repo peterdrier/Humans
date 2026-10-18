@@ -126,7 +126,8 @@ internal sealed record EventInfo(
 /// <summary>
 /// A favourited event projected for the personal schedule / favourites API —
 /// the favourite metadata plus the flattened event projection. A null
-/// <see cref="DayOffset"/> means the whole event (every occurrence).
+/// <see cref="DayOffset"/> means the whole event (every occurrence). Multiple
+/// retained day bookmarks on a now non-recurring event project as one whole-event target.
 /// </summary>
 internal sealed record EventFavouriteInfo(
     Guid Id,

@@ -40,11 +40,11 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label asp-for="EventEndOffset" class="form-label">Event End Offset</label>
-                            <input asp-for="EventEndOffset" type="number" class="form-control" />
+                            <input asp-for="EventEndOffset" type="number" min="0" class="form-control" />
                         </div>
                         <div class="col-md-4 mb-3">
                             <label asp-for="StrikeEndOffset" class="form-label">Strike End Offset</label>
-                            <input asp-for="StrikeEndOffset" type="number" class="form-control" />
+                            <input asp-for="StrikeEndOffset" type="number" min="0" class="form-control" />
                         </div>
                     </div>
                     <hr />

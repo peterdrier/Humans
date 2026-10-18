@@ -5,6 +5,8 @@ namespace Humans.Campaigns.Domain;
 
 internal sealed class Campaign
 {
+    internal const int EmailSubjectMaxLength = 1000;
+
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     [MarkdownContent]

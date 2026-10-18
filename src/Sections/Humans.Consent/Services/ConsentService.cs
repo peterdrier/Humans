@@ -17,6 +17,7 @@ namespace Humans.Consent.Services;
 // consent_records is append-only (design-rules §12).
 internal sealed class ConsentService(
     IConsentRepository repo,
+    IConsentCacheInvalidator consentCacheInvalidator,
     ILegalDocumentSyncManagement legalDocumentSyncService,
     INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
@@ -129,6 +130,7 @@ internal sealed class ConsentService(
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
+        userId = info.Id;
 
         var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
@@ -162,6 +164,8 @@ internal sealed class ConsentService(
         };
 
         await repo.AddAsync(consentRecord, ct);
+        foreach (var id in info.AllUserIds)
+            consentCacheInvalidator.InvalidateUser(id);
         metrics.RecordConsentGiven();
 
         logger.LogInformation(

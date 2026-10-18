@@ -116,9 +116,9 @@ The shapes imply:
   `GoogleDriveAccessSyncService.cs:487`, `GoogleGroupSyncService.cs:437`), untouched
   otherwise.
 - **Provisioning captures the recovery address before linking the new mailbox**
-  (`EmailProvisioningService.cs:91`), rejects any address already bound to another human
-  or to a team's group (`EmailProvisioningService.cs:55`, `EmailProvisioningService.cs:70`),
-  and audits the act (`EmailProvisioningService.cs:119`).
+  (`EmailProvisioningService.cs:96`), rejects any address already bound to another human
+  or to a team's group (`EmailProvisioningService.cs:60`, `EmailProvisioningService.cs:75`),
+  and audits the act (`EmailProvisioningService.cs:124`).
 - **Without credentials the section boots, stubbed**: registration swaps real clients for
   stubs by configuration alone, in every environment (`Section.cs:82`); the missing
   credentials surface through the health check, never as a refusal to start. The

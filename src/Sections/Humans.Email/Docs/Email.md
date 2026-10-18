@@ -19,6 +19,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 - `IEmailService.SendAsync` and `IEmailOutboxProcessor.ProcessQueuedAsync` are marked `[ExternalWrite]`: the former can send a `DoNotPersist` message directly, and the latter reaches SMTP while draining. State-changing callers must detach request cancellation at their entry point.
 - Recipient log properties use Base’s email redaction policy (at most two UTF-16 units plus masked local part and domain), including queue, suppression, SMTP and stub logs.
 - **Delivery** is performed by `EmailOutboxProcessor` (section) via `IEmailTransport` (`SmtpEmailTransport` in prod, `StubEmailTransport` in dev/test). `ProcessEmailOutboxJob` (`Humans.Email/Jobs/`) is the Hangfire scheduler shim that calls it through `IEmailOutboxProcessor`. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`, `Humans.Email/Contracts/`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
+- A persisted `EmailMessage.DeliveryId` reuses that logical delivery's outbox primary key: retries are no-ops while the row exists, even if their payload changes. Only the first enqueue records queue metrics or triggers immediate processing. Ordinary sends without a delivery id receive a new id each time. Retention/erasure removes this deduplication history; `DoNotPersist` bypasses it, and SMTP delivery retains its existing retry semantics.
 - **One `IEmailService` implementation exists:** `OutboxEmailService` (Application, default — writes to the outbox). DI binds `IEmailService` to `OutboxEmailService`.
 
 ## Data Model
@@ -31,7 +32,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 |----------|------|---------|
 | Id | Guid | PK |
 | RecipientEmail | string | Delivery address |
-| RecipientName | string? | Display name |
+| RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
 | PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs and paragraph/heading/list/line-break separation |
@@ -125,6 +126,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Outbox dashboard statistics, daily counts and the backfill review GET observe request cancellation; backfill confirmation remains an explicit audited write.
 
 - The shared composer preview renders only its latest request per modal. Earlier successes or failures cannot overwrite the current draft’s preview, and separate modals remain independent.
+- Queued subjects fit the existing 1,000-character storage limit, counting Unicode scalars. If prefixes or substitutions exceed it, the header ends with an ellipsis and the complete subject is HTML-encoded at the start of the body before HTML/plain-text composition. Subjects already within the limit and direct non-persisted messages retain their content.
 
 - Every outgoing email queued through `OutboxEmailService` writes a row to `email_outbox_messages` before any transport attempt — the audit trail for delivery. The single exception is `EmailMessage.DoNotPersist`, which hands the message straight to `IEmailTransport` and writes no row; it is set by exactly one template, `account_deleted`, because its recipient is a human the Article 17 cascade has just erased and a row would re-create their address, name and body. Its SMTP/stub transport logs contain only the template name and failure type, never erased identity, subject or exception contents. Such a message is never retried: retrying would mean keeping the address in order to retry with it.
 - `ProcessEmailOutboxJob` (Hangfire recurring, every minute — `*/1 * * * *`) selects rows with `SentAt IS NULL`, `RetryCount < OutboxMaxRetries`, `NextRetryAt <= now` (or null), and `PickedUpAt < now − 5 min` (or null). The batch is bounded by `OutboxBatchSize` and ordered **time-sensitive templates first, then FIFO by `CreatedAt` within each class** — see the priority invariant below. Selected rows are stamped `PickedUpAt = now` to block concurrent runs from picking the same rows, then sent one at a time through `IEmailTransport.SendAsync` with a 1-second throttle delay between successful sends.

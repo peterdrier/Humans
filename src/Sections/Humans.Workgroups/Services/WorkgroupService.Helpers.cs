@@ -293,7 +293,7 @@ internal sealed partial class WorkgroupService
     {
         var baseSlug = SlugHelper.GenerateSlug(name);
         if (string.IsNullOrEmpty(baseSlug))
-            return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
+            baseSlug = "workgroup";
 
         // Name allows 200 characters, Slug's column holds 100, and the suffix loop below can
         // add up to "-100" — so trim here rather than let a long name fail on insert.
@@ -345,12 +345,26 @@ internal sealed partial class WorkgroupService
 
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(WorkgroupsResource));
 
-    private async Task NotifyAsync(
+    // Return successful dispatch requests for the rhythm audit; Notifications applies inbox preferences.
+    private async Task<int> NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
         WorkgroupInfo w, string? body, CancellationToken ct)
     {
-        if (recipientUserIds.Count == 0) return;
-        var people = await users.GetUserInfosAsync(recipientUserIds, ct);
+        if (recipientUserIds.Count == 0) return 0;
+        IReadOnlyDictionary<Guid, UserInfo> people;
+        try
+        {
+            people = await users.GetUserInfosAsync(recipientUserIds, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve workgroup {Source} notification recipients for {WorkgroupId}", source, w.Id);
+            return 0;
+        }
         // In-app notices are keyed by user id: deliver to the live id the read resolved to.
         var recipients = recipientUserIds.Select(id =>
         {
@@ -358,36 +372,49 @@ internal sealed partial class WorkgroupService
             var language = person?.PreferredLanguage;
             return (Id: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
         }).DistinctBy(person => person.Id);
+        var dispatched = 0;
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
-            var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
-            var copy = PrepareNoticeCopy($"{NoticeResources.GetString(titleKey, culture)}: {w.Name}", body);
-            await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
-                copy.Title, group.Select(person => person.Id).ToList(), copy.Body,
-                actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+            try
+            {
+                var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+                var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
+                var ids = group.Select(person => person.Id).ToList();
+                await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
+                    title, ids, body,
+                    actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+                dispatched += ids.Count;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send workgroup {Source} notification in {Language} for {WorkgroupId}",
+                    source, group.Key, w.Id);
+            }
         }
+        return dispatched;
     }
 
-    private Task NotifyBoardAsync(
+    private async Task NotifyBoardAsync(
         NotificationSource source, string title, WorkgroupInfo w, string body, CancellationToken ct)
     {
-        var copy = PrepareNoticeCopy(title, body);
-        return notifications.SendToRoleAsync(source, NotificationClass.Actionable,
-            NotificationPriority.Normal, copy.Title, RoleNames.Board, copy.Body,
-            actionUrl: "/Workgroups/Admin", cancellationToken: ct);
-    }
-
-    // Preview limits belong at both notification boundaries; full details stay in the register/log.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body)
-    {
-        if (title.EnumerateRunes().Count() > 200)
+        try
         {
-            body = body is null ? title : string.Concat(title, "\n\n", body);
-            title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+            await notifications.SendToRoleAsync(source, NotificationClass.Actionable,
+                NotificationPriority.Normal, title, RoleNames.Board, body,
+                actionUrl: "/Workgroups/Admin", cancellationToken: ct);
         }
-        if (body is not null && body.EnumerateRunes().Count() > 2000)
-            body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
-        return (title, body);
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send workgroup {Source} notification to the Board for {WorkgroupId}", source, w.Id);
+        }
     }
 
     /// <summary>

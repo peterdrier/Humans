@@ -42,7 +42,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Each email body contains the coordinator's free-text message plus that recipient's own chronologically ordered shifts on this rota.
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
 - Delivery flows through `IEmailService` → outbox so audit, opt-out routing, and category suppression stay consistent with every other transactional send.
-- A single audit row (`AuditAction.CoordinatorRotaMessageSent`) records the dispatch, including queued count, skipped count, and a truncated copy of the message text.
+- A single audit row (`AuditAction.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text.
 - Non-coordinators (and `NoInfoAdmin`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
 
 ### US-732.2: Recipients see exactly their own shifts
@@ -150,9 +150,9 @@ Coordinator submits (POST)
         → Load active signups → group by user
         → Load sender + recipient infos
         → For each recipient: build chronological shift lines → enqueue email
-        → Single audit row: CoordinatorRotaMessageSent (queued/skipped counts)
+        → Single audit row: CoordinatorRotaMessageSent (requested/skipped counts)
         → RotaMessageDispatchResult.Success(count, rotaName)
-    → SetSuccess("Queued N email(s) to recipients on rota '…'")
+    → SetSuccess("Requested email for N recipient(s) on rota '…'")
     → Redirect to rota index anchor (#rota-{id})
 
 Failure paths

@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Events. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 12
-inbox: []
+next_id: 13
+inbox:
+  - added: 2026-10-18
+    id: EVENTS-12
+    what: "Events does not participate in IUserMerge. Event.SubmitterUserId, EventFavourite.UserId and EventPreference.UserId remain on the archived account, while MySubmissions, favourites, calendar and preference reads use only the current user id. After the source identity is tombstoned, its submissions and personal schedule/preferences are inaccessible through ordinary member surfaces, although GDPR export retains AllUserIds history. Implement the existing idempotent IUserMerge.ReassignAsync through Events' own repository and cache decorator. Preference rows have a unique UserId and no documented collision policy when both accounts have exclusions; define survivor precedence versus union while retaining archived preference history. Found by tracing AccountMergeService's fan-out, Events Section registration, Service.GetUserSubmissionsAsync/GetFavouriteEventIdsAsync and Repository.GetPreferenceAsync/UpsertPreferenceAsync."
+    review: panel

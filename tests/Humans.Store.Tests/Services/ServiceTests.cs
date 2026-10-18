@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using Humans.Base.Extensions;
 using Humans.Store.Controllers;
 using Humans.Users.Contracts;
@@ -1942,6 +1943,79 @@ public class ServiceTests
         await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
             recorded.Id, Arg.Is<string>(message => status != PaymentStatus.Failed || message.Contains("Failed")),
             "StripeWebhook", orderId, AuditEntityTypes.Order);
+    }
+
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task Concurrent_completed_and_settlement_preserve_one_terminal_payment(bool terminalReadsFirst, bool succeeded)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = new DbContextOptionsBuilder<StoreDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using var db = new StoreDbContext(options);
+        var real = new Repository(new TestDbContextFactory<StoreDbContext>(options));
+        var intercepted = Substitute.For<IStoreRepository>();
+        var read = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var paused = 0;
+        intercepted.GetPaymentByStripePaymentIntentIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var result = await real.GetPaymentByStripePaymentIntentIdAsync(call.ArgAt<string>(0), ct);
+                if (terminalReadsFirst && Interlocked.Exchange(ref paused, 1) == 0)
+                {
+                    read.SetResult();
+                    await release.Task.WaitAsync(ct);
+                }
+                return result;
+            });
+        intercepted.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var result = await real.StripePaymentIntentExistsAsync(call.ArgAt<string>(0), ct);
+                if (!terminalReadsFirst && Interlocked.Exchange(ref paused, 1) == 0)
+                {
+                    read.SetResult();
+                    await release.Task.WaitAsync(ct);
+                }
+                return result;
+            });
+        intercepted.GetOrderByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => real.GetOrderByIdAsync(call.ArgAt<Guid>(0), ct));
+        intercepted.AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>())
+            .Returns(call => real.AddPaymentAsync(call.ArgAt<Payment>(0), ct));
+        intercepted.UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>())
+            .Returns(call => real.UpdatePaymentStatusAsync(call.ArgAt<Guid>(0), call.ArgAt<PaymentStatus>(1), ct));
+        Service NewService() => new(intercepted, _audit, _campService, _teams, _clock, _shifts,
+            _stripeService, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        var orderId = Guid.NewGuid();
+        db.Orders.Add(new Order
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        await db.SaveChangesAsync(ct);
+        var session = new StoreCheckoutSessionData("cs_overlap", orderId, "pi_overlap", 75m, PaymentStatus: "unpaid");
+        var completed = new StoreCheckoutWebhookEvent("evt_completed", StoreCheckoutEventKind.CheckoutSessionCompleted, session);
+        var terminal = new StoreCheckoutWebhookEvent("evt_settled", succeeded
+            ? StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded : StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed, session);
+        var first = NewService().HandleStripeCheckoutWebhookEventAsync(terminalReadsFirst ? terminal : completed, ct);
+        await read.Task.WaitAsync(ct);
+        var second = NewService().HandleStripeCheckoutWebhookEventAsync(terminalReadsFirst ? completed : terminal, ct);
+        release.SetResult();
+        await Task.WhenAll(first, second);
+        var rows = await db.Payments.AsNoTracking().ToListAsync(ct);
+        rows.Should().ContainSingle();
+        rows[0].Status.Should().Be(succeeded ? PaymentStatus.Paid : PaymentStatus.Failed);
+        rows[0].AmountEur.Should().Be(75m);
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            Arg.Any<Guid>(), Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]

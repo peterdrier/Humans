@@ -148,6 +148,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>Category '{0}' matches more than one active category.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Date is required.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date must be in yyyy-MM-dd format.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>The event start and end must be within years 0001–9999 in both UTC and the event timezone.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>StartTime is required.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime must be in HH:mm format.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes must be between 15 and 480.</value></data>
@@ -172,4 +173,5 @@
   <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; was not approved for the event guide.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;You can edit and resubmit your event here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Changes requested for your event submission</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The moderation team has requested changes to your event &lt;strong&gt;{1}&lt;/strong&gt; before it can be approved.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Feedback:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Please update and resubmit here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Choose each recurrence day once from this event’s calendar.</value></data>
 </root>

@@ -300,6 +300,43 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         await GoogleSync.DidNotReceive().CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("apply", "研究组")]
+    [InlineData("existing", "é")]
+    [InlineData("rename", "🛠️")]
+    public async Task NamesWithoutAsciiSlugCharacters_KeepTheirNameAndReserveAFallback(string path, string name)
+    {
+        await SeedWorkgroupAsync(name: "Workgroup"); // Occupies the fallback seed.
+        var actor = SeedUser("Coordinator");
+        var service = NewService();
+        Guid id;
+        if (string.Equals(path, "rename", StringComparison.Ordinal))
+        {
+            var original = await SeedWorkgroupAsync(name: "Original", coordinatorUserId: actor);
+            var result = await service.EditRegisterAsync(original.Id, actor,
+                new WorkgroupRegisterEdit(name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
+                    WorkgroupAudience.Board, null, null), Ct);
+            result.Refusal.Should().BeNull();
+            id = original.Id;
+        }
+        else
+        {
+            var application = new WorkgroupApplication(name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
+                WorkgroupAudience.Board, null, null, null);
+            var result = string.Equals(path, "apply", StringComparison.Ordinal)
+                ? await service.ApplyAsync(actor, application, Ct)
+                : await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(application, actor,
+                    Clock.GetCurrentInstant(), new WorkgroupBudgetSave(100m, null)), Ct);
+            result.Refusal.Should().BeNull();
+            id = result.Value;
+        }
+
+        await using var ctx = OpenContext();
+        var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
+        saved.Name.Should().Be(name);
+        saved.Slug.Should().Be("workgroup-2");
+    }
+
     [HumansFact]
     public async Task Apply_WithAVeryLongName_TrimsTheSlugToItsColumn()
     {

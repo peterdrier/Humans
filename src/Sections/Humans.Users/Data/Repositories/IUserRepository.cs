@@ -41,11 +41,6 @@ internal partial interface IUserRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Updates <c>User.DisplayName</c>. Returns false if the user does not exist.
-    /// </summary>
-    Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Returns false if the user does not exist.
     /// </summary>
     Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
@@ -140,6 +135,7 @@ internal partial interface IUserRepository : IRepository
     /// On (Year, UserId) collision, keeps the row with the highest
     /// <see cref="ParticipationStatus"/> per the precedence
     /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
+    /// Fills a missing target arrival from the source; a known target arrival is retained.
     /// Used by
     /// <c>AccountMergeService.AcceptAsync</c>.
     /// </summary>
@@ -222,7 +218,8 @@ internal partial interface IUserRepository : IRepository
     /// Upserts a participation record. If a record exists for (userId, year):
     /// <list type="bullet">
     ///   <item>if its <see cref="ParticipationStatus"/> is <see cref="ParticipationStatus.Attended"/>,
-    ///     the call is a no-op (Attended is permanent) — returns null;</item>
+    ///     only a missing arrival may be filled by an incoming Attended scan;
+    ///     otherwise the call is a no-op and returns null;</item>
     ///   <item>otherwise, the status, source, and declaredAt are overwritten with
     ///     the provided values — returns the updated row.</item>
     /// </list>
@@ -232,7 +229,7 @@ internal partial interface IUserRepository : IRepository
     /// <para>
     /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
     /// instant carried from <see cref="ParticipationSource.TicketSync"/>. Set
-    /// on row creation, and on the no-existing-row → Attended path. NEVER
+    /// on row creation or filled by an incoming Attended scan when missing. Never
     /// overwritten once non-null — Attended-permanence applies to the
     /// timestamp as well (issue nobodies-collective/Humans#736).
     /// </para>

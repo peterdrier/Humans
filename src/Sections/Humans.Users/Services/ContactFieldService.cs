@@ -110,10 +110,10 @@ internal sealed class ContactFieldService(
             }
         }
 
+        // Resolve the cache key before committing; a failed lookup must not skip refresh.
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
 
-        // see #703 — UserInfo invalidation bypasses interceptor + caching decorator; failure self-heals on next miss.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         if (ownerUserId is not null)
         {
             try

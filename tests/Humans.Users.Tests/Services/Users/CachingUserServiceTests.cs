@@ -67,6 +67,61 @@ public class CachingUserServiceTests
         IsApproved = true,
     };
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task CommittedUserStateWrite_RefreshesWarmCacheAndPreservesRelatedSlices(bool suspend)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var user = SampleUser();
+        user.BurnerName = "Before";
+        user.State = suspend ? UserState.Active : UserState.Suspended;
+        var profile = SampleProfile(user.Id, "Before");
+        var participation = new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
+        };
+        var original = UserInfoFactory.Create(user, [], [participation], [], profile, [], [], [], []);
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
+        await using (var seed = new UsersDbContext(options))
+        {
+            seed.Users.Add(user);
+            seed.Profiles.Add(profile);
+            seed.EventParticipations.Add(participation);
+            await seed.SaveChangesAsync(ct);
+        }
+        var cached = CreateSut();
+        await PrimeAsync(cached, original);
+        var services = new ServiceCollection();
+        services.AddSingleton<IUserInfoSliceRefresher>(cached);
+        await using var provider = services.BuildServiceProvider();
+        var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
+        var intercepted = new DbContextOptionsBuilder<UsersDbContext>(options).AddInterceptors(interceptor).Options;
+        var expectedState = suspend ? UserState.Suspended : UserState.Active;
+        await using (var write = new UsersDbContext(intercepted))
+        {
+            var row = await write.Users.SingleAsync(ct);
+            row.State = expectedState;
+            row.BurnerName = "After";
+            row.PreferredLanguage = "es";
+            await write.SaveChangesAsync(ct);
+        }
+
+        await using var stored = new UsersDbContext(options);
+        (await stored.Users.SingleAsync(ct)).State.Should().Be(expectedState);
+        var refreshed = await cached.GetRawUserInfoAsync(user.Id, ct);
+        refreshed!.State.Should().Be(expectedState);
+        refreshed.BurnerName.Should().Be("After");
+        refreshed.PreferredLanguage.Should().Be("es");
+        refreshed.Profile.Should().BeEquivalentTo(original.Profile);
+        refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
+    }
+
     [HumansFact]
     public async Task AdminStubProfileCreation_ForwardsAuditActor_AndRefreshesProfile()
     {
@@ -1289,18 +1344,12 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SaveProfileVolunteerHistoryAsync_RefreshesVolunteerHistorySlice()
+    public async Task SaveProfileAsync_RefreshesVolunteerHistorySlice()
     {
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.SaveProfileVolunteerHistoryAsync(
-                userId,
-                Arg.Any<IReadOnlyList<CVEntry>>(),
-                Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var profile = new Profile
         {
@@ -1320,11 +1369,16 @@ public class CachingUserServiceTests
         });
         StubRefreshEntry(userId, profile);
 
-        var saved = await sut.SaveProfileVolunteerHistoryAsync(
-            userId,
-            [new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew")], Xunit.TestContext.Current.CancellationToken);
+        var command = new UserProfileSaveCommand("Alice", "Alice", "Alice", "Person", null, null,
+            null, null, null, null, null, null, null, null, null, null, null, null, false,
+            UserProfilePictureMutation.None, null);
+        var entries = new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
+        _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
+            .Returns(new UserProfileSaveResult(profileId, null, null));
 
-        saved.Should().BeTrue();
+        await sut.SaveProfileAsync(userId, command, ct: Xunit.TestContext.Current.CancellationToken, volunteerHistory: entries);
+
+        await _inner.Received(1).SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries);
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.VolunteerHistory.Should().ContainSingle(v =>

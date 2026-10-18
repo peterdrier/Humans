@@ -51,14 +51,6 @@ internal sealed class TermRenewalReminderJob(
             var expiringApplications = await applicationDecisionService
                 .GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, cancellationToken);
 
-            // For each user, only consider the latest approved application per
-            // tier (a user might have multiple approved applications if they
-            // renewed before).
-            var latestPerUserTier = expiringApplications
-                .GroupBy(a => new { a.UserId, a.MembershipTier })
-                .Select(g => g.OrderByDescending(a => a.SubmittedAt).First())
-                .ToList();
-
             // Exclude users who already have a pending renewal application for
             // the same tier.
             var pendingSet = await applicationDecisionService
@@ -67,7 +59,7 @@ internal sealed class TermRenewalReminderJob(
             // Stitch applicant user info in memory — Application.User
             // cross-domain nav was stripped in the Governance migration
             // (design-rules §6).
-            var applicantIds = latestPerUserTier
+            var applicantIds = expiringApplications
                 .Select(a => a.UserId)
                 .Distinct()
                 .ToList();
@@ -79,7 +71,7 @@ internal sealed class TermRenewalReminderJob(
             var sentCount = 0;
             var now = clock.GetCurrentInstant();
 
-            foreach (var application in latestPerUserTier)
+            foreach (var application in expiringApplications)
             {
                 if (pendingSet.Contains((application.UserId, application.MembershipTier)))
                 {
@@ -105,7 +97,6 @@ internal sealed class TermRenewalReminderJob(
 
                 try
                 {
-                    var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantLongDate();
                     var language = applicant.PreferredLanguage.IsSupportedCultureCode()
                         ? applicant.PreferredLanguage : CultureCatalog.DefaultCultureCode;
 
@@ -113,7 +104,7 @@ internal sealed class TermRenewalReminderJob(
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
-                        expiresFormatted,
+                        application.TermExpiresAt!.Value,
                         language),
                         cancellationToken);
 

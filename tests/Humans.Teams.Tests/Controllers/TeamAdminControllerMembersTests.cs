@@ -25,6 +25,48 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansFact]
+    public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
+    {
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue,
+            [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var provisioning = Substitute.For<IEmailProvisioningService>();
+        const string warning = "Account created; ask an admin to reset the password.";
+        provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
+            .Returns(new EmailProvisioningResult(true, "person@nobodies.team", "personal@example.org", WarningMessage: warning));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users, provisioning, authorization,
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.ProvisionEmail(team.Slug, targetId, "person");
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
+        controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
+    }
+
     [HumansTheory]
     [InlineData("permission", "foreign")]
     [InlineData("permission", "missing")]

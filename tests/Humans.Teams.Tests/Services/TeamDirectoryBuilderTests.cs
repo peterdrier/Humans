@@ -103,4 +103,49 @@ public sealed class TeamDirectoryBuilderTests
         result.Departments.Select(t => t.Name).Should().BeEquivalentTo("Build");
         result.HiddenTeams.Select(t => t.Name).Should().BeEquivalentTo("Secret");
     }
+
+    [HumansFact]
+    public void Tree_NestsSubTeamsUnderDepartments_AndDropsHiddenSystemInactive()
+    {
+        var member = Guid.NewGuid();
+        var build = Team("Build", isPublicPage: true, memberIds: [member, Guid.NewGuid()]);
+        var art = Team("Art");
+        var hidden = Team("Secret", isHidden: true);
+        var inactive = Team("Old", isActive: false);
+        var system = Team("Volunteers", systemType: SystemTeamType.Volunteers);
+        var logo = Team("Logo", parentId: build.Id, isPromoted: true, memberIds: member);
+        var signs = Team("Signs", parentId: build.Id);
+        var hiddenChild = Team("Vault", parentId: build.Id, isHidden: true);
+        var orphanOfHidden = Team("Keys", parentId: hidden.Id);
+        var grandchild = Team("Fonts", parentId: logo.Id);
+
+        var tree = TeamDirectoryBuilder.BuildTree(
+            Graph(build, art, hidden, inactive, system, logo, signs, hiddenChild, orphanOfHidden, grandchild),
+            isAuthenticated: true);
+
+        tree.Select(n => n.Name).Should().Equal("Art", "Build");
+        tree.Should().AllSatisfy(n => n.IsLinkable.Should().BeTrue());
+        var buildNode = tree[1];
+        buildNode.MemberCount.Should().Be(2);
+        buildNode.Children.Select(c => c.Name).Should().Equal("Logo", "Signs");
+        buildNode.Children[1].IsLinkable.Should().BeTrue();
+        buildNode.Children[0].Children.Select(c => c.Name).Should().Equal("Fonts");
+    }
+
+    [HumansFact]
+    public void Tree_Anonymous_SeesPublicDepartmentsOnly_AndLinksPromotedSubTeams()
+    {
+        var build = Team("Build", isPublicPage: true);
+        var privateDept = Team("Cantina");
+        var logo = Team("Logo", parentId: build.Id, isPromoted: true);
+        var signs = Team("Signs", parentId: build.Id);
+        var privateChild = Team("Bar", parentId: privateDept.Id, isPromoted: true);
+
+        var tree = TeamDirectoryBuilder.BuildTree(
+            Graph(build, privateDept, logo, signs, privateChild), isAuthenticated: false);
+
+        tree.Select(n => n.Name).Should().Equal("Build");
+        tree[0].IsLinkable.Should().BeTrue();
+        tree[0].Children.Select(c => (c.Name, c.IsLinkable)).Should().Equal(("Logo", true), ("Signs", false));
+    }
 }

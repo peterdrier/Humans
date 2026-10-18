@@ -285,6 +285,7 @@ internal sealed class ShiftManagementService(
         await repo.UpdateRotaTeamAssignmentAsync(
             rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
         viewInvalidator.InvalidateRota(rota.Id);
+        earlyEntryInvalidator.InvalidateAll();
 
         await auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -297,7 +298,7 @@ internal sealed class ShiftManagementService(
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }
-    public async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId)
+    public async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId)
     {
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.ShiftsWithSignups);
         if (rota is null) return RefuseDeletion(rotaId, "Shifts_Signup_RotaNotFound");
@@ -309,18 +310,16 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(rotaId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        // Snapshot user-ids pre-delete so cache eviction works after cascade.
-        var affectedUserIds = rota.Shifts
-            .SelectMany(s => s.ShiftSignups)
-            .Select(d => d.UserId)
-            .Distinct()
-            .ToList();
+        // Keep the removed requests for the audit after the cascade commits.
+        var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
+        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         await repo.DeleteRotaCascadeAsync(rotaId);
 
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId, $"rota '{rota.Name}' was deleted");
         return new ShiftDeletionResult();
     }
 
@@ -563,8 +562,11 @@ internal sealed class ShiftManagementService(
         if (dailyStaffing.Count == 0)
             return ShiftGenerationResult.Failure("At least one staffing day is required.");
 
-        if (dailyStaffing.Values.Any(d => d.Min > d.Max))
-            return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+        foreach (var (minimum, maximum) in dailyStaffing.Values)
+        {
+            if (GetShiftInputRefusal(minimum, maximum) is { } refusal)
+                return ShiftGenerationResult.Failure(refusal);
+        }
 
         var es = await calendarResolver.GetAsync(rota.EventSettingsId);
         if (es is null)
@@ -629,11 +631,17 @@ internal sealed class ShiftManagementService(
             input.StartDayOffset > input.EndDayOffset)
             return ShiftGenerationResult.Failure("Shift dates must fall within the event period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
-            return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+        if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers) is { } staffingRefusal)
+            return ShiftGenerationResult.Failure(staffingRefusal);
 
         if (input.TimeSlots.Count == 0)
             return ShiftGenerationResult.Failure("At least one time slot is required.");
+
+        foreach (var slot in input.TimeSlots)
+        {
+            if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers, slot.DurationHours) is { } refusal)
+                return ShiftGenerationResult.Failure(refusal);
+        }
 
         var now = clock.GetCurrentInstant();
         var toInsert = new List<Shift>();
@@ -680,8 +688,9 @@ internal sealed class ShiftManagementService(
         if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
-            return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+        if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers,
+                input.IsAllDay ? null : input.DurationHours) is { } refusal)
+            return ShiftMutationResult.Failure(refusal);
 
         var now = clock.GetCurrentInstant();
         var shift = new Shift
@@ -703,6 +712,16 @@ internal sealed class ShiftManagementService(
         await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
         viewInvalidator.InvalidateRota(input.RotaId);
         return ShiftMutationResult.Success("Shift created.", shift.Id);
+    }
+
+    private static string? GetShiftInputRefusal(int minimum, int maximum, double? durationHours = null)
+    {
+        if (minimum < 0) return "MinVolunteers cannot be negative.";
+        if (maximum < 1) return "MaxVolunteers must be at least one.";
+        if (minimum > maximum) return "MinVolunteers cannot exceed MaxVolunteers.";
+        if (durationHours is { } hours && (!double.IsFinite(hours) || hours <= 0))
+            return "Shift duration must be a positive finite number of hours.";
+        return null;
     }
 
     private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, EventSettingsInfo es) =>
@@ -727,8 +746,9 @@ internal sealed class ShiftManagementService(
         if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
-            return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+        if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers,
+                shift.IsAllDay ? null : input.DurationHours) is { } refusal)
+            return ShiftMutationResult.Failure(refusal);
 
         shift.Description = input.Description;
         shift.DayOffset = input.DayOffset;
@@ -741,12 +761,13 @@ internal sealed class ShiftManagementService(
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
+        earlyEntryInvalidator.InvalidateAll();
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
-    public async Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId)
+    public async Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId)
     {
-        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.ShiftSignups);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Rota | ShiftReadShape.ShiftSignups);
         if (shift is null) return RefuseDeletion(shiftId, "Shifts_Signup_ShiftNotFound");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -754,7 +775,8 @@ internal sealed class ShiftManagementService(
             return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
         var rotaId = shift.RotaId;
-        var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();
+        var removedSignups = shift.ShiftSignups.ToList();
+        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         await repo.DeleteShiftCascadeAsync(shiftId);
 
@@ -762,7 +784,20 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var uid in affectedUserIds)
             viewInvalidator.InvalidateUser(uid);
+        await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId,
+            $"shift in '{shift.Rota.Name}' on day {shift.DayOffset} was deleted");
         return new ShiftDeletionResult();
+    }
+
+    private async Task AuditDeletedPendingSignupsAsync(
+        IReadOnlyList<ShiftSignup> signups, Guid actorUserId, string reason)
+    {
+        foreach (var signup in signups.Where(s => s.Status == SignupStatus.Pending))
+        {
+            await auditLogService.LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+                $"shift {signup.ShiftId}: {reason}", actorUserId,
+                relatedEntityId: signup.UserId, relatedEntityType: "User");
+        }
     }
 
     private ShiftDeletionResult RefuseDeletion(Guid entityId, string errorKey, int confirmedSignups = 0)
@@ -1052,7 +1087,7 @@ internal sealed class ShiftManagementService(
         if (remainingSlots == 0) return 0;
 
         var priorityWeight = PriorityWeights.GetValueOrDefault(shift.Rota?.Priority ?? ShiftPriority.Normal, 1);
-        var durationHours = shift.Duration.TotalHours;
+        var durationHours = shift.IsAllDay ? Shift.AllDayWindowHours : shift.Duration.TotalHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
         // Proximity boost: 1 + 10/(1+daysUntilStart). Today→11x, tomorrow→6x, 7d→2.25x, 30d→1.32x.
@@ -1155,10 +1190,9 @@ internal sealed class ShiftManagementService(
 
             foreach (var shift in overlapping)
             {
-                var hours = shift.IsAllDay
-                    ? Duration.FromTicks(Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours
-                    : shift.Duration.TotalHours;
-                var totalHours = hours * shift.MaxVolunteers;
+                var overlapStart = Instant.Max(dayStart, shift.GetAbsoluteStart(es));
+                var overlapEnd = Instant.Min(dayEnd, shift.GetAbsoluteEnd(es));
+                var totalHours = (overlapEnd - overlapStart).TotalHours * shift.MaxVolunteers;
 
                 switch (shift.Rota.Priority)
                 {

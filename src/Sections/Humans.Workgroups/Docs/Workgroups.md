@@ -71,7 +71,7 @@ administrative recognition, and every decision is a human's.
 |----------|------|-------|
 | Id | Guid | PK |
 | Name | string(200) | |
-| Slug | string(100) | Admin-editable; re-slugs when Name changes. Plain index, not unique — uniqueness is the service's job (`ReserveSlugAsync`), never a DB constraint on an editable string |
+| Slug | string(100) | Admin-editable; re-slugs when Name changes. Nonblank names without ASCII slug characters use the `workgroup` seed and the usual collision suffixing. Plain index, not unique — uniqueness is the service's job (`ReserveSlugAsync`), never a DB constraint on an editable string |
 | Purpose | string(4000) | Markdown, sanitized on render |
 | Deliverable | string(500) | One line |
 | DeliverableKind | WorkgroupDeliverableKind | |
@@ -265,6 +265,8 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Coordinator-picker prefills pair the resolved human’s name and ID, including when the form holds an archived account ID.
+
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
 - The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
@@ -370,9 +372,14 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Triggers
 
-Member and Board notice previews fit notification storage: 200 Unicode characters for titles,
+Workgroups sends full member and Board notice copy to Notifications, which fits previews to storage: 200 Unicode characters for titles,
 2,000 for bodies. Oversized titles move into the body before the detail excerpt; ellipses mark
 shortened copy. Full names and notes remain in the register and system log.
+Notification recipient lookup and delivery failures are logged without failing committed
+changes or skipping their email, Drive sync or Finance update. Recipient-language groups
+remain independent. The rhythm nudge audit records successful dispatch requests, not inbox delivery (which
+respects notification preferences); if every dispatch fails, no success audit is written. GDPR orphan notices use the same Board dispatch path.
+Caller cancellation still propagates.
 
 - Apply: the applicant becomes the first coordinator (plus an optional second); writes
   `Applied`; notifies and emails the Board.

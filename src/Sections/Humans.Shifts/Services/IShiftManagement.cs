@@ -108,7 +108,7 @@ internal interface IShiftManagement
     /// <summary>
     /// Deletes a rota; returns a resource-key refusal for missing rotas or confirmed signups.
     /// </summary>
-    Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId);
+    Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId);
 
     /// <summary>
     /// Gets a rota by primary key with shifts included.
@@ -168,7 +168,7 @@ internal interface IShiftManagement
     /// <summary>
     /// Deletes a shift and pending signups; returns a resource-key refusal for missing shifts or confirmed signups.
     /// </summary>
-    Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId);
+    Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId);
 
     /// <summary>
     /// Gets a shift by primary key.

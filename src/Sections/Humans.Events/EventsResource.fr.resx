@@ -153,6 +153,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La catégorie '{0}' correspond à plusieurs catégories actives.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Le champ Date est obligatoire.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date doit respecter le format yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>Le début et la fin de l’événement doivent se situer entre les années 0001 et 9999, en UTC comme dans le fuseau horaire de l’événement.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>Le champ StartTime est obligatoire.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime doit respecter le format HH:mm.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes doit être compris entre 15 et 480.</value></data>
@@ -177,4 +178,5 @@
   <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Votre événement &lt;strong&gt;{1}&lt;/strong&gt; n'a pas été approuvé pour le guide des événements.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Vous pouvez modifier et soumettre à nouveau votre événement ici : &lt;a href="{3}"&gt;Modifier l'événement&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Des modifications sont demandées pour votre événement</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;L'équipe de modération demande des modifications à votre événement &lt;strong&gt;{1}&lt;/strong&gt; avant de pouvoir l'approuver.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Commentaires :&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Merci de le mettre à jour et de le soumettre à nouveau ici : &lt;a href="{3}"&gt;Modifier l'événement&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Choisissez chaque jour de récurrence une seule fois dans le calendrier de cet événement.</value></data>
 </root>

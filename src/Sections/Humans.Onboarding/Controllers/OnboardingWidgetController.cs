@@ -78,6 +78,7 @@ internal sealed class OnboardingWidgetController(
 
         var userId = CurrentUserId();
         var info = await _userService.GetUserInfoAsync(userId, ct);
+        userId = info?.Id ?? userId;
 
         // Skip the save for an already-named user (stale page / back-button re-POST).
         // In-section check against the user's OWN profile — the name save must NOT be
@@ -135,8 +136,9 @@ internal sealed class OnboardingWidgetController(
         // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
-            Flags: ShiftBrowseQueryFlags.IncludeSignups));
-        var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
+            Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
+        var userId = (await GetCurrentUserInfoAsync(ct))?.Id ?? CurrentUserId();
+        var userShiftView = await shiftView.GetUserAsync(userId, ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
         // Onboarding viewers are regular (non-privileged) volunteers, so the early-entry
         // lock applies whenever the close has passed — same surfacing the /Shifts browse
@@ -158,6 +160,8 @@ internal sealed class OnboardingWidgetController(
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
+        if (result.Warning is { } warning)
+            SetInfo(warning);
         return RedirectToAction(nameof(Consents));
     }
 
@@ -172,6 +176,8 @@ internal sealed class OnboardingWidgetController(
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpRangeFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
+        if (result.Warning is { } warning)
+            SetInfo(warning);
         return RedirectToAction(nameof(Consents));
     }
 

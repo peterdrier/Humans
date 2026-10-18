@@ -185,6 +185,17 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task Erase_LongGroupName_DispatchesFullBoardNotice()
+    {
+        var group = await SeedWorkgroupAsync(name: new string('x', 200));
+        await NewService().EraseForUserAsync(group.Members.Single().UserId, Ct);
+
+        var notice = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[3].Should().Be($"No coordinator: {group.Name}");
+        notice[5].Should().Be("The group's only coordinator was erased under GDPR. Name a coordinator from its members.");
+    }
+
+    [HumansFact]
     public async Task Erase_WithASecondCoordinatorStillStanding_DoesNotNotifyTheBoard()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);

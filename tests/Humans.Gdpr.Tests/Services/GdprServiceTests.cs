@@ -154,16 +154,21 @@ public class GdprServiceTests
         export.Sections.Should().NotContainKey("Applications");
     }
 
-    [HumansFact]
-    public async Task ExportForUserAsync_PassesUserIdAndCancellationTokenToEveryContributor()
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ExportForUserAsync_PassesUserIdAndCancellationTokenToEveryContributor(
+        bool knownUser, bool requestArchivedId)
     {
         var userId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
         using var cts = new CancellationTokenSource();
         var first = new FakeContributor("A", new object());
         var second = new FakeContributor("B", new object());
-        var service = CreateService(first, second);
+        var service = CreateService(knownUser ? StubMerged(userId, archivedId) : null, first, second);
 
-        await service.ExportForUserAsync(userId, cts.Token);
+        await service.ExportForUserAsync(requestArchivedId ? archivedId : userId, cts.Token);
 
         first.CalledWithUserId.Should().Be(userId);
         first.CalledWithToken.Should().Be(cts.Token);

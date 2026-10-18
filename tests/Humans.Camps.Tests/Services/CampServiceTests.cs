@@ -1150,7 +1150,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [Xunit.InlineData("approve")]
     [Xunit.InlineData("reject")]
     [Xunit.InlineData("close")]
-    public async Task MembershipNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    public async Task MembershipNotices_LongNamesDispatchFullCopy(string action)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1170,17 +1170,15 @@ public sealed class CampServiceTests : CampsTestHarness
             default: await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
         }
         var args = Notifier.ReceivedCalls().Single().GetArguments();
-        var title = (string)args[3]!;
-        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-        title.Should().EndWith("…");
-        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-        encode.Should().NotThrow();
-        ((string)args[5]!).Should().Contain(action switch
+        args[3].Should().Be(action switch
         {
             "approve" => $"Your request to join {name} was approved",
             "reject" => $"Your request to join {name} was not approved",
-            _ => "Your pending request to join this camp won't be reviewed"
+            _ => $"The {season.Year} season for {name} is no longer open"
         });
+        args[5].Should().Be(string.Equals(action, "close", StringComparison.Ordinal)
+            ? "Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected."
+            : null);
     }
 
     [HumansTheory]
@@ -1565,6 +1563,59 @@ public sealed class CampServiceTests : CampsTestHarness
         member.ConfirmedByUserId.Should().Be(TestActorId);
         await AuditLog.Received(1).LogAsync(AuditAction.CampMemberAddedByLead, nameof(CampMember), member.Id,
             Arg.Any<string>(), TestActorId, survivorId, nameof(User));
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, null)]
+    [InlineData(false, true, null)]
+    [InlineData(true, false, null)]
+    [InlineData(true, true, null)]
+    [InlineData(false, true, 2029)]
+    [InlineData(true, true, 2029)]
+    public async Task LeadMemberShortcuts_UseOnlyTheSelectedOrPublicYearsOpenSeason(
+        bool assignRole, bool hasPublicSeason, int? year)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const int publicYear = 2028;
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: publicYear));
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "continuing-camp" };
+        var current = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear, Status = CampSeasonStatus.Full };
+        var future = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear + 1, Status = CampSeasonStatus.Full };
+        CampsDb.Camps.Add(camp);
+        await CampsDb.CampSeasons.AddRangeAsync([
+            new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear - 1, Status = CampSeasonStatus.Active },
+            future], ct);
+        if (hasPublicSeason) CampsDb.CampSeasons.Add(current);
+        await SaveAllAsync(ct);
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        _campRoleService.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
+        var roleId = Guid.NewGuid();
+
+        if (assignRole)
+            (await _service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, TestActorId, ct, year))
+                .Should().Be(hasPublicSeason ? AssignCampRoleOutcome.Assigned : AssignCampRoleOutcome.SeasonNotFound);
+        else
+            (await _service.AddCampMemberToActiveSeasonAsync(camp.Id, userId, TestActorId, ct, year))
+                .Should().Be(hasPublicSeason ? AddCampMemberOutcome.Added : AddCampMemberOutcome.NoActiveSeason);
+
+        var members = await CampsDb.CampMembers.AsNoTracking().ToListAsync(ct);
+        if (hasPublicSeason)
+        {
+            var expectedSeason = year.HasValue ? future : current;
+            members.Should().ContainSingle().Which.CampSeasonId.Should().Be(expectedSeason.Id);
+            await _campRoleService.Received(assignRole ? 1 : 0).AssignAsync(
+                expectedSeason.Id, roleId, Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            members.Should().BeEmpty();
+            await _campRoleService.DidNotReceiveWithAnyArgs().AssignAsync(default, default, default, default, default);
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansFact]
@@ -2565,13 +2616,21 @@ public sealed class CampServiceTests : CampsTestHarness
         CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
     }
 
-    [HumansFact]
-    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt(bool requestArchivedId)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
         var userId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var requestedId = requestArchivedId ? archivedId : userId;
+        _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = userId }, [], [], [], null, []) with
+            { MergedUserIds = [archivedId] }));
         var otherUserId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
@@ -2614,7 +2673,7 @@ public sealed class CampServiceTests : CampsTestHarness
         CampsDb.CampMembers.Add(otherMember);
         await SaveAllAsync(ct);
 
-        var slices = await _service.ContributeForUserAsync(userId, ct);
+        var slices = await _service.ContributeForUserAsync(requestedId, ct);
         JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampRoleAssignments, StringComparison.Ordinal)).Data)
             .GetArrayLength().Should().Be(0, "ordinary memberships need no role assignment");
         var exported = JsonSerializer.SerializeToElement(slices.Single(x => string.Equals(x.SectionName, CampService.CampMemberships, StringComparison.Ordinal)).Data);
@@ -2639,7 +2698,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId, ct)).Should().BeFalse();
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.Id == otherMember.Id, ct)).Should().BeTrue();
-        foreach (var slice in await _service.ContributeForUserAsync(userId, ct))
+        foreach (var slice in await _service.ContributeForUserAsync(requestedId, ct))
             JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(0);
     }
 

@@ -277,6 +277,7 @@ internal sealed class FeedbackController(
                 SenderName = m.SenderName ?? "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
+                EmailEnqueuePending = m.EmailEnqueuePending,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),
                 IsReporter = m.SenderUserId.HasValue && m.SenderUserId == report.UserId
             }).ToList()

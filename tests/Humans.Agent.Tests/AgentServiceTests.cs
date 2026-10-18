@@ -134,6 +134,93 @@ public class AgentServiceTests
         tokens.Last().Finalizer!.StopReason.Should().Be("rate_limited");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task Ask_waits_for_the_same_users_in_flight_usage_before_checking_caps(int cap)
+    {
+        var userId = Guid.NewGuid();
+        var store = new AgentRateLimitStore();
+        void Configure(AgentSettings settings)
+        {
+            settings.Enabled = true;
+            if (cap == 0) settings.DailyMessageCap = 1;
+            if (cap == 1) settings.HourlyMessageCap = 1;
+            if (cap == 2) settings.DailyTokenCap = 1;
+        }
+        var (first, firstClient) = await BuildService(Configure, rateLimitStore: store);
+        var (second, secondClient) = await BuildService(Configure, rateLimitStore: store);
+        foreach (var client in new[] { firstClient, secondClient })
+            client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "test-model", "end_turn")));
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
+            .GetAsyncEnumerator(ct);
+        (await active.MoveNextAsync()).Should().BeTrue();
+        var pending = ReadSecond();
+        var secondReachedProviderBeforeFirstFinished = secondClient.LastRequest is not null;
+        while (await active.MoveNextAsync()) { }
+        var secondResult = await pending;
+
+        secondReachedProviderBeforeFirstFinished.Should().BeFalse();
+        secondClient.LastRequest.Should().BeNull();
+        secondResult.Last().Finalizer!.StopReason.Should().Be("rate_limited");
+
+        async Task<List<AgentTurnToken>> ReadSecond()
+        {
+            var result = new List<AgentTurnToken>();
+            await foreach (var token in second.AskAsync(
+                new AgentTurnRequest(Guid.Empty, userId, "Second", "en"), ct))
+                result.Add(token);
+            return result;
+        }
+    }
+
+    [HumansFact]
+    public async Task Ask_cancels_waiters_without_blocking_other_users_and_releases_disposed_turns()
+    {
+        var userId = Guid.NewGuid();
+        var store = new AgentRateLimitStore();
+        var (first, firstClient) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        var (second, secondClient) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        firstClient.EnqueueTurn(new AgentTurnToken("Partial answer", null, null));
+        secondClient.EnqueueTurn(new AgentTurnToken("Other user", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+        secondClient.EnqueueTurn(new AgentTurnToken("Next answer", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
+            .GetAsyncEnumerator(ct);
+        (await active.MoveNextAsync()).Should().BeTrue();
+
+        using var waitingCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        await using var cancelled = second.AskAsync(
+            new AgentTurnRequest(Guid.Empty, userId, "Cancelled", "en"), waitingCancellation.Token)
+            .GetAsyncEnumerator(waitingCancellation.Token);
+        var waiting = cancelled.MoveNextAsync().AsTask();
+        await waitingCancellation.CancelAsync();
+        var waitWasCancelled = false;
+        try { await waiting; }
+        catch (OperationCanceledException) { waitWasCancelled = true; }
+        waitWasCancelled.Should().BeTrue();
+
+        await foreach (var _ in second.AskAsync(
+            new AgentTurnRequest(Guid.Empty, Guid.NewGuid(), "Independent", "en"), ct)) { }
+
+        await using var next = second.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "Next", "en"), ct)
+            .GetAsyncEnumerator(ct);
+        var nextToken = next.MoveNextAsync().AsTask();
+        var nextStartedBeforeDisposal = nextToken.IsCompleted;
+        await active.DisposeAsync();
+        (await nextToken).Should().BeTrue();
+        nextStartedBeforeDisposal.Should().BeFalse();
+        next.Current.TextDelta.Should().Be("Next answer");
+        while (await next.MoveNextAsync()) { }
+        store.Get(userId, new LocalDate(2026, 4, 21), 12).MessagesToday.Should().Be(2);
+    }
+
     [HumansFact]
     public async Task Ask_finalizer_carries_conversation_id_so_the_client_can_continue_the_thread()
     {
@@ -876,8 +963,10 @@ public class AgentServiceTests
         conversation.MessageCount.Should().Be(2, "one user message and one assistant trace");
     }
 
-    [HumansFact]
-    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn(bool cancel)
     {
         // nobodies-collective/Humans#963 — AgentController awaits WriteSse OUTSIDE AskAsync, so
         // a browser that goes away while a token is being written never throws into AskAsync's
@@ -885,9 +974,12 @@ public class AgentServiceTests
         // That is the likeliest disconnect timing, and it must still leave the already-persisted
         // user message with a matching assistant trace.
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var store = new AgentRateLimitStore();
+        var (svc, client) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
 
         client.EnqueueTurn(
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
             new AgentTurnToken("Teams are groups of ", null, null),
             new AgentTurnToken("volunteers.", null, null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
@@ -896,10 +988,13 @@ public class AgentServiceTests
         // does when the response write throws on a dead connection.
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
-            Xunit.TestContext.Current.CancellationToken))
+            cancellation.Token))
         {
             if (t.TextDelta is not null)
-                break;
+            {
+                if (cancel) await cancellation.CancelAsync();
+                else break;
+            }
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
@@ -913,6 +1008,12 @@ public class AgentServiceTests
             .Subject;
         failure.RefusalReason.Should().Be("error",
             "the trace surfaces through the existing admin refusals filter");
+        failure.PromptTokens.Should().Be(43);
+        failure.OutputTokens.Should().Be(1);
+        failure.CachedTokens.Should().Be(5);
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.TokensToday.Should().Be(44);
     }
 
     [HumansFact]
@@ -925,8 +1026,9 @@ public class AgentServiceTests
         var (svc, client) = await BuildService(s => s.Enabled = true);
 
         client.EnqueueTurn(
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "claude-sonnet-4-6", "end_turn")));
 
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
@@ -943,6 +1045,9 @@ public class AgentServiceTests
             .ContainSingle(m => m.Role == AgentRole.Assistant).Subject;
         assistant.Content.Should().Be("Teams are groups of volunteers.");
         assistant.RefusalReason.Should().BeNull();
+        assistant.PromptTokens.Should().Be(43);
+        assistant.OutputTokens.Should().Be(10);
+        assistant.CachedTokens.Should().Be(5);
     }
 
     [HumansFact]

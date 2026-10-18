@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NSubstitute.ExceptionExtensions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -43,6 +44,44 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == survivorId),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateNudge_FailedLanguage_DoesNotSuppressOthersOrOverstateDelivery(bool hasAnotherLanguage)
+    {
+        var group = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
+        var first = group.Members.Single().UserId;
+        var second = SeedUser("Segundo", language: "es");
+        if (hasAnotherLanguage)
+            await AddMemberAsync(group.Id, second, WorkgroupMemberRole.Coordinator);
+        Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(first)),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("English notice storage unavailable"));
+
+        await NewService().RunDailyRhythmAsync(Ct);
+
+        await Notifications.Received(hasAnotherLanguage ? 1 : 0).SendAsync(NotificationSource.WorkgroupReportingDue,
+            Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == second),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        if (hasAnotherLanguage)
+        {
+            await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupUpdateDueNotified,
+                AuditEntityTypes.Workgroup, group.Id,
+                Arg.Is<string>(description => description.Contains("1 coordinator", StringComparison.Ordinal)),
+                WorkgroupService.WorkgroupRhythmJobName);
+        }
+        else
+        {
+            await AuditLog.DidNotReceive().LogAsync(AuditAction.WorkgroupUpdateDueNotified,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>());
+        }
     }
 
     [HumansFact]

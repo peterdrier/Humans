@@ -42,9 +42,10 @@ public sealed record FeedbackMessageInfo(
     Guid? SenderUserId,
     string? SenderName,
     string Content,
-    Instant CreatedAt);
+    Instant CreatedAt,
+    bool EmailEnqueuePending = false);
 
-/// <summary>Expected triage outcomes; dependency failures remain exceptions.</summary>
+/// <summary>Expected triage outcomes. Core persistence failures remain exceptions; committed replies may await email handoff.</summary>
 public sealed record FeedbackMutationResult(
     bool Found, string? Rejection = null, FeedbackMessageInfo? Message = null)
 {

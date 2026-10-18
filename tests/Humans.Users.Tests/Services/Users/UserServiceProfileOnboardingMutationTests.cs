@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -17,6 +18,7 @@ namespace Humans.Users.Tests.Services.Users;
 public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarness
 {
     private readonly UserService _service;
+    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
         Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
@@ -36,7 +38,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _communicationPreferenceRepository,
             AdminAuthorization,
             _claimsCacheInvalidator,
-            Substitute.For<IFileStorage>(),
+            _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
     }
@@ -116,14 +118,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         row.Visibility.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn(
+        bool hasDeletionHold)
     {
         // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
         // (exports are JSON files users download). The value sources from
         // (Provider != null), not IsGoogle.
         var userId = Guid.NewGuid();
-        SeedUser(userId);
+        var accountUser = SeedUser(userId);
         Db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -134,6 +139,20 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Provider = "Google",
             ProviderKey = "sub-1",
             IsGoogle = false,
+        });
+        accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
+        var arrival = Clock.GetCurrentInstant();
+        accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
+        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
+        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
+        Db.EventParticipations.Add(new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync,
+            CheckedInAt = arrival,
         });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -149,6 +168,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             UserService.Languages,
             UserService.CommunicationPreferences
         ]);
+        System.Text.Json.JsonSerializer.Serialize(slices.Single(s =>
+            string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal)).Data)
+            .Should().Be("[]");
         var userEmailsSlice = slices.Single(s =>
             string.Equals(s.SectionName, UserService.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
@@ -160,6 +182,63 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             string.Equals(s.SectionName, UserService.Account, StringComparison.Ordinal));
         var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
+        using var accountData = System.Text.Json.JsonDocument.Parse(accountJson);
+        accountData.RootElement.GetProperty("State").GetString().Should().Be(accountUser.State.ToString());
+        accountData.RootElement.GetProperty("DeletionEligibleAfter").GetString()
+            .Should().Be(accountUser.DeletionEligibleAfter.ToIso8601());
+        accountData.RootElement.GetProperty("DeletionScheduledFor").GetString()
+            .Should().Be(accountUser.DeletionScheduledFor.ToIso8601());
+
+        var participationSlice = slices.Single(s =>
+            string.Equals(s.SectionName, UserService.EventParticipations, StringComparison.Ordinal));
+        using var participationJson = System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(participationSlice.Data));
+        participationJson.RootElement.EnumerateArray().Single().GetProperty("CheckedInAt")
+            .GetString().Should().Be(arrival.ToIso8601());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_ExportsRetainedProfilesAcrossMergeChain(bool requestArchivedId)
+    {
+        var oldestId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var unrelatedId = Guid.NewGuid();
+        foreach (var id in new[] { oldestId, archivedId, survivorId, unrelatedId })
+        {
+            await SeedUserWithProfileAsync(id);
+            var profile = await Db.Profiles.SingleAsync(p => p.UserId == id, TestContext.Current.CancellationToken);
+            profile.MedicalConditions = $"Health {id}";
+            profile.DietaryPreference = $"Diet {id}";
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        foreach (var (source, target) in new[] { (oldestId, archivedId), (archivedId, survivorId) })
+        {
+            await _service.ReassignAsync(source, target, Guid.NewGuid(), Clock.GetCurrentInstant(),
+                TestContext.Current.CancellationToken);
+            await _service.AnonymizeForMergeAsync(source, target, Clock.GetCurrentInstant(),
+                TestContext.Current.CancellationToken);
+        }
+
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? oldestId : survivorId,
+            TestContext.Current.CancellationToken);
+
+        var mergedSlice = slices.Single(s => string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal));
+        using var mergedJson = System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(mergedSlice.Data));
+        var profiles = mergedJson.RootElement.EnumerateArray()
+            .ToDictionary(p => p.GetProperty("UserId").GetGuid(), p => p.GetProperty("Profile"));
+        profiles.Keys.Should().BeEquivalentTo([oldestId, archivedId]);
+        foreach (var id in new[] { oldestId, archivedId })
+        {
+            profiles[id].GetProperty("MedicalConditions").GetString().Should().Be($"Health {id}");
+            profiles[id].GetProperty("DietaryPreference").GetString().Should().Be($"Diet {id}");
+        }
+        using var currentJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(s => string.Equals(s.SectionName, UserService.Profile, StringComparison.Ordinal)).Data));
+        currentJson.RootElement.GetProperty("MedicalConditions").GetString().Should().Be($"Health {survivorId}");
     }
 
     [HumansFact]
@@ -781,6 +860,70 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationToken()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(ct);
+        var realRepository = new UserRepository(DbFactory, Clock);
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => realRepository.GetByIdAsync(userId, call.Arg<CancellationToken>()));
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                // ILike needs PostgreSQL; perform the exact-address lookup over the same stored rows.
+                await using var lookup = await DbFactory.CreateDbContextAsync(call.Arg<CancellationToken>());
+                var rows = await lookup.UserEmails.AsNoTracking().ToListAsync(call.Arg<CancellationToken>());
+                return (IReadOnlyList<UserEmail>)rows.Where(email => string.Equals(email.Email, call.ArgAt<string>(0), StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(email.Email, call.ArgAt<string?>(1), StringComparison.OrdinalIgnoreCase)).ToList();
+            });
+        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => realRepository.GetUserEmailsByUserIdForMutationAsync(userId, call.Arg<CancellationToken>()));
+        var firstInsertReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resumeFirstInsert = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inserts = 0;
+        repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (Interlocked.Increment(ref inserts) == 1)
+            {
+                firstInsertReached.TrySetResult();
+                await resumeFirstInsert.Task.WaitAsync(ct);
+            }
+            await realRepository.AddUserEmailAsync(call.Arg<UserEmail>(), call.Arg<CancellationToken>());
+        });
+        var manager = Substitute.For<UserManager<User>>(
+            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
+        manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
+        manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
+        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>()).Build();
+        UserEmailService BuildEmailService() => new(
+            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
+            NullLogger<UserEmailService>.Instance);
+
+        var first = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
+        await firstInsertReached.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        Task<AddEmailResult> second;
+        try
+        {
+            second = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
+        }
+        finally
+        {
+            resumeFirstInsert.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        (await Db.UserEmails.AsNoTracking().Where(email => email.UserId == userId).ToListAsync(ct))
+            .Should().ContainSingle();
+        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token == "verification-token");
+        results.Should().ContainSingle(result => result.ErrorKey == "Users_Profile_EmailAlreadyAdded"
+            && result.EmailId == Guid.Empty && result.Token == string.Empty);
+        await manager.Received(1).GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
     [HumansTheory]
     [InlineData("add")]
     [InlineData("verify")]
@@ -873,6 +1016,59 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         updated.Should().BeFalse();
         var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId, TestContext.Current.CancellationToken);
         profileExists.Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    public async Task ReassignAsync_CleansFoldedProfilePictureWithoutTouchingSurvivor(
+        bool versioned, bool cleanupFails, bool targetHasProfile)
+    {
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceProfileId = await SeedUserWithProfileAsync(sourceUserId);
+        Guid? targetProfileId = targetHasProfile ? await SeedUserWithProfileAsync(targetUserId) : null;
+        if (!targetHasProfile)
+            SeedUser(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceProfileId, TestContext.Current.CancellationToken);
+        source.ProfilePictureContentType = "image/png";
+        source.ProfilePictureStorageKey = versioned ? $"uploads/profile-pictures/{sourceProfileId}-old.png" : null;
+        var previousKey = source.ProfilePictureStorageKey
+            ?? ProfilePictureStorageKeys.ProfilePictureKey(sourceProfileId, "image/png");
+        const string survivorKey = "uploads/profile-pictures/survivor.png";
+        if (targetHasProfile)
+        {
+            var target = await Db.Profiles.SingleAsync(p => p.Id == targetProfileId, TestContext.Current.CancellationToken);
+            target.ProfilePictureContentType = "image/png";
+            target.ProfilePictureStorageKey = survivorKey;
+        }
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        if (cleanupFails)
+            _fileStorage.DeleteAsync(previousKey, CancellationToken.None)
+                .Returns(Task.FromException(new IOException("Storage unavailable")));
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(),
+            TestContext.Current.CancellationToken);
+
+        var freshSource = await Db.Profiles.AsNoTracking().SingleAsync(
+            p => p.Id == sourceProfileId, TestContext.Current.CancellationToken);
+        if (targetHasProfile)
+        {
+            freshSource.ProfilePictureContentType.Should().BeNull();
+            freshSource.ProfilePictureStorageKey.Should().BeNull();
+            await _fileStorage.Received(1).DeleteAsync(previousKey, CancellationToken.None);
+            var target = await Db.Profiles.AsNoTracking().SingleAsync(
+                p => p.Id == targetProfileId, TestContext.Current.CancellationToken);
+            target.ProfilePictureStorageKey.Should().Be(survivorKey);
+        }
+        else
+        {
+            freshSource.ProfilePictureContentType.Should().Be("image/png");
+            await _fileStorage.DidNotReceive().DeleteAsync(previousKey, Arg.Any<CancellationToken>());
+        }
+        await _fileStorage.DidNotReceive().DeleteAsync(survivorKey, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

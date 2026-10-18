@@ -5,6 +5,17 @@ namespace Humans.Base.Tests.Extensions;
 
 public sealed class SanitizedMarkdownRendererTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("[link](destination)", "javascript:alert(1)")]
+    [Xunit.InlineData("![image](destination)", "http://example.org/tracker.png")]
+    public void Render_sanitizes_urls_after_html_composition(string markdown, string unsafeUrl)
+    {
+        var html = SanitizedMarkdownRenderer.Render(markdown,
+            transformHtml: rendered => rendered.Replace("destination", unsafeUrl, StringComparison.Ordinal));
+
+        html.Should().NotContain(unsafeUrl);
+    }
+
     [HumansFact]
     public void Render_returns_empty_for_blank_markdown()
     {

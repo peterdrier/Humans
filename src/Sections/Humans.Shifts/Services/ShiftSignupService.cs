@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Resources;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Calendar.Contracts;
@@ -40,6 +41,9 @@ internal sealed class ShiftSignupService(
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ShiftsResource));
+    // Release after the enrollment save, before audit and notices; using scopes
+    // still release the gate on refusals and failures.
+    private static readonly TrackedLock EnrollmentLock = new("Shifts.Enrollment");
 
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string ShiftSignups = "ShiftSignups";
@@ -56,9 +60,11 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = user.Id;
 
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
@@ -124,6 +130,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(localEs.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
@@ -149,6 +156,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
@@ -185,6 +193,7 @@ internal sealed class ShiftSignupService(
         signup.Confirm(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
@@ -276,6 +285,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var targetUserId = await ResolveVoluntellTargetAsync(userId);
         if (targetUserId is null)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -317,6 +327,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
@@ -349,6 +360,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var targetUserId = await ResolveVoluntellTargetAsync(userId);
         if (targetUserId is null)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
@@ -440,6 +452,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         // Range affects every shift in the rota; cascade via the rota.
@@ -497,6 +510,8 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
+        if (signup.Shift.IsEarlyEntry)
+            earlyEntryInvalidator.InvalidateUser(signup.UserId);
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
@@ -546,9 +561,11 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var user = await users.GetUserInfoAsync(userId);
         if (user?.State != UserState.Active)
             return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+        userId = user.Id;
 
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
@@ -622,6 +639,7 @@ internal sealed class ShiftSignupService(
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
 
         await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateRota(rotaId);
@@ -705,13 +723,13 @@ internal sealed class ShiftSignupService(
         EventSettingsInfo eventSettings)
     {
         var conflictingDays = new List<int>();
-        var existingSignupList = existingSignups as IReadOnlyList<ShiftSignup> ?? existingSignups.ToList();
+        var confirmedSignups = existingSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
         foreach (var shift in shiftsInRange)
         {
             var shiftStart = shift.GetAbsoluteStart(eventSettings);
             var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
-            foreach (var existing in existingSignupList)
+            foreach (var existing in confirmedSignups)
             {
                 var existingCalendar = await calendarResolver.GetAsync(existing.Shift.Rota.EventSettingsId);
                 if (existingCalendar is null) continue;
@@ -845,6 +863,7 @@ internal sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
+        using var enrollment = await EnrollmentLock.AcquireAsync(logger);
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,
             ShiftSignupBlockMutationScope.PendingOnly);
@@ -901,6 +920,7 @@ internal sealed class ShiftSignupService(
             if (skippedAtCapacity.Count > 0)
             {
                 await repo.SaveChangesAsync();
+                enrollment.Dispose();
                 shiftMgmt.InvalidateDashboardCaches(calendar.Id);
                 viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
                 viewInvalidator.InvalidateRota(skippedAtCapacity[0].Shift.RotaId);
@@ -920,6 +940,7 @@ internal sealed class ShiftSignupService(
         try
         {
             await repo.SaveChangesAsync();
+            enrollment.Dispose();
         }
         finally
         {
@@ -1136,9 +1157,9 @@ internal sealed class ShiftSignupService(
                         .Where(teamsById.ContainsKey)
                         .ToDictionary(id => id, id => teamsById[id].Name);
                 }
-                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, "Unknown");
+                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, localizer["Shifts_Signup_UnknownTeam"]);
 
-                return $"Time conflict with '{existing.Shift.Rota.Name}' ({teamName}, {dateStr}).";
+                return localizer["Shifts_Signup_TimeConflict", existing.Shift.Rota.Name, teamName, dateStr];
             }
         }
 
@@ -1149,26 +1170,16 @@ internal sealed class ShiftSignupService(
     {
         var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
         if (availableSlots <= 0)
-            return "Early entry capacity reached for this day.";
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", FormatRangeDayList(es, [dayOffset])];
 
         var currentEeCount = (await repo
             .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
             .Count;
 
         if (currentEeCount >= availableSlots)
-            return "Early entry capacity reached.";
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", FormatRangeDayList(es, [dayOffset])];
 
         return null;
-    }
-
-    // Notification storage holds 200 Unicode characters; retain the full title in the body.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
-    {
-        if (title.EnumerateRunes().Count() <= 200)
-            return (title, body);
-
-        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
-            body is null ? title : string.Concat(title, "\n\n", body));
     }
 
     private async Task<Guid?> ResolveVoluntellTargetAsync(Guid userId)
@@ -1180,14 +1191,14 @@ internal sealed class ShiftSignupService(
     private async Task SendAssignmentNoticeAsync(Guid userId, string resourceKey, params object[] args)
     {
         var culture = await GetRecipientCultureAsync(userId);
-        var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args));
+        var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
         await notificationService.SendAsync(
             NotificationSource.ShiftAssigned,
             NotificationClass.Informational,
             NotificationPriority.Normal,
-            noticeCopy.Title,
+            title,
             [userId],
-            body: noticeCopy.Body,
+            body: null,
             actionUrl: "/Shifts",
             actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
     }
@@ -1227,14 +1238,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
-            var noticeCopy = PrepareNoticeCopy($"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}", $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.");
+            var title = $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}";
             await notificationService.SendAsync(
                 NotificationSource.ShiftCoverageGap,
                 NotificationClass.Actionable,
                 NotificationPriority.High,
-                noticeCopy.Title,
+                title,
                 coordinatorIds,
-                body: noticeCopy.Body,
+                body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "Find cover →");
         }
@@ -1268,14 +1279,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
-            var noticeCopy = PrepareNoticeCopy($"Shift signup change: {rotaName}", enrichedDescription);
+            var title = $"Shift signup change: {rotaName}";
             await notificationService.SendAsync(
                 NotificationSource.ShiftSignupChange,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                noticeCopy.Title,
+                title,
                 coordinatorIds,
-                body: noticeCopy.Body,
+                body: enrichedDescription,
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "View →");
         }
@@ -1438,7 +1449,7 @@ internal sealed class ShiftSignupService(
                     ? $"{team.Name}: {ss.Shift.Rota.Name}"
                     : ss.Shift.Rota.Name;
                 if (ss.Status == SignupStatus.Pending)
-                    summary += " (pending)";
+                    summary += $" {localizer["Shifts_Pending"].Value}";
 
                 var description = string.Join("\n\n", new[] { ss.Shift.Description, ss.Shift.Rota.PracticalInfo }
                     .Where(s => !string.IsNullOrWhiteSpace(s)));

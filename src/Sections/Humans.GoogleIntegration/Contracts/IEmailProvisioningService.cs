@@ -27,10 +27,12 @@ public interface IEmailProvisioningService : IApplicationService
 }
 
 /// <summary>
-/// Result of an email provisioning attempt.
+/// Result of an email provisioning attempt. A committed account remains successful
+/// when credential handoff fails; WarningMessage describes the required recovery.
 /// </summary>
 public record EmailProvisioningResult(
     bool Success,
     string? FullEmail = null,
     string? RecoveryEmail = null,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null,
+    string? WarningMessage = null);

@@ -17,10 +17,13 @@ namespace Humans.Tickets.Tests.Services;
 
 public class AttendeeContactImportServiceApplyTests
 {
-    [HumansFact]
-    public async Task Apply_AttachVerified_SetsMatchedUserIdAndUpserts()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Apply_AttachVerified_SetsMatchedUserIdAndUpserts(bool scanned)
     {
         var harness = new ApplyHarness();
+        var scan = Instant.FromUtc(2026, 5, 12, 10, 0);
         var attendeeId = Guid.NewGuid();
         var targetUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
@@ -32,6 +35,7 @@ public class AttendeeContactImportServiceApplyTests
             Status = TicketAttendeeStatus.Valid,
             MatchedUserId = null,
         };
+        attendee.CheckedInAt = scanned ? scan : null;
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
 
@@ -58,8 +62,8 @@ public class AttendeeContactImportServiceApplyTests
                 l => l.Count == 1 && l[0].Id == attendeeId), Arg.Any<CancellationToken>());
 
         await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
-            targetUserId, 2026, ParticipationStatus.Ticketed,
-            null, Arg.Any<CancellationToken>());
+            targetUserId, 2026, scanned ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
+            scanned ? scan : null, Arg.Any<CancellationToken>());
 
         harness.TicketCacheInvalidator.Received(1).InvalidateAfterContactImport();
 
@@ -262,10 +266,13 @@ public class AttendeeContactImportServiceApplyTests
                 Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task Apply_GroupedDecision_AttachVerified_FansToAllGroupAttendees()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Apply_GroupedDecision_AttachVerified_FansToAllGroupAttendees(bool scanned)
     {
         var harness = new ApplyHarness();
+        var scan = Instant.FromUtc(2026, 5, 12, 10, 0);
         var leadId = Guid.NewGuid();
         var extraId = Guid.NewGuid();
         var targetUserId = Guid.NewGuid();
@@ -285,6 +292,8 @@ public class AttendeeContactImportServiceApplyTests
             AttendeeEmail = "buyer@x.com",
             Status = TicketAttendeeStatus.Valid,
         };
+        lead.CheckedInAt = scanned ? scan : null;
+        extra.CheckedInAt = scanned ? scan - Duration.FromHours(1) : null;
         harness.WithUnmatched(lead);
         harness.WithUnmatched(extra);
         harness.WithActiveYear(2026);
@@ -308,8 +317,8 @@ public class AttendeeContactImportServiceApplyTests
 
         // Participation flips once for the single user, not twice.
         await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
-            targetUserId, 2026, ParticipationStatus.Ticketed,
-            null, Arg.Any<CancellationToken>());
+            targetUserId, 2026, scanned ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
+            scanned ? scan - Duration.FromHours(1) : null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

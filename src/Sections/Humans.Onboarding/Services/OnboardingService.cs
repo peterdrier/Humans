@@ -250,6 +250,7 @@ internal sealed class OnboardingService(
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
             return false;
+        userId = info.Id;
 
         var hasAllConsents = await membershipCalculator.HasAllRequiredConsentsForTeamAsync(
             userId, SystemTeamIds.Volunteers, ct);

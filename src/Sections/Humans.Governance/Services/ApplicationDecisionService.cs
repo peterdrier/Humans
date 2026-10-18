@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Resources;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
+using Humans.Base.Threading;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
@@ -44,6 +45,7 @@ internal sealed class ApplicationDecisionService(
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
+    private static readonly TrackedLock SubmissionLock = new("Governance.SubmitApplication");
 
     internal const string Applications = "Applications";
 
@@ -277,6 +279,7 @@ internal sealed class ApplicationDecisionService(
             return fieldRules;
         }
 
+        using var submission = await SubmissionLock.AcquireAsync(logger, ct);
         var hasPending = await repository.AnySubmittedForUserAsync(userId, ct);
         if (hasPending)
             return new ApplicationDecisionResult(false, "AlreadyPending");

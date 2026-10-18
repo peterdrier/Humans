@@ -27,6 +27,22 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<FeedbackMessage>> GetPendingReplyEmailsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.FeedbackMessages.AsNoTracking().Where(m => m.EmailEnqueuePending == true).ToListAsync(ct);
+    }
+
+    public async Task<bool> CompleteReplyEmailAsync(Guid messageId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var message = await ctx.FeedbackMessages.FindAsync([messageId], ct);
+        if (message?.EmailEnqueuePending != true) return false;
+        message.EmailEnqueuePending = false;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

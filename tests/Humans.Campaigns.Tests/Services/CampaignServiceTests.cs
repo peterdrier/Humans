@@ -1,3 +1,5 @@
+using System.Text;
+using Humans.Base.Constants;
 using System.Security.Claims;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -158,7 +160,7 @@ public sealed class CampaignServiceTests
     [HumansFact]
     public async Task AdminMutationActions_without_a_current_actor_do_not_change_data()
     {
-        var controller = new CampaignController(_service, Substitute.For<IUserService>())
+        var controller = new CampaignController(_service, Substitute.For<IUserService>(), NullLogger<CampaignController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -184,12 +186,120 @@ public sealed class CampaignServiceTests
         _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("csv")]
+    [Xunit.InlineData("txt")]
+    [Xunit.InlineData("multiline")]
+    [Xunit.InlineData("plain")]
+    public async Task ImportCodes_ReadsUploadedCodeValues(string format)
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var controller = CreateImportController();
+        var content = format switch
+        {
+            "csv" => "\"A,One\"\r\n\"B\"\"Two\"\r\n",
+            "multiline" => "\"A,\nOne\"\r\n\"B\"\"Two\"\r\n",
+            "plain" => "AOne\r\nBTwo\r\n",
+            _ => "A,One\r\nB\"Two\r\n",
+        };
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var file = new FormFile(stream, 0, stream.Length, "file", string.Equals(format, "txt", StringComparison.Ordinal) ? "codes.txt" : "codes.CSV");
+
+        var result = await controller.ImportCodes(campaign.Id, file);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        var codes = await CampaignsDb.CampaignCodes.AsNoTracking().Where(c => c.CampaignId == campaign.Id)
+            .OrderBy(c => c.ImportOrder).Select(c => c.Code).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        codes.Should().Equal(format switch { "multiline" => "A,\nOne", "plain" => "AOne", _ => "A,One" },
+            format is "plain" ? "BTwo" : "B\"Two");
+        controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("VALID\r\n\"UNCLOSED")]
+    [Xunit.InlineData("VALID\r\nFIRST,SECOND\r\n")]
+    public async Task ImportCodes_InvalidCsv_DoesNotImportAPartialPrefix(string content)
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var controller = CreateImportController();
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var file = new FormFile(stream, 0, stream.Length, "file", "codes.csv");
+        _audit.ClearReceivedCalls();
+
+        var result = await controller.ImportCodes(campaign.Id, file);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 200)]
+    [Xunit.InlineData(false, 201)]
+    [Xunit.InlineData(true, 200)]
+    [Xunit.InlineData(true, 201)]
+    public async Task ImportCodes_EnforcesDatabaseCharacterLimitWithoutPartialWrites(bool supplementary, int length)
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        var code = string.Concat(Enumerable.Repeat(supplementary ? "😀" : "A", length));
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("VALID\n" + code));
+        var file = new FormFile(stream, 0, stream.Length, "file", "codes.csv");
+        _audit.ClearReceivedCalls();
+        var result = await controller.ImportCodes(campaign.Id, file);
+        result.Should().BeOfType<RedirectToActionResult>();
+        var stored = await CampaignsDb.CampaignCodes.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (length <= 200)
+        {
+            stored.Select(c => c.Code).Should().BeEquivalentTo("VALID", code);
+            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        }
+        else
+        {
+            stored.Should().BeEmpty();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("200");
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task GenerateCodes_ImportRefusal_IsNotReportedAsSuccess()
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns([new string('A', 201)]);
+        var result = await controller.GenerateCodes(campaign.Id, 1, "Fixed", 10m);
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
+        controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    private CampaignController CreateImportController()
+    {
+        var actor = SeedUser(_actorId);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(actor));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test")),
+        };
+        return new CampaignController(_service, users, NullLogger<CampaignController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+    }
+
     [HumansFact]
     public async Task AbandonedAdminPages_CancelRepositoryReads()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
         using var request = new CancellationTokenSource();
-        var controller = new CampaignController(_service, Substitute.For<IUserService>())
+        var controller = new CampaignController(_service, Substitute.For<IUserService>(), NullLogger<CampaignController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -267,7 +377,7 @@ public sealed class CampaignServiceTests
                 User = new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim(ClaimTypes.NameIdentifier, viewer.Id.ToString())], "test")),
             };
-            return new(_service, userRead)
+            return new(_service, userRead, NullLogger<CampaignController>.Instance)
             {
                 ControllerContext = new ControllerContext { HttpContext = http },
                 TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -635,7 +745,7 @@ public sealed class CampaignServiceTests
     [HumansTheory]
     [Xunit.InlineData("x")]
     [Xunit.InlineData("🚀")]
-    public async Task SendWaveAsync_LongCampaignTitle_PreservesNoticeCopyWithinTitleLimit(string character)
+    public async Task SendWaveAsync_LongCampaignTitle_DispatchesFullNoticeCopy(string character)
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A"]);
         campaign.Title = string.Concat(Enumerable.Repeat(character, 200));
@@ -651,10 +761,8 @@ public sealed class CampaignServiceTests
         var call = _notifications.ReceivedCalls().Should().ContainSingle().Subject;
         var arguments = call.GetArguments();
         var fullTitle = $"You received a code from campaign: {campaign.Title}";
-        var title = (string)arguments[3]!;
-        title.EnumerateRunes().Count().Should().Be(200);
-        title.Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
-        arguments[5].Should().Be(fullTitle + "\n\nYour campaign code is available under My Codes in your profile.");
+        arguments[3].Should().Be(fullTitle);
+        arguments[5].Should().Be("Your campaign code is available under My Codes in your profile.");
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(user.Id);
         arguments[0].Should().Be(NotificationSource.CampaignReceived);
     }
@@ -1013,12 +1121,18 @@ public sealed class CampaignServiceTests
         preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_ExportsGrantRows()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ContributeForUserAsync_ExportsGrantRows(bool requestArchivedId)
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["EXPORT-CODE"]);
+        var campaign = await SeedActiveCampaignWithCodesAsync(["EXPORT-CODE", "OTHER-CODE"]);
         var user = SeedUser(displayName: "Export User");
-        var code = await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var archivedId = Guid.NewGuid();
+        _people[user.Id] = user with { MergedUserIds = [archivedId] };
+        _people[archivedId] = _people[user.Id];
+        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var code = codes.Single(c => string.Equals(c.Code, "EXPORT-CODE", StringComparison.Ordinal));
         CampaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
@@ -1027,14 +1141,24 @@ public sealed class CampaignServiceTests
             UserId = user.Id,
             AssignedAt = Clock.GetCurrentInstant()
         });
+        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = codes.Single(c => string.Equals(c.Code, "OTHER-CODE", StringComparison.Ordinal)).Id,
+            UserId = SeedUser(displayName: "Unrelated user").Id,
+            AssignedAt = Clock.GetCurrentInstant()
+        });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(requestArchivedId ? archivedId : user.Id, Xunit.TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(CampaignService.CampaignGrants);
         var rows = (System.Collections.IEnumerable)slices[0].Data!;
         rows.Cast<object>().Should().ContainSingle();
+        System.Text.Json.JsonSerializer.SerializeToElement(slices[0].Data).EnumerateArray().Single()
+            .GetProperty("Code").GetString().Should().Be("EXPORT-CODE");
     }
 
     [HumansFact]

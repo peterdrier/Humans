@@ -406,22 +406,22 @@ internal sealed class CachingCampService(
 
     public Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default, int? year = null) =>
         MutateAsync(async () =>
         {
             var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
-                campId, userId, actorUserId, cancellationToken));
+                campId, userId, actorUserId, cancellationToken, year));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
 
     public Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default, int? year = null) =>
         MutateAsync(async () =>
         {
             var result = await WithInner(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
-                campId, roleDefinitionId, userId, actorUserId, cancellationToken));
+                campId, roleDefinitionId, userId, actorUserId, cancellationToken, year));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });

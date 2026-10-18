@@ -271,6 +271,54 @@ public sealed class VolunteerTrackingExportServiceTests
     }
 
     [HumansFact]
+    public async Task RepeatedLocalHour_KeepsTheVolunteerInTheExport()
+    {
+        var day = new LocalDate(2026, 10, 25);
+        // Both endpoints display 02:30 in Madrid; the shift still lasts one real hour.
+        var shifts = new[] { new ConfirmedShiftRow(Alice, TeamA,
+            Instant.FromUtc(2026, 10, 25, 0, 30), Instant.FromUtc(2026, 10, 25, 1, 30)) };
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(shifts,
+            departments: [(TeamA, "TeamA")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);
+
+        var model = await sut.BuildAsync(BuildRequest(start: day, end: day), Xunit.TestContext.Current.CancellationToken);
+
+        var group = model.Groups.Should().ContainSingle().Subject;
+        group.TeamId.Should().Be(TeamA);
+        var person = group.Humans.Should().ContainSingle().Subject;
+        person.UserId.Should().Be(Alice);
+        person.Cells.Should().ContainSingle().Which.Kind.Should().Be(CellKind.Worked);
+        model.TotalsPerDay.Should().Equal(1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(3, 29, 2.5, true)]
+    [Xunit.InlineData(10, 25, 3.5, false)]
+    public async Task ClockChange_TeamSelectionUsesElapsedHours(int month, int dayOfMonth, double otherHours, bool expectTeamB)
+    {
+        var day = new LocalDate(2026, month, dayOfMonth);
+        var otherStart = day.At(new LocalTime(10, 0)).InZoneStrictly(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant();
+        var shifts = new[]
+        {
+            // 01:00–04:00 spans two real hours in spring and four in autumn.
+            ShiftRow(Alice, TeamA, day, 1, 4),
+            new ConfirmedShiftRow(Alice, TeamB, otherStart, otherStart.Plus(Duration.FromHours(otherHours)))
+        };
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(shifts,
+            departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
+            playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);
+
+        var model = await sut.BuildAsync(BuildRequest(start: day, end: day), Xunit.TestContext.Current.CancellationToken);
+
+        var group = model.Groups.Should().ContainSingle().Subject;
+        var expectedTeam = expectTeamB ? TeamB : TeamA;
+        group.TeamId.Should().Be(expectedTeam);
+        group.Humans.Should().ContainSingle().Which.Cells.Should().ContainSingle().Which.TeamId.Should().Be(expectedTeam);
+    }
+
+    [HumansFact]
     public async Task ServiceTrustsRepoFilter_DoesNotReFilterByStatus()
     {
         // Whatever the repo returns is treated as authoritative.

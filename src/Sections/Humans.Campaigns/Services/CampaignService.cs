@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Resources;
+using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
@@ -79,7 +80,7 @@ internal sealed class CampaignService(
         if (string.IsNullOrWhiteSpace(emailBodyTemplate)) return "EmailBodyTemplateRequired";
         if (title.Trim().Length > 200) return "TitleTooLong";
         if (description?.Trim().Length > 2000) return "DescriptionTooLong";
-        if (emailSubject.Trim().Length > 1000) return "EmailSubjectTooLong";
+        if (emailSubject.Trim().Length > Campaign.EmailSubjectMaxLength) return "EmailSubjectTooLong";
         if (!string.IsNullOrWhiteSpace(replyToAddress))
         {
             var address = replyToAddress.Trim();
@@ -265,6 +266,14 @@ internal sealed class CampaignService(
             var trimmed = code.Trim();
             if (string.IsNullOrEmpty(trimmed))
                 continue;
+
+            var characterCount = trimmed.EnumerateRunes().Count();
+            if (characterCount > CampaignCode.CodeMaxLength)
+            {
+                logger.LogWarning("Rejected campaign {CampaignId} code import: length {Length} exceeds {Limit}",
+                    campaignId, characterCount, CampaignCode.CodeMaxLength);
+                return new CampaignImportResult(false, ErrorKey: "CodeTooLong");
+            }
 
             if (existingCodes.Contains(trimmed))
             {
@@ -507,11 +516,6 @@ internal sealed class CampaignService(
                 var title = string.Format(culture,
                     NoticeResources.GetString("Campaigns_Notification_ReceivedTitle", culture)!, campaign.Title);
                 var body = NoticeResources.GetString("Campaigns_Notification_ReceivedBody", culture)!;
-                if (title.EnumerateRunes().Count() > 200)
-                {
-                    body = string.Concat(title, "\n\n", body);
-                    title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-                }
 
                 await notificationService.SendAsync(
                     NotificationSource.CampaignReceived,
@@ -739,6 +743,7 @@ internal sealed class CampaignService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        userId = (await userService.GetUserInfoAsync(userId, ct))?.Id ?? userId;
         var grants = await repository.GetGrantsForUserExportAsync(userId, ct);
 
         var shaped = grants.Select(g => new

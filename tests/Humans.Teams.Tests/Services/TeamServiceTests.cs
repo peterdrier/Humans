@@ -36,6 +36,7 @@ using Humans.Teams.Services;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -129,6 +130,40 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
     // CreateTeamAsync
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesArchivedMembershipHistory(bool requestArchivedId)
+    {
+        var survivor = SeedUser();
+        var archived = SeedUser();
+        var unrelated = SeedUser();
+        var currentTeam = SeedTeam("Current team");
+        var previousTeam = SeedTeam("Previous team");
+        var unrelatedTeam = SeedTeam("Unrelated team");
+        SeedTeamMember(currentTeam.Id, survivor.Id);
+        var previous = SeedTeamMember(previousTeam.Id, archived.Id, leftAt: Clock.GetCurrentInstant());
+        SeedTeamMember(unrelatedTeam.Id, unrelated.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        TeamsDb.ChangeTracker.Clear();
+        var info = (await _userService.GetUserInfoAsync(survivor.Id, Xunit.TestContext.Current.CancellationToken))!
+            with
+        { MergedUserIds = [archived.Id] };
+        _userService.GetUserInfoAsync(survivor.Id, Arg.Any<CancellationToken>()).Returns(info);
+        _userService.GetUserInfoAsync(archived.Id, Arg.Any<CancellationToken>()).Returns(info);
+
+        var slices = await _service.ContributeForUserAsync(
+            requestArchivedId ? archived.Id : survivor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single(s =>
+                string.Equals(s.SectionName, TeamService.TeamMemberships, StringComparison.Ordinal)).Data)
+            .EnumerateArray().ToArray();
+        rows.Select(r => r.GetProperty("TeamName").GetString())
+            .Should().BeEquivalentTo(["Current team", "Previous team"]);
+        rows.Single(r => string.Equals(r.GetProperty("TeamName").GetString(), "Previous team", StringComparison.Ordinal))
+            .GetProperty("LeftAt").GetString().Should().Be(previous.LeftAt.ToIso8601());
+    }
 
     [HumansFact]
     public async Task ContributeForUserAsync_IncludesJoinRequestReviewAndOrderedStateHistory()
@@ -800,6 +835,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedRenameKeepsTheExistingUrl(string name)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -824,6 +860,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("Summary")]
     [InlineData("Create")]
     [InlineData("Search")]
+    [InlineData("Tree")]
     public async Task UpdateTeamAsync_ReservedCustomSlugRefusesTheUpdate(string slug)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -1105,6 +1142,81 @@ public sealed class TeamServiceTests : TeamsTestHarness
         (await TeamsDb.TeamJoinRequests.SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .UserId.Should().Be(user.Id);
         (await TeamsDb.TeamMembers.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task JoinTeamAsync_ConcurrentRequests_CreateOnlyOnePendingRequest()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pause = new PauseFirstJoinRequestSave();
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(pause).Options;
+        var repository = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Approval team",
+            Slug = "approval-team",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        await using (var seed = new TeamsDbContext(options))
+        {
+            seed.Teams.Add(team);
+            await seed.SaveChangesAsync(ct);
+        }
+        var provider = new ServiceLocatorBuilder().Build();
+        TeamService NewService() => new(repository, AuditLog, Notifier,
+            Substitute.For<IShiftManagementService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
+            ShiftAuthInvalidator, AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
+            NullLogger<TeamService>.Instance);
+        var userId = Guid.NewGuid();
+        var first = NewService().JoinTeamAsync(team.Id, userId, "Pick me", ct);
+        Task<TeamJoinRequestResult> second;
+        try
+        {
+            await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            pause.Entered.Task.IsCompleted.Should().BeTrue("the first join request save must be paused");
+            second = NewService().RequestToJoinTeamAsync(team.Id, userId, "Pick me", ct);
+        }
+        finally
+        {
+            pause.Resume.TrySetResult();
+        }
+        await Task.WhenAll(first, second);
+
+        await using var db = new TeamsDbContext(options);
+        var request = (await db.TeamJoinRequests.ToListAsync(ct)).Should().ContainSingle().Subject;
+        request.TeamId.Should().Be(team.Id);
+        request.UserId.Should().Be(userId);
+        request.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        (await first).Outcome.Should().Be(TeamJoinOutcome.RequestSubmitted);
+        (await second).ErrorKey.Should().Be("Teams_Team_AlreadyPendingRequest");
+    }
+
+    private sealed class PauseFirstJoinRequestSave : SaveChangesInterceptor
+    {
+        private int _paused;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<TeamJoinRequest>()
+                    .Any(entry => entry.State == EntityState.Added)
+                && Interlocked.CompareExchange(ref _paused, 1, 0) == 0)
+            {
+                Entered.TrySetResult();
+                await Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     [HumansFact]
@@ -1549,7 +1661,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [Xunit.InlineData("remove")]
     [Xunit.InlineData("request")]
     [Xunit.InlineData("join")]
-    public async Task MemberNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    public async Task MemberNotices_LongNamesDispatchFullCopy(string action)
     {
         var coordinator = SeedUser(displayName: "Coordinator");
         var requester = SeedUser(displayName: "Requester");
@@ -1572,16 +1684,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
             .Select(call => call.GetArguments()).ToList();
-        notices.Should().NotBeEmpty();
-        foreach (var args in notices)
+        (string Title, string? Body)[] expected = action switch
         {
-            var title = (string)args[3]!;
-            title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
-            title.Should().EndWith("…");
-            var encode = () => new UTF8Encoding(false, true).GetBytes(title);
-            encode.Should().NotThrow();
-            ((string)args[5]!).Should().Contain(name);
-        }
+            "approve" => [($"You've been added to {name}", null),
+                ($"Your request to join {name} has been approved", $"Welcome to {name}!")],
+            "reject" => [($"Your request to join {name} was not approved", $"Your request to join {name} was not approved.")],
+            "remove" => [($"You were removed from {name}", null)],
+            "request" => [($"New join request for {name}", $"Requester has requested to join {name}.")],
+            _ => [($"You've been added to {name}", null), ($"Requester joined {name}", $"Requester has joined {name}.")]
+        };
+        notices.Select(args => ((string)args[3]!, (string?)args[5])).Should().BeEquivalentTo(expected);
     }
 
     [HumansTheory]

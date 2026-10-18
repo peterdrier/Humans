@@ -19,6 +19,11 @@ internal sealed class TeamIndexViewModel
     public bool IsAuthenticated { get; set; }
 }
 
+internal sealed class TeamTreeViewModel
+{
+    public IReadOnlyList<TeamTreeNode> Departments { get; init; } = [];
+}
+
 internal sealed class TeamSummaryViewModel
 {
     public Guid Id { get; set; }

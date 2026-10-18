@@ -86,6 +86,22 @@ public class ShiftUrgencyTests
         score.Should().BeApproximately(192 * 1.08, 5);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(24)]
+    public void CalculateScore_AllDay_UsesWorkWindowInsteadOfStoredDuration(double storedHours)
+    {
+        var allDay = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: storedHours);
+        allDay.IsAllDay = true;
+        allDay.StartTime = LocalTime.Midnight;
+        var timedWorkWindow = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 10);
+
+        var score = _service.CalculateScore(allDay, 2, DistantEvent);
+        var expected = _service.CalculateScore(timedWorkWindow, 2, DistantEvent);
+
+        score.Should().Be(expected);
+    }
+
     [HumansFact]
     public void CalculateScore_FullyStaffed_ReturnsZero()
     {

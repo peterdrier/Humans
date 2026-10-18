@@ -5,6 +5,8 @@ namespace Humans.Email.Domain;
 
 internal sealed class EmailOutboxMessage
 {
+    internal const int SubjectMaxLength = 1000;
+
     public Guid Id { get; set; }
     public string RecipientEmail { get; set; } = string.Empty;
     public string? RecipientName { get; set; }
