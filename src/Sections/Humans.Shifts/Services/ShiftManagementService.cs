@@ -572,12 +572,11 @@ internal sealed class ShiftManagementService(
         if (es is null)
             return ShiftGenerationResult.Failure("Event calendar not configured.");
 
+        var (periodStart, periodEnd) = GetRotaDayOffsetBounds(rota.Period, es);
         foreach (var dayOffset in dailyStaffing.Keys)
         {
-            if (rota.Period == RotaPeriod.Build && (dayOffset < es.BuildStartOffset || dayOffset >= 0))
-                throw new InvalidOperationException($"Day offset {dayOffset} is outside the build period ({es.BuildStartOffset} to -1)");
-            if (rota.Period == RotaPeriod.Strike && (dayOffset <= es.EventEndOffset || dayOffset > es.StrikeEndOffset))
-                throw new InvalidOperationException($"Day offset {dayOffset} is outside the strike period ({es.EventEndOffset + 1} to {es.StrikeEndOffset})");
+            if (dayOffset < periodStart || dayOffset > periodEnd)
+                throw new InvalidOperationException($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
         }
 
         // Skip days that already have shifts (additive mode)

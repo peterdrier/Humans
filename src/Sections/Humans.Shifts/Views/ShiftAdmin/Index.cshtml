@@ -778,9 +778,12 @@
                 {
                     var rangeVoluntellId = "range-voluntell-" + rota.Id.ToString("N");
                     var firstShiftId = rota.Shifts.OrderBy(s => s.DayOffset).First().Id;
-                    var rvPeriodRange = rota.Period == RotaPeriod.Build
-                        ? (Start: Model.EventSettings.BuildStartOffset, End: -1)
-                        : (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset);
+                    var rvPeriodRange = rota.Period switch
+                    {
+                        RotaPeriod.Build => (Start: Model.EventSettings.BuildStartOffset, End: -1),
+                        RotaPeriod.Strike => (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset),
+                        _ => (Start: Model.EventSettings.BuildStartOffset, End: Model.EventSettings.StrikeEndOffset)
+                    };
                     <div class="mt-3 border-top pt-3">
                         <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#@rangeVoluntellId">
                             Voluntell Range

@@ -564,6 +564,38 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         (await ShiftsDb.Shifts.AsNoTracking().SingleAsync(Ct)).DayOffset.Should().Be(dayOffset);
     }
 
+    [HumansTheory]
+    [InlineData(-15, false)]
+    [InlineData(10, false)]
+    [InlineData(-14, true)]
+    [InlineData(0, true)]
+    [InlineData(9, true)]
+    public async Task All_period_staffing_respects_the_complete_event_window(int dayOffset, bool valid)
+    {
+        var (_, rota, _) = SeedRotaScenario(RotaPeriod.All);
+        await SaveAllAsync(Ct);
+        var days = valid
+            ? new List<DayStaffingInput> { new(dayOffset, 1, 2) }
+            : new List<DayStaffingInput> { new(0, 1, 2), new(dayOffset, 1, 2) };
+        var input = new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, days);
+
+        if (valid)
+        {
+            var result = await _service.CreateBuildStrikeShiftsAsync(input);
+            result.Succeeded.Should().BeTrue();
+            var saved = await ShiftsDb.Shifts.AsNoTracking().SingleAsync(Ct);
+            saved.DayOffset.Should().Be(dayOffset);
+            saved.IsAllDay.Should().BeTrue();
+        }
+        else
+        {
+            var error = await Record.ExceptionAsync(() => _service.CreateBuildStrikeShiftsAsync(input));
+            ShiftsDb.Shifts.Should().BeEmpty();
+            error.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("outside the all period");
+            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task CreateBuildStrikeShifts_IsAdditive_SkippingDaysThatAlreadyHaveShifts()
     {
