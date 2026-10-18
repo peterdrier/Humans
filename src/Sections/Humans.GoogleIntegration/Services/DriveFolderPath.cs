@@ -11,12 +11,18 @@ internal static class DriveFolderPath
 {
     public const string Separator = " / ";
 
-    /// <summary>Null when any read fails or the walk never reaches a root, so a caller never shows a suffix as the path.</summary>
+    /// <summary>
+    /// Null when any read fails or the walk never reaches a root, so a caller never shows a suffix as the path.
+    /// A Shared Drive's root is the drive itself: its id is the drive id, Drive reports it as an anonymous
+    /// folder (named "Drive", no parents) and the real name lives only on <c>drives.get</c>. That name is
+    /// never guessed from the folder read — a failed <c>drives.get</c> is a failed walk.
+    /// </summary>
     public static async Task<string?> ResolveAsync(
         IGoogleDrivePermissionsClient drivePermissions, string fileId, ILogger logger, CancellationToken ct)
     {
         var segments = new List<string>();
         var currentId = fileId;
+        string? knownDriveId = null;
         var reachedRoot = false;
         const int maxDepth = 20;
 
@@ -31,15 +37,33 @@ internal static class DriveFolderPath
             }
 
             var file = fileResult.File;
+            // Items under a drive all report it; the root may not, so carry it up from the leaf.
+            knownDriveId = !string.IsNullOrEmpty(file.DriveId) ? file.DriveId : knownDriveId;
+            var hasParent = file.Parents is { Count: > 0 };
 
-            // If the file IS the Shared Drive root, fetch the drive name.
-            if (!string.IsNullOrEmpty(file.DriveId)
-                && string.Equals(currentId, file.DriveId, StringComparison.Ordinal))
+            var isDriveRoot = knownDriveId is not null && string.Equals(currentId, knownDriveId, StringComparison.Ordinal);
+            SharedDriveMetadataResult? driveResult = null;
+            if (!isDriveRoot && !hasParent && knownDriveId is null)
             {
-                var driveResult = await drivePermissions.GetSharedDriveAsync(file.DriveId, ct);
-                var driveName = driveResult?.Drive?.Name ?? file.Name;
-                if (driveName is null)
+                // Parentless and unlabelled: either the root of a drive that omits its own driveId, or
+                // an orphan. Only drives.get can tell them apart; "not a drive" keeps the folder's own name.
+                driveResult = await drivePermissions.GetSharedDriveAsync(currentId, ct);
+                isDriveRoot = driveResult?.Drive is not null;
+                if (!isDriveRoot && driveResult?.Error is { StatusCode: not (400 or 403 or 404) })
                     return null;
+            }
+
+            if (isDriveRoot)
+            {
+                driveResult ??= await drivePermissions.GetSharedDriveAsync(currentId, ct);
+                if (driveResult?.Drive?.Name is not { Length: > 0 } driveName)
+                {
+                    logger.LogWarning(
+                        "Shared Drive {DriveId} name unavailable (HTTP {StatusCode}); not resolving the path",
+                        currentId, driveResult?.Error?.StatusCode);
+                    return null;
+                }
+
                 segments.Add(driveName);
                 reachedRoot = true;
                 break;
@@ -49,13 +73,13 @@ internal static class DriveFolderPath
                 return null;
             segments.Add(file.Name);
 
-            if (file.Parents is null || file.Parents.Count == 0)
+            if (!hasParent)
             {
                 reachedRoot = true;
                 break;
             }
 
-            currentId = file.Parents[0];
+            currentId = file.Parents![0];
         }
 
         // A failed read or bounded walk must not overwrite a known full path with a suffix.
