@@ -229,6 +229,8 @@ internal sealed partial class WorkgroupService
         if (matched is null) return new(Refusal: new(WorkgroupErrorKeys.UnknownCategory));
         if (string.IsNullOrWhiteSpace(body))
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
+        if (body.Trim().Length > 4000)
+            return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 4000));
 
         var comment = new WorkgroupDocumentComment
         {
@@ -258,6 +260,9 @@ internal sealed partial class WorkgroupService
         var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
+
+        if (response?.Trim().Length is > 4000)
+            return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 4000));
 
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
@@ -300,6 +305,8 @@ internal sealed partial class WorkgroupService
             .ToList();
         if (pending.Count == 0)
             return new();
+        if (response?.Trim().Length is > 4000)
+            return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 4000));
 
         var now = clock.GetCurrentInstant();
         foreach (var comment in pending)
@@ -326,6 +333,9 @@ internal sealed partial class WorkgroupService
         var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
+
+        if (reason.Trim().Length > 500)
+            return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 500));
 
         comment.HiddenAt = clock.GetCurrentInstant();
         comment.HiddenByUserId = actorUserId;

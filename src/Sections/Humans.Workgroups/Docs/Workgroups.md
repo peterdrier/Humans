@@ -336,6 +336,9 @@ Settings and Register an existing group on first setup or after clearing the que
 - A comment window must end before delivery: `DeliverDocumentAsync` refuses while
   `CommentsCloseAt` is still in the future. Closing the window early is one click and keeps
   the comments, so the promised period is never cut short by a delivery.
+- Document disposition notes, comment bodies and optional responses are limited to 4000
+  characters after trimming; hiding reasons to 500. Services return the localized
+  length refusal before changing the document or comments, saving or sending notices.
 - Comments: the window is the only gate on `AddCommentAsync` — any signed-in human, group
   membership irrelevant, while `IsOpenForComment(now)` is true. A bulk category response
   (`RespondToCategoryAsync`) touches only still-Pending, non-hidden comments in that
