@@ -13,9 +13,10 @@ namespace Humans.Agent.Tests;
 public sealed class AnthropicClientTests
 {
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task StreamAsync_PreservesKnownUsage_WhenTheResponseEnds(bool hasMessageStop)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task StreamAsync_PreservesKnownUsage_WhenTheResponseEnds(bool hasMessageStop, bool abandon)
     {
         var body = """
             event: message_start
@@ -47,7 +48,21 @@ public sealed class AnthropicClientTests
         var tokens = new List<AgentTurnToken>();
 
         await foreach (var token in adapter.StreamAsync(request, Xunit.TestContext.Current.CancellationToken))
+        {
             tokens.Add(token);
+            if (abandon && token.TextDelta is not null) break;
+        }
+
+        if (abandon)
+        {
+            tokens.Should().NotContain(t => t.Finalizer != null);
+            var known = tokens.Where(t => t.Usage != null).Should().ContainSingle().Which.Usage!;
+            known.InputTokens.Should().Be(100);
+            known.OutputTokens.Should().Be(1);
+            known.CacheReadTokens.Should().Be(20);
+            known.CacheCreationTokens.Should().Be(10);
+            return;
+        }
 
         string.Concat(tokens.Select(token => token.TextDelta)).Should().Be("Partial answer.");
         var finalizer = tokens.Where(token => token.Finalizer is not null).Should().ContainSingle().Which.Finalizer!;

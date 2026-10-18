@@ -73,6 +73,10 @@ internal sealed class AnthropicClient : IAnthropicClient
         // Tool args stream as input_json_delta; accumulate per-block and emit on content_block_stop.
         var pendingToolBlocks = new Dictionary<long, (string Id, string Name, System.Text.StringBuilder Json)>();
 
+        AgentTurnFinalizer Snapshot(string? reason = null) => new(
+            ClampToInt(inputTokens), ClampToInt(outputTokens), ClampToInt(cacheReadTokens),
+            ClampToInt(cacheCreationTokens), model ?? request.Model, reason);
+
         // Stream failures get a synthetic "error" finalizer so AgentService can complete the SSE frame.
         var enumerator = _sdk.Messages.CreateStreaming(sdkRequest, cancellationToken).GetAsyncEnumerator(cancellationToken);
         try
@@ -105,6 +109,7 @@ internal sealed class AnthropicClient : IAnthropicClient
                     outputTokens = startEvent.Message.Usage.OutputTokens;
                     cacheReadTokens = startEvent.Message.Usage.CacheReadInputTokens ?? 0;
                     cacheCreationTokens = startEvent.Message.Usage.CacheCreationInputTokens ?? 0;
+                    yield return new AgentTurnToken(null, null, null, Usage: Snapshot());
                     continue;
                 }
 
@@ -162,6 +167,7 @@ internal sealed class AnthropicClient : IAnthropicClient
                     {
                         stopReason = sr.Raw();
                     }
+                    yield return new AgentTurnToken(null, null, null, Usage: Snapshot());
                     continue;
                 }
 
@@ -171,13 +177,7 @@ internal sealed class AnthropicClient : IAnthropicClient
                     yield return new AgentTurnToken(
                         null,
                         null,
-                        new AgentTurnFinalizer(
-                            ClampToInt(inputTokens),
-                            ClampToInt(outputTokens),
-                            ClampToInt(cacheReadTokens),
-                            ClampToInt(cacheCreationTokens),
-                            model ?? request.Model,
-                            stopReason));
+                        Snapshot(stopReason));
                 }
             }
         }
@@ -193,13 +193,7 @@ internal sealed class AnthropicClient : IAnthropicClient
             yield return new AgentTurnToken(
                 null,
                 null,
-                new AgentTurnFinalizer(
-                    ClampToInt(inputTokens),
-                    ClampToInt(outputTokens),
-                    ClampToInt(cacheReadTokens),
-                    ClampToInt(cacheCreationTokens),
-                    model ?? request.Model,
-                    "error"));
+                Snapshot("error"));
         }
     }
 

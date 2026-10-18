@@ -963,8 +963,10 @@ public class AgentServiceTests
         conversation.MessageCount.Should().Be(2, "one user message and one assistant trace");
     }
 
-    [HumansFact]
-    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn(bool cancel)
     {
         // nobodies-collective/Humans#963 — AgentController awaits WriteSse OUTSIDE AskAsync, so
         // a browser that goes away while a token is being written never throws into AskAsync's
@@ -972,9 +974,12 @@ public class AgentServiceTests
         // That is the likeliest disconnect timing, and it must still leave the already-persisted
         // user message with a matching assistant trace.
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var store = new AgentRateLimitStore();
+        var (svc, client) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
 
         client.EnqueueTurn(
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
             new AgentTurnToken("Teams are groups of ", null, null),
             new AgentTurnToken("volunteers.", null, null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
@@ -983,10 +988,13 @@ public class AgentServiceTests
         // does when the response write throws on a dead connection.
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
-            Xunit.TestContext.Current.CancellationToken))
+            cancellation.Token))
         {
             if (t.TextDelta is not null)
-                break;
+            {
+                if (cancel) await cancellation.CancelAsync();
+                else break;
+            }
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
@@ -1000,6 +1008,12 @@ public class AgentServiceTests
             .Subject;
         failure.RefusalReason.Should().Be("error",
             "the trace surfaces through the existing admin refusals filter");
+        failure.PromptTokens.Should().Be(43);
+        failure.OutputTokens.Should().Be(1);
+        failure.CachedTokens.Should().Be(5);
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.TokensToday.Should().Be(44);
     }
 
     [HumansFact]
@@ -1012,8 +1026,9 @@ public class AgentServiceTests
         var (svc, client) = await BuildService(s => s.Enabled = true);
 
         client.EnqueueTurn(
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "claude-sonnet-4-6", "end_turn")));
 
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
@@ -1030,6 +1045,9 @@ public class AgentServiceTests
             .ContainSingle(m => m.Role == AgentRole.Assistant).Subject;
         assistant.Content.Should().Be("Teams are groups of volunteers.");
         assistant.RefusalReason.Should().BeNull();
+        assistant.PromptTokens.Should().Be(43);
+        assistant.OutputTokens.Should().Be(10);
+        assistant.CachedTokens.Should().Be(5);
     }
 
     [HumansFact]
