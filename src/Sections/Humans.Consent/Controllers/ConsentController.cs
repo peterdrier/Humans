@@ -117,6 +117,10 @@ internal sealed class ConsentController(
         {
             SetInfo(localizer["Consent_AlreadyConsented"].Value);
         }
+        else if (string.Equals(result.ErrorKey, "ContentUnavailable", StringComparison.Ordinal))
+        {
+            SetError(localizer["Consent_SubmitError"].Value);
+        }
     }
 
     private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>

@@ -541,6 +541,25 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \r\n ")]
+    public async Task SyncDocumentAsync_BlankCanonicalContent_LeavesDocumentUnchanged(string content)
+    {
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
+        StubGitHubFolder("privacy/", content, "new-sha", "Empty canonical file");
+        Func<Task> sync = () => _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await sync.Should().ThrowAsync<InvalidOperationException>().WithMessage("*canonical Spanish content*");
+        await using var verify = LegalDbFactory.CreateDbContext();
+        (await verify.DocumentVersions.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await verify.LegalDocuments.SingleAsync(d => d.Id == document.Id, Xunit.TestContext.Current.CancellationToken))
+            .CurrentCommitSha.Should().Be("old-sha");
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _invalidator.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
     private Task AssertFanout(NotificationSource source, bool received)
     {
         var call = received ? Notifier.Received(1) : Notifier.DidNotReceive();

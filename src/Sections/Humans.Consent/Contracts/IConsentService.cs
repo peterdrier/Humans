@@ -38,6 +38,7 @@ public interface IConsentService : IApplicationService
     Task<int> GetConsentRecordCountAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>Returns null when the version or its canonical Spanish content is unavailable.</summary>
     Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default);
 }

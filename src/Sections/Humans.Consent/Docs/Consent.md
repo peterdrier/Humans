@@ -131,6 +131,12 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Canonical Spanish content must be non-blank. Sync refuses an empty canonical file before
+  publishing a version or changing its SHA. Review treats missing/blank canonical content as
+  unavailable, and submission records no consent or metrics for it (`ContentUnavailable`).
+  The consent page uses its existing localized failure message; onboarding's unavailable-document
+  path handles an unavailable review. Hashes always cover the exact canonical text.
+
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures. Consent resources consistently use `Consent_`, including the shared review form consumed by Onboarding and the empty-state message reused by Governance.

@@ -512,6 +512,13 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
         }
 
+        if (string.IsNullOrWhiteSpace(canonicalResult.Content))
+        {
+            logger.LogWarning("Canonical Spanish content is blank at {Path} for document {DocumentId}",
+                canonicalPath, document.Id);
+            throw new InvalidOperationException($"No canonical Spanish content found at '{canonicalPath}'.");
+        }
+
         var commitSha = canonicalResult.Sha;
 
         var now = clock.GetCurrentInstant();

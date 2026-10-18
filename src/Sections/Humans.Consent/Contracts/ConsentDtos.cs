@@ -4,7 +4,8 @@ namespace Humans.Consent.Contracts;
 
 /// <summary>
 /// Outcome of a consent submit. <c>ErrorKey</c> is a stable token the caller maps to a
-/// localized message — <c>StubProfile</c>, <c>NotFound</c>, <c>AlreadyConsented</c> —
+/// localized message — <c>ExplicitConsentRequired</c>, <c>StubProfile</c>, <c>NotFound</c>,
+/// <c>AlreadyConsented</c>, <c>ContentUnavailable</c> —
 /// which is why both the section's own controller and Shell's onboarding widget can
 /// render the same failures without seeing any section type.
 /// </summary>
