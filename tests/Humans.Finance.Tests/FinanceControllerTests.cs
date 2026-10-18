@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
@@ -8,9 +9,11 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -268,6 +271,43 @@ public class FinanceControllerTests
         await _connector.DidNotReceive().GenerateSepaPayoutAsync(
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GenerateSepa_InvalidBinding_DoesNotGeneratePartialBatch(bool hasActor)
+    {
+        var controller = hasActor ? MakeControllerWithHttpContext(Ana) : MakeController();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(int[]));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = metadata
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)
+            {
+                ["selected"] = new StringValues(["40000004", "not-an-account"])
+            }), CultureInfo.InvariantCulture), metadata, bindingInfo: null, modelName: "selected");
+        await binder.BindModelAsync(binding);
+        var selected = Assert.IsType<int[]>(binding.Result.Model);
+        selected.Should().Equal(40000004);
+        controller.ModelState.IsValid.Should().BeFalse();
+        _connector.GenerateSepaPayoutAsync(Arg.Any<IReadOnlyList<SepaPayoutSelection>>(),
+            Arg.Any<decimal>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new SepaPayoutResult("f.xml", "<xml/>", null));
+
+        var result = await controller.GenerateSepa(selected,
+            new Dictionary<int, string> { [40000004] = "10.00" }, "100.00",
+            Xunit.TestContext.Current.CancellationToken);
+
+        if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<ChallengeResult>();
+        await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default, default);
     }
 
     [HumansFact]

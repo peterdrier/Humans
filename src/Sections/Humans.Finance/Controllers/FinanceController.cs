@@ -114,6 +114,11 @@ internal sealed class FinanceController(
         int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed SEPA payout selection for actor {ActorUserId}", actorUserId);
+            return BadRequest(ModelState);
+        }
 
         // Posted per batch, same invariant-parse reasoning as the amounts below: the posted value is
         // authoritative, the config key (Sepa:MaxPayoutPerTransfer) is only the prefill default.
