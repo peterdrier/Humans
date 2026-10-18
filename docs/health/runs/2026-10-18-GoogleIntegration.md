@@ -63,11 +63,12 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
   - the `IGoogleResourceRepository`, `ITeamWrite` and `ILegacyGoogleSyncAuditReader` injections.
 - 5, 6, 8, 10, 11: section code comments corrected by a sonnet executor, with no additions beyond the list.
 - 9: test comments corrected by a sonnet executor, with no additions beyond the list. The outbox repository test's table name was also corrected to `google_sync_outbox`.
+- 2 (Peter: delete): the method is gone from `IGoogleSyncWrite` and both implementations. Users' suspension and Teams' system-team sync no longer call it, and the suspension job drops its now-unused team and Google dependencies. The outbox processor still accepts queued removal events, completing them without a call; a test pins that. Teams keeps writing the removal event with the member-left row.
+- 3 (Peter: internal): `IGoogleDriveSync` moved from `Contracts/` to `Services/` as an internal interface. Under D13, a Drive sync job still queued under the old type name is dropped at deploy.
 - 15: the team and parent-department grant loops folded into one local function. Reviewer verdict: approve. It checked that the two bodies were identical, the call order was preserved, the captured state was assigned before first use, and the local-function precedent in other section services.
 
 ## Skipped
 
-- 2, 3: public-surface choices, queued under Needs Peter.
 - 12: issue edits and closes are Peter's to make; this run never mutates an issue.
 - 13: the admin sidebar reaches both pages, and they are admin-only.
 - 14: the Tests thread did not confirm the gaps against the test bodies, so a ledger row would be unverified.
@@ -86,8 +87,8 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 
 ## Needs Peter
 
-- [ ] 2 — `RemoveUserFromTeamResourcesAsync`: delete it (callers rely on reconciliation) or make it remove now?
-- [ ] 3 — `IGoogleDriveSync`: make it internal, or keep it public for Hangfire?
+- [x] 2 — `RemoveUserFromTeamResourcesAsync`: delete it (callers rely on reconciliation) or make it remove now? **Peter: delete — done.**
+- [x] 3 — `IGoogleDriveSync`: make it internal, or keep it public for Hangfire? **Peter: internal — done.**
 - [ ] 12 — apply the inbox verdicts to the five issues?
 
 ## File coverage
@@ -108,14 +109,13 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | `src/Sections/Humans.GoogleIntegration/Contracts/IEmailProvisioningService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveActivityClient.cs` | reviewed |
-| `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveSync.cs` | changed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupMembershipSource.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupSync.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncLogViewer.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncOutboxProcessor.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncOutboxService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs` | reviewed |
-| `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncWrite.cs` | reviewed |
+| `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncWrite.cs` | changed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/IGoogleTranslationService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/ITeamResourceService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Contracts/ITeamResourceWrite.cs` | reviewed |
@@ -195,7 +195,7 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncHistoryMigrationService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncLogService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncMemberHydration.cs` | reviewed |
-| `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncOutboxProcessor.cs` | reviewed |
+| `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncOutboxProcessor.cs` | changed |
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleSyncOutboxService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleTranslationService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs` | changed |
@@ -205,6 +205,7 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | `src/Sections/Humans.GoogleIntegration/Services/HangfireGoogleGroupSyncScheduler.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleAdminService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleDriveAccessSyncScheduler.cs` | reviewed |
+| `src/Sections/Humans.GoogleIntegration/Services/IGoogleDriveSync.cs` | changed |
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleGroupSyncScheduler.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleRemovalNotificationService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleSyncHistoryMigrationService.cs` | reviewed |
@@ -213,7 +214,7 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | `src/Sections/Humans.GoogleIntegration/Services/IGoogleWorkspaceUserService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/ISyncSettingsService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/ITeamResourceManagement.cs` | reviewed |
-| `src/Sections/Humans.GoogleIntegration/Services/StubGoogleSyncService.cs` | reviewed |
+| `src/Sections/Humans.GoogleIntegration/Services/StubGoogleSyncService.cs` | changed |
 | `src/Sections/Humans.GoogleIntegration/Services/SyncSettingsService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/TeamResourceService.cs` | reviewed |
 | `src/Sections/Humans.GoogleIntegration/Services/UserEmailMatchOwner.cs` | reviewed |
@@ -280,7 +281,7 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncHistoryMigrationServiceTests.cs` | reviewed |
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncLogActivityLogTests.cs` | reviewed |
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncLogServiceGdprTests.cs` | reviewed |
-| `tests/Humans.GoogleIntegration.Tests/GoogleSyncOutboxProcessorTests.cs` | reviewed |
+| `tests/Humans.GoogleIntegration.Tests/GoogleSyncOutboxProcessorTests.cs` | changed |
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncOutboxRepositoryTests.cs` | changed |
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncRemovalNotificationIntegrationTests.cs` | reviewed |
 | `tests/Humans.GoogleIntegration.Tests/GoogleSyncSettingsTabViewComponentTests.cs` | changed |
@@ -317,9 +318,9 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 | Behavior & bugs | main | session model | none; no bug found |
 | Freshness | subagent (`doctor-reader`) | opus-low | findings 4, 7 |
 | Conformance | subagent (`general-purpose`) | haiku | folded into finding 7 |
-| Tests | subagent (`doctor-reader`); partial, files brought to the reviewed bar by main | opus-low | finding 14; folded into finding 7 |
+| Tests | subagent (`doctor-reader`) | opus-low | finding 14; folded into finding 7 |
 | Prose & surface | subagent (`general-purpose`); reforge surface-score on main after a build | haiku | findings 6, 13 |
 | History | subagent (`doctor-reader`) | opus-low | findings 8, 9 |
-| Comments | subagent (`doctor-reader`); partial, rest worked by main | opus-low | findings 5, 11 |
+| Comments | subagent (`doctor-reader`) | opus-low | findings 5, 11 |
 | Inbox | subagent (`doctor-reader`) | opus-low | finding 12 |
 

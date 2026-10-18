@@ -98,7 +98,7 @@ The shapes imply:
   returns, left pending while credentials are absent (`GoogleSyncOutboxProcessor.cs:54`),
   retried up to ten times (`GoogleSyncOutboxProcessor.cs:31`), and a permanent failure
   (HTTP 400, 403, 404 — `DrivePermissionErrorPolicy.cs:7`) is parked visibly with a
-  per-event retry (`GoogleSyncOutboxProcessor.cs:128`), never silently dropped.
+  per-event retry (`GoogleSyncOutboxProcessor.cs:125`), never silently dropped.
 - **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
   `AddOnly` means adds only; an admin's "Sync Now" has no bypass
   (`GoogleDriveAccessSyncService.cs:315`, `GoogleGroupSyncService.cs:382`,
@@ -111,7 +111,7 @@ The shapes imply:
 - **A removal never notifies an orphan address**: no `UserEmail` row → suppressed and
   logged (`GoogleRemovalNotificationService.cs:39`).
 - **The person's Google-email status is only set from sync when Google actually answered**:
-  valid after an accepted grant (`GoogleSyncOutboxProcessor.cs:118`), rejected after Google
+  valid after an accepted grant (`GoogleSyncOutboxProcessor.cs:115`), rejected after Google
   refused the target (`GoogleWorkspaceSyncService.cs:148`,
   `GoogleDriveAccessSyncService.cs:487`, `GoogleGroupSyncService.cs:437`), untouched
   otherwise.
