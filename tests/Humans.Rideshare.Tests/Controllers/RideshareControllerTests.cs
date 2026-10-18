@@ -95,6 +95,21 @@ public sealed class RideshareControllerTests
         AssertExpectedWarnings(1);
     }
 
+    [HumansTheory]
+    [InlineData("seats")]
+    [InlineData("requestId")]
+    public async Task Interest_MalformedForm_DoesNotCreateAnInterest(string field)
+    {
+        var controller = BuildController();
+        controller.ModelState.AddModelError(field, "Invalid value");
+
+        var result = await controller.Interest(Guid.NewGuid(), Guid.NewGuid(), 0, null, Ct);
+
+        result.Should().BeOfType<BadRequestObjectResult>().Which.StatusCode.Should().Be(400);
+        await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default, default);
+        controller.TempData.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Interest_WithoutATrip_SendsTheHumanBackToTheBoard()
     {

@@ -64,6 +64,7 @@ humans look at the map and reach out.
 **So that** I can arrange a ride without back-and-forth in the app
 
 **Acceptance Criteria:**
+- Malformed interest form values are rejected with HTTP 400 before any interest or notification is created.
 - Expressing interest always anchors to a trip; answering a request's pin sets the request as the interest's origin pointer, seats defaulting to the request's party size
 - Interest cannot be expressed on your own trip, on a non-`Active` trip, without enough remaining seats, or as a duplicate `Pending` interest on the same trip+request pair
 - The posting owner sees a `Pending` interest and can accept or decline; the posting owner can also withdraw a no-longer-relevant match, as can the interest's author
