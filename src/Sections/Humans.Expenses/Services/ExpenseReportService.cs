@@ -212,7 +212,7 @@ internal sealed class ExpenseReportService(
     private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
         Guid coordinatorUserId, CancellationToken ct)
     {
-        var year = await budgetService.GetActiveYearAsync();
+        var year = await budgetService.GetActiveYearAsync(ct);
         if (year is null) return [];
 
         // The same rule that grants endorse: whoever can sign a claim off sees it.

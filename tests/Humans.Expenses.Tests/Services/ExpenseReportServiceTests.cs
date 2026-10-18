@@ -407,7 +407,7 @@ public sealed partial class ExpenseReportServiceTests
         // A budget-category account needs the active year to pin the draft's category to. The
         // refusal is a result, not an exception: the form shows it instead of a generic failure.
         SetupActiveYear();
-        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
 
         var submitter = Guid.NewGuid();
         var result = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: Xunit.TestContext.Current.CancellationToken);
@@ -484,7 +484,7 @@ public sealed partial class ExpenseReportServiceTests
     public async Task CreateDraftAsync_OnAnUnmappedAccount_NeedsNoActiveYear()
     {
         SetupActiveYear();
-        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
         var userId = Guid.NewGuid();
 
         var id = (await _sut.CreateDraftAsync(userId, userId, OtherAccountNumber, null, ct: Xunit.TestContext.Current.CancellationToken)).ReportId!.Value;
@@ -3072,6 +3072,44 @@ public sealed partial class ExpenseReportServiceTests
         queue.Select(r => r.Id).Should().BeEquivalentTo([ownId]);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task BudgetBackedMemberReads_AbortAbandonedRequests(bool index)
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<BudgetYearDetail?>(null);
+        });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId).Returns(new HashSet<Guid>());
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetForSubmitterAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        reports.GetCoordinatorQueueAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        var context = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(_userService, reports, _budgetService, _holdedFinance, _preapprovals,
+            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+        Func<Task> read = index
+            ? () => controller.Index()
+            : () => _sut.GetCoordinatorQueueAsync(userId, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
     {
@@ -3922,7 +3960,7 @@ public sealed partial class ExpenseReportServiceTests
 
         var category = MakeCategorySnapshot(categoryId, teamId, "Test Category", groupId, yearId);
 
-        _budgetService.GetActiveYearAsync().Returns(yearDetail);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(yearDetail);
         _budgetService.GetYearByIdAsync(yearId).Returns(yearDetail);
         _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
         StubExpenseAccounts((categoryId, CategoryAccountNumber, CategoryAccountId));

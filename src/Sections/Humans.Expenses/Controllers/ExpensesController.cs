@@ -46,7 +46,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var reports = await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted);
-            var activeYear = await budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync(HttpContext.RequestAborted);
             var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
             var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
