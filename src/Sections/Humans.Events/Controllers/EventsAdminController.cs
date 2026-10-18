@@ -61,9 +61,9 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     // ─── Event Categories ─────────────────────────────────────────
 
     [HttpGet("Categories")]
-    public async Task<IActionResult> Categories()
+    public async Task<IActionResult> Categories(CancellationToken ct = default)
     {
-        var categories = await guide.GetAllCategoriesAsync();
+        var categories = await guide.GetAllCategoriesAsync(ct);
         var rows = categories
             .OrderBy(c => c.DisplayOrder)
             .ThenBy(c => c.Name, StringComparer.Ordinal)
@@ -82,11 +82,11 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     }
 
     [HttpGet("Categories/Create")]
-    public async Task<IActionResult> CreateCategory()
+    public async Task<IActionResult> CreateCategory(CancellationToken ct = default)
     {
         return View("CategoryForm", new EventCategoryFormViewModel
         {
-            DisplayOrder = await guide.GetNextCategoryOrderAsync()
+            DisplayOrder = await guide.GetNextCategoryOrderAsync(ct)
         });
     }
 
@@ -120,9 +120,9 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     }
 
     [HttpGet("Categories/{id:guid}/Edit")]
-    public async Task<IActionResult> EditCategory(Guid id)
+    public async Task<IActionResult> EditCategory(Guid id, CancellationToken ct = default)
     {
-        var category = await guide.GetCategoryAsync(id);
+        var category = await guide.GetCategoryAsync(id, ct);
         if (category == null) return NotFound();
 
         return View("CategoryForm", new EventCategoryFormViewModel
@@ -208,9 +208,9 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     // ─── Guide Shared Venues ──────────────────────────────────────
 
     [HttpGet("Venues")]
-    public async Task<IActionResult> Venues()
+    public async Task<IActionResult> Venues(CancellationToken ct = default)
     {
-        var venues = await guide.GetAllVenuesAsync();
+        var venues = await guide.GetAllVenuesAsync(ct);
         var rows = venues
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Name, StringComparer.Ordinal)
@@ -228,11 +228,11 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     }
 
     [HttpGet("Venues/Create")]
-    public async Task<IActionResult> CreateVenue()
+    public async Task<IActionResult> CreateVenue(CancellationToken ct = default)
     {
         return View("VenueForm", new GuideVenueFormViewModel
         {
-            DisplayOrder = await guide.GetNextVenueOrderAsync()
+            DisplayOrder = await guide.GetNextVenueOrderAsync(ct)
         });
     }
 
@@ -260,9 +260,9 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     }
 
     [HttpGet("Venues/{id:guid}/Edit")]
-    public async Task<IActionResult> EditVenue(Guid id)
+    public async Task<IActionResult> EditVenue(Guid id, CancellationToken ct = default)
     {
-        var venue = await guide.GetVenueAsync(id);
+        var venue = await guide.GetVenueAsync(id, ct);
         if (venue == null) return NotFound();
 
         return View("VenueForm", new GuideVenueFormViewModel

@@ -180,6 +180,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - Individual, barrio and moderation editor forms share live title/description character counters, using each input’s existing maximum length. Typing or clearing text updates the remaining count without changing the localized labels or server validation.
 
+- Admin category/venue GETs and moderation queue/edit GETs retain request cancellation through their service reads and settings, camp and submitter lookups.
 - Events API GETs retain browser cancellation across guide/burn settings, approved events, categories, preferences, favourites and camp/submitter lookups. Cancellation propagates without a fallback response; authenticated mutation endpoints retain their existing token boundaries.
 
 - Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.

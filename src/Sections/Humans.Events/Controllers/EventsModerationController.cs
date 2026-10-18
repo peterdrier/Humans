@@ -27,20 +27,20 @@ internal sealed class EventsModerationController(
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index([FromQuery] EventStatus? tab)
+    public async Task<IActionResult> Index([FromQuery] EventStatus? tab, CancellationToken ct = default)
     {
         var activeTab = tab ?? EventStatus.Pending;
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync();
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
 
-        var counts = await guide.GetEventStatusCountsAsync();
-        var unsortedEvents = await guide.GetEventsByStatusAsync(activeTab);
+        var counts = await guide.GetEventStatusCountsAsync(ct);
+        var unsortedEvents = await guide.GetEventsByStatusAsync(activeTab, ct);
         var events = (activeTab == EventStatus.Pending
             ? unsortedEvents.OrderBy(e => e.SubmittedAt)
             : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
-        var submitterInfoById = await LoadSubmittersAsync(UserService, events.Select(e => e.SubmitterUserId).Distinct());
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var submitterInfoById = await LoadSubmittersAsync(UserService, events.Select(e => e.SubmitterUserId).Distinct(), ct);
 
         var model = new ModerationQueueViewModel
         {
@@ -58,7 +58,7 @@ internal sealed class EventsModerationController(
         var campEvents = events.Where(e => e.CampId.HasValue).ToList();
         if (campEvents.Count > 0)
         {
-            var allCampEvents = await guide.GetCampEventsForOverlapAsync();
+            var allCampEvents = await guide.GetCampEventsForOverlapAsync(ct);
 
             foreach (var row in model.Events)
             {
@@ -147,12 +147,12 @@ internal sealed class EventsModerationController(
     // ─── Admin in-place edit (any event, any state, status preserved) ─────
 
     [HttpGet("{eventId:guid}/Edit")]
-    public async Task<IActionResult> Edit(Guid eventId)
+    public async Task<IActionResult> Edit(Guid eventId, CancellationToken ct = default)
     {
-        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent == null) return NotFound();
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync();
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -181,9 +181,9 @@ internal sealed class EventsModerationController(
         };
 
         if (guideEvent.CampId.HasValue)
-            model.CampName = await ResolveCampNameAsync(guideEvent.CampId.Value, eventSettings);
+            model.CampName = await ResolveCampNameAsync(guideEvent.CampId.Value, eventSettings, ct);
 
-        await PopulateAdminFormAsync(model, eventSettings);
+        await PopulateAdminFormAsync(model, eventSettings, ct);
         return View("AdminEventForm", model);
     }
 
@@ -252,27 +252,27 @@ internal sealed class EventsModerationController(
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync()
+    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(CancellationToken ct = default)
     {
-        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync());
+        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct);
         return (eventSettings, GetTimeZone(eventSettings));
     }
 
-    private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings)
+    private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings, CancellationToken ct = default)
     {
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year, ct);
         return ResolveCampName(campsById.GetValueOrDefault(campId));
     }
 
-    private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, EventSettingsInfo burn)
+    private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
-        var categories = (await guide.GetActiveCategoriesAsync())
+        var categories = (await guide.GetActiveCategoriesAsync(ct))
             .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         // Keep the event's current category selectable even if it has since been
         // deactivated — otherwise editing an unrelated field would silently drop it.
         if (model.CategoryId != Guid.Empty && categories.All(c => c.Id != model.CategoryId))
         {
-            var current = await guide.GetCategoryAsync(model.CategoryId);
+            var current = await guide.GetCategoryAsync(model.CategoryId, ct);
             if (current != null)
                 categories.Add(new CategoryOptionViewModel { Id = current.Id, Name = current.Name });
         }
@@ -280,11 +280,11 @@ internal sealed class EventsModerationController(
 
         if (!model.IsCampEvent)
         {
-            var venues = (await guide.GetActiveVenuesAsync())
+            var venues = (await guide.GetActiveVenuesAsync(ct))
                 .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
             if (model.VenueId is { } venueId && venueId != Guid.Empty && venues.All(v => v.Id != venueId))
             {
-                var current = await guide.GetVenueAsync(venueId);
+                var current = await guide.GetVenueAsync(venueId, ct);
                 if (current != null)
                     venues.Add(new VenueOptionViewModel { Id = current.Id, Name = current.Name });
             }
