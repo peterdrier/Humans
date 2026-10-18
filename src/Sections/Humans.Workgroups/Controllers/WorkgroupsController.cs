@@ -510,6 +510,13 @@ internal sealed class WorkgroupsController(
         if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (owns is not null && !owns(workgroup)) return NotFound();
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed workgroup {Action} input for user {UserId}, workgroup {WorkgroupId}",
+                ActionName(), user.Id, workgroup.Id);
+            return BadRequest(ModelState);
+        }
+
         Flash(await action(workgroup.Id, user.Id), successKey);
 
         return documentId is { } id

@@ -241,6 +241,32 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         result.Should().BeOfType<RedirectToActionResult>();
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MalformedMemberAction_PreservesAuthorizationAndStoredState(bool coordinators, bool asMember)
+    {
+        var (controller, workgroup) = await BuildAsync(asMember);
+        var originalCoordinator = workgroup.Members.Single().UserId;
+        var replacement = SeedUser("Replacement");
+        await AddMemberAsync(workgroup.Id, replacement);
+        controller.ModelState.AddModelError(coordinators ? "coordinatorUserIds[1]" : "reason", "Invalid value.");
+
+        var result = coordinators
+            ? await controller.Coordinators(workgroup.Slug, [replacement, null], Ct)
+            : await controller.Done(workgroup.Slug, default, Ct);
+
+        if (asMember) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<ForbidResult>();
+        await using var context = OpenContext();
+        (await context.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(WorkgroupStatus.Active);
+        var members = await context.Members.Where(m => m.WorkgroupId == workgroup.Id).ToListAsync(Ct);
+        members.Single(m => m.UserId == originalCoordinator).Role.Should().Be(WorkgroupMemberRole.Coordinator);
+        members.Single(m => m.UserId == replacement).Role.Should().Be(WorkgroupMemberRole.Member);
+    }
+
     [HumansFact]
     public async Task Board_ActingOnAGroupTheyAreNotIn_IsAllowed()
     {
