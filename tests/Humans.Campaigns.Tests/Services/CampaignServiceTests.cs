@@ -1,3 +1,8 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using System.Text;
 using Humans.Base.Constants;
 using System.Security.Claims;
@@ -265,21 +270,43 @@ public sealed class CampaignServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(true)]
-    [Xunit.InlineData(false)]
-    public async Task GenerateCodes_BindingErrors_DoNotGenerateOrImportCodes(bool malformed)
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("invalid")]
+    [Xunit.InlineData("0")]
+    public async Task GenerateCodes_requires_submitted_discount_value_before_vendor_write(string? submittedValue)
     {
         var campaign = await SeedCampaignAsync();
         var controller = CreateImportController();
         _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
             .Returns(["GENERATED"]);
-        if (malformed) controller.ModelState.AddModelError("discountValue", "Invalid discount value");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        var parameter = typeof(CampaignController).GetMethod(nameof(CampaignController.GenerateCodes))!
+            .GetParameters().Single(p => string.Equals(p.Name, "discountValue", StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = parameter
+        });
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (submittedValue is not null) fields["discountValue"] = submittedValue;
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
 
         var result = await controller.GenerateCodes(campaign.Id, 1, "Fixed", 0m);
 
-        if (malformed)
+        if (!string.Equals(submittedValue, "0", StringComparison.Ordinal))
         {
             result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState["discountValue"]!.Errors.Should().HaveCount(submittedValue is null ? 1 : 2);
             _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
             (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
             _audit.ReceivedCalls().Should().BeEmpty();
