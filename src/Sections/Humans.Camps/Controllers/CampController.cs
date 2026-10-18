@@ -267,7 +267,7 @@ internal sealed class CampController(
     [HttpGet("{slug}/Contact")]
     public async Task<IActionResult> Contact(string slug)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
         var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();

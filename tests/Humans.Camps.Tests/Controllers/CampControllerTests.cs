@@ -133,7 +133,8 @@ public class CampControllerTests
     [InlineData(nameof(CampController.Members), "Camp")]
     [InlineData(nameof(CampController.Members), "Viewer")]
     [InlineData(nameof(CampController.Members), "EditData")]
-    public async Task ManagementReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
+    [InlineData(nameof(CampController.Contact), "Camp")]
+    public async Task CampReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
         var abandon = false;
@@ -165,9 +166,13 @@ public class CampControllerTests
             .Returns(new CampRolesPanelData(season.Id, []));
         var controller = BuildController(userId);
         controller.HttpContext.RequestAborted = request.Token;
-        Func<Task<IActionResult>> load = string.Equals(route, nameof(CampController.Edit), StringComparison.Ordinal)
-            ? () => controller.Edit(camp.Slug, null, request.Token)
-            : () => controller.Members(camp.Slug, null, request.Token);
+        Func<Task<IActionResult>> load = route switch
+        {
+            nameof(CampController.Edit) => () => controller.Edit(camp.Slug, null, request.Token),
+            nameof(CampController.Members) => () => controller.Members(camp.Slug, null, request.Token),
+            nameof(CampController.Contact) => () => controller.Contact(camp.Slug),
+            _ => throw new ArgumentOutOfRangeException(nameof(route)),
+        };
 
         (await load()).Should().BeOfType<ViewResult>();
         abandon = true;
