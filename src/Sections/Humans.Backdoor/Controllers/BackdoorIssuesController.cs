@@ -339,6 +339,7 @@ internal sealed class PostIssueCommentModel
 internal sealed class UpdateIssueStatusModel
 {
     [Required]
+    [JsonRequired]
     [EnumDataType(typeof(IssueStatus), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueStatus Status { get; set; }

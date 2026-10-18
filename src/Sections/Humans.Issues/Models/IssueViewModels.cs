@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using NodaTime;
@@ -175,6 +176,7 @@ internal sealed class PostIssueCommentModel
 internal sealed class UpdateIssueStatusModel
 {
     [Required]
+    [BindRequired]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueStatus Status { get; set; }
 }

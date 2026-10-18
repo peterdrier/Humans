@@ -50,6 +50,18 @@ public class BackdoorIssuesControllerTests
         Validator.TryValidateObject(feedback, new ValidationContext(feedback), [], validateAllProperties: true).Should().Be(valid);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Json_triage_status_requires_explicit_status(bool feedback)
+    {
+        Action deserialize = feedback
+            ? () => JsonSerializer.Deserialize<UpdateFeedbackStatusModel>("{}")
+            : () => JsonSerializer.Deserialize<UpdateIssueStatusModel>("{}");
+
+        deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("Status");
+    }
+
     public BackdoorIssuesControllerTests()
     {
         // GetUserInfosAsync never returns null; an unstubbed ValueTask would.

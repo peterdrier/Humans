@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
@@ -9,6 +10,11 @@ using Humans.Feedback.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using Humans.Feedback.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -904,6 +910,69 @@ public sealed class FeedbackServiceTests
             .Be(new string('x', expectedPrefixLength) + expectedSuffix);
         (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .Description.Should().Be(description);
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("0")]
+    public async Task Triage_requires_posted_status_before_reopening_report(string? postedStatus)
+    {
+        var report = await CreateTestReport(FeedbackStatus.Resolved);
+        var actor = Guid.NewGuid();
+        SeedUser(actor, "Admin", "admin@example.org");
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(_people[actor]);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new FeedbackController(_service, Substitute.For<ITeamService>(), users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(http,
+                Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (postedStatus is not null) fields["Status"] = postedStatus;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(UpdateFeedbackStatusModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(UpdateFeedbackStatusModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (UpdateFeedbackStatusModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+        _auditLog.ClearReceivedCalls();
+
+        (await controller.UpdateStatus(report.Id, model)).Should().BeOfType<RedirectToActionResult>();
+
+        await using var read = FeedbackDbFactory.CreateDbContext();
+        var stored = await read.FeedbackReports.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        if (postedStatus is null)
+        {
+            stored.Status.Should().Be(FeedbackStatus.Resolved);
+            stored.ResolvedAt.Should().NotBeNull();
+            stored.ResolvedByUserId.Should().NotBeNull();
+            controller.ModelState["Status"]!.Errors.Should().ContainSingle();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Invalid status.");
+            _auditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            stored.Status.Should().Be(FeedbackStatus.Open);
+            stored.ResolvedAt.Should().BeNull();
+            stored.ResolvedByUserId.Should().BeNull();
+            _auditLog.ReceivedCalls().Should().ContainSingle();
+        }
     }
 
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)

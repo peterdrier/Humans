@@ -128,6 +128,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - Browser status, assignee, section and GitHub-link updates reject invalid model binding/validation with HTTP 400 and a Warning before calling the mutation service. Existing issue lookup and handler authorization run first; malformed values never become default status or cleared optional fields.
 
 - Submission categories and status updates must be defined enum values; invalid service inputs fail before persistence or notifications.
+- Browser triage requires the status field to be posted explicitly; omission cannot reset an issue to Triage or clear resolution metadata. Explicit Triage remains valid after handler authorization.
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
 - The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments across `UserInfo.AllUserIds`. Source-account reports remain exportable after a merge, and comments from any account in that identity chain are marked as the reporter’s. Issues reported by other people stay excluded.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
