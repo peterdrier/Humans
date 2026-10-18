@@ -20,6 +20,10 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
+using Humans.Store.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.Primitives;
 using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
@@ -1393,6 +1397,78 @@ public class ServiceTests
 
         thrown.Should().BeSameAs(failure);
         controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("UnitPriceEur")]
+    [InlineData("VatRatePercent")]
+    [InlineData("IsActive")]
+    [InlineData("zero")]
+    [InlineData("valid")]
+    public async Task CatalogSave_requires_explicit_prices_and_active_choice(string scenario)
+    {
+        var product = MakeProduct(price: 10m, vat: 21m);
+        product.IsActive = false;
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new StoreAdminController(_service, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var zero = string.Equals(scenario, "zero", StringComparison.Ordinal);
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = product.Id.ToString(), ["Year"] = "2026", ["Name"] = "Updated", ["Description"] = "Details",
+            ["UnitPriceEur"] = zero ? "0" : "20", ["VatRatePercent"] = zero ? "0" : "10",
+            ["IsActive"] = zero ? "false" : "true", ["OrderableUntil"] = "2026-10-01"
+        };
+        var missing = !zero && !string.Equals(scenario, "valid", StringComparison.Ordinal);
+        if (missing) fields.Remove(scenario);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProductInputModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(ProductInputModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (ProductInputModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Save(model, TestContext.Current.CancellationToken);
+
+        if (missing)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            product.UnitPriceEur.Should().Be(10m);
+            product.VatRatePercent.Should().Be(21m);
+            product.IsActive.Should().BeFalse();
+            _repo.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            product.UnitPriceEur.Should().Be(zero ? 0m : 20m);
+            product.VatRatePercent.Should().Be(zero ? 0m : 10m);
+            product.IsActive.Should().Be(!zero);
+            await _repo.Received(1).UpdateProductAsync(product, Arg.Any<CancellationToken>());
+        }
     }
 
     [HumansFact]
