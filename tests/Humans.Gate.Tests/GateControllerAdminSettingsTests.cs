@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -33,7 +34,7 @@ public sealed class GateControllerAdminSettingsTests
             _gate, Substitute.For<IUserService>(), new ConfigurationBuilder().Build(),
             new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock),
             new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())),
-            Substitute.For<IBackgroundJobClient>(), _clock);
+            Substitute.For<IBackgroundJobClient>(), _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext { HttpContext = http };
