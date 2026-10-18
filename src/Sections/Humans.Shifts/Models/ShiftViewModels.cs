@@ -32,8 +32,11 @@ internal class CreateRotaModel
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     public ShiftPriority Priority { get; set; }
+    [BindRequired]
     public SignupPolicy Policy { get; set; }
+    [BindRequired]
     public RotaPeriod Period { get; set; } = RotaPeriod.Event;
 
     [MaxLength(2000)]

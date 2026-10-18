@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using System.Globalization;
 using Xunit;
@@ -379,6 +380,88 @@ public class ShiftAdminControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _shiftMgmt.Received(1).DeleteShiftAsync(shift.Id, UserId);
+    }
+
+    [HumansTheory]
+    [InlineData(false, "Priority", false, true)]
+    [InlineData(false, "Policy", false, true)]
+    [InlineData(false, "Period", false, true)]
+    [InlineData(true, "Priority", false, true)]
+    [InlineData(true, "Policy", false, true)]
+    [InlineData(true, "Period", false, true)]
+    [InlineData(false, "", false, true)]
+    [InlineData(false, "", true, true)]
+    [InlineData(true, "", false, true)]
+    [InlineData(true, "", true, true)]
+    [InlineData(true, "Policy", false, false)]
+    public async Task Rota_forms_require_explicit_priority_policy_and_period(bool edit, string omitted, bool zeroChoices, bool ownTeam)
+    {
+        var rota = MakeRota(ownTeam ? TeamId : OtherTeamId);
+        rota.EventSettingsId = Event.Id;
+        rota.Priority = ShiftPriority.Essential;
+        rota.Policy = SignupPolicy.RequireApproval;
+        rota.Period = RotaPeriod.Build;
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        var controller = BuildSut();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var priority = zeroChoices ? ShiftPriority.Normal : ShiftPriority.Essential;
+        var policy = zeroChoices ? SignupPolicy.Public : SignupPolicy.RequireApproval;
+        var period = zeroChoices || omitted.Length > 0 ? RotaPeriod.Build : RotaPeriod.Strike;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Name"] = "Changed rota", ["Priority"] = priority.ToString(), ["Policy"] = policy.ToString(), ["Period"] = period.ToString()
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var formType = edit ? typeof(EditRotaModel) : typeof(CreateRotaModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = formType
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CreateRotaModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = edit ? await controller.EditRota(Slug, rota.Id, (EditRotaModel)model) : await controller.CreateRota(Slug, model);
+
+        if (!ownTeam || omitted.Length > 0)
+        {
+            if (!ownTeam) result.Should().BeOfType<NotFoundResult>();
+            else
+            {
+                if (edit) result.Should().BeOfType<ViewResult>();
+                else result.Should().BeOfType<RedirectToActionResult>();
+                controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            }
+            rota.Name.Should().Be("Rota");
+            rota.Priority.Should().Be(ShiftPriority.Essential);
+            rota.Policy.Should().Be(SignupPolicy.RequireApproval);
+            rota.Period.Should().Be(RotaPeriod.Build);
+            await _shiftMgmt.DidNotReceive().CreateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
+            await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
+        }
+        else if (edit)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            rota.Priority.Should().Be(priority);
+            rota.Policy.Should().Be(policy);
+            rota.Period.Should().Be(period);
+            await _shiftMgmt.Received(1).UpdateRotaAsync(rota, Arg.Any<IReadOnlyList<Guid>?>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectResult>();
+            await _shiftMgmt.Received(1).CreateRotaAsync(Arg.Is<Rota>(created =>
+                created.Name == "Changed rota" && created.TeamId == TeamId && created.EventSettingsId == Event.Id
+                && created.Priority == priority && created.Policy == policy && created.Period == period), Arg.Any<IReadOnlyList<Guid>?>());
+        }
     }
 
     [HumansFact]
