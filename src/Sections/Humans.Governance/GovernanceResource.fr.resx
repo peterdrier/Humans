@@ -743,4 +743,5 @@
   <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Déposez une demande de renouvellement pour conserver votre catégorie d’adhésion.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renouveler →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La note ne doit pas dépasser 4000 caractères. Votre vote n’a pas été modifié.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La note de décision ne doit pas dépasser 4000 caractères. La demande n’a pas été finalisée.</value></data>
 </root>

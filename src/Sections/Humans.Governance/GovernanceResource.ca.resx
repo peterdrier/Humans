@@ -743,4 +743,5 @@
   <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Presenta una sol·licitud de renovació per mantenir la teva categoria de membresia.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renova →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota ha de tenir com a màxim 4000 caràcters. El teu vot no s’ha modificat.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota de la decisió ha de tenir com a màxim 4000 caràcters. La sol·licitud no s’ha finalitzat.</value></data>
 </root>
