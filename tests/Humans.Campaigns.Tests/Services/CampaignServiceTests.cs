@@ -264,6 +264,35 @@ public sealed class CampaignServiceTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GenerateCodes_BindingErrors_DoNotGenerateOrImportCodes(bool malformed)
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(["GENERATED"]);
+        if (malformed) controller.ModelState.AddModelError("discountValue", "Invalid discount value");
+
+        var result = await controller.GenerateCodes(campaign.Id, 1, "Fixed", 0m);
+
+        if (malformed)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
+            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _ticketDiscountCodes.Received(1).GenerateAsync(
+                Arg.Is<TicketDiscountCodeRequest>(request => request.Value == 0m), CancellationToken.None);
+            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        }
+    }
+
     [HumansFact]
     public async Task GenerateCodes_ImportRefusal_IsNotReportedAsSuccess()
     {

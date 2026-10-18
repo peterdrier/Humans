@@ -225,6 +225,12 @@ internal sealed class CampaignController(
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed discount-code generation for campaign {CampaignId} by user {UserId}", id, currentUser.Id);
+            return BadRequest(ModelState);
+        }
+
         var result = await campaignService.GenerateAndImportDiscountCodesAsync(
             currentUser.Id,
             id, count, discountType, discountValue);
