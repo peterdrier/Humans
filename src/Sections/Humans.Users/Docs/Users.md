@@ -243,7 +243,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 - User-row interceptor snapshots carry the stored `State`. Warm-cache user-field refreshes reuse the canonical `UserInfo` factory, including that state, while preserving profile, email, participation, login, preference, and merge-ID slices.
 - A failed or cancelled `UserInfo` cache reload evicts the affected user and marks the cache cold before propagating the failure; the next read reloads from source rather than retaining stale fields or omitting a newly created human.
 - Contact-field and profile-language saves resolve the owner before committing, so a failed lookup cannot strand committed changes outside cache refresh.
-- Profile fields and a supplied CV share one database save and the per-user save lock; failures or overlapping submissions cannot separate the experience declaration from its history. A null CV payload leaves history unchanged.
+- Profile fields, a supplied CV and the legacy identity name share one database save and the per-user save lock; failures or overlapping submissions cannot separate the experience declaration from its history. A null CV payload leaves history unchanged.
 
 The operator-only user directory renders its sort-control label directly, without a missing resource key.
 

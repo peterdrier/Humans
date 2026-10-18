@@ -108,7 +108,7 @@ internal sealed partial class UserRepository
     }
 
     public async Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null)
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Attach the detached entity and mark only its own scalar properties as
@@ -119,12 +119,12 @@ internal sealed partial class UserRepository
         ctx.Entry(profile).State = EntityState.Modified;
         if (volunteerHistory is not null)
             await ReconcileCVEntriesAsync(ctx, profile.Id, volunteerHistory, ct);
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct, displayName);
         await ctx.SaveChangesAsync(ct);
     }
 
     private static async Task UpdateUserStateFromProfileAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+        UsersDbContext ctx, Profile profile, CancellationToken ct, string? displayName = null)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is null)
@@ -133,6 +133,8 @@ internal sealed partial class UserRepository
         // #1097 dual-write: the names belong to the human, not the membership profile.
         // Every Profile write funnels through AddAsync/UpdateAsync, so this is the one seam.
         CopyNamesToUser(user, profile);
+        if (displayName is not null)
+            user.DisplayName = displayName;
         user.State = UserStateEvaluator.Classify(user, profile);
     }
 

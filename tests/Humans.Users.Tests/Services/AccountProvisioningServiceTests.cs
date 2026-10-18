@@ -186,7 +186,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task AddAsync(Profile profile, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

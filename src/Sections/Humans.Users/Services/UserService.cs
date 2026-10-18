@@ -544,7 +544,7 @@ internal sealed class UserService(
         // saved names and carries any existing suspension forward.
         try
         {
-            await repo.UpdateAsync(profile, ct, volunteerHistory);
+            await repo.UpdateAsync(profile, ct, volunteerHistory, command.DisplayName);
         }
         catch when (newPictureKey is not null)
         {
@@ -562,7 +562,6 @@ internal sealed class UserService(
             await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
         }
 
-        await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
 
         return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);

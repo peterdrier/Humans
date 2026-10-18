@@ -287,7 +287,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        failingRepo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>())
+        failingRepo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<string?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
@@ -312,32 +312,44 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_PostCommitDisplayNameFailure_StillDeletesThePreviousFile()
+    public async Task SaveProfileAsync_LegacyNameSaveFailure_PreservesProfileAndPreviousPicture()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
-        var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
-        var repo = Substitute.For<IUserRepository>();
-        repo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        repo.UpdateDisplayNameAsync(userId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Display name update failed"));
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
+            .AddInterceptors(new RejectLegacyNameSave()).Options;
         var sut = new UserService(
-            repo,
-            _communicationPreferenceRepository,
-            AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
+            _communicationPreferenceRepository, AdminAuthorization,
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            _pictureStorage,
-            Clock,
-            NullLogger<UserService>.Instance, AuditLog);
+            _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
 
-        var act = () => sut.SaveProfileAsync(userId, command, [4, 5, 6], Xunit.TestContext.Current.CancellationToken);
+        var act = () => sut.SaveProfileAsync(userId, command, [4, 5, 6], ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
-        _fileStorage.Files.Should().ContainSingle();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Legacy name save failed");
+        var saved = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
+        saved.BurnerName.Should().Be("OldName");
+        saved.ProfilePictureStorageKey.Should().BeNull();
+        _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(PicKey(profileId, "image/png"));
+        _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+        (await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, ct))
+            .DisplayName.Should().Be("Test User");
+    }
+
+    private sealed class RejectLegacyNameSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<User>()
+                .Any(entry => entry.Property(user => user.DisplayName).IsModified))
+                throw new InvalidOperationException("Legacy name save failed");
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansFact]

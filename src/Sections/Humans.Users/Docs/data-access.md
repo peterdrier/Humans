@@ -43,7 +43,7 @@ the profile-edit flow below.
 No repository or cache. Serializes profile/CV submissions per user and delegates
 fields, CV history and picture bytes to `IUserServiceInternal.SaveProfileAsync`.
 `UserService` writes picture bytes before publishing metadata, commits fields and
-CV together, and cleans superseded files after the save.
+CV together with the legacy identity name, and cleans superseded files after the save.
 
 ### ContactFieldService (Scoped)
 

@@ -99,10 +99,10 @@ internal partial interface IUserRepository
     ///   <item>existing rows whose Id is absent from the incoming set are
     ///     deleted.</item>
     /// </list>
-    /// These changes share the profile field save.
+    /// These changes and a supplied legacy display name share the profile field save.
     /// </summary>
     Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null);
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null);
 
     /// <summary>
     /// Clears identifying profile fields, labels the profile "Deleted User", and
