@@ -68,8 +68,7 @@ namespace Humans.Events.Data.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("RecurrenceDays")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<Instant>("StartAt")
                         .HasColumnType("timestamp with time zone");
