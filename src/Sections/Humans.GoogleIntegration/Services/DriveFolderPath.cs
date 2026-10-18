@@ -46,10 +46,11 @@ internal static class DriveFolderPath
             if (!isDriveRoot && !hasParent && knownDriveId is null)
             {
                 // Parentless and unlabelled: either the root of a drive that omits its own driveId, or
-                // an orphan. Only drives.get can tell them apart; "not a drive" keeps the folder's own name.
+                // an orphan. Only drives.get can tell them apart; "not a drive" (400/404) keeps the folder's
+                // own name. A 403 may be a rate limit, so like any other failure it leaves the path unresolved.
                 driveResult = await drivePermissions.GetSharedDriveAsync(currentId, ct);
                 isDriveRoot = driveResult?.Drive is not null;
-                if (!isDriveRoot && driveResult?.Error is { StatusCode: not (400 or 403 or 404) })
+                if (!isDriveRoot && driveResult?.Error is { StatusCode: not (400 or 404) })
                     return null;
             }
 

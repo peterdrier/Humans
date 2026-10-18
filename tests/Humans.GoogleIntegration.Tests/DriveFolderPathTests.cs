@@ -3,6 +3,7 @@ using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.GoogleIntegration.Tests;
 
@@ -74,12 +75,14 @@ public sealed class DriveFolderPathTests
         (await ResolveAsync("orphan")).Should().Be("Lonely");
     }
 
-    [HumansFact]
-    public async Task ResolveAsync_ParentlessFolderWhoseDriveProbeFailsTransiently_IsUnresolved()
+    [HumansTheory]
+    [InlineData(503, "unavailable")]
+    [InlineData(403, "rateLimitExceeded")]
+    public async Task ResolveAsync_ParentlessFolderWhoseDriveProbeFailsTransiently_IsUnresolved(int status, string message)
     {
-        StubFile("orphan", "Lonely", parents: null, driveId: null);
+        StubFile("orphan", "Drive", parents: null, driveId: null);
         _drive.GetSharedDriveAsync("orphan", Arg.Any<CancellationToken>())
-            .Returns(new SharedDriveMetadataResult(null, new GoogleClientError(503, "unavailable")));
+            .Returns(new SharedDriveMetadataResult(null, new GoogleClientError(status, message)));
 
         (await ResolveAsync("orphan")).Should().BeNull();
     }
