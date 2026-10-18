@@ -78,6 +78,8 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 ## Invariants
 
+- Widget step selection resolves the surviving user and requires their saved names before consent completion. Complete means names plus all required Volunteer consents; merged aliases use the survivor’s consent state, and shift signup stays optional.
+
 - The widget saves names to the resolved account whose profile it preserves. Its dispatcher and Shifts page read that account’s commitments, so a merge alias cannot hide an existing signup or send name edits to an archived profile.
 - Consent-review eligibility checks and the Pending annotation write use the resolved survivor ID when called with a merged account ID; an archived profile is never annotated on the survivor’s behalf.
 
