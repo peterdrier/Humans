@@ -326,9 +326,9 @@ internal sealed class ShiftManagementService(
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
         repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
 
-    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId)
+    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
     {
-        var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View);
+        var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
         return rotas
             .OrderBy(r => r.Name, StringComparer.Ordinal)
             .ToList();
@@ -1143,9 +1143,9 @@ internal sealed class ShiftManagementService(
 
     public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null)
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return ShiftStaffingSnapshot.Empty;
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
@@ -1153,13 +1153,13 @@ internal sealed class ShiftManagementService(
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return ShiftStaffingSnapshot.Empty;
 
-        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId, ct);
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
-            departmentTeamIds));
+            departmentTeamIds), ct);
 
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var staffingData = new List<DailyStaffingData>();
         var staffingHours = new List<DailyStaffingHours>();
@@ -2044,9 +2044,9 @@ internal sealed class ShiftManagementService(
         return grouped;
     }
 
-    public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null)
+    public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
-        var tags = await repo.GetTagsAsync(query);
+        var tags = await repo.GetTagsAsync(query, ct);
         return tags
             .Select(tag => new ShiftTagSummary(tag.Id, tag.Name))
             .ToList();
@@ -2101,9 +2101,9 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(profile.UserId);
     }
 
-    public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId)
+    public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = await repo.GetVolunteerEventProfileAsync(userId);
+        var profile = await repo.GetVolunteerEventProfileAsync(userId, ct);
         return profile is null
             ? null
             : new ShiftVolunteerProfileInfo(profile.UserId, profile.Skills, profile.Quirks, profile.Languages);

@@ -88,6 +88,28 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([]);
     }
 
+    [HumansFact]
+    public async Task Index_PreservesRequestCancellationThroughAuthorizationAndPageReads()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = cancellation.Token;
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token).Returns(true);
+        _shiftMgmt.GetTagsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.GetStaffingSnapshotAsync(Event.Id, TeamId, ct: Arg.Any<CancellationToken>())
+            .Returns(ShiftStaffingSnapshot.Empty);
+
+        var result = await controller.Index(Slug, ct: cancellation.Token);
+
+        result.Should().BeOfType<ViewResult>();
+        await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
+        await _teamService.Received().GetTeamsAsync(cancellation.Token);
+        await _shiftMgmt.Received().IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
+        await _teamService.Received(1).GetTeamAsync(TeamId, cancellation.Token);
+        await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
+    }
+
     [HumansTheory]
     [InlineData("startDayOffset", true)]
     [InlineData("endDayOffset", true)]

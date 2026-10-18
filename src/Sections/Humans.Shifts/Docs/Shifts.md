@@ -249,6 +249,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - The member shift-profile wizard localizes breadcrumb navigation labels in all six supported cultures.
 
 - The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.
+- The department shift-management GET retains request cancellation through viewer and department authorization, rota/profile/consent reads, team and tag pickers, and staffing charts. Invalid mutation-form redisplays use the default token.
 
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 

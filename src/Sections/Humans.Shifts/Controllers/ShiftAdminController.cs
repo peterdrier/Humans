@@ -33,25 +33,25 @@ internal sealed class ShiftAdminController(
     private readonly ITeamService _teamService = teamService;
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false)
+    public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false, CancellationToken ct = default)
     {
         var (teamError, user, team) = await ResolveDepartmentAccessAsync(
             slug,
             async (resolvedTeam, resolvedUser) =>
-                await CanManageDepartmentAsync(resolvedUser, resolvedTeam)
-                || await CanApproveDepartmentAsync(resolvedUser, resolvedTeam));
+                await CanManageDepartmentAsync(resolvedUser, resolvedTeam, ct)
+                || await CanApproveDepartmentAsync(resolvedUser, resolvedTeam, ct), ct);
         if (teamError is not null) return teamError;
 
-        var canManage = await CanManageDepartmentAsync(user, team);
-        var canApprove = await CanApproveDepartmentAsync(user, team);
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var canManage = await CanManageDepartmentAsync(user, team, ct);
+        var canApprove = await CanApproveDepartmentAsync(user, team, ct);
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null)
         {
             SetError("No active event settings configured.");
             return RedirectToAction("Details", "Team", new { slug });
         }
 
-        var teamEntity = await _teamService.GetTeamAsync(team.Id);
+        var teamEntity = await _teamService.GetTeamAsync(team.Id, ct);
         if (teamEntity is null) return NotFound();
 
         var model = await pageBuilder.BuildAsync(new ShiftAdminPageRequest(
@@ -61,7 +61,7 @@ internal sealed class ShiftAdminController(
             canApprove,
             ShiftRoleChecks.CanViewMedical(User),
             incompleteOnboarding,
-            clock.GetCurrentInstant()));
+            clock.GetCurrentInstant()), ct);
 
         return View(model);
     }
@@ -859,19 +859,19 @@ internal sealed class ShiftAdminController(
             .ToList();
     }
 
-    private async Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team)
+    private async Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
         // Management: Admin + VolunteerCoordinator + dept coordinator
         // Explicitly excludes NoInfoAdmin — they can approve signups but not manage rotas/shifts
         return RoleChecks.IsVolunteerManager(User) ||
-               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }
 
-    private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team)
+    private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
         // Approval: Admin + NoInfoAdmin + VolunteerCoordinator + dept coordinator
         return ShiftRoleChecks.CanManageDepartment(User) ||
-               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }
 }
 

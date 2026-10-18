@@ -29,7 +29,7 @@ internal interface IShiftManagement
     /// </summary>
     Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>
     /// Gets all parent teams that have active rotas in the given event.
@@ -51,7 +51,7 @@ internal interface IShiftManagement
     /// Gets all rotas for a department in an event. Section-internal — no
     /// caller outside the section.
     /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
+    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets or creates the user's shift profile (1:1 with User). Section-internal —

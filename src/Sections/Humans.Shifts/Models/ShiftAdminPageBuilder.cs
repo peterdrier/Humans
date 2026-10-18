@@ -25,18 +25,18 @@ internal sealed class ShiftAdminPageBuilder(
     IUserService userService,
     ITeamService teamService)
 {
-    public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)
+    public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request, CancellationToken ct = default)
     {
-        var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id);
-        var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding);
+        var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id, ct);
+        var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding, ct);
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
-        var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical);
+        var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical, ct);
         var userLookup = allUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(allUserIds);
-        var allDepartments = await LoadTransferDepartmentsAsync(request.Department);
-        var allTags = await shiftManagement.GetTagsAsync();
-        var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id);
+            : await userService.GetUserInfosAsync(allUserIds, ct);
+        var allDepartments = await LoadTransferDepartmentsAsync(request.Department, ct);
+        var allTags = await shiftManagement.GetTagsAsync(ct: ct);
+        var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id, ct: ct);
 
         return new ShiftAdminViewModel
         {
@@ -62,7 +62,8 @@ internal sealed class ShiftAdminPageBuilder(
 
     private async Task<(List<ShiftSignup> PendingSignups, int TotalSlots, int ConfirmedCount)> BuildStaffingSummaryAsync(
         IReadOnlyList<Rota> rotas,
-        bool incompleteOnboarding)
+        bool incompleteOnboarding,
+        CancellationToken ct)
     {
         var pendingSignups = new List<ShiftSignup>();
         var totalSlots = 0;
@@ -79,27 +80,27 @@ internal sealed class ShiftAdminPageBuilder(
         }
 
         if (incompleteOnboarding)
-            pendingSignups = (await FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
+            pendingSignups = (await FilterToIncompleteOnboardingAsync(pendingSignups, ct)).ToList();
 
         return (pendingSignups, totalSlots, confirmedCount);
     }
 
     private async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups)
+        IReadOnlyList<ShiftSignup> signups, CancellationToken ct)
     {
         if (signups.Count == 0) return signups;
 
         var userIds = signups.Select(s => s.UserId).Distinct().ToList();
         var withConsents = await membership.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds,
-            SystemTeamIds.Volunteers);
+            SystemTeamIds.Volunteers, ct);
 
         return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
     }
 
     private async Task<Dictionary<Guid, VolunteerBadgesViewModel>> LoadProfilesAsync(
         IReadOnlyList<Guid> userIds,
-        bool canViewMedical)
+        bool canViewMedical, CancellationToken ct)
     {
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
@@ -107,10 +108,10 @@ internal sealed class ShiftAdminPageBuilder(
         // Skills/Quirks/Languages come from the shift profile (VEP); dietary +
         // medical from the person's Profile (cached UserInfo). Medical is gated
         // here — populated only when the viewer holds MedicalDataViewer.
-        var userInfos = await userService.GetUserInfosAsync(userIds);
+        var userInfos = await userService.GetUserInfosAsync(userIds, ct);
         foreach (var uid in userIds)
         {
-            var vep = await shiftManagement.GetShiftProfileAsync(uid);
+            var vep = await shiftManagement.GetShiftProfileAsync(uid, ct);
             userInfos.TryGetValue(uid, out var info);
             var person = info?.Profile;
             if (vep is null && person is null) continue;
@@ -127,9 +128,9 @@ internal sealed class ShiftAdminPageBuilder(
         return result;
     }
 
-    private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(TeamInfo currentDepartment)
+    private async Task<List<DepartmentOption>> LoadTransferDepartmentsAsync(TeamInfo currentDepartment, CancellationToken ct)
     {
-        return (await teamService.GetTeamsAsync()).Values
+        return (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.ParentTeamId is null
                         && t.SystemTeamType == SystemTeamType.None
                         && t.Id != currentDepartment.Id)
