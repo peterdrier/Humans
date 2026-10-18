@@ -15,11 +15,10 @@ namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
 /// Coverage for <see cref="ITeamResourceManagement.DeactivateResourcesForTeamAsync"/> — the
-/// side of #494 that flips <c>IsActive</c> and writes audit entries. After the
-/// <c>#540c</c> migration there is a single <see cref="TeamResourceService"/>
-/// implementation in the Application layer; this test drives it through an
-/// <see cref="IDbContextFactory{UsersDbContext}"/>-backed repository and a
-/// stubbed <see cref="ITeamResourceGoogleClient"/>.
+/// side of #494 that flips <c>IsActive</c> and writes audit entries. Drives
+/// <see cref="TeamResourceService"/> through the section test harness
+/// (<see cref="Infrastructure.GoogleIntegrationTestHarness"/>) and a stubbed
+/// <see cref="ITeamResourceGoogleClient"/>.
 /// </summary>
 public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIntegrationTestHarness
 {

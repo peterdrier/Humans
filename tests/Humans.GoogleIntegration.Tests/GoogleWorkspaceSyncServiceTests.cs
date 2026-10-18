@@ -328,12 +328,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // Invariant 1 — Gateway-mode gating
     // ==========================================================================
 
-    // Group-membership gateway tests removed by PR #478 (issue #615): per-user
-    // AddUserToGroupAsync / RemoveUserFromGroupAsync gateways were retired in
-    // favor of IGoogleGroupSync full-group reconciliation. Sync-mode gating and
-    // 403→GoogleEmailStatus.Rejected behavior are now pinned by
-    // GoogleGroupSyncServiceTests.
-
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenSyncModeIsNone_DoesNotCallGoogle()
     {
@@ -448,11 +442,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _drivePermissions.DidNotReceive()
             .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
-
-    // Invariant 2 (permanent vs transient error classification) for Group
-    // membership writes is now pinned by GoogleGroupSyncServiceTests; the
-    // per-user AddUserToGroupAsync / RemoveUserFromGroupAsync gateways were
-    // retired by PR #478 (issue #615).
 
     [HumansFact]
     public async Task AddUserToDriveAsync_When400NoGoogleAccount_MarksGoogleEmailRejected()
@@ -939,7 +928,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task RemoveExtraDriveAccessAsync_WhenPermissionHasInheritedComponent_ExcludesFromRemovalUpfront()
     {
-        // Per Peter's review of the original #945 fix: a permission that
+        // A permission that
         // still 403s on delete because it carries an inherited component must
         // never be selected for deletion in the first place — detect it
         // upfront (IsDirectManagedPermission / HasInheritedComponent) instead
@@ -961,8 +950,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // Defensive fallback only: the upfront exclusion normally prevents
         // this outcome, but a race (inheritance changed between list and
         // delete) could still surface it. Must not throw, and must not
-        // persist anything (the persisted terminal-failure table was removed
-        // per Peter's review — detection is upfront, not recorded state).
+        // persist anything; detection is upfront.
         const string extraEmail = "extra@example.com";
         const string extraPermissionId = "perm-001";
 
@@ -1019,7 +1007,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task DriveReconciliation_WhenMemberIsPlusAddressedGmail_RoundTripsToCorrectState()
     {
-        // BLOCK review comment on PR 1147 — AddUserToDriveAsync grants to the
+        // AddUserToDriveAsync grants to the
         // canonicalized Gmail address, but Drive's permissions.list always
         // returns that same canonical form. Expected-member keys built from
         // the member's raw plus-tagged stored email must be canonicalized the

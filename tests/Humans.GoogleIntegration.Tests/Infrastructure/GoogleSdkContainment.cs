@@ -4,18 +4,12 @@ using AwesomeAssertions;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// The section's Google-SDK containment boundary, and the restated form of four assertions
-/// that used to be about assemblies.
+/// The section's Google-SDK containment boundary.
 /// </summary>
 /// <remarks>
-/// Before the G5 move (nobodies-collective/Humans#866) the connector interfaces lived in
-/// <c>Humans.Application</c> and their implementations in <c>Humans.Infrastructure</c>, so
-/// "no <c>Google.Apis.*</c> reference on this assembly" and "no SDK type anywhere in this
-/// module" were true statements that meant something. Both halves are in
-/// <c>Humans.GoogleIntegration</c> now, so an assembly-level assertion either fails or —
-/// worse, written as a "does not contain" — keeps passing while asserting nothing
-/// (G5-SECTION-TEMPLATE.md step 11). The boundary is a namespace: everything that names a
-/// <c>Google.Apis.*</c> type lives under <see cref="ConnectorNamespace"/>, and the section's
+/// The boundary is a namespace, not an assembly: both connector halves live in
+/// <c>Humans.GoogleIntegration</c>, so an assembly-level assertion would pass vacuously.
+/// Everything that names a <c>Google.Apis.*</c> type lives under <see cref="ConnectorNamespace"/>, and the section's
 /// business logic under <see cref="ServiceNamespace"/> sees only the shape-neutral
 /// interfaces.
 /// </remarks>

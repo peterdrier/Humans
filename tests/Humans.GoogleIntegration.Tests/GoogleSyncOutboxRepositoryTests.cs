@@ -8,9 +8,8 @@ namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
 /// Behavior tests for <see cref="GoogleSyncOutboxRepository"/> — the narrow
-/// count surface introduced for Part 1 of issue #554 so Notifications,
-/// Metrics, and the Admin daily digest consumers stop reading
-/// <c>google_sync_outbox_events</c> directly.
+/// count surface that Notifications, Metrics, and the Admin daily digest
+/// consume instead of reading <c>google_sync_outbox</c> directly.
 ///
 /// <para>
 /// Each count method is exercised against a fixture that intentionally

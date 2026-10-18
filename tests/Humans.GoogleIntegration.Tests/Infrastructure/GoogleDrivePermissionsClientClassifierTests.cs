@@ -14,7 +14,7 @@ namespace Humans.GoogleIntegration.Tests.Infrastructure;
 /// surface to the caller for retry / investigation.
 ///
 /// <para>
-/// Per Codex's §15 Part 2a review (PR #302): treating every 400 as
+/// Treating every 400 as
 /// "already exists" silently swallows malformed-payload / bad-role /
 /// rate-limit failures. This classifier is the guard that prevents the
 /// regression.

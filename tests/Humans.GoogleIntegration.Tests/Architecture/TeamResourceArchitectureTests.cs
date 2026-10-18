@@ -9,17 +9,15 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository-plus-connector pattern
-/// for the Team Resources section — migrated per PR for issue
-/// <c>#540c</c> (sub-task of <c>#540</c>).
+/// for the Team Resources section.
 ///
 /// <para>
 /// Team resource management splits into three clean pieces:
 /// <list type="bullet">
 ///   <item><description>
 ///     <see cref="ITeamResourceManagement"/> in <c>Humans.GoogleIntegration.Services</c>
-///     owns business rules + persistence orchestration. The service was
-///     relocated from <c>Services.Teams</c> to <c>Services.GoogleIntegration</c>
-///     so it sits in the same section as the <see cref="IGoogleResourceRepository"/>
+///     owns business rules + persistence orchestration. It sits in the same
+///     section as the <see cref="IGoogleResourceRepository"/>
 ///     it injects (see
 ///     <c>memory/architecture/team-resources-google-integration-section.md</c>).
 ///   </description></item>

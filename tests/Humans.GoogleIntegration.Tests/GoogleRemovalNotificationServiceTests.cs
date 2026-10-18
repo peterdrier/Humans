@@ -57,8 +57,8 @@ public sealed class GoogleRemovalNotificationServiceTests
         // Workspace identity rotated from old@ → new@. Caller passes
         // EmailRotation as advisory telemetry but the recipient still gets
         // a Variant 2 ("secondary cleanup") email confirming the rotation
-        // (issue peterdrier/Humans#639 — suppression-on-rotation removed
-        // because the user wants visibility into which address was tidied).
+        // (issue peterdrier/Humans#639 — the user wants visibility into which
+        // address was tidied).
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
             userId,

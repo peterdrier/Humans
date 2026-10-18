@@ -19,9 +19,7 @@ namespace Humans.GoogleIntegration.Tests;
 /// <summary>
 /// End-to-end regression coverage for the soft-deleted-team revocation path in
 /// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
-/// nobodies-collective/Humans#508. PR #227 (sprint/20260415/batch-3) layered
-/// several fixes onto this flow and every bug was caught by review rather
-/// than by a failing test — this file seeds a real (InMemory) <c>GoogleIntegrationDbContext</c>
+/// nobodies-collective/Humans#508. This file seeds a real (InMemory) <c>GoogleIntegrationDbContext</c>
 /// through the real <see cref="GoogleResourceRepository"/> and a real
 /// <see cref="TeamResourceService"/>, and drives the unified Drive engine against the
 /// existing dev/test <see cref="StubGoogleDrivePermissionsClient"/> fake — no
@@ -271,22 +269,19 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     }
 
     // ==========================================================================
-    // 5. DriveFile pass reconciles its own rows (nobodies-collective/Humans#508
-    //    follow-up — flagged by PR #1149 review comment 3700252152)
+    // 5. DriveFile pass reconciles its own rows (nobodies-collective/Humans#508)
     // ==========================================================================
 
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_DriveFilePass_RevokesAccessAndDeactivatesResource()
     {
-        // Regression for a live bug the type-ordering scenario above didn't
-        // catch: SyncResourcesByTypeAsync(DriveFile, ...) used to call
-        // IGoogleResourceRepository.GetActiveDriveFoldersAsync(), which
-        // hard-filters to ResourceType == DriveFolder at the DB level — so the
-        // DriveFile pass always loaded zero rows and silently no-opped.
-        // GoogleResourceReconciliationJob runs exactly this pass every tick,
-        // so soft-deleted teams' linked Drive *files* never had their Google
-        // permissions revoked. Fixed by GetActiveByResourceTypeAsync (fetch by
-        // the exact requested type instead of overfetching DriveFolder rows).
+        // Guard: SyncResourcesByTypeAsync(DriveFile, ...) must load rows via
+        // IGoogleResourceRepository.GetActiveByResourceTypeAsync (the exact
+        // requested type). A DriveFolder-only loader hard-filters at the DB
+        // level, so the DriveFile pass would load zero rows and silently
+        // no-op. GoogleResourceReconciliationJob runs exactly this pass every
+        // tick, so soft-deleted teams' linked Drive *files* must have their
+        // Google permissions revoked.
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
         var googleId = CreateGoogleFolder("Doomed File");

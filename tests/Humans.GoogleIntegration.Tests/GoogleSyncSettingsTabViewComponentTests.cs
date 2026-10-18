@@ -13,8 +13,7 @@ using NSubstitute;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// The /Settings#google-sync tab body (peterdrier/Humans#1634) — the same mapping
-/// GoogleController.SyncSettings used to build before that GET was removed.
+/// The /Settings#google-sync tab body (peterdrier/Humans#1634).
 /// </summary>
 public sealed class GoogleSyncSettingsTabViewComponentTests
 {

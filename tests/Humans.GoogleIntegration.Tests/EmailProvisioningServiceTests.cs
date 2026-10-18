@@ -169,11 +169,9 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // Issue nobodies-collective/Humans#687: the second cross-user check
-    // (GetOtherUserIdHavingGoogleEmailAsync against the legacy User.GoogleEmail
-    // shadow column) is gone. UserEmail.IsGoogle is sole source of truth, so
-    // any user owning the address as their Google identity also has a matching
-    // user_emails row — caught by the first check above.
+    // Issue nobodies-collective/Humans#687: UserEmail.IsGoogle is the sole
+    // source of truth, so any user owning the address as their Google identity
+    // also has a matching user_emails row — caught by the first check above.
 
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
@@ -275,8 +273,7 @@ public class EmailProvisioningServiceTests
         // user-initiated manual add) left an UNVERIFIED @nobodies.team row.
         // AddVerifiedEmailAsync short-circuits via ExistsForUserAsync and does
         // NOT promote the existing row to verified. EmailProvisioningService
-        // must close the gap so the row ends up verified AND IsGoogle=true,
-        // matching the legacy User.GoogleEmail belt-and-suspenders behaviour.
+        // must close the gap so the row ends up verified AND IsGoogle=true.
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();
