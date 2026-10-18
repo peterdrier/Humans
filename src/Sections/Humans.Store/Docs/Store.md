@@ -191,6 +191,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - `/Store/Admin/PaymentMethods` — review every payment whose string `MethodName` is still null (int → string method migration).
 - `/Store/Admin/PaymentMethods/Repair` — POST: after explicit confirmation, rescan and copy `Method` into `MethodName` on each listed row; each emits `StorePaymentMethodBackfilled` with the operator as actor.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
+- Stripe session reads require explicit EUR currency. Unsupported or missing currency returns 400 on the webhook and fails the complete reconciliation read before reporting or recording payments; foreign amounts never become euro credits.
 
 ## Actors & Roles
 

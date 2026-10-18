@@ -53,8 +53,8 @@ public interface IStripeService : IApplicationService
     /// <summary>
     /// Verifies a Stripe webhook signature against <c>STRIPE_STORE_WEBHOOK_SECRET</c> and parses
     /// the payload into an Application-layer DTO so the Web layer never imports Stripe SDK types
-    /// (design-rules §15i — connector pattern). Returns <c>null</c> when the signature is invalid;
-    /// the implementation logs the failure reason internally.
+    /// (design-rules §15i — connector pattern). Returns <c>null</c> when the signing secret is unset,
+    /// the signature is invalid, or a session lacks explicit EUR currency; logs the reason internally.
     /// </summary>
     /// <param name="body">Raw request body as received from Stripe.</param>
     /// <param name="signature">Value of the <c>Stripe-Signature</c> header.</param>
@@ -69,7 +69,8 @@ public interface IStripeService : IApplicationService
     /// lacks the read scope (Stripe <c>permission_error</c>), both logged internally. Callers must
     /// treat that as "unknown", not "no sessions", so they don't false-flag recorded payments as
     /// orphans. An empty (non-null) list means Stripe was queried successfully and returned no
-    /// sessions. Any other Stripe failure propagates, as on <see cref="GetPaymentDetailsAsync"/>.
+    /// sessions. A session without explicit EUR currency rejects the whole list. Any other Stripe
+    /// failure propagates, as on <see cref="GetPaymentDetailsAsync"/>.
     /// </summary>
     Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
@@ -115,7 +116,7 @@ public sealed record StoreCheckoutWebhookEvent(
 /// <param name="SessionId">Stripe session id (<c>cs_*</c>) for log correlation.</param>
 /// <param name="OrderId">Round-tripped via <c>session.metadata['humans_store_order_id']</c>; null if missing or malformed.</param>
 /// <param name="PaymentIntentId">Stripe PaymentIntent id; null if Stripe didn't include one.</param>
-/// <param name="AmountEur">Total amount in EUR (already converted from minor units); null if Stripe didn't send a total.</param>
+/// <param name="AmountEur">Total amount in EUR (already converted from EUR minor units); null if Stripe didn't send a total. Reads reject sessions without explicit EUR currency.</param>
 /// <param name="PaymentStatus">Stripe <c>payment_status</c> (<c>paid</c> / <c>unpaid</c> / <c>no_payment_required</c>); null if absent. Reconciliation acts only on <c>paid</c>.</param>
 /// <param name="CreatedAt">When Stripe created the session; null if absent. Used to order the reconciliation view.</param>
 public sealed record StoreCheckoutSessionData(

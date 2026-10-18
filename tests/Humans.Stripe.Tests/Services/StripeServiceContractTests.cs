@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Stripe.Contracts;
 using Humans.Stripe.Services;
@@ -126,12 +127,22 @@ public class StripeServiceContractTests
             .Kind.Should().Be(expected);
     }
 
-    [HumansFact]
-    public void ParseStoreCheckoutEvent_projects_the_order_id_amount_and_status()
+    [HumansTheory]
+    [InlineData("eur")]
+    [InlineData("EUR")]
+    public void ParseStoreCheckoutEvent_projects_the_order_id_amount_and_status(string currency)
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
         var orderId = Guid.NewGuid();
-        var payload = SessionPayload("checkout.session.completed", orderId);
+        var document = JsonNode.Parse(SessionPayload("checkout.session.completed", orderId))!;
+        var session = document["data"]!["object"]!;
+        session["currency"] = currency;
+        session["presentment_details"] = new JsonObject
+        {
+            ["presentment_amount"] = 2199,
+            ["presentment_currency"] = "usd",
+        };
+        var payload = document.ToJsonString();
 
         var parsed = svc.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret));
 
@@ -143,6 +154,24 @@ public class StripeServiceContractTests
         parsed.Session.PaymentIntentId.Should().Be("pi_test_x");
         parsed.Session.AmountEur.Should().Be(19.99m);
         parsed.Session.PaymentStatus.Should().Be("paid");
+    }
+
+    [HumansTheory]
+    [InlineData("usd", true)]
+    [InlineData("jpy", true)]
+    [InlineData(null, true)]
+    [InlineData(null, false)]
+    [InlineData("", true)]
+    public void ParseStoreCheckoutEvent_requires_explicit_euro_currency(string? currency, bool present)
+    {
+        var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
+        var document = JsonNode.Parse(SessionPayload("checkout.session.completed"))!;
+        var session = document["data"]!["object"]!.AsObject();
+        if (present) session["currency"] = currency;
+        else session.Remove("currency");
+        var payload = document.ToJsonString();
+
+        svc.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret)).Should().BeNull();
     }
 
     [HumansFact]
@@ -171,7 +200,7 @@ public class StripeServiceContractTests
         return "{\"id\":\"evt_test_x\",\"object\":\"event\",\"type\":\"" + eventType + "\","
             + "\"data\":{\"object\":{"
             + "\"id\":\"cs_test_x\",\"object\":\"checkout.session\","
-            + "\"payment_intent\":\"pi_test_x\",\"amount_total\":1999,"
+            + "\"payment_intent\":\"pi_test_x\",\"amount_total\":1999,\"currency\":\"eur\","
             + "\"payment_status\":\"paid\",\"created\":1750000000,"
             + "\"metadata\":" + metadata + "}}}";
     }

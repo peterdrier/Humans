@@ -66,7 +66,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
   convention only; no test enforces it (nobodies-collective/Humans#866 retired the one that did).
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
-- `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
+- `ParseStoreCheckoutEvent` returns `null` for an invalid signature, unsupported session currency or an unset
   signing secret; it never throws and never partially trusts a payload.
 - The network reads return `null` for exactly the cases this section checks, and for
   nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
@@ -84,6 +84,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - EUR ↔ minor units round half away from zero, both directions, in one place
   (`ToStripeMinorUnits` / `FromStripeMinorUnits`).
+- Store session reads require explicit EUR currency, case-insensitively, before projecting `AmountEur`. Webhooks reject foreign or missing currency; reconciliation rejects the whole list instead of silently dropping sessions. Adaptive Pricing's customer presentment currency does not replace the integration currency or amount.
 - The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
   and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.
 

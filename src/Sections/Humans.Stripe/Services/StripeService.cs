@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -240,7 +241,12 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             _ => StoreCheckoutEventKind.Other,
         };
 
-        StoreCheckoutSessionData? session = stripeEvent.Data.Object is Session s ? MapSession(s) : null;
+        StoreCheckoutSessionData? session = null;
+        if (stripeEvent.Data.Object is Session s)
+        {
+            session = MapSession(s);
+            if (session is null) return null;
+        }
 
         return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);
     }
@@ -262,7 +268,8 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
         {
             await foreach (var s in sessions.ListAutoPagingAsync(new SessionListOptions { Limit = 100 }, cancellationToken: ct))
             {
-                results.Add(MapSession(s));
+                results.Add(MapSession(s) ?? throw new InvalidOperationException(
+                    "Stripe Store Checkout list contains a session without explicit EUR currency."));
             }
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
@@ -281,8 +288,16 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
     /// webhook-parse and reconciliation-list paths so both read the order-id metadata,
     /// amount, payment status, and creation time identically.
     /// </summary>
-    private static StoreCheckoutSessionData MapSession(Session s)
+    private StoreCheckoutSessionData? MapSession(Session s)
     {
+        if (!string.Equals(s.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "Rejected Stripe Checkout session {SessionId} with unsupported currency {Currency}; EUR is required",
+                IbanFormatter.MaskAllIn(s.Id), IbanFormatter.MaskAllIn(s.Currency ?? "(missing)"));
+            return null;
+        }
+
         Guid? orderId = null;
         if (s.Metadata is not null &&
             s.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) &&
