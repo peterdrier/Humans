@@ -1,6 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Resources;
+using System.Net.Mail;
 using Humans.Base.Extensions;
 using System.Text;
 using Humans.Base.Helpers;
@@ -25,6 +26,7 @@ internal sealed class EmailProvisioningService(
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GoogleIntegrationResource));
+    internal const string InvalidEmailPrefixMessage = "Enter a valid Workspace username of at most 64 characters. Don't include @, reserved names, or leading, trailing or repeated periods.";
 
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
@@ -41,7 +43,10 @@ internal sealed class EmailProvisioningService(
 
         var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);
         if (string.IsNullOrEmpty(sanitizedPrefix))
-            return new EmailProvisioningResult(false, ErrorMessage: "Email prefix contains characters that cannot be transliterated to ASCII. Please choose a different prefix.");
+        {
+            logger.LogWarning("Workspace provisioning rejected an invalid username for user {UserId}", userId);
+            return new EmailProvisioningResult(false, ErrorMessage: InvalidEmailPrefixMessage);
+        }
 
         var fullEmail = $"{sanitizedPrefix}@nobodies.team";
 
@@ -193,7 +198,8 @@ internal sealed class EmailProvisioningService(
     }
 
     /// <summary>
-    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics. Null on invalid local-part chars; empty on blank input.
+    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics.
+    /// Returns null for an invalid Workspace username; empty on blank input.
     /// </summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {
@@ -232,13 +238,27 @@ internal sealed class EmailProvisioningService(
 
         var ascii = result.ToString().ToLowerInvariant();
 
-        // Validate result contains only valid ASCII email local-part characters
         foreach (var ch in ascii)
         {
             if (ch > 127 || ch <= ' ' || ch == 0x7F)
                 return null;
         }
 
-        return ascii;
+        return ascii.Length == 0 || IsValidWorkspaceUsername(ascii) ? ascii : null;
+    }
+
+    /// <summary>Checks mailbox syntax and Workspace's primary-username bounds without rewriting the value.</summary>
+    internal static bool IsValidWorkspaceUsername(string prefix)
+    {
+        // https://knowledge.workspace.google.com/admin/users/name-guidelines-for-users-and-groups
+        if (string.IsNullOrEmpty(prefix) || prefix.EnumerateRunes().Take(65).Count() > 64
+            || prefix.StartsWith('.') || prefix.EndsWith('.') || prefix.Contains("..", StringComparison.Ordinal)
+            || string.Equals(prefix, "abuse", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(prefix, "postmaster", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var email = $"{prefix}@nobodies.team";
+        return MailAddress.TryCreate(email, out var address)
+            && string.Equals(address.Address, email, StringComparison.Ordinal);
     }
 }

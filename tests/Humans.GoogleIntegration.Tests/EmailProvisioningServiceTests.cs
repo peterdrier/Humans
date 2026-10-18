@@ -43,7 +43,9 @@ public class EmailProvisioningServiceTests
     [HumansTheory]
     [InlineData("müller.garcía", "mueller.garcia")]
     [InlineData("Böhm-López", "boehm-lopez")]
-    public void SanitizeEmailPrefix_HandlesMixedGermanAndAccented(string input, string expected)
+    [InlineData("O'Neill_9-", "o'neill_9-")]
+    [InlineData("Name+tag", "name+tag")]
+    public void SanitizeEmailPrefix_NormalizesAllowedCharacters(string input, string expected)
     {
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);
     }
@@ -82,6 +84,45 @@ public class EmailProvisioningServiceTests
     public void SanitizeEmailPrefix_ReturnsNullForEmbeddedControlCharacters()
     {
         EmailProvisioningService.SanitizeEmailPrefix("te\tst").Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("name@other")]
+    [InlineData("na..me")]
+    [InlineData(".name")]
+    [InlineData("name.")]
+    [InlineData("abuse")]
+    [InlineData("postmaster")]
+    public void SanitizeEmailPrefix_RejectsInvalidWorkspaceUsernames(string prefix)
+    {
+        EmailProvisioningService.SanitizeEmailPrefix(prefix).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("a", 64, true)]
+    [InlineData("a", 65, false)]
+    [InlineData("ü", 32, true)]
+    [InlineData("ü", 33, false)]
+    public void SanitizeEmailPrefix_LimitsTheNormalizedUsername(string character, int count, bool valid)
+    {
+        var result = EmailProvisioningService.SanitizeEmailPrefix(string.Concat(Enumerable.Repeat(character, count)));
+        if (valid) result.Should().HaveLength(64);
+        else result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_RejectsInvalidUsernameBeforeWorkspaceReadsOrWrites()
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        StubTargetUser(f, userId);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bad@name", userId);
+
+        result.Success.Should().BeFalse();
+        f.WorkspaceUserService.ReceivedCalls().Should().BeEmpty();
+        f.UserEmailService.ReceivedCalls().Should().BeEmpty();
+        f.Audit.ReceivedCalls().Should().BeEmpty();
     }
 
     // --- ProvisionNobodiesEmailAsync: cross-user conflict checks ---

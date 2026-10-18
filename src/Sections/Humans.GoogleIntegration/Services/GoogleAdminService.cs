@@ -148,6 +148,11 @@ internal sealed class GoogleAdminService(
         }
 
         var normalizedPrefix = emailPrefix.Trim().ToLowerInvariant();
+        if (!EmailProvisioningService.IsValidWorkspaceUsername(normalizedPrefix))
+        {
+            logger.LogWarning("Standalone Workspace provisioning rejected an invalid username for actor {ActorUserId}", actorUserId);
+            return new WorkspaceAccountActionResult(false, ErrorMessage: EmailProvisioningService.InvalidEmailPrefixMessage);
+        }
         var fullEmail = $"{normalizedPrefix}@{NobodiesTeamDomain}";
 
         // Check DB first: reject if the address is already tied to any human in our system.
