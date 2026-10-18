@@ -178,6 +178,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Personal, barrio and moderation authoring forms require explicit start time, duration and recurrence choices; personal forms also require the all-day choice. Missing fields refuse the save before event changes or persistence. Explicit midnight, 60-minute durations and false choices remain valid. Validation summaries show field errors even when an all-day toggle hides the timing inputs.
+
 - Individual, barrio and moderation editor forms share live title/description character counters, using each input’s existing maximum length. Typing or clearing text updates the remaining count without changing the localized labels or server validation.
 
 - Admin category/venue GETs and moderation queue/edit GETs retain request cancellation through their service reads and settings, camp and submitter lookups.

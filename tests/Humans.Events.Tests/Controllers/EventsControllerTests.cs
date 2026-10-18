@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -42,6 +45,133 @@ public class EventsControllerTests
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
+
+    [HumansTheory]
+    [Xunit.InlineData("Create", "StartTime")]
+    [Xunit.InlineData("Create", "DurationMinutes")]
+    [Xunit.InlineData("Create", "IsRecurring")]
+    [Xunit.InlineData("Create", "IsAllDay")]
+    [Xunit.InlineData("Create", "validFalse")]
+    [Xunit.InlineData("Create", "validTrue")]
+    [Xunit.InlineData("Update", "StartTime")]
+    [Xunit.InlineData("Update", "DurationMinutes")]
+    [Xunit.InlineData("Update", "IsRecurring")]
+    [Xunit.InlineData("Update", "IsAllDay")]
+    [Xunit.InlineData("Update", "validFalse")]
+    [Xunit.InlineData("Update", "validTrue")]
+    [Xunit.InlineData("BarrioCreate", "StartTime")]
+    [Xunit.InlineData("BarrioCreate", "DurationMinutes")]
+    [Xunit.InlineData("BarrioCreate", "IsRecurring")]
+    [Xunit.InlineData("BarrioCreate", "validFalse")]
+    [Xunit.InlineData("BarrioCreate", "validTrue")]
+    [Xunit.InlineData("BarrioUpdate", "StartTime")]
+    [Xunit.InlineData("BarrioUpdate", "DurationMinutes")]
+    [Xunit.InlineData("BarrioUpdate", "IsRecurring")]
+    [Xunit.InlineData("BarrioUpdate", "validFalse")]
+    [Xunit.InlineData("BarrioUpdate", "validTrue")]
+    [Xunit.InlineData("AdminIndividual", "StartTime")]
+    [Xunit.InlineData("AdminIndividual", "DurationMinutes")]
+    [Xunit.InlineData("AdminIndividual", "IsRecurring")]
+    [Xunit.InlineData("AdminIndividual", "validFalse")]
+    [Xunit.InlineData("AdminIndividual", "validTrue")]
+    [Xunit.InlineData("AdminCamp", "StartTime")]
+    [Xunit.InlineData("AdminCamp", "DurationMinutes")]
+    [Xunit.InlineData("AdminCamp", "IsRecurring")]
+    [Xunit.InlineData("AdminCamp", "validFalse")]
+    [Xunit.InlineData("AdminCamp", "validTrue")]
+    public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var isModerator = route.StartsWith("Admin", StringComparison.Ordinal);
+        var isCamp = route.StartsWith("Barrio", StringComparison.Ordinal) || string.Equals(route, "AdminCamp", StringComparison.Ordinal);
+        var valid = scenario.StartsWith("valid", StringComparison.Ordinal);
+        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal);
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { LeadUserIds = [userId] };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        StubEditableGuideSettings();
+        var existing = MakeEvent(isCamp ? campId : null, userId,
+            isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested);
+        existing.DurationMinutes = 180;
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0,1";
+        _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _guide.GetCampEventAsync(existing.Id, campId, Arg.Any<CancellationToken>()).Returns(existing);
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var author = BuildController(userId);
+        Controller controller = isModerator
+            ? new EventsModerationController(_guide, _users, _camps,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsModerationController>.Instance)
+                { ControllerContext = author.ControllerContext }
+            : author;
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("/Events");
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Title"] = "Changed", ["Description"] = "Changed description",
+            ["CategoryId"] = existing.CategoryId.ToString(), ["VenueId"] = Guid.NewGuid().ToString(),
+            ["StartDate"] = "2026-08-01", ["StartTime"] = "00:00", ["DurationMinutes"] = "60",
+            ["IsRecurring"] = checkedChoices ? "true" : "false", ["RecurrenceDays"] = "0,1",
+            ["IsAllDay"] = checkedChoices && !isCamp && !isModerator ? "true" : "false", ["PriorityRank"] = "1"
+        };
+        if (!valid) fields.Remove(scenario);
+        var type = isModerator ? typeof(AdminEventFormViewModel)
+            : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = route switch
+        {
+            "Create" => await author.Create((IndividualEventFormViewModel)model),
+            "Update" => await author.Update(existing.Id, (IndividualEventFormViewModel)model),
+            "BarrioCreate" => await author.BarrioCreate(camp.Slug, (CampEventFormViewModel)model),
+            "BarrioUpdate" => await author.BarrioUpdate(camp.Slug, existing.Id, (CampEventFormViewModel)model),
+            _ => await ((EventsModerationController)controller).Update(existing.Id, (AdminEventFormViewModel)model)
+        };
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.SubmitEventAsync) or nameof(IEventManagement.UpdateAndResubmitAsync) or nameof(IEventManagement.AdminUpdateAsync)).ToList();
+        if (!valid)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+            existing.Title.Should().Be("Test Event");
+            existing.DurationMinutes.Should().Be(180);
+            existing.IsRecurring.Should().BeTrue();
+            existing.RecurrenceDays.Should().Be("0,1");
+            existing.StartAt.Should().Be(Instant.FromUtc(2026, 8, 1, 18, 0));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var saved = (Event)writes.Should().ContainSingle().Which.GetArguments()[0]!;
+            saved.IsRecurring.Should().Be(checkedChoices);
+            saved.DurationMinutes.Should().Be(checkedChoices && !isCamp && !isModerator ? 1440 : 60);
+            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData("Create")]

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Events.Domain;
 using Humans.Events.Contracts;
@@ -126,11 +127,13 @@ internal sealed class AdminEventFormViewModel
 
     [Required]
     [Display(Name = "Start Time")]
+    [BindRequired]
     public TimeSpan StartTime { get; set; }
 
     [Required]
     [Range(15, 1440)]
     [Display(Name = "Duration (minutes)")]
+    [BindRequired]
     public int DurationMinutes { get; set; } = 60;
 
     [Display(Name = "All day")]
@@ -145,6 +148,7 @@ internal sealed class AdminEventFormViewModel
     public string? Host { get; set; }
 
     [Display(Name = "Recurring")]
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     [Display(Name = "Recurrence Days")]
