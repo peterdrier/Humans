@@ -77,6 +77,35 @@ public sealed class CampaignsEmailsTests
             .And.Contain("Name {{Code}} &lt;Admin&gt;");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Hi {{Name}} / {{Code}}")]
+    [Xunit.InlineData("`{{Name}}` / `{{Code}}`")]
+    [Xunit.InlineData("```\n{{Name}} / {{Code}}\n```")]
+    public void CampaignCode_InsertedValuesRemainLiteralMarkdownData(string body)
+    {
+        const string name = "![portrait](https://example.org/tracker.png)";
+        const string code = "`[redeem](https://example.org/redirect)`";
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: code)
+            with { RecipientName = name };
+
+        var message = new CampaignsEmails().CampaignCode(request);
+
+        message.HtmlBody.Should().NotContain("<img").And.NotContain("<a ");
+        message.HtmlBody.Should().Contain(name).And.Contain(code);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("[Redeem]({{Code}})", "javascript:alert(1)", false)]
+    [Xunit.InlineData("![{{Name}}]({{Code}})", "http://example.org/tracker.png", false)]
+    [Xunit.InlineData("![{{Name}}]({{Code}})", "https://example.org/poster.png", true)]
+    public void CampaignCode_AuthoredDestinationsAreSanitizedAfterSubstitution(string body, string url, bool allowed)
+    {
+        var message = new CampaignsEmails().CampaignCode(Request(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: url));
+
+        message.HtmlBody.Contains(url, StringComparison.Ordinal).Should().Be(allowed);
+    }
+
     [HumansFact]
     public void EveryTemplateHasAPreviewSample()
     {
