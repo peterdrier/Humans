@@ -478,6 +478,37 @@ public sealed class BudgetServiceTests
             .WithMessage("*between 0 and 21*");
     }
 
+    [HumansTheory]
+    [InlineData(600)]
+    [InlineData(2000)]
+    public async Task Line_note_audit_preserves_valid_values_within_its_storage_columns(int noteLength)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var before = new string('x', noteLength);
+        var after = new string('y', noteLength);
+        var line = await _service.CreateLineItemAsync(category.Id, "Item", 100m,
+            null, before, null, 0, actor);
+
+        await _service.UpdateLineItemAsync(line.Id, "Item", 100m, null, after, null, 0, actor);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var audits = await ctx.BudgetAuditLogs.Where(a => a.EntityId == line.Id)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        var audit = audits.Single(a => string.Equals(a.FieldName, nameof(BudgetLineItem.Notes), StringComparison.Ordinal));
+        audit.OldValue.Should().Be(before);
+        audit.NewValue.Should().Be(after);
+        audit.Description.Should().Contain(before).And.Contain(after);
+        (await ctx.BudgetLineItems.SingleAsync(l => l.Id == line.Id, TestContext.Current.CancellationToken))
+            .Notes.Should().Be(after);
+
+        // InMemory does not enforce varchar bounds; the produced audit must also fit its mapped columns.
+        var mapping = ctx.Model.FindEntityType(typeof(BudgetAuditLog))!;
+        audit.OldValue!.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.OldValue))!.GetMaxLength() ?? int.MaxValue);
+        audit.NewValue!.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.NewValue))!.GetMaxLength() ?? int.MaxValue);
+        audit.Description.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.Description))!.GetMaxLength() ?? int.MaxValue);
+    }
+
     [HumansFact]
     public async Task CreateLineItemAsync_PersistsLineItem()
     {

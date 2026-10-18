@@ -129,9 +129,9 @@ Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/del
 | EntityType | string | Entity class name |
 | EntityId | Guid | PK of the changed entity |
 | FieldName | string? | Changed field (null for create/delete) |
-| OldValue | string? | Serialized old value |
-| NewValue | string? | Serialized new value |
-| Description | string | Human-readable summary |
+| OldValue | string? | Full serialized old value (`text`) |
+| NewValue | string? | Full serialized new value (`text`) |
+| Description | string | Full human-readable summary (`text`) |
 | ActorUserId | Guid? | Cross-section FK → Users/Identity; null = automation (the nightly ticketing sync job), rendered as "System" |
 | OccurredAt | Instant | |
 
@@ -219,6 +219,8 @@ Stored as string via `HasConversion<string>()`.
 - Projection refresh upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An unchanged refresh writes no audit entry.
 - The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
+- Audit values and descriptions preserve complete field changes without separate length caps;
+  editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
 - `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
