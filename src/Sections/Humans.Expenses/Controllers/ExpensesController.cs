@@ -996,7 +996,7 @@ internal sealed class ExpensesController(
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
-        model.Accounts = await BuildAccountOptionsAsync();
+        model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
         // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between
         // the member's own pre-approvals. The one the report holds stays listed in any state.
         var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();

@@ -73,6 +73,26 @@ public sealed class ExpensesControllerPreapprovalTests
         new(Guid.NewGuid(), program, null, 100m, 62900500, "acc-grant", claimBy, status);
 
     [HumansFact]
+    public async Task EditGet_AccountOptionsObserveRequestCancellation()
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, request.Token)
+            .Returns(Task.FromCanceled<IReadOnlyList<HoldedExpenseAccountOption>>(request.Token));
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        Func<Task> action = () => controller.Edit(report.Id);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Index_ListsOpenGrants_SoonestDeadlineFirst()
     {
         var later = Grant("Alpha", Today.PlusDays(30));
