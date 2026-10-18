@@ -148,6 +148,7 @@ internal sealed class HoldedClient : IHoldedClient
                 PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
                 ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
                 Tags = ReadTags(Prop(node, "tags")),
+                Payments = ReadPaymentsDetail(Prop(node, "payments_detail")),
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -159,6 +160,27 @@ internal sealed class HoldedClient : IHoldedClient
             throw new HoldedPermanentException(
                 $"Holded purchase document {documentId} could not be read.", ex);
         }
+    }
+
+    /// <summary><c>payments_detail[]</c> as the single-GET reports it (live shape, 2026-10-18):
+    /// <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or not an array reads as
+    /// no payments. An entry without an id is dropped: it can never be named in a reconcile, and the
+    /// caller's before/after diff only needs the ids that exist.</summary>
+    private static IReadOnlyList<HoldedPaymentDetailDto> ReadPaymentsDetail(JsonNode? node)
+    {
+        if (node is not JsonArray arr) return [];
+        var list = new List<HoldedPaymentDetailDto>();
+        foreach (var item in arr)
+        {
+            var id = Prop(item, "id")?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(id)) continue;
+            list.Add(new HoldedPaymentDetailDto(
+                id,
+                ReadDecimalV2(Prop(item, "amount")),
+                LocalDatePattern.Iso.Parse(Prop(item, "date")?.GetValue<string>() ?? "").Value,
+                Prop(item, "bank_id")?.GetValue<string>()));
+        }
+        return list;
     }
 
     public async Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
@@ -188,6 +210,12 @@ internal sealed class HoldedClient : IHoldedClient
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)
     {
+        // The POST answers {"status":"paid"} and nothing else, so the payment's id has to be read
+        // off the document: payments_detail before, POST, payments_detail after, and the one new
+        // entry that matches is the payment. A before-read that fails throws before anything is
+        // posted. GET /payments is not used for this — it stamps a payment dated D as (D-1)T22:00Z.
+        var before = (await GetPurchaseDocumentAsync(documentId, ct)).Payments;
+
         // v2 takes the amount as a decimal *string*; a JSON number is rejected.
         var payload = new
         {
@@ -203,31 +231,41 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        string? id = null;
+
+        // SendAsync accepted the response, so from here the payment IS posted — throwing would lose
+        // it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
+        // allocation going and names the document a human has to eyeball in Holded.
+        IReadOnlyList<HoldedPaymentDetailDto> after;
         try
         {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
+            after = (await GetPurchaseDocumentAsync(documentId, ct)).Payments;
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException
-            or FormatException or OverflowException)
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
             _logger.LogWarning(ex,
-                "Holded accepted a payment on purchase document {DocumentId} but its response could not be parsed.",
+                "Holded accepted a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed.",
                 documentId);
+            return UnconfirmedPaymentRefPrefix + documentId;
         }
 
-        // Blank counts as unreadable: an empty ref would defeat both the sentinel and the
-        // non-empty-refs gate that stops a partially booked transfer being re-booked.
-        if (!string.IsNullOrWhiteSpace(id)) return id;
+        var known = before.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var matches = after
+            .Where(p => !known.Contains(p.Id)
+                        && p.Amount == amount
+                        && p.Date == date
+                        && (string.IsNullOrWhiteSpace(treasuryId)
+                            || string.Equals(p.BankId, treasuryId, StringComparison.Ordinal)))
+            .ToList();
+        if (matches.Count == 1) return matches[0].Id;
 
-        // SendAsync already accepted the response, so the payment IS posted — throwing here would
-        // lose it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
-        // allocation going and names the document a human has to eyeball in Holded.
         _logger.LogWarning(
-            "Holded accepted a payment on purchase document {DocumentId} without a readable payment id; recording it as unconfirmed.",
-            documentId);
+            "Holded accepted a payment of {Amount} dated {Date} on purchase document {DocumentId} but payments_detail shows {Count} new matching entries (before: [{Before}], after: [{After}]); recording it as unconfirmed.",
+            amount, date, documentId, matches.Count,
+            string.Join(", ", before.Select(Describe)), string.Join(", ", after.Select(Describe)));
         return UnconfirmedPaymentRefPrefix + documentId;
+
+        static string Describe(HoldedPaymentDetailDto p) =>
+            $"{p.Id} {p.Amount.ToString("F2", CultureInfo.InvariantCulture)} {LocalDatePattern.Iso.Format(p.Date)} {p.BankId}";
     }
 
     public async Task<string> PostLedgerEntryAsync(

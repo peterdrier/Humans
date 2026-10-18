@@ -26,8 +26,9 @@ namespace Humans.Finance.Contracts;
 /// <param name="BookedByUserId">The user who booked the transfer, if booked.</param>
 /// <param name="HoldedBankMovementId">The matching Holded bank movement identifier, if reconciled.</param>
 /// <param name="ReconciledAt">When the transfer was reconciled with Holded, if reconciled.</param>
-/// <param name="HoldedPaymentRefs">Comma-joined Holded payment ids the transfer posted, if any. On a
-/// row that is not booked they are what an attempt landed before it stopped — see
+/// <param name="HoldedPaymentRefs">Comma-joined Holded payment ids the transfer posted, if any, plus
+/// an <c>entry:&lt;amount&gt;</c> token when a journal entry carried the remainder. On a row that is
+/// not booked they are what an attempt landed before it stopped — see
 /// <see cref="PostedButNotBooked"/>.</param>
 /// <param name="CandidateBankMovementDate">The candidate bank movement's date, when matched.</param>
 /// <param name="CandidateBankMovementAmount">The candidate bank movement's amount, when matched.</param>
@@ -67,6 +68,28 @@ public sealed record SepaPayoutTransferRow(
     /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
     public bool ReconcilePending =>
         IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
+
+    /// <summary>Prefix of the <see cref="HoldedPaymentRefs"/> token that records a journal-entry
+    /// remainder: <c>entry:12.50</c>. Not a Holded id — never sent in a reconcile.</summary>
+    public const string JournalEntryRefPrefix = "entry:";
+
+    /// <summary>How much of this payout was posted as a journal entry rather than document payments,
+    /// or null when none was. Holded cannot link a ledger entry to a bank line, so that share of the
+    /// line is matched by hand in Holded and the row says so.</summary>
+    public decimal? JournalEntryAmount
+    {
+        get
+        {
+            var token = (HoldedPaymentRefs ?? "").Split(',')
+                .FirstOrDefault(r => r.StartsWith(JournalEntryRefPrefix, StringComparison.Ordinal));
+            return token is not null
+                   && decimal.TryParse(token[JournalEntryRefPrefix.Length..],
+                       System.Globalization.NumberStyles.Number,
+                       System.Globalization.CultureInfo.InvariantCulture, out var amount)
+                ? amount
+                : null;
+        }
+    }
 
     /// <summary>An attempt posted payments to Holded and then stopped before the row was booked.
     /// Holded drops the tag on a purchase payment, so a retry cannot see those payments and would

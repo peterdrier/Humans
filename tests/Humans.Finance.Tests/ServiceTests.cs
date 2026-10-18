@@ -1189,6 +1189,78 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ListCreditorAccounts_CountsTheOpenDocumentsOfEachBoundContact()
+    {
+        // The figure a payout would act on: approved, still-owing documents on the bound contact —
+        // the booking's own OpenDocs filter, so drafts and paid-off documents do not count. Unbound
+        // and colliding rows get no count (nothing to pay against), and neither does a bound member
+        // with no documents at all (0, not null).
+        var ana = Guid.NewGuid();
+        var ben = Guid.NewGuid();
+        var cat = Guid.NewGuid();
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m, [40000005] = -5m, [40000006] = -6m, [40000007] = -7m });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
+            new() { Id = "c-ben", Name = "Ben", SupplierAccountNum = 40000005 },
+            new() { Id = "c-cat", Name = "Cat", SupplierAccountNum = 40000006 },
+            new() { Id = "c-dan", Name = "Dan", SupplierAccountNum = 40000007 },
+        });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+            new() { UserId = ben, HoldedContactId = "c-ben", SupplierAccountNum = 40000005, Source = CreditorContactSource.Manual },
+            new() { UserId = cat, HoldedContactId = "c-cat", SupplierAccountNum = 40000006, Source = CreditorContactSource.Manual },
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c-cat2", SupplierAccountNum = 40000006, Source = CreditorContactSource.Auto },
+        });
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>
+        {
+            OpenDoc("a1", "c-ana", 10m), OpenDoc("a2", "c-ana", 20m),
+            OpenDoc("a3", "c-ana", 0m),                   // paid off
+            OpenDoc("a4", "c-ana", 5m, draft: true),      // not approved
+            OpenDoc("b1", "c-ben", 5m),
+            OpenDoc("x1", "c-cat", 6m),
+            OpenDoc("v1", null, 9m),                      // no contact
+        });
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Single(r => r.SupplierAccountNum == 40000004).OpenDocumentCount.Should().Be(2);
+        rows.Single(r => r.SupplierAccountNum == 40000005).OpenDocumentCount.Should().Be(1);
+        rows.Single(r => r.SupplierAccountNum == 40000006).OpenDocumentCount.Should().BeNull("a collision is unpayable");
+        rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
+
+        static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
+        {
+            Id = id, DocNumber = id, ContactId = contactId, ContactName = "x", Date = FixedNow,
+            Subtotal = 10m, Tax = 0m, Total = 10m, PaymentsPending = pending, IsDraft = draft,
+        };
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_PurchaseDocumentsUnavailable_StillRendersRowsWithoutCounts()
+    {
+        var ana = Guid.NewGuid();
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
+        });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+        });
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ => throw new HoldedTransientException("down"));
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.OpenDocumentCount.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task ListCreditorAccounts_HoldedUnavailable_StillReturnsCachedRowsWithBlankNames()
     {
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())

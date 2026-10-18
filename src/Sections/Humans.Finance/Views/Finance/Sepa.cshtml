@@ -198,9 +198,13 @@
                         @if (t.Row.BookedAt is { } bookedAt)
                         {
                             <span class="badge text-bg-success">Booked</span>
-                            @if (t.Row.ReconcilePending)
+                            @if (t.Row.ReconcilePending && t.Row.JournalEntryAmount is { } entryAmount)
                             {
-                                <span class="badge text-bg-warning" title="The sweep re-issues the reconcile from the recorded payment ids every two hours. A payout that needed a journal entry cannot be reconciled by API: reconcile the line in Holded by hand.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
+                                <span class="badge text-bg-warning" title="Holded only links treasury objects to a bank line, never a ledger entry, so this share of the line is matched in Holded by hand; the sweep cannot clear it.">@entryAmount.ToEuro() of this line was posted as a journal entry and needs a manual match in Holded (@t.Row.HoldedBankMovementId)</span>
+                            }
+                            else if (t.Row.ReconcilePending)
+                            {
+                                <span class="badge text-bg-warning" title="The sweep re-issues the reconcile from the recorded payment ids every two hours.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
                             <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
                         }

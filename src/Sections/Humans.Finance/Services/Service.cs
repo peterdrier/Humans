@@ -685,6 +685,22 @@ internal sealed class Service(
             .Select(x => ToBinding(x.Binding))
             .ToList();
 
+        // How many documents a payout to each bound contact would pay against — the same OpenDocs
+        // filter the booking applies, so the figure is what the booking will see. One list call per
+        // page render; a vendor failure costs the column, not the page.
+        Dictionary<string, int>? openDocsByContact = null;
+        try
+        {
+            openDocsByContact = OpenDocs(await client.ListPurchaseDocumentsAsync(ct))
+                .Where(d => !string.IsNullOrEmpty(d.ContactId))
+                .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts.");
+        }
+
         // Accounts with ledger activity, plus bound ones with no lines yet, plus every Holded creditor
         // contact — a first-time submitter's account exists before it has any journal activity. The
         // mirror spans the whole chart, so its balances are range-filtered here.
@@ -713,7 +729,10 @@ internal sealed class Service(
                     Bindings: bound ?? [],
                     IbanMasked: string.IsNullOrWhiteSpace(contact?.Iban)
                         ? null
-                        : IbanFormatter.Mask(contact.Iban));
+                        : IbanFormatter.Mask(contact.Iban),
+                    OpenDocumentCount: bound is { Count: 1 } && openDocsByContact is not null
+                        ? openDocsByContact.GetValueOrDefault(bound[0].HoldedContactId)
+                        : null);
             }).ToList();
 
         // Accounts but not one name is the signature of an unusable contact list, which leaves the bind
@@ -1284,6 +1303,12 @@ internal sealed class Service(
 
     /// <summary>Below half a cent is zero at two decimal places.</summary>
     private const decimal CentEpsilon = 0.005m;
+
+    /// <summary>How many payment ids a reconcile call falls back to per request once Holded has
+    /// refused the whole list. A member with 100+ open documents is paid in one transfer, so one
+    /// bank line can name that many payments, and nothing about the reconcile endpoint has been
+    /// exercised above a handful — the one-call form goes first, and this is the fallback.</summary>
+    private const int ReconcileChunkSize = 50;
 
     /// <summary>Serialises every SEPA booking on this server. The row's <c>BookedAt</c> is read
     /// before the Holded postings and written after them, so without this two concurrent bookings of
@@ -2114,7 +2139,13 @@ internal sealed class Service(
         // ── Step 8: persist, then reconcile, then stamp. Deliberately not the other order — losing
         // the local save after Holded took the money is nobodies-collective/Humans#1185 itself.
         var now = clock.GetCurrentInstant();
-        var refs = paidDocs.Count == 0 ? null : string.Join(",", paidDocs.Select(p => p.Ref));
+        // The journal remainder rides along as an `entry:<amount>` token: not a Holded id, never
+        // sent in a reconcile, but what lets the row say how much of the line a human has to match.
+        var refTokens = paidDocs.Select(p => p.Ref).ToList();
+        if (entryRef is not null)
+            refTokens.Add(SepaPayoutTransferRow.JournalEntryRefPrefix
+                          + entryAmount.ToString("F2", CultureInfo.InvariantCulture));
+        var refs = refTokens.Count == 0 ? null : string.Join(",", refTokens);
         try
         {
             await repo.SaveSepaTransferBookingAsync(transfer.Id, now, actorUserId, movement.Id, null, refs, ct);
@@ -2324,16 +2355,28 @@ internal sealed class Service(
     /// a journal remainder, an unconfirmed payment, a resumed or re-issued booking — it only stamps
     /// when Holded then reports the line <c>reconciled</c>, since what was left out can leave it
     /// <c>partial</c>. Anything else leaves the booking standing and the row "reconcile pending",
-    /// which the page shows and the sweep re-issues.</summary>
+    /// which the page shows and the sweep re-issues.
+    /// The ids go in one call first; a long list Holded refuses outright is re-sent in chunks of
+    /// <see cref="ReconcileChunkSize"/> against the same line, and after chunks the line is always
+    /// re-read — only Holded saying <c>reconciled</c> stamps it.</summary>
     private async Task<Instant?> TryReconcileAsync(
         string movementId, LocalDate movementDate, List<HoldedReconcileDocumentRef> docs,
         bool incomplete, CancellationToken ct)
     {
         if (docs.Count == 0) return null;
 
+        var chunked = false;
         try
         {
             await client.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, docs, ct);
+        }
+        catch (HoldedPermanentException ex) when (docs.Count > ReconcileChunkSize)
+        {
+            // A refusal moved no money and linked nothing, so the same ids can go again, shorter.
+            logger.LogWarning(ex,
+                "Holded refused the {Count}-payment reconcile of bank movement {MovementId} in one call; "
+                + "re-sending it in chunks of {Chunk}.", docs.Count, movementId, ReconcileChunkSize);
+            chunked = true;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -2341,27 +2384,54 @@ internal sealed class Service(
             return null;
         }
 
-        return incomplete
-            ? await StampIfReconciledAsync(movementId, movementDate, ct)
+        if (chunked)
+        {
+            var sent = 0;
+            foreach (var chunk in docs.Chunk(ReconcileChunkSize))
+            {
+                try
+                {
+                    await client.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, chunk, ct);
+                }
+                catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+                {
+                    logger.LogWarning(ex,
+                        "Holded refused chunk {Chunk} of the reconcile of bank movement {MovementId} after "
+                        + "{Sent} of {Count} payment(s) went through; the transfer stays reconcile pending "
+                        + "and the sweep re-issues the full list.",
+                        sent / ReconcileChunkSize + 1, movementId, sent, docs.Count);
+                    return null;
+                }
+                sent += chunk.Length;
+            }
+        }
+
+        return incomplete || chunked
+            ? await StampIfReconciledAsync(movementId, movementDate, docs, incomplete, ct)
             : clock.GetCurrentInstant();
     }
 
     /// <summary>The reconcilable refs in a row's comma-joined payment ids: an <c>unconfirmed:</c>
-    /// sentinel is not a Holded id and is left out, never replaced by the document id.</summary>
+    /// sentinel is not a Holded id and is left out, never replaced by the document id; the
+    /// <c>entry:</c> token that records a journal remainder is not a treasury object and is left out
+    /// too — Holded cannot link a ledger entry to a bank line.</summary>
     private static List<HoldedReconcileDocumentRef> PaymentRefs(string? joined) =>
         (joined ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(r => !r.StartsWith("unconfirmed:", StringComparison.Ordinal))
+            .Where(r => !r.StartsWith("unconfirmed:", StringComparison.Ordinal)
+                        && !r.StartsWith(SepaPayoutTransferRow.JournalEntryRefPrefix, StringComparison.Ordinal))
             .Select(r => new HoldedReconcileDocumentRef(r, HoldedReconcileDocumentType.Payment))
             .ToList();
 
-    /// <summary>The stamp for a reconcile that left a journal remainder out. That remainder is part of
-    /// this very line, so Holded accepting the rest can leave the line <c>partial</c>; stamping
-    /// ReconciledAt there would audit it as reconciled and drop the row out of the sweep's pending
-    /// re-check, hiding the unmatched remainder. ReconciledAt means Holded says <c>reconciled</c> — so
-    /// ask it; anything else (including a feed the re-read cannot get) stays reconcile pending.</summary>
+    /// <summary>The stamp for a reconcile that could not be trusted on acceptance alone: one that left
+    /// a journal remainder out, or went through in chunks. ReconciledAt means Holded says
+    /// <c>reconciled</c> — so ask it; anything else (including a feed the re-read cannot get) stays
+    /// reconcile pending. A line still <c>partial</c> after every euro was named
+    /// (<paramref name="incomplete"/> false) is a real finding and is logged as one, with what was
+    /// sent; a remainder the run knew it left out is only noted.</summary>
     private async Task<Instant?> StampIfReconciledAsync(
-        string movementId, LocalDate movementDate, CancellationToken ct)
+        string movementId, LocalDate movementDate, List<HoldedReconcileDocumentRef> docs,
+        bool incomplete, CancellationToken ct)
     {
         HoldedBankMovementDto? line;
         try
@@ -2380,10 +2450,18 @@ internal sealed class Service(
 
         if (line is not null && IsReconciled(line)) return clock.GetCurrentInstant();
 
-        logger.LogInformation(
-            "Holded took the reconcile for bank movement {MovementId} but the line reads {Status}; the "
-            + "transfer stays reconcile pending.", movementId,
-            line?.Status ?? "gone");
+        if (line is not null && !incomplete && !IsUntouched(line))
+            logger.LogWarning(
+                "Holded took every payment of bank movement {MovementId} ({Amount}) but the line reads "
+                + "{Status}; the {Count} id(s) sent: {Ids}. The transfer stays reconcile pending — "
+                + "settle the line in Holded by hand.",
+                movementId, Euros(line.Amount), line.Status, docs.Count,
+                string.Join(",", docs.Select(d => d.DocumentId)));
+        else
+            logger.LogInformation(
+                "Holded took the reconcile for bank movement {MovementId} but the line reads {Status}; the "
+                + "transfer stays reconcile pending.", movementId,
+                line?.Status ?? "gone");
         return null;
     }
 

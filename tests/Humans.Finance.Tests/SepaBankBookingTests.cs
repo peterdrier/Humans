@@ -11,6 +11,7 @@ using Humans.Holded.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -52,11 +53,12 @@ public class SepaBankBookingTests
     private readonly SepaOptions _sepa = new();
     private readonly Guid _userId = Guid.NewGuid();
 
-    private Service MakeService() => new(
+    private Service MakeService() => MakeService(NullLogger<Service>.Instance);
+
+    private Service MakeService(ILogger<Service> logger) => new(
         _repo, _client, _budget, _holded, _clock, _cache, _audit,
         Substitute.For<IUserService>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
-        TestFinanceEmails.Create(), Options.Create(_sepa),
-        NullLogger<Service>.Instance);
+        TestFinanceEmails.Create(), Options.Create(_sepa), logger);
 
     public SepaBankBookingTests()
     {
@@ -279,8 +281,10 @@ public class SepaBankBookingTests
                 || string.Equals(x.DocumentId, "d1", StringComparison.Ordinal)
                 || string.Equals(x.DocumentId, "e-1", StringComparison.Ordinal))),
             Arg.Any<CancellationToken>());
+        // The €20 remainder is recorded as an `entry:` token next to the payment id — never sent in
+        // a reconcile, but what lets the row say how much a human has to match in Holded.
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            TransferId, FixedNow, actor, MovementId, null, "pay-d1", Arg.Any<CancellationToken>());
+            TransferId, FixedNow, actor, MovementId, null, "pay-d1,entry:20.00", Arg.Any<CancellationToken>());
         // €20 of the line went to the journal entry, which the reconcile could not name: Holded
         // reads the line `pending` on the re-read, so the row stays reconcile pending and says why.
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
@@ -310,6 +314,178 @@ public class SepaBankBookingTests
             Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_WithAHundredPayments_SendsTheReconcileInOneCall_AndStampsOnAcceptance()
+    {
+        // Nothing about the endpoint has been exercised above a handful of ids, so the one-call form
+        // goes first; when Holded takes it, acceptance is the reconcile as for any short list.
+        SeedTransfer(1000m);
+        SeedRows(Row(TransferId, _userId, amount: 1000m));
+        SeedMovements(Movement(amount: -1000m));
+        SeedOwed(1000m);
+        SeedOpenDocs(Enumerable.Range(1, 100).Select(i => Doc("d" + i, 10m, i)).ToArray());
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _client.Received(1).ReconcileBankMovementAsync(
+            "treasury-1", MovementId,
+            Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d => d.Count == 100),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("reconciled", true)]
+    [InlineData("partial", false)]
+    public async Task Booking_LongListHoldedRefuses_FallsBackToChunks_AndStampsOnlyWhenTheLineReadsReconciled(
+        string statusAfter, bool stamped)
+    {
+        // Holded 4xxs the 120-id call. A refusal links nothing, so the same ids go again in chunks of
+        // 50 against the same line; after chunks only Holded saying `reconciled` stamps the row.
+        SeedTransfer(1200m);
+        SeedRows(Row(TransferId, _userId, amount: 1200m));
+        SeedOwed(1200m);
+        SeedOpenDocs(Enumerable.Range(1, 120).Select(i => Doc("d" + i, 10m, i)).ToArray());
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(amount: -1200m, status: reads++ == 0 ? "pending" : statusAfter)]);
+        var sent = new List<int>();
+        _client.ReconcileBankMovementAsync(
+                "treasury-1", MovementId, Arg.Do<IReadOnlyList<HoldedReconcileDocumentRef>>(d => sent.Add(d.Count)),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyList<HoldedReconcileDocumentRef>>().Count > 50
+                ? Task.FromException(new HoldedPermanentException(400, "too many", "Holded refused"))
+                : Task.CompletedTask);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        sent.Should().Equal(120, 50, 50, 20);
+        await _repo.Received(stamped ? 1 : 0).MarkSepaTransferReconciledAsync(
+            TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_AChunkIsRefused_LeavesTheRowPending_ForTheSweepToReissue()
+    {
+        SeedTransfer(600m);
+        SeedRows(Row(TransferId, _userId, amount: 600m));
+        SeedMovements(Movement(amount: -600m));
+        SeedOwed(600m);
+        SeedOpenDocs(Enumerable.Range(1, 60).Select(i => Doc("d" + i, 10m, i)).ToArray());
+        var calls = 0;
+        _client.ReconcileBankMovementAsync(
+                "treasury-1", MovementId, Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => ++calls == 2
+                ? Task.CompletedTask
+                : Task.FromException(new HoldedPermanentException(400, "no", "Holded refused")));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        // Booked — the money moved — but not stamped: the second chunk never went through.
+        result.Succeeded.Should().BeTrue();
+        calls.Should().Be(3);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, null,
+            Arg.Is<string?>(r => r!.Split(',', StringSplitOptions.None).Length == 60),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_LineStillPartialAfterEveryPaymentWasNamed_IsLoggedAsAWarning()
+    {
+        // No remainder, no sentinel: every euro of the line was named, and Holded still reads the
+        // line `partial`. That is a real finding, not a known limit — a Warning naming the line,
+        // the amount and the ids sent, and the row stays pending for a human.
+        SeedTransfer(600m);
+        SeedRows(Row(TransferId, _userId, amount: 600m));
+        SeedOwed(600m);
+        SeedOpenDocs(Enumerable.Range(1, 60).Select(i => Doc("d" + i, 10m, i)).ToArray());
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(amount: -600m, status: reads++ == 0 ? "pending" : "partial")]);
+        _client.ReconcileBankMovementAsync(
+                "treasury-1", MovementId, Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyList<HoldedReconcileDocumentRef>>().Count > 50
+                ? Task.FromException(new HoldedPermanentException(400, "too many", "Holded refused"))
+                : Task.CompletedTask);
+        var logger = new CapturingLogger<Service>();
+
+        var result = await MakeService(logger).BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Warning
+            && e.Message.Contains(MovementId, StringComparison.Ordinal)
+            && e.Message.Contains("600.00 EUR", StringComparison.Ordinal)
+            && e.Message.Contains("partial", StringComparison.Ordinal)
+            && e.Message.Contains("pay-d1,", StringComparison.Ordinal)
+            && e.Message.Contains("pay-d60", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task Sweep_ReconcilePendingRow_WithALongList_ReissuesThroughTheSameChunkedPath()
+    {
+        // The sweep's re-issue is the same call as the booking's: one call first, chunks when Holded
+        // refuses the long list, stamp only on `reconciled`.
+        var refs = string.Join(",", Enumerable.Range(1, 70).Select(i => "pay-" + i));
+        SeedRows(Row(TransferId, _userId, amount: 700m, bookedAt: FixedNow, movementId: MovementId, paymentRefs: refs));
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(amount: -700m, status: reads++ == 0 ? "pending" : "reconciled")]);
+        var sent = new List<int>();
+        _client.ReconcileBankMovementAsync(
+                "treasury-1", MovementId, Arg.Do<IReadOnlyList<HoldedReconcileDocumentRef>>(d => sent.Add(d.Count)),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyList<HoldedReconcileDocumentRef>>().Count > 50
+                ? Task.FromException(new HoldedPermanentException(400, "too many", "Holded refused"))
+                : Task.CompletedTask);
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        sent.Should().Equal(70, 50, 20);
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_ReconcilePendingRow_NeverSendsTheJournalEntryToken()
+    {
+        SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1,entry:20.00"));
+        SeedMovements(Movement());
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _client.Received(1).ReconcileBankMovementAsync(
+            "treasury-1", MovementId,
+            Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d =>
+                d.Count == 1 && string.Equals(d[0].DocumentId, "pay-1", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void Row_JournalEntryAmount_ReadsTheEntryToken_AndIsNullWithoutOne()
+    {
+        Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1,entry:20.00")
+            .JournalEntryAmount.Should().Be(20.00m);
+        Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1,unconfirmed:d2")
+            .JournalEntryAmount.Should().BeNull();
+        Row(TransferId, _userId).JournalEntryAmount.Should().BeNull();
     }
 
     [HumansFact]
@@ -2023,14 +2199,14 @@ public class SepaBankBookingTests
             .Returns(lines.ToList());
 
     private static HoldedPurchaseDocListItemDto Doc(
-        string id, decimal pending, int dayOfMonth, string contactId = "c1") =>
+        string id, decimal pending, int day, string contactId = "c1") =>
         new()
         {
             Id = id,
             DocNumber = id.ToUpperInvariant(),
             ContactId = contactId,
             ContactName = "Ana Ruiz",
-            Date = Instant.FromUtc(2026, 4, dayOfMonth, 0, 0),
+            Date = Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1),
             Subtotal = pending,
             Tax = 0m,
             Total = pending,
