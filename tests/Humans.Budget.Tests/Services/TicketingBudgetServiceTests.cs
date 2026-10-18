@@ -365,6 +365,9 @@ public class TicketingBudgetServiceTests
         _budgetService.RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>())
             .Returns(4);
 
+        _budgetService.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(
+            new BudgetYearDetail(yearId, "2026", "Budget", BudgetYearStatus.Active, false,
+                [new BudgetGroupDetail(groupId, yearId, "Ticketing", 0, false, false, true, null, [])]));
         var sut = CreateSut();
 
         var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, Xunit.TestContext.Current.CancellationToken);

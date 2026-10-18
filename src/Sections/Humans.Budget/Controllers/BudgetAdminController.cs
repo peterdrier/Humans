@@ -578,6 +578,7 @@ internal sealed class BudgetAdminController(
                     form.StripeFeeFixed,
                     form.TicketTailorFeePercent),
                 user.Id);
+            if (count is null) return NotFound();
             SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
         }
         catch (Exception ex)

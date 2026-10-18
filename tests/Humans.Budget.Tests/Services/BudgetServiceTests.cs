@@ -399,6 +399,46 @@ public sealed class BudgetServiceTests
         if (!viewerExists || omitted.Length > 0) budget.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("missingYear")]
+    [InlineData("foreignYear")]
+    [InlineData("missingGroup")]
+    [InlineData("valid")]
+    public async Task Projection_update_validates_group_year_before_parameters_or_forecasts(string scenario)
+    {
+        var seeded = await SeedTicketingYearAsync();
+        var other = await SeedCategoryAsync(isTicketingGroup: true);
+        var valid = string.Equals(scenario, "valid", StringComparison.Ordinal);
+        var yearId = string.Equals(scenario, "missingYear", StringComparison.Ordinal) ? Guid.Empty
+            : string.Equals(scenario, "foreignYear", StringComparison.Ordinal) ? other.BudgetGroup!.BudgetYearId : _yearId;
+        var groupId = string.Equals(scenario, "missingGroup", StringComparison.Ordinal) ? Guid.NewGuid() : seeded.GroupId;
+        var (controller, _, _) = CreateAdminController(true, _service);
+
+        var result = await controller.UpdateTicketingProjection(groupId, new TicketingProjectionUpdateForm
+        {
+            BudgetYearId = yearId, StartDate = new DateTime(2026, 4, 1), EventDate = new DateTime(2026, 4, 7),
+            InitialSalesCount = 10, DailySalesRate = 5m, AverageTicketPrice = 120m, VatRate = 21,
+            StripeFeePercent = 1.5m, StripeFeeFixed = 0.3m, TicketTailorFeePercent = 0.5m
+        });
+
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var saved = await db.TicketingProjections.AsNoTracking().SingleAsync(p => p.Id == seeded.ProjectionId, TestContext.Current.CancellationToken);
+        saved.InitialSalesCount.Should().Be(valid ? 10 : 0);
+        if (!valid)
+        {
+            (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+            result.Should().BeOfType<NotFoundResult>();
+            controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            saved.DailySalesRate.Should().Be(5m);
+            saved.AverageTicketPrice.Should().Be(120m);
+            controller.TempData.ContainsKey("SuccessMessage").Should().BeTrue();
+        }
+    }
+
     private static async Task BindMissingParameterAsync(Controller controller, string actionName, string field)
     {
         var registrations = new ServiceCollection().AddLogging();
@@ -425,6 +465,9 @@ public sealed class BudgetServiceTests
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetManagement>();
+        budget.GetYearByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(
+            new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false,
+                [new BudgetGroupDetail(_yearId, _yearId, "Ticketing", 0, false, false, true, null, [])]));
         var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
@@ -436,7 +479,7 @@ public sealed class BudgetServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
         };
         var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
-            new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
+            new TicketingBudgetService(tickets, budgetOverride ?? budget, Clock, NullLogger<TicketingBudgetService>.Instance),
             Clock, users, Substitute.For<IHoldedFinanceService>(),
             NullLogger<BudgetAdminController>.Instance)
         {
