@@ -48,7 +48,7 @@ The section also captures the data that makes scheduling work: your shift prefer
 | Team shift admin | `/Teams/{slug}/Shifts` | Coordinators: manage rotas and shifts for a department |
 | Event settings | `/Settings#event` (calendar) and `/Settings#shifts` (browsing toggle, volunteer cap) | Admin: configure event dates, timezone, early-entry capacity, and shift-specific knobs |
 
-Your dashboard also surfaces shift info — upcoming signups, or a guided discovery card with urgent understaffed shifts if you have none.
+Your dashboard also surfaces shift info — upcoming signups, or a guided discovery card with urgent understaffed shifts if you have none. Between events, when an admin switches the site to off-season, the shift cards give way to a quiet "Season wrapped" note until the next event is published.
 
 ## As a Volunteer
 

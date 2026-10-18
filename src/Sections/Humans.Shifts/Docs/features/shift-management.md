@@ -106,6 +106,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Urgent understaffed shifts are highlighted within the discovery card
 - Clear CTAs to browse all shifts and view own shift schedule
 - When user has existing signups, the standard shift signups component and urgent shifts list are shown instead
+- When the active event settings are switched off-season, the discovery card and the Shifts/Teams/Camps action cards give way to a quiet "Season wrapped" note for volunteers
 
 ### US-25.8: Rota Tags and Volunteer Preferences
 **As a** coordinator
@@ -233,13 +234,13 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** Controller action is gated by `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` → Admin, NoInfoAdmin, VolunteerCoordinator. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
+**Authorization:** The controller is gated by `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]`; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftDashboardAccess` → Admin, NoInfoAdmin, VolunteerCoordinator. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 
-- `dashboard-overview:{eventSettingsId}`
-- `dashboard-coordinator-activity:{eventSettingsId}`
-- `dashboard-trends:{eventSettingsId}:{window}`
+- `dashboard-overview:{eventSettingsId}:{period|all}`
+- `dashboard-coordinator-activity:{eventSettingsId}:{period|all}`
+- `dashboard-trends:{eventSettingsId}:{window}:{period|all}`
 
 At our small scale, the dashboard view hits the cache on most loads and the underlying aggregation queries only run on first visit per coordinator per 5 minutes. Signup mutations evict the event's dashboard aggregates after a successful save, so approving, refusing, bailing, or creating signups is reflected on the next dashboard read.
 

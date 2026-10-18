@@ -44,7 +44,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 - Columns: Department name (linked to ShiftAdmin if the team has a slug), Confirmed, No-Shows, Completion badge, Set-Up badge, Event badge, Strike badge
 - Completion badge uses: green ≥ 90%, amber ≥ 75%, red < 75% (consistent across department-level column and all period columns)
 - Period badge shows completion percentage; dash ("—") when the period had no Confirmed or NoShow signups
-- Departments are sorted alphabetically (case-insensitive ordinal) — applied at the controller, not the service
+- Departments are sorted alphabetically (ordinal) — applied at the controller, not the service
 - Same AdminOnly / hidden rota exclusions as US-PES.1
 
 ### US-PES.3: Dashboard Access Is Gated

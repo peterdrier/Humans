@@ -124,7 +124,7 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 
 ## Architecture
 
-`ISearchService` is a thin orchestrator in the Application layer. It owns no tables, has no repository, and reaches every other section through public service interfaces only — no direct repository fan-out, no cross-section table access. Per design-rules §6, the section that owns a table owns the query against it; the orchestrator just merges and ranks within each type bucket.
+`ISearchService` is a thin orchestrator (the Search section, `src/Sections/Humans.Search`). It owns no tables, has no repository, and reaches every other section through public service interfaces only — no direct repository fan-out, no cross-section table access. Per design-rules §6, the section that owns a table owns the query against it; the orchestrator just merges and ranks within each type bucket.
 
 ```
 SearchController

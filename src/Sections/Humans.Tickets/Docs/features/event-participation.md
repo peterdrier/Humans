@@ -20,7 +20,7 @@ Track yearly event participation status for each human, enabling self-service op
 ## User Stories
 
 ### As a human, I want to declare I'm not attending this year
-- Dashboard ticket widget shows "Not attending this year" button when no ticket linked
+- Dashboard ticket widget shows "Not attending this year" button when no ticket linked (the widget is hidden while the active event is off season)
 - Clicking sets participation status to NotAttending
 - Can undo the declaration to return to default state
 

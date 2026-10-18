@@ -21,22 +21,42 @@ Repository: `IExpenseRepository`.
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
 Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
-`IUserService`, `IUserEmailService`, `IEmailService`, `IAuditLogService`, `IHoldedClient`,
-`IHoldedFinanceService` (Finance section — creditor balance exposure to
+`IUserService`, `IUserWrite` (`SetProfileIbanAsync` — the submitter's IBAN is written
+through the owning Users service), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
+`IHoldedClient`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
-account a report books to and the budget category it maps to). Implements
-`IUserDataContributor`. No `IMemoryCache`.
+account a report books to and the budget category it maps to), `IPreapprovalService`
+(Preapprovals section — `GetGrantAsync` / `ListClaimableForUserAsync` for the grant a report
+files against) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
+grant's lifecycle follows the report's), plus the section's own `ExpensesEmails` builder,
+`IClock` and `IOptions<TravelReimbursementConfig>`. Implements `IUserDataContributor`. No
+`IMemoryCache`.
 
-### ExpenseReportBackgroundProcessor (Scoped)
+### ExpenseReportBackgroundProcessor (Scoped — `IExpenseReportBackgroundProcessor`)
 
-`ExpenseHoldedPublisher` is an internal application service constructed by `ExpenseReportBackgroundProcessor`.
-It uses the same `IExpenseRepository` for contact/document links, pushed-attachment stamps and
-outbox completion; Finance owns creditor identity and Holded owns the vendor API. It reads users
-through `IUserService`. Selection, retry/backoff, permanent-failure audit and the configured-key
-gate belong to `ExpenseReportBackgroundProcessor`, registered under the existing
-`IExpenseReportBackgroundProcessor` job contract. It uses `IExpenseRepository` to read reports
-and update outbox events, with `IFileStorage`, `IUserService`, `IHoldedClient`,
-`IHoldedFinanceService`, `IHoldedFinanceWrite` and `IAuditLogService` for publication.
+Repository: `IExpenseRepository` (reads approved reports, updates
+`HoldedExpenseOutboxEvents`). Selection, retry/backoff, permanent-failure audit and the
+configured-key gate live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
+calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IHoldedFinanceService`,
+`IHoldedFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
+
+### ExpenseHoldedPublisher (internal — `IApplicationService`, constructed by `ExpenseReportBackgroundProcessor`)
+
+Not DI-registered: the processor news it up with its own dependencies. The resumable Holded
+document + attachment conversation for one approved report. Repository: `IExpenseRepository`
+(contact/document links, pushed-attachment stamps, outbox completion).
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R/W (submitter's reports; Holded contact link) |
+| ExpenseLines | W (per-line Holded document id) |
+| ExpenseAttachments | W (pushed-attachment stamps) |
+| HoldedExpenseOutboxEvents | W (completion) |
+
+Cross-section calls via `IFileStorage`, `IUserService` (submitter, survivor after merge),
+`IHoldedClient` (Holded section — vendor API), `IHoldedFinanceService` / `IHoldedFinanceWrite`
+(Finance section owns creditor identity and the contact binding), `IAuditLogService`. No
+`IMemoryCache`.
 
 Expense lines can be travel reimbursements (mileage / per-diem; an
 `ExpenseLineType` column on `ExpenseLines` — same table, no new DbSet).

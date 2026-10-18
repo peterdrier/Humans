@@ -271,8 +271,8 @@ Unverified import replacements run deletion and provisioning in one serializable
 ### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
-`IUserManagement`, `IUserEmailService`, `ITeamService`,
-`IRoleAssignmentService`, `IGdprService` (runs every section's
+`IUserManagement`, `IUserEmailService`, `ITeamWrite`,
+`IRoleAssignmentWrite`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
 `IEmailService` (messages built by `UsersEmails`). Invalidates
 `IUserInfoInvalidator`, `IRoleAssignmentClaimsCacheInvalidator`,
@@ -313,8 +313,8 @@ each section's service implements `IUserMerge` and handles its own
 owned-table reassignment, so `AccountMergeService` does not inject other
 sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
-`IUserDataContributor`. Cross-section calls via `IUserService`,
-`IRoleAssignmentService`, `INotificationService`, `IAuditLogService`,
+`IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
+calls via `IRoleAssignmentWrite`, `INotificationService`, `IAuditLogService`,
 `IUserInfoInvalidator`, `IActiveTeamsCacheInvalidator`,
 `IConsentCacheInvalidator`, plus the `IUserMerge` aggregator.
 

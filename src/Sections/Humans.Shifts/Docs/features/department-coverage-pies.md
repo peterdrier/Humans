@@ -36,7 +36,7 @@ Volunteers browsing `/Shifts` see a long flat list of shifts grouped by departme
 **So that** filtering by department is one click instead of opening the dropdown
 
 **Acceptance Criteria:**
-- Click on a pie POSTs the existing `?departmentId=…` query to `/Shifts`
+- Click on a pie GETs the existing `?departmentId=…` query to `/Shifts`
 - Selected pie renders with a gold outline + `vellum` background
 - Clicking the selected pie submits with empty `departmentId`, clearing the filter
 - Period (`?period=…`) and date-range (`?fromDate=…&toDate=…`) filters are preserved across pie clicks

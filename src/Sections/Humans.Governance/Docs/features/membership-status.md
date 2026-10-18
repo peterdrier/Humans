@@ -50,7 +50,6 @@ Pending Deletion → (30 days) → Deleted
 
 `IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
 
-- **Admin dashboard** (`AdminDashboardService`) — shows count per category
 - **`PreferredLanguageCardViewComponent`** (`Humans.Users`) — the per-status language breakdown
 
 `SystemTeamSyncJob` does not consume this partition. `SyncVolunteersTeamAsync` computes Volunteers eligibility directly (`HasRequiredNameFields && !IsSuspended && RejectedAt is null`, then `GetUsersWithAllRequiredConsentsForTeamAsync`).

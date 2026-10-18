@@ -33,7 +33,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **Edit profile** (`/Profile/Me/Edit`) — update personal info, contact fields, picture, birthday
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
 - **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning (a Shifts page under the profile URL)
-- **Communication preferences** (`/Profile/Me/CommunicationPreferences`) — per-category email and in-app preferences (the older `/Profile/Me/Notifications` URL still works as a permanent redirect)
+- **Communication preferences** (`/Profile/Me/CommunicationPreferences`) — per-category email preferences (the older `/Profile/Me/Notifications` URL still works as a permanent redirect)
 - **Privacy** (`/Profile/Me/Privacy`) — data export and account deletion
 - **Outbox** (`/Profile/Me/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
@@ -72,7 +72,7 @@ Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be
 
 ### Set communication preferences
 
-Go to `/Profile/Me/CommunicationPreferences`. Categories — Facilitated Messages, Ticketing, Volunteer Updates, Team Updates, Governance, and Marketing — can each be toggled for email and in-app alerts. System and Campaign Codes are always on and cannot be opted out of. If you have a matched ticket order for the current year, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
+Go to `/Profile/Me/CommunicationPreferences`. Categories — Facilitated Messages, Ticketing, Volunteer Updates, Team Updates, Governance, and Marketing — can each be switched on or off for email. System and Campaign Codes are always on and cannot be opted out of. If you have a matched ticket order for the current year, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
 
 ### Set shift preferences
 

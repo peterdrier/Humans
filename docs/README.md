@@ -35,6 +35,8 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
 | [Global Search (`/Search`)](features/global/global-search.md) | Single-entry magnifying-glass search that fans out across humans, teams, camps, shifts, and (when `Features:Events` is on) approved events |
 | [Section Activation](features/global/section-activation.md) | `ISection.IsActive` defaults to true so every section assembly ships active by default; a section opts itself out by overriding it, with no configuration key or name list |
+| [Pre-approvals](features/global/preapprovals.md) | Programs of pre-authorized reimbursements: event-scoped pools with per-person grants that become capped, pre-booked expense reports with a claim deadline |
+| [Workgroup Budgets](features/global/workgroup-budget.md) | A budget amount and dedicated Holded expense account per budgeted workgroup, with Finance owning account creation and the managed-account registry |
 | [F-13: Drive Activity Monitoring](../src/Sections/Humans.Monitor/Docs/features/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
 | [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
 | [Google Removal Notifications](../src/Sections/Humans.GoogleIntegration/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |

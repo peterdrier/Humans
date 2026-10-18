@@ -25,9 +25,11 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 
 ### Start a report
 
-Give the report an optional **Subject** (up to 500 characters) so you and the reviewers can recognize it later.
+Go to `/Expenses/New` to start a draft. Pick the account the spending books to — one of the budget categories or another account — and give the report a **Subject** (the project name, up to 500 characters); the subject is required before you can submit. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**. A report with no items can't be submitted.
 
-Go to `/Expenses/New` to start a draft. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**. A report with no items can't be submitted.
+### File against a pre-approval
+
+If the association pre-approved your spending (a creativity grant or a travel allowance), the open pre-approvals are listed on **My expenses** and on `/Preapprovals`. Use **File expense** next to one, or pick it on the New form: the account and the payout cap come from the pre-approval, and the report goes straight to Finance without a coordinator's sign-off. You have to submit before the pre-approval's claim-by date; a report sent back to you for fixes may still be resubmitted after it. Withdrawing a report before it's approved frees the pre-approval up again.
 
 ### Add items and attach receipts
 
@@ -43,7 +45,7 @@ Your IBAN has to be on your profile before you can submit, since that's how you 
 
 ### Submit and track
 
-Once every purchase item has a receipt and your IBAN is set, submit. You can withdraw a report from its detail page once it's submitted, whether it's still waiting, coordinator-endorsed or already approved. A draft has no withdraw; just edit it or leave it. Withdrawn is final. A report moves through these stages:
+Once every purchase item has a receipt and your IBAN is set, submit. You can withdraw a report from its detail page once it's submitted, whether it's still waiting, coordinator-endorsed or already approved. A draft has no withdraw; just edit it or leave it. If a reviewer rejects a report it comes back to you as a draft: you can edit, replace or remove individual items and resubmit, there's no need to start over. A reviewer can also **decline** a single item with a reason — it stays on the report with the reason shown, but doesn't count toward your total; replace its file or remove the item to clear the decline. Withdrawn is final. A report moves through these stages:
 
 - **Draft** — you're still building it
 - **Submitted** — waiting for a coordinator's sign-off (if its category has one) or for Finance
@@ -61,7 +63,7 @@ Once one of your reports has reached the org's accounting system, **My expenses*
 
 When you set a cap, the original receipts total remains visible while the lower cap becomes the payable amount.
 
-If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. This step only happens when the report's category actually has a coordinator assigned.
+If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. While a report is waiting for you, you can also **decline** an individual item (with a reason) or undo that decline. This step only happens when the report's category actually has a coordinator assigned.
 
 Coordinators can't approve — that requires Finance Admin.
 
@@ -73,7 +75,7 @@ The tasks below need the **Finance Admin** or **Admin** role.
 
 Finance can set or replace a cap chosen by the coordinator.
 
-Go to `/Expenses/Review` to see every report waiting for Finance. Open one to check its items, receipts, and who submitted it, then **approve** it or **reject** it with a reason — optionally capping the payable amount below what was submitted. When you approve, the accounting system is updated automatically in the background (and retried if there's a hiccup). If a push keeps failing, the report shows a banner and you can re-queue it manually from its detail page.
+Go to `/Expenses/Review` to see every report waiting for Finance. Open one to check its items, receipts, and who submitted it, then **approve** it or **reject** it with a reason — optionally capping the payable amount below what was submitted, or declining individual items (with a reason). On a pre-approved report the account is fixed and the cap can't go above the pre-approval's amount. When you approve, the accounting system is updated automatically in the background (and retried if there's a hiccup). If a push keeps failing, the report shows a banner and you can re-queue it manually from its detail page.
 
 ### Pay people
 
@@ -85,5 +87,5 @@ From `/Expenses/New` you can pick another member to file for — the report is t
 
 ## Related sections
 
-- [Budget](Budget.md) — reports are filed against budget categories, and the category decides whether a coordinator signs off.
+- [Budget](Budget.md) — a report's account can be a budget category, and that category decides whether a coordinator signs off.
 - [Profiles](Profiles.md) — your IBAN lives on your profile and is copied onto a report when you submit.

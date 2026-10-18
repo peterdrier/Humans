@@ -126,7 +126,7 @@ All user-facing strings on the bell, popup and `/Notifications` come from `Notif
 
 The bell is the section's own view component, rendered by Shell by name in the header chrome slot as today. The badge is the count of open items. There is no unread state: without rows there is no "new since you last looked", and that is accepted.
 
-The dashboard things-to-do list (`ThingsToDoViewComponent` in Shell, `ISectionThingsToDo` in Base) becomes a second renderer over the board: the three contributors (Users, Governance, Shifts) become publishers with a `User` audience, the component moves into Notifications so there is one aggregator, and `ISectionThingsToDo` is retired. Shell renders it by name as it renders the bell. `IsDone` entries (rendered struck through today) do not exist on the board; done is absent.
+The dashboard things-to-do list (`ThingsToDoViewComponent` and `ISectionThingsToDo`, both in Base) becomes a second renderer over the board: the three contributors (Users, Governance, Shifts) become publishers with a `User` audience, the component moves into Notifications so there is one aggregator, and `ISectionThingsToDo` is retired. Shell renders it by name as it renders the bell. `IsDone` entries (rendered struck through today) do not exist on the board; done is absent.
 
 No POST routes act on entries. Deciding it happens at `ActionUrl`, in the owning section.
 
@@ -217,7 +217,7 @@ Every value of `NotificationSource` at the time of writing appears in exactly on
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.
 - `INotificationMeterCacheInvalidator` and its two call sites; `CacheKeys.NotificationBadgeCounts`, `NotificationMeters`, `CampLeadJoinRequestsBadge`.
 - The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, GoogleIntegration, Consent, Rideshare; the three auto-resolve call sites.
-- `ISectionThingsToDo` and its three implementations, `ThingsToDoViewComponent` in Shell.
+- `ISectionThingsToDo` and its three implementations, `ThingsToDoViewComponent` in Base.
 - Users' `CommunicationPreference.InboxEnabled`: property override first, column drop in the same drop PR as the tables, per [`no-column-drops-for-decoupling`](../../../../../memory/architecture/no-column-drops-for-decoupling.md).
 
 ## Authorization

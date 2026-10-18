@@ -39,7 +39,7 @@ Group, and sync mechanics underneath sit in
 - **Profile → Emails** (`/Profile/Me/Emails`) — your verified addresses, your
   notification target, your Google service email.
 - **Team page** (`/Teams/{slug}`) — your team's group address is shown here.
-- **Provision Email** (Admin only, on `/Users/Admin/{id}`) — creates a new
+- **Provision Email** (Human Admin or Admin, on `/Users/Admin/{id}`) — creates a new
   `@nobodies.team` mailbox for a human.
 - **mail.google.com** — sign in here with your `@nobodies.team` address to
   reach your inbox.

@@ -130,6 +130,11 @@ All authenticated users can access their own notifications. No role-based restri
 | WorkgroupReportingDue | Informational | The group's coordinators | Governance | Thirty days without an update or meeting |
 | WorkgroupDocumentActivity | Informational (Actionable to Board when a document is delivered for disposition) | Group members, comment authors, or Board role | Governance | Document published, comment opened/answered, or delivered for disposition |
 | WorkgroupDispositionRecorded | Informational | The group's current members | Governance | Board records its written disposition on a delivered document |
+| WorkgroupMembershipRequested | Informational | The group's coordinators | Governance | Someone asks to join a working group |
+| WorkgroupMembershipDecided | Informational | The requester or added person | Governance | Join request approved or declined, or a coordinator adds the person directly |
+| PreapprovalFileBy | Actionable | The beneficiary | System | Pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open |
+| PreapprovalApplicationReceived | Actionable | The program's managers | System | Someone applies to a pre-approval program; resolved on approve or decline |
+| PreapprovalGrantDecided | Informational (Actionable when a revoked grant already has an expense report) | The beneficiary | System | Pre-approval declined, revoked, or its amount changed |
 
 ## Related Features
 

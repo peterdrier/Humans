@@ -80,5 +80,5 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
 - [`Tickets.md`](../Tickets.md) — endpoint table, audit list, and the monthly accountant recap
   the totals must match.
 - [`authorization.md`](../authorization.md) — policy row for `ExportDonations`.
-- The older `/Tickets/Export/Orders` and `/Tickets/Export/Attendees` CSVs are unaudited and
-  TicketAdmin-wide: recorded as debt `TICKETS-9` in [`debt.yml`](../debt.yml), not a precedent.
+- The older `/Tickets/Export/Orders` and `/Tickets/Export/Attendees` CSVs are TicketAdmin-wide (not
+  Admin-only) but each download is audited too (`TicketOrdersExported` / `TicketAttendeesExported`).

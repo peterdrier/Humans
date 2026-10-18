@@ -39,7 +39,7 @@ for a debug aid.
 - Each row: UTC timestamp, status code, method, URL, IP, authenticated user (when present), classified client label with raw UA as tooltip
 - Newest first; `?count=` clamped to 1..1000 (default 1000)
 - Per-code lifetime counts (since app start) survive buffer eviction and toggle row visibility
-- Linked from the Diagnostics nav and the ClientStats status-code panel
+- Linked from the Debug admin nav group (HTTP errors tab) and the ClientStats status-code panel
 
 ## Design Decisions
 

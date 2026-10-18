@@ -45,10 +45,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `SettingsDbContext` | `Setting`, `EventSettings` — tables `system_settings` and `settings_event` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
-> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `SepaPayoutFiles`, `SepaPayoutTransfers` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
+> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
-> | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` (own project, `src/Sections/Humans.Store/`) |
+> | `StoreDbContext` | `Products`, `Orders`, `OrderLines`, `Payments`, `Invoices`, `TreasurySyncStates` (own project, `src/Sections/Humans.Store/`, table names `store_products` / `store_orders` / `store_order_lines` / `store_payments` / `store_invoices` / `store_treasury_sync_state`) |
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
 > | `MailerLiteDbContext` | `MailerLiteSyncStates` (`mailerlite_sync_states`) (own project, `src/Sections/Humans.MailerLite/`) |
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
@@ -121,9 +121,9 @@ reading through its own section's services.
 
 **No cross-section repository-level table reads remain.** The consolidated
 `IUserRepository` is the single owner of every per-user table across the
-Users+Profiles section merge, so what might look like `IUserEmailRepository`
-cross-section access is internal reads/writes of the unified User+Profile
-owner, not a cross-section violation.
+Users+Profiles section merge, so per-user email, login and profile reads are
+internal reads/writes of the unified User+Profile owner, not a cross-section
+violation.
 
 This is enforced at the schema level too: cross-section EF foreign-key
 constraints and navigation properties are absent from the model
@@ -437,7 +437,7 @@ separately below the key table.
    `"ticket-query-inner"`, `"camp-inner"`, `"calendar-inner"`,
    `"event-inner"`, `"role-assignment-inner"`, `"legal-document-sync-inner"`,
    `"early-entry-inner"`, plus the Consent inner key) and inherit
-   `TrackedCache<TKey, TValue>` (`src/Humans.Base/Interfaces/Caching/TrackedCache.cs`)
+   `TrackedCache<TKey, TValue>` (`src/Humans.Base/Caching/TrackedCache.cs`)
    rather than using `IMemoryCache` for their projection state.
 
 ---
@@ -469,7 +469,7 @@ No view component populates a cache; all read via owning services.
 
 ### Background Jobs
 
-Every recurring job lives in its owning section's `Contracts/` folder. Only
+Every recurring job lives in its owning section's `Jobs/` folder. Only
 the DI registration and the roll-call entry are Shell's, because
 `UseHumansRecurringJobs` names each job by concrete type. Mutation-heavy
 logic funnels into services even from jobs
@@ -493,7 +493,6 @@ Controllers and components that touch `IMemoryCache` directly.
 | **GateTerminalAccountSeeder** (`Humans.Tickets/Services/`) | `InvalidateUserAccess` extension | `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
 
 The §15 work continues to push cache populators into the owning service
-behind transparent decorators. `NavBadgesViewComponent` does not inject
-`IMemoryCache` — its badge counts are owned by
-`FeedbackService` (`FeedbackBadgeCount`) and `ApplicationDecisionService`
-(`NavBadge:Voting:{userId}`).
+behind transparent decorators. No view component injects `IMemoryCache`; nav
+badge counts are owned by `FeedbackService` (`FeedbackBadgeCount`) and
+`ApplicationDecisionService` (`NavBadge:Voting:{userId}`).

@@ -23,7 +23,7 @@ ceiling, its managers, and its claim deadline. A **Grant** is one person authori
 program for one amount. A grant turns into an expense report that is capped at the grant and
 booked to the program's account without anyone re-deciding either.
 
-Design settled with Peter, 2026-10-07. Spec only; no code yet.
+Design settled with Peter, 2026-10-07. Built as the `Humans.Preapprovals` section; its invariants are [`Preapprovals.md`](../../../src/Sections/Humans.Preapprovals/Docs/Preapprovals.md).
 
 ## Terminology
 
@@ -39,7 +39,7 @@ Design settled with Peter, 2026-10-07. Spec only; no code yet.
 
 | Fact | Owner | Why |
 |------|-------|-----|
-| Programs, grants, applications, managers | Preapprovals (new section) | A pre-approval has its own lifecycle and is written by several callers (admins, applicants, later Creativity). It is not an expense and not a budget line. |
+| Programs, grants, applications, managers | Preapprovals | A pre-approval has its own lifecycle and is written by several callers (admins, applicants, later Creativity). It is not an expense and not a budget line. |
 | Which Holded account a program books to | Preapprovals (`HoldedAccountNumber` / `HoldedAccountId` on the program, no FK) | Same posture as Workgroups: an opaque external id chosen from Finance's registry. |
 | Account creation, naming, dedup | Finance | Already owns it (`CreateOrLinkExpenseAccountAsync`, `ListExpenseAccountsAsync`). |
 | Cap and account on the report, payable math, Holded push | Expenses | Unchanged: `MaxAmount` and `PayableAllocation` already do this. The grant only sets them up front. |
@@ -48,9 +48,9 @@ Design settled with Peter, 2026-10-07. Spec only; no code yet.
 Nobody outside Preapprovals learns what a program is. Expenses sees a grant as
 `(Id, Label, MaxAmount, HoldedAccountNumber, HoldedAccountId, ClaimBy)`.
 
-**Prerequisite:** [workgroup-budget Phase 2](workgroup-budget.md#phase-2--expenses-separate-pr-after-phase-1-is-on-qa)
+**Prerequisite (in place):** [workgroup-budget Phase 2](workgroup-budget.md#phase-2--expenses-separate-pr-after-phase-1-is-on-qa)
 (an expense report names its Holded account, not a budget category). Without it a grant's
-account has nowhere to go on the report. Phase 2 ships first, on its own PR.
+account has nowhere to go on the report.
 
 ## Data model (`PreapprovalsDbContext`, all tables owned by `Humans.Preapprovals`, prefixed `pre_`)
 
@@ -170,7 +170,7 @@ ceiling. These are sums over frozen rows, never stored and never adjusted when a
 
 ## Surface
 
-**Today the whole surface is internal** (no other section consumes Preapprovals yet; `IPreapprovalService` is the 2-member read face, `IPreapprovalManagement : IPreapprovalService` the rest, in `Humans.Preapprovals.Services`). When Expenses consumes it, the narrowest contract that serves Expenses becomes public in a `Contracts/` folder, per the hard rules. The shape below is that target.
+The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). `IPreapprovalService` is the 2-member read face, `IPreapprovalWrite` the three Expenses transitions, both consumed only by Expenses; `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` is internal to `Humans.Preapprovals.Services`.
 
 ```csharp
 public interface IPreapprovalService
@@ -184,20 +184,16 @@ public sealed record GrantOption(
     Guid Id, string ProgramName, string? Label, decimal MaxAmount,
     int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status);
 
-// Called by Expenses only; today these three are members of the internal IPreapprovalManagement.
-// Each one audited with the report id.
+// IPreapprovalWrite, called by Expenses only. Each one audited with the report id.
 Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Open → Claimed; idempotent for the same report; throws unless claimable
 Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Claimed → Open (withdraw before approval)
 Task ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Claimed → Consumed (approve)
 ```
 
 Program and manager administration, issuing, applying, approving, declining and revoking live on
-an `internal interface IPreapprovalManagement : IPreapprovalService` inside the section
-(the `I<Section>Management` pattern), which the section's own controllers
-inject. Nothing outside the section sees them. A `.Contracts` leaf project would be needed only if Expenses →
-Preapprovals and (later) Creativity → Preapprovals must not pull the section itself; when
-Creativity exists it gets one narrow issue command on the public contract, not the whole
-management surface.
+the internal `IPreapprovalManagement` (the `I<Section>Management` pattern), which the section's own
+controllers inject. Nothing outside the section sees them. When Creativity exists it gets one narrow
+issue command on the public contract, not the whole management surface.
 
 `ClaimAsync` returns the stamp Expenses must write: `GrantStamp(decimal MaxAmount,
 int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy)`, read from the program as
@@ -266,10 +262,10 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 ### Navigation
 
-- Member: a "Pre-approvals" entry beside "Expenses" in the member menu, shown when the member
-  has any grant or any program accepts applications.
-- Manager: "Manage pre-approvals" under the same menu for anyone who passes the manage policy.
-- Expenses' index block and New form link back to `/Preapprovals` ("All my pre-approvals").
+- There is no menu entry. Members reach `/Preapprovals` through notifications, emails and links
+  managers hand out; `/Expenses` carries the open grants with a "File expense" button each.
+- Manager: `/Preapprovals` shows a "Manage" button to anyone who passes the manage policy, leading
+  to `/Preapprovals/Admin`.
 
 ## Authorization
 
@@ -348,7 +344,7 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 ## Background job
 
-`PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which **sends** the
+The section's `SectionJobs`: one nightly job (`PreapprovalRemindersJob`, 05:00), `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
 `pre_reminders_sent` (GrantId, Kind `D14` | `D3`, ClaimBy, SentAt; PK GrantId + Kind + ClaimBy). The in-app
 notification, the email outbox row, the marker and one audit entry
@@ -357,7 +353,7 @@ ambient `TransactionScope` per grant (all four contexts share the database), so 
 either all of them or none and every committed send is visible to the Board. That delivery log
 and those audit entries are the only rows the job writes; neither is grant state. No job expires, closes, zeroes or otherwise touches a grant
 or program; every state change is a person's action and is audited as such.
-Documented in [background-jobs.md](background-jobs.md) when built.
+Listed in [background-jobs.md](background-jobs.md).
 
 ## Out of scope
 

@@ -306,7 +306,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Cross-Section Dependencies
 
-Derived from `Humans.Finance.csproj`'s project references — contracts leaves only, no section projects:
+Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and AuditLog are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
 
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
@@ -334,6 +334,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 |---|---|---|
 | `IHoldedFinanceService` (read) | [`IHoldedFinanceService.cs`](../../Humans.Finance.Contracts/IHoldedFinanceService.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). |
 | `IHoldedFinanceWrite` | [`IHoldedFinanceWrite.cs`](../../Humans.Finance.Contracts/IHoldedFinanceWrite.cs) | `SyncAsync` (Holded), `EnsureCreditorContactAsync` / `SetCreditorAccountNumAsync` (Expenses), `CreateOrLinkExpenseAccountAsync` / `SetExpenseAccountActiveAsync` (Workgroups) — resolve, and retire/restore, an expense account for a caller with no budget category, the managed registry. |
+| `ISepaBankBooking` | [`ISepaBankBooking.cs`](../../Humans.Finance.Contracts/ISepaBankBooking.cs) | `RunAsync` — the two-hourly SEPA bank-line sweep as one call. `SepaBankBookingJob` is the Hangfire shim; nothing else calls it. |
 | `IHoldedFinanceManagement` | internal | Finance's own full surface (`IHoldedFinanceService` + `IHoldedFinanceWrite`), injected by `FinanceController`. |
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.

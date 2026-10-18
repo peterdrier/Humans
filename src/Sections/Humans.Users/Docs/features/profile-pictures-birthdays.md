@@ -25,7 +25,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 **So that** I can personalize my profile
 
 **Acceptance Criteria:**
-- Can upload JPEG, PNG, WebP, or HEIC images (max 20MB; large images are auto-resized)
+- Can upload JPEG, PNG, WebP, HEIC/HEIF, or AVIF images (max 20MB; large images are auto-resized)
 - The custom picture is rendered everywhere a profile picture is shown
 - Can remove the custom picture; profile then falls back to the initial-letter placeholder
 - Picture is shown on profile page, team detail pages, and birthday calendar

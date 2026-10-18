@@ -145,13 +145,13 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector) only.
+- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceWrite.SyncAsync` (the nightly job's first step) and `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row on `/Holded`).
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts.IHoldedService` (+ `HoldedLedgerLineInfo`)
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, `IHoldedNightlySync` for the job, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

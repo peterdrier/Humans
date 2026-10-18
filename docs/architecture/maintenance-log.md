@@ -10,7 +10,7 @@ what's overdue.
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-07-30 | 2026-08-06 | Weekly | — | `dotnet list package --vulnerable`. 2026-07-30: 8 advisories fixed after a 4-week gap that turned CI red repo-wide. |
-| Freshness sweep (diff) | 2026-09-22 | 2026-09-23 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-09-22: 28-day window (166 commits); fixed the service-enumeration verifier, which passed vacuously under mawk (gawk-only `asorti`), and `generate-stats.sh`'s unbound `$USERNAME` under `set -u`. |
+| Freshness sweep (diff) | 2026-10-18 | 2026-10-19 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-10-18: 26-day window (176 commits); fixed `lib-service-classes.sh`, which truncated a constructor at a `;` inside a `//` comment and silently skipped the service. |
 | Section doctor | 2026-08-17 | — | 1–2×/day | — | `/section-doctor` — frozen row (nobodies-collective/Humans#1069); each run writes `docs/health/runs/<date>-<Section>.md`. |
 | Debt sweep | 2026-10-04 | 2026-10-05 | Daily | — | Nightly [debt workflow](../../.codex/prompts/daily-debt.md); central and section debt ledgers. 2026-10-06 ledger review with Peter — central 40→18 and section 94→49 rows, 10 issues filed (#1919–#1928), 53 rows unblocked under standing policy. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |

@@ -31,13 +31,13 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
 - **Codes** (`/Tickets/Codes`) — discount-code redemption tied to campaigns (read-only here; codes are *generated* on the Campaign detail page)
 - **Who Hasn't Bought** (`/Tickets/WhoHasntBought`) — active Volunteers without a valid ticket for the current event
-- **Sales Aggregates** (`/Tickets/SalesAggregates`) — weekly and quarterly reports
+- **Sales Aggregates** (`/Tickets/SalesAggregates`) — weekly, quarterly and monthly (accountant) reports
 
 ## As a Volunteer
 
 ### See whether you have a ticket
 
-Your home dashboard (`/`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead.
+Your home dashboard (`/`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead. Between events, while the event is marked off season, the card is hidden.
 
 Matching is by **attendee email**, not buyer email. The sync compares each attendee email against every **verified** email on every user, normalized so gmail/googlemail aliases collide. If you bought tickets for other people but not one for yourself, you do not count as having a ticket — buyer-only matches don't earn coverage.
 
@@ -79,7 +79,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 `/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaigns/Admin/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
 
-`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items. A By Ticket Type card breaks down tickets sold and face value (the listed price, before discounts and donations) per ticket type. A Discount Codes by Campaign card shows codes granted, codes used, and the average and total discount per campaign, with codes that match no campaign grant grouped as vendor codes. All money columns are EUR — the currency is named in the column header rather than repeated in each cell, so the tables paste cleanly into a spreadsheet.
+`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items. A Monthly Income for Accountant card buckets income by purchase month (Europe/Madrid) and has an **Export CSV** button for Ticket Admin and Admin; Admin alone also gets a **Ticketing Donations** button that downloads the donor list for the accountant (one row per VIP-ticket premium or separate donation on a paid order, with the buyer's name and email; every download is audited). A By Ticket Type card breaks down tickets sold and face value (the listed price, before discounts and donations) per ticket type. A Discount Codes by Campaign card shows codes granted, codes used, and the average and total discount per campaign, with codes that match no campaign grant grouped as vendor codes. All money columns are EUR — the currency is named in the column header rather than repeated in each cell, so the tables paste cleanly into a spreadsheet.
 
 ### Who hasn't bought yet
 

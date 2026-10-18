@@ -13,7 +13,8 @@ No repository. Cross-section reads via `IShiftManagementService`
 (active-burn metadata — `GetActiveAsync` returning `EventSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone) and
 `IUserService` (cached `UserInfo` + `ProfileInfo` for dietary
-preference, allergies, intolerances). Implements `ICantinaRosterService`.
+preference, allergies, intolerances), plus `IAuditLogService` (roster-export
+audit). Implements `ICantinaRosterService`.
 No direct DB access, no cache.
 
 `MedicalConditions` is intentionally never read here — the cantina plans

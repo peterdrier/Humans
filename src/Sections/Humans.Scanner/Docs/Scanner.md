@@ -81,7 +81,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 - No `Data/`, no migrations, no `Humans.Infrastructure` reference: nothing to persist.
 - `Section.Register` is empty and `Contracts/` holds only a README: Scanner registers nothing and nothing outside it names a Scanner type.
 - **Decorator decision:** no caching decorator. Each read interface is cached by its owning section.
-- **Admin nav:** `SectionAdminNav` contributes the "Scanner" entry to the shared "Tickets" admin group.
+- **Admin nav:** `SectionAdminNav` contributes the "Scanner" entry as its own "Scanner" admin group, gated by `ScannerAccess`.
 - The `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.
 
 ## Issue queue

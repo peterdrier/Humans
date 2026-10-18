@@ -75,13 +75,13 @@ Profile
 ├── BurnerName: string (256)
 ├── FirstName: string (256) [legal]
 ├── LastName: string (256) [legal]
-├── Pronouns: string? (50)
+├── Pronouns: string? (100)
 ├── DateOfBirth: LocalDate?
 ├── City: string? (256)
 ├── CountryCode: string? (2)
 ├── Latitude: double?
 ├── Longitude: double?
-├── PlaceId: string? (256) [Google Places ID]
+├── PlaceId: string? (512) [Google Places ID]
 ├── Bio: string? (4000)
 ├── EmergencyContactName: string? (256) [board only]
 ├── EmergencyContactPhone: string? (50) [board only]
@@ -197,10 +197,10 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 
 | Field | Validation |
 |-------|------------|
-| FirstName | Required, max 256 chars |
-| LastName | Required, max 256 chars |
-| BurnerName | Optional, max 256 chars |
-| Bio | Optional, max 4000 chars |
+| FirstName | Required, max 100 chars (form) |
+| LastName | Required, max 100 chars (form) |
+| BurnerName | Required, max 100 chars (form) |
+| Bio | Optional, max 1000 chars (form) |
 | CountryCode | Optional, ISO 3166-1 alpha-2 |
 | Burner CV | At least one entry OR NoPriorBurnExperience checked |
 

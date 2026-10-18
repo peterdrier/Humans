@@ -23,4 +23,4 @@ only, a StoreAdmin is denied (and the Refund option is hidden from the order pag
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
-| `OrderAuthorizationHandler` | `OrderOperationRequirement` (`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`) | `OrderDto` / `OrderCreateContext` / `OrderLineContext` (deadline-aware line checks) | `Authorization/OrderAuthorizationHandler.cs` (registered in `Section.cs`) |
+| `OrderAuthorizationHandler` | `OrderOperationRequirement` (`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`, `RecordPayment`, `Refund`, `DeletePayment`) | `OrderDto` / `OrderCreateContext` / `OrderLineContext` (deadline-aware line checks) | `Authorization/OrderAuthorizationHandler.cs` (registered in `Section.cs`) |

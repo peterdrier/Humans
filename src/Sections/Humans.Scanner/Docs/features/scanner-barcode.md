@@ -13,7 +13,7 @@ TicketTailor issues ticket stubs carrying a barcode. Staff who want to confirm w
 
 **Explicitly not a check-in tool.** Humans do not enter the event by having their ticket scanned here. Nothing is written server-side. The camera module (`wwwroot/js/scanner/barcode.js`) is shared with `/Scanner/Tickets`.
 
-Scanner is reached from the admin sidebar's Tickets group; its tools are for ticket staff, and the access policy is shared with the Gate section and the onsite roster.
+Scanner is reached from its own "Scanner" row in the admin sidebar; its tools are for ticket staff, and the access policy is shared with the Gate section and the onsite roster.
 
 ## User Stories
 
@@ -50,7 +50,7 @@ Scanner is reached from the admin sidebar's Tickets group; its tools are for tic
 ### In Scope
 
 - `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketAdmin/Board/Admin roles or the shared gate-terminal account).
-- Nav entry in the admin sidebar (Tickets group).
+- Nav entry in the admin sidebar (its own Scanner group).
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.
 - Localized copy across all six supported locales.

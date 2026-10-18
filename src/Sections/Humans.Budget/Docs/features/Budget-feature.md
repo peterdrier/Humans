@@ -215,14 +215,14 @@ Outbound invoices to members/barrios:
   - Breakdown table with category amounts and percentages
   - No line-item, salary, or overhead detail visible
   - Coordinators see link to department detail view
-- **Nav:** "Budget" link visible to all authenticated users; "Finance" link remains FinanceAdmin-only
+- **Nav:** "Budget" link (to `/Budget/Summary`) visible to all authenticated users; FinanceAdmin/Admin also get a "Budget" group in the admin sidebar with an "Overview" entry (`/Finance`)
 - **Exit:** Coordinators can manage their department budgets; all members see where money goes
 
 ### V1c: Sign Convention and VAT Tracking — IMPLEMENTED (#282, #283)
 - **Sign convention:** Positive amounts = income, negative amounts = expenses
   - Removed `min=0` constraints on all budget amount inputs
   - Both `BudgetCategory.AllocatedAmount` and `BudgetLineItem.Amount` accept negative values
-- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (0%, 10%, 21%)
+- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (service-validated 0–21; the line-item UI offers 0%, 10%, 21%)
   - Virtual VAT entries computed for line items with VatRate > 0 and an ExpectedDate
   - VAT has converse sign: income generates VAT liability (expense), expenses generate VAT credit (income)
   - Settlement date ~6 weeks after end of quarter containing the expected date

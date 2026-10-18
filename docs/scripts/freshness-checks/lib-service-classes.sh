@@ -33,7 +33,8 @@
 # IApplicationService`, and both checks went on reporting PASS while silently
 # covering one section less.
 #
-# Files are flattened before matching, exactly like the class pass below. A
+# Files are flattened (with // comments dropped) before matching, exactly like
+# the class pass below. A
 # line-oriented grep sees only the line carrying the `interface` keyword, so a
 # declaration whose base list wraps onto the next line reads as having no bases
 # at all — which silently dropped INotificationInboxService and
@@ -42,7 +43,7 @@
 service_interfaces() {
   local decls seed pat new merged
   decls=$(find src -name '*.cs' -type f -not -path '*/obj/*' -not -path '*/bin/*' -print0 \
-          | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
+          | xargs -0 awk 'FNR==1{printf "\n"} {l = $0; sub(/\/\/.*/, "", l); printf "%s ", l}' \
           | { grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' || [ "$?" -eq 1 ]; } \
           | sed -E 's/interface +//' | tr -d '\r') || return
   # No matching declarations is valid; grep errors and producer failures are not.
@@ -164,7 +165,9 @@ service_classes() {
       }
     }
     FNR == 1 { if (buf != "") emit(buf, prev); buf = ""; prev = FILENAME }
-    { buf = buf " " $0 }
+    # Drop // comments first: a `;` inside a comment between constructor parameters
+    # ended the declaration early, so the Finance Service class enumerated as nothing.
+    { line = $0; sub(/\/\/.*/, "", line); buf = buf " " line }
     END { if (buf != "") emit(buf, prev) }
   ' | sort -u
 }

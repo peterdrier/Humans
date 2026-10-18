@@ -86,7 +86,7 @@ Members sign in using their Google account, which provides their primary email a
 **Acceptance Criteria:**
 - Only verified emails can be selected
 - If user has a verified @nobodies.team email, it's auto-selected and locked
-- Default is OAuth email (GoogleEmail = null on User)
+- Default is the OAuth-linked Google email (the `UserEmail` row flagged `IsGoogle`)
 - Change takes effect on next Google sync cycle; admins can apply it sooner via the per-human **Re-run Google Sync** action (`POST /Google/Human/{id}/RerunSync`) or by requeueing failed sync-outbox events from `/Google/SyncOutbox`
 - Profile/Emails page shows "Google Services Email" card
 
@@ -111,7 +111,7 @@ Members sign in using their Google account, which provides their primary email a
 
 **Acceptance Criteria:**
 - Admin can search for humans by name on the @nobodies.team Accounts page
-- Linking creates a verified UserEmail and sets GoogleEmail on the user
+- Linking creates a verified UserEmail flagged `IsGoogle`
 - Audit trail recorded with WorkspaceAccountLinked action
 
 ## Data Model

@@ -56,7 +56,8 @@ Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
 successful write. Cross-section calls via `INotificationEmitter`,
 `ITeamService` (team-name stitching for the admin list and
 the active-required-by-team read), `IUserService` (active-user
-fan-out for re-consent-required notifications), `IGitHubLegalDocumentConnector`,
+fan-out for re-consent-required notifications), `IAuditLogService` (document
+create / update / archive audit), `IGitHubLegalDocumentConnector`,
 plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
 caching lives in the decorator. Periodic background sync of legal
 documents from the legal-internal repo.

@@ -19,6 +19,7 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 
 - **Teams directory** (`/Teams`) — landing page; your teams, other departments, system teams. Anonymous visitors see only teams with a public page.
 - **Team detail** (`/Teams/{slug}`) — description, members, coordinators, sub-teams, join/leave.
+- **Team tree** (`/Teams/Tree`) — public page showing each department with its sub-teams nested underneath, with descriptions and member counts. Anonymous visitors see only departments with a public page (and their sub-teams); hidden, system and inactive teams never appear.
 - **My teams** (`/Teams/My`) — your teams with Leave / Manage buttons.
 - **Birthdays** (`/Teams/Birthdays`) — teammate birthday calendar (month + day).
 - **Roster** (`/Teams/Roster`) — cross-team view of named role slots.
@@ -38,7 +39,7 @@ Go to `/Teams/My`. Each card shows your role (Member or Coordinator) and a Leave
 
 ### Browse and discover teams
 
-Open `/Teams`. "My Teams" sits at the top, "Other Teams" below with pagination. Each card shows name, short description, member count, and whether it requires approval. Click through to the team detail page for the full description, coordinators, and (for departments) the public page content.
+Open `/Teams`. "My Teams" sits at the top, departments and system teams below; a **Tree** button opens the team tree. Each card shows name, short description, member count, and whether it requires approval. Click through to the team detail page for the full description, coordinators, and (for departments) the public page content.
 
 ![TODO: screenshot — Teams directory showing "My Teams" at top and "Other Teams" cards below with member counts and approval badges]
 
@@ -152,7 +153,7 @@ Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory
 
 ### System team sync
 
-Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
+Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and then reconciling Google Groups.
 
 ## Related sections
 

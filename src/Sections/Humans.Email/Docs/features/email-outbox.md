@@ -33,7 +33,7 @@ All settings live under the `Email` section in `appsettings.json`:
 |---------|---------|---------|
 | `OutboxBatchSize` | 10 | Max messages processed per job run |
 | `OutboxMaxRetries` | 10 | Max delivery attempts before marking Failed |
-| `OutboxRetentionDays` | 150 | Days to keep sent/failed messages before cleanup |
+| `OutboxRetentionDays` | 150 | Days to keep sent messages before cleanup (failed messages are retained) |
 
 ## Admin Dashboard
 

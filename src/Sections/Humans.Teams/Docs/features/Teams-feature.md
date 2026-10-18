@@ -178,6 +178,16 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Sorted by legal name by default; any column header re-sorts the table
 - Linked from the team detail page's management sidebar, visible only to Board/Admin
 
+### US-6.14: View Team Tree
+**As a** visitor or member
+**I want to** see departments and their sub-teams as a tree
+**So that** I can understand how the teams fit together
+
+**Acceptance Criteria:**
+- Page at `/Teams/Tree`, open to anonymous visitors, linked from the directory
+- Lists active, non-hidden, non-system teams, sub-teams nested under their department, each with description and member count
+- Anonymous visitors see only departments with a public page and their sub-teams; a name links to the team page only when the viewer can open it
+
 ## Workflows
 
 ### Join Request State Machine

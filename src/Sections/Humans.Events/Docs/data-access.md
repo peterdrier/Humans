@@ -47,8 +47,22 @@ Repository: `IEventRepository`. Implements `IEventManagement` and `ICalendarFeed
 | EventFavourites | R/W |
 
 Cross-section calls via `ISettingsService` (active event settings),
-`IUserService` and `IEmailService`, plus `IClock`, with the section's own
-`EventsEmails` builder supplying the message. The inner service has no
+`IUserService`, `ICampService` (barrio names for the guide export),
+`IAuditLogService` (guide-export audit) and `IEmailService`, plus `IClock`, with the
+section's own `EventsEmails` builder supplying the message. The inner service has no
+`IMemoryCache`. CSV bulk import runs through `EventBulkImporter`.
+
+### EventBulkImporter (internal — `IApplicationService`, constructed per import by `EventService`)
+
+Not DI-registered; shares `EventService`'s `IEventRepository`. Validates the whole CSV
+before applying changed rows to a barrio's events.
+
+| Table | R/W |
+|-------|-----|
+| Events | R/W (the barrio's existing submissions; add / save changed rows) |
+| EventCategories | R (active categories) |
+
+No cross-section calls — `IClock` and `IStringLocalizer<EventsResource>` only. No
 `IMemoryCache`.
 
 ### CachingEventService (Singleton, `Humans.Events.Services`)

@@ -47,9 +47,9 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 | IsActive | bool | Retired accounts drop out of `ListExpenseAccountsAsync(activeOnly: true)` |
 | CreatedAt / UpdatedAt | Instant | |
 
-**Public surface** (`Humans.Finance.Contracts`) — new members, approved by Peter:
+**Public surface** (`Humans.Finance.Contracts`) — new members, approved by Peter. The two writes sit on `IHoldedFinanceWrite`, the list on `IHoldedFinanceService`:
 
-- `IHoldedFinanceService.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
+- `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
   → `HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
   1. `existingAccountNum` given: the account must exist in the live chart
      (`IHoldedClient.ListExpenseAccountsAsync`); returns it, `Created = false`. Unknown number → throws.
@@ -62,7 +62,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   Every path upserts a `holded_managed_accounts` row unless the account is already in
   `holded_category_map` (a budget-category account linked on purpose stays Finance's category
   account and is not re-registered). Audited (`HoldedExpenseAccountCreated` / `…Linked`).
-- `IHoldedFinanceService.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
+- `IHoldedFinanceWrite.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
   — flips the registry row. No-op when the number is a category account or unknown.
 - `IHoldedFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
   → `IReadOnlyList<HoldedExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
@@ -127,7 +127,7 @@ it. No `WorkgroupAdmin` role exists; adding one is a separate change.
   under `/Workgroups/Admin/*` is localization-exempt.
 
 **Docs.** `Workgroups.md` (data model, invariants, triggers, cross-section dependencies gain
-`IHoldedFinanceService` and `IHoldedClient`), `authorization.md`, `data-access.md`; Finance's
+`IHoldedFinanceWrite` and `IHoldedClient`), `authorization.md`, `data-access.md`; Finance's
 `Finance.md` (new table, new surface, sync rule). Dependency graph edge Workgroups → Finance.
 
 **GDPR.** No personal data added. Nothing to export or erase.

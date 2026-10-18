@@ -151,14 +151,14 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" tab in the admin sidebar's Issues group with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
+- **Admin:** "Feedback queue" tab in the admin shell's Issues group (the sidebar shows one row per group with a summed pill; `AdminTabsViewComponent` renders the group's tabs, this one with the actionable count), contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and merged by `AdminNavComposition` with every other section's `ISectionAdminNav`, plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
 - **Everyone else:** nothing — no dropdown link, no Help-widget entry; the widget's report action is "Create issue"
 
 ## Related Features
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
 - Audit log (`AuditLogEntry`) — tracks status changes
-- `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin sidebar item, rendered by `AdminSidebarViewComponent`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
+- `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`
 
 Triage mutations return explicit missing/refused/success results. Missing reports map to 404; dependency failures follow the logged error path, regardless of exception wording. Undefined statuses leave the report and audit unchanged.

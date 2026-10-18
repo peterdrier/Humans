@@ -42,8 +42,8 @@ Repository: `IApplicationRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `IRoleAssignmentService`,
-`IEmailService`, `IUserEmailService`, `INotificationEmitter`,
+Cross-section calls via `IUserService`, `IUserWrite` (`SetMembershipTierAsync`),
+`IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
 extends `IGovernanceService` and `IGovernanceWrite`), `IUserDataContributor`, `IUserMerge`.
@@ -133,7 +133,7 @@ No repository. Read-only fan-out over `ITeamService`,
 ### GovernanceIndexService (Scoped)
 
 No repository. Read-only assembly of the governance index view over
-`IGovernanceService`, `ILegalDocumentService`, `IUserService`.
+`IGovernanceService`, `ILegalDocumentService`, plus `IClock`.
 No DB access, no cache.
 
 ### GovernanceEmails (Scoped, internal)

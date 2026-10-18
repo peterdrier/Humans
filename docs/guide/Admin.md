@@ -42,7 +42,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 - `/Users/Admin/{id}/Outbox` — per-human email outbox.
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
-- `/Google/SyncSettings` — per-service sync mode (Admin only).
+- `/Settings#google-sync` — per-service sync mode (Admin only), a tab on the Settings page.
 - `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
@@ -83,7 +83,7 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Configure Google sync
 
-`/Google/SyncSettings` (Admin only) sets each Google service to **None**, **AddOnly**, or **AddAndRemove**. **None** is a fast kill switch — no redeploy — that turns off both the scheduled jobs (hourly team sync, daily 03:00 reconciliation) and manual Sync Now for that service.
+The **Google sync** tab of `/Settings#google-sync` (Admin only) sets each Google service to **None**, **AddOnly**, or **AddAndRemove**. **None** is a fast kill switch — no redeploy — that turns off both the scheduled jobs (hourly team sync, daily 03:00 reconciliation) and manual Sync Now for that service.
 
 The sync outbox (`/Google/SyncOutbox`) shows pending and failed events. From there you can **Requeue** a single failed event or **Requeue All Failed** to retry all permanently-failed events in bulk; both actions are audited. On a human's admin detail page (`/Users/Admin/{id}`), **Re-run Google Sync** enqueues sync events for all of that human's teams (Admin only, also audited).
 
@@ -110,7 +110,7 @@ See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 ## Related sections
 
 - [Profiles](Profiles.md) — the humans list and per-human detail page are the Profiles admin surface.
-- [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Admin dashboard.
+- [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Google overview page (`/Google`).
 - [Google Integration](GoogleIntegration.md) — sync settings, workspace accounts, and sync audit views.
 - [Feedback](Feedback.md) — retired and closed to new reports; full Admins triage the historical queue. All admins use the shared notification inbox.
 - [Governance](Governance.md) — role assignments (Admin, Board, HumanAdmin, Coordinator roles) and tier application vote finalization.

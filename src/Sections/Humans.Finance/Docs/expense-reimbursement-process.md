@@ -62,17 +62,21 @@ Happy path. When something needs fixing it gets more complicated.
      Spain isn't fast.
 8. **The bank movements sync back to Holded** as individual transfers — visible in Holded's
    Treasury on the Sabadell account as soon as the bank posts them, waiting to be reconciled.
-9. **Humans does not watch the bank.** It doesn't need the movements to know who was paid what —
-   its own SEPA transfer rows are that record, because it generated the file. Humans mirrors only
-   Holded's *journal*, where the money doesn't appear until booked; the treasurer proceeds
-   straight from the verified upload to booking. The join back to the bank movement happens
-   inside Holded: booking (step 10) puts a payment on the same treasury account with the same
-   amount, and Holded's reconciliation links movement to payment there.
-10. **Humans tells Holded which creditor account each transfer settles** — the treasurer clicks
-    **Book** on `/Finance/Sepa`, which posts payments against the member's open purchase docs and
-    one journal entry for anything else the balance was built from (a loan the member made, say),
-    so the €123 lands on account `40000004` and the math adds up to zero. Booking is a manual
-    per-transfer click today; the next ledger sync after it is what updates the cached balance.
+9. **Humans reads the bank line through Holded, not from the bank.** It never mirrors bank
+   movements; `/Finance/Sepa` asks Holded's treasury feed for the outgoing Sabadell line that paid
+   each transfer, and pairs them on amount and date (Sabadell debits one line per transfer but
+   drops the remittance text; a line whose text does name the creditor account is matched on that
+   too). Booking is driven by that line, never by a click alone. Humans mirrors only Holded's
+   *journal*, where the money doesn't appear until booked.
+10. **Humans tells Holded which creditor account each transfer settles.** Booking posts payments
+    against the member's open purchase docs and one journal entry for anything else the balance was
+    built from (a loan the member made, say), so the €123 lands on account `40000004` and the math
+    adds up to zero; the bank line is then reconciled in Holded against those payments. A sweep
+    every two hours books unattended only the lines whose text names the account. A line matched on
+    amount and date alone waits for the treasurer: **Book** on one transfer, or **Book file**
+    on `/Finance/Sepa` when every transfer in the file has exactly one line. A line that debits
+    a whole file at once is a **Process** click. The next ledger sync after booking is what updates
+    the cached balance.
 11. **When it all adds up to zero, we're done.** After that post-booking sync, the balance
     disappears from `/Expenses` and `/Finance/Creditors` — until then the pages still show the
     pre-booking balance.
@@ -86,8 +90,9 @@ robbed, automation everywhere else.**
   coordinator wherever the category has one.
 - The bank upload (step 7) — the one step that irreversibly moves money — stays manual, with the
   treasurer and a second verifier checking the totals.
-- Settlement booking (step 10) is also a deliberate human click per transfer, so nothing posts
-  payments into the books unattended.
+- Settlement booking (step 10) posts unattended only when the bank line's own text names the
+  creditor account; anything matched on amount and date alone needs a finance admin's click, so a
+  guess never posts payments into the books.
 - Everything around those control points is automated: the Holded push, the balance reads, the
   SEPA file generation, the sync loops.
 - Holded is the source of truth for what's owed (the balance is derived from its daybook, never

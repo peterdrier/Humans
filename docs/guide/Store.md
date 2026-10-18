@@ -22,6 +22,7 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 - **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin)
 - **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin)
 - **Order years** (`/Store/Admin/OrderYears`) — give legacy orders with no recorded year their year, resolved from their camp season (Store Admin, Finance Admin, Admin)
+- **Payment methods** (`/Store/Admin/PaymentMethods`) — fill in the method name on older payment rows that lack it (Store Admin, Finance Admin, Admin)
 
 ## Ordering for your camp (camp leads)
 
@@ -30,6 +31,8 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 Go to `/Store` to see what's available for your camp this year. Prices are shown VAT-inclusive as the headline amount, with the net price and VAT rate underneath. Start a new order and add items for what you need. While your order is still open it tracks the current catalogue price, so if a price changes the order updates to match; once an invoice is issued the prices are frozen as shown at that point. (Your order page lists any catalogue price changes that have happened since you started it.)
 
 Each camp season has a single order.
+
+Coordinators of a department (a top-level team) can order for their department from the same page, one order per department per year. Department orders are non-billable: there is no Pay button, billing details or invoice.
 
 ### Add and remove items
 
@@ -63,7 +66,7 @@ Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store
 
 ### Issuing a camp's invoice
 
-Open the camp's order and use **Issue invoice**. It creates the document in Holded and approves
+Open the camp's order and use **Issue invoice**. The button appears only on an open order with at least one item, and only works once the balance is exactly zero (it shows disabled with a notice until then). It creates the document in Holded and approves
 it in one step, then freezes the order — the prices stop tracking the catalogue and the order can
 never be issued a second time.
 
@@ -79,9 +82,17 @@ yet, nothing is sent to Holded and you're told exactly what to fix.
 > **Heads up:** the Finance order-review screen (entering manual payments by hand) isn't switched
 > on yet.
 
+### Deposit returns, refunds and payment corrections
+
+On a camp's order page, Store admins can record a **deposit return** (credits a returned deposit to the order, up to the deposit still held) in any order state. **Refunds** — money you have already sent back from the Stripe dashboard — are recorded the same way but only by Finance Admin or Admin; they need a reference such as the Stripe refund id. Neither moves any money itself. A negative balance means the org owes the camp. Only a full Admin can delete a payment row recorded in error, and an order holding any payment can't be deleted.
+
 ### Order years
 
 `/Store/Admin/OrderYears` lists legacy orders left with no year recorded. Confirming the repair resolves each one's year from its camp season and saves it; rows whose camp season no longer exists stay listed but unchanged.
+
+### Payment methods
+
+`/Store/Admin/PaymentMethods` lists older payments whose method name isn't filled in yet; confirming the repair copies it onto each listed row.
 
 ## Related sections
 
