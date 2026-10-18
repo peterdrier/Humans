@@ -27,7 +27,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts may surface it as a derived view but does not write to it.
-- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy.
+- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy. Department expansion and rota metadata reads retain caller cancellation.
 
 ## Data Model
 

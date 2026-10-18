@@ -356,7 +356,7 @@ internal sealed class ShiftManagementService(
             team = await TeamService.GetTeamBySlugAsync(teamSlug, ct);
             if (team is null) return null;
 
-            var teamSet = await ResolveDepartmentTeamIdsAsync(team.Id) ?? [team.Id];
+            var teamSet = await ResolveDepartmentTeamIdsAsync(team.Id, ct) ?? [team.Id];
 
             if (rotaId is null)
             {
@@ -365,7 +365,7 @@ internal sealed class ShiftManagementService(
             }
             else
             {
-                rota = await GetRotaByIdAsync(rotaId.Value);
+                rota = await GetRotaByIdAsync(rotaId.Value, ct);
                 if (rota is null
                     || rota.EventSettingsId != activeEvent.Id
                     || !teamSet.Contains(rota.TeamId))
