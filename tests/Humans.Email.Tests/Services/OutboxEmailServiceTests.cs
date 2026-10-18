@@ -16,6 +16,10 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using System.Net;
+using System.Text;
+using Microsoft.Extensions.Localization;
+using Humans.Base.Helpers;
 
 namespace Humans.Email.Tests.Services;
 
@@ -95,6 +99,51 @@ public sealed class OutboxEmailServiceTests : IDisposable
         bool doNotPersist = false) =>
         new(recipient, name, subject, html, template, category, replyTo, userId,
             campaignGrantId, campaignId, doNotPersist);
+
+    [HumansTheory]
+    [InlineData("a")]
+    [InlineData("😀")]
+    [InlineData("<")]
+    public async Task ComposerSelfSend_ValidMaximumSubject_QueuesWithoutLosingTheFullSubject(string character)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "self@example.com" });
+        var selfSend = new ComposerSelfSendService(
+            _userEmailService, Substitute.For<IUserServiceRead>(), _service,
+            Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,
+            NullLogger<ComposerSelfSendService>.Instance);
+        var subject = string.Concat(Enumerable.Repeat(character, 1000));
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(call => (call.ArgAt<string>(0), HtmlPlainTextConverter.Convert(call.ArgAt<string>(0))));
+
+        await selfSend.SendToSelfAsync(userId, subject, "Original body", ct);
+
+        var row = (await _emailDb.EmailOutboxMessages.AsNoTracking().ToListAsync(ct)).Should().ContainSingle().Subject;
+        row.Subject.EnumerateRunes().Should().HaveCount(1000);
+        row.Subject.Should().EndWith("…");
+        row.HtmlBody.Should().Contain(WebUtility.HtmlEncode("[Test] " + subject)).And.Contain("Original body");
+        row.PlainTextBody.Should().Contain("[Test] " + subject).And.Contain("Original body");
+        _bodyComposer.Received(1).Compose(
+            Arg.Is<string>(html => html.Contains(WebUtility.HtmlEncode("[Test] " + subject), StringComparison.Ordinal)),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_SubjectAtUnicodeCharacterLimit_PreservesHeaderAndBody()
+    {
+        var subject = string.Concat(Enumerable.Repeat("😀", 1000));
+        await _service.SendAsync(Message(subject: subject), Xunit.TestContext.Current.CancellationToken);
+
+        var row = (await _emailDb.EmailOutboxMessages.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().ContainSingle().Subject;
+        row.Subject.Should().Be(subject);
+        row.HtmlBody.Should().Be(Message().HtmlBody);
+    }
 
     [HumansTheory]
     [InlineData(true)]

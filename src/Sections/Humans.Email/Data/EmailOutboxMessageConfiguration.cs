@@ -13,7 +13,7 @@ internal sealed class EmailOutboxMessageConfiguration : IEntityTypeConfiguration
 
         builder.Property(e => e.RecipientEmail).HasMaxLength(320).IsRequired();
         builder.Property(e => e.RecipientName).HasMaxLength(200);
-        builder.Property(e => e.Subject).HasMaxLength(1000).IsRequired();
+        builder.Property(e => e.Subject).HasMaxLength(EmailOutboxMessage.SubjectMaxLength).IsRequired();
         builder.Property(e => e.HtmlBody).IsRequired();
         builder.Property(e => e.TemplateName).HasMaxLength(100).IsRequired();
         builder.Property(e => e.ReplyTo).HasMaxLength(320);

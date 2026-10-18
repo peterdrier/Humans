@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text;
+using System.Net;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -74,7 +76,20 @@ internal sealed class OutboxEmailService(
         }
         var extraHeadersJson = JsonSerializer.Serialize(headers);
 
-        var (wrappedHtml, plainText) = bodyComposer.Compose(message.HtmlBody, unsubscribeUrl, message.Culture);
+        var subject = message.Subject;
+        var htmlBody = message.HtmlBody;
+        if (!message.DoNotPersist)
+        {
+            var subjectRunes = subject.EnumerateRunes().Take(EmailOutboxMessage.SubjectMaxLength + 1).ToArray();
+            if (subjectRunes.Length > EmailOutboxMessage.SubjectMaxLength)
+            {
+                // Preserve all text when prefixes or substitutions exceed the stored header's bound.
+                htmlBody = "<p><strong>" + WebUtility.HtmlEncode(subject) + "</strong></p>\n" + htmlBody;
+                subject = string.Concat(subjectRunes.Take(EmailOutboxMessage.SubjectMaxLength - 1)
+                    .Select(rune => rune.ToString())) + "…";
+            }
+        }
+        var (wrappedHtml, plainText) = bodyComposer.Compose(htmlBody, unsubscribeUrl, message.Culture);
 
         if (message.DoNotPersist)
         {
@@ -97,7 +112,7 @@ internal sealed class OutboxEmailService(
             Id = message.DeliveryId ?? Guid.NewGuid(),
             RecipientEmail = message.RecipientEmail,
             RecipientName = message.RecipientName,
-            Subject = message.Subject,
+            Subject = subject,
             HtmlBody = wrappedHtml,
             PlainTextBody = plainText,
             TemplateName = message.TemplateName,
