@@ -231,18 +231,21 @@ internal sealed class AdminLegalDocumentsController(
 
     [HttpPost("Documents/{id}/Versions/{versionId}/Summary")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string changesSummary)
+    public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string? changesSummary)
     {
         var actorUserId = GetCurrentUserId();
         if (actorUserId is null) return Unauthorized();
 
         var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary, actorUserId.Value);
-        if (!updated)
+        if (updated == VersionSummaryUpdateResult.NotFound)
         {
             return NotFound();
         }
 
-        SetSuccess("Version summary updated.");
+        if (updated == VersionSummaryUpdateResult.TooLong)
+            SetError("Summary must be at most 2000 characters.");
+        else
+            SetSuccess("Version summary updated.");
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 

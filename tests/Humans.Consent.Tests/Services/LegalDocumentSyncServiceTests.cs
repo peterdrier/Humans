@@ -272,8 +272,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
     // ── UpdateVersionSummaryAsync ─────────────────────────────────────────────
 
-    [HumansFact]
-    public async Task UpdateVersionSummaryAsync_TrimsPersistsSummary_AndInvokesInvalidator()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(2000)]
+    [Xunit.InlineData(2001)]
+    [Xunit.InlineData(-1)]
+    [Xunit.InlineData(-2)]
+    public async Task UpdateVersionSummaryAsync_ValidatesTrimmedLengthBeforePersistenceAndInvalidation(int length)
     {
         var document = await SeedDocumentAsync("Code of Conduct");
         var versionId = Guid.NewGuid();
@@ -284,13 +289,21 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             LegalDocumentId = document.Id,
             VersionNumber = "v1",
             CommitSha = "abc123",
+            ChangesSummary = "Existing summary",
             EffectiveFrom = Clock.GetCurrentInstant(),
             CreatedAt = Clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        var summary = length switch
+        {
+            0 => "  Clarified scope  ",
+            -1 => "   ",
+            -2 => null,
+            _ => $"  {new string('x', length)}  "
+        };
         var updated = await _service.UpdateVersionSummaryAsync(
-            document.Id, versionId, "  Clarified scope  ", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+            document.Id, versionId, summary, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
@@ -300,24 +313,35 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == versionId, Xunit.TestContext.Current.CancellationToken);
 
-        updated.Should().BeTrue();
-        version.Should().NotBeNull();
-        version!.ChangesSummary.Should().Be("Clarified scope");
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
-            Arg.Is<string>(text => text.Contains("Clarified scope", StringComparison.Ordinal)), _actorUserId,
-            versionId, "DocumentVersion");
-        _invalidator.Received(1).InvalidateAll();
+        if (length > 2000)
+        {
+            updated.Should().Be(VersionSummaryUpdateResult.TooLong);
+            version!.ChangesSummary.Should().Be("Existing summary");
+            _invalidator.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            updated.Should().Be(VersionSummaryUpdateResult.Updated);
+            version.Should().NotBeNull();
+            version!.ChangesSummary.Should().Be(string.IsNullOrWhiteSpace(summary) ? null : summary.Trim());
+            var expectedAudit = $"Updated summary of version {versionId} to '{summary?.Trim()}'.";
+            await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
+                Arg.Is<string>(text => string.Equals(text, expectedAudit, StringComparison.Ordinal)),
+                _actorUserId, versionId, "DocumentVersion");
+            _invalidator.Received(1).InvalidateAll();
+        }
     }
 
     [HumansFact]
-    public async Task UpdateVersionSummaryAsync_ReturnsFalse_WhenVersionNotFound_DoesNotInvalidate()
+    public async Task UpdateVersionSummaryAsync_ReturnsNotFound_WhenVersionNotFound_DoesNotInvalidate()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
 
         var updated = await _service.UpdateVersionSummaryAsync(
             document.Id, Guid.NewGuid(), "Anything", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        updated.Should().BeFalse();
+        updated.Should().Be(VersionSummaryUpdateResult.NotFound);
         _invalidator.DidNotReceive().InvalidateAll();
         _audit.ReceivedCalls().Should().BeEmpty();
     }

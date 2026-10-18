@@ -43,7 +43,7 @@ internal interface IAdminLegalDocumentService : IApplicationService
 
     Task<string?> SyncLegalDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<bool> UpdateVersionSummaryAsync(
+    Task<VersionSummaryUpdateResult> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
@@ -85,4 +85,11 @@ internal enum AdminLegalDocumentInitialSyncStatus
     AlreadyCurrent,
     Synced,
     Failed
+}
+
+internal enum VersionSummaryUpdateResult
+{
+    NotFound,
+    Updated,
+    TooLong
 }

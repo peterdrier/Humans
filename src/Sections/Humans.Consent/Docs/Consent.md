@@ -131,6 +131,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Manual version summaries are optional and trimmed. Summaries over 2000 characters are refused before persistence, cache invalidation or success audit; the admin editor shows the refusal. Blank summaries clear the existing value.
+
 - Canonical Spanish content must be non-blank. Sync refuses an empty canonical file before
   publishing a version or changing its SHA. Review treats missing/blank canonical content as
   unavailable, and submission records no consent or metrics for it (`ContentUnavailable`).

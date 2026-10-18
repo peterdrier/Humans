@@ -264,25 +264,33 @@ internal sealed partial class LegalDocumentSyncService(
         Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         SyncDocumentCoreAsync(documentId, actorUserId, cancellationToken);
 
-    public async Task<bool> UpdateVersionSummaryAsync(
+    public async Task<VersionSummaryUpdateResult> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        var summary = string.IsNullOrWhiteSpace(changesSummary) ? null : changesSummary.Trim();
+        if (summary?.Length > 2000)
+        {
+            logger.LogWarning("Rejected oversized summary for legal document {DocumentId}, version {VersionId}",
+                documentId, versionId);
+            return VersionSummaryUpdateResult.TooLong;
+        }
+
         var updated = await repository.UpdateVersionSummaryAsync(
-            documentId, versionId, changesSummary, cancellationToken);
+            documentId, versionId, summary, cancellationToken);
 
         if (updated)
         {
             invalidator.InvalidateAll();
             await audit.LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
-                $"Updated summary of version {versionId} to '{changesSummary?.Trim()}'.", actorUserId,
+                $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
                 relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
         }
 
-        return updated;
+        return updated ? VersionSummaryUpdateResult.Updated : VersionSummaryUpdateResult.NotFound;
     }
 
     [GeneratedRegex(
