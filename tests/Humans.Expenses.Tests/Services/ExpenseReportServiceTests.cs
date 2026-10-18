@@ -1586,8 +1586,11 @@ public sealed partial class ExpenseReportServiceTests
 
     // ─────────────────────────────── 4.4 ─────────────────────────────────────
 
-    [HumansFact]
-    public async Task SubmitAsync_FlipsToSubmitted_SnapshotsPayeeData()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(100)]
+    [Xunit.InlineData(256)]
+    public async Task SubmitAsync_FlipsToSubmitted_SnapshotsPayeeData(int namePartLength)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1596,14 +1599,21 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        var legalName = namePartLength == 0
+            ? "Alice Tester" : $"{new string('A', namePartLength)} {new string('B', namePartLength)}";
+        SetupUserAndProfile(submitter, legalName, "ES9121000418450200051332");
 
         var ok = (await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken)).Succeeded;
 
         ok.Should().BeTrue();
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        loaded.PayeeName.Should().Be("Alice Tester");
+        loaded.PayeeName.Should().Be(legalName);
+        // InMemory does not enforce varchar bounds; the complete snapshot must fit production storage.
+        await using var context = new ExpensesDbContext(_expensesOptions);
+        var payeeNameMapping = context.Model.FindEntityType(typeof(ExpenseReport))!
+            .FindProperty(nameof(ExpenseReport.PayeeName))!;
+        loaded.PayeeName.Length.Should().BeLessThanOrEqualTo(payeeNameMapping.GetMaxLength() ?? int.MaxValue);
         loaded.PayeeIban.Should().Be("ES9121000418450200051332");
         loaded.SubmittedAt.Should().Be(FakeNow);
     }
