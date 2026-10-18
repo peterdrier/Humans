@@ -23,12 +23,12 @@ internal sealed class AdminLegalDocumentsController(
     [HttpGet("Documents")]
     public async Task<IActionResult> LegalDocuments(Guid? teamId)
     {
-        var documents = await adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
+        var documents = await adminLegalDocumentService.GetLegalDocumentsAsync(teamId, HttpContext.RequestAborted);
 
         var viewModel = new LegalDocumentListViewModel
         {
             FilterTeamId = teamId,
-            Teams = await GetTeamSelectItems(),
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
             Documents = documents.Select(d => new LegalDocumentListItemViewModel
             {
                 Id = d.Id,
@@ -53,7 +53,7 @@ internal sealed class AdminLegalDocumentsController(
         var viewModel = new LegalDocumentEditViewModel
         {
             TeamId = teamId ?? Guid.Empty,
-            Teams = await GetTeamSelectItems()
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted)
         };
 
         return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", viewModel);
@@ -107,7 +107,7 @@ internal sealed class AdminLegalDocumentsController(
     [HttpGet("Documents/{id}/Edit")]
     public async Task<IActionResult> EditLegalDocument(Guid id)
     {
-        var document = await adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
+        var document = await adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id, HttpContext.RequestAborted);
 
         if (document is null)
         {
@@ -128,7 +128,7 @@ internal sealed class AdminLegalDocumentsController(
             IsActive = document.IsActive,
             GracePeriodDays = document.GracePeriodDays,
             GitHubFolderPath = document.GitHubFolderPath,
-            Teams = await GetTeamSelectItems(),
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
             CurrentVersion = currentVersion?.VersionNumber,
             LastSyncedAt = document.LastSyncedAt != default ? document.LastSyncedAt.ToDateTimeUtc() : null,
             VersionCount = document.Versions.Count,
@@ -246,9 +246,9 @@ internal sealed class AdminLegalDocumentsController(
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 
-    private async Task<List<TeamSelectItem>> GetTeamSelectItems()
+    private async Task<List<TeamSelectItem>> GetTeamSelectItems(CancellationToken cancellationToken = default)
     {
-        var teams = (await teamService.GetTeamsAsync()).Values
+        var teams = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name, StringComparer.Ordinal);
         return teams.Select(t => new TeamSelectItem { Id = t.Id, Name = t.Name }).ToList();

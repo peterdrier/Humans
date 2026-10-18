@@ -146,6 +146,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Legal content reads retain caller cancellation through GitHub reads, including anonymous Legal and Governance pages. Caller-cancelled reads propagate without caching unavailable content; already-cancelled callers also stop on cache hits. A fetch timeout without caller cancellation degrades to unavailable content like any other GitHub failure.
 
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
+- Legal-document admin list, create and edit GETs retain request cancellation through document reads and the active-team picker. POST redisplay reads keep their mutation boundary.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
 - Required-version snapshots for all documents and for a single team share the same latest-effective-version selection; documents without an effective version are omitted.
