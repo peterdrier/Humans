@@ -1,7 +1,8 @@
 using Humans.Base.Enums;
 using Humans.Base.Attributes;
+using Humans.GoogleIntegration.Contracts;
 
-namespace Humans.GoogleIntegration.Contracts;
+namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
 /// Orchestrates Drive access for resources claimed through
@@ -15,7 +16,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// Mirrors <see cref="IGoogleGroupSync"/>'s division of labour exactly, for
 /// Drive resources instead of Groups.
 /// </remarks>
-public interface IGoogleDriveSync
+internal interface IGoogleDriveSync
 {
     /// <summary>
     /// Reconciles every resource claimed by any registered source. Used by the
