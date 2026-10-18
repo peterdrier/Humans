@@ -71,7 +71,7 @@ Assigns a team member to a specific slot in a role definition. Aggregate-local: 
 
 **Table:** `google_resources`
 
-Team Resources sub-aggregate. Aggregate-local back-ref `GoogleResource.Team` is still declared but never `Include`-d by the repository. Per-team filtered unique index on `(TeamId, GoogleId)` where `IsActive = true`. Drive resources (`DriveFolder`, `DriveFile`, `SharedDrive`) carry a `DrivePermissionLevel` (Viewer / Commenter / Contributor / ContentManager / Manager) — `Group` resources keep `None`. `DriveFolder` resources may also set `RestrictInheritedAccess = true` to enforce `inheritedPermissionsDisabled` on the underlying folder; the daily reconciliation job corrects drift.
+Owned by GoogleIntegration; Teams references resources through `TeamId`, with no `GoogleResource.Team` navigation. Per-team filtered unique index on `(TeamId, GoogleId)` where `IsActive = true`. Drive resources (`DriveFolder`, `DriveFile`, `SharedDrive`) carry a `DrivePermissionLevel` (Viewer / Commenter / Contributor / ContentManager / Manager) — `Group` resources keep `None`. `DriveFolder` resources may also set `RestrictInheritedAccess = true` to enforce `inheritedPermissionsDisabled` on the underlying folder; the daily reconciliation job corrects drift.
 
 ### RolePeriod
 
@@ -341,9 +341,8 @@ Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vo
 - **`ITeamRepository`** (`Humans.Teams.Data`, impl `Humans.Teams.Data.TeamRepository`) — owns `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants`
   - Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.EarlyEntryGrants`, `Team.JoinRequests`, `Team.RoleDefinitions`, `TeamJoinRequest.StateHistory`, `TeamEarlyEntryGrant.Team`, `TeamMember.Team`, `TeamRoleDefinition.Team`, `TeamRoleAssignment.TeamRoleDefinition`, `TeamRoleAssignment.TeamMember`
   - Cross-domain navs stripped: `TeamMember.User → TeamMember.UserId`, `TeamJoinRequest.User → TeamJoinRequest.UserId`, `TeamJoinRequest.ReviewedByUser → TeamJoinRequest.ReviewedByUserId`, `TeamRoleAssignment.AssignedByUser → TeamRoleAssignment.AssignedByUserId`, `TeamJoinRequestStateHistory.ChangedByUser → TeamJoinRequestStateHistory.ChangedByUserId`
-- **`IGoogleResourceRepository`** (`Humans.GoogleIntegration.Data`, impl `Humans.GoogleIntegration.Data.GoogleResourceRepository`) — owns `google_resources` (Team Resources sub-aggregate).
-  - Aggregate-local navs kept: `GoogleResource.Team` back-ref is still declared but never `Include`-d by the repository (the one consumer, `GoogleController`, only reads `resource.Name`).
-  - Cross-domain navs stripped: none.
+- **`IGoogleResourceRepository`** (`Humans.GoogleIntegration.Data`, impl `Humans.GoogleIntegration.Data.GoogleResourceRepository`) — owns `google_resources` in GoogleIntegration.
+  - `GoogleResource` carries a bare `TeamId`; no Team navigation crosses the section boundary.
   - Companion connector: `ITeamResourceGoogleClient` encapsulates Drive/Cloud-Identity calls so `TeamResourceService`'s business logic stays free of `Google.Apis.*`.
 
 ### System-team reconciler
