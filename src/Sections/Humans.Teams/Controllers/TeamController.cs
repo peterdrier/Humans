@@ -288,7 +288,7 @@ internal sealed class TeamController(
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
-        var roster = await teamService.GetRosterAsync(priority, status, period, ct);
+        var roster = await teamPageService.GetRosterAsync(priority, status, period, ct);
         var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
         var teamsById = await teamService.GetTeamsAsync(ct);
         var teamsBySlug = teamsById.Values.ToDictionary(team => team.Slug, StringComparer.OrdinalIgnoreCase);

@@ -3076,10 +3076,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        await TeamsDb.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
+        var inactiveTeam = SeedTeam("Inactive");
+        inactiveTeam.IsActive = false;
+        var systemTeam = SeedTeam("System");
+        systemTeam.SystemTeamType = SystemTeamType.Volunteers;
+        await TeamsDb.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition,
+            new TeamRoleDefinition { Id = Guid.NewGuid(), TeamId = inactiveTeam.Id, Name = "Excluded inactive" },
+            new TeamRoleDefinition { Id = Guid.NewGuid(), TeamId = systemTeam.Id, Name = "Excluded system" });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetRosterAsync(priority: null, status: null, period: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetRosterAsync(priority: null, status: null, period: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber))
             .Should().BeEquivalentTo(new[]
@@ -3135,7 +3141,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         TeamsDb.TeamRoleDefinitions.Add(definition);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetRosterAsync(
+        var result = await _pages.GetRosterAsync(
             priority: nameof(SlotPriority.Important),
             status: "open",
             period: nameof(RolePeriod.Event), cancellationToken: Xunit.TestContext.Current.CancellationToken);

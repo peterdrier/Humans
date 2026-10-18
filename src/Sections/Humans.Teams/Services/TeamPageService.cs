@@ -16,6 +16,79 @@ internal sealed class TeamPageService(
     IUserService userService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
+    public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
+        string? priority,
+        string? status,
+        string? period,
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await teamService.GetTeamsAsync(cancellationToken);
+        var definitions = teams.Values
+            .Where(team => team.IsActive && team.SystemTeamType == SystemTeamType.None)
+            .SelectMany(team => team.RoleDefinitions ?? [])
+            .ToList();
+        var assignedUserIds = definitions
+            .SelectMany(d => d.Assignments)
+            .Select(a => a.AssignedUserId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var usersById = assignedUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await userService.GetUserInfosAsync(assignedUserIds, cancellationToken);
+
+        var slots = new List<TeamRosterSlotSummary>();
+        foreach (var definition in definitions)
+        {
+            for (var slotIndex = 0; slotIndex < definition.SlotCount; slotIndex++)
+            {
+                var assignment = definition.Assignments.FirstOrDefault(a => a.SlotIndex == slotIndex);
+                var slotPriority = slotIndex < definition.Priorities.Count
+                    ? definition.Priorities[slotIndex]
+                    : SlotPriority.None;
+
+                slots.Add(new TeamRosterSlotSummary(
+                    definition.TeamName,
+                    definition.TeamSlug,
+                    definition.Name,
+                    definition.Description,
+                    definition.Id,
+                    slotIndex + 1,
+                    slotPriority.ToString(),
+                    slotPriority switch
+                    {
+                        SlotPriority.Critical => "bg-danger",
+                        SlotPriority.Important => "bg-warning text-dark",
+                        SlotPriority.NiceToHave => "bg-secondary",
+                        _ => "bg-light text-dark"
+                    },
+                    definition.Period.ToString(),
+                    assignment is not null,
+                    assignment?.AssignedUserId,
+                    assignment?.AssignedUserId is Guid assignedUserId
+                        ? usersById.GetValueOrDefault(assignedUserId)?.BurnerName
+                        : null,
+                    definition.IsPublic));
+            }
+        }
+
+        IEnumerable<TeamRosterSlotSummary> filtered = slots;
+
+        if (!string.IsNullOrEmpty(priority))
+            filtered = filtered.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase));
+
+        if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
+            filtered = filtered.Where(s => !s.IsFilled);
+        else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
+            filtered = filtered.Where(s => s.IsFilled);
+
+        if (!string.IsNullOrEmpty(period))
+            filtered = filtered.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase));
+
+        return filtered.ToList();
+    }
+
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,

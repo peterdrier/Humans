@@ -341,13 +341,6 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
 
-    public Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
-        string? priority,
-        string? status,
-        string? period,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetRosterAsync(priority, status, period, cancellationToken));
-
     public Task<TeamMember> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,

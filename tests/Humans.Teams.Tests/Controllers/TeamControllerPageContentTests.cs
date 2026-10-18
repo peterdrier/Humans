@@ -36,10 +36,11 @@ public class TeamControllerPageContentTests
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var teams = Substitute.For<ITeamManagementService>();
+        var pages = Substitute.For<ITeamPageService>();
         TeamRosterSlotSummary Slot(string team, string role, int number, SlotPriority priority) =>
             new(team, team.ToLowerInvariant(), role, null, Guid.NewGuid(), number,
                 priority.ToString(), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
-        teams.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
+        pages.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
         {
             Slot("Beta", "Lead", 1, SlotPriority.Important),
             Slot("Alpha", "Zulu", 1, SlotPriority.Important),
@@ -53,7 +54,7 @@ public class TeamControllerPageContentTests
                 SystemTeamType.None, false, false, false, false, Instant.FromUtc(2026, 1, 1, 0, 0), []))
             .ToDictionary(team => team.Id));
         var controller = new TeamController(
-            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            teams, pages, Substitute.For<IUserService>(),
             Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
@@ -234,6 +235,7 @@ public class TeamControllerPageContentTests
         };
         var other = child with { Id = Guid.NewGuid(), Name = "Other", Slug = "other", ParentTeamId = null, Members = [] };
         var teams = Substitute.For<ITeamManagementService>();
+        var pages = Substitute.For<ITeamPageService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
             [parent.Id] = parent, [child.Id] = child, [other.Id] = other
@@ -242,11 +244,11 @@ public class TeamControllerPageContentTests
             Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
         var privateSlot = publicSlot with { RoleDefinitionId = Guid.NewGuid(), RoleName = "Private role", IsPublic = false };
         var otherPrivate = privateSlot with { RoleDefinitionId = Guid.NewGuid(), TeamName = other.Name, TeamSlug = other.Slug };
-        teams.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { publicSlot, privateSlot, otherPrivate });
+        pages.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { publicSlot, privateSlot, otherPrivate });
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, viewer.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, Substitute.For<IUserService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
@@ -280,6 +282,7 @@ public class TeamControllerPageContentTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
         var teams = Substitute.For<ITeamManagementService>();
+        var pages = Substitute.For<ITeamPageService>();
         var hidden = new TeamInfo(Guid.NewGuid(), "Private", null, "private", true, false,
             SystemTeamType.None, true, false, true, false, Instant.FromUtc(2026, 1, 1, 0, 0), []);
         var visible = hidden with { Id = Guid.NewGuid(), Name = "Public", Slug = "public", IsHidden = false };
@@ -299,8 +302,7 @@ public class TeamControllerPageContentTests
         var hiddenSlot = new TeamRosterSlotSummary(hidden.Name, hidden.Slug, "Lead", null,
             Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
         var visibleSlot = hiddenSlot with { TeamName = visible.Name, TeamSlug = visible.Slug };
-        teams.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { hiddenSlot, visibleSlot });
-        var pages = Substitute.For<ITeamPageService>();
+        pages.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { hiddenSlot, visibleSlot });
         pages.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));

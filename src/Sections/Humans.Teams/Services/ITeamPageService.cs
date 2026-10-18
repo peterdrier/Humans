@@ -6,6 +6,21 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
+internal sealed record TeamRosterSlotSummary(
+    string TeamName,
+    string TeamSlug,
+    string RoleName,
+    string? RoleDescription,
+    Guid RoleDefinitionId,
+    int SlotNumber,
+    string Priority,
+    string PriorityBadgeClass,
+    string Period,
+    bool IsFilled,
+    Guid? AssignedUserId,
+    string? AssignedUserName,
+    bool IsPublic);
+
 internal sealed record MyTeamMembershipSummary(
     Guid TeamId,
     string TeamName,
@@ -117,6 +132,15 @@ internal sealed record TeamPageDetailResult(
 
 internal interface ITeamPageService : IApplicationService
 {
+    /// <summary>
+    /// Gets the public roster summary with optional filters applied.
+    /// </summary>
+    Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
+        string? priority,
+        string? status,
+        string? period,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.
     /// </summary>

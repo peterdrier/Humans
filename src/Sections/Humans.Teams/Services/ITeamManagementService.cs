@@ -41,21 +41,6 @@ internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage
     public static TeamPageUpdateResult Failed(string message) => new(false, message);
 }
 
-internal sealed record TeamRosterSlotSummary(
-    string TeamName,
-    string TeamSlug,
-    string RoleName,
-    string? RoleDescription,
-    Guid RoleDefinitionId,
-    int SlotNumber,
-    string Priority,
-    string PriorityBadgeClass,
-    string Period,
-    bool IsFilled,
-    Guid? AssignedUserId,
-    string? AssignedUserName,
-    bool IsPublic);
-
 internal sealed record AdminTeamSummary(
     Guid Id,
     string Name,
@@ -315,15 +300,6 @@ internal interface ITeamManagementService : ITeamManagement
     Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the public roster summary with optional filters applied.
-    /// </summary>
-    Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
-        string? priority,
-        string? status,
-        string? period,
         CancellationToken cancellationToken = default);
 
     /// <summary>

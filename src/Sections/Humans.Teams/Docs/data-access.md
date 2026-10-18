@@ -127,7 +127,8 @@ member/child projections over the cached `TeamInfo` snapshot, with live
 pending-request reads through `ITeamManagementService`. The My Teams projection
 uses the cached team and user-membership reads for parent names and manageable
 pending counts, keeping Auth role checks out of the decorator;
-the mapper is pure, while the directory builder combines the canonical snapshot
+the roster expands the cached role definitions of active non-system teams and resolves assigned-user names through Users.
+The mapper is pure, while the directory builder combines the canonical snapshot
 with Auth role checks to hide private parent metadata.
 
 ### TeamsEmails (Scoped, internal)
