@@ -72,7 +72,8 @@ public sealed class CampaignsEmailsTests
         var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
             subject: "{{Code}} / {{Name}} / {{Code}} / {{code}}",
             body: "**{{Code}}** / {{Name}}", code: "Value {{Name}} & $1")
-            with { RecipientName = "Name {{Code}} <Admin>" };
+            with
+        { RecipientName = "Name {{Code}} <Admin>" };
         var message = new CampaignsEmails().CampaignCode(request);
         message.Subject.Should().Be("Value {{Name}} & $1 / Name {{Code}} <Admin> / Value {{Name}} & $1 / {{code}}");
         message.HtmlBody.Should().Contain("<strong>Value {{Name}} &amp; $1</strong>")
@@ -88,7 +89,8 @@ public sealed class CampaignsEmailsTests
         const string name = "![portrait](https://example.org/tracker.png)";
         const string code = "`[redeem](https://example.org/redirect)`";
         var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: code)
-            with { RecipientName = name };
+            with
+        { RecipientName = name };
 
         var message = new CampaignsEmails().CampaignCode(request);
 

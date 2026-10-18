@@ -163,9 +163,15 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var ct = TestContext.Current.CancellationToken;
         var calendar = new EventSettings
         {
-            Id = Guid.NewGuid(), EventName = "Test Event", TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1), BuildStartOffset = -14,
-            EventEndOffset = 6, StrikeEndOffset = 9, IsShiftBrowsingOpen = true, IsActive = true
+            Id = Guid.NewGuid(),
+            EventName = "Test Event",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsShiftBrowsingOpen = true,
+            IsActive = true
         };
         ShiftsDb.EventSettings.Add(calendar);
         await ShiftsDb.SaveChangesAsync(ct);
@@ -175,13 +181,21 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var factory = new TestDbContextFactory<ShiftsDbContext>(options);
         var rota = new Rota
         {
-            Id = Guid.NewGuid(), EventSettingsId = calendar.Id, TeamId = Guid.NewGuid(),
-            Name = "Event rota", Policy = SignupPolicy.Public, Period = RotaPeriod.Event
+            Id = Guid.NewGuid(),
+            EventSettingsId = calendar.Id,
+            TeamId = Guid.NewGuid(),
+            Name = "Event rota",
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event
         };
         var shift = new Shift
         {
-            Id = Guid.NewGuid(), RotaId = rota.Id, DayOffset = 1, IsAllDay = true,
-            MinVolunteers = 0, MaxVolunteers = sameUser ? 2 : 1
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = 1,
+            IsAllDay = true,
+            MinVolunteers = 0,
+            MaxVolunteers = sameUser ? 2 : 1
         };
         var firstUserId = Guid.NewGuid();
         var secondUserId = sameUser ? firstUserId : Guid.NewGuid();
@@ -195,9 +209,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             if (firstPath.StartsWith("approve", StringComparison.Ordinal))
                 seed.ShiftSignups.Add(new ShiftSignup
                 {
-                    Id = pendingId, ShiftId = shift.Id, UserId = firstUserId,
-                    SignupBlockId = blockId, Status = SignupStatus.Pending,
-                    CreatedAt = TestNow, UpdatedAt = TestNow
+                    Id = pendingId,
+                    ShiftId = shift.Id,
+                    UserId = firstUserId,
+                    SignupBlockId = blockId,
+                    Status = SignupStatus.Pending,
+                    CreatedAt = TestNow,
+                    UpdatedAt = TestNow
                 });
             await seed.SaveChangesAsync(ct);
         }

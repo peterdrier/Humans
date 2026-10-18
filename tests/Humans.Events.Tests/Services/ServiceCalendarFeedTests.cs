@@ -168,8 +168,12 @@ public class EventServiceCalendarFeedTests
         var ev = MakeEvent(EventStatus.Approved, isRecurring: true, recurrenceDays: "0,2");
         var favourites = new[] { 0, 2 }.Select(day => new EventFavourite
         {
-            Id = Guid.NewGuid(), UserId = userId, GuideEventId = ev.Id,
-            DayOffset = day, CreatedAt = FixedNow, Event = ev,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            GuideEventId = ev.Id,
+            DayOffset = day,
+            CreatedAt = FixedNow,
+            Event = ev,
         }).ToList();
         _repo.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(favourites);
         // In-place moderator edits retain approval and the member's existing bookmarks.

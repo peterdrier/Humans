@@ -260,7 +260,7 @@ internal sealed class FeedbackService(
                 report.Description, message.Content,
                 reporter.PreferredLanguage.IsSupportedCultureCode()
                     ? reporter.PreferredLanguage : CultureCatalog.DefaultCultureCode) with
-                { UserId = reporter.Id, DeliveryId = message.Id }, ct);
+            { UserId = reporter.Id, DeliveryId = message.Id }, ct);
             return true;
         }
         else

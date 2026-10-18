@@ -428,9 +428,13 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var profile = await CreateProfile(Guid.NewGuid());
         var field = new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
-            Value = "+34 612345678", Visibility = ContactFieldVisibility.AllActiveProfiles,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "+34 612345678",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
         Db.ContactFields.Add(field);
         await Db.SaveChangesAsync(ct);

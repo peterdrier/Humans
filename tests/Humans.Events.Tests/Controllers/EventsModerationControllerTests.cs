@@ -33,8 +33,10 @@ public sealed class EventsModerationControllerTests
         var settingsId = Guid.NewGuid();
         var guideEvent = new Event
         {
-            Id = Guid.NewGuid(), CampId = isCampEvent ? Guid.NewGuid() : null,
-            Title = "Approved event", Status = EventStatus.Approved
+            Id = Guid.NewGuid(),
+            CampId = isCampEvent ? Guid.NewGuid() : null,
+            Title = "Approved event",
+            Status = EventStatus.Approved
         };
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
@@ -48,8 +50,11 @@ public sealed class EventsModerationControllerTests
         var controller = BuildController(moderatorId, guideEvent.Id);
         var model = new AdminEventFormViewModel
         {
-            Title = "Changed", VenueId = Guid.NewGuid(), StartDate = new DateTime(2026, 8, 1),
-            IsRecurring = true, RecurrenceDays = "0,3"
+            Title = "Changed",
+            VenueId = Guid.NewGuid(),
+            StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true,
+            RecurrenceDays = "0,3"
         };
 
         var result = await controller.Update(guideEvent.Id, model);

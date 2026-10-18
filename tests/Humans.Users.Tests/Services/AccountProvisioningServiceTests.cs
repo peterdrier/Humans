@@ -91,8 +91,6 @@ public class AccountProvisioningServiceTests
         // --- Methods not exercised by these tests ---
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>

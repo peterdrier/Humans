@@ -1994,8 +1994,11 @@ public class ServiceTests
         var orderId = Guid.NewGuid();
         db.Orders.Add(new Order
         {
-            Id = orderId, CampSeasonId = Guid.NewGuid(), Year = 2026,
-            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         });
         await db.SaveChangesAsync(ct);
         var session = new StoreCheckoutSessionData("cs_overlap", orderId, "pi_overlap", 75m, PaymentStatus: "unpaid");

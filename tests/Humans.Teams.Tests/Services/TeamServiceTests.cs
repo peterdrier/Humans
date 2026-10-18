@@ -148,7 +148,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         TeamsDb.ChangeTracker.Clear();
         var info = (await _userService.GetUserInfoAsync(survivor.Id, Xunit.TestContext.Current.CancellationToken))!
-            with { MergedUserIds = [archived.Id] };
+            with
+        { MergedUserIds = [archived.Id] };
         _userService.GetUserInfoAsync(survivor.Id, Arg.Any<CancellationToken>()).Returns(info);
         _userService.GetUserInfoAsync(archived.Id, Arg.Any<CancellationToken>()).Returns(info);
 
@@ -1153,9 +1154,14 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var repository = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
         var team = new Team
         {
-            Id = Guid.NewGuid(), Name = "Approval team", Slug = "approval-team",
-            IsActive = true, RequiresApproval = true, SystemTeamType = SystemTeamType.None,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            Name = "Approval team",
+            Slug = "approval-team",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         await using (var seed = new TeamsDbContext(options))
         {

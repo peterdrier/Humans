@@ -86,8 +86,11 @@ public class AccountMergeServiceMergeTests
         {
             db.AccountMergeRequests.Add(new AccountMergeRequest
             {
-                Id = Guid.NewGuid(), SourceUserId = source, TargetUserId = target,
-                Status = status, CreatedAt = _clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                SourceUserId = source,
+                TargetUserId = target,
+                Status = status,
+                CreatedAt = _clock.GetCurrentInstant()
             });
         }
         await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

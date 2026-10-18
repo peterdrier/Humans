@@ -81,7 +81,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
             return true;
         }
         catch (DbUpdateException ex) when (idempotent && ex.InnerException is PostgresException
-               { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_email_outbox_messages" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_email_outbox_messages" })
         {
             // Another handoff of this logical delivery won the primary-key insert.
             return false;

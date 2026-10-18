@@ -337,13 +337,9 @@ internal sealed class TeamAdminController(
             {
                 SetInfo(result.WarningMessage);
             }
-            else if (result.RecoveryEmail is not null)
-            {
-                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials email queued for {result.RecoveryEmail}.");
-            }
             else
             {
-                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials email queued for {result.RecoveryEmail}.");
             }
         }
 

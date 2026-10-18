@@ -86,8 +86,12 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         _shiftsDbContext.Shifts.Add(shift);
         _shiftsDbContext.ShiftSignups.Add(new ShiftSignup
         {
-            Id = Guid.NewGuid(), UserId = userId, ShiftId = shift.Id,
-            Status = SignupStatus.Confirmed, CreatedAt = TestNow, UpdatedAt = TestNow
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = shift.Id,
+            Status = SignupStatus.Confirmed,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         });
         await _shiftsDbContext.SaveChangesAsync(ct);
         var day = calendar.GateOpeningDate.PlusDays(2);

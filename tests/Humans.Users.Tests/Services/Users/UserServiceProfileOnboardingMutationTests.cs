@@ -147,8 +147,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
         Db.EventParticipations.Add(new EventParticipation
         {
-            Id = Guid.NewGuid(), UserId = userId, Year = 2026,
-            Status = ParticipationStatus.Attended, Source = ParticipationSource.TicketSync,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = 2026,
+            Status = ParticipationStatus.Attended,
+            Source = ParticipationSource.TicketSync,
             CheckedInAt = arrival,
         });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);

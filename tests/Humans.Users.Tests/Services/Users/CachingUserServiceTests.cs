@@ -79,8 +79,11 @@ public class CachingUserServiceTests
         var profile = SampleProfile(user.Id, "Before");
         var participation = new EventParticipation
         {
-            Id = Guid.NewGuid(), UserId = user.Id, Year = 2026,
-            Status = ParticipationStatus.Ticketed, Source = ParticipationSource.TicketSync,
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Year = 2026,
+            Status = ParticipationStatus.Ticketed,
+            Source = ParticipationSource.TicketSync,
         };
         var original = UserInfoFactory.Create(user, [], [participation], [], profile, [], [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()

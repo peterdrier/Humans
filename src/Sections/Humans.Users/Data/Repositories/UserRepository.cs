@@ -47,20 +47,6 @@ internal sealed partial class UserRepository : IUserRepository
 
     // Writes — User
 
-    /// <summary>Keeps the legacy fallback column synced to BurnerName so merge/purge/GDPR labels stay accurate if the Profile is later gone.</summary>
-    public async Task<bool> UpdateDisplayNameAsync(
-        Guid userId, string displayName, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        user.DisplayName = displayName;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> SetPreferredLanguageAsync(
         Guid userId, string preferredLanguage, CancellationToken ct = default)
     {

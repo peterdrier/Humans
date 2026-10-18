@@ -421,8 +421,11 @@ public sealed class FeedbackServiceTests
         var report = await SeedReportAsync(userId, "Test", "/test");
         FeedbackDb.FeedbackMessages.Add(new FeedbackMessage
         {
-            Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = Guid.NewGuid(),
-            Content = "Historical reply", CreatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            FeedbackReportId = report.Id,
+            SenderUserId = Guid.NewGuid(),
+            Content = "Historical reply",
+            CreatedAt = Clock.GetCurrentInstant()
         });
         await FeedbackDb.SaveChangesAsync(ct);
         await _service.ExecuteAsync(ct);

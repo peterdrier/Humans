@@ -41,11 +41,6 @@ internal partial interface IUserRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Updates <c>User.DisplayName</c>. Returns false if the user does not exist.
-    /// </summary>
-    Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Returns false if the user does not exist.
     /// </summary>
     Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);

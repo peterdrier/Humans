@@ -686,9 +686,9 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var succeeded = action switch
         {
             "create" => (await _service.CreateShiftAsync(NewShiftInput(rota, 0) with
-                { MinVolunteers = minimum, MaxVolunteers = maximum })).Succeeded,
+            { MinVolunteers = minimum, MaxVolunteers = maximum })).Succeeded,
             "update" => (await _service.UpdateShiftAsync(NewUpdateInput(original!, rota.TeamId, 0) with
-                { MinVolunteers = minimum, MaxVolunteers = maximum })).Succeeded,
+            { MinVolunteers = minimum, MaxVolunteers = maximum })).Succeeded,
             "event" => (await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
                 rota.Id, rota.TeamId, 0, 0, [new ShiftTimeSlotInput(new LocalTime(8, 0), 4)], minimum, maximum))).Succeeded,
             _ => (await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
@@ -722,7 +722,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         {
             "create" => (await _service.CreateShiftAsync(NewShiftInput(rota, 0) with { DurationHours = hours })).Succeeded,
             "update" => (await _service.UpdateShiftAsync(NewUpdateInput(original!, rota.TeamId, 0) with
-                { DurationHours = hours, Description = "Attempted invalid edit" })).Succeeded,
+            { DurationHours = hours, Description = "Attempted invalid edit" })).Succeeded,
             _ => (await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(rota.Id, rota.TeamId, 0, 0,
                 [new ShiftTimeSlotInput(new LocalTime(8, 0), 4), new ShiftTimeSlotInput(new LocalTime(14, 0), hours)], 1, 2))).Succeeded
         };
@@ -763,7 +763,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         await SaveAllAsync(Ct);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, 0) with
-            { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = 0.25 });
+        { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = 0.25 });
 
         result.Succeeded.Should().BeTrue();
         var shift = await ShiftsDb.Shifts.SingleAsync(Ct);

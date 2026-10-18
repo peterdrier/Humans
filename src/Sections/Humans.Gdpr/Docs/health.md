@@ -95,12 +95,11 @@ ledger, a fix that adds public surface either way.
 
 ## 5. Seams
 
-- **Export does not follow a merge chain for its contributors; erasure does.**
-  `EraseForUserAsync` takes one id and the caller loops the chain
-  (`src/Sections/Humans.Users/Services/AccountDeletionService.cs:213`). The export now
-  *names* the chain on its envelope but still passes contributors only the id asked with,
-  so each contributor remembers the chain for itself or forgets it. Reserved, not built:
-  peterdrier/Humans#1704 would remove the question by resolving chains inside Users.
+- **Export resolves the survivor once; erasure loops the chain.** The export passes every
+  contributor the surviving id, so a contributor whose rows stay under archived ids must
+  read `UserInfo.AllUserIds` itself. `EraseForUserAsync` takes one id and the caller loops
+  the chain (`src/Sections/Humans.Users/Services/AccountDeletionService.cs:213`). Reserved,
+  not built: peterdrier/Humans#1704 would remove the question by resolving chains inside Users.
 - **The coverage gate is vacuous for a section that never implements the contract at
   all.** The coverage tests enumerate implementers by reflection, so a new user-scoped
   section whose service never implements `IUserDataContributor` leaves nothing to
@@ -134,8 +133,8 @@ ledger, a fix that adds public surface either way.
   the erasure and the retention declaration together, so a section cannot export a
   category without accounting for its deletion in the same interface.
 - **The one outbound dependency is `IUserService`.** Everything else the orchestrator
-  touches is its own leaf; the account read exists only to stamp the envelope with the
-  surviving id and the archived ids, and contributors still resolve for themselves.
+  touches is its own leaf; the account read stamps the envelope with the surviving id and
+  the archived ids, and hands that surviving id to every contributor.
 - **Almost all of this section's reforge surface score is the fan-out seam** — the
   `AddScoped<IUserDataContributor>` registrations each data-owning section makes. The
   architecture working as designed, not surface to burn down.

@@ -2629,7 +2629,8 @@ public sealed class CampServiceTests : CampsTestHarness
         var requestedId = requestArchivedId ? archivedId : userId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                new User { Id = userId }, [], [], [], null, []) with { MergedUserIds = [archivedId] }));
+                new User { Id = userId }, [], [], [], null, []) with
+            { MergedUserIds = [archivedId] }));
         var otherUserId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();

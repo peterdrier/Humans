@@ -72,11 +72,17 @@ public class EventsControllerTests
         controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("/Events");
         var individual = new IndividualEventFormViewModel
         {
-            Title = "Changed", StartDate = new DateTime(2026, 8, 1), IsRecurring = true, RecurrenceDays = "0,3"
+            Title = "Changed",
+            StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true,
+            RecurrenceDays = "0,3"
         };
         var barrio = new CampEventFormViewModel
         {
-            Title = "Changed", StartDate = new DateTime(2026, 8, 1), IsRecurring = true, RecurrenceDays = "0,3"
+            Title = "Changed",
+            StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true,
+            RecurrenceDays = "0,3"
         };
 
         var result = route switch

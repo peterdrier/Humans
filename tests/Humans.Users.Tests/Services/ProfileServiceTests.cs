@@ -536,8 +536,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(Guid.NewGuid());
         Db.ProfileLanguages.Add(new ProfileLanguage
         {
-            Id = Guid.NewGuid(), ProfileId = profileId,
-            LanguageCode = "es", Proficiency = LanguageProficiency.Native,
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            LanguageCode = "es",
+            Proficiency = LanguageProficiency.Native,
         });
         await Db.SaveChangesAsync(ct);
         var repository = Substitute.For<IUserRepository>();
@@ -623,9 +625,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId);
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
-            Id = Guid.NewGuid(), ProfileId = profileId,
-            Date = new LocalDate(2025, 7, 1), EventName = "Existing history",
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            Date = new LocalDate(2025, 7, 1),
+            EventName = "Existing history",
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         });
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         var request = MakeRequest() with { VolunteerHistory = null, NoPriorBurnExperience = false };
@@ -672,9 +677,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         if (hadHistory)
             Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
-                Id = Guid.NewGuid(), ProfileId = profileId,
-                Date = new LocalDate(2025, 7, 1), EventName = "Original history",
-                CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+                Id = Guid.NewGuid(),
+                ProfileId = profileId,
+                Date = new LocalDate(2025, 7, 1),
+                EventName = "Original history",
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant(),
             });
         await Db.SaveChangesAsync(ct);
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
@@ -735,7 +743,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             });
         var first = _editor.SaveProfileAsync(userId, "Test", MakeRequest() with
         {
-            NoPriorBurnExperience = true, VolunteerHistory = [],
+            NoPriorBurnExperience = true,
+            VolunteerHistory = [],
         }, ct);
         try
         {

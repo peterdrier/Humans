@@ -161,7 +161,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
             burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with { MergedUserIds = archivedId ? [requestedId] : [] };
+            createdAt: Clock.GetCurrentInstant())) with
+        { MergedUserIds = archivedId ? [requestedId] : [] };
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>()).Returns(true);

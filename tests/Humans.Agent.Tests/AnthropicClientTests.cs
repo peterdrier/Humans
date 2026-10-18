@@ -40,7 +40,9 @@ public sealed class AnthropicClientTests
         using var http = new HttpClient(new StreamResponseHandler(body));
         var provider = new ProviderClient(new ClientOptions
         {
-            ApiKey = "test-key", HttpClient = http, MaxRetries = 0,
+            ApiKey = "test-key",
+            HttpClient = http,
+            MaxRetries = 0,
         });
         var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
         var request = new AnthropicRequest("test-model", "System prompt",

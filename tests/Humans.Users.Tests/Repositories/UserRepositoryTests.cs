@@ -79,29 +79,6 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // UpdateDisplayNameAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task UpdateDisplayNameAsync_ReturnsFalse_WhenUserDoesNotExist()
-    {
-        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", Xunit.TestContext.Current.CancellationToken);
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task UpdateDisplayNameAsync_UpdatesAndReturnsTrue_WhenUserExists()
-    {
-        var user = await SeedUserAsync();
-
-        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
-        reloaded.DisplayName.Should().Be("Renamed Person");
-    }
-
-    // ==========================================================================
     // SetDeletionPendingAsync / ClearDeletionAsync
     // ==========================================================================
 

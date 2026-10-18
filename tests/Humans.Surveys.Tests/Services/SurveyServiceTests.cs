@@ -2688,9 +2688,13 @@ public class SurveyServiceTests
         if (draftId is { } id)
             db.SurveyResponses.Add(new SurveyResponse
             {
-                Id = id, SurveyId = survey.Id, UserId = invitation.UserId,
-                InvitationId = invitation.Id, Anonymity = anonymity,
-                InputMethod = SurveyInputMethod.UserSpecificLink, Culture = "en"
+                Id = id,
+                SurveyId = survey.Id,
+                UserId = invitation.UserId,
+                InvitationId = invitation.Id,
+                Anonymity = anonymity,
+                InputMethod = SurveyInputMethod.UserSpecificLink,
+                Culture = "en"
             });
         await db.SaveChangesAsync(ct);
         var submission = new SurveySubmission(
