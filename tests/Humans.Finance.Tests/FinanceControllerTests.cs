@@ -88,6 +88,60 @@ public class FinanceControllerTests
         else await _connector.Received(1).ProvisionAsync(62900100, false, actorId);
     }
 
+    [HumansTheory]
+    [InlineData("blockStart", false)]
+    [InlineData("addAll", false)]
+    [InlineData("", false)]
+    [InlineData("", true)]
+    public async Task ProvisionHoldedAccounts_requires_posted_block_and_batch_choice(string omitted, bool addAll)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = MakeControllerWithHttpContext(actorId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["blockStart"] = "62900100", ["addAll"] = addAll.ToString(CultureInfo.InvariantCulture)
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var arguments = new object[] { 0, false };
+        var parameters = typeof(FinanceController).GetMethod(nameof(FinanceController.ProvisionHoldedAccounts))!.GetParameters();
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+            if (binding.IsModelSet) arguments[index] = binding.Model!;
+        }
+
+        var result = await controller.ProvisionHoldedAccounts((int)arguments[0], (bool)arguments[1]);
+
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _connector.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _connector.Received(1).ProvisionAsync(62900100, addAll, actorId);
+        }
+    }
+
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
         new(userId, $"contact-{userId:N}"[..12], num, CreditorContactSource.Auto);
 

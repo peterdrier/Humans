@@ -7,6 +7,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Contracts;
 
 namespace Humans.Finance.Controllers;
@@ -41,7 +42,7 @@ internal sealed class FinanceController(
 
     [HttpPost("HoldedAccounts/Provision")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
+    public async Task<IActionResult> ProvisionHoldedAccounts([BindRequired] int blockStart, [BindRequired] bool addAll)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         if (!ModelState.IsValid)
