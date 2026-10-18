@@ -1,3 +1,8 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using System.Security.Claims;
 using Humans.Consent.Controllers;
 using Humans.Consent.Models;
@@ -142,6 +147,83 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         result.IsValid.Should().BeFalse();
         result.NormalizedFolderPath.Should().BeNull();
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("IsRequired", false)]
+    [Xunit.InlineData("IsActive", false)]
+    [Xunit.InlineData("GracePeriodDays", false)]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData(null, true)]
+    public async Task AdminDocumentForms_require_explicit_consent_policy_before_editing(string? omitted, bool enabled)
+    {
+        var document = await SeedDocumentAsync("Existing document");
+        document.IsRequired = false;
+        document.IsActive = false;
+        document.GracePeriodDays = 30;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [_team.Id] = _team });
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
+        };
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = document.Id.ToString(), ["Name"] = "Changed document", ["TeamId"] = _team.Id.ToString(),
+            ["IsRequired"] = enabled ? "true" : "false", ["IsActive"] = enabled ? "true" : "false",
+            ["GracePeriodDays"] = enabled ? "1" : "365"
+        };
+        if (omitted is not null) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(LegalDocumentEditViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(LegalDocumentEditViewModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (LegalDocumentEditViewModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.EditLegalDocument(document.Id, model);
+
+        await using var verify = LegalDbFactory.CreateDbContext();
+        var stored = await verify.LegalDocuments.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        if (omitted is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            stored.Name.Should().Be("Existing document");
+            stored.IsRequired.Should().BeFalse();
+            stored.IsActive.Should().BeFalse();
+            stored.GracePeriodDays.Should().Be(30);
+            _invalidator.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            stored.Name.Should().Be("Changed document");
+            stored.IsRequired.Should().Be(enabled);
+            stored.IsActive.Should().Be(enabled);
+            stored.GracePeriodDays.Should().Be(enabled ? 1 : 365);
+            _invalidator.Received(1).InvalidateAll();
+        }
     }
 
     [HumansTheory]
