@@ -240,6 +240,54 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, null, false)]
+    [InlineData(true, null, false)]
+    public async Task Group_forms_require_explicit_restriction_before_exposing_details(bool update, bool? restriction, bool viewerExists)
+    {
+        var category = await SeedCategoryAsync(isRestricted: true);
+        var group = category.BudgetGroup!;
+        var (controller, _, _) = CreateAdminController(viewerExists, _service);
+        if (restriction is null)
+            await BindMissingParameterAsync(controller,
+                update ? nameof(BudgetAdminController.UpdateGroup) : nameof(BudgetAdminController.CreateGroup), "isRestricted");
+
+        var result = update
+            ? await controller.UpdateGroup(group.Id, "Changed group", 0, restriction ?? false)
+            : await controller.CreateGroup(group.BudgetYearId, "New group", restriction ?? false);
+
+        var refused = restriction is null || !viewerExists;
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (refused)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState["isRestricted"]!.Errors.Should().ContainSingle();
+        }
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var groups = await db.BudgetGroups.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        groups.Should().HaveCount(update || refused ? 1 : 2);
+        var saved = groups.Single(g => g.Id == group.Id);
+        saved.IsRestricted.Should().Be(!update || refused || restriction == true);
+        if (update)
+        {
+            saved.Name.Should().Be(refused ? "Departments" : "Changed group");
+            var coordinator = Guid.NewGuid();
+            _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinator, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
+            _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+            (await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinator, false))
+                .ShouldForbid.Should().Be(refused || restriction == true);
+        }
+        else if (!refused) groups.Single(g => g.Id != group.Id).IsRestricted.Should().Be(restriction!.Value);
+        if (refused) (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
     [InlineData(false, false, true)]
     [InlineData(true, false, true)]
     [InlineData(false, true, true)]

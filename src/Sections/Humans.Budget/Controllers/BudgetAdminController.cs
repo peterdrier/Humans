@@ -295,7 +295,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Groups/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, bool isRestricted)
+    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, [BindRequired] bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -322,7 +322,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Groups/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, bool isRestricted)
+    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, [BindRequired] bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
