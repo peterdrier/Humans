@@ -173,6 +173,7 @@
                                                 <option value="Discord" selected="@(fieldType == ContactFieldType.Discord ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldType.Discord)</option>
                                                 <option value="Other" selected="@(fieldType == ContactFieldType.Other ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldType.Other)</option>
                                             </select>
+                                            <span asp-validation-for="EditableContactFields[i].FieldType" class="text-danger small"></span>
                                         </div>
 
                                         <div class="col-md-2 custom-label-col" style="display: @(Model.EditableContactFields[i].FieldType == ContactFieldType.Other ? "block" : "none");">
@@ -205,6 +206,7 @@
                                                 <option value="CoordinatorsAndBoard" selected="@(visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldVisibility.CoordinatorsAndBoard)</option>
                                                 <option value="BoardOnly" selected="@(visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldVisibility.BoardOnly)</option>
                                             </select>
+                                            <span asp-validation-for="EditableContactFields[i].Visibility" class="text-danger small"></span>
                                         </div>
 
                                         <div class="col-md-2 text-end">
@@ -737,6 +739,7 @@
                                         <option value="Discord">${_cfLabels.discord}</option>
                                         <option value="Other">${_cfLabels.other}</option>
                                     </select>
+                                    <span class="text-danger small" data-valmsg-for="EditableContactFields[${index}].FieldType"></span>
                                 </div>
 
                                 <div class="col-md-2 custom-label-col" style="display: none;">
@@ -756,6 +759,7 @@
                                         <option value="CoordinatorsAndBoard">${_cfLabels.visCoordBoard}</option>
                                         <option value="BoardOnly">${_cfLabels.visBoardOnly}</option>
                                     </select>
+                                    <span class="text-danger small" data-valmsg-for="EditableContactFields[${index}].Visibility"></span>
                                 </div>
 
                                 <div class="col-md-2 text-end">
