@@ -267,6 +267,9 @@
   <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excluir las opciones no disponibles cambia el ganador oficial.</value></data>
   <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Análisis de sensibilidad — opciones disponibles actuales</value></data>
   <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Método</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (oficial)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Comprobación de Condorcet</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Recuento de Borda</value></data>
   <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Ganador</value></data>
   <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notas</value></data>
   <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Sin ganador único</value></data>

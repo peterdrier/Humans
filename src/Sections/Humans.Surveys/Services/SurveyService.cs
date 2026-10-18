@@ -1530,8 +1530,8 @@ internal sealed class SurveyService(
                 answer.RankedValue!.RankGroups,
                 answer.RankedValue.Rejected.ToHashSet(StringComparer.Ordinal)))
             .ToList();
-        RankedMethodResult Method(string name, string? winner, bool tieBreak) => new(
-            name,
+        RankedMethodResult Method(string key, string? winner, bool tieBreak) => new(
+            key,
             winner,
             winner is null ? null : labels.GetValueOrDefault(winner, winner),
             tieBreak);
@@ -1547,14 +1547,14 @@ internal sealed class SurveyService(
             var rankedPairs = RankedChoiceCounter.CountRankedPairs(authored, matrix, candidates);
             var condorcet = RankedChoiceCounter.CheckCondorcet(authored, matrix, candidates);
             var borda = RankedChoiceCounter.CountBorda(authored, ballots, candidates);
-            var official = Method("Ranked Pairs (official)", rankedPairs.Winner, rankedPairs.TieBreakUsed);
+            var official = Method("Surveys_Results_MethodRankedPairsOfficial", rankedPairs.Winner, rankedPairs.TieBreakUsed);
             return (
                 matrix,
                 official,
                 [
                     official,
-                    Method("Condorcet check", condorcet.Winner, false),
-                    Method("Borda Count", borda.Winner, borda.TieBreakUsed),
+                    Method("Surveys_Results_MethodCondorcetCheck", condorcet.Winner, false),
+                    Method("Surveys_Results_MethodBordaCount", borda.Winner, borda.TieBreakUsed),
                 ],
                 condorcet.SmallestCycle);
         }

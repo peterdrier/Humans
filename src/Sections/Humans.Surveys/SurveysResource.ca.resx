@@ -267,6 +267,9 @@
   <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excloure les opcions no disponibles canvia el guanyador oficial.</value></data>
   <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Anàlisi de sensibilitat — opcions disponibles actuals</value></data>
   <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Mètode</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (oficial)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Comprovació de Condorcet</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Recompte de Borda</value></data>
   <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Guanyador</value></data>
   <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Sense guanyador únic</value></data>

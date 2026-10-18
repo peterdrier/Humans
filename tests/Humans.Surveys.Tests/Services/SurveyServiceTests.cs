@@ -4896,8 +4896,8 @@ public class SurveyServiceTests
         ranked.OriginalPreferenceCycle.Should().HaveCount(4);
         ranked.OriginalPreferenceCycle[0].Should().Be(ranked.OriginalPreferenceCycle[^1]);
         ranked.CurrentPreferenceCycle.Should().BeEmpty();
-        ranked.Methods.Select(method => method.Method).Should().Equal(
-            "Ranked Pairs (official)", "Condorcet check", "Borda Count");
+        ranked.Methods.Select(method => method.MethodKey).Should().Equal(
+            "Surveys_Results_MethodRankedPairsOfficial", "Surveys_Results_MethodCondorcetCheck", "Surveys_Results_MethodBordaCount");
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "c", StringComparison.Ordinal))
             .RejectionCount.Should().Be(1);
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "b", StringComparison.Ordinal))

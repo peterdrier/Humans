@@ -188,8 +188,8 @@ else
                                 <tbody>
                                 @foreach (var method in ranked.Methods)
                                 {
-                                    <tr class="@(method.Method.StartsWith("Ranked Pairs", StringComparison.Ordinal) ? "table-primary" : "")">
-                                        <th scope="row">@method.Method</th>
+                                    <tr class="@(method == ranked.CurrentOfficialResult ? "table-primary" : "")">
+                                        <th scope="row">@Localizer[method.MethodKey]</th>
                                         <td>@(method.WinnerLabel ?? Localizer["Survey_Admin_Results_NoUniqueWinner"].Value)</td>
                                         <td>@(method.TieBreakUsed ? Localizer["Survey_Admin_Results_TieBreakApplied"].Value : "")</td>
                                     </tr>
