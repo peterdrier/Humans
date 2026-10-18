@@ -23,7 +23,8 @@ public interface IStripeService : IApplicationService
     /// Look up a PaymentIntent and return fee breakdown and payment method details.
     /// Returns <c>null</c> for the cases this section checks: the Tickets key is unset, the key
     /// lacks the scope (Stripe <c>permission_error</c>), or Stripe answered and the PaymentIntent
-    /// has no charge. All are logged internally. Any other Stripe failure — an authentication
+    /// has no charge or its asynchronous capture has not produced a balance transaction yet.
+    /// All are logged internally. Any other Stripe failure — an authentication
     /// error, a rate limit, a transport failure, cancellation — propagates.
     /// </summary>
     Task<StripePaymentDetails?> GetPaymentDetailsAsync(string paymentIntentId, CancellationToken ct = default);

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -8,6 +9,7 @@ using Humans.Stripe.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
+using NSubstitute;
 // Compilation-unit level, so this binds to the SDK's global::Stripe rather than to the
 // enclosing Humans.Stripe section namespace. See StripeService.cs.
 using Stripe;
@@ -17,8 +19,8 @@ namespace Humans.Stripe.Tests.Services;
 /// <summary>
 /// The connector's read/write contract: a read returns <c>null</c> for the cases the section
 /// checks and propagates everything else (an authentication error, a rate limit, a transport
-/// failure); the write throws. Both halves are reachable without a network call — each guard
-/// runs before the <c>StripeClient</c> is constructed — so this pins them from a unit test.
+/// failure); the write throws. Unconfigured guards run before client construction; configured
+/// reads use the real SDK over an isolated HTTP transport without network calls.
 /// A read that throws where its siblings return null is the defect these tests exist to catch.
 /// </summary>
 public class StripeServiceContractTests
@@ -45,6 +47,60 @@ public class StripeServiceContractTests
 
         result.Should().BeNull();
         log.Entries.Should().Contain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task PaymentDetails_waits_for_async_capture_fees_instead_of_recording_zero()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        const string pending = """
+            {"id":"pi_async","object":"payment_intent","latest_charge":{
+              "id":"ch_async","object":"charge","payment_method_details":{"type":"card","card":{"brand":"visa"}},
+              "balance_transaction":null}}
+            """;
+        const string captured = """
+            {"id":"pi_async","object":"payment_intent","latest_charge":{
+              "id":"ch_async","object":"charge","payment_method_details":{"type":"card","card":{"brand":"visa"}},
+              "balance_transaction":{"id":"txn_async","object":"balance_transaction","currency":"eur",
+                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+            """;
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, pending),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, captured));
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "sk_test_fees" }),
+            new CapturingLogger<StripeService>(), http);
+
+        (await service.GetPaymentDetailsAsync("pi_async", TestContext.Current.CancellationToken)).Should().BeNull();
+        var available = await service.GetPaymentDetailsAsync("pi_async", TestContext.Current.CancellationToken);
+
+        available.Should().NotBeNull();
+        available.StripeFee.Should().Be(1.23m);
+        available.ApplicationFee.Should().Be(0.45m);
+        available.PaymentMethod.Should().Be("card");
+        available.PaymentMethodDetail.Should().Be("visa");
+    }
+
+    [HumansFact]
+    public async Task PaymentDetails_preserves_explicit_zero_fees_on_an_available_balance_transaction()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        const string payload = """
+            {"id":"pi_zero","object":"payment_intent","latest_charge":{
+              "id":"ch_zero","object":"charge","payment_method_details":{"type":"card"},
+              "balance_transaction":{"id":"txn_zero","object":"balance_transaction","currency":"eur","fee_details":[]}}}
+            """;
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload));
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "sk_test_fees" }),
+            new CapturingLogger<StripeService>(), http);
+
+        var available = await service.GetPaymentDetailsAsync("pi_zero", TestContext.Current.CancellationToken);
+
+        available.Should().NotBeNull();
+        available.StripeFee.Should().Be(0m);
+        available.ApplicationFee.Should().Be(0m);
     }
 
     [HumansFact]

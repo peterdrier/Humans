@@ -70,13 +70,15 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   signing secret; it never throws and never partially trusts a payload.
 - The network reads return `null` for exactly the cases this section checks, and for
   nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
-  (`permission_error`), or Stripe answered and the PaymentIntent has no charge.
+  (`permission_error`), or Stripe answered and the PaymentIntent has no charge or its balance
+  transaction is not available yet after asynchronous capture. A missing balance transaction
+  never becomes an explicit zero; a present transaction with no fee entries still reports zero.
   `ListStoreCheckoutSessionsAsync`: the Store key is unset or lacks the read scope.
   **Every other Stripe failure propagates** — an authentication error, a rate limit, a
   transport failure, cancellation. `null` never means "the call failed": it means the section
   checked and has nothing to hand back, either because the configuration says Stripe cannot be
   asked or — `GetPaymentDetailsAsync` only — because Stripe was asked and the intent carries no
-  charge to report fees from.
+  charge or balance transaction to report fees from.
 - `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
   mistake an unreadable account for an account with no sessions and false-flag recorded
   payments as orphans.

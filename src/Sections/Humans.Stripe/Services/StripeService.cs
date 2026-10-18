@@ -54,7 +54,8 @@ internal sealed class StripeSettings
 
 }
 
-internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
+internal sealed class StripeService(
+    IOptions<StripeSettings> settings, ILogger<StripeService> logger, IHttpClient? httpClient = null) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
 
@@ -88,7 +89,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
         if (!_settings.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe Store key is not configured.");
 
-        var client = new StripeClient(_settings.StoreKey);
+        var client = new StripeClient(_settings.StoreKey, httpClient: httpClient);
         var sessions = new SessionService(client);
 
         var options = new SessionCreateOptions
@@ -155,7 +156,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
-        var client = new StripeClient(_settings.TicketsKey);
+        var client = new StripeClient(_settings.TicketsKey, httpClient: httpClient);
         var piService = new PaymentIntentService(client);
 
         PaymentIntent pi;
@@ -181,6 +182,15 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
+        // Asynchronous capture can succeed before its balance transaction exists. Returning
+        // zero here would permanently mark Tickets' fee enrichment complete instead of retrying.
+        var bt = charge.BalanceTransaction;
+        if (bt is null)
+        {
+            logger.LogDebug("PaymentIntent {Id} is awaiting its balance transaction", paymentIntentId);
+            return null;
+        }
+
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
         string? methodDetail = null;
@@ -189,8 +199,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
 
         decimal stripeFee = 0;
         decimal applicationFee = 0;
-        var bt = charge.BalanceTransaction;
-        if (bt?.FeeDetails is not null)
+        if (bt.FeeDetails is not null)
         {
             foreach (var fd in bt.FeeDetails)
             {
@@ -261,7 +270,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
-        var client = new StripeClient(_settings.StoreKey);
+        var client = new StripeClient(_settings.StoreKey, httpClient: httpClient);
         var sessions = new SessionService(client);
         var results = new List<StoreCheckoutSessionData>();
         try
