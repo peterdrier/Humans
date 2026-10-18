@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Expenses.Authorization;
@@ -21,6 +22,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
     private static readonly Guid SubmitterId = Guid.NewGuid();
@@ -33,7 +35,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     public ExpenseReportAuthorizationHandlerTests()
     {
-        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService);
+        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users);
 
         // Category is linked to TeamId
         _budgetService.GetCategoryByIdAsync(CategoryId)
@@ -46,6 +48,27 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     // ─── Submitter × View ────────────────────────────────────────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData("View", ExpenseReportStatus.Approved)]
+    [Xunit.InlineData("Edit", ExpenseReportStatus.Draft)]
+    [Xunit.InlineData("Submit", ExpenseReportStatus.Draft)]
+    [Xunit.InlineData("Withdraw", ExpenseReportStatus.Submitted)]
+    [Xunit.InlineData("Withdraw", ExpenseReportStatus.Approved)]
+    public async Task Merged_submitter_keeps_owner_access_without_granting_it_to_another_human(
+        string operationName, ExpenseReportStatus status)
+    {
+        var operation = Enum.Parse<ExpenseReportOperation>(operationName);
+        var survivor = Guid.NewGuid();
+        _users.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivor }, [], [], [], null, []) with { MergedUserIds = [SubmitterId] });
+        _users.GetUserInfoAsync(RandomUserId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = RandomUserId }, [], [], [], null, []) with { MergedUserIds = [Guid.NewGuid()] });
+        var report = MakeReport(SubmitterId, status);
+
+        (await EvaluateAsync(CreateUser(survivor), report, operation)).Should().BeTrue();
+        (await EvaluateAsync(CreateUser(RandomUserId), report, operation)).Should().BeFalse();
+    }
 
     [HumansFact]
     public async Task Submitter_CanView_OwnReport()

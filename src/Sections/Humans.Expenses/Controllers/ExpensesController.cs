@@ -216,7 +216,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var bookingLabel = (await ResolveBookingLabelsAsync([report], HttpContext.RequestAborted))[report.Id];
-            var isSubmitter = report.SubmitterUserId == user.Id;
+            var isSubmitter = user.AllUserIds.Contains(report.SubmitterUserId);
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
             // member needs the member's answer.
@@ -421,7 +421,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
-        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user);
         if (!allowed) return Forbid();
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
@@ -440,7 +440,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
-        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user);
         if (!allowed) return Forbid();
 
         var invoiceLine = report.Lines.FirstOrDefault(
@@ -565,7 +565,7 @@ internal sealed class ExpensesController(
         {
             var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
-            if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
+            if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
             // The IBAN on this page is always the report submitter's — the page sets who gets paid
             // for this report, and that is never the viewer when an admin opens it.
@@ -576,7 +576,7 @@ internal sealed class ExpensesController(
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
                 ReportStatus = report.Status,
-                MemberName = report.SubmitterUserId == user.Id
+                MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
                     ? null
                     : (await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted))?.BurnerName,
             };
@@ -596,7 +596,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-        if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
+        if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
         var result = await service.SaveSubmitterIbanWithResultAsync(
             id, user.Id, model.Iban);
@@ -616,7 +616,7 @@ internal sealed class ExpensesController(
         model.HasIban = iban.HasIban;
         model.MaskedIban = iban.MaskedIban;
         model.ReportStatus = report.Status;
-        model.MemberName = report.SubmitterUserId == user.Id
+        model.MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
             ? null
             : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName;
         return View(model);
@@ -906,18 +906,18 @@ internal sealed class ExpensesController(
     /// receipts, so access is wider than the Edit grant that decides whether the controls render.
     /// </summary>
     private async Task<(bool Allowed, bool CanEditLines)> ResolveLinePageAccessAsync(
-        ExpenseReportDto report, Guid userId)
+        ExpenseReportDto report, UserInfo user)
     {
         var canEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
-        return (canEditLines || report.SubmitterUserId == userId, canEditLines);
+        return (canEditLines || user.AllUserIds.Contains(report.SubmitterUserId), canEditLines);
     }
 
     /// <summary>
     /// The submitter keeps this at any status — it is their own profile — on top of whoever the
     /// Edit grant covers.
     /// </summary>
-    private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, Guid userId) =>
-        report.SubmitterUserId == userId || await AllowsAsync(report, ExpenseReportOperation.Edit);
+    private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, UserInfo user) =>
+        user.AllUserIds.Contains(report.SubmitterUserId) || await AllowsAsync(report, ExpenseReportOperation.Edit);
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports, CancellationToken ct)

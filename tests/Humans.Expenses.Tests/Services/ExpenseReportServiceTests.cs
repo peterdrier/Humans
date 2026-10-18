@@ -568,6 +568,77 @@ public sealed partial class ExpenseReportServiceTests
         mine[0].SubmitterUserId.Should().Be(me);
     }
 
+    [HumansFact]
+    public async Task Merged_submitter_lists_all_historical_reports_without_another_humans_reports()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        var survivor = UserInfo.Create(new User { Id = survivorId }, [], [], [], null, [])
+            with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
+        var ownReportId = Guid.NewGuid();
+        var sourceReportId = Guid.NewGuid();
+        await SeedReportWithStatus(ownReportId, survivorId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(sourceReportId, sourceId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(Guid.NewGuid(), otherId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+
+        foreach (var id in new[] { survivorId, sourceId })
+        {
+            (await _sut.GetForSubmitterAsync(id, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
+            (await _sut.GetReviewQueueAsync(id, false, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("edit")]
+    [Xunit.InlineData("submit")]
+    [Xunit.InlineData("withdraw")]
+    [Xunit.InlineData("iban")]
+    public async Task Merged_submitter_can_manage_historical_reports_and_updates_the_surviving_profile(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var sourceId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        SetupUserAndProfile(sourceId, "Old Name", "ES9121000418450200051332");
+        SetupUserAndProfile(survivorId, "Current Name", "ES9121000418450200051332");
+        var reportId = (await _sut.CreateDraftAsync(sourceId, sourceId, CategoryAccountNumber, "Supplies", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(reportId, sourceId, false, "Timber", 10m, ct: ct)).LineId!.Value;
+        using var receipt = new MemoryStream([1, 2, 3]);
+        (await _sut.AttachFileToLineWithResultAsync(reportId, sourceId, false, lineId,
+            "receipt.pdf", "application/pdf", receipt, ct)).Succeeded.Should().BeTrue();
+        if (string.Equals(operation, "withdraw", StringComparison.Ordinal))
+            (await _sut.SubmitWithResultAsync(reportId, sourceId, false, ct)).Succeeded.Should().BeTrue();
+        var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))! with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userServiceWrite.SetProfileIbanAsync(survivorId, Arg.Any<string?>(), ct).Returns(true);
+
+        switch (operation)
+        {
+            case "edit":
+                (await _sut.AddLineWithResultAsync(reportId, survivorId, false, "More timber", 5m, ct: ct)).Succeeded.Should().BeTrue();
+                break;
+            case "submit":
+                (await _sut.SubmitWithResultAsync(reportId, survivorId, false, ct)).Succeeded.Should().BeTrue();
+                break;
+            case "withdraw":
+                (await _sut.WithdrawWithResultAsync(reportId, survivorId, ct)).Succeeded.Should().BeTrue();
+                break;
+            case "iban":
+                (await _sut.SaveSubmitterIbanWithResultAsync(reportId, survivorId, "ES9121000418450200051332", ct)).Succeeded.Should().BeTrue();
+                await _userServiceWrite.Received(1).SetProfileIbanAsync(survivorId, "ES9121000418450200051332", ct);
+                await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(sourceId, Arg.Any<string?>(), ct);
+                break;
+        }
+
+        (await _sut.GetAsync(reportId, ct))!.SubmitterUserId.Should().Be(sourceId);
+    }
+
     // ─────────────────────────────── 4.3 ─────────────────────────────────────
 
     [HumansFact]

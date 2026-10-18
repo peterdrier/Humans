@@ -27,6 +27,69 @@ public sealed class ExpensesControllerTests
     private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
 
     [HumansTheory]
+    [Xunit.InlineData("Iban", true)]
+    [Xunit.InlineData("Iban", false)]
+    [Xunit.InlineData("LineEdit", true)]
+    [Xunit.InlineData("LineEdit", false)]
+    [Xunit.InlineData("LineProofs", true)]
+    [Xunit.InlineData("LineProofs", false)]
+    public async Task Historical_report_owner_pages_follow_the_merge_chain(string page, bool isMergedSubmitter)
+    {
+        var actorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var lineId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])
+            with { MergedUserIds = [isMergedSubmitter ? sourceId : Guid.NewGuid()] };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(user);
+        users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(user);
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
+        {
+            Id = reportId, SubmitterUserId = sourceId, Status = ExpenseReportStatus.Approved,
+            HoldedAccountNumber = 0, BudgetCategoryId = null, BudgetYearId = null,
+            PayeeName = "Historical name", PayeeIban = "", Total = 10m, CreatedAt = default, UpdatedAt = default,
+            Lines = [new ExpenseLineDto
+            {
+                Id = lineId, ExpenseReportId = reportId, Description = "Invoice", Amount = 10m,
+                LineType = ExpenseLineType.Invoice, SortOrder = 0
+            }]
+        });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
+            TestClock, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = page switch
+        {
+            "Iban" => await controller.Iban(reportId),
+            "LineEdit" => await controller.LineEdit(reportId, lineId),
+            _ => await controller.LineProofs(reportId, lineId)
+        };
+
+        if (isMergedSubmitter)
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model;
+            if (model is ExpenseLineEditViewModel line) line.CanEditLines.Should().BeFalse();
+            if (model is ExpenseLineProofsViewModel proofs) proofs.CanEditLines.Should().BeFalse();
+            if (model is ExpenseIbanViewModel iban) iban.MemberName.Should().BeNull();
+        }
+        else
+            result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Detail", "View")]
     [Xunit.InlineData("EditGet", "Edit")]
     [Xunit.InlineData("EditPost", "Edit")]
@@ -146,7 +209,7 @@ public sealed class ExpensesControllerTests
         reports.GetAsync(reportId).Returns(report);
         reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
-            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>());
+            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), users);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), report,
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
