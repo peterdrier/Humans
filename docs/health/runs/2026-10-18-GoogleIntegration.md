@@ -3,7 +3,7 @@
 - Invocation: unattended daily routine, no arguments; Phase 8 skipped per routine prompt
 - Anchor commit: `0c87f75fa` (origin/main at branch point); branch `section-doctor/2026-10-18T011630Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2023
 
 ## Assessment summary
 
