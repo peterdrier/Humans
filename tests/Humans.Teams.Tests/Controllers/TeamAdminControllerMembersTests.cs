@@ -25,6 +25,58 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansTheory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    public async Task RoleForms_InvalidBinding_NeverMutates(bool edit, bool ajax, bool allowed)
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        controller.ModelState.AddModelError("EstimatedHours", "Invalid hours");
+
+        var result = edit
+            ? await controller.EditRole(team.Slug, Guid.NewGuid(), new EditRoleDefinitionModel
+                { Name = "Role", SlotCount = 1, Priorities = ["None"] })
+            : await controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" });
+
+        if (allowed)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else if (ajax)
+            result.Should().BeOfType<UnauthorizedResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        teams.ReceivedCalls().Should().NotContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.CreateRoleDefinitionAsync), StringComparison.Ordinal)
+            || string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.UpdateRoleDefinitionAsync), StringComparison.Ordinal));
+    }
+
     [HumansFact]
     public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
     {

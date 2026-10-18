@@ -747,6 +747,12 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role creation for team {TeamId} by user {UserId}", team.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var priorities = model.Priorities
@@ -779,6 +785,12 @@ internal sealed class TeamAdminController(
         if (teamError is not null)
         {
             return isAjax ? Unauthorized() : teamError;
+        }
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role update for team {TeamId} by user {UserId}", team.Id, user.Id);
+            return BadRequest(ModelState);
         }
 
         try
