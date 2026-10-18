@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Finance.Contracts;
 
-/// <summary>One budget category's Holded actual, plus the approved purchase docs it sums.
+/// <summary>One budget category's euro actual, plus the approved purchase docs it sums.
 /// <c>Docs</c> is what the figure is made of — the year page renders it under the category so a
 /// wrong total can be traced to the document that caused it.</summary>
 public sealed record HoldedActualRow(
@@ -13,9 +13,10 @@ public sealed record HoldedActualDoc(
     string HoldedDocId, string DocNumber, string ContactName, string? Description, LocalDate Date,
     decimal Total, string HoldedUrl);
 
+/// <summary>An unmatched purchase with its original currency for diagnostics.</summary>
 public sealed record HoldedUnmatchedRow(
     string HoldedDocId, string DocNumber, string ContactName, string? Description, decimal Total,
-    string Reason, string HoldedUrl);
+    string Reason, string HoldedUrl, string Currency = "eur");
 
 public sealed record HoldedSyncResult(int DocCount, int Matched, int Unmatched);
 

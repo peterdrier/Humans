@@ -308,7 +308,7 @@
                                     <div class="small text-muted">@d.Description</div>
                                 }
                             </td>
-                            <td class="text-end">@d.Total.ToEuro()</td>
+                            <td class="text-end">@(string.Equals(d.Currency, "eur", StringComparison.OrdinalIgnoreCase) ? d.Total.ToEuro() : $"Unsupported currency ({d.Currency})")</td>
                             <td>
                                 @if (d.IsApproved == true)
                                 {

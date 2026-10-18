@@ -633,7 +633,7 @@ public class BackdoorFinanceControllerTests
         _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, 4));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1"),
+            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1", Currency: "USD"),
         ]);
 
         var result = await _sut.HoldedSync(Xunit.TestContext.Current.CancellationToken);
@@ -642,6 +642,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""status"":""Idle""");
         json.Should().Contain(@"""creditorBindingCount"":4");
         json.Should().Contain(@"""docNumber"":""F260001""");
+        json.Should().Contain(@"""currency"":""USD""");
     }
 
     // ─── IBAN scrub, every route ────────────────────────────────────────────────
@@ -737,7 +738,7 @@ public class BackdoorFinanceControllerTests
         _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, 4));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
+            new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted, Currency: Tainted),
         ]);
 
         IActionResult[] results =

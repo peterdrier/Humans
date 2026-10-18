@@ -37,7 +37,7 @@
 else
 {
     Func<HoldedUnmatchedRow, IHtmlContent> totalCell =
-        @<text><span class="text-danger">@item.Total.ToEuro()</span></text>;
+        @<text><span class="text-danger">@(string.Equals(item.Currency, "eur", StringComparison.OrdinalIgnoreCase) ? item.Total.ToEuro() : $"Unsupported currency ({item.Currency})")</span></text>;
     Func<HoldedUnmatchedRow, IHtmlContent> linkCell =
         @<text><a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded</a></text>;
     var unmatchedTable = TableModel.For(Model)

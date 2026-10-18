@@ -133,7 +133,7 @@ public class HoldedClientTests
         var json = """
         {
           "id":"doc-123","document_number":"F260009",
-          "subtotal":"19.52","tax":"0.00","total":"19.52",
+          "subtotal":"19.52","tax":"0.00","total":"19.52","currency":"EUR",
           "payments_total":"19.52","payments_pending":"0.00",
           "approved_at":"2026-05-10T09:00:00",
           "tags":["camp-build-camp"]
@@ -162,7 +162,7 @@ public class HoldedClientTests
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001"}"""));
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001","currency":"EUR"}"""));
         var client = Make(handler);
 
         var act = async () => await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);

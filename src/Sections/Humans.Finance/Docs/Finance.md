@@ -54,7 +54,7 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 | Subtotal | decimal | EUR, raw |
 | Tax | decimal | EUR, raw (net of IVA − IRPF) |
 | Total | decimal | EUR, raw |
-| Currency | string(3) | Lowercase ISO; v1 only handles `eur` |
+| Currency | string(3) | ISO code; EUR only, case-insensitive |
 | IsApproved | bool? | `false` = still a Holded draft → excluded from actuals. Null = row predates the column and has not been re-synced; treated as not approved. |
 | TagsJson | string (jsonb) | Raw tag list from Holded |
 | BookedAccountId | string? | First product line's Holded account id |
@@ -226,6 +226,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - Provisioning-plan, expense-account, category-map and connector-overview reads retain caller cancellation through the active Budget year lookup.
 
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedDocumentSync.MapDoc`).
+- Purchase reads reject unknown or foreign currency before replacing the mirror. Budget actuals also refuse unsupported cached amounts. Legacy diagnostic rows retain their currency and show an unsupported currency label instead of a euro amount; the connector state and Holded links remain available.
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `IHoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
 - `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor and SEPA-payout surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.

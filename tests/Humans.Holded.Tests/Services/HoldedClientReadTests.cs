@@ -118,16 +118,18 @@ public class HoldedClientReadTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
-    [HumansFact]
-    public async Task ListPurchaseDocuments_parses_lines_account_and_tags()
+    [HumansTheory]
+    [Xunit.InlineData("eur")]
+    [Xunit.InlineData("EUR")]
+    public async Task ListPurchaseDocuments_parses_lines_account_and_tags(string currency)
     {
-        var json = """
+        var json = $$"""
         {"items":[
           {
             "id":"doc-1","document_number":"F001","contact_name":"Alice",
             "date":"2026-05-14",
             "subtotal":"100.00","tax":"21.00","total":"121.00","payments_pending":"21.00",
-            "currency":"eur","tags":["adminstaff"],
+            "currency":"{{currency}}","tags":["adminstaff"],
             "lines":[
               {"price":"100.00","account":"acc-629","tags":["adminstaff"]}
             ]
@@ -142,6 +144,7 @@ public class HoldedClientReadTests
         docs.Should().HaveCount(1);
         var doc = docs[0];
         doc.Id.Should().Be("doc-1");
+        doc.Currency.Should().Be(currency);
         doc.PaymentsPending.Should().Be(21.00m);
         doc.Date.Should().Be(
             new LocalDate(2026, 5, 14)
@@ -157,6 +160,46 @@ public class HoldedClientReadTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("list", "USD", true)]
+    [Xunit.InlineData("list", "GBP", true)]
+    [Xunit.InlineData("single", "USD", true)]
+    [Xunit.InlineData("list", null, false)]
+    [Xunit.InlineData("single", null, false)]
+    [Xunit.InlineData("list", null, true)]
+    [Xunit.InlineData("single", null, true)]
+    [Xunit.InlineData("list", "", true)]
+    public async Task PurchaseReads_RequireEuroCurrency(string endpoint, string? currency, bool present)
+    {
+        var document = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00"}""")!.AsObject();
+        if (present) document["currency"] = currency;
+        var json = string.Equals(endpoint, "list", StringComparison.Ordinal)
+            ? $$"""{"items":[{{document.ToJsonString()}}],"cursor":null,"has_more":false}"""
+            : document.ToJsonString();
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+        Func<Task> action = string.Equals(endpoint, "list", StringComparison.Ordinal)
+            ? () => client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken)
+            : () => client.GetPurchaseDocumentAsync("doc-1", Xunit.TestContext.Current.CancellationToken);
+
+        var error = (await action.Should().ThrowAsync<HoldedPermanentException>()).Which;
+
+        error.Message.Should().Contain("currency");
+        if (!string.IsNullOrEmpty(currency)) error.Message.Should().Contain("EUR").And.Contain(currency).And.Contain("doc-1");
+    }
+
+    [HumansFact]
+    public async Task PurchaseCurrencyError_MasksAnIbanInTheRejectedValue()
+    {
+        const string iban = "ES9121000418450200051332";
+        var json = $$"""{"id":"doc-1","date":"2026-05-14","total":"121.00","currency":"{{iban}}"}""";
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        Func<Task> action = () => client.GetPurchaseDocumentAsync("doc-1", Xunit.TestContext.Current.CancellationToken);
+        var error = (await action.Should().ThrowAsync<HoldedPermanentException>()).Which;
+
+        error.Message.Should().Contain("ES91****332").And.NotContain(iban);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("id", null, false)]
     [Xunit.InlineData("id", null, true)]
     [Xunit.InlineData("id", "", true)]
@@ -164,7 +207,7 @@ public class HoldedClientReadTests
     public async Task ListPurchaseDocuments_refuses_missing_or_blank_id(
         string field, string? value, bool present)
     {
-        var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
+        var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","currency":"EUR","payments_pending":"121.00","draft":false}""")!.AsObject();
         if (present) doc[field] = value;
         else doc.Remove(field);
         var json = new JsonObject { ["items"] = new JsonArray(doc), ["has_more"] = false };
@@ -196,7 +239,7 @@ public class HoldedClientReadTests
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","currency":"EUR","payments_pending":"0.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
@@ -213,7 +256,7 @@ public class HoldedClientReadTests
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
         var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """{"items":[{"id":42,"document_number":"F001"}],"cursor":null,"has_more":false}""")));
+            HttpStatusCode.OK, """{"items":[{"id":42,"document_number":"F001","currency":"EUR"}],"cursor":null,"has_more":false}""")));
 
         var act = async () => await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -225,9 +268,9 @@ public class HoldedClientReadTests
     {
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","description":"ER: Tent pegs"},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","description":null},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","currency":"EUR","payments_pending":"0.00","description":"ER: Tent pegs"},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","currency":"EUR","payments_pending":"0.00","description":null},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","currency":"EUR","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -245,9 +288,9 @@ public class HoldedClientReadTests
         // field in the one full pull instead of a second sweep.
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","draft":false},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","draft":true},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","currency":"EUR","payments_pending":"0.00","draft":false},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","currency":"EUR","payments_pending":"0.00","draft":true},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","currency":"EUR","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));

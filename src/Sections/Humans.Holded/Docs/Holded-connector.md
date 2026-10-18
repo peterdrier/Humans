@@ -55,7 +55,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
   parameter stays inclusive for callers; without this, same-day entries never reach the ledger
   mirror even though account balances already include them.
-- Currency is EUR-only. Multi-currency is out of scope.
+- Currency is EUR-only. Purchase reads require an explicit EUR code, accepted case-insensitively. Missing, null, blank or foreign currency fails as a permanent connector error; a list is never shortened to skip it. Multi-currency is out of scope.
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
   7.5% is `s_iva_75`.

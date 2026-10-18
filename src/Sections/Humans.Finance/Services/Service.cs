@@ -348,9 +348,13 @@ internal sealed class Service(
     {
         // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
         // balance is net, and the ledger carries drafts Holded has not approved.
-        var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
-        return docs
+        var docs = (await repo.GetMatchedForYearAsync(calendarYear, ct))
             .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
+            .ToList();
+        if (docs.FirstOrDefault(d => !string.Equals(d.Currency, "eur", StringComparison.OrdinalIgnoreCase)) is { } unsupported)
+            throw new HoldedPermanentException(
+                IbanFormatter.MaskAllIn($"Holded purchase document {unsupported.HoldedDocId} has unsupported currency '{unsupported.Currency}'; EUR is required for budget actuals."));
+        return docs
             .GroupBy(d => d.BudgetCategoryId!.Value)
             .Select(g => new HoldedActualRow(
                 g.Key,
@@ -378,7 +382,8 @@ internal sealed class Service(
                 d.Description,
                 d.Total,
                 ReasonFor(d),
-                HoldedDocUrl(d.HoldedDocId)))
+                HoldedDocUrl(d.HoldedDocId),
+                d.Currency))
             .ToList();
     }
 
@@ -479,11 +484,15 @@ internal sealed class Service(
                 NameOf(d.BudgetCategoryId),
                 d.BookedAccountId,
                 d.TagsJson,
-                d.LastSyncedAt)).ToList());
+                d.LastSyncedAt,
+                d.Currency)).ToList());
     }
 
     private static string ReasonFor(HoldedExpenseDoc d)
     {
+        if (!string.Equals(d.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+            return $"Unsupported currency ({d.Currency})";
+
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
         // MapDoc always serializes a list, so "[]" is the only empty spelling.
         var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal);
