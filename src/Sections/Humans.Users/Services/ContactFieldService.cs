@@ -1,3 +1,4 @@
+using Humans.Users.Helpers;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
@@ -33,7 +34,7 @@ internal sealed class ContactFieldService(
 
         var accessLevel = await GetViewerAccessLevelAsync(
             info.Id, viewerUserId, cancellationToken);
-        var allowedVisibilities = GetAllowedVisibilities(accessLevel);
+        var allowedVisibilities = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
 
         return info.Profile.ContactFields
             .Where(cf => allowedVisibilities.Contains(cf.Visibility))
@@ -169,28 +170,4 @@ internal sealed class ContactFieldService(
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
         => userRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
-
-    private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
-        accessLevel switch
-        {
-            ContactFieldVisibility.BoardOnly =>
-            [
-                ContactFieldVisibility.BoardOnly,
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.CoordinatorsAndBoard =>
-            [
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.MyTeams =>
-            [
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            _ => [ContactFieldVisibility.AllActiveProfiles]
-        };
 }

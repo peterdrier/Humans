@@ -79,7 +79,7 @@ internal sealed class UserEmailService(
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
 
-        var allowed = GetAllowedVisibilities(accessLevel);
+        var allowed = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
 
         return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
@@ -467,32 +467,6 @@ internal sealed class UserEmailService(
                 r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
             .ToList();
     }
-
-
-    private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
-        accessLevel switch
-        {
-            ContactFieldVisibility.BoardOnly =>
-            [
-                ContactFieldVisibility.BoardOnly,
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.CoordinatorsAndBoard =>
-            [
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.MyTeams =>
-            [
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            _ => [ContactFieldVisibility.AllActiveProfiles]
-        };
-
     // see nobodies-collective/Humans#758 — true when the address matches one of the user's
     // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
     // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
