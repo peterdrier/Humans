@@ -73,6 +73,15 @@ public class ExpenseReportServiceHoldedOutboxTests
         _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
 
+        // The drain claims each event before processing, and the doc-id write is conditional;
+        // both succeed unless a test says another run got there first.
+        _repo.TryClaimOutboxAsync(
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _repo.SetLineHoldedDocIdAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(_category);
 

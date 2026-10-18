@@ -78,7 +78,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | AttachmentId | Guid? | FK → expense_attachments |
 | ParentLineId | Guid? | self-FK → expense_lines; non-null marks a proof row backing that Invoice line |
 | SortOrder | int | |
-| HoldedDocId | string? | the Holded purchase doc this line booked to (one doc per bookable line); null until pushed, on proof rows, on declined lines, and on lines the cap zeroed out |
+| HoldedDocId | string? | the Holded purchase doc this line booked to (one doc per bookable line); null until pushed, on proof rows, on declined lines, and on lines the cap zeroed out; unique index (many NULLs allowed) and written only while null |
 | DeclinedAt | Instant? | when a reviewer declined the line; null while accepted. The declined flag (`ExpenseLine.Declined` / `ExpenseLineDto.Declined`) is derived from it, so there is no separate column to disagree |
 | DeclinedReason | string? | the reviewer's reason (≤1000 chars); shown to the submitter |
 | DeclinedByUserId | Guid? | the reviewer; scalar FK, never shown to the submitter (the audit entry names the actor) |
@@ -93,7 +93,7 @@ Metadata only; bytes on disk managed by the shared `IFileStorage` (key `uploads/
 
 **Table:** `holded_expense_outbox_events`
 
-Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `NextRetryAt`, `FailedPermanently`, `ProcessedAt`, `LastError`.
+Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `NextRetryAt`, `FailedPermanently`, `ProcessedAt`, `LastError`, `ClaimedAt`/`ClaimedBy` (the drain run holding the event).
 
 ### ExpenseReportStatus
 
@@ -199,6 +199,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 - **Raw-IBAN access has no resource handler, deliberately.** The two gates are declarative and narrow: `[Authorize(Policy = AdminOnly)]` on `/Users/Admin/{id}/RevealIban`, which is the only page that reveals a raw account number and audits every reveal, and `CanSetReportIbanAsync` on `/Expenses/{id}/Iban`, which renders masked and gates *setting* the value on submitter-or-`Edit`. A resource handler (`IbanAccessRequirement` / `IbanAccessHandler`) once existed for this and was deleted: it duplicated `AdminOnly`, nothing ever constructed the requirement, and its finance grant did not match what the `/Iban` page actually does. See `authorization.md`.
 - The internal `ExpenseHoldedPublisher` owns the resumable contact/document/attachment conversation, using Expenses' repository and Finance/Holded contracts. The internal `ExpenseReportBackgroundProcessor` owns outbox selection, retry/backoff, write-off, and the configured-key gate through the existing `IExpenseReportBackgroundProcessor` contract; report transitions remain in `ExpenseReportService`.
 - `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. A transient error increments `RetryCount` and sets `NextRetryAt` to `now + 2^(RetryCount+1)` minutes, so the event is held back rather than re-hitting Holded every minute; the tenth failure, and any permanent error, sets `FailedPermanently`. A written-off event is never silently dropped — it shows on `/Expenses/Review` as a banner listing each affected report (and a flagged "Holded" column in its table) and on `/Expenses/{id}` as the Holded sync card, where a finance admin re-queues it.
+- A drain claims each event before processing it (`TryClaimOutboxAsync`: one conditional UPDATE, unprocessed and unclaimed-or-claim-older-than-15-minutes), so overlapping drains never work the same event; a run that loses the claim skips it. The claim is released on retry, write-off and re-queue, and a claim from a crashed run is taken over after the 15-minute lease. A line's `HoldedDocId` is written only while null (`SetLineHoldedDocIdAsync` returns false otherwise); a push that loses that race deletes the Holded document it just created, continues with the stored one, and notes the deletion in the push's audit entry.
 - Attachment uploads are stamped on `ExpenseAttachment.HoldedUploadedAt`, so a re-run after a partial failure or a re-queue resumes rather than adding a second copy of every earlier file to the same Holded document.
 - Submitter-facing report, line, upload, submission and withdrawal rejections use Expenses resources in the request culture, including upload limits and report status. Member mutations never expose an unexpected persistence or dependency exception to the submitter. Unexpected faults are logged with their exception and report/line identifiers; the controller renders its localized generic failure instead.
 - Each mutation has one result-returning entry point; there are no throwing transition twins or localized validation exceptions. Shared line creation and compensated attachment storage are private composition paths that return explicit refusals.

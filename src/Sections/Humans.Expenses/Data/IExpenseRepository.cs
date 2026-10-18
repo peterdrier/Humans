@@ -113,6 +113,16 @@ internal interface IExpenseRepository : IRepository
     Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
         NodaTime.Instant now, int limit, CancellationToken ct = default);
     /// <summary>
+    /// Atomically claims the event for drain run <paramref name="runId"/>. Succeeds only while the
+    /// event is unprocessed and either unclaimed or claimed before <paramref name="staleBefore"/>
+    /// (a crashed run's abandoned claim). Returns false when another run holds it. Released by
+    /// <see cref="IncrementOutboxRetryAsync"/>, <see cref="MarkOutboxFailedPermanentlyAsync"/> and
+    /// <see cref="RequeueOutboxForReportAsync"/>; processing needs no release.
+    /// </summary>
+    Task<bool> TryClaimOutboxAsync(
+        Guid outboxEventId, Guid runId, NodaTime.Instant now, NodaTime.Instant staleBefore,
+        CancellationToken ct = default);
+    /// <summary>
     /// The report's most recent outbox event, or null if a push was never queued. Drives the
     /// Holded sync card on <c>/Expenses/{id}</c>.
     /// </summary>
@@ -140,8 +150,11 @@ internal interface IExpenseRepository : IRepository
     /// retry the create call and produce a duplicate Holded document. Marking the
     /// outbox event processed is a separate <see cref="MarkOutboxProcessedAsync"/>
     /// call that runs only after every line's create + upload + approve succeeds.
+    /// The write is conditional: it only lands while the line has no doc id. Returns false
+    /// (leaving the stored id and the report's <c>UpdatedAt</c> untouched) when another push
+    /// already recorded one — the caller then owns a duplicate document and must delete it.
     /// </summary>
-    Task SetLineHoldedDocIdAsync(
+    Task<bool> SetLineHoldedDocIdAsync(
         Guid lineId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
     /// <summary>

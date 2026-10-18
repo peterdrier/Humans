@@ -114,6 +114,9 @@ namespace Humans.Expenses.Data.Migrations
 
                     b.HasIndex("ExpenseReportId");
 
+                    b.HasIndex("HoldedDocId")
+                        .IsUnique();
+
                     b.HasIndex("ParentLineId");
 
                     b.ToTable("expense_lines", (string)null);
@@ -234,6 +237,12 @@ namespace Humans.Expenses.Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClaimedBy")
                         .HasColumnType("uuid");
 
                     b.Property<string>("EventType")

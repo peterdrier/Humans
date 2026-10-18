@@ -461,6 +461,40 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .ToListAsync(ct);
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// On a relational provider this is one conditional UPDATE, so exactly one concurrent caller
+    /// sees a row affected. The non-relational fallback (EF InMemory, tests) is load-check-save
+    /// with the same predicate; it is not atomic, so it only proves the claim is consulted.
+    /// </remarks>
+    public async Task<bool> TryClaimOutboxAsync(
+        Guid outboxEventId, Guid runId, Instant now, Instant staleBefore,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (ctx.Database.IsRelational())
+        {
+            var rows = await ctx.HoldedExpenseOutboxEvents
+                .Where(e => e.Id == outboxEventId
+                    && e.ProcessedAt == null
+                    && (e.ClaimedAt == null || e.ClaimedAt < staleBefore))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(e => e.ClaimedAt, now)
+                    .SetProperty(e => e.ClaimedBy, runId), ct);
+            return rows == 1;
+        }
+
+        var ev = await ctx.HoldedExpenseOutboxEvents
+            .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
+        if (ev is null || ev.ProcessedAt is not null
+            || (ev.ClaimedAt is not null && ev.ClaimedAt >= staleBefore))
+            return false;
+        ev.ClaimedAt = now;
+        ev.ClaimedBy = runId;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> RequeueOutboxForReportAsync(
         Guid reportId, CancellationToken ct = default)
     {
@@ -480,6 +514,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             e.RetryCount = 0;
             e.LastError = null;
             e.NextRetryAt = null;
+            e.ClaimedAt = null;
+            e.ClaimedBy = null;
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -496,17 +532,36 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SetLineHoldedDocIdAsync(
+    /// <inheritdoc />
+    /// <remarks>
+    /// Relational: one <c>UPDATE ... WHERE HoldedDocId IS NULL</c>, so of two racing writers only
+    /// one lands. The non-relational fallback (EF InMemory, tests) is load-check-save and not atomic.
+    /// </remarks>
+    public async Task<bool> SetLineHoldedDocIdAsync(
         Guid lineId, string holdedDocId, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (ctx.Database.IsRelational())
+        {
+            var rows = await ctx.ExpenseLines
+                .Where(x => x.Id == lineId && x.HoldedDocId == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.HoldedDocId, holdedDocId), ct);
+            if (rows != 1) return false;
+            var reportId = await ctx.ExpenseLines
+                .Where(x => x.Id == lineId).Select(x => x.ExpenseReportId).FirstAsync(ct);
+            await ctx.ExpenseReports.Where(x => x.Id == reportId)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.UpdatedAt, updatedAt), ct);
+            return true;
+        }
+
         var line = await ctx.ExpenseLines.FirstOrDefaultAsync(x => x.Id == lineId, ct);
-        if (line is null) return;
+        if (line is null || line.HoldedDocId is not null) return false;
         line.HoldedDocId = holdedDocId;
         var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == line.ExpenseReportId, ct);
         if (r is not null) r.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task SetHoldedContactLinkAsync(
@@ -532,6 +587,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         ev.RetryCount += 1;
         ev.LastError = error;
         ev.NextRetryAt = nextRetryAt;
+        ev.ClaimedAt = null;
+        ev.ClaimedBy = null;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -550,6 +607,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         ev.RetryCount += 1;
         ev.LastError = error;
         ev.ProcessedAt = processedAt;
+        ev.ClaimedAt = null;
+        ev.ClaimedBy = null;
         await ctx.SaveChangesAsync(ct);
     }
 

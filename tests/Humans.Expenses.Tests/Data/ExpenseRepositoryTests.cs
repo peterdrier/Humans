@@ -537,6 +537,124 @@ public class ExpenseRepositoryTests
         loaded.UpdatedAt.Should().Be(updatedAt);
     }
 
+    [HumansFact]
+    public async Task SetLineHoldedDocIdAsync_SecondWriteIsRefused_AndKeepsTheFirstId()
+    {
+        var report = MakeReport(status: ExpenseReportStatus.Approved);
+        await Seed(report);
+        var lineId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = lineId, Description = "x", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
+        var firstAt = Instant.FromUtc(2026, 5, 5, 1, 0);
+
+        var first = await _sut.SetLineHoldedDocIdAsync(lineId, "doc-A", firstAt, Xunit.TestContext.Current.CancellationToken);
+        var second = await _sut.SetLineHoldedDocIdAsync(lineId, "doc-B", firstAt + Duration.FromHours(1), Xunit.TestContext.Current.CancellationToken);
+
+        first.Should().BeTrue();
+        second.Should().BeFalse();
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Single(l => l.Id == lineId).HoldedDocId.Should().Be("doc-A");
+        loaded.UpdatedAt.Should().Be(firstAt);
+    }
+
+    private static readonly Instant ClaimNow = Instant.FromUtc(2026, 5, 10, 12, 0);
+    private static readonly Instant ClaimStaleBefore = ClaimNow - Duration.FromMinutes(15);
+
+    [HumansFact]
+    public async Task TryClaimOutboxAsync_ClaimsOnce_AndRefusesASecondRun()
+    {
+        var ev = NewOutbox();
+        await SeedOutbox(ev);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var runA = Guid.NewGuid();
+
+        (await _sut.TryClaimOutboxAsync(ev.Id, runA, ClaimNow, ClaimStaleBefore, ct)).Should().BeTrue();
+        (await _sut.TryClaimOutboxAsync(ev.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, ct)).Should().BeFalse();
+
+        var stored = await LoadOutbox(ev.Id);
+        stored.ClaimedBy.Should().Be(runA);
+        stored.ClaimedAt.Should().Be(ClaimNow);
+    }
+
+    [HumansFact]
+    public async Task TryClaimOutboxAsync_StaleClaimCanBeTakenOver()
+    {
+        var ev = NewOutbox();
+        await SeedOutbox(ev);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _sut.TryClaimOutboxAsync(ev.Id, Guid.NewGuid(), ClaimNow - Duration.FromMinutes(20), ClaimStaleBefore, ct);
+        var runB = Guid.NewGuid();
+
+        (await _sut.TryClaimOutboxAsync(ev.Id, runB, ClaimNow, ClaimStaleBefore, ct)).Should().BeTrue();
+
+        (await LoadOutbox(ev.Id)).ClaimedBy.Should().Be(runB);
+    }
+
+    [HumansFact]
+    public async Task TryClaimOutboxAsync_ProcessedEventCannotBeClaimed()
+    {
+        var ev = NewOutbox(processedAt: Instant.FromUtc(2026, 5, 9, 0, 0));
+        await SeedOutbox(ev);
+
+        var claimed = await _sut.TryClaimOutboxAsync(
+            ev.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, Xunit.TestContext.Current.CancellationToken);
+
+        claimed.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task IncrementOutboxRetryAsync_ReleasesTheClaim()
+    {
+        var ev = NewOutbox();
+        await SeedOutbox(ev);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _sut.TryClaimOutboxAsync(ev.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, ct);
+
+        await _sut.IncrementOutboxRetryAsync(ev.Id, "boom", ClaimNow + Duration.FromMinutes(2), ct);
+
+        var stored = await LoadOutbox(ev.Id);
+        stored.ClaimedAt.Should().BeNull();
+        stored.ClaimedBy.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task MarkOutboxFailedPermanentlyAsync_ReleasesTheClaim()
+    {
+        var ev = NewOutbox();
+        await SeedOutbox(ev);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _sut.TryClaimOutboxAsync(ev.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, ct);
+
+        await _sut.MarkOutboxFailedPermanentlyAsync(ev.Id, "boom", ClaimNow, ct);
+
+        var stored = await LoadOutbox(ev.Id);
+        stored.ClaimedAt.Should().BeNull();
+        stored.ClaimedBy.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task RequeueOutboxForReportAsync_ReleasesTheClaim()
+    {
+        var reportId = Guid.NewGuid();
+        var ev = NewOutbox(reportId, failedPermanently: true, lastError: "boom");
+        ev.ClaimedAt = ClaimNow;
+        ev.ClaimedBy = Guid.NewGuid();
+        await SeedOutbox(ev);
+
+        (await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        var stored = await LoadOutbox(ev.Id);
+        stored.ClaimedAt.Should().BeNull();
+        stored.ClaimedBy.Should().BeNull();
+    }
+
+    private async Task<HoldedExpenseOutboxEvent> LoadOutbox(Guid id)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            .FirstAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
+    }
+
     private async Task Seed(params ExpenseReport[] reports)
     {
         await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);

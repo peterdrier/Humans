@@ -35,6 +35,12 @@ internal sealed class ExpenseReportBackgroundProcessor(
     /// <summary>Audit actor for pushes, which run unattended. Matches the Hangfire job's type name.</summary>
     internal const string OutboxJobName = "HoldedExpenseOutboxJob";
 
+    /// <summary>
+    /// Lease on an outbox claim: a claim older than this belongs to a crashed or stuck run and
+    /// may be taken over. Comfortably longer than a normal drain of one batch.
+    /// </summary>
+    internal static readonly Duration OutboxClaimLease = Duration.FromMinutes(15);
+
     public async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
     {
         // No Holded API key (PR-preview / local dev envs) → don't drain. A 401 here is a permanent
@@ -47,18 +53,34 @@ internal sealed class ExpenseReportBackgroundProcessor(
             return;
         }
 
+        var drainStartedAt = clock.GetCurrentInstant();
         var events = await repo
-            .GetUnprocessedOutboxAsync(clock.GetCurrentInstant(), batchSize, ct);
+            .GetUnprocessedOutboxAsync(drainStartedAt, batchSize, ct);
 
         if (events.Count == 0)
         {
             return;
         }
 
+        var runId = Guid.NewGuid();
+        var staleBefore = drainStartedAt - OutboxClaimLease;
+        logger.LogInformation(
+            "Holded expense outbox drain {RunId} starting with {BatchSize} candidate events",
+            runId, events.Count);
+
         foreach (var outboxEvent in events)
         {
             try
             {
+                if (!await repo.TryClaimOutboxAsync(
+                        outboxEvent.Id, runId, clock.GetCurrentInstant(), staleBefore, ct))
+                {
+                    logger.LogDebug(
+                        "Outbox event {OutboxEventId} claimed by another run — skipping (run {RunId})",
+                        outboxEvent.Id, runId);
+                    continue;
+                }
+
                 var report = await repo
                     .GetByIdAsync(outboxEvent.ExpenseReportId, ct);
 

@@ -216,6 +216,20 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
+    public async Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/purchases/{documentId}");
+        AttachAuth(req);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
+        {
+            _logger.LogWarning("Holded purchase document {DocumentId} was already gone — treated as deleted", documentId);
+        }
+    }
+
     public async Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)

@@ -32,6 +32,10 @@ public interface IHoldedClient
     /// approved returns normally.</summary>
     Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
+    /// <summary>Deletes a purchase document (DELETE /purchases/{id}). Idempotent: a doc that is
+    /// already gone (404) returns normally.</summary>
+    Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
+
     /// <summary>Records a payment against a purchase document and returns the new payment id.
     /// Partial payments are allowed — <paramref name="amount"/> may be less than what the document
     /// still owes. <paramref name="treasuryId"/> names the account the money left; omitting it lets
