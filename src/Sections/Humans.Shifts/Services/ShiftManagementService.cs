@@ -102,14 +102,14 @@ internal sealed class ShiftManagementService(
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
-    public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId)
+    public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default)
     {
-        if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
+        if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin, ct) ||
+            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin, ct) ||
+            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator, ct))
             return true;
 
-        return await IsDeptCoordinatorAsync(userId, departmentTeamId);
+        return await IsDeptCoordinatorAsync(userId, departmentTeamId, ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default)

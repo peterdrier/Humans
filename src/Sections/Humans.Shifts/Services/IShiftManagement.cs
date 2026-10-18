@@ -90,7 +90,7 @@ internal interface IShiftManagement
     /// Whether the user can approve/refuse signups and voluntell for the department.
     /// True for dept coordinators, Admin, NoInfoAdmin, AND VolunteerCoordinator.
     /// </summary>
-    Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId);
+    Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
 
     // === Rota ===
 

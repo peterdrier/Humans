@@ -88,13 +88,20 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CanApproveSignups_IsRefused_ForANonCoordinatorWithoutASystemWideRole()
+    public async Task CanApproveSignups_WithoutRoleOrCoordinator_PreservesReadCancellation()
     {
+        using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
         _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        (await _service.CanApproveSignupsAsync(userId, Guid.NewGuid())).Should().BeFalse();
+        (await _service.CanApproveSignupsAsync(userId, departmentId, cancellation.Token)).Should().BeFalse();
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.Admin, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator, cancellation.Token);
+        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, cancellation.Token);
+        await _teamService.Received(1).GetTeamAsync(departmentId, cancellation.Token);
     }
 
     [HumansFact]
