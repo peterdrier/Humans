@@ -36,7 +36,8 @@ internal sealed class StoreInvoiceIssuer(
     /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
     /// so a counterparty-less order that large is refused rather than downgraded.
     ///
-    /// Only issuable at a zero balance: a camp that still owes, or is owed, settles first.
+    /// New issuance and draft approval require a zero balance. An already approved document
+    /// can be recovered after payments change, provided its line totals still match.
     ///
     /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> is refused
     /// without calling Holded, and — because a document approved by an attempt that then failed
@@ -65,9 +66,8 @@ internal sealed class StoreInvoiceIssuer(
         // document and the order agree forever after. BalanceCalculator already computed the
         // effective prices for an Open order — reuse them rather than re-deriving.
         var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(ct));
-        if (totals.BalanceEur != 0m)
-            return Refuse(order, actorUserId,
-                $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).");
+        var balanceRefusal = totals.BalanceEur == 0m ? null
+            : $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).";
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
         foreach (var line in order.Lines)
         {
@@ -77,10 +77,8 @@ internal sealed class StoreInvoiceIssuer(
             line.DepositAmountSnapshot = t.EffectiveDeposit;
         }
 
-        // The local guard above cannot see a document approved by an attempt that then failed
-        // before its save, so ask Holded before creating anything. Read-only, and it runs ahead of
-        // the line-account resolution so that a catalog edited in between cannot block the
-        // reconciliation of a document that already exists.
+        // Read-only recovery precedes balance and line-account gates: payments or catalog
+        // assignments can change after Holded approves a document whose local save failed.
         var tag = OrderDocumentTag(order.Id);
         if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
         {
@@ -92,6 +90,8 @@ internal sealed class StoreInvoiceIssuer(
                 return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
+                if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
+
                 // Creation succeeded and approval did not. A draft books no revenue and carries no
                 // sequential number, so freezing the order against it would leave the order
                 // invoiced with no legal invoice behind it — finish the issuance instead.
@@ -109,6 +109,8 @@ internal sealed class StoreInvoiceIssuer(
                 ct);
             return AdminMutationResult.Success;
         }
+
+        if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
 
         var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
         if (totalDue <= 0m)

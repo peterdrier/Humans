@@ -27,7 +27,7 @@
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
         <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
-        @if (Model.CanIssueInvoice && order.BalanceEur == 0)
+        @if (Model.CanIssueInvoice)
         {
             <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
                 @Html.AntiForgeryToken()
@@ -36,13 +36,10 @@
                     <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
                 </button>
             </form>
-        }
-        else if (Model.CanIssueInvoice)
-        {
-            <button type="button" class="btn btn-sm btn-outline-primary" disabled>
-                <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
-            </button>
-            <small class="text-muted">@Localizer["Store_IssueInvoiceNeedsZeroBalance"]</small>
+            @if (order.BalanceEur != 0)
+            {
+                <small class="text-muted">Only an already approved invoice can be recovered while the balance is nonzero.</small>
+            }
         }
         @if (Model.CanDelete)
         {
