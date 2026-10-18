@@ -52,7 +52,7 @@ internal sealed class ExpensesController(
             var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
 
             var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
+            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted);
             var openGrants = (await preapprovals.ListClaimableForUserAsync(user.Id, HttpContext.RequestAborted))
                 .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 

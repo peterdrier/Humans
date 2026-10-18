@@ -123,13 +123,13 @@ internal sealed class BudgetService(
                     item.SortOrder))
                 .ToList());
 
-    public async Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin)
+    public async Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
     {
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
             return new CoordinatorBudgetViewData(null, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: true);
 
-        var activeYear = await GetActiveYearAsync();
+        var activeYear = await GetActiveYearAsync(ct);
         return new CoordinatorBudgetViewData(activeYear, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: false);
     }
 
@@ -301,9 +301,9 @@ internal sealed class BudgetService(
     }
 
     public async Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
-        Guid categoryId, Guid userId, bool isFinanceAdmin)
+        Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
     {
-        var category = await GetCategoryByIdAsync(categoryId);
+        var category = await GetCategoryByIdAsync(categoryId, ct);
         if (category is null)
             return new CoordinatorCategoryDetailViewData(null, ShouldForbid: false, Teams: []);
 
@@ -311,11 +311,11 @@ internal sealed class BudgetService(
         if (isRestricted && !isFinanceAdmin)
             return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
 
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
             return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
 
-        var teams = (await teamService.GetTeamsAsync()).Values
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive)
             .ToList();
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
@@ -530,8 +530,8 @@ internal sealed class BudgetService(
             e.OccurredAt)).ToList();
     }
 
-    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId) =>
-        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId)).ToHashSet();
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
+        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct)).ToHashSet();
 
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups)
     {

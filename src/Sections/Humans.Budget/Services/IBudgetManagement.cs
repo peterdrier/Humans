@@ -19,7 +19,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
 {
     // Budget Years
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
-    Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin);
+    Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
     Task UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
@@ -76,7 +76,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task DeleteGroupAsync(Guid groupId, Guid actorUserId);
 
     // Budget Categories
-    Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(Guid categoryId, Guid userId, bool isFinanceAdmin);
+    Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
     Task<BudgetCategoryDetail> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
     Task UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);

@@ -43,7 +43,7 @@ public sealed class ExpensesControllerPreapprovalTests
             UserInfo.Create(new User { Id = _actorId }, [], [], [], null, []));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
-        _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId).Returns(new HashSet<Guid>());
+        _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new HoldedExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);

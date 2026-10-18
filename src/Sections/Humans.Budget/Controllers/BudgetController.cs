@@ -23,13 +23,14 @@ internal sealed class BudgetController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var data = await budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin);
+            var data = await budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin, ct);
 
             if (data.ShouldRedirectToSummary)
                 return RedirectToAction(nameof(Summary));
@@ -48,7 +49,7 @@ internal sealed class BudgetController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading coordinator budget view");
             SetError(localizer["Budget_Flash_LoadFailed"].Value);
@@ -59,12 +60,13 @@ internal sealed class BudgetController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
-            var activeYear = await budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync(ct);
             if (activeYear is null)
             {
                 SetInfo(localizer["Budget_Flash_NoActiveYear"].Value);
@@ -80,7 +82,7 @@ internal sealed class BudgetController(
                 .Where(li => !li.IsCashflowOnly)
                 .Sum(li => li.Amount);
 
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
+            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
 
             var model = new BudgetSummaryViewModel
             {
@@ -95,7 +97,7 @@ internal sealed class BudgetController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading budget summary");
             SetError(localizer["Budget_Flash_SummaryLoadFailed"].Value);
@@ -106,13 +108,14 @@ internal sealed class BudgetController(
     [HttpGet("Category/{id:guid}")]
     public async Task<IActionResult> CategoryDetail(Guid id)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var detail = await budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin);
+            var detail = await budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin, ct);
             if (detail.Category is null) return NotFound();
             if (detail.ShouldForbid)
                 return Forbid();
@@ -130,7 +133,7 @@ internal sealed class BudgetController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading budget category {CategoryId}", id);
             SetError(localizer["Budget_Flash_CategoryLoadFailed"].Value);

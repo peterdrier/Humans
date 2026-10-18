@@ -147,6 +147,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- The member index retains request cancellation through its Budget coordinator-scope lookup.
+
 - The **For member** picker prefills the resolved member ID alongside their name, including when its input is an archived account ID.
 
 - Withdrawal POST and its detail-page button use `ExpenseReportOperation.Withdraw`: only the submitter of a Submitted, CoordinatorEndorsed, or Approved report may withdraw. Draft and already Withdrawn reports return 403 before mutation; FinanceAdmin/Admin cannot withdraw another person's report.

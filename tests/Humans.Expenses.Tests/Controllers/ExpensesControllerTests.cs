@@ -277,7 +277,7 @@ public sealed class ExpensesControllerTests
             Lines = []
         }]);
         var budget = Substitute.For<IBudgetService>();
-        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var context = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -326,7 +326,7 @@ public sealed class ExpensesControllerTests
         budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
             [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
                 [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
-        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         using var request = new CancellationTokenSource();
@@ -351,6 +351,7 @@ public sealed class ExpensesControllerTests
         model.BookingLabels[first.Id].Should().Be("Old group / Old category");
         model.BookingLabels[second.Id].Should().Be("Old group / Old category");
         await budget.Received(1).GetYearByIdAsync(yearId, context.RequestAborted);
+        await budget.Received(1).GetEffectiveCoordinatorTeamIdsAsync(actorId, context.RequestAborted);
     }
 
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>

@@ -39,7 +39,7 @@ public interface IBudgetService : IApplicationService
     /// The team ids the user coordinates a budget for, including teams inherited through
     /// the team hierarchy.
     /// </summary>
-    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId);
+    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Income/expense totals and categorical breakdowns for an already-loaded set of

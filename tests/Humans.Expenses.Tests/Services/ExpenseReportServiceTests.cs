@@ -151,7 +151,7 @@ public sealed partial class ExpenseReportServiceTests
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
@@ -290,7 +290,7 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, false, "Invoice", 10m,
             lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var actor = UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
@@ -3087,7 +3087,7 @@ public sealed partial class ExpenseReportServiceTests
         });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId).Returns(new HashSet<Guid>());
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetForSubmitterAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         reports.GetCoordinatorQueueAsync(userId, Arg.Any<CancellationToken>()).Returns([]);

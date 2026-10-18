@@ -124,6 +124,73 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
+    [InlineData("Index", true)]
+    [InlineData("Summary", true)]
+    [InlineData("CategoryDetail", true)]
+    [InlineData("Index", false)]
+    [InlineData("Summary", false)]
+    [InlineData("CategoryDetail", false)]
+    public async Task MemberReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action, bool cancelActorRead)
+    {
+        using var request = new CancellationTokenSource();
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        admin.HttpContext.RequestAborted = request.Token;
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(_ => cancelActorRead
+            ? new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new OperationCanceledException(request.Token)))
+            : new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = viewerId }, [], [], [], null, [])));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        budget.GetCoordinatorBudgetViewDataAsync(viewerId, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CoordinatorBudgetViewData>(new OperationCanceledException(request.Token)));
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CoordinatorCategoryDetailViewData>(new OperationCanceledException(request.Token)));
+        var controller = new BudgetController(budget, auth, users,
+            Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
+        {
+            ControllerContext = admin.ControllerContext,
+            TempData = admin.TempData,
+            Url = admin.Url
+        };
+        Func<Task<IActionResult>> read = action switch
+        {
+            "Index" => controller.Index,
+            "Summary" => controller.Summary,
+            _ => () => controller.CategoryDetail(_yearId)
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        _ = users.Received(1).GetUserInfoAsync(viewerId, request.Token);
+        if (!cancelActorRead)
+        {
+            switch (action)
+            {
+                case "Index": _ = budget.Received(1).GetCoordinatorBudgetViewDataAsync(viewerId, true, request.Token); break;
+                case "Summary": _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
+                default: _ = budget.Received(1).GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, request.Token); break;
+            }
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CoordinatorViews_CancelledRead_AbortsRepositoryQuery(bool category)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        Func<Task> query = category
+            ? () => _service.GetCoordinatorCategoryDetailViewDataAsync(_yearId, Guid.NewGuid(), true, request.Token)
+            : () => _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), true, request.Token);
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [InlineData("Category")]
     [InlineData("Years")]
     [InlineData("Audit")]
@@ -539,14 +606,15 @@ public sealed class BudgetServiceTests
     public async Task GetEffectiveCoordinatorTeamIdsAsync_UsesTheTeamsOwnedScope()
     {
         var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
         Guid[] expected = [Guid.NewGuid(), Guid.NewGuid()];
         _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId, request.Token);
 
         result.Should().BeEquivalentTo(expected);
-        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
+        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, request.Token);
         await _teamService.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 

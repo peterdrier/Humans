@@ -198,6 +198,8 @@ Stored as string via `HasConversion<string>()`.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- Member index, summary and category GETs preserve request cancellation through actor resolution,
+  coordinator scope and page reads. Cancellation does not display a load-failure flash.
 - Admin GET pages preserve browser cancellation through year/category/audit reads, team names,
   ticket projections, Holded actuals and ticket revenue. Cancellation propagates without a
   load-failure flash; mutation paths keep their existing cancellation boundaries.
