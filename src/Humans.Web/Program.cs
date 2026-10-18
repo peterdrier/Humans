@@ -244,9 +244,15 @@ if (!builder.Environment.IsEnvironment("Testing"))
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
                     .GetConnectionString("DefaultConnection")!),
+            // DistributedLockTimeout is NOT an acquisition wait: it is the age after which a
+            // held lock counts as abandoned and another worker may take it. At 5 s any drain
+            // longer than that lost its lock mid-run and the next minute's run re-pushed the same
+            // outbox events to Holded in parallel. 30 min exceeds the longest job (every outbox
+            // drain is bounded by [DisableConcurrentExecution(300)]); a crashed worker's lock
+            // frees after that. Library default is 10 min.
             new PostgreSqlStorageOptions
             {
-                DistributedLockTimeout = TimeSpan.FromSeconds(5)
+                DistributedLockTimeout = TimeSpan.FromMinutes(30)
             });
     });
 
