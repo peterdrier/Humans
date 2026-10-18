@@ -123,8 +123,12 @@ internal sealed class UserEmailService(
             new UserEmailAddCommand(
                 email,
                 IsVerified: false,
-                VerificationSentAt: clock.GetCurrentInstant()),
+                VerificationSentAt: clock.GetCurrentInstant(),
+                IgnoreExisting: true),
             cancellationToken);
+
+        if (!addResult.Added)
+            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailAlreadyAdded");
 
         var token = await userManager.GenerateUserTokenAsync(
             user,

@@ -36,6 +36,8 @@ internal sealed class UserService(
     internal const string CommunicationPreferences = "CommunicationPreferences";
     internal const string EventParticipations = "EventParticipations";
 
+    private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
+
     private static readonly TrackedLock[] ProfileStubLocks = Enumerable
         .Range(0, 32)
         .Select(i => new TrackedLock($"UserService.ProfileStub[{i}]"))
@@ -702,6 +704,7 @@ internal sealed class UserService(
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
+        using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);
         var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
         var existing = rows.FirstOrDefault(e => e.UserId == userId);
         if (existing is not null)

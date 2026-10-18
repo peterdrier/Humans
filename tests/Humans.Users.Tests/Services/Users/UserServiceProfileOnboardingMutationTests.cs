@@ -857,6 +857,70 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationToken()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(ct);
+        var realRepository = new UserRepository(DbFactory, Clock);
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => realRepository.GetByIdAsync(userId, call.Arg<CancellationToken>()));
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                // ILike needs PostgreSQL; perform the exact-address lookup over the same stored rows.
+                await using var lookup = await DbFactory.CreateDbContextAsync(call.Arg<CancellationToken>());
+                var rows = await lookup.UserEmails.AsNoTracking().ToListAsync(call.Arg<CancellationToken>());
+                return (IReadOnlyList<UserEmail>)rows.Where(email => string.Equals(email.Email, call.ArgAt<string>(0), StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(email.Email, call.ArgAt<string?>(1), StringComparison.OrdinalIgnoreCase)).ToList();
+            });
+        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => realRepository.GetUserEmailsByUserIdForMutationAsync(userId, call.Arg<CancellationToken>()));
+        var firstInsertReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resumeFirstInsert = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inserts = 0;
+        repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (Interlocked.Increment(ref inserts) == 1)
+            {
+                firstInsertReached.TrySetResult();
+                await resumeFirstInsert.Task.WaitAsync(ct);
+            }
+            await realRepository.AddUserEmailAsync(call.Arg<UserEmail>(), call.Arg<CancellationToken>());
+        });
+        var manager = Substitute.For<UserManager<User>>(
+            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
+        manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
+        manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
+        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>()).Build();
+        UserEmailService BuildEmailService() => new(
+            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
+            NullLogger<UserEmailService>.Instance);
+
+        var first = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
+        await firstInsertReached.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        Task<AddEmailResult> second;
+        try
+        {
+            second = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
+        }
+        finally
+        {
+            resumeFirstInsert.TrySetResult();
+        }
+        var results = await Task.WhenAll(first, second);
+
+        (await Db.UserEmails.AsNoTracking().Where(email => email.UserId == userId).ToListAsync(ct))
+            .Should().ContainSingle();
+        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token == "verification-token");
+        results.Should().ContainSingle(result => result.ErrorKey == "Users_Profile_EmailAlreadyAdded"
+            && result.EmailId == Guid.Empty && result.Token == string.Empty);
+        await manager.Received(1).GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
     [HumansTheory]
     [InlineData("add")]
     [InlineData("verify")]
