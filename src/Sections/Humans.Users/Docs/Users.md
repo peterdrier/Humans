@@ -680,6 +680,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 - People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries.
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
+- Admin role listings and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
 - Human-picker prefills pair the resolved name with the resolved account ID, so an archived account ID is never reposted as the selected value.
 
 - Outbox, privacy and dietary/medical GETs carry request cancellation through their current-user reads and, for outbox, email history. Dietary load errors remain localized; an abandoned request propagates cancellation.
