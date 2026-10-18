@@ -151,6 +151,8 @@ internal sealed class EventsController(
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
+        ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+
         if (!ModelState.IsValid)
         {
             await PopulateDropdownsAsync(model, eventSettings);
@@ -264,6 +266,8 @@ internal sealed class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
+
+        ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -489,6 +493,14 @@ internal sealed class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
+    private void ValidateRecurrenceDays(bool isRecurring, string? days, EventSettingsInfo settings)
+    {
+        if (!isRecurring || EventRecurrenceDays.HasOnlyEventOffsets(days, settings.EventEndOffset)) return;
+        logger.LogWarning("Event form rejected: recurrence days are outside the configured calendar or invalid");
+        ModelState.AddModelError(nameof(IndividualEventFormViewModel.RecurrenceDays),
+            localizer["Events_RecurrenceDaysInvalid"].Value);
+    }
+
     private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn, CancellationToken ct = default)
     {
         var model = new IndividualEventFormViewModel
@@ -549,6 +561,8 @@ internal sealed class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
+
+        ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -647,6 +661,8 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Guide settings not configured.");
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
+
+        ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
 
         if (!ModelState.IsValid)
         {

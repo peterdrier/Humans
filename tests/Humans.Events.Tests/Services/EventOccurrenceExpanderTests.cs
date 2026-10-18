@@ -7,6 +7,23 @@ namespace Humans.Events.Tests.Services;
 
 public sealed class EventOccurrenceExpanderTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData("", true)]
+    [Xunit.InlineData(" ", true)]
+    [Xunit.InlineData("0,2", true)]
+    [Xunit.InlineData("2, 0", true)]
+    [Xunit.InlineData("-1", false)]
+    [Xunit.InlineData("0,3", false)]
+    [Xunit.InlineData("0,0", false)]
+    [Xunit.InlineData("0,noon", false)]
+    [Xunit.InlineData("0,,2", false)]
+    [Xunit.InlineData("99999999999999999999", false)]
+    public void FormRecurrence_RequiresDistinctCalendarOffsetsOrTheEmptyFallback(string? offsets, bool valid)
+    {
+        EventRecurrenceDays.HasOnlyEventOffsets(offsets, eventEndOffset: 2).Should().Be(valid);
+    }
+
     private static readonly DateTimeZone Tz = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private static readonly LocalDate GateDate = new(2026, 7, 5);
     private static readonly ILookup<Guid, int?> EmptyFavourites =

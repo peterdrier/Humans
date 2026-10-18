@@ -8,6 +8,7 @@ using Humans.Events.Models;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -22,6 +23,42 @@ public sealed class EventsModerationControllerTests
 {
     private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Update_RejectsRecurrenceOutsideTheConfiguredEvent(bool isCampEvent)
+    {
+        var moderatorId = Guid.NewGuid();
+        var settingsId = Guid.NewGuid();
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(), CampId = isCampEvent ? Guid.NewGuid() : null,
+            Title = "Approved event", Status = EventStatus.Approved
+        };
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
+            Guid.NewGuid(), settingsId, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
+            "Europe/Madrid", Instant.MinValue, Instant.MinValue));
+        _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
+            settingsId, "Burn", 2026, "Europe/Madrid", new LocalDate(2026, 8, 1),
+            0, 2, 2, 0, 0, 0, 0, new Dictionary<int, int>(), null, null));
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+        var controller = BuildController(moderatorId, guideEvent.Id);
+        var model = new AdminEventFormViewModel
+        {
+            Title = "Changed", VenueId = Guid.NewGuid(), StartDate = new DateTime(2026, 8, 1),
+            IsRecurring = true, RecurrenceDays = "0,3"
+        };
+
+        var result = await controller.Update(guideEvent.Id, model);
+
+        result.Should().BeOfType<ViewResult>();
+        controller.ModelState[nameof(model.RecurrenceDays)]!.Errors.Should().ContainSingle();
+        guideEvent.Title.Should().Be("Approved event");
+        await _guide.DidNotReceive().AdminUpdateAsync(Arg.Any<Event>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task Approve_pending_event_applies_the_approval_with_submitter_edit_url()
