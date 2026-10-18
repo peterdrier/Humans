@@ -93,4 +93,5 @@
   <data name="GoogleIntegration_MyResourcesTitle" xml:space="preserve"><value>Tus recursos de Google</value></data>
   <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>Se ha creado tu correo de Workspace {0}. Revisa tu correo personal para obtener las credenciales de acceso.</value></data>
   <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
+  <data name="GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>Se ha creado tu correo de Workspace {0}. Contacta con un administrador para obtener las credenciales de acceso.</value></data>
 </root>

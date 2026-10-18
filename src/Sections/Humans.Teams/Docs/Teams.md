@@ -258,6 +258,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
 - `EETeamAdmin` is in `RoleNames.All` and `RoleNames.BoardManageableRoles` (board-grantable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
 - The Members page's `@nobodies.team` column is this section's own: `TeamAdminController.Members` batches each member's verified nobodies.team email through `IUserServiceRead.GetUserInfosAsync` and the view renders the address, or a form posting to this controller's own `ProvisionEmail`, itself (nobodies-collective/Humans#1815). It is not a cross-section widget.
+- Workspace provisioning shows credential-handoff warnings separately from account creation: a created and linked account remains successful when its credentials email cannot be queued or has no recovery address. The coordinator sees the admin password-reset guidance; accepted handoffs are described as queued rather than delivered.
 
 ## Negative Access Rules
 

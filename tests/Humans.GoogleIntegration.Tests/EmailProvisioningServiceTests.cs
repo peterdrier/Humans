@@ -97,7 +97,8 @@ public class EmailProvisioningServiceTests
         IUserEmailService UserEmailService,
         ITeamService TeamService,
         INotificationEmitter Notifications,
-        IEmailService Emails);
+        IEmailService Emails,
+        IAuditLogService Audit);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -117,7 +118,7 @@ public class EmailProvisioningServiceTests
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService, notify, email);
+            teamService, notify, email, audit);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null) => UserInfo.Create(
@@ -139,6 +140,37 @@ public class EmailProvisioningServiceTests
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Target", lastName: "Two")));
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionNobodiesEmailAsync_ReportsCommittedAccountWhenCredentialsCannotBeQueued(bool hasRecoveryEmail)
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
+            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"),
+            email: hasRecoveryEmail ? "personal@example.org" : null));
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailEditDto>());
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        f.Emails.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Queue unavailable")));
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeTrue();
+        result.FullEmail.Should().Be("person@nobodies.team");
+        result.WarningMessage.Should().Contain("admin");
+        await f.UserEmailService.Received(1).AddVerifiedEmailAsync(userId, "person@nobodies.team", Arg.Any<CancellationToken>());
+        await f.Audit.Received(1).LogAsync(AuditAction.WorkspaceAccountProvisioned,
+            "WorkspaceAccount", userId, Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        var notice = f.Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments();
+        ((string)notice[5]!).Should().Contain("person@nobodies.team")
+            .And.NotContain("Check your personal email");
     }
 
     [HumansFact]

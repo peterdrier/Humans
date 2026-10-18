@@ -124,11 +124,27 @@ internal sealed class EmailProvisioningService(
             var language = user.PreferredLanguage.IsSupportedCultureCode()
                 ? user.PreferredLanguage
                 : CultureCatalog.DefaultCultureCode;
+            var credentialsQueued = false;
+            string? warningMessage = null;
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
-                await emailService.SendAsync(emailMessages.WorkspaceCredentials(
-                    recoveryEmail, user.BurnerName, fullEmail, tempPassword,
-                    language));
+                try
+                {
+                    await emailService.SendAsync(emailMessages.WorkspaceCredentials(
+                        recoveryEmail, user.BurnerName, fullEmail, tempPassword,
+                        language));
+                    credentialsQueued = true;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Workspace account created but credentials email handoff failed for user {UserId}", userId);
+                    warningMessage = $"Account {fullEmail} provisioned and linked, but the credentials email could not be confirmed. If credentials do not arrive, ask an admin to reset the password.";
+                }
+            }
+            else
+            {
+                logger.LogWarning("Workspace account created without a credentials recovery address for user {UserId}", userId);
+                warningMessage = $"Account {fullEmail} provisioned and linked. No recovery email found; ask an admin to reset the password.";
             }
 
             try
@@ -141,7 +157,9 @@ internal sealed class EmailProvisioningService(
                     NoticeResources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", culture)!,
                     [userId],
                     body: string.Format(culture,
-                        NoticeResources.GetString("GoogleIntegration_Notification_WorkspaceReadyBody", culture)!, fullEmail),
+                        NoticeResources.GetString(credentialsQueued
+                            ? "GoogleIntegration_Notification_WorkspaceReadyBody"
+                            : "GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody", culture)!, fullEmail),
                     actionUrl: "/Profile",
                     actionLabel: NoticeResources.GetString("GoogleIntegration_Notification_ViewProfile", culture));
             }
@@ -150,9 +168,7 @@ internal sealed class EmailProvisioningService(
                 logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
             }
 
-            return !string.IsNullOrEmpty(recoveryEmail)
-                ? new EmailProvisioningResult(true, fullEmail, recoveryEmail)
-                : new EmailProvisioningResult(true, fullEmail);
+            return new EmailProvisioningResult(true, fullEmail, recoveryEmail, WarningMessage: warningMessage);
         }
         catch (Exception ex)
         {
