@@ -55,6 +55,7 @@ internal sealed class Service(
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
+    private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
 
@@ -327,66 +328,8 @@ internal sealed class Service(
 
     // ─── Sync ────────────────────────────────────────────────────────────────────
 
-    public async Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        state.Status = "Running";
-        state.StatusChangedAt = now;
-        await repo.SaveDocSyncStateAsync(state, ct);
-
-        try
-        {
-            var map = await repo.GetCategoryMapAsync(ct);
-            var entries = map
-                .Where(m => m.IsActive)
-                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
-                .ToArray();
-
-            var managedIds = (await repo.GetManagedAccountsAsync(ct))
-                .Select(m => m.HoldedAccountId)
-                .ToHashSet(StringComparer.Ordinal);
-
-            var allDocs = await client.ListPurchaseDocumentsAsync(ct);
-
-            var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
-
-            await repo.UpsertDocsAsync(docs, now, ct);
-
-            var matched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Matched);
-            var unmatched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Unmatched);
-
-            state.Status = "Idle";
-            state.LastSyncAt = now;
-            state.StatusChangedAt = now;
-            state.LastError = null;
-            state.LastSyncedDocCount = docs.Count;
-            await repo.SaveDocSyncStateAsync(state, ct);
-
-            return new HoldedSyncResult(docs.Count, matched, unmatched);
-        }
-        catch (Exception ex)
-        {
-            if (ex is OperationCanceledException && ct.IsCancellationRequested)
-                logger.LogWarning("Holded document sync cancelled by the caller");
-            else
-                logger.LogError(ex, "Service.SyncAsync failed");
-            state.Status = "Error";
-            state.LastError = ex.Message;
-            if (state.LastError.Length > 2000)
-            {
-                var length = 2000;
-                if (char.IsHighSurrogate(state.LastError[length - 1]) && char.IsLowSurrogate(state.LastError[length]))
-                    length--;
-                state.LastError = state.LastError[..length];
-            }
-            state.StatusChangedAt = now;
-            try { await repo.SaveDocSyncStateAsync(state, CancellationToken.None); }
-            catch (Exception saveEx) { logger.LogError(saveEx, "Failed to persist error sync state"); }
-            throw;
-        }
-    }
+    public Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default) =>
+        documentSync.SyncAsync(ct);
 
     public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
     {
@@ -396,51 +339,6 @@ internal sealed class Service(
         var bindings = await repo.GetCreditorContactsAsync(ct);
         return new HoldedDocSyncInfo(
             state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount, bindings.Count);
-    }
-
-    private static HoldedExpenseDoc MapDoc(
-        HoldedPurchaseDocListItemDto doc,
-        HoldedMatchEntry[] entries,
-        IReadOnlySet<string> managedIds,
-        Instant now)
-    {
-        // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
-        // real purchase docs are single-line today. Line-level attribution is a later refinement.
-        var bookedAccount = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null;
-        var tags = doc.Tags
-            .Concat(doc.Lines.SelectMany(l => l.Tags))
-            .ToList();
-
-        var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries, managedIds);
-
-        var localDate = doc.Date.InZone(MadridZone).Date;
-
-        return new HoldedExpenseDoc
-        {
-            Id = Guid.NewGuid(),
-            HoldedDocId = doc.Id,
-            DocNumber = doc.DocNumber,
-            ContactName = doc.ContactName,
-            Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
-            Date = localDate,
-            Subtotal = doc.Subtotal,
-            Tax = doc.Tax,
-            Total = doc.Total,
-            Currency = doc.Currency,
-            // Strict equality, not `!= true`: an absent `draft` field is treated as NOT approved —
-            // a silently-approved doc leaks into the budget actuals, an unmatched-approval one just
-            // stays a gap on the Unmatched queue.
-            IsApproved = doc.IsDraft == false,
-            TagsJson = JsonSerializer.Serialize(tags),
-            BookedAccountId = bookedAccount,
-            BudgetCategoryId = matchResult.CategoryId,
-            MatchStatus = matchResult.CategoryId is null && !matchResult.IsManaged
-                ? HoldedMatchStatus.Unmatched
-                : HoldedMatchStatus.Matched,
-            MatchSource = matchResult.Source,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
     }
 
     // ─── Actuals ─────────────────────────────────────────────────────────────────

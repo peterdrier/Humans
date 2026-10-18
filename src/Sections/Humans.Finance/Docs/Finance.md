@@ -329,6 +329,8 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
+**Document-sync body:** Internal `HoldedDocumentSync` owns purchase-document fetching, matching, mirror writes and sync-state transitions. `Service.SyncAsync` delegates to it through the existing contract; the facade retains provisioning, creditor and payout operations.
+
 **Job:** `HoldedSyncJob` — **not this section's.** It is Holded's (`src/Sections/Humans.Holded/Jobs/`, cron in `Humans.Holded/SectionJobs.cs`); its body `HoldedNightlySync` calls this section's `IHoldedFinanceWrite.SyncAsync` first and then the ledger mirror.
 **Migrations:** `Data/Migrations/`, on `FinanceDbContext` with its own history table `__EFMigrationsHistory_Finance`.
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`

@@ -414,7 +414,7 @@ public class HoldedFinanceServiceTests
     public async Task Sync_DocWithNoDraftFlag_IsStoredAsNotApproved()
     {
         // Holded's list item may omit `draft` entirely. Absent is not "approved": only an explicit
-        // `draft: false` counts toward actuals (Service.MapDoc, strict equality).
+        // `draft: false` counts toward actuals (HoldedDocumentSync.MapDoc, strict equality).
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
         _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
