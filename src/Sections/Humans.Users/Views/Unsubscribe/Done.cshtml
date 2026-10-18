@@ -1,15 +1,15 @@
 @{
-    ViewData["Title"] = Localizer["Unsub_DoneTitle"].Value;
+    ViewData["Title"] = Localizer["Users_Unsubscribe_DoneTitle"].Value;
     var categoryName = Localizer["CommPrefs_Name_Marketing"].Value;
 }
 
-<h1>@Localizer["Unsub_DoneTitle"]</h1>
+<h1>@Localizer["Users_Unsubscribe_DoneTitle"]</h1>
 
-<p>@Html.Raw(string.Format(Localizer["Unsub_DoneMessage"].Value, Html.Encode(categoryName)))</p>
+<p>@Html.Raw(string.Format(Localizer["Users_Unsubscribe_DoneMessage"].Value, Html.Encode(categoryName)))</p>
 
 <p>
-    @Localizer["Unsub_DoneManage"]
-    <a asp-controller="Account" asp-action="Login">@Localizer["Unsub_DoneManageLink"]</a>.
+    @Localizer["Users_Unsubscribe_DoneManage"]
+    <a asp-controller="Account" asp-action="Login">@Localizer["Users_Unsubscribe_DoneManageLink"]</a>.
 </p>
 
-<p><a asp-controller="Home" asp-action="Index">@Localizer["Unsub_BackHome"]</a></p>
+<p><a asp-controller="Home" asp-action="Index">@Localizer["Users_Unsubscribe_BackHome"]</a></p>

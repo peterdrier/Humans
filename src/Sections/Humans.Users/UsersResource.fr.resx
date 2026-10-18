@@ -831,50 +831,50 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Unsub_Title" xml:space="preserve">
+  <data name="Users_Unsubscribe_Title" xml:space="preserve">
     <value>Se désabonner des e-mails</value>
   </data>
-  <data name="Unsub_Heading" xml:space="preserve">
+  <data name="Users_Unsubscribe_Heading" xml:space="preserve">
     <value>Se désabonner des e-mails {0} ?</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_Greeting" xml:space="preserve">
+  <data name="Users_Unsubscribe_Greeting" xml:space="preserve">
     <value>Bonjour {0},</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Unsub_ConfirmMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve">
     <value>Si vous confirmez, vous ne recevrez plus les e-mails {0} de Humans.</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_ConfirmButton" xml:space="preserve">
+  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve">
     <value>Confirmer le désabonnement</value>
   </data>
-  <data name="Unsub_DoneTitle" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve">
     <value>Vous êtes désabonné(e)</value>
   </data>
-  <data name="Unsub_DoneMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve">
     <value>Vous ne recevrez plus les e-mails {0} de Humans.</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_DoneManage" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve">
     <value>Vous pouvez gérer vos préférences de communication depuis vos</value>
   </data>
-  <data name="Unsub_DoneManageLink" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve">
     <value>préférences de communication</value>
   </data>
-  <data name="Unsub_BackHome" xml:space="preserve">
+  <data name="Users_Unsubscribe_BackHome" xml:space="preserve">
     <value>Retour à l'accueil</value>
   </data>
-  <data name="Unsub_ExpiredTitle" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve">
     <value>Lien de désabonnement expiré</value>
   </data>
-  <data name="Unsub_ExpiredHeading" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve">
     <value>Ce lien de désabonnement a expiré</value>
   </data>
-  <data name="Unsub_ExpiredMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve">
     <value>Veuillez utiliser le lien d'un e-mail plus récent, ou</value>
   </data>
-  <data name="Unsub_ExpiredSignIn" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve">
     <value>connectez-vous pour gérer vos préférences de communication</value>
   </data>
 
