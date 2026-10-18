@@ -232,9 +232,9 @@ internal sealed class TicketQueryService(
         return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
     }
 
-    public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search)
+    public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default)
     {
-        var campaignData = await campaignService.GetCodeTrackingAsync();
+        var campaignData = await campaignService.GetCodeTrackingAsync(ct);
 
         var campaignSummaries = campaignData.Campaigns
             .Select(c => new CampaignCodeSummaryDto
@@ -259,7 +259,7 @@ internal sealed class TicketQueryService(
                 g.RecipientName.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
         }
 
-        var ordersWithCodes = await ticketRepository.GetOrdersWithDiscountCodesAsync();
+        var ordersWithCodes = await ticketRepository.GetOrdersWithDiscountCodesAsync(ct);
         var orderByCode = ordersWithCodes
             .GroupBy(o => o.DiscountCode, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -308,9 +308,9 @@ internal sealed class TicketQueryService(
         return (d.Year, d.Month);
     }
 
-    public async Task<TicketSalesAggregates> GetSalesAggregatesAsync()
+    public async Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default)
     {
-        var orders = await ticketRepository.GetPaidOrderSalesRowsAsync();
+        var orders = await ticketRepository.GetPaidOrderSalesRowsAsync(ct);
 
         var weeklySales = orders
             .GroupBy(o =>
@@ -359,7 +359,7 @@ internal sealed class TicketQueryService(
             })
             .ToList();
 
-        var refunded = await ticketRepository.GetRefundedOrderRowsAsync();
+        var refunded = await ticketRepository.GetRefundedOrderRowsAsync(ct);
         var refundedByMonth = refunded
             .GroupBy(r => MonthKey(r.PurchasedAt))
             .ToDictionary(g => g.Key, g => g.ToList());
@@ -394,7 +394,7 @@ internal sealed class TicketQueryService(
             })
             .ToList();
 
-        var attendees = await ticketRepository.GetPaidAttendeeTypePriceRowsAsync();
+        var attendees = await ticketRepository.GetPaidAttendeeTypePriceRowsAsync(ct);
 
         var byTicketType = attendees
             .GroupBy(a => (a.TicketTypeName, a.Price))
@@ -414,7 +414,7 @@ internal sealed class TicketQueryService(
             QuarterlySales = quarterlySales,
             MonthlySales = monthlySales,
             ByTicketType = byTicketType,
-            ByDiscountCampaign = await BuildDiscountCampaignAggregatesAsync(),
+            ByDiscountCampaign = await BuildDiscountCampaignAggregatesAsync(ct),
         };
     }
 
@@ -424,9 +424,9 @@ internal sealed class TicketQueryService(
     /// paid usage. Amounts come from the paid orders that carried each campaign's codes;
     /// redeemed codes with no matching grant collapse into one unattributed row.
     /// </summary>
-    private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync()
+    private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync(CancellationToken ct)
     {
-        var campaignData = await campaignService.GetCodeTrackingAsync();
+        var campaignData = await campaignService.GetCodeTrackingAsync(ct);
         var campaignIds = campaignData.Campaigns.Select(c => c.CampaignId).ToHashSet();
 
         var campaignByCode = campaignData.Grants
@@ -434,7 +434,7 @@ internal sealed class TicketQueryService(
             .GroupBy(g => g.Code!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().CampaignId, StringComparer.OrdinalIgnoreCase);
 
-        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync())
+        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync(ct))
             .Where(o => o.IsPaid)
             .ToList();
 

@@ -71,11 +71,11 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         WithInner(inner => inner.CalculateBreakEvenAsync(
             ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget));
 
-    public Task<TicketSalesAggregates> GetSalesAggregatesAsync() =>
-        WithInner(inner => inner.GetSalesAggregatesAsync());
+    public Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetSalesAggregatesAsync(ct));
 
-    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search) =>
-        WithInner(inner => inner.GetCodeTrackingDataAsync(search));
+    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetCodeTrackingDataAsync(search, ct));
 
     public Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,

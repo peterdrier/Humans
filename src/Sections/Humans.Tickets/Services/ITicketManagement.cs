@@ -30,7 +30,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// <summary>
     /// Compute weekly and quarterly sales aggregates for reporting.
     /// </summary>
-    Task<TicketSalesAggregates> GetSalesAggregatesAsync();
+    Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Get the distinct ticket type names across all attendees.
@@ -41,7 +41,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// Get code tracking data: campaign summaries and individual code details
     /// with redemption status. Optionally filters codes by search term.
     /// </summary>
-    Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search);
+    Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default);
 
     /// <summary>
     /// Get a paged list of orders with filtering and sorting.

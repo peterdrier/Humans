@@ -33,6 +33,9 @@ public class TicketControllerTests
     [InlineData("orders")]
     [InlineData("attendees")]
     [InlineData("who-hasnt-bought")]
+    [InlineData("codes")]
+    [InlineData("sales")]
+    [InlineData("accountant-export")]
     public async Task Admin_lists_preserve_request_cancellation(string page)
     {
         using var aborted = new CancellationTokenSource();
@@ -44,6 +47,10 @@ public class TicketControllerTests
             .Returns(Task.FromException<AttendeesPageResult>(new OperationCanceledException(aborted.Token)));
         queries.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token)
             .Returns(Task.FromException<WhoHasntBoughtResult>(new OperationCanceledException(aborted.Token)));
+        queries.GetCodeTrackingDataAsync(null, aborted.Token)
+            .Returns(Task.FromException<CodeTrackingData>(new OperationCanceledException(aborted.Token)));
+        queries.GetSalesAggregatesAsync(aborted.Token)
+            .Returns(Task.FromException<TicketSalesAggregates>(new OperationCanceledException(aborted.Token)));
         var services = new ServiceCollection();
         services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => queries);
         await using var provider = services.BuildServiceProvider();
@@ -64,6 +71,9 @@ public class TicketControllerTests
         {
             "orders" => async () => { await controller.Orders(null); },
             "attendees" => async () => { await controller.Attendees(null); },
+            "codes" => async () => { await controller.Codes(null); },
+            "sales" => async () => { await controller.SalesAggregates(); },
+            "accountant-export" => async () => { await controller.ExportAccountantReport(); },
             _ => async () => { await controller.WhoHasntBought(null); },
         };
 

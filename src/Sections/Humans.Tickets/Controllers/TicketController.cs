@@ -102,7 +102,7 @@ internal sealed class TicketController(
     [HttpGet("Codes")]
     public async Task<IActionResult> Codes(string? search)
     {
-        var data = await ticketQueryService.GetCodeTrackingDataAsync(search);
+        var data = await ticketQueryService.GetCodeTrackingDataAsync(search, HttpContext.RequestAborted);
 
         var model = new TicketCodeTrackingViewModel
         {
@@ -148,7 +148,7 @@ internal sealed class TicketController(
     [HttpGet("SalesAggregates")]
     public async Task<IActionResult> SalesAggregates()
     {
-        var aggregates = await ticketQueryService.GetSalesAggregatesAsync();
+        var aggregates = await ticketQueryService.GetSalesAggregatesAsync(HttpContext.RequestAborted);
 
         var model = new TicketSalesAggregatesViewModel
         {
@@ -306,7 +306,7 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAccountantReport()
     {
-        var months = (await ticketQueryService.GetSalesAggregatesAsync()).MonthlySales;
+        var months = (await ticketQueryService.GetSalesAggregatesAsync(HttpContext.RequestAborted)).MonthlySales;
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

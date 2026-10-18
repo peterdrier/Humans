@@ -88,7 +88,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - Section-owned resource keys use the `Tickets_` prefix in all six cultures; transfer-wizard keys use `Tickets_TicketTransfer_`.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Guest order totals, dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
-- Orders, Attendees and Who Hasn’t Bought GETs retain request cancellation through ticket queries, ticket-type filters and member/team/settings enrichment.
+- Orders, Attendees and Who Hasn’t Bought GETs retain request cancellation through ticket queries, ticket-type filters and member/team/settings enrichment. Code tracking, sales aggregates and the accountant CSV retain it through reporting queries and campaign enrichment.
 - Ticket vendor health probes propagate requested timeout/abort cancellation without logging a vendor timeout. A vendor timeout while the caller token remains active still returns Degraded.
 - Member transfer Submit/Cancel return typed rule refusals localized through Tickets resources in all six cultures. Dependency exceptions propagate to normal error handling; their messages never become resource keys or member feedback.
 - Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
