@@ -24,24 +24,43 @@ suite once at the end. Test-only changes do not qualify a run for publication.
 
 ## Work window and completion
 
-`TIME_BUDGET` (default `90m`) is the minimum active work window. The runner
-sets a native goal; the agent completes independently validated fixes and
-stops only after the deadline **and** finishing its current task. Time is
-the only stopping rule; there is no fix-count target. The target is the debt
-ledger: the agent works existing rows first, before searching for new debt,
-and the wrapper reports open rows before and after in the PR body. Fixing a row's code counts as a fix; stale-row deletion and
-documentation do not. Report the actual work after completion. One branch and
-one PR contain the whole run.
+`TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
+its active batch afterward; final build/test and publication may extend past it.
+There is no fix-count target. Work existing ledger rows before searching for new
+debt. One branch and PR contain all completed substantive fixes.
 
-The wrapper starts one `codex app-server --stdio` process, creates one thread
-and its native goal, and submits one initial turn. It stays attached while
-Codex's own goal scheduler continues across normal turn boundaries. If Codex
-completes the goal early, the wrapper waits for that turn to finish, reactivates
-the same goal, and submits a continuation with the actual clock and original
-deadline. Repeated early completions are handled the same way; neither the
-work window nor the session is reset. Completion uses native goal and turn status,
-not an agent-written "done" flag. The process stays in dangerous mode
-(`approvalPolicy=never`, `sandbox=danger-full-access`) for the entire goal.
+Before starting work and after each validated, committed round, the runner reads
+live quota through `account/rateLimits/read`. It selects the `codex` bucket's
+seven-day window by duration, not by primary/secondary position. The minimum
+remaining percentage is `100 - 12 * elapsed_days_since_weekly_reset`: at 1.5
+days, stop below 82% remaining; at seven days, 16% is reserved. Unused allowance
+carries forward within that week. All account usage, including interactive work,
+counts. Missing, invalid, stale or failed quota reads stop new work. Another
+exhausted returned window also stops work. No earned reset credits are consumed.
+
+Each round completes the native goal and supplies a cumulative report after one
+coherent batch. The wrapper checks fresh quota, then reactivates the same goal
+and thread when time and quota allow another round. It does not interrupt a batch
+or kill a process at a quota threshold. A quota stop before any work is a quiet
+`skip-quota`; after committed fixes, normal validation and publication still run.
+Gate repair sessions are exempt from the quota cutoff so completed work can be
+validated. The quota check is a boundary guard, not a guarantee that a batch or
+repair cannot consume additional quota.
+
+For an intentional manual run that borrows ahead of the weekly allowance:
+
+```bash
+IGNORE_QUOTA_CUTOFF=1 TIME_BUDGET=12h ~/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
+```
+
+Keep the override out of persistent scheduled configuration. It bypasses quota
+reads but keeps the time cap, clean-tree checks and final gates. Explicit inherited `TIME_BUDGET` and `IGNORE_QUOTA_CUTOFF` values take precedence
+over the environment file for manual overrides. Other settings retain environment-file
+precedence.
+
+The wrapper starts one `codex app-server --stdio` process and stays attached to
+one native goal/thread across rounds. The process keeps its configured dangerous
+permissions throughout, with the same original work deadline.
 
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
@@ -170,7 +189,7 @@ reviewed runner fix before its PR merges, provision an immutable release outside
 runner_revision=$(git rev-parse HEAD)
 runner_release="$HOME/.humans-debt-runner/releases/$runner_revision"
 mkdir -p "$runner_release"
-git archive "$runner_revision" .codex/cron | tar -x -C "$runner_release"
+git archive "$runner_revision" .codex/cron .codex/prompts/daily-debt.md | tar -x -C "$runner_release"
 ln -s "$HOME/.humans-debt-runner/clone/.codex/cron/debt-runner.env" \
   "$runner_release/.codex/cron/debt-runner.env"
 mkdir -p ~/.config/systemd/user/humans-debt.service.d
@@ -183,12 +202,14 @@ systemctl --user daemon-reload
 systemctl --user cat humans-debt.service
 ```
 
-Provision only while the service is idle. This leaves existing resource limits,
-timer settings, credentials, and the dedicated clone's branch intact. Clone
+Provision a new release without modifying an existing release or the running
+clone. `daemon-reload` changes future starts; it does not restart an active job.
+Do not restart/stop the service to apply an upgrade during a run. This leaves
+existing resource limits, timer settings, credentials, and the clone's branch intact. Clone
 refreshes cannot overwrite the release. Repeat with a newly reviewed revision
 to upgrade; the override remains pinned until explicitly changed. The pinned
-wrapper still reads the clone's existing environment file and runs the goal
-client from the refreshed clone.
+wrapper still reads the clone's existing environment file. Its goal client and
+daily prompt come from the same release, so a clone refresh cannot mix versions.
 
 ## Testing a run manually
 
@@ -199,7 +220,7 @@ rules (the active task and final gates may extend past 15 minutes):
 TIME_BUDGET=15m ~/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
 ```
 
-Or run the scheduled configuration, which uses the full default window:
+Or run the scheduled configuration, which uses the configured window and quota cutoff:
 
 ```bash
 systemctl --user start humans-debt.service

@@ -1,5 +1,6 @@
 """Exercise the real wrapper with disposable Git repos and fake external tools."""
 import json
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -9,6 +10,40 @@ import time
 import unittest
 
 SOURCE = Path(__file__).resolve().parents[1]
+
+
+spec = importlib.util.spec_from_file_location("run_goal", SOURCE / "cron/run-goal.py")
+run_goal = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(run_goal)
+
+
+class QuotaPolicyTests(unittest.TestCase):
+    def snapshot(self, used, days_left=5.5, secondary=False):
+        week = {"usedPercent": used, "windowDurationMins": 10080,
+                "resetsAt": 1000000 + days_left * 86400}
+        return {"rateLimitsByLimitId": {"codex": {
+            "primary": {"usedPercent": 0, "windowDurationMins": 300} if secondary else week,
+            "secondary": week if secondary else None}}}
+
+    def test_one_and_half_days_allows_eighteen_percent_exactly(self):
+        for secondary in (False, True):
+            self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(18, secondary=secondary), 1000000))
+            self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(19, secondary=secondary), 1000000))
+
+    def test_window_start_and_end_and_reset_rollover(self):
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(0, 7), 1000000))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(1, 7), 1000000))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(83, 0.01), 1000000))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(85, 0.01), 1000000))
+        self.assertIn("stale", run_goal.quota_stop_reason(self.snapshot(0, 0), 1000000))
+
+    def test_missing_malformed_and_other_exhausted_window(self):
+        self.assertIn("unavailable", run_goal.quota_stop_reason({}, 1000000))
+        for used in (None, "17", True, -1, 101, float("nan")):
+            self.assertIn("invalid", run_goal.quota_stop_reason(self.snapshot(used), 1000000))
+        snapshot = self.snapshot(0, secondary=True)
+        snapshot["rateLimitsByLimitId"]["codex"]["primary"]["usedPercent"] = 100
+        self.assertIn("exhausted", run_goal.quota_stop_reason(snapshot, 1000000))
 
 
 class DailyDebtTests(unittest.TestCase):
@@ -106,6 +141,7 @@ count = int(count_file.read_text()) if count_file.exists() else 0
 count_file.write_text(str(count + 1))
 thread = "fixture-thread" if count == 0 else "fixture-repair" + (str(count) if count > 1 else "")
 started = 0
+quota_reads = 0
 objective = None
 
 def emit(method, params):
@@ -134,6 +170,14 @@ for line in sys.stdin:
         continue
     if method == "initialize":
         result = {}
+    elif method == "account/rateLimits/read":
+        quota_reads += 1
+        if scenario == "quota-error" or (scenario == "quota-error-after-round" and quota_reads > 1):
+            print(json.dumps({"id": request["id"], "error": {"code": -32000, "message": "fixture quota unavailable"}}), flush=True)
+            continue
+        used = 19 if scenario == "quota-skip" or quota_reads > (2 if scenario == "quota-continue" else 1) else 0
+        result = {"rateLimits": {"primary": {"usedPercent": used, "windowDurationMins": 10080,
+                  "resetsAt": time.time() + 5.5 * 86400}}}
     elif method == "thread/start":
         assert params["sandbox"] == "danger-full-access"
         assert params["approvalPolicy"] == "never"
@@ -141,7 +185,7 @@ for line in sys.stdin:
     elif method == "thread/goal/set":
         assert "tokenBudget" not in params
         assert ("cap, not a target" in params["objective"]) == (thread.startswith("fixture-repair"))
-        assert ("ONLY stopping rule" in params["objective"]) == (not thread.startswith("fixture-repair"))
+        assert ("one coherent fix or batch per round" in params["objective"]) == (not thread.startswith("fixture-repair"))
         if objective is None:
             objective = params["objective"]
         else:
@@ -151,6 +195,14 @@ for line in sys.stdin:
         result = {"goal": {"status": "active"}}
     elif method == "turn/start":
         started += 1
+        if scenario.startswith("quota-"):
+            print(json.dumps({"id": request["id"], "result": {}}), flush=True)
+            emit("turn/started", {"turn": {"id": str(started)}})
+            commit(started)
+            emit("thread/goal/updated", {"goal": {"status": "complete"}})
+            emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: " + str(started)}})
+            emit("turn/completed", {"turn": {"status": "completed"}})
+            continue
         if started > 1:
             assert scenario.startswith("early-")
             assert params["threadId"] == thread
@@ -188,7 +240,7 @@ for line in sys.stdin:
             continue
         assert "__WORK_" not in prompt
         assert "get_goal" in prompt
-        assert "time is the only stopping rule" in prompt
+        assert "wrapper checks live account quota" in prompt
         result = {}
     else:
         raise AssertionError(method)
@@ -229,20 +281,105 @@ for line in sys.stdin:
                         FIXTURE=str(self.root), REPO_URL=str(self.remote),
                         WORK_DIR=str(self.clone), LOG_DIR=str(self.root / "logs"),
                         TIME_BUDGET="90s", CODEX_DANGEROUS="1",
-                        GATE_REPAIR_ATTEMPTS="0")
+                        GATE_REPAIR_ATTEMPTS="0", IGNORE_QUOTA_CUTOFF="1")
 
     @staticmethod
     def git(cwd, *args):
         return subprocess.run(["git", *args], cwd=cwd, check=True,
                               capture_output=True, text=True).stdout
 
-    def run_scenario(self, scenario):
-        result = subprocess.run(["bash", str(self.clone / ".codex/cron/run-daily-debt.sh")],
+    def run_scenario(self, scenario, runner=None):
+        result = subprocess.run(["bash", str(runner or self.clone / ".codex/cron/run-daily-debt.sh")],
                                 cwd=self.clone, env=dict(self.env, SCENARIO=scenario),
                                 capture_output=True, text=True, timeout=20)
-        calls = [json.loads(x) for x in self.calls.read_text().splitlines()]
+        calls = [json.loads(x) for x in self.calls.read_text().splitlines()] if self.calls.exists() else []
         published = [x for x in calls if x[:3] == ["gh", "pr", "create"]]
         return result, calls, published
+
+    def test_quota_stop_publishes_committed_work_before_deadline(self):
+        self.env["IGNORE_QUOTA_CUTOFF"] = "0"
+        self.clock.write_text(str(int(time.time())))
+        result, calls, published = self.run_scenario("quota-stop")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
+        body = (self.root / "pr-body").read_text()
+        self.assertIn("Cumulative fixes: 1", body)
+        self.assertIn("weekly quota cutoff", body)
+        self.assertNotIn("--draft", published[0])
+        self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 1)
+
+    def test_quota_allows_next_round_in_same_thread_then_stops(self):
+        self.env["IGNORE_QUOTA_CUTOFF"] = "0"
+        self.clock.write_text(str(int(time.time())))
+        result, _, published = self.run_scenario("quota-continue")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+        self.assertEqual(sum(x["method"] == "thread/start" for x in requests), 1)
+        self.assertEqual(sum(x["method"] == "turn/start" for x in requests), 2)
+        self.assertEqual(sum(x["method"] == "account/rateLimits/read" for x in requests), 3)
+        self.assertIn("Cumulative fixes: 2", (self.root / "pr-body").read_text())
+
+    def test_quota_unavailable_after_round_still_validates_and_publishes(self):
+        self.env["IGNORE_QUOTA_CUTOFF"] = "0"
+        self.clock.write_text(str(int(time.time())))
+        result, calls, published = self.run_scenario("quota-error-after-round")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
+        self.assertIn("weekly quota read failed", (self.root / "pr-body").read_text())
+
+    def test_quota_cutoff_or_read_error_before_work_skips_without_publication(self):
+        for scenario in ("quota-skip", "quota-error"):
+            with self.subTest(scenario=scenario):
+                if scenario != "quota-skip":
+                    self.setUp()
+                self.env["IGNORE_QUOTA_CUTOFF"] = "0"
+                result, calls, published = self.run_scenario(scenario)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(published, [])
+                self.assertFalse(any(x[0] == "dotnet" for x in calls))
+                self.assertIn("exit_reason=skip-quota", result.stdout)
+                requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+                self.assertFalse(any(x["method"] == "thread/start" for x in requests))
+
+    def test_manual_override_does_not_query_quota(self):
+        result, _, published = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+        self.assertFalse(any(x["method"] == "account/rateLimits/read" for x in requests))
+
+    def test_manual_environment_overrides_config_file(self):
+        (self.clone / ".codex/cron/debt-runner.env").write_text(
+            "TIME_BUDGET=13h\nIGNORE_QUOTA_CUTOFF=0\n")
+        result, _, published = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+        self.assertFalse(any(x["method"] == "account/rateLimits/read" for x in requests))
+
+    def test_pinned_release_keeps_matching_client_and_prompt_after_refresh(self):
+        release = self.root / "release/.codex"
+        shutil.copytree(SOURCE / "cron", release / "cron")
+        shutil.copytree(SOURCE / "prompts", release / "prompts")
+        (self.clone / ".codex/cron/run-goal.py").write_text("raise RuntimeError('stale client')\n")
+        (self.clone / ".codex/prompts/daily-debt.md").write_text("stale prompt\n")
+        self.git(self.clone, "add", ".codex")
+        self.git(self.clone, "commit", "-qm", "Old runner on remote")
+        self.git(self.clone, "push", "origin", "main")
+        result, _, published = self.run_scenario("complete", release / "cron/run-daily-debt.sh")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+
+    def test_time_cap_rejects_overrides_above_twelve_hours(self):
+        self.env["TIME_BUDGET"] = "13h"
+        result, calls, published = self.run_scenario("complete")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("cannot exceed 12h", result.stdout)
+        self.assertFalse(published)
+        self.assertFalse(any(x[:2] == ["codex", "app-server"] for x in calls))
 
     def test_native_goal_continues_in_one_session_and_publishes_once(self):
         self.env["CODEX_THREAD_ID"] = "unrelated-reporting-chat"
