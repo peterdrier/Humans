@@ -21,7 +21,9 @@ internal interface IHoldedRepository : IRepository
     Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
 
     // Docs
-    Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
+    /// <summary>Replaces the complete document snapshot, removing missing rows while preserving
+    /// the identity and creation time of retained documents.</summary>
+    Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 

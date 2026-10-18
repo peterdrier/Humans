@@ -39,7 +39,7 @@ points. No provisioning, Budget or email dependency.
 
 Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`
 and the facade's logger. Owns purchase-document fetching and matching,
-`HoldedExpenseDocs` upserts and `HoldedDocSyncStates` writes. Reads the
+`HoldedExpenseDocs` snapshot replacement and `HoldedDocSyncStates` writes. Reads the
 category map and managed-account registry; no Budget, user or email dependency.
 The existing `IHoldedFinanceWrite.SyncAsync` entry point delegates here.
 

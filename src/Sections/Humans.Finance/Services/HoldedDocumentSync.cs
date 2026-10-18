@@ -42,7 +42,7 @@ internal sealed class HoldedDocumentSync(
 
             var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
 
-            await repo.UpsertDocsAsync(docs, now, ct);
+            await repo.ReplaceDocsAsync(docs, now, ct);
 
             var matched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Matched);
             var unmatched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Unmatched);

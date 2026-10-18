@@ -377,7 +377,7 @@ public class HoldedFinanceServiceTests
             .ReturnsForAnyArgs((IReadOnlyList<HoldedPurchaseDocListItemDto>)docs1);
 
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.UpsertDocsAsync(
+        await _repo.ReplaceDocsAsync(
             Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>());
@@ -429,7 +429,7 @@ public class HoldedFinanceServiceTests
                 },
             ]);
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.UpsertDocsAsync(
+        await _repo.ReplaceDocsAsync(
             Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
             Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
@@ -456,7 +456,7 @@ public class HoldedFinanceServiceTests
             },
         });
         List<HoldedExpenseDoc>? saved = null;
-        await _repo.UpsertDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => saved = d.ToList()), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => saved = d.ToList()), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
         var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -480,7 +480,7 @@ public class HoldedFinanceServiceTests
                 Doc("d-blank", "  "),
             ]);
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.UpsertDocsAsync(
+        await _repo.ReplaceDocsAsync(
             Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
             Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
@@ -555,6 +555,8 @@ public class HoldedFinanceServiceTests
         var act = () => svc.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ReplaceDocsAsync(
+            Arg.Any<IReadOnlyList<HoldedExpenseDoc>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
         // The last saved state must be Error.
         savedState.Should().NotBeNull();

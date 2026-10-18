@@ -53,13 +53,13 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
     // ── Docs ─────────────────────────────────────────────────────────────────
 
-    public async Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
+    public async Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
     {
-        if (docs.Count == 0) return;
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = docs.Select(d => d.HoldedDocId).ToList();
+        var ids = docs.Select(d => d.HoldedDocId).ToHashSet(StringComparer.Ordinal);
         var existing = await ctx.HoldedExpenseDocs
-            .Where(d => ids.Contains(d.HoldedDocId)).ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+            .ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+        ctx.HoldedExpenseDocs.RemoveRange(existing.Values.Where(d => !ids.Contains(d.HoldedDocId)));
         foreach (var d in docs)
         {
             if (existing.TryGetValue(d.HoldedDocId, out var cur))
