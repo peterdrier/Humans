@@ -2,6 +2,8 @@
   src/Sections/Humans.GoogleIntegration/Services/GoogleRemovalNotificationService.cs
   src/Sections/Humans.GoogleIntegration/Services/IGoogleRemovalNotificationService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleGroupSyncService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleDriveAccessSyncService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleIntegrationEmails.cs
   src/Sections/Humans.GoogleIntegration/GoogleIntegrationResource*.resx
   src/Sections/Humans.Email.Contracts/**
@@ -114,7 +116,7 @@ IGoogleGroupSync group membership reconciliation
      → variant selection
      → IEmailService.SendAsync(GoogleIntegrationEmails.GoogleGroupRemovalLossOfAccess / GoogleDriveRemovalLossOfAccess / GoogleAccessRemovalSecondaryCleanup) → OutboxEmailService writes the row (MessageCategory.System)
 
-GoogleWorkspaceSyncService.RemoveUserFromDriveAsync (Drive gateway)
+IGoogleDriveSync Drive access reconciliation (GoogleDriveAccessSyncService)
   → IGoogleDrivePermissionsClient delete
   → on success: same notification flow
 ```

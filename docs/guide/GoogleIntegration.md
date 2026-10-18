@@ -10,6 +10,8 @@
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs
+  src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
+  src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
 -->
 <!-- freshness:flag-on-change
   Sync mode plumbing, drift detection, workspace account provisioning, Drive activity monitor, and team-resource linking. Review when Google services, sync settings, or related entities change.
@@ -52,7 +54,7 @@ Go to **Profile → Emails** and verify the address you want Google to know abou
 
 ### What access you get automatically
 
-Joining a team grants you its Group membership and writer access to its linked Shared Drive folders and files on the next sync; leaving revokes it. Sub-team members also get parent-department resources — rolled up one way (department members do not get sub-team resources).
+Joining a team grants you its Group membership and access to its linked Shared Drive folders and files, at the permission level set on each resource, on the next sync; leaving revokes it. Sub-team members also get parent-department resources — rolled up one way (department members do not get sub-team resources).
 
 ## As a [Coordinator](Glossary.md#coordinator)
 
@@ -69,7 +71,7 @@ Duplicate links on the same team are rejected. Unlinking is soft — the record 
 
 ### What coordinators cannot do
 
-Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowCoordinatorsToManageResources` config flag gates coordinator access entirely — if it is off, only Board can link and unlink.
+Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowCoordinatorsToManageResources` config flag gates coordinator access entirely — if it is off, only Board and TeamsAdmins can link and unlink.
 
 ## As a Board member / Admin
 

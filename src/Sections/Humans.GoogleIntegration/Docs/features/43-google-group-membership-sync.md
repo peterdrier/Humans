@@ -5,6 +5,7 @@
   src/Sections/Humans.GoogleIntegration/Services/IGoogleGroupSyncScheduler.cs
   src/Sections/Humans.GoogleIntegration/Services/Workspace/IGoogleGroupMembershipClient.cs
   src/Sections/Humans.Teams/**
+  src/Sections/Humans.Camps/Services/CampRoleService.cs
   src/Sections/Humans.GoogleIntegration/Services/HangfireGoogleGroupSyncScheduler.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
@@ -33,7 +34,7 @@ Google Group membership is reconciled as expected state from application-owned s
 - apply adds/removes according to Google Groups sync mode
 - audit, notify on removals, and schedule scoped retries
 
-`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` intentionally does not inherit the source interface; Google Integration registers the concrete service as a source so the Teams public service boundary does not grow for Google-only ownership.
+`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, and Camps' `CampRoleService` implements it for camp role groups. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so the Teams public service boundary does not grow for Google-only ownership.
 
 ## Reconciliation Modes
 
@@ -47,6 +48,6 @@ Group-key collisions are fail-closed. If more than one source claims the same ke
 
 ## Triggers
 
-Team membership and Google-email changes enqueue scoped group reconciliation after the application write commits. Drive permissions still use the Google sync outbox and `IGoogleSyncService`; group membership uses `IGoogleGroupSync`.
+Team membership and Google-email changes enqueue scoped group reconciliation after the application write commits. Drive permissions still use the Google sync outbox and `IGoogleSyncWrite`; group membership uses `IGoogleGroupSync`.
 
 When Google rejects a target member email specifically, that address's `UserEmail.GoogleEmailStatus` is marked `Rejected` (#687) and the warning log includes the email address. Generic Google API failures such as billing, quota, and backend errors do not mutate user email state; they leave the group sync eligible for the capped scoped retry path.
