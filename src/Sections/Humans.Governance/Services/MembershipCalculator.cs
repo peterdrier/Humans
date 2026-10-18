@@ -72,6 +72,8 @@ internal sealed class MembershipCalculator(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // Status, memberships, consents and the request memo must describe the same human.
+        userId = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Id ?? userId;
         if (_snapshotMemo.TryGetValue(userId, out var memoized))
         {
             return memoized;
@@ -258,6 +260,7 @@ internal sealed class MembershipCalculator(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        userId = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Id ?? userId;
         var memberships = await membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
