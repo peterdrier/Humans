@@ -82,7 +82,7 @@ Individual Board member's vote on a tier application. **Transient working data**
 | VotedAt | Instant | When the vote was first cast |
 | UpdatedAt | Instant? | When the vote was last updated |
 
-**Constraint:** Unique `(ApplicationId, BoardMemberUserId)` — one vote per Board member per application.
+**Constraint:** Unique `(ApplicationId, BoardMemberUserId)` — one vote per Board member per application. Notes over 4,000 characters are refused before saving, preserving any existing vote; the form shows a localized refusal and enforces the same limit.
 
 ### ApplicationStatus
 

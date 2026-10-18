@@ -123,7 +123,7 @@
 
                     <div class="mb-3">
                         <label for="voteNote" class="form-label">@Localizer["Governance_BoardVoting_Note"]</label>
-                        <textarea id="voteNote" name="note" class="form-control" rows="2"
+                        <textarea id="voteNote" name="note" class="form-control" rows="2" maxlength="4000"
                                   placeholder="@OnboardingLocalizer["Onboarding_ReviewNotesPlaceholder"].Value">@Model.CurrentUserNote</textarea>
                     </div>
                 </form>

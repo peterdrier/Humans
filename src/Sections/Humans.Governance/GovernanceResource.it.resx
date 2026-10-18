@@ -742,4 +742,5 @@
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Il tuo periodo come {0} scade il {1}</value></data>
   <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Presenta una domanda di rinnovo per mantenere la tua categoria di adesione.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Rinnova →</value></data>
+  <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota deve contenere al massimo 4000 caratteri. Il tuo voto non è stato modificato.</value></data>
 </root>

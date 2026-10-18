@@ -134,9 +134,12 @@ internal sealed class GovernanceBoardVotingController(
                 SetError(result.ErrorKey switch
                 {
                     "NotFound" => localizer["Governance_BoardVoting_ApplicationNotFound"].Value,
+                    "NoteTooLong" => localizer["Governance_BoardVoting_NoteTooLong"].Value,
                     _ => localizer["Governance_BoardVoting_ApplicationNotVotable"].Value
                 });
-                return RedirectToAction(nameof(BoardVoting));
+                return result.ErrorKey is "NoteTooLong"
+                    ? RedirectToAction(nameof(BoardVotingDetail), new { applicationId })
+                    : RedirectToAction(nameof(BoardVoting));
             }
 
             SetSuccess(localizer["Governance_BoardVoting_VoteSaved"].Value);

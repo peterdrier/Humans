@@ -559,6 +559,12 @@ internal sealed class ApplicationDecisionService(
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
+        if (note?.Length > 4000)
+        {
+            logger.LogWarning("Rejected overlong board vote note for application {ApplicationId}", applicationId);
+            return new ApplicationDecisionResult(false, "NoteTooLong");
+        }
+
         var now = clock.GetCurrentInstant();
         await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
 

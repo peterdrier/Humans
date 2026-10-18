@@ -742,4 +742,5 @@
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Votre mandat de {0} prend fin le {1}</value></data>
   <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Déposez une demande de renouvellement pour conserver votre catégorie d’adhésion.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renouveler →</value></data>
+  <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La note ne doit pas dépasser 4000 caractères. Votre vote n’a pas été modifié.</value></data>
 </root>

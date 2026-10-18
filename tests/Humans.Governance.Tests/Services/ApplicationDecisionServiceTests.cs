@@ -943,6 +943,29 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         votes[0].UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
+    [HumansTheory]
+    [InlineData(4000, true)]
+    [InlineData(4001, false)]
+    public async Task CastBoardVoteAsync_enforces_note_limit_without_overwriting_an_existing_vote(int length, bool accepted)
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var boardMemberId = Guid.NewGuid();
+        await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.Yay, "initial",
+            TestContext.Current.CancellationToken);
+        var note = new string('x', length);
+
+        var result = await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.No, note,
+            TestContext.Current.CancellationToken);
+
+        result.Success.Should().Be(accepted);
+        result.ErrorKey.Should().Be(accepted ? null : "NoteTooLong");
+        ClearAllTrackers();
+        var stored = await GovernanceDb.BoardVotes.SingleAsync(vote => vote.ApplicationId == application.Id,
+            TestContext.Current.CancellationToken);
+        stored.Vote.Should().Be(accepted ? VoteChoice.No : VoteChoice.Yay);
+        stored.Note.Should().Be(accepted ? note : "initial");
+    }
+
     // --- GetUserApplicationsAsync ---
 
     [HumansFact]

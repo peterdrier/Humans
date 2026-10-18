@@ -742,4 +742,5 @@
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Deine Amtszeit als {0} endet am {1}</value></data>
   <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Stelle einen Verlängerungsantrag, um deine Mitgliedschaftskategorie zu behalten.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Verlängern →</value></data>
+  <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>Die Notiz darf höchstens 4000 Zeichen enthalten. Deine Stimme wurde nicht geändert.</value></data>
 </root>
