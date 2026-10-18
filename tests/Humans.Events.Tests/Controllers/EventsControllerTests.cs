@@ -47,6 +47,68 @@ public class EventsControllerTests
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
     [HumansTheory]
+    [Xunit.InlineData("SubmissionOpenAt", "0")]
+    [Xunit.InlineData("SubmissionCloseAt", "0")]
+    [Xunit.InlineData("GuidePublishAt", "0")]
+    [Xunit.InlineData("MaxPrintSlots", "0")]
+    [Xunit.InlineData("", "0")]
+    [Xunit.InlineData("", "10000")]
+    public async Task Guide_settings_require_posted_window_dates_and_print_limit(string omitted, string printLimit)
+    {
+        var burn = MakeBurnSettings();
+        _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
+        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
+        _guide.SaveGuideSettingsAsync(null, burn.Id, default, default, default, 0).ReturnsForAnyArgs(true);
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["EventSettingsId"] = burn.Id.ToString(), ["MaxPrintSlots"] = printLimit,
+            ["SubmissionOpenAt"] = "2026-07-01T12:00", ["SubmissionCloseAt"] = "2026-07-31T12:00",
+            ["GuidePublishAt"] = "2026-08-01T12:00"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(GuideSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(GuideSettingsViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (GuideSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.SaveSettings(model);
+
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _guide.ReceivedCalls().Should().NotContain(call =>
+                call.GetMethodInfo().Name == nameof(IEventManagement.SaveGuideSettingsAsync));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _guide.Received(1).SaveGuideSettingsAsync(null, burn.Id,
+                new LocalDateTime(2026, 7, 1, 12, 0), new LocalDateTime(2026, 7, 31, 12, 0),
+                new LocalDateTime(2026, 8, 1, 12, 0), int.Parse(printLimit, CultureInfo.InvariantCulture));
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("CreateCategory", "IsSensitive", false)]
     [Xunit.InlineData("CreateCategory", "IsActive", false)]
     [Xunit.InlineData("CreateCategory", "DisplayOrder", false)]

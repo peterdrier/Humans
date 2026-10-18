@@ -14,19 +14,23 @@ internal sealed class GuideSettingsViewModel
 
     [Required]
     [Display(Name = "Submission Opens")]
+    [BindRequired]
     public DateTime SubmissionOpenAt { get; set; }
 
     [Required]
     [Display(Name = "Submission Closes")]
+    [BindRequired]
     public DateTime SubmissionCloseAt { get; set; }
 
     [Required]
     [Display(Name = "Guide Published")]
+    [BindRequired]
     public DateTime GuidePublishAt { get; set; }
 
     [Required]
     [Range(0, 10000)]
     [Display(Name = "Max Print Slots")]
+    [BindRequired]
     public int MaxPrintSlots { get; set; } = 100;
 
     public List<EventSettingsOptionViewModel> AvailableEventSettings { get; set; } = [];
