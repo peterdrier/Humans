@@ -15,7 +15,7 @@ internal sealed class RideshareRequestConfiguration : IEntityTypeConfiguration<R
         builder.Property(r => r.UserId).IsRequired();
         builder.Property(r => r.Year).IsRequired();
         builder.Property(r => r.Direction).IsRequired().HasConversion<string>().HasMaxLength(50);
-        builder.Property(r => r.PickupPlaceLabel).HasMaxLength(200).IsRequired();
+        builder.Property(r => r.PickupPlaceLabel).HasMaxLength(256).IsRequired();
         builder.Property(r => r.PickupLatitude).IsRequired();
         builder.Property(r => r.PickupLongitude).IsRequired();
         builder.Property(r => r.DesiredDate).IsRequired();

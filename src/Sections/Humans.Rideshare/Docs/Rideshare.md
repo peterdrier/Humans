@@ -57,7 +57,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | UserId | Guid | index; bare FK (driver) — no navigation |
 | Year | int | index; the active burn year at creation |
 | Direction | RideshareDirection | string(50) |
-| MemberPlaceLabel | string | max 200, required |
+| MemberPlaceLabel | string | max 256, required |
 | MemberLatitude | double | required |
 | MemberLongitude | double | required |
 | WaypointsJson | string? | text; JSON array of `{label, latitude, longitude}`; null/empty = direct |
@@ -92,7 +92,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | UserId | Guid | index; bare FK (rider) — no navigation |
 | Year | int | index |
 | Direction | RideshareDirection | string(50) |
-| PickupPlaceLabel | string | max 200, required |
+| PickupPlaceLabel | string | max 256, required |
 | PickupLatitude | double | required |
 | PickupLongitude | double | required |
 | DesiredDate | LocalDate | required |
@@ -245,7 +245,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
-- **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override.
+- **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override. Offer and request labels accept the full 256-character profile city in forms and storage, without shortening it.
 - **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
 - **Rule failures are localized.** Mutation services return a refusal carrying a `RideshareResource` key and format arguments; member and admin controllers localize it and preserve the form or toast flow. Dependency faults propagate without becoming refusal feedback. Not-found and unauthorized exceptions retain their separate 404/403 paths. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.

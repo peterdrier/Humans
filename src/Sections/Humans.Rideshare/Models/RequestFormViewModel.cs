@@ -15,7 +15,7 @@ internal sealed class RequestFormViewModel
     [Required(ErrorMessage = "Validation_Required")]
     public RideshareDirection Direction { get; set; }
 
-    [Required(ErrorMessage = "Validation_Required"), StringLength(200, ErrorMessage = "Validation_MaxLength")]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string PickupPlaceLabel { get; set; } = string.Empty;
 
     /// <summary>Null = geocode the label.</summary>

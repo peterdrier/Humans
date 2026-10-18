@@ -33,7 +33,7 @@
 
             <div class="mb-3">
                 <label asp-for="MemberPlaceLabel" class="form-label">@Localizer["Rideshare_Field_Place"]</label>
-                <input asp-for="MemberPlaceLabel" class="form-control" maxlength="200" />
+                <input asp-for="MemberPlaceLabel" class="form-control" maxlength="256" />
                 <div class="form-text">@Localizer["Rideshare_Field_PlaceHelp"]</div>
                 <span asp-validation-for="MemberPlaceLabel" class="text-danger"></span>
             </div>
