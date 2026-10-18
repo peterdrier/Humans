@@ -582,17 +582,23 @@ internal sealed class UserService(
         }
     }
 
-    // The metadata save failed, so the freshly written file is unreferenced; the previous picture is untouched.
+    // A failed save may have committed. Verify its persisted reference before deleting new bytes.
     private async Task DeleteUnreferencedPictureAsync(Guid profileId, string key)
     {
         try
         {
+            var picture = await repo.GetProfilePictureLocationAsync(profileId, CancellationToken.None);
+            if (picture is { } current && string.Equals(
+                ProfilePictureKeys.Resolve(profileId, current.ContentType, current.StorageKey), key,
+                StringComparison.Ordinal))
+                return;
+
             await fileStorage.DeleteAsync(key, CancellationToken.None);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Failed to delete unreferenced profile picture for {ProfileId} after a failed save", profileId);
+                "Failed to verify or clean up profile picture for {ProfileId} after a failed save", profileId);
         }
     }
 
