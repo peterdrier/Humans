@@ -7,6 +7,7 @@ using Humans.Base.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 using Humans.Base.Authorization;
@@ -225,7 +226,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Years/{id:guid}/UpdateStatus")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateYearStatus(Guid id, BudgetYearStatus status)
+    public async Task<IActionResult> UpdateYearStatus(Guid id, [BindRequired] BudgetYearStatus status)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;

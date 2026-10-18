@@ -1,4 +1,9 @@
 using AwesomeAssertions;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using System.Security.Claims;
 using Humans.Budget.Controllers;
 using Humans.Budget.Models;
@@ -235,24 +240,49 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task YearStatus_MalformedBinding_DoesNotResetActiveYear(bool malformed)
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(false, true, false)]
+    public async Task YearStatus_InvalidOrMissingBinding_DoesNotResetActiveYear(bool malformed, bool missingStatus, bool viewerExists)
     {
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
-        var (controller, _, _) = CreateAdminController(true, _service);
+        var (controller, _, _) = CreateAdminController(viewerExists, _service);
         if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingStatus)
+        {
+            controller.HttpContext.RequestServices = services;
+            var parameter = typeof(BudgetAdminController).GetMethod(nameof(BudgetAdminController.UpdateYearStatus))!
+                .GetParameters().Single(p => p.ParameterType == typeof(BudgetYearStatus));
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
         var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
+        var refused = malformed || missingStatus || !viewerExists;
 
-        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (refused) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<RedirectToActionResult>();
         await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
-            .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
-        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+            .Status.Should().Be(refused ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(refused ? 2 : 3);
     }
 
     [HumansTheory]

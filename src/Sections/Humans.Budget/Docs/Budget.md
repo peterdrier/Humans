@@ -203,7 +203,7 @@ Stored as string via `HasConversion<string>()`.
 - Admin GET pages preserve browser cancellation through year/category/audit reads, team names,
   ticket projections, Holded actuals and ticket revenue. Cancellation propagates without a
   load-failure flash; mutation paths keep their existing cancellation boundaries.
-- Year-status POSTs reject binding errors after resolving the actor and before mutation. A malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
+- Year-status POSTs require an explicit status and reject binding errors after resolving the actor and before mutation. A missing or malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
 - Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
