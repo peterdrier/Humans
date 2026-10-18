@@ -293,6 +293,103 @@ public class ShiftAdminControllerTests
     }
 
     [HumansTheory]
+    [InlineData(true, "Days[1].DayOffset", false, true)]
+    [InlineData(true, "Days[1].MinVolunteers", false, true)]
+    [InlineData(true, "Days[1].MaxVolunteers", false, true)]
+    [InlineData(false, "StartDayOffset", false, true)]
+    [InlineData(false, "EndDayOffset", false, true)]
+    [InlineData(false, "MinVolunteers", false, true)]
+    [InlineData(false, "MaxVolunteers", false, true)]
+    [InlineData(false, "TimeSlots[1].StartTime", false, true)]
+    [InlineData(false, "TimeSlots[1].DurationHours", false, true)]
+    [InlineData(true, "", false, true)]
+    [InlineData(true, "", true, true)]
+    [InlineData(false, "", false, true)]
+    [InlineData(false, "", true, true)]
+    [InlineData(true, "Days[1].DayOffset", false, false)]
+    [InlineData(false, "StartDayOffset", false, false)]
+    public async Task Bulk_shift_forms_require_complete_days_slots_and_staffing(bool staffing, string omitted, bool zero, bool allowed)
+    {
+        var rotaId = Guid.NewGuid();
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId).Returns(allowed);
+        _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
+            .Returns(ShiftGenerationResult.Success("Created", 2));
+        _shiftMgmt.GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>())
+            .Returns(ShiftGenerationResult.Success("Created", 2));
+        var controller = BuildSut();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var minimum = zero ? 0 : 3;
+        var maximum = zero ? 1 : 7;
+        var firstDay = zero ? 0 : -2;
+        var lastDay = zero ? 1 : -1;
+        var start = zero || string.Equals(omitted, "EndDayOffset", StringComparison.Ordinal) ? 0 : 2;
+        var end = zero ? 0 : 3;
+        var duration = zero ? 0.5d : 2.5d;
+        var fields = staffing ? new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Days[0].DayOffset"] = firstDay.ToString(CultureInfo.InvariantCulture),
+            ["Days[0].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["Days[0].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
+            ["Days[1].DayOffset"] = lastDay.ToString(CultureInfo.InvariantCulture),
+            ["Days[1].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["Days[1].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
+        } : new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["StartDayOffset"] = start.ToString(CultureInfo.InvariantCulture), ["EndDayOffset"] = end.ToString(CultureInfo.InvariantCulture),
+            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
+            ["TimeSlots[0].StartTime"] = "00:00", ["TimeSlots[0].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
+            ["TimeSlots[1].StartTime"] = zero ? "01:00" : "09:30", ["TimeSlots[1].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture)
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var formType = staffing ? typeof(StaffingGridModel) : typeof(GenerateEventShiftsModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = formType
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", binding.Result.Model!);
+
+        var result = staffing
+            ? await controller.ConfigureStaffing(Slug, rotaId, (StaffingGridModel)binding.Result.Model!)
+            : await controller.GenerateShifts(Slug, rotaId, (GenerateEventShiftsModel)binding.Result.Model!);
+
+        if (!allowed || omitted.Length > 0)
+        {
+            await _shiftMgmt.DidNotReceive().CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>());
+            await _shiftMgmt.DidNotReceive().GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>());
+            if (!allowed) result.Should().BeOfType<ForbidResult>();
+            else
+            {
+                result.Should().BeOfType<BadRequestObjectResult>();
+                controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            }
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            if (staffing)
+                await _shiftMgmt.Received(1).CreateBuildStrikeShiftsAsync(Arg.Is<ConfigureBuildStrikeStaffingInput>(input =>
+                    input.RotaId == rotaId && input.TeamId == TeamId && input.Days.Count == 2
+                    && input.Days[0].DayOffset == firstDay && input.Days[1].DayOffset == lastDay
+                    && input.Days.All(day => day.MinVolunteers == minimum && day.MaxVolunteers == maximum)));
+            else
+            {
+                var expectedTime = zero ? new LocalTime(1, 0) : new LocalTime(9, 30);
+                await _shiftMgmt.Received(1).GenerateEventShiftsAsync(Arg.Is<GenerateEventShiftsInput>(input =>
+                    input.RotaId == rotaId && input.TeamId == TeamId && input.StartDayOffset == start && input.EndDayOffset == end
+                    && input.MinVolunteers == minimum && input.MaxVolunteers == maximum && input.TimeSlots.Count == 2
+                    && input.TimeSlots[1].StartTime == expectedTime && input.TimeSlots.All(slot => slot.DurationHours == duration)));
+            }
+        }
+    }
+
+    [HumansTheory]
     [InlineData("ConfigureStaffing")]
     [InlineData("DeleteRota")]
     [InlineData("BailRange")]

@@ -92,23 +92,32 @@ internal sealed class StaffingGridModel
 
 internal sealed class DayStaffingEntry
 {
+    [BindRequired]
     public int DayOffset { get; set; }
+    [BindRequired]
     public int MinVolunteers { get; set; } = 2;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
 }
 
 internal sealed class GenerateEventShiftsModel
 {
+    [BindRequired]
     public int StartDayOffset { get; set; }
+    [BindRequired]
     public int EndDayOffset { get; set; }
     public List<TimeSlotEntry> TimeSlots { get; set; } = [];
+    [BindRequired]
     public int MinVolunteers { get; set; } = 2;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
 }
 
 internal sealed class TimeSlotEntry
 {
+    [BindRequired]
     public string StartTime { get; set; } = "08:00";
+    [BindRequired]
     public double DurationHours { get; set; } = 4;
 }
 
