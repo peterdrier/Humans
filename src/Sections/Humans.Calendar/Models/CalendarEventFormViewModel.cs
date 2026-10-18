@@ -44,6 +44,7 @@ internal sealed class CalendarEventFormViewModel
     public string? RecurrenceRule { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = [];

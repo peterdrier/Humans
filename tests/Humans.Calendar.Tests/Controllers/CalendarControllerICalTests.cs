@@ -129,6 +129,112 @@ public class CalendarControllerICalTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(0, false, false, false)]
+    [Xunit.InlineData(0, false, true, false)]
+    [Xunit.InlineData(0, true, false, false)]
+    [Xunit.InlineData(1, false, false, false)]
+    [Xunit.InlineData(1, false, true, false)]
+    [Xunit.InlineData(1, true, false, false)]
+    [Xunit.InlineData(2, false, false, false)]
+    [Xunit.InlineData(2, false, true, false)]
+    [Xunit.InlineData(2, true, false, false)]
+    [Xunit.InlineData(2, false, false, true)]
+    public async Task Timed_forms_require_explicit_zone_while_all_day_forms_do_not(int action, bool allDay, bool postedZone, bool spoofAllDay)
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 2, 10, 0);
+        var date = new LocalDate(2026, 6, 2);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, allDay ? null : start, allDay ? null : start.Plus(Duration.FromHours(1)),
+            IsAllDay: allDay, RecurrenceRule: allDay ? "FREQ=DAILY" : "FREQ=WEEKLY", RecurrenceTimezone: allDay ? null : "UTC", _now, _now));
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendar.CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        if (action != 2)
+        {
+            fields["Title"] = "Changed";
+            fields["OwningTeamId"] = teamId.ToString();
+            fields["IsAllDay"] = allDay.ToString();
+            fields["IsRecurring"] = "true";
+            fields["RecurrenceRule"] = allDay ? "FREQ=DAILY" : "FREQ=WEEKLY";
+        }
+        else if (spoofAllDay) fields["IsAllDay"] = "true";
+        var prefix = action == 2 ? "Override" : "";
+        if (allDay)
+        {
+            fields[prefix + "StartDateLocal"] = "2026-06-02";
+            fields[prefix + "EndDateLocal"] = "2026-06-02";
+        }
+        else
+        {
+            fields[prefix + "StartLocal"] = "2026-06-02T10:00:00";
+            fields[prefix + "EndLocal"] = "2026-06-02T11:00:00";
+        }
+        if (postedZone) fields["RecurrenceTimezone"] = "UTC";
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var controller = CreateController();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        var formType = action == 2 ? typeof(OccurrenceOverrideFormViewModel) : typeof(CalendarEventFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = formType
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", binding.Result.Model!);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = action switch
+        {
+            0 => await controller.Create((CalendarEventFormViewModel)binding.Result.Model!, ct),
+            1 => await controller.Edit(id, (CalendarEventFormViewModel)binding.Result.Model!, ct),
+            _ => await controller.EditOccurrence(id, allDay ? "2026-06-02" : "2026-06-02T10:00:00Z",
+                (OccurrenceOverrideFormViewModel)binding.Result.Model!, ct)
+        };
+
+        if (!allDay && !postedZone)
+        {
+            _calendar.ReceivedCalls().Should().BeEmpty();
+            result.Should().BeOfType<ViewResult>();
+            controller.ModelState["RecurrenceTimezone"]!.Errors.Should().ContainSingle();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            if (action == 2)
+                await _calendar.Received(1).OverrideOccurrenceAsync(id, allDay ? null : start,
+                    Arg.Is<OverrideOccurrenceDto>(dto => allDay
+                        ? dto.OverrideStartDate == date && dto.OverrideStartUtc == null
+                        : dto.OverrideStartUtc == start), _viewer, ct, allDay ? date : null);
+            else
+            {
+                var expectedZone = allDay ? null : "UTC";
+                if (action == 0)
+                    await _calendar.Received(1).CreateEventWithResultAsync(Arg.Is<CreateCalendarEventDto>(dto =>
+                        dto.IsAllDay == allDay && (allDay ? dto.StartDate == date : dto.StartUtc == start)
+                        && string.Equals(dto.RecurrenceTimezone, expectedZone, StringComparison.Ordinal)), _viewer, ct);
+                else
+                    await _calendar.Received(1).UpdateEventWithResultAsync(id, Arg.Is<CreateCalendarEventDto>(dto =>
+                        dto.IsAllDay == allDay && (allDay ? dto.StartDate == date : dto.StartUtc == start)
+                        && string.Equals(dto.RecurrenceTimezone, expectedZone, StringComparison.Ordinal)), _viewer, ct);
+            }
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("unknown")]
     [Xunit.InlineData("empty")]
     [Xunit.InlineData("valid")]

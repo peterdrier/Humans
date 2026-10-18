@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using NodaTime.Text;
@@ -29,6 +30,7 @@ internal sealed class OccurrenceOverrideFormViewModel
     [StringLength(2000, ErrorMessage = "Validation_MaxLength"), Url(ErrorMessage = "Validation_InvalidValue")]
     public string? OverrideLocationUrl { get; set; }
 
+    [BindRequired]
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     /// <summary>

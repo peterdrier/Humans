@@ -367,6 +367,7 @@ internal sealed class CalendarController : HumansControllerBase
 
         if (form.IsAllDay)
         {
+            ModelState.Remove(nameof(form.RecurrenceTimezone));
             if (form.StartDateLocal is not { } startDt)
             {
                 ModelState.AddModelError(nameof(form.StartDateLocal), _localizer["Calendar_StartDateRequired"]);
@@ -468,6 +469,7 @@ internal sealed class CalendarController : HumansControllerBase
         form.EventId = id;
         form.OriginalOccurrenceStartUtc = originalStartUtc;
         form.IsAllDay = ev.IsAllDay;
+        if (ev.IsAllDay) ModelState.Remove(nameof(form.RecurrenceTimezone));
         var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (!ModelState.IsValid) return View("OccurrenceEdit", form);
         if (zone is null || !form.TryBuildOverride(zone, out var dto))
