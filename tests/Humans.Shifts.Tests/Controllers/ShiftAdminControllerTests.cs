@@ -11,6 +11,7 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Domain;
@@ -108,6 +109,84 @@ public class ShiftAdminControllerTests
         await _shiftMgmt.Received().IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
         await _teamService.Received(1).GetTeamAsync(TeamId, cancellation.Token);
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task CoordinatorGetReads_PreserveRequestCancellation(int page)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = cancellation.Token;
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        var rota = MakeRota(TeamId);
+        var shift = MakeShift(rota);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(shift);
+        _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(new ShiftRotaView(
+            rota.Id, rota, [], [], [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamRotasRecipientPreview(1, ["Coordinator"]));
+        _shiftMgmt.GetTagsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = page switch
+        {
+            0 => await controller.EmailRota(Slug, rota.Id, cancellation.Token),
+            1 => await controller.EmailTeamRotas(Slug, cancellation.Token),
+            2 => await controller.SearchVolunteers(Slug, shift.Id, "", cancellation.Token),
+            _ => await controller.SearchTags(Slug, "tag", cancellation.Token),
+        };
+
+        Assert.NotNull(result);
+        await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
+        await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
+        await _shiftMgmt.Received(1).IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
+        switch (page)
+        {
+            case 0:
+                await _shiftMgmt.Received(1).GetRotaByIdAsync(rota.Id, cancellation.Token);
+                await _shiftView.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
+                await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+                break;
+            case 1:
+                await _rotaMessenger.Received(1).GetTeamRotasRecipientPreviewAsync(
+                    TeamId, TeamRotasAudienceFilter.Default, cancellation.Token);
+                break;
+            case 2:
+                await _shiftMgmt.Received(1).GetShiftByIdAsync(shift.Id, cancellation.Token);
+                break;
+            default:
+                await _shiftMgmt.Received(1).GetTagsAsync("tag", cancellation.Token);
+                break;
+        }
+    }
+
+    [HumansFact]
+    public async Task VolunteerSearch_CallerCancellation_PropagatesInsteadOfReturningFailure()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var rota = MakeRota(TeamId);
+        rota.EventSettingsId = Event.Id;
+        var shift = MakeShift(rota);
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(shift);
+        _userService.SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token)
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromCanceled<IReadOnlyList<HumanSearchResult>>(cancellation.Token);
+            });
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = cancellation.Token;
+
+        Func<Task> search = () => controller.SearchVolunteers(Slug, shift.Id, "ann", cancellation.Token);
+
+        await search.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]

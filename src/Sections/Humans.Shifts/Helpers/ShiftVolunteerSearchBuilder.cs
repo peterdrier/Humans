@@ -42,7 +42,8 @@ internal sealed class ShiftVolunteerSearchBuilder(
     public async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
         Shift? shift,
         string? query,
-        bool canViewMedical)
+        bool canViewMedical,
+        CancellationToken ct = default)
     {
         if (!query.HasSearchTerm())
             return VolunteerSearchBuildResult.EmptyQuery;
@@ -54,10 +55,10 @@ internal sealed class ShiftVolunteerSearchBuilder(
         // burn (drives its calendar) and the currently active one (decides whether
         // the cached, active-scoped ShiftUserView.Signups can be reused). Admins
         // search shifts in past/future cycles, so these differ.
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         var eventSettings = activeEvent?.Id == shift.Rota.EventSettingsId
             ? activeEvent
-            : await burnSettings.GetByIdAsync(shift.Rota.EventSettingsId);
+            : await burnSettings.GetByIdAsync(shift.Rota.EventSettingsId, ct);
 
         if (eventSettings is null)
             return VolunteerSearchBuildResult.NotFound;
@@ -67,7 +68,8 @@ internal sealed class ShiftVolunteerSearchBuilder(
             query.Trim(),
             eventSettings,
             activeEvent,
-            canViewMedical);
+            canViewMedical,
+            ct);
 
         return VolunteerSearchBuildResult.Success(results);
     }
@@ -77,7 +79,8 @@ internal sealed class ShiftVolunteerSearchBuilder(
         string query,
         BurnSettingsInfo eventSettings,
         BurnSettingsInfo? activeEvent,
-        bool canViewMedical)
+        bool canViewMedical,
+        CancellationToken ct)
     {
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
@@ -86,22 +89,22 @@ internal sealed class ShiftVolunteerSearchBuilder(
         // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
         // the closest name match leads. Uncapped — people must be findable;
         // cache is small so the full sort is cheap.
-        var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue))
+        var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue, ct: ct))
             .OrderByRelevance()
             .ToList();
 
-        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
+        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset, ct);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
         // Bulk-fetch the cached view for every candidate user — replaces the
         // per-user GetShiftProfileAsync + GetByUserAsync round trips with one
         // cache-friendly call.
         var userIds = users.Select(u => u.UserId).ToList();
-        var views = await shiftView.GetUsersAsync(userIds);
+        var views = await shiftView.GetUsersAsync(userIds, ct);
 
         // Dietary + medical moved to Profile — read them from the cached UserInfo.
         // (Skills/Quirks/Languages still come from the ShiftUserView's VEP.)
-        var userInfos = await userService.GetUserInfosAsync(userIds);
+        var userInfos = await userService.GetUserInfosAsync(userIds, ct);
 
         // The cached ShiftUserView.Signups is scoped to the currently active
         // event (ShiftViewService.GetUserAsync). When the target shift belongs
@@ -114,7 +117,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
         {
             targetEventSignups = new Dictionary<Guid, IReadOnlyList<ShiftSignup>>(userIds.Count);
             foreach (var id in userIds)
-                targetEventSignups[id] = await signupService.GetByUserAsync(id, eventSettings.Id);
+                targetEventSignups[id] = await signupService.GetByUserAsync(id, eventSettings.Id, ct);
         }
 
         var results = new List<VolunteerSearchResult>();

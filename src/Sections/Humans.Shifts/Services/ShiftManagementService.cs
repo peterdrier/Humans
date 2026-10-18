@@ -323,8 +323,8 @@ internal sealed class ShiftManagementService(
         return new ShiftDeletionResult();
     }
 
-    public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
-        repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
+    public Task<Rota?> GetRotaByIdAsync(Guid rotaId, CancellationToken ct = default) =>
+        repo.GetRotaAsync(rotaId, RotaReadShape.Shifts, ct);
 
     public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
     {
@@ -807,8 +807,8 @@ internal sealed class ShiftManagementService(
         return new ShiftDeletionResult(errorKey, confirmedSignups);
     }
 
-    public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>
-        repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
+    public Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default) =>
+        repo.GetShiftAsync(shiftId, ShiftReadShape.Context, ct);
 
     /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(

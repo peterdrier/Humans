@@ -511,6 +511,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData("admin-staffing")]
     [Xunit.InlineData("tags")]
     [Xunit.InlineData("profile")]
+    [Xunit.InlineData("rota")]
+    [Xunit.InlineData("shift")]
     public async Task BrowseReads_CanceledToken_ReachesColdSource(string boundary)
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
@@ -529,6 +531,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             "admin-staffing" => () => _service.GetStaffingSnapshotAsync(es.Id, ct: aborted.Token),
             "tags" => () => _service.GetTagsAsync(ct: aborted.Token),
             "profile" => () => _service.GetShiftProfileAsync(Guid.NewGuid(), aborted.Token),
+            "rota" => () => _service.GetRotaByIdAsync(rota.Id, aborted.Token),
+            "shift" => () => _service.GetShiftByIdAsync(Guid.NewGuid(), aborted.Token),
             _ => () => _service.GetDepartmentsWithRotasAsync(es.Id, aborted.Token)
         };
 

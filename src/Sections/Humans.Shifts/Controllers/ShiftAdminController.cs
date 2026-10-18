@@ -353,15 +353,15 @@ internal sealed class ShiftAdminController(
 
     // Coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
     [HttpGet("Rotas/{rotaId}/Email")]
-    public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
+    public async Task<IActionResult> EmailRota(string slug, Guid rotaId, CancellationToken ct = default)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, ct);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, ct);
         if (rota is null) return NotFound();
 
-        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id);
+        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id, ct);
 
         var vm = new EmailRotaViewModel
         {
@@ -407,9 +407,9 @@ internal sealed class ShiftAdminController(
         return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
     }
 
-    private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId)
+    private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId, CancellationToken ct = default)
     {
-        var view = await shiftView.GetRotaAsync(rotaId);
+        var view = await shiftView.GetRotaAsync(rotaId, ct);
         var userIds = view.Signups
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Select(s => s.UserId)
@@ -417,7 +417,7 @@ internal sealed class ShiftAdminController(
             .ToList();
         if (userIds.Count == 0) return [];
 
-        var infos = await UserService.GetUserInfosAsync(userIds);
+        var infos = await UserService.GetUserInfosAsync(userIds, ct);
         return userIds
             .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
             .Where(n => !string.IsNullOrWhiteSpace(n))
@@ -430,13 +430,13 @@ internal sealed class ShiftAdminController(
     // above. Same management gate, same Reply-To behaviour, audit attached to the
     // Team entity.
     [HttpGet("Email")]
-    public async Task<IActionResult> EmailTeamRotas(string slug)
+    public async Task<IActionResult> EmailTeamRotas(string slug, CancellationToken ct = default)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, ct);
         if (teamError is not null) return teamError;
 
         var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(
-            team.Id, TeamRotasAudienceFilter.Default);
+            team.Id, TeamRotasAudienceFilter.Default, ct);
 
         var vm = new EmailTeamRotasViewModel
         {
@@ -701,17 +701,17 @@ internal sealed class ShiftAdminController(
     }
 
     [HttpGet("SearchVolunteers")]
-    public async Task<IActionResult> SearchVolunteers(string slug, Guid shiftId, string? query)
+    public async Task<IActionResult> SearchVolunteers(string slug, Guid shiftId, string? query, CancellationToken ct = default)
     {
-        var (teamError, _, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentApprovalAsync(slug, ct);
         if (teamError is not null) return teamError;
 
         try
         {
             var result = await volunteerSearchBuilder.BuildForShiftAsync(
-                await GetShiftForTeamAsync(shiftId, team.Id),
+                await GetShiftForTeamAsync(shiftId, team.Id, ct),
                 query,
-                ShiftRoleChecks.CanViewMedical(User));
+                ShiftRoleChecks.CanViewMedical(User), ct);
             return result.Status switch
             {
                 VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
@@ -719,6 +719,10 @@ internal sealed class ShiftAdminController(
                 VolunteerSearchBuildStatus.Success => Json(result.Results),
                 _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -782,20 +786,20 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentManagementAsync(string slug)
+    private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentManagementAsync(string slug, CancellationToken ct = default)
     {
         return await ResolveDepartmentAccessAsync(
             slug,
-            (team, user) => CanManageDepartmentAsync(user, team));
+            (team, user) => CanManageDepartmentAsync(user, team, ct), ct);
     }
 
     [HttpGet("Tags/Search")]
-    public async Task<IActionResult> SearchTags(string slug, string? q)
+    public async Task<IActionResult> SearchTags(string slug, string? q, CancellationToken ct = default)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug, ct);
         if (teamError is not null) return Forbid();
 
-        var tags = await shiftMgmt.GetTagsAsync(q);
+        var tags = await shiftMgmt.GetTagsAsync(q, ct);
 
         return Json(tags
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
@@ -816,22 +820,22 @@ internal sealed class ShiftAdminController(
         return Json(new { tag.Id, tag.Name });
     }
 
-    private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentApprovalAsync(string slug)
+    private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentApprovalAsync(string slug, CancellationToken ct = default)
     {
         return await ResolveDepartmentAccessAsync(
             slug,
-            (team, user) => CanApproveDepartmentAsync(user, team));
+            (team, user) => CanApproveDepartmentAsync(user, team, ct), ct);
     }
 
-    private async Task<Rota?> GetRotaForTeamAsync(Guid rotaId, Guid teamId)
+    private async Task<Rota?> GetRotaForTeamAsync(Guid rotaId, Guid teamId, CancellationToken ct = default)
     {
-        var rota = await shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await shiftMgmt.GetRotaByIdAsync(rotaId, ct);
         return rota is not null && rota.TeamId == teamId ? rota : null;
     }
 
-    private async Task<Shift?> GetShiftForTeamAsync(Guid shiftId, Guid teamId)
+    private async Task<Shift?> GetShiftForTeamAsync(Guid shiftId, Guid teamId, CancellationToken ct = default)
     {
-        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
+        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId, ct);
         return shift is not null && shift.Rota.TeamId == teamId ? shift : null;
     }
 

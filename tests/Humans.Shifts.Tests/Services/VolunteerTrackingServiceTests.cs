@@ -21,6 +21,26 @@ public class VolunteerTrackingServiceTests
     private static readonly LocalDate DefaultGateOpening = new(2026, 6, 16);
 
     [HumansFact]
+    public async Task AvailabilityPoolRead_PreservesCallerCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var eventId = Guid.NewGuid();
+        var repo = Substitute.For<IVolunteerTrackingRepository>();
+        repo.GetAvailabilityForEventAsync(eventId, ct: cancellation.Token)
+            .Returns(Task.FromCanceled<IReadOnlyList<GeneralAvailability>>(cancellation.Token));
+        var service = new VolunteerTrackingService(
+            repo, Substitute.For<IShiftManagementRepository>(),
+            new EventCalendarResolver(Substitute.For<ISettingsService>()),
+            Substitute.For<IUserService>(), Substitute.For<IShiftViewInvalidator>(),
+            new FakeClock(TestNow), Substitute.For<IAuditLogService>());
+
+        Func<Task> read = () => service.GetAvailableForDayAsync(eventId, -1, cancellation.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task GetTrackingDataAsync_returns_empty_when_no_active_event()
     {
         var sut = BuildSut(activeEvent: null);

@@ -113,7 +113,7 @@ internal interface IShiftManagement
     /// <summary>
     /// Gets a rota by primary key with shifts included.
     /// </summary>
-    Task<Rota?> GetRotaByIdAsync(Guid rotaId);
+    Task<Rota?> GetRotaByIdAsync(Guid rotaId, CancellationToken ct = default);
 
     // === Shift Summary by Camp ===
 
@@ -173,7 +173,7 @@ internal interface IShiftManagement
     /// <summary>
     /// Gets a shift by primary key.
     /// </summary>
-    Task<Shift?> GetShiftByIdAsync(Guid shiftId);
+    Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default);
 
     // === Staffing & Summary ===
 
