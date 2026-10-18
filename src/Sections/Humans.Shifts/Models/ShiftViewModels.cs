@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -15,8 +16,11 @@ namespace Humans.Shifts.Models;
 /// </summary>
 internal sealed class EventSettingsViewModel
 {
+    [BindRequired]
     public bool IsShiftBrowsingOpen { get; set; }
+    [BindRequired]
     public int? GlobalVolunteerCap { get; set; }
+    [BindRequired]
     public int ReminderLeadTimeHours { get; set; } = 24;
 }
 
