@@ -786,6 +786,13 @@ internal sealed class Service(
         if (order.TeamId is not null)
             return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
 
+        externalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim();
+        notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        if (externalRef is { Length: > 200 })
+            return RefuseAdminMutation(orderId, actorUserId, "Payment reference must be 200 characters or fewer.");
+        if (notes is { Length: > 1000 })
+            return RefuseAdminMutation(orderId, actorUserId, "Payment notes must be 1000 characters or fewer.");
+
         if (method == PaymentMethod.DepositReturn)
         {
             var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
@@ -808,8 +815,8 @@ internal sealed class Service(
             Method = method,
             MethodName = method,
             Status = PaymentStatus.Paid,
-            ExternalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim(),
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            ExternalRef = externalRef,
+            Notes = notes,
             ReceivedAt = clock.GetCurrentInstant(),
             RecordedByUserId = actorUserId,
         };

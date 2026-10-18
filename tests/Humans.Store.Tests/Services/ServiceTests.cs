@@ -1633,6 +1633,46 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), false, false)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), false, true)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), true, false)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), true, true)]
+    [InlineData(nameof(PaymentMethod.Refund), false, false)]
+    [InlineData(nameof(PaymentMethod.Refund), false, true)]
+    [InlineData(nameof(PaymentMethod.Refund), true, false)]
+    [InlineData(nameof(PaymentMethod.Refund), true, true)]
+    public async Task RecordAdminPaymentAsync_rejects_overlong_metadata_before_recording(
+        string methodName, bool notesField, bool oversized)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 50m));
+        var maximum = notesField ? 1000 : 200;
+        var value = new string('x', maximum + (oversized ? 1 : 0));
+        var reference = notesField ? "re_123" : $" {value} ";
+        var notes = notesField ? $" {value} " : null;
+
+        var result = await _service.RecordAdminPaymentAsync(orderId, method, 1m, reference, notes,
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        if (oversized)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue(result.Refusal);
+            await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
+                p.ExternalRef == (notesField ? "re_123" : value) && p.Notes == (notesField ? value : null)),
+                Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
     [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
     [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
     public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
