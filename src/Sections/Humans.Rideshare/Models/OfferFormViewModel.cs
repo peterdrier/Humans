@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Base.Extensions;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
@@ -13,6 +14,7 @@ internal sealed class OfferFormViewModel
     public Guid? Id { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public RideshareDirection Direction { get; set; }
 
     [Required(ErrorMessage = "Validation_Required"), StringLength(256, ErrorMessage = "Validation_MaxLength")]
@@ -33,18 +35,22 @@ internal sealed class OfferFormViewModel
     public string DepartureDate { get; set; } = string.Empty;
 
     [Range(1, 30, ErrorMessage = "Validation_Range")]
+    [BindRequired]
     public int ExpectedDurationDays { get; set; } = 1;
 
     [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? OvernightPlan { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public VehicleType VehicleType { get; set; }
 
     [Range(1, 20, ErrorMessage = "Validation_Range")]
+    [BindRequired]
     public int SeatsOffered { get; set; } = 1;
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public LuggageSize LuggageCapacity { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
@@ -56,6 +62,7 @@ internal sealed class OfferFormViewModel
     public bool WillingToDetour { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public CostSharing CostSharing { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]

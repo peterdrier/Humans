@@ -29,6 +29,7 @@
             <div class="mb-3">
                 <label asp-for="Direction" class="form-label">@Localizer["Rideshare_Field_Direction"]</label>
                 <select asp-for="Direction" class="form-select" asp-items="@Localizer.EnumSelectItems<RideshareDirection>()"></select>
+                <span asp-validation-for="Direction" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
@@ -68,6 +69,7 @@
                 <div class="col-md-4">
                     <label asp-for="LuggageLoad" class="form-label">@Localizer["Rideshare_Field_LuggageLoad"]</label>
                     <select asp-for="LuggageLoad" class="form-select" asp-items="@Localizer.EnumSelectItems<LuggageSize>()"></select>
+                    <span asp-validation-for="LuggageLoad" class="text-danger"></span>
                 </div>
             </div>
 
