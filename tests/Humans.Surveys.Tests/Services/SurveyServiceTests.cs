@@ -257,6 +257,73 @@ public class SurveyServiceTests
             image.StoragePath, content, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public async Task Failed_authoring_save_preserves_images_when_commit_cannot_be_ruled_out(
+        bool editing, bool committed, bool verificationFails)
+    {
+        var options = new DbContextOptionsBuilder<SurveysDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
+        var surveyId = Guid.NewGuid();
+        if (editing)
+        {
+            var existing = SurveyWith(SurveyStatus.Draft, null, null);
+            surveyId = existing.Id;
+            await repository.AddAsync(existing, TestContext.Current.CancellationToken);
+        }
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            verificationFails && call.ArgAt<CancellationToken>(1) == CancellationToken.None
+                ? Task.FromException<Survey?>(new IOException("Verification unavailable"))
+                : repository.GetByIdAsync(call.ArgAt<Guid>(0), call.ArgAt<CancellationToken>(1)));
+        var failure = new IOException("Save acknowledgement lost");
+        _repo.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var survey = call.ArgAt<Survey>(0);
+            surveyId = survey.Id;
+            if (committed) await repository.AddAsync(survey, call.ArgAt<CancellationToken>(1));
+            throw failure;
+        });
+        _repo.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (committed) await repository.UpdateAsync(call.ArgAt<Survey>(0), call.ArgAt<CancellationToken>(1));
+            throw failure;
+        });
+        string? storagePath = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { storagePath = call.ArgAt<string>(0); return Task.CompletedTask; });
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages: [new InformationImageInput(null, L("Label"), L("Alt"),
+                Upload: new SurveyImageUpload(content, "image/png", "image.png", 3))]);
+        var service = CreateService();
+
+        Func<Task> save = editing
+            ? async () => { await service.UpdateAsync(surveyId, Input(information), Board(Guid.NewGuid()), TestContext.Current.CancellationToken); }
+            : async () => { await service.CreateAsync(Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken); };
+
+        (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        storagePath.Should().NotBeNull();
+        if (committed)
+        {
+            var saved = await repository.GetByIdAsync(surveyId, TestContext.Current.CancellationToken);
+            saved!.Questions.Single().InformationImages!.Single().StoragePath.Should().Be(storagePath);
+            await _fileStorage.DidNotReceive().DeleteAsync(storagePath!, Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            (await repository.GetByIdAsync(surveyId, TestContext.Current.CancellationToken)).Should().BeNull();
+            await _fileStorage.Received(1).DeleteAsync(storagePath!, CancellationToken.None);
+        }
+    }
+
     [HumansFact]
     public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
     {
