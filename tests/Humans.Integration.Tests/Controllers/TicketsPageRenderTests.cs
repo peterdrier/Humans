@@ -85,7 +85,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
 
             // The fallback for a key the carve missed is the key itself.
-            html.Should().NotContain("TicketTransfer_", $"GET {url} rendered a raw resource key");
+            html.Should().NotContain("Tickets_TicketTransfer_", $"GET {url} rendered a raw resource key");
         }
     }
 
@@ -120,13 +120,13 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var html = await response.Content.ReadAsStringAsync(ct);
         // The signed-in persona holds no tickets, so the page takes its no-tickets branch —
         // which still renders three of the carved keys plus the shared Common_Back. The
-        // apostrophe in TicketTransfer_NoTickets is typographic and Razor's HtmlEncoder turns
+        // apostrophe in Tickets_TicketTransfer_NoTickets is typographic and Razor's HtmlEncoder turns
         // it into a numeric entity, so the assertion stays on an ASCII-only run.
-        html.Should().Contain("Transfer a ticket");                    // TicketTransfer_Title
-        html.Should().Contain("have any tickets to transfer");         // TicketTransfer_NoTickets
-        html.Should().Contain("Your transfer requests");               // TicketTransfer_YourRequests
+        html.Should().Contain("Transfer a ticket");                    // Tickets_TicketTransfer_Title
+        html.Should().Contain("have any tickets to transfer");         // Tickets_TicketTransfer_NoTickets
+        html.Should().Contain("Your transfer requests");               // Tickets_TicketTransfer_YourRequests
         html.Should().Contain("Back");                                 // Common_Back, from SharedResource
-        html.Should().NotContain("TicketTransfer_", "a carved key rendered as its own name");
+        html.Should().NotContain("Tickets_TicketTransfer_", "a carved key rendered as its own name");
         html.Should().NotContain("Common_", "a shared key rendered as its own name");
     }
 
@@ -178,8 +178,8 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Transferir una entrada");         // TicketTransfer_Title
-        html.Should().Contain("Tus solicitudes de transferencia"); // TicketTransfer_YourRequests
+        html.Should().Contain("Transferir una entrada");         // Tickets_TicketTransfer_Title
+        html.Should().Contain("Tus solicitudes de transferencia"); // Tickets_TicketTransfer_YourRequests
         html.Should().NotContain("Transfer a ticket");
     }
 

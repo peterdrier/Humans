@@ -85,6 +85,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- Section-owned resource keys use the `Tickets_` prefix in all six cultures; transfer-wizard keys use `Tickets_TicketTransfer_`.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Guest order totals, dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
 - Ticket vendor health probes propagate requested timeout/abort cancellation without logging a vendor timeout. A vendor timeout while the caller token remains active still returns Degraded.
 - Member transfer Submit/Cancel return typed rule refusals localized through Tickets resources in all six cultures. Dependency exceptions propagate to normal error handling; their messages never become resource keys or member feedback.
