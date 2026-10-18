@@ -1,6 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using Humans.Base.Threading;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
@@ -28,6 +29,8 @@ internal sealed class Service(
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IStoreAccountingRead
 {
+    private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
@@ -707,6 +710,14 @@ internal sealed class Service(
         PaymentStatus status = PaymentStatus.Paid,
         CancellationToken ct = default)
     {
+        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
+        await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
+    }
+
+    // Called only while the ingestion lock is held, including from webhook state transitions.
+    private async Task RecordStripePaymentCoreAsync(
+        Guid orderId, string paymentIntentId, decimal amountEur, PaymentStatus status, CancellationToken ct)
+    {
         if (amountEur <= 0)
             throw new ArgumentOutOfRangeException(nameof(amountEur), "Stripe payment amount must be positive.");
         if (string.IsNullOrWhiteSpace(paymentIntentId))
@@ -943,6 +954,7 @@ internal sealed class Service(
 
     public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
     {
+        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
         switch (evt.Kind)
         {
             case StoreCheckoutEventKind.CheckoutSessionCompleted:
@@ -1009,7 +1021,7 @@ internal sealed class Service(
 
         try
         {
-            await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, status, ct);
+            await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
             logger.LogInformation(
                 "Recorded Stripe payment ({Status}) for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
                 status, orderId, session.SessionId, paymentIntentId, amountEur);
@@ -1055,7 +1067,7 @@ internal sealed class Service(
             if (session.OrderId is { } orderId
                 && session.AmountEur is { } amountEur && amountEur > 0)
             {
-                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, target, ct);
+                await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, target, ct);
                 logger.LogInformation(
                     "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
                     evt.Kind, orderId, paymentIntentId, target);
