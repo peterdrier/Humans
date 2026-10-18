@@ -103,6 +103,62 @@ public class StripeServiceContractTests
         available.ApplicationFee.Should().Be(0m);
     }
 
+    [HumansTheory]
+    [InlineData("transaction", null, true)]
+    [InlineData("transaction", null, false)]
+    [InlineData("transaction", "", false)]
+    [InlineData("transaction", "usd", false)]
+    [InlineData("transaction", "eur", false)]
+    [InlineData("transaction", "EUR", false)]
+    [InlineData("stripe_fee", null, true)]
+    [InlineData("stripe_fee", null, false)]
+    [InlineData("stripe_fee", "", false)]
+    [InlineData("stripe_fee", "usd", false)]
+    [InlineData("stripe_fee", "eur", false)]
+    [InlineData("stripe_fee", "EUR", false)]
+    [InlineData("application_fee", null, true)]
+    [InlineData("application_fee", null, false)]
+    [InlineData("application_fee", "", false)]
+    [InlineData("application_fee", "usd", false)]
+    [InlineData("application_fee", "eur", false)]
+    [InlineData("application_fee", "EUR", false)]
+    public async Task PaymentDetails_requires_euro_fee_currency(string target, string? currency, bool omitted)
+    {
+        var payload = JsonNode.Parse("""
+            {"id":"pi_currency","object":"payment_intent","status":"succeeded","currency":"eur","latest_charge":{
+              "id":"ch_currency","object":"charge","currency":"eur","payment_method_details":{"type":"card"},
+              "balance_transaction":{"id":"txn_currency","object":"balance_transaction","currency":"eur",
+                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+            """)!;
+        var transaction = payload["latest_charge"]!["balance_transaction"]!.AsObject();
+        var fees = transaction["fee_details"]!.AsArray();
+        var field = target switch
+        {
+            "transaction" => transaction,
+            "stripe_fee" => fees[0]!.AsObject(),
+            _ => fees[1]!.AsObject()
+        };
+        if (omitted) field.Remove("currency");
+        else field["currency"] = currency;
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload.ToJsonString()));
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "sk_test_fees" }),
+            new CapturingLogger<StripeService>(), http);
+        var read = () => service.GetPaymentDetailsAsync("pi_currency", TestContext.Current.CancellationToken);
+
+        if (!omitted && string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+        {
+            var details = await read();
+            details.Should().NotBeNull();
+            details.StripeFee.Should().Be(1.23m);
+            details.ApplicationFee.Should().Be(0.45m);
+        }
+        else
+            await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*EUR*");
+    }
+
     [HumansFact]
     public async Task ListStoreCheckoutSessions_returns_null_not_empty_when_store_key_unset()
     {

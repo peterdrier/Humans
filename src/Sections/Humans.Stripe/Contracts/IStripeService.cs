@@ -20,7 +20,9 @@ public interface IStripeService : IApplicationService
     bool IsStoreWebhookConfigured { get; }
 
     /// <summary>
-    /// Look up a PaymentIntent and return fee breakdown and payment method details.
+    /// Look up a PaymentIntent and return its EUR fee breakdown and payment method details.
+    /// The balance transaction and each fee must declare EUR currency; unsupported or missing
+    /// currency throws rather than projecting foreign amounts as EUR.
     /// Returns <c>null</c> for the cases this section checks: the Tickets key is unset, the key
     /// lacks the scope (Stripe <c>permission_error</c>), or Stripe answered and the PaymentIntent
     /// has no charge or its asynchronous capture has not produced a balance transaction yet.
@@ -76,7 +78,7 @@ public interface IStripeService : IApplicationService
     Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
 
-/// <summary>Fee and payment method data extracted from a Stripe PaymentIntent's charge.</summary>
+/// <summary>EUR fee amounts and payment method data extracted from a Stripe PaymentIntent's charge.</summary>
 public record StripePaymentDetails(
     string PaymentMethod,
     string? PaymentMethodDetail,

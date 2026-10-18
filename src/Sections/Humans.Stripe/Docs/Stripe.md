@@ -86,6 +86,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - EUR ↔ minor units round half away from zero, both directions, in one place
   (`ToStripeMinorUnits` / `FromStripeMinorUnits`).
+- Ticket fee reads require explicit EUR currency, case-insensitively, on the balance
+  transaction and every fee entry. The charge's currency cannot establish the settlement
+  currency. Missing or foreign currencies throw before returning any fee amounts.
 - Store session reads require explicit EUR currency, case-insensitively, before projecting `AmountEur`. Webhooks reject foreign or missing currency; reconciliation rejects the whole list instead of silently dropping sessions. Adaptive Pricing's customer presentment currency does not replace the integration currency or amount.
 - The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
   and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.

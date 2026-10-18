@@ -190,6 +190,8 @@ internal sealed class StripeService(
             logger.LogDebug("PaymentIntent {Id} is awaiting its balance transaction", paymentIntentId);
             return null;
         }
+        if (!string.Equals(bt.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Stripe balance transaction does not declare EUR currency.");
 
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
@@ -203,6 +205,8 @@ internal sealed class StripeService(
         {
             foreach (var fd in bt.FeeDetails)
             {
+                if (!string.Equals(fd.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Stripe fee does not declare EUR currency.");
                 if (string.Equals(fd.Type, "stripe_fee", StringComparison.Ordinal))
                     stripeFee += FromStripeMinorUnits(fd.Amount);
                 else if (string.Equals(fd.Type, "application_fee", StringComparison.Ordinal))
