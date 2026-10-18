@@ -137,6 +137,7 @@ internal sealed class AdminEventFormViewModel
     public int DurationMinutes { get; set; } = 60;
 
     [Display(Name = "All day")]
+    [BindRequired]
     public bool IsAllDay { get; set; }
 
     [MaxLength(120)]
@@ -157,6 +158,7 @@ internal sealed class AdminEventFormViewModel
     // Camp events only; blank = unranked.
     [Range(1, 100)]
     [Display(Name = "Priority Rank")]
+    [BindRequired]
     public int? PriorityRank { get; set; }
 
     [MaxLength(500)]

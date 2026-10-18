@@ -72,11 +72,14 @@ public class EventsControllerTests
     [Xunit.InlineData("AdminIndividual", "StartTime")]
     [Xunit.InlineData("AdminIndividual", "DurationMinutes")]
     [Xunit.InlineData("AdminIndividual", "IsRecurring")]
+    [Xunit.InlineData("AdminIndividual", "IsAllDay")]
     [Xunit.InlineData("AdminIndividual", "validFalse")]
     [Xunit.InlineData("AdminIndividual", "validTrue")]
     [Xunit.InlineData("AdminCamp", "StartTime")]
     [Xunit.InlineData("AdminCamp", "DurationMinutes")]
     [Xunit.InlineData("AdminCamp", "IsRecurring")]
+    [Xunit.InlineData("AdminCamp", "PriorityRank")]
+    [Xunit.InlineData("AdminCamp", "validBlankRank")]
     [Xunit.InlineData("AdminCamp", "validFalse")]
     [Xunit.InlineData("AdminCamp", "validTrue")]
     public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
@@ -98,6 +101,8 @@ public class EventsControllerTests
         StubEditableGuideSettings();
         var existing = MakeEvent(isCamp ? campId : null, userId,
             isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested);
+        int? originalRank = isCamp ? 2 : null;
+        existing.PriorityRank = originalRank;
         existing.DurationMinutes = 180;
         existing.IsRecurring = true;
         existing.RecurrenceDays = "0,1";
@@ -123,8 +128,10 @@ public class EventsControllerTests
             ["CategoryId"] = existing.CategoryId.ToString(), ["VenueId"] = Guid.NewGuid().ToString(),
             ["StartDate"] = "2026-08-01", ["StartTime"] = "00:00", ["DurationMinutes"] = "60",
             ["IsRecurring"] = checkedChoices ? "true" : "false", ["RecurrenceDays"] = "0,1",
-            ["IsAllDay"] = checkedChoices && !isCamp && !isModerator ? "true" : "false", ["PriorityRank"] = "1"
+            ["IsAllDay"] = checkedChoices && !isCamp ? "true" : "false", ["PriorityRank"] = "1"
         };
+        fields.Remove(isCamp ? "IsAllDay" : "PriorityRank");
+        if (string.Equals(scenario, "validBlankRank", StringComparison.Ordinal)) fields["PriorityRank"] = "";
         if (!valid) fields.Remove(scenario);
         var type = isModerator ? typeof(AdminEventFormViewModel)
             : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
@@ -156,6 +163,7 @@ public class EventsControllerTests
             controller.ModelState[scenario]!.Errors.Should().ContainSingle();
             writes.Should().BeEmpty();
             existing.Title.Should().Be("Test Event");
+            existing.PriorityRank.Should().Be(originalRank);
             existing.DurationMinutes.Should().Be(180);
             existing.IsRecurring.Should().BeTrue();
             existing.RecurrenceDays.Should().Be("0,1");
@@ -167,7 +175,12 @@ public class EventsControllerTests
             controller.ModelState.IsValid.Should().BeTrue();
             var saved = (Event)writes.Should().ContainSingle().Which.GetArguments()[0]!;
             saved.IsRecurring.Should().Be(checkedChoices);
-            saved.DurationMinutes.Should().Be(checkedChoices && !isCamp && !isModerator ? 1440 : 60);
+            if (isCamp)
+            {
+                int? expectedRank = string.Equals(scenario, "validBlankRank", StringComparison.Ordinal) ? null : 1;
+                saved.PriorityRank.Should().Be(expectedRank);
+            }
+            saved.DurationMinutes.Should().Be(checkedChoices && !isCamp ? 1440 : 60);
             saved.StartAt.Should().Be(new LocalDate(2026, 8, 1)
                 .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
         }

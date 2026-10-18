@@ -208,6 +208,7 @@ internal sealed class EventsModerationController(
         {
             // Venue is irrelevant to camp events; PriorityRank's Range applies.
             ModelState.Remove(nameof(model.VenueId));
+            ModelState.Remove(nameof(model.IsAllDay));
         }
         else
         {

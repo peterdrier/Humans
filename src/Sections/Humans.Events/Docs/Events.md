@@ -178,7 +178,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
-- Personal, barrio and moderation authoring forms require explicit start time, duration and recurrence choices; personal forms also require the all-day choice. Missing fields refuse the save before event changes or persistence. Explicit midnight, 60-minute durations and false choices remain valid. Validation summaries show field errors even when an all-day toggle hides the timing inputs.
+- Personal, barrio and moderation authoring forms require explicit start time, duration and recurrence choices; personal and moderator individual forms also require the all-day choice. Moderator camp forms require the priority-rank field, with an explicit blank still clearing the rank. Missing fields refuse the save before event changes or persistence. Explicit midnight, 60-minute durations and false choices remain valid. Validation summaries show field errors even when an all-day toggle hides the timing inputs.
 
 - Individual, barrio and moderation editor forms share live title/description character counters, using each input’s existing maximum length. Typing or clearing text updates the remaining count without changing the localized labels or server validation.
 
