@@ -191,42 +191,15 @@ internal sealed class GoogleWorkspaceSyncService(
         userId = user!.Id;
 
         var team = await teamService.GetTeamAsync(teamId, cancellationToken);
-        var resources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
 
         var outcomes = new List<GoogleResourceGrantResult>();
-        foreach (var resource in resources)
-        {
-            if (resource.ResourceType == GoogleResourceType.Group)
-            {
-                // Group membership reconciliation owned by IGoogleGroupSync; this path handles Drive only.
-                await RequestGoogleGroupSyncAsync(resource, team?.GoogleGroupEmail, cancellationToken, syncSource);
-                continue;
-            }
-
-            var level = await ResolvePermissionLevelForUserAsync(
-                resource.GoogleId, userId, cancellationToken);
-            if (level != DrivePermissionLevel.None)
-                outcomes.Add(await AddUserToDriveAsync(resource, googleEmail, userId, target.Id, level, syncSource, cancellationToken));
-        }
+        await GrantTeamResourcesAsync(teamId, team?.GoogleGroupEmail);
 
         // Subteam member rollup: also add to parent department resources.
         if (team?.ParentTeamId is not null)
         {
             var parentTeam = await teamService.GetTeamAsync(team.ParentTeamId.Value, cancellationToken);
-            var parentResources = await resourceRepository.GetActiveByTeamIdAsync(team.ParentTeamId.Value, cancellationToken);
-            foreach (var resource in parentResources)
-            {
-                if (resource.ResourceType == GoogleResourceType.Group)
-                {
-                    await RequestGoogleGroupSyncAsync(resource, parentTeam?.GoogleGroupEmail, cancellationToken, syncSource);
-                    continue;
-                }
-
-                var level = await ResolvePermissionLevelForUserAsync(
-                    resource.GoogleId, userId, cancellationToken);
-                if (level != DrivePermissionLevel.None)
-                    outcomes.Add(await AddUserToDriveAsync(resource, googleEmail, userId, target.Id, level, syncSource, cancellationToken));
-            }
+            await GrantTeamResourcesAsync(team.ParentTeamId.Value, parentTeam?.GoogleGroupEmail);
         }
         var failures = outcomes.Where(r => r.Outcome == GoogleResourceGrantOutcome.Failed).ToList();
         if (failures.Count > 0)
@@ -237,6 +210,24 @@ internal sealed class GoogleWorkspaceSyncService(
             outcomes.Any(r => r.Outcome == GoogleResourceGrantOutcome.Accepted)
                 ? GoogleResourceGrantOutcome.Accepted : GoogleResourceGrantOutcome.Deferred,
             userId, target.Id);
+
+        async Task GrantTeamResourcesAsync(Guid resourceTeamId, string? groupEmail)
+        {
+            foreach (var resource in await resourceRepository.GetActiveByTeamIdAsync(resourceTeamId, cancellationToken))
+            {
+                if (resource.ResourceType == GoogleResourceType.Group)
+                {
+                    // Group membership reconciliation owned by IGoogleGroupSync; this path handles Drive only.
+                    await RequestGoogleGroupSyncAsync(resource, groupEmail, cancellationToken, syncSource);
+                    continue;
+                }
+
+                var level = await ResolvePermissionLevelForUserAsync(
+                    resource.GoogleId, userId, cancellationToken);
+                if (level != DrivePermissionLevel.None)
+                    outcomes.Add(await AddUserToDriveAsync(resource, googleEmail, userId, target.Id, level, syncSource, cancellationToken));
+            }
+        }
     }
 
 
