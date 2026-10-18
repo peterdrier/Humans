@@ -25,6 +25,15 @@ collision guard).
 
 Sync-state reads return the persisted singleton or an unsaved Idle default; only `SaveDocSyncStateAsync` inserts or updates `HoldedDocSyncStates`.
 
+### SepaBankBooking (section-internal)
+
+Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`,
+`IMemoryCache`, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
+and scheduled bank-booking workflow: reads creditor bindings and payout rows,
+updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers`,
+and calls Holded through its contract. Its shared booking gate covers all entry
+points. No provisioning, Budget or email dependency.
+
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.
@@ -36,7 +45,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are updated only by the composed `SepaBankBooking` owner — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /

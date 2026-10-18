@@ -320,6 +320,8 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 **Status:** (A) — own project (`src/Sections/Humans.Finance` + `src/Sections/Humans.Finance.Contracts`), own service, owned repository, own `FinanceDbContext`.
 
+**Bank-booking owner:** Internal `SepaBankBooking` owns bank-line matching, posting, reconciliation and the recurring sweep through Finance’s own repository. `Service` delegates its existing booking/read methods to that owner; contracts and the Hangfire target stay unchanged. `SepaOptions.GetPayoutSettings` owns the shared configuration gate for payout generation and booking.
+
 **Owning service:** `Service` (`Humans.Finance.Services`), implements the internal `IHoldedFinanceManagement` (`Services/IHoldedFinanceManagement.cs`), which composes two faces published from the contracts leaf. `IHoldedFinanceService` is the read-only surface for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Preapprovals`, `Backdoor.BackdoorFinanceController`); `IHoldedFinanceWrite` is the narrow write surface (`Holded.HoldedNightlySync` and `Holded.HoldedController` for `SyncAsync`, the Expenses publisher for the creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). Finance's own `FinanceController` injects `IHoldedFinanceManagement`.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)

@@ -208,6 +208,9 @@ reconcile ref.
 
 ## The sweep
 
+The section-internal `SepaBankBooking` owns the shared manual booking and sweep logic;
+`Service` keeps the existing entry points and delegates to it.
+
 `SepaBankBookingJob` (Hangfire id `sepa-bank-booking`, `17 */2 * * *` — every 2 hours) lists
 unbooked transfers, reads the bank feed once over a window covering every candidate file, matches
 lines **whose text names a creditor account** to transfers with the same rules as the button, and
