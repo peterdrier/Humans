@@ -549,6 +549,11 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ticketing projection form for group {GroupId}", groupId);
+            return BadRequest(ModelState);
+        }
 
         try
         {

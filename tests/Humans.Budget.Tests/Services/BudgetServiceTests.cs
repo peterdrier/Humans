@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Budget.Controllers;
+using Humans.Budget.Models;
 using Humans.Finance.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -126,6 +127,33 @@ public sealed class BudgetServiceTests
         (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
             .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
         (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+    }
+
+    [HumansTheory]
+    [InlineData("DailySalesRate", true)]
+    [InlineData("VatRate", true)]
+    [InlineData("StartDate", true)]
+    [InlineData("DailySalesRate", false)]
+    [InlineData(null, true)]
+    public async Task ProjectionForm_InvalidBinding_DoesNotSaveOrRegenerate(string? invalidField, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null)
+            controller.ModelState.AddModelError(invalidField, "Invalid value.");
+
+        var result = await controller.UpdateTicketingProjection(_yearId,
+            new TicketingProjectionUpdateForm { BudgetYearId = _yearId });
+
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else
+        {
+            await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
+                0, 0m, 0m, 0, 0m, 0m, 0m, viewerId);
+            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+        }
     }
 
     private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
