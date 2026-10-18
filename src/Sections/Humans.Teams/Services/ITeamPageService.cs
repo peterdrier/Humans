@@ -6,6 +6,29 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
+internal sealed record TeamDetailMemberSummary(
+    Guid UserId,
+    string DisplayName,
+    string? Email,
+    string? ProfilePictureUrl,
+    TeamMemberRole Role,
+    Instant JoinedAt);
+
+internal sealed record TeamDetailResult(
+    TeamPageTeamSummary Team,
+    IReadOnlyList<TeamDetailMemberSummary> Members,
+    IReadOnlyList<TeamPageTeamLink> ChildTeams,
+    IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
+    bool IsAuthenticated,
+    bool IsCurrentUserMember,
+    bool IsCurrentUserCoordinator,
+    bool CanCurrentUserJoin,
+    bool CanCurrentUserLeave,
+    bool CanCurrentUserManage,
+    bool CanCurrentUserEditTeam,
+    Guid? CurrentUserPendingRequestId,
+    int PendingRequestCount);
+
 internal sealed record TeamPageMemberSummary(
     Guid UserId,
     string DisplayName,

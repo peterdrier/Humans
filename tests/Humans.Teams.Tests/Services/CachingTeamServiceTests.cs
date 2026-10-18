@@ -26,6 +26,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ITeamManagementService _innerTeamService;
     private readonly CachingTeamService _service;
+    private readonly TeamPageService _pages;
 
     public CachingTeamServiceTests()
     {
@@ -51,6 +52,13 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
+        _pages = new TeamPageService(
+            _service,
+            Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
+            Substitute.For<Humans.Shifts.Contracts.IShiftManagementService>(),
+            Substitute.For<Humans.Settings.Contracts.ISettingsService>(),
+            userService,
+            _roleAssignmentService);
     }
 
     [HumansFact]
@@ -720,7 +728,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         hidden.IsHidden = true;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var detail = await _service.GetTeamDetailAsync(
+        var detail = await _pages.GetTeamDetailAsync(
             hidden.Slug, viewer.Id, Xunit.TestContext.Current.CancellationToken);
 
         detail.Should().BeNull();
@@ -734,7 +742,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         hidden.IsPublicPage = true;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var detail = await _service.GetTeamDetailAsync(
+        var detail = await _pages.GetTeamDetailAsync(
             hidden.Slug, userId: null, Xunit.TestContext.Current.CancellationToken);
 
         detail.Should().BeNull();
@@ -752,7 +760,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _innerTeamService.GetPendingRequestsForTeamAsync(hidden.Id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([]));
 
-        var detail = await _service.GetTeamDetailAsync(
+        var detail = await _pages.GetTeamDetailAsync(
             hidden.Slug, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         detail.Should().NotBeNull();

@@ -29,7 +29,7 @@ Campaigns (code distribution) target teams to determine who receives codes. Some
 ## Touchpoints
 
 - **Team directory** (`GetTeamDirectoryAsync`): hidden teams excluded for non-admin users
-- **Team detail page** (`GetTeamDetailAsync`): returns null for hidden teams when viewer is not Admin/Board/TeamsAdmin
+- **Team detail page** (`TeamPageService.GetTeamDetailAsync`): returns null for hidden teams when viewer is not Admin/Board/TeamsAdmin
 - **Profile card** (`ProfileCardViewComponent`): hidden teams filtered alongside the existing Volunteers filter
 - **Birthday team names** (`TeamController.Birthdays`): hidden teams excluded via inline filter on `GetTeamsAsync`
 - **My Teams** (`GetMyTeamMembershipsAsync`): hidden teams excluded for non-admin users

@@ -12,7 +12,7 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Services;
 
 /// <summary>
-/// Pins that <see cref="CachingTeamService.GetTeamDetailAsync"/>
+/// Pins that <see cref="TeamPageService.GetTeamDetailAsync"/>
 /// projects entirely from the cached <c>TeamInfo</c> snapshot.
 /// </summary>
 public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
@@ -21,6 +21,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     private readonly ITeamManagementService _innerTeamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
+    private readonly TeamPageService _pages;
 
     public CachingTeamServiceGetTeamDetailTests()
     {
@@ -44,6 +45,13 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
+        _pages = new TeamPageService(
+            _service,
+            Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
+            Substitute.For<Humans.Shifts.Contracts.IShiftManagementService>(),
+            Substitute.For<Humans.Settings.Contracts.ISettingsService>(),
+            userService,
+            _roleAssignmentService);
     }
 
     [HumansTheory]
@@ -55,7 +63,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         team.IsActive = isActive;
         SeedTeams(team);
 
-        var result = await _service.GetTeamDetailAsync(team.Slug, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync(team.Slug, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.CanCurrentUserJoin.Should().Be(isActive);
@@ -67,7 +75,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var team = MakeTeam("Public", isPublicPage: true);
         SeedTeams(team);
 
-        var result = await _service.GetTeamDetailAsync("public", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("public", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Team.Slug.Should().Be("public");
@@ -79,7 +87,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var team = MakeTeam("Hidden", isPublicPage: true, isHidden: true);
         SeedTeams(team);
 
-        var result = await _service.GetTeamDetailAsync("hidden", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("hidden", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -106,7 +114,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _roleAssignmentService.IsUserAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
         _roleAssignmentService.IsUserTeamsAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.GetTeamDetailAsync("alpha", memberId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("alpha", memberId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsAuthenticated.Should().BeTrue();
@@ -122,7 +130,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         team.CustomSlug = "branded";
         SeedTeams(team);
 
-        var result = await _service.GetTeamDetailAsync("Branded", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("Branded", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Team.Slug.Should().Be("original");
@@ -144,7 +152,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _roleAssignmentService.IsUserAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
         _roleAssignmentService.IsUserTeamsAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.GetTeamDetailAsync("department", viewerId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("department", viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.ChildTeams.Should().ContainSingle(c => c.Id == child.Id);
@@ -162,7 +170,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         privateChild.ParentTeamId = parent.Id;
         SeedTeams(parent, publicChild, hiddenChild, privateChild);
 
-        var result = await _service.GetTeamDetailAsync("dept", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync("dept", userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo([publicChild.Id]);

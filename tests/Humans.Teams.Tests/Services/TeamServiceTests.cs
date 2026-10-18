@@ -49,6 +49,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly TeamPageService _pages;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly RoleAssignmentService _roleAssignmentService;
@@ -123,6 +124,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
+        _pages = new TeamPageService(
+            _service, _teamResourceService, shiftManagementService,
+            NewSettingsServiceBackedByShiftsDb(), _userService, _roleAssignmentService);
     }
 
     // IsUserAdminAsync / IsUserBoardMemberAsync coverage lives in RoleAssignmentServiceTests.
@@ -1254,7 +1258,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.ErrorKey.Should().Be("Teams_NotFound");
         result.Outcome.Should().BeNull();
 
-        var detail = await _service.GetTeamDetailAsync(team.Slug, user.Id, Xunit.TestContext.Current.CancellationToken);
+        var detail = await _pages.GetTeamDetailAsync(team.Slug, user.Id, Xunit.TestContext.Current.CancellationToken);
         detail.Should().NotBeNull();
         detail.CanCurrentUserJoin.Should().BeFalse();
         (await TeamsDb.TeamMembers.AsNoTracking().CountAsync(m => m.TeamId == team.Id && m.LeftAt == null,
@@ -2399,7 +2403,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamDetailAsync(team.Slug, userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync(team.Slug, userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsAuthenticated.Should().BeFalse();
@@ -2427,7 +2431,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync(team.Slug, coordinator.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsAuthenticated.Should().BeTrue();

@@ -32,29 +32,6 @@ internal sealed record TeamDirectoryResult(
     IReadOnlyList<TeamDirectorySummary> SystemTeams,
     IReadOnlyList<TeamDirectorySummary> HiddenTeams);
 
-internal sealed record TeamDetailMemberSummary(
-    Guid UserId,
-    string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant JoinedAt);
-
-internal sealed record TeamDetailResult(
-    TeamPageTeamSummary Team,
-    IReadOnlyList<TeamDetailMemberSummary> Members,
-    IReadOnlyList<TeamPageTeamLink> ChildTeams,
-    IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
-    bool IsAuthenticated,
-    bool IsCurrentUserMember,
-    bool IsCurrentUserCoordinator,
-    bool CanCurrentUserJoin,
-    bool CanCurrentUserLeave,
-    bool CanCurrentUserManage,
-    bool CanCurrentUserEditTeam,
-    Guid? CurrentUserPendingRequestId,
-    int PendingRequestCount);
-
 internal sealed record TeamPageCallToActionInput(string? Text, string? Url, CallToActionStyle Style);
 
 internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage)
@@ -192,12 +169,6 @@ internal interface ITeamManagementService : ITeamManagement
     /// Gets the summarized team directory for anonymous or authenticated viewers.
     /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the detail-page data for a visible team, including viewer-specific membership and management state.
-    /// Returns null when the team does not exist or is not visible to the viewer.
-    /// </summary>
-    Task<TeamDetailResult?> GetTeamDetailAsync(string slug, Guid? userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.

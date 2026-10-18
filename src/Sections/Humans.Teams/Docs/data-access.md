@@ -121,7 +121,10 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftManagementService`, `ISettingsService` and `IUserService`;
+`IShiftManagementService`, `ISettingsService`, `IUserService` and Auth’s
+`IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
+member/child projections over the cached `TeamInfo` snapshot, with live
+pending-request reads through `ITeamManagementService`;
 the mapper and the directory builder are pure.
 
 ### TeamsEmails (Scoped, internal)

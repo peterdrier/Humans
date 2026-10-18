@@ -218,103 +218,6 @@ internal sealed class TeamService(
         return await TeamDirectoryBuilder.BuildAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
     }
 
-    // Reference implementation; production routes through CachingTeamService.GetTeamDetailAsync (TeamInfo projection).
-    public async Task<TeamDetailResult?> GetTeamDetailAsync(
-        string slug,
-        Guid? userId,
-        CancellationToken cancellationToken = default)
-    {
-        var team = await GetTeamEntityBySlugAsync(slug, cancellationToken);
-        if (team is null)
-            return null;
-
-        if (!userId.HasValue)
-        {
-            var isAnonymouslyVisible = !team.IsHidden && !team.IsSystemTeam
-                && ((team.ParentTeamId is null && team.IsPublicPage)
-                    || (team.ParentTeamId is not null && team.IsPromotedToDirectory));
-            if (!isAnonymouslyVisible)
-                return null;
-        }
-
-        var activeMembers = team.Members
-            .Where(m => m.LeftAt is null)
-            .ToList();
-        var usersById = activeMembers.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(
-                activeMembers.Select(m => m.UserId).Distinct().ToList(),
-                cancellationToken);
-
-        if (!userId.HasValue)
-        {
-            var coordinators = activeMembers
-                .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .OrderBy(m => GetMemberDisplayName(m, usersById), StringComparer.OrdinalIgnoreCase)
-                .Select(m => MapTeamDetailMemberSummary(m, usersById))
-                .ToList();
-
-            return new TeamDetailResult(
-                Team: MapTeamSummary(team),
-                Members: coordinators,
-                ChildTeams: team.ChildTeams
-                    .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
-                    .OrderBy(c => c.Name, StringComparer.Ordinal)
-                    .Select(MapTeamLink)
-                    .ToList(),
-                RoleDefinitions: [],
-                IsAuthenticated: false,
-                IsCurrentUserMember: false,
-                IsCurrentUserCoordinator: false,
-                CanCurrentUserJoin: false,
-                CanCurrentUserLeave: false,
-                CanCurrentUserManage: false,
-                CanCurrentUserEditTeam: false,
-                CurrentUserPendingRequestId: null,
-                PendingRequestCount: 0);
-        }
-
-        var currentUserId = userId.Value;
-        var isCurrentUserMember = activeMembers.Any(m => m.UserId == currentUserId);
-        var isCurrentUserCoordinator = await IsUserCoordinatorOfTeamAsync(team.Id, currentUserId, cancellationToken);
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
-        var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
-
-        if (team.IsHidden && !isBoardMember && !isAdmin && !isTeamsAdmin)
-            return null;
-
-        var pendingRequest = await GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
-        var pendingRequestCount = canManage
-            ? (await GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
-            : 0;
-        var roleDefinitions = await repo.GetRoleDefinitionsAsync(team.Id, cancellationToken);
-
-        return new TeamDetailResult(
-            Team: MapTeamSummary(team),
-            Members: activeMembers
-                .OrderBy(m => m.Role)
-                .ThenBy(m => GetMemberDisplayName(m, usersById), StringComparer.OrdinalIgnoreCase)
-                .Select(m => MapTeamDetailMemberSummary(m, usersById))
-                .ToList(),
-            ChildTeams: team.ChildTeams
-                .Where(c => c.IsActive)
-                .OrderBy(c => c.Name, StringComparer.Ordinal)
-                .Select(MapTeamLink)
-                .ToList(),
-            RoleDefinitions: roleDefinitions.Select(definition => ToRoleDefinitionSnapshot(definition, team)).ToList(),
-            IsAuthenticated: true,
-            IsCurrentUserMember: isCurrentUserMember,
-            IsCurrentUserCoordinator: isCurrentUserCoordinator,
-            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
-            CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
-            CanCurrentUserManage: canManage,
-            CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
-            CurrentUserPendingRequestId: pendingRequest?.Id,
-            PendingRequestCount: pendingRequestCount);
-    }
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -2540,41 +2443,6 @@ internal sealed class TeamService(
             team.IsHidden);
     }
 
-    private static TeamPageTeamSummary MapTeamSummary(Team team) =>
-        TeamPageSummaryMapper.Map(
-            id: team.Id,
-            name: team.Name,
-            parentName: team.ParentTeam?.Name,
-            description: team.Description,
-            slug: team.Slug,
-            isActive: team.IsActive,
-            requiresApproval: team.RequiresApproval,
-            isSystemTeam: team.IsSystemTeam,
-            systemTeamType: team.SystemTeamType,
-            createdAt: team.CreatedAt,
-            isPublicPage: team.IsPublicPage,
-            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
-            pageContent: team.PageContent,
-            callsToAction: team.CallsToAction ?? [],
-            pageContentUpdatedAt: team.PageContentUpdatedAt,
-            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-            parentLink: team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
-
-    private static TeamPageTeamLink MapTeamLink(Team team) => new(
-        team.Id,
-        team.Name,
-        team.Slug);
-
-    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(
-        TeamMember member,
-        IReadOnlyDictionary<Guid, UserInfo> usersById) => new(
-        UserId: member.UserId,
-        DisplayName: GetMemberDisplayName(member, usersById),
-        Email: usersById.GetValueOrDefault(member.UserId)?.Email,
-        ProfilePictureUrl: usersById.GetValueOrDefault(member.UserId)?.ProfilePictureUrl,
-        Role: member.Role,
-        JoinedAt: member.JoinedAt);
-
 #pragma warning disable CS0618 // TeamJoinRequest.Team — in-section nav read for snapshot projections.
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
         request.Id,
@@ -2611,11 +2479,6 @@ internal sealed class TeamService(
             request.ReviewNotes);
     }
 #pragma warning restore CS0618
-
-    private static string GetMemberDisplayName(
-        TeamMember member,
-        IReadOnlyDictionary<Guid, UserInfo> usersById) =>
-        usersById.GetValueOrDefault(member.UserId)?.BurnerName ?? string.Empty;
 
     private static void ValidateRoleName(string name)
     {
