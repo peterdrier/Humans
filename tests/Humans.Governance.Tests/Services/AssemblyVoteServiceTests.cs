@@ -1,6 +1,11 @@
 using Humans.Base.Extensions;
 using AwesomeAssertions;
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using Humans.Base.Constants;
 using Humans.Governance.Controllers;
 using Humans.Governance.Models;
@@ -847,6 +852,110 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Select(o => o.Key).ToListAsync(ct);
         keys.Should().BeEquivalentTo(malformed ? ["a", "b"] : Array.Empty<string>());
         if (malformed) _fx.Audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, "Kind", true)]
+    [InlineData(true, "Kind", true)]
+    [InlineData(false, "RequiredMajority", false)]
+    [InlineData(true, "RequiredMajority", false)]
+    [InlineData(false, "IndicativeAudience", false)]
+    [InlineData(true, "IndicativeAudience", false)]
+    [InlineData(false, "BallotDisclosure", false)]
+    [InlineData(true, "BallotDisclosure", false)]
+    [InlineData(false, "OfficialCulture", false)]
+    [InlineData(true, "OfficialCulture", false)]
+    [InlineData(false, "", false)]
+    [InlineData(true, "", false)]
+    [InlineData(false, "", true)]
+    [InlineData(true, "", true)]
+    public async Task Draft_forms_require_explicit_voting_rules_and_binding_culture(bool edit, string omitted, bool ranked)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actor = Guid.NewGuid();
+        var zeroChoices = omitted.Length == 0 && !ranked;
+        var kind = ranked ? AssemblyVoteKind.RankedChoice : AssemblyVoteKind.YesNo;
+        var majority = ranked || zeroChoices ? RequiredMajority.Simple : RequiredMajority.TwoThirds;
+        var audience = zeroChoices ? IndicativeAudience.None : IndicativeAudience.AllMembers;
+        var disclosure = zeroChoices ? BallotDisclosure.BoardOnly : BallotDisclosure.RosterSeesNames;
+        var culture = zeroChoices ? "en" : "es";
+        var baseline = new AssemblyVoteDraftFormViewModel
+        {
+            Title = new(StringComparer.Ordinal) { ["en"] = "Existing", ["es"] = "Anterior" },
+            OfficialText = new(StringComparer.Ordinal) { ["en"] = "Motion", ["es"] = "Moción" },
+            OfficialCulture = culture, Kind = kind, RequiredMajority = majority,
+            IndicativeAudience = audience, BallotDisclosure = disclosure, ClosesAt = new DateTime(2026, 9, 2, 15, 0, 0),
+            Options = [new() { Key = "a", Label = new(StringComparer.Ordinal) { ["en"] = "A", ["es"] = "A" } },
+                new() { Key = "b", Label = new(StringComparer.Ordinal) { ["en"] = "B", ["es"] = "B" } }]
+        };
+        var voteId = edit ? await _fx.Service.CreateDraftAsync(baseline.ToDraft(), actor, ct) : null;
+        if (edit) voteId.Should().NotBeNull();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Title[en]"] = "Changed", ["Title[es]"] = "Cambiada",
+            ["OfficialText[en]"] = "Motion", ["OfficialText[es]"] = "Moción",
+            ["OfficialCulture"] = culture, ["Kind"] = ((int)kind).ToString(CultureInfo.InvariantCulture),
+            ["RequiredMajority"] = ((int)majority).ToString(CultureInfo.InvariantCulture),
+            ["IndicativeAudience"] = ((int)audience).ToString(CultureInfo.InvariantCulture),
+            ["BallotDisclosure"] = ((int)disclosure).ToString(CultureInfo.InvariantCulture), ["ClosesAt"] = "2026-09-02T15:00",
+            ["Options[0].Key"] = "a", ["Options[0].Label[en]"] = "A", ["Options[0].Label[es]"] = "A",
+            ["Options[1].Key"] = "b", ["Options[1].Label[en]"] = "B", ["Options[1].Label[es]"] = "B"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(AssemblyVoteDraftFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(AssemblyVoteDraftFormViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (AssemblyVoteDraftFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+        model.Title.Should().ContainKey("en").WhoseValue.Should().Be("Changed");
+        model.OfficialText.Should().ContainKey("es").WhoseValue.Should().Be("Moción");
+        model.ClosesAt.Should().Be(new DateTime(2026, 9, 2, 15, 0, 0));
+        if (omitted.Length == 0) controller.ModelState.IsValid.Should().BeTrue();
+        _fx.Audit.ClearReceivedCalls();
+
+        var result = edit ? await controller.Edit(voteId!.Value, model, null, ct) : await controller.Create(model, null, ct);
+
+        var refused = omitted.Length > 0;
+        if (refused)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _fx.Audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else result.Should().BeOfType<RedirectToActionResult>();
+        var votes = await _fx.Db.AssemblyVotes.AsNoTracking().ToListAsync(ct);
+        votes.Should().HaveCount(refused && !edit ? 0 : 1);
+        if (votes.Count == 0) return;
+        var stored = votes.Single();
+        stored.Title.Resolve("en", stored.OfficialCulture).Should().Be(refused ? "Existing" : "Changed");
+        stored.Kind.Should().Be(kind);
+        stored.RequiredMajority.Should().Be(majority);
+        stored.IndicativeAudience.Should().Be(audience);
+        stored.BallotDisclosure.Should().Be(disclosure);
+        stored.OfficialCulture.Should().Be(culture);
+        (await _fx.Db.AssemblyVoteOptions.AsNoTracking().Where(o => o.VoteId == stored.Id).Select(o => o.Key).ToListAsync(ct))
+            .Should().BeEquivalentTo(ranked ? ["a", "b"] : Array.Empty<string>());
     }
 
     [HumansFact]

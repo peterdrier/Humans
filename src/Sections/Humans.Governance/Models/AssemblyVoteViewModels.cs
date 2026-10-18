@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using NodaTime;
@@ -140,11 +141,16 @@ internal sealed class AssemblyVoteDraftFormViewModel
 
     public Dictionary<string, string> Title { get; set; } = [];
     public Dictionary<string, string> OfficialText { get; set; } = [];
+    [BindRequired]
     public string OfficialCulture { get; set; } = CultureCatalog.DefaultCultureCode;
     public string? InfoUrl { get; set; }
+    [BindRequired]
     public AssemblyVoteKind Kind { get; set; }
+    [BindRequired]
     public RequiredMajority RequiredMajority { get; set; }
+    [BindRequired]
     public IndicativeAudience IndicativeAudience { get; set; }
+    [BindRequired]
     public BallotDisclosure BallotDisclosure { get; set; }
     public DateTime? AssemblyDate { get; set; }
 
