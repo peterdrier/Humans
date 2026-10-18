@@ -28,14 +28,6 @@ public interface IGoogleSyncWrite : IApplicationService
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
 
     /// <summary>
-    /// Removes a user from all Google resources associated with a team.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="userId">The user ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Ensures a team has a linked Google Group. If GoogleGroupPrefix is set but no Group
     /// resource exists, creates or links the group. Called when prefix is set on a team.
     /// </summary>

@@ -1,5 +1,4 @@
 using Xunit;
-using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -27,12 +26,10 @@ namespace Humans.Users.Tests.Services;
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
     private readonly IUserManagement _userService;
-    private readonly ITeamService _teamService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
-    private readonly IGoogleSyncWrite _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
@@ -46,11 +43,9 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public NonCompliantMemberSuspensionTests()
     {
         _userService = Substitute.For<IUserManagement>();
-        _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculator>();
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationEmitter>();
-        _googleSyncService = Substitute.For<IGoogleSyncWrite>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
@@ -59,14 +54,9 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<NonCompliantMemberSuspension>>();
 
-        // Default: GetTeamsAsync returns an empty directory so tests that don't
-        // care about team fan-out don't need to stub it.
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
-
         _sut = new NonCompliantMemberSuspension(
-            _userService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
-            _emailService, _emailMessages, _notificationService, _googleSyncService, _auditLogService,
+            _userService, _activeTeamsCacheInvalidator, _membershipCalculator,
+            _emailService, _emailMessages, _notificationService, _auditLogService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger);
     }
@@ -76,19 +66,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
-
-    private static IReadOnlyDictionary<Guid, TeamInfo> TeamDirectoryWith(Guid teamId, Guid userId) =>
-        new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = new TeamInfo(
-                Id: teamId, Name: "Team", Description: null, Slug: "team",
-                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
-                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-                IsPromotedToDirectory: false, CreatedAt: Now,
-                Members: [new TeamMemberInfo(
-                    Guid.NewGuid(), userId, "Member", null, null,
-                    TeamMemberRole.Member, Now - Duration.FromDays(50))]),
-        };
 
     [HumansFact]
     public async Task ExecuteAsync_SuspendsNonCompliantUser()
@@ -105,26 +82,16 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ExecuteAsync_PreparationFailure_DoesNotPersistSuspensions(bool teamLookupFails)
+    [HumansFact]
+    public async Task ExecuteAsync_PreparationFailure_DoesNotPersistSuspensions()
     {
         var user = SetupUser();
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
         var failure = new IOException("Directory unavailable");
-        if (teamLookupFails)
-        {
-            _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyDictionary<Guid, TeamInfo>>(failure));
-        }
-        else
-        {
-            _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-                .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
-        }
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
 
         var thrown = await Assert.ThrowsAsync<IOException>(() =>
             _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken));
@@ -138,7 +105,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_PreparesOneTeamSnapshot_AndOnlyProcessesChangedUsers()
+    public async Task ExecuteAsync_OnlyProcessesChangedUsers()
     {
         var users = new[] { SetupUser(), SetupUser(), SetupUser() };
         var ids = users.Select(user => user.Id).ToList();
@@ -147,26 +114,16 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 users.ToDictionary(user => user.Id, user => user.ToUserInfo())));
-        var teams = users.SelectMany(user => TeamDirectoryWith(Guid.NewGuid(), user.Id))
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teams));
         StubSuspendSucceeds(ids.Take(2).ToList());
 
         await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _teamService.Received(1).GetTeamsAsync(Arg.Any<CancellationToken>());
         foreach (var userId in ids.Take(2))
         {
-            var teamId = teams.Values.Single(team => team.Members.Any(member => member.UserId == userId)).Id;
-            await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
-                teamId, userId, Arg.Any<CancellationToken>());
             await _auditLogService.Received(1).LogAsync(
                 AuditAction.MemberSuspended, nameof(User), userId,
                 Arg.Any<string>(), "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>());
         }
-        await _googleSyncService.DidNotReceive().RemoveUserFromTeamResourcesAsync(
-            Arg.Any<Guid>(), ids[2], Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), ids[2],
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -303,24 +260,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_RemovesFromTeamResources()
-    {
-        var user = SetupUser();
-        var teamId = Guid.NewGuid();
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(TeamDirectoryWith(teamId, user.Id)));
-
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { user.Id });
-        StubSuspendSucceeds([user.Id]);
-
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
-            teamId, user.Id, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task ExecuteAsync_LogsAuditEntry()
     {
         var user = SetupUser();
@@ -353,32 +292,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
         _activeTeamsCacheInvalidator.Received(1).Invalidate();
-    }
-
-    [HumansFact]
-    public async Task ExecuteAsync_ContinuesWhenGoogleSyncFails()
-    {
-        var user = SetupUser();
-        var teamId = Guid.NewGuid();
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(TeamDirectoryWith(teamId, user.Id)));
-
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { user.Id });
-        StubSuspendSucceeds([user.Id]);
-
-        _googleSyncService.RemoveUserFromTeamResourcesAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("Google API error")));
-
-        // Should not throw — Google sync failures are caught and logged.
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
-
-        // Audit entry should still be written despite Google failure.
-        await _auditLogService.Received(1).LogAsync(
-            AuditAction.MemberSuspended, nameof(User), user.Id,
-            Arg.Any<string>(), "SuspendNonCompliantMembersJob",
-            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ------------------------------------------------------------------

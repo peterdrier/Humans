@@ -92,9 +92,9 @@ public interface ITeamWrite : IApplicationService
     /// when at least one change lands. Returns true when any writes occur.
     /// </summary>
     /// <remarks>
-    /// The caller is expected to fan out Google-sync calls
-    /// (<c>AddUserToTeamResourcesAsync</c> / <c>RemoveUserFromTeamResourcesAsync</c>)
-    /// and audit entries per user after this method returns.
+    /// The caller is expected to fan out Google-sync grants
+    /// (<c>AddUserToTeamResourcesAsync</c>) and audit entries per user after this
+    /// method returns; removals are left to Google reconciliation.
     /// </remarks>
     Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,

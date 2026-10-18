@@ -577,8 +577,6 @@ internal sealed class SystemTeamSyncJob(
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Removed(userId, userName);
             removedAudits.Add((userId, userName));
-
-            await googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
         }
 
         foreach (var (auditUserId, userName) in addedAudits)

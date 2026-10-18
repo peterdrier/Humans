@@ -57,12 +57,6 @@ internal sealed class StubGoogleSyncService(
         return Task.FromResult(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Deferred, userId));
     }
 
-    public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("[STUB] Would remove user {UserId} from team {TeamId} Google resources", userId, teamId);
-        return Task.CompletedTask;
-    }
-
     public Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would ensure Google Group exists for team {TeamId}", teamId);

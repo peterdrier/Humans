@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
-using Humans.GoogleIntegration.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -22,8 +21,7 @@ namespace Humans.Users.Services;
 /// <remarks>
 /// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
 /// All reads/writes fan out through section services
-/// (<see cref="IUserManagement"/>, <see cref="ITeamService"/>,
-/// <see cref="IGoogleSyncService"/>) so this never touches another section's
+/// (<see cref="IUserManagement"/>) so this never touches another section's
 /// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
 /// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
@@ -31,13 +29,11 @@ namespace Humans.Users.Services;
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
-    ITeamService teamService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     UsersEmails emailMessages,
     INotificationEmitter notificationService,
-    IGoogleSyncWrite googleSyncService,
     IAuditLogService auditLogService,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
@@ -71,7 +67,6 @@ internal sealed class NonCompliantMemberSuspension(
         // user will not be returned by the write on a retry.
         var usersById = await userService
             .GetUserInfosAsync(usersToSuspend, cancellationToken);
-        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
         // Apply the suspension write through IUserManagement — returns the
         // subset of user ids actually mutated (skips already-suspended /
@@ -136,29 +131,9 @@ internal sealed class NonCompliantMemberSuspension(
                 logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
             }
 
-            var memberTeamIds = teamsById.Values
-                .Where(t => t.Members.Any(m => m.UserId == user.Id))
-                .Select(t => t.Id)
-                .ToList();
-            foreach (var teamId in memberTeamIds)
-            {
-                try
-                {
-                    await googleSyncService.RemoveUserFromTeamResourcesAsync(
-                        teamId,
-                        user.Id,
-                        cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
-                        user.Id, teamId);
-                }
-            }
-
             logger.LogWarning(
-                "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
-                user.Id, effectiveEmail, memberTeamIds.Count);
+                "User {UserId} ({Email}) suspended",
+                user.Id, effectiveEmail);
 
             metrics.RecordMemberSuspended("job");
 

@@ -146,12 +146,11 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 (`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
-`ITeamService`, `IMembershipCalculator`, `IGoogleSyncWrite`,
-`IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
+`IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
 `IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
-for cache eviction. Suspension removes a
-user from their team's Google resources. No direct DB access or `IMemoryCache`.
+for cache eviction. Google access ends at the next Google reconciliation,
+which excludes suspended humans. No direct DB access or `IMemoryCache`.
 
 ### UsersEmails (Scoped, internal)
 

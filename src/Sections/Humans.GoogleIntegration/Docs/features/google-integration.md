@@ -209,7 +209,6 @@ Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = defaul
 Public writes (`IGoogleSyncWrite`, only what other sections call):
 ```csharp
 Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ...);
-Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, ...);
 Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, ...);
 Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, ...);
 Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);

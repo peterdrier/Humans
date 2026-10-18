@@ -88,10 +88,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                         break;
 
                     case GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources:
-                        await googleSyncService.RemoveUserFromTeamResourcesAsync(
-                            outboxEvent.TeamId,
-                            outboxEvent.UserId,
-                            cancellationToken);
+                        // Nothing to do per event: reconciliation removes access the member no longer holds.
                         break;
 
                     default:

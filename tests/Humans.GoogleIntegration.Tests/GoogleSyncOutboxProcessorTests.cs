@@ -224,16 +224,27 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ProcessQueuedAsync_RemoveUserFailure_IncrementsRetryAndStoresError()
+    public async Task ProcessQueuedAsync_RemoveUserEvent_CompletesWithoutCallingGoogle()
     {
-        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources);
 
-        _googleSyncService
-            .When(s => s.RemoveUserFromTeamResourcesAsync(
-                outboxEvent.TeamId,
-                outboxEvent.UserId,
-                Arg.Any<CancellationToken>()))
-            .Do(_ => throw new InvalidOperationException("google timeout"));
+        await _processor.ProcessQueuedAsync(ct);
+
+        _googleSyncService.ReceivedCalls().Should().BeEmpty();
+        (await _outboxRepository.GetProcessingBatchAsync(10, 10, ct)).Should().BeEmpty();
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(ct);
+        stored.FailedPermanently.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_GrantThrows_IncrementsRetryAndStoresError()
+    {
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(Task.FromException<GoogleResourceGrantResult>(new InvalidOperationException("google timeout")));
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -247,15 +258,12 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     public async Task ProcessQueuedAsync_FinalFailure_RecordsLastErrorAndExhaustsRetries()
     {
         var outboxEvent = await SeedOutboxEventAsync(
-            GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources,
+            GoogleSyncOutboxEventTypes.AddUserToTeamResources,
             retryCount: 9);
 
-        _googleSyncService
-            .When(s => s.RemoveUserFromTeamResourcesAsync(
-                outboxEvent.TeamId,
-                outboxEvent.UserId,
-                Arg.Any<CancellationToken>()))
-            .Do(_ => throw new InvalidOperationException("google timeout"));
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(Task.FromException<GoogleResourceGrantResult>(new InvalidOperationException("google timeout")));
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 

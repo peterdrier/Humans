@@ -250,21 +250,6 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
-    public Task RemoveUserFromTeamResourcesAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        // Individual user removal is a no-op. Drive removals are handled by
-        // reconciliation, and Google Group membership is handled by
-        // IGoogleGroupSync.
-        logger.LogDebug(
-            "Per-user removal deferred to reconciliation for user {UserId} team {TeamId}",
-            userId, teamId);
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

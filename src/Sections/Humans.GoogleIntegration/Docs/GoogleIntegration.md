@@ -205,7 +205,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | Public interface | Methods | Notes |
 |---|---:|---|
 | `IGoogleSyncService` | 2 | Read contract: `GetFailedSyncEventCountAsync` (Notifications meter), `IsFolderReachableAsync` (Workgroups root-folder check). |
-| `IGoogleSyncWrite` | 6 | `AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` (Teams system-team sync, Users suspension), `SyncSingleResourceAsync` (Teams admin), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
+| `IGoogleSyncWrite` | 5 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `SyncSingleResourceAsync` (Teams admin), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
 | `ITeamResourceService` | 7 | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
 | `ITeamResourceWrite` | 5 | `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync` — Teams' team-admin resource pages. |
 

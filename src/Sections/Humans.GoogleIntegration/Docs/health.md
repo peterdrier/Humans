@@ -31,7 +31,6 @@ pages render for a resource or a person.
 | "This person joined/left this team — update Google, later" | Teams | `IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` |
 | "Make sure this team has its Group" / "Reconcile this one resource now" | Teams | `IGoogleSyncWrite.EnsureTeamGroupAsync` / `SyncSingleResourceAsync` |
 | "Grant this person the team's resources now" | Teams (system-team sync), the outbox processor | `IGoogleSyncWrite.AddUserToTeamResourcesAsync` |
-| "Remove this person from the team's resources" | Users (suspension), Teams (system-team sync), the outbox processor | `IGoogleSyncWrite.RemoveUserFromTeamResourcesAsync` — a logged no-op: removal happens at the next reconcile |
 | "Create a Drive folder under X" / "Re-check this folder's access soon" / "Can the service account read X?" | Workgroups | `IGoogleSyncWrite.CreateSubfolderAsync` / `RequestSyncAsync`, `IGoogleSyncService.IsFolderReachableAsync` |
 | "Reconcile every group" (the system-team sync) | Teams | `IGoogleGroupSync.ReconcileAllAsync` |
 | "Who is supposed to be in group X?" — asked *by* this section | answered by Teams and Camps | `IGoogleGroupMembershipSource.GetExpectedAsync` |
