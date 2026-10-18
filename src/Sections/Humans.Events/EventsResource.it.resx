@@ -153,6 +153,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La categoria '{0}' corrisponde a più di una categoria attiva.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Il campo Date è obbligatorio.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date deve essere nel formato yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>L’inizio e la fine dell’evento devono rientrare negli anni da 0001 a 9999, sia in UTC sia nel fuso orario dell’evento.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>Il campo StartTime è obbligatorio.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime deve essere nel formato HH:mm.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes deve essere compreso tra 15 e 480.</value></data>

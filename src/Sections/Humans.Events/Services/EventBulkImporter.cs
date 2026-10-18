@@ -22,7 +22,7 @@ internal sealed class EventBulkImporter(
         var categories = await repo.GetActiveCategoriesAsync(ct);
         var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
 
-        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents, localizer);
+        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents, timeZone, localizer);
         if (errors.Count > 0)
             return new BulkImportResult(errors, 0, 0);
 

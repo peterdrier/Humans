@@ -182,7 +182,7 @@ Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,Locat
 | `Title` | Required. Max 80 chars. |
 | `Description` | Required. Max 450 chars. |
 | `Category` | Required. Category name, case-insensitive (e.g. `Food and drink`). |
-| `Date` | Required. `yyyy-MM-dd`. |
+| `Date` | Required. `yyyy-MM-dd`. Event start and end must fit years 0001–9999 in UTC and the event timezone. |
 | `StartTime` | Required. `HH:mm`. |
 | `DurationMinutes` | Required. Integer, 15–480, in 15-minute increments. |
 | `LocationNote` | Optional. Max 120 chars. |

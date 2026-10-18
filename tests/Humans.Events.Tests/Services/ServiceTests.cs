@@ -888,6 +888,36 @@ public sealed class EventServiceTests
         }
     }
 
+    [HumansTheory]
+    [InlineData("0000-07-08", "09:30", 0, false)]
+    [InlineData("-0001-07-08", "09:30", 0, false)]
+    [InlineData("0001-01-01", "00:00", 2, false)]
+    [InlineData("9999-12-31", "23:30", 0, false)]
+    [InlineData("9999-12-31", "23:30", -2, false)]
+    [InlineData("0001-01-01", "09:30", 0, true)]
+    [InlineData("9999-12-31", "09:30", 0, true)]
+    public async Task BulkImportAsync_CalendarRange_IsValidatedBeforeAnyRowIsSaved(
+        string date, string time, int offsetHours, bool valid)
+    {
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            Guid.NewGuid(), Guid.NewGuid(),
+            [Row(title: "Valid first row"), Row(date: date, startTime: time, rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.ForOffset(Offset.FromHours(offsetHours)),
+            TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().Be(!valid);
+        if (valid)
+            _repo.Events.Should().HaveCount(2);
+        else
+        {
+            result.Errors.Should().ContainSingle(error => error.RowNumber == 3);
+            _repo.Events.Should().BeEmpty();
+            _repo.SaveChangesCount.Should().Be(0);
+        }
+    }
+
     [HumansFact]
     public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrorsAndWritesNothing()
     {

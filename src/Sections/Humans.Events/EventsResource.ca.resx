@@ -153,6 +153,7 @@
   <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La categoria '{0}' coincideix amb més d'una categoria activa.</value></data>
   <data name="Events_Upload_DateRequired" xml:space="preserve"><value>El camp Date és obligatori.</value></data>
   <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date ha de tenir el format yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>L’inici i el final de l’esdeveniment han d’estar entre els anys 0001 i 9999, tant en UTC com en la zona horària de l’esdeveniment.</value></data>
   <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>El camp StartTime és obligatori.</value></data>
   <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime ha de tenir el format HH:mm.</value></data>
   <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes ha d'estar entre 15 i 480.</value></data>

@@ -3,6 +3,8 @@ using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services.Dtos;
+using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Events.Services;
 
@@ -13,6 +15,7 @@ internal static class EventBulkImportValidator
         IReadOnlyList<BulkCsvRow> rows,
         IReadOnlyList<EventCategory> categories,
         IReadOnlyList<Event> existingEvents,
+        DateTimeZone timeZone,
         IStringLocalizer<EventsResource> localizer)
     {
         var errors = new List<BulkImportRowError>();
@@ -37,18 +40,24 @@ internal static class EventBulkImportValidator
 
             ValidateCategory(row, categories, rowErrors, localizer);
 
+            var date = LocalDatePattern.Iso.Parse(row.Date ?? string.Empty);
+            var time = DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime ?? string.Empty);
             if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add(localizer["Events_Upload_DateRequired"].Value);
-            else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
+            else if (!date.Success)
                 rowErrors.Add(localizer["Events_Upload_DateFormat"].Value);
 
             if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add(localizer["Events_Upload_StartTimeRequired"].Value);
-            else if (!DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Success)
+            else if (!time.Success)
                 rowErrors.Add(localizer["Events_Upload_StartTimeFormat"].Value);
 
             if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
                 rowErrors.Add(localizer["Events_Upload_DurationRange"].Value);
             else if (row.DurationMinutes % 15 != 0)
                 rowErrors.Add(localizer["Events_Upload_DurationIncrement"].Value);
+
+            if (date.Success && time.Success && row.DurationMinutes is >= 15 and <= 480
+                && !CanDisplaySchedule(date.Value + time.Value, row.DurationMinutes, timeZone))
+                rowErrors.Add(localizer["Events_Upload_DateRange"].Value);
 
             if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
                 rowErrors.Add(localizer["Events_Upload_PriorityRange"].Value);
@@ -63,6 +72,22 @@ internal static class EventBulkImportValidator
                 errors.Add(new BulkImportRowError(row.RowNumber, row.Title, rowErrors));
         }
         return errors;
+    }
+
+    private static bool CanDisplaySchedule(LocalDateTime localStart, int durationMinutes, DateTimeZone timeZone)
+    {
+        // CSV accepts NodaTime dates beyond the DateTime range used by calendars and views.
+        try
+        {
+            var start = localStart.InZoneLeniently(timeZone).ToInstant();
+            var end = start + Duration.FromMinutes(durationMinutes);
+            return start.InUtc().Year >= 1 && start.InZone(timeZone).Year >= 1
+                && end.InUtc().Year >= 1 && end.InZone(timeZone).Year >= 1;
+        }
+        catch (Exception ex) when (ex is OverflowException or ArgumentOutOfRangeException)
+        {
+            return false;
+        }
     }
 
     private static void ValidateCategory(
