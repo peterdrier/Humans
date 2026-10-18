@@ -26,6 +26,53 @@ public sealed class SurveyControllerTests
 {
     private const string Token = "invite-token";
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Malformed_optional_rating_does_not_submit_a_defaulted_answer(bool publicPath)
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolvePublicContextAsync("volunteer-survey", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(surveyId, Detail(surveyId, "Thanks!")));
+        surveys.AdvanceWizardAsync(
+                Arg.Any<SurveyWizardState>(), Arg.Any<int>(), Arg.Any<bool>(),
+                Arg.Any<IReadOnlyList<SurveyAnswerInput>>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []));
+        var sut = CreateController(surveys, out var session, userId);
+        var state = new SurveyWizardState
+        {
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            Answers = new(StringComparer.Ordinal)
+            {
+                [questionId.ToString()] = new SurveyWizardAnswer { RatingValue = 4 },
+            },
+        };
+        if (publicPath) SurveyWizardSession.SaveBySlug(session, "volunteer-survey", state);
+        else SurveyWizardSession.Save(session, Token, state);
+        sut.ModelState.AddModelError("Answers[0].RatingValue", "The value 'invalid' is not valid for RatingValue.");
+        var model = new SurveyPageInputModel
+        {
+            Token = Token,
+            Answers = [new SurveyPostedAnswer { QuestionId = questionId }],
+        };
+
+        var result = publicPath
+            ? await sut.PublicSubmitPage("volunteer-survey", model, Xunit.TestContext.Current.CancellationToken)
+            : await sut.SubmitPage(model, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+        var unchanged = publicPath
+            ? SurveyWizardSession.LoadBySlug(session, "volunteer-survey")
+            : SurveyWizardSession.Load(session, Token);
+        unchanged!.Answers[questionId.ToString()].RatingValue.Should().Be(4);
+        await surveys.DidNotReceiveWithAnyArgs().AdvanceWizardAsync(default!, default, default, default!, default);
+    }
+
     [HumansFact]
     public async Task Submitting_leaves_the_thank_you_marker_in_session()
     {
@@ -240,6 +287,48 @@ public sealed class SurveyControllerTests
         state.UserId.Should().Be(userId);
         state.InvitationId.Should().Be(participationId);
         state.DraftResponseId.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    public async Task Malformed_start_does_not_default_to_an_identified_response(bool publicPath, bool isOpen)
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var detail = Detail(surveyId, "Thanks!", publicSlug: "volunteer-survey") with
+        {
+            Status = isOpen ? SurveyStatus.Open : SurveyStatus.Closed,
+        };
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(surveyId, invitationId, userId, detail, [], false));
+        surveys.ResolvePublicContextAsync("volunteer-survey", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(surveyId, detail));
+        surveys.StartPublicTrackedResponseAsync(
+                surveyId, userId, ResponseAnonymity.Identified, "en", Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicStart(invitationId, Guid.NewGuid(), []));
+        var sut = CreateController(surveys, out var session, userId);
+        sut.ModelState.AddModelError("Anonymity", "The value 'invalid' is not valid for Anonymity.");
+
+        var result = publicPath
+            ? await sut.PublicStart("volunteer-survey", "en", ResponseAnonymity.Identified,
+                Xunit.TestContext.Current.CancellationToken)
+            : await sut.Start(new SurveyStartViewModel { Token = Token, Culture = "en" },
+                Xunit.TestContext.Current.CancellationToken);
+
+        if (isOpen) result.Should().BeOfType<BadRequestResult>();
+        else result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<SurveyClosedViewModel>().Subject.Reason.Should().Be("closed");
+        session.Keys.Should().BeEmpty();
+        surveys.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
+            .NotContain(nameof(ISurveyService.StartIdentifiedDraftAsync))
+            .And.NotContain(nameof(ISurveyService.StartPublicTrackedResponseAsync))
+            .And.NotContain(nameof(ISurveyService.MarkInvitationStartedAsync))
+            .And.NotContain(nameof(ISurveyService.IncrementPublicStartedAsync));
     }
 
     [HumansFact]

@@ -136,6 +136,12 @@ internal sealed class SurveyController(
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed survey start for {SurveyId}", ctx.SurveyId);
+            return BadRequest();
+        }
+
         // Asociado votes use the participation ledger to enforce eligibility and one vote per
         // person, while storing the submitted ballot without a user/invitation link.
         var anonymity = editable.IsAsociadoVote
@@ -233,6 +239,12 @@ internal sealed class SurveyController(
         if (!IsAnswerable(ctx.Definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed public survey start for {SurveyId}", ctx.SurveyId);
+            return BadRequest();
         }
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
@@ -526,6 +538,12 @@ internal sealed class SurveyController(
     private async Task<IActionResult> ProcessPage(
         SurveyWizardState state, SurveyPageInputModel model, WizardRoute route, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed survey page for {SurveyId}", state.SurveyId);
+            return BadRequest();
+        }
+
         var posted = (model.Answers ?? [])
             .Select(a => new SurveyAnswerInput(
                 a.QuestionId,
