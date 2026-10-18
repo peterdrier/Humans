@@ -1080,9 +1080,9 @@ internal sealed class ShiftSignupService(
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
     }
 
-    public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId)
+    public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default)
     {
-        var signups = (await repo.GetForUsersAsync([userId]))
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
             .Where(s => s.Status == SignupStatus.NoShow)
             .OrderByDescending(s => s.ReviewedAt)
             .ToList();
@@ -1090,7 +1090,7 @@ internal sealed class ShiftSignupService(
         var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
         foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
         {
-            var calendar = await calendarResolver.GetAsync(id);
+            var calendar = await calendarResolver.GetAsync(id, ct);
             if (calendar is not null) calendarsById[id] = calendar;
         }
 

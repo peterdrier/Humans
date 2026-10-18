@@ -111,13 +111,17 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _localizer);
     }
 
-    [HumansFact]
-    public async Task GetByUserAsync_CanceledToken_StopsRepositoryRead()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupHistoryRead_CanceledToken_StopsRepositoryRead(bool noShowHistory)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
 
-        var read = () => _service.GetByUserAsync(Guid.NewGuid(), ct: aborted.Token);
+        Func<Task> read = noShowHistory
+            ? () => _service.GetNoShowHistoryAsync(Guid.NewGuid(), aborted.Token)
+            : () => _service.GetByUserAsync(Guid.NewGuid(), ct: aborted.Token);
 
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
