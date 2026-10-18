@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
-/// Per-section database context for the GoogleIntegration section
-/// (nobodies-collective/Humans#858): maps only <c>google_resources</c>,
+/// Per-section database context for the GoogleIntegration section: maps only <c>google_resources</c>,
 /// <c>google_sync_outbox</c>, <c>sync_service_settings</c> and
 /// <c>google_sync_log</c>, with its own
 /// <c>__EFMigrationsHistory_GoogleIntegration</c> table and migrations under
@@ -15,7 +14,7 @@ namespace Humans.GoogleIntegration.Data;
 /// split is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context: repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// The team a resource is provisioned for is a bare Guid, so the Teams tables

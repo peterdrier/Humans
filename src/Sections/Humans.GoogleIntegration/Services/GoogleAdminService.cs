@@ -645,10 +645,9 @@ internal sealed class GoogleAdminService(
     {
         try
         {
-            // Issue #635 (§15i): read UserEmails through the owning section
-            // service (design-rules §2c) instead of traversing user.UserEmails
-            // cross-domain. The service returns row snapshots so this caller
-            // can read per-row IsVerified / IsGoogle / Provider flags.
+            // Read UserEmails through the owning section service (design-rules §2c).
+            // The service returns row snapshots so this caller can read per-row
+            // IsVerified / IsGoogle / Provider flags.
             var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
             var allUserIds = allUsers.Select(u => u.Id).ToList();
             var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);

@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.GoogleIntegration.ViewComponents;
 
 /// <summary>
-/// The /Settings#google-sync tab (peterdrier/Humans#1634): wraps the same form that used
-/// to live at /Google/SyncSettings. <see cref="SectionSettings"/> contributes this tab
+/// The /Settings#google-sync tab (peterdrier/Humans#1634): wraps the sync settings form.
+/// <see cref="SectionSettings"/> contributes this tab
 /// with <c>PolicyNames.AdminOnly</c>, so composition already keeps a non-admin from
 /// seeing it — no further check needed here.
 /// </summary>

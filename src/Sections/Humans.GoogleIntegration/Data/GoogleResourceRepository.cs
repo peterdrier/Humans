@@ -6,8 +6,7 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="IGoogleResourceRepository"/>. The
-/// only non-test file that touches <c>DbSet&lt;GoogleResource&gt;</c> after
-/// the Teams sub-task <c>#540c</c> migration lands. Uses
+/// only non-test file that touches <c>DbSet&lt;GoogleResource&gt;</c>. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>GoogleIntegrationDbContext</c> remains Scoped.
 /// </summary>

@@ -19,22 +19,15 @@ namespace Humans.GoogleIntegration;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Two Shell files collapsed into this one: <c>GoogleIntegrationSectionExtensions</c> (the
-/// repositories and the four services that need no Google credentials) and
-/// <c>GoogleWorkspaceInfrastructureExtensions</c> (the connector graph).
-/// </para>
-/// <para>
-/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> moved in here under
-/// nobodies-collective/Humans#1091: once <c>GoogleWorkspaceHealthCheck</c> followed the
-/// connectors into this section, the settings had no reader left outside it.
-/// <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> stays in
-/// Shell's <c>InfrastructureServiceCollectionExtensions</c> — Camps' <c>CampRoleService</c>
+/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> is configured here; nothing outside this
+/// section reads it. <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> is configured in
+/// Shell's <c>GoogleWorkspaceInfrastructureExtensions</c> — Camps' <c>CampRoleService</c>
 /// and Users' <c>ProfileEmailsController</c> still read it directly (Governance's rule: the section
 /// that owns the file is not always the section that owns the line).
 /// </para>
 /// <para>
-/// The two recurring jobs live in this project's <c>Contracts/</c> folder; their registration
-/// and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
+/// The two recurring jobs live in this project's <c>Jobs/</c> folder; their registration
+/// and schedule are contributed via <c>SectionJobs.cs</c>.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

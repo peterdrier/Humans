@@ -3,7 +3,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// <summary>
 /// Whether a sync operation should preview changes or execute them.
 /// Add/remove behavior is controlled by SyncSettings (Admin/SyncSettings),
-/// enforced by the gateway methods in GoogleWorkspaceSyncService.
+/// enforced by the reconcilers and GoogleWorkspaceSyncService.
 /// </summary>
 /// <remarks>
 /// Parameter type of <c>IGoogleGroupSync.ReconcileOneAsync</c>, which

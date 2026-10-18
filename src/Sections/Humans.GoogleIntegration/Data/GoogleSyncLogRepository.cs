@@ -13,7 +13,7 @@ namespace Humans.GoogleIntegration.Data;
 internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
     : IGoogleSyncLogRepository
 {
-    /// <summary>Matches the cap the audit-backed sync pages used before nobodies-collective/Humans#1083.</summary>
+    /// <summary>Cap on rows returned.</summary>
     private const int MaxRows = 200;
 
     public async Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default)

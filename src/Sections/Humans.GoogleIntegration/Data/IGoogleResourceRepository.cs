@@ -6,8 +6,7 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// Repository for the <c>google_resources</c> table. The only non-test file
-/// that may read or write that DbSet after the Teams migration (sub-task
-/// <c>#540c</c>) lands.
+/// that may read or write that DbSet.
 /// </summary>
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
@@ -66,13 +65,8 @@ internal interface IGoogleResourceRepository : IRepository
     /// across all teams. Read-only.
     /// </summary>
     /// <remarks>
-    /// nobodies-collective/Humans#508 — <c>GoogleWorkspaceSyncService.SyncResourcesByTypeAsync</c>
-    /// used to call <see cref="GetActiveDriveFoldersAsync"/> for every resource type
-    /// (including <see cref="GoogleResourceType.DriveFile"/>), but that method hard-filters
-    /// to <see cref="GoogleResourceType.DriveFolder"/> at the DB level, so the DriveFile
-    /// reconciliation pass silently loaded zero rows. This method fetches by the exact
-    /// type the caller asked for instead of overfetching a fixed type and filtering
-    /// in memory.
+    /// Fetches by the exact type asked for; <see cref="GetActiveDriveFoldersAsync"/> is
+    /// <see cref="GoogleResourceType.DriveFolder"/>-only.
     /// </remarks>
     Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
         GoogleResourceType resourceType,
