@@ -603,6 +603,19 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
+    public async Task TryClaimOutboxAsync_EventInsideBackoffOrFailedPermanently_CannotBeClaimed()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var backingOff = NewOutbox(nextRetryAt: ClaimNow + Duration.FromMinutes(5));
+        var writtenOff = NewOutbox(failedPermanently: true);
+        await SeedOutbox(backingOff);
+        await SeedOutbox(writtenOff);
+
+        (await _sut.TryClaimOutboxAsync(backingOff.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, ct)).Should().BeFalse();
+        (await _sut.TryClaimOutboxAsync(writtenOff.Id, Guid.NewGuid(), ClaimNow, ClaimStaleBefore, ct)).Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task IncrementOutboxRetryAsync_ReleasesTheClaim()
     {
         var ev = NewOutbox();

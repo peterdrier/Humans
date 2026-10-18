@@ -1051,7 +1051,7 @@ internal sealed class Service(
             return contactId;
 
         var now = clock.GetCurrentInstant();
-        var written = await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        var row = new HoldedCreditorContact
         {
             Id = Guid.NewGuid(),                                   // ignored on update (keyed by UserId)
             UserId = userId,
@@ -1060,7 +1060,12 @@ internal sealed class Service(
             Source = binding?.Source ?? CreditorContactSource.Auto, // preserve a Manual binding
             CreatedAt = now,
             UpdatedAt = now,
-        }, now, ct);
+        };
+        // A minted contact's binding is insert-only: an upsert could take its update branch over a
+        // winner's binding that landed after the re-read above, and orphan the winner's contact.
+        var written = minted && binding is null
+            ? await repo.TryInsertCreditorContactAsync(row, ct)
+            : await repo.UpsertCreditorContactAsync(row, now, ct);
         if (written) return contactId;
 
         // A concurrent run took the member's one binding slot between the read above and this write.

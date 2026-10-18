@@ -38,6 +38,11 @@ internal interface IHoldedRepository : IRepository
     /// written, and the caller re-reads to adopt the winner's binding. True otherwise.</summary>
     Task<bool> UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
 
+    /// <summary>Inserts the member's binding and never touches an existing one. False when the member
+    /// already has a binding (the unique <c>UserId</c> index) — nothing was written, and the caller
+    /// re-reads to adopt the winner's binding. True when the row was inserted.</summary>
+    Task<bool> TryInsertCreditorContactAsync(HoldedCreditorContact row, CancellationToken ct = default);
+
     /// <summary>Removes the member's binding row and returns it as deleted; null when there was none.</summary>
     Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
 

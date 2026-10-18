@@ -161,6 +161,21 @@ public class RepositoryTests
     }
 
     [HumansFact]
+    public async Task TryInsertCreditorContact_ReturnsTrue_AndStoresTheRowOnAFreshMember()
+    {
+        // The false branch (Postgres 23505 on IX_holded_creditor_contacts_UserId) cannot be raised here:
+        // EF InMemory enforces no unique indexes. It is covered in the service tests via the substitute.
+        var (repo, factory) = Make();
+        var userId = Guid.NewGuid();
+
+        (await repo.TryInsertCreditorContactAsync(Binding(userId, "contact-1", 40000004), Ct))
+            .Should().BeTrue();
+
+        await using var ctx = await factory.CreateDbContextAsync(Ct);
+        ctx.HoldedCreditorContacts.Single().HoldedContactId.Should().Be("contact-1");
+    }
+
+    [HumansFact]
     public async Task UpsertCreditorContact_IsKeyedByMember_SoAMemberNeverHoldsTwoBindings()
     {
         var (repo, factory) = Make();

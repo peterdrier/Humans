@@ -164,6 +164,27 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return true;
     }
 
+    public async Task<bool> TryInsertCreditorContactAsync(
+        HoldedCreditorContact row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.HoldedCreditorContacts.Add(row);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // The member is already bound; the existing binding is untouched.
+            return false;
+        }
+        return true;
+    }
+
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

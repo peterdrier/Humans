@@ -202,18 +202,31 @@ internal sealed class ExpenseHoldedPublisher(
                     // Lost a race: a concurrent push already recorded a document for this line.
                     // Delete the one we just created and carry on with the stored one.
                     var created = holdedDocId;
-                    await holdedClient.DeletePurchaseDocumentAsync(created, ct);
                     var stored = (await repo.GetByIdAsync(report.Id, ct))
                         ?.Lines.FirstOrDefault(l => l.Id == line.Id)?.HoldedDocId;
                     if (string.IsNullOrEmpty(stored))
                         throw new InvalidOperationException(
                             $"Line {line.Id} lost the doc-id race but has no stored Holded document id.");
-                    logger.LogWarning(
-                        "Deleted duplicate Holded purchase document {CreatedDocId} for expense line {LineId}; " +
-                        "{StoredDocId} was already recorded by a concurrent push",
-                        created, line.Id, stored);
-                    notes.Add(
-                        $"'{line.Description}': duplicate purchase document {created} deleted — {stored} already recorded by a concurrent push.");
+                    try
+                    {
+                        await holdedClient.DeletePurchaseDocumentAsync(created, ct);
+                        logger.LogWarning(
+                            "Deleted duplicate Holded purchase document {CreatedDocId} for expense line {LineId}; " +
+                            "{StoredDocId} was already recorded by a concurrent push",
+                            created, line.Id, stored);
+                        notes.Add(
+                            $"'{line.Description}': duplicate purchase document {created} deleted — {stored} already recorded by a concurrent push.");
+                    }
+                    catch (HoldedApiException ex)
+                    {
+                        // The stored doc is good; a failed cleanup must not retry or write off the event.
+                        logger.LogError(ex,
+                            "Could not delete duplicate Holded purchase document {CreatedDocId} for expense line {LineId}; " +
+                            "{StoredDocId} was already recorded by a concurrent push — remove the duplicate in Holded by hand",
+                            created, line.Id, stored);
+                        notes.Add(
+                            $"'{line.Description}': duplicate purchase document {created} could not be deleted and needs manual removal in Holded — {stored} already recorded by a concurrent push.");
+                    }
                     holdedDocId = stored;
                 }
             }

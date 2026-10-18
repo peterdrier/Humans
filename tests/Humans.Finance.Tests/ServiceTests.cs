@@ -48,11 +48,15 @@ public class HoldedFinanceServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly SepaOptions _sepa = new();
 
-    public HoldedFinanceServiceTests() =>
+    public HoldedFinanceServiceTests()
+    {
         // An unstubbed Task<bool> yields false, which the service reads as a lost unique-index race.
         _repo.UpsertCreditorContactAsync(
                 Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+    }
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
     private static IUserService NoUsers()
@@ -848,12 +852,11 @@ public class HoldedFinanceServiceTests
 
         id2.Should().Be("contact-B");
         id1.Should().Be("contact-B");
-        await _repo.Received(1).UpsertCreditorContactAsync(
-            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-B"),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().UpsertCreditorContactAsync(
-            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-A"),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).TryInsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-B"), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().TryInsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-A"), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default, default);
         await _client.Received(1).DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
     }
@@ -882,8 +885,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns((HoldedCreditorContact?)null, (HoldedCreditorContact?)null, BoundTo(userId, "contact-B"));
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
-        _repo.UpsertCreditorContactAsync(
-                Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         var id = await MakeService().EnsureCreditorContactAsync(
@@ -929,11 +931,11 @@ public class HoldedFinanceServiceTests
                 i.Type == "creditor" &&
                 i.ExistingContactId == null),
             Arg.Any<CancellationToken>());
-        await _repo.Received(1).UpsertCreditorContactAsync(
+        await _repo.Received(1).TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
                 c.UserId == userId && c.HoldedContactId == "new-contact" &&
                 c.Source == CreditorContactSource.Auto),
-            FixedNow, Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1622,10 +1624,10 @@ public class HoldedFinanceServiceTests
         // No ExistingContactId => Holded POSTs a new contact, splitting the two members apart.
         await _client.Received(1).UpsertContactAsync(
             Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
-        await _repo.Received(1).UpsertCreditorContactAsync(
+        await _repo.Received(1).TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
                 c.UserId == userId && c.HoldedContactId == "c-fresh" && c.SupplierAccountNum == null),
-            FixedNow, Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
             .Which.Message.Should().Contain(otherUserId.ToString());
     }

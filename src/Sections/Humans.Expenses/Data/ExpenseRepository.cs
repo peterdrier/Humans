@@ -477,6 +477,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             var rows = await ctx.HoldedExpenseOutboxEvents
                 .Where(e => e.Id == outboxEventId
                     && e.ProcessedAt == null
+                    && !e.FailedPermanently
+                    && (e.NextRetryAt == null || e.NextRetryAt <= now)
                     && (e.ClaimedAt == null || e.ClaimedAt < staleBefore))
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(e => e.ClaimedAt, now)
@@ -486,7 +488,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
 
         var ev = await ctx.HoldedExpenseOutboxEvents
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
-        if (ev is null || ev.ProcessedAt is not null
+        if (ev is null || ev.ProcessedAt is not null || ev.FailedPermanently
+            || (ev.NextRetryAt is not null && ev.NextRetryAt > now)
             || (ev.ClaimedAt is not null && ev.ClaimedAt >= staleBefore))
             return false;
         ev.ClaimedAt = now;

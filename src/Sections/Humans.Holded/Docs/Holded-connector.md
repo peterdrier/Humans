@@ -65,7 +65,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   Holded (reclassify the line) and the ledger mirror picks the correction up.
 - Deletes exist only to retract a push's own orphans, and a 404 (already gone) is success:
   `DELETE /api/v2/contacts/{id}` (a creditor contact minted by a run that lost the member's binding
-  race) and `DELETE /api/v2/purchases/{id}` (a purchase document left by a failed push). Neither route
+  race) and `DELETE /api/v2/purchases/{id}` (the purchase document a push created after losing the line's doc-id race). Neither route
   is documented in this repo; unverified against Holded's published reference.
 
 ## Cross-Section Dependencies

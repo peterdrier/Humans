@@ -149,4 +149,28 @@ public class HoldedOutboxDuplicateGuardTests
                 && d.Contains("duplicate purchase document doc-B deleted", StringComparison.Ordinal)),
             Arg.Any<string>());
     }
+
+    [HumansFact]
+    public async Task LostDocIdRace_FailedDelete_StillCompletesAgainstTheStoredDocument()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                (await _repo.SetLineHoldedDocIdAsync(_lineId, "doc-A", Now, ct)).Should().BeTrue();
+                return "doc-B";
+            });
+        _holded.DeletePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new HoldedPermanentException("delete refused")));
+
+        await NewProcessor().DrainHoldedOutboxAsync(10, ct);
+
+        await _holded.Received(1).ApprovePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
+        (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
+        await _audit.Received(1).LogAsync(
+            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
+            Arg.Is<string>(d => d.Contains("doc-A", StringComparison.Ordinal)
+                && d.Contains("doc-B could not be deleted", StringComparison.Ordinal)),
+            Arg.Any<string>());
+    }
 }
