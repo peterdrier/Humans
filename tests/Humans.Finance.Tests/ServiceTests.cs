@@ -1233,8 +1233,16 @@ public class HoldedFinanceServiceTests
 
         static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
         {
-            Id = id, DocNumber = id, ContactId = contactId, ContactName = "x", Date = FixedNow,
-            Subtotal = 10m, Tax = 0m, Total = 10m, PaymentsPending = pending, IsDraft = draft,
+            Id = id,
+            DocNumber = id,
+            ContactId = contactId,
+            ContactName = "x",
+            Date = FixedNow,
+            Subtotal = 10m,
+            Tax = 0m,
+            Total = 10m,
+            PaymentsPending = pending,
+            IsDraft = draft,
         };
     }
 
