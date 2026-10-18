@@ -70,6 +70,8 @@ Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancell
 
 Other transitions throw `InvalidOperationException`. `Cancel` is system-only (for example, account deletion) and skips reviewer attribution.
 
+User-supplied refusal, bail and removal reasons (including range actions) must fit 1,000 characters. Overlong reasons are refused before any signup mutation, cache invalidation, audit or notification. Accepted reasons are stored and audited in full.
+
 **Table:** `shift_signups`
 
 Aggregate-local navs: `ShiftSignup.Shift`. Cross-domain navs to `User` (volunteer / enroller / reviewer) are **stripped from the entity** — `UserId` / `EnrolledByUserId` / `ReviewedByUserId` are bare Guid columns with no FK constraint (nobodies-collective/Humans#992). Display data resolves through `IUserService.GetUserInfosAsync`.

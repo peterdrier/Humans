@@ -216,6 +216,8 @@ internal sealed class ShiftSignupService(
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
+        if (IsStatusReasonTooLong(reason, signup.Id, reviewerUserId))
+            return SignupResult.Fail(localizer["Shifts_StatusReasonTooLong"]);
 
         signup.Refuse(reviewerUserId, clock, reason);
 
@@ -259,6 +261,9 @@ internal sealed class ShiftSignupService(
 
         if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Bail_EarlyEntryClosed"]);
+
+        if (IsStatusReasonTooLong(reason, signup.Id, actorUserId))
+            return SignupResult.Fail(localizer["Shifts_StatusReasonTooLong"]);
 
         signup.Bail(actorUserId, clock, reason);
 
@@ -529,6 +534,9 @@ internal sealed class ShiftSignupService(
 
         if (signup.Status != SignupStatus.Confirmed)
             return SignupResult.Fail($"Cannot remove signup in {signup.Status} state.");
+
+        if (IsStatusReasonTooLong(reason, signup.Id, removedByUserId))
+            return SignupResult.Fail(localizer["Shifts_StatusReasonTooLong"]);
 
         signup.Remove(removedByUserId, clock, reason);
 
@@ -983,6 +991,8 @@ internal sealed class ShiftSignupService(
             ShiftSignupBlockMutationScope.PendingOnly);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
+        if (IsStatusReasonTooLong(reason, signups[0].Id, reviewerUserId))
+            return SignupResult.Fail(localizer["Shifts_StatusReasonTooLong"]);
 
         foreach (var signup in signups)
         {
@@ -1030,6 +1040,9 @@ internal sealed class ShiftSignupService(
 
         if (signups.Any(s => s.Shift.IsEarlyEntry) && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
             return new("Shifts_Bail_EarlyEntryClosed");
+
+        if (IsStatusReasonTooLong(reason, firstSignup.Id, actorUserId))
+            return new("Shifts_StatusReasonTooLong");
 
         foreach (var signup in signups)
         {
@@ -1215,6 +1228,14 @@ internal sealed class ShiftSignupService(
             logger.LogError(ex, "Failed to resolve assignment notice language for user {UserId}; using English", userId);
             return CultureInfo.GetCultureInfo("en");
         }
+    }
+
+    private bool IsStatusReasonTooLong(string? reason, Guid signupId, Guid actorUserId)
+    {
+        if (reason is not { Length: > 1000 }) return false;
+        logger.LogWarning("Rejected status reason longer than 1000 characters for signup {SignupId} by actor {ActorId}",
+            signupId, actorUserId);
+        return true;
     }
 
     private async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)

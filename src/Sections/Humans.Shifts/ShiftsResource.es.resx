@@ -1275,4 +1275,5 @@
   <data name="Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Gracias por este año. Los turnos volverán a abrirse cuando la Junta publique el próximo evento.</value>
   </data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>El motivo no puede superar los 1000 caracteres.</value></data>
 </root>
