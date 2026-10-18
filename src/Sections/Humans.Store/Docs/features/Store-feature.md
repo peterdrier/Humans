@@ -36,6 +36,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Camp Lead, **I want** to add lines to my camp's Store order over the season as needs firm up, **so that** the camp's accumulating purchases are tracked in one ledger that maps directly to a single year-end factura.
 
 **Acceptance Criteria:**
+- The index and editable order catalogs display products alphabetically; controllers own their display order.
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
 - "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.

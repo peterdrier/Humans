@@ -45,9 +45,7 @@ internal sealed class Service(
         CancellationToken ct)
     {
         var year = await GetCurrentEventYearAsync(ct);
-        var catalog = (await GetActiveCatalogAsync(year, ct))
-            .OrderBy(p => p.Name, StringComparer.Ordinal)
-            .ToList();
+        var catalog = await GetActiveCatalogAsync(year, ct);
 
         var counterparties = new List<CounterpartyOrders>();
 
@@ -146,9 +144,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            catalog = (await GetActiveCatalogAsync(order.Year, ct))
-                .OrderBy(p => p.Name, StringComparer.Ordinal)
-                .ToList();
+            catalog = await GetActiveCatalogAsync(order.Year, ct);
         }
 
         // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from

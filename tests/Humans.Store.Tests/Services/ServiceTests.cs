@@ -86,7 +86,7 @@ public class ServiceTests
         var result = await _service.GetIndexDataAsync(Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2026);
-        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.Counterparties.Should().BeEmpty();
     }
 
@@ -176,7 +176,7 @@ public class ServiceTests
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
 
         result.CounterpartyDisplayName.Should().Be("Camp Test");
-        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
         result.IsStripeConfigured.Should().BeTrue();
