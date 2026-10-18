@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Services;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
@@ -845,7 +846,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
     {
         try
         {

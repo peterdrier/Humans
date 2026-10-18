@@ -191,7 +191,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
 
-- The inherited-access restriction POST rejects invalid binding with HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
+- The inherited-access restriction POST requires an explicit restriction choice. Missing or malformed choices return HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
 
 - Team creation persists the requested approval mode on the initial insert. The EF true sentinel preserves open teams without a second update.
 

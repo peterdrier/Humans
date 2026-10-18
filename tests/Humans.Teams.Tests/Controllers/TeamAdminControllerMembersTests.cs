@@ -1,3 +1,8 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -200,10 +205,12 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
-    [InlineData(true, true)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task InheritedAccess_InvalidBinding_DoesNotDispatch(bool allowed, bool invalidBinding)
+    [InlineData(true, true, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, true)]
+    public async Task InheritedAccess_InvalidOrMissingChoice_DoesNotDispatch(bool allowed, bool invalidBinding, bool missingChoice)
     {
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
@@ -235,13 +242,33 @@ public class TeamAdminControllerMembersTests
             Url = Substitute.For<IUrlHelper>()
         };
         if (invalidBinding) controller.ModelState.AddModelError("restrict", "Not a boolean.");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingChoice)
+        {
+            http.RequestServices = services;
+            var parameter = typeof(TeamAdminController).GetMethod("ToggleRestrictInheritedAccess")!.GetParameters()[2];
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = "restrict", ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
         var result = await controller.ToggleRestrictInheritedAccess(team.Slug, resourceId, false);
 
         if (!allowed) Assert.IsType<ForbidResult>(result);
-        else if (invalidBinding) Assert.IsType<BadRequestObjectResult>(result);
+        else if (invalidBinding || missingChoice) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
-        if (!allowed || invalidBinding)
+        if (!allowed || invalidBinding || missingChoice)
             await resourceWrite.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
                 Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         else await resourceWrite.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);

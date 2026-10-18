@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -546,7 +547,7 @@ internal sealed class TeamAdminController(
 
     [HttpPost("Resources/{resourceId}/RestrictInheritedAccess")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, bool restrict)
+    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, [BindRequired] bool restrict)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
         if (currentUserNotFound is not null)

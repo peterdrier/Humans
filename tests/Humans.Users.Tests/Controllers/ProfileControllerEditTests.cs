@@ -1,3 +1,7 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Humans.Base.Extensions;
@@ -180,6 +184,41 @@ public class ProfileControllerEditTests
         if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<UnauthorizedResult>(result);
         Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansTheory]
+    [InlineData(typeof(ProfileController), "emailEnabled")]
+    [InlineData(typeof(ProfileController), "alertEnabled")]
+    [InlineData(typeof(GuestAccountController), "emailEnabled")]
+    [InlineData(typeof(GuestAccountController), "alertEnabled")]
+    public async Task CommunicationPreferenceFlags_MissingFromForm_AreBindingErrors(Type controllerType, string field)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var context = new ControllerContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+        var parameter = controllerType.GetMethod("UpdatePreference")!.GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = field, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = parameter
+        });
+
+        var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["category"] = "Marketing",
+            [field is "emailEnabled" ? "alertEnabled" : "emailEnabled"] = "true"
+        };
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(context, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(values), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+
+        Assert.False(context.ModelState.IsValid);
+        Assert.True(context.ModelState.ContainsKey(field));
     }
 
     [HumansFact]
