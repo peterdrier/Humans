@@ -9,7 +9,7 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
     [HttpGet("/Unsubscribe/{token:minlength(40)}")]
     public async Task<IActionResult> Index(string token)
     {
-        var result = await unsubscribeService.ValidateTokenAsync(token);
+        var result = await unsubscribeService.ValidateTokenAsync(token, HttpContext.RequestAborted);
 
         if (result.IsExpired)
             return View("Expired");

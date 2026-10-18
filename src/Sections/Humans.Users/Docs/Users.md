@@ -204,7 +204,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 - Self-service email visibility accepts only defined visibility values. Unsupported text and out-of-range numeric input use the existing hidden fallback rather than persisting an undefined audience; valid names, case-insensitive names and defined numeric values retain their meaning.
 
-- Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.
+- Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged. Member email-grid and unsubscribe GETs retain browser cancellation for their token-aware service reads.
 
 - Profile-card volunteer-history descriptions retain their 80-character excerpt limit without splitting UTF-16 surrogate pairs; the complete history description remains stored and exported.
 
