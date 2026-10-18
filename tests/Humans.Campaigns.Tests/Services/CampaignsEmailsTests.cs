@@ -65,6 +65,19 @@ public sealed class CampaignsEmailsTests
     }
 
     [HumansFact]
+    public void CampaignCode_DoesNotExpandPlaceholdersInsideInsertedValues()
+    {
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            subject: "{{Code}} / {{Name}} / {{Code}} / {{code}}",
+            body: "**{{Code}}** / {{Name}}", code: "Value {{Name}} & $1")
+            with { RecipientName = "Name {{Code}} <Admin>" };
+        var message = new CampaignsEmails().CampaignCode(request);
+        message.Subject.Should().Be("Value {{Name}} & $1 / Name {{Code}} <Admin> / Value {{Name}} & $1 / {{code}}");
+        message.HtmlBody.Should().Contain("<strong>Value {{Name}} &amp; $1</strong>")
+            .And.Contain("Name {{Code}} &lt;Admin&gt;");
+    }
+
+    [HumansFact]
     public void EveryTemplateHasAPreviewSample()
     {
         var emails = new CampaignsEmails();

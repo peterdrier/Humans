@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -24,14 +25,10 @@ internal sealed class CampaignsEmails
         var encodedCode = Encode(request.Code);
         var encodedName = Encode(request.RecipientName);
 
-        var markdown = request.MarkdownBody
-            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
-            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
+        var markdown = Substitute(request.MarkdownBody, encodedCode, encodedName);
 
         // Subject is a plain-text field; no HTML encoding required.
-        var subject = request.Subject
-            .Replace("{{Code}}", request.Code, StringComparison.Ordinal)
-            .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
+        var subject = Substitute(request.Subject, request.Code, request.RecipientName);
 
         return new EmailMessage(
             request.RecipientEmail, request.RecipientName,
@@ -40,6 +37,12 @@ internal sealed class CampaignsEmails
             ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId,
             CampaignId: request.CampaignId);
     }
+
+    // Match only the original template: inserted codes and names are literal values.
+    private static string Substitute(string template, string code, string name) =>
+        Regex.Replace(template, @"\{\{Code\}\}|\{\{Name\}\}",
+            match => string.Equals(match.Value, "{{Code}}", StringComparison.Ordinal) ? code : name,
+            RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }
