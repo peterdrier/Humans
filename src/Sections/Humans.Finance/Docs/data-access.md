@@ -36,7 +36,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass), `SaveSepaTransferWithdrawnAsync` (`WithdrawnAt`/`WithdrawnByUserId` only, a transfer the bank cancelled). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
@@ -76,6 +76,11 @@ match the bank line), `ListAccountingAccountsAsync` (live balance),
 `ListLedgerEntriesAsync` (what is already posted, by tag) and
 `ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
 existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocumentsAsync`.
+`WithdrawSepaTransferAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
+(`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw` and
+`/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines
+through `IExpenseReportService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
+deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
 
 `ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire
 job needs a public concrete type but must not take the internal

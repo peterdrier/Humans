@@ -246,6 +246,14 @@ public enum AuditAction
     // readable date for several runs in a row, and now books the rest of the feed without it
     // (peterdrier/Humans#1946). Written once, by Finance, when the line crosses the threshold.
     SepaBankLineSkipped,
+    // A transfer withdrawn from a generated payout file because the bank cancelled it by hand
+    // before execution. Written by Finance from /Finance/Sepa; the row stays, flagged withdrawn,
+    // and no matcher pairs it again. Same entity type as the generation entry.
+    SepaPayoutTransferWithdrawn,
+    // One per Holded purchase document or contact deleted by /Finance/HoldedDuplicates because the
+    // expense push created it twice. Written by Finance; names the member, the amount and the
+    // document that was kept.
+    HoldedDuplicateRemoved,
 
     // City Planning settings writes. These decide who may move barrios and containers on the
     // site map and what the published ground truth is, and every one of them is an organiser

@@ -4,6 +4,7 @@ using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
@@ -33,6 +34,8 @@ internal sealed class Service(
     IBudgetService budget,
     // The ledger mirror is the Holded section's; all line/balance reads go through its contract.
     IHoldedService holded,
+    // What each expense line wrote on its Holded document, for the duplicate-document check.
+    IExpenseReportService expenses,
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
@@ -349,6 +352,8 @@ internal sealed class Service(
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
 
             var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
+
+            await LogDuplicateDocumentsAsync(allDocs, ct);
 
             await repo.UpsertDocsAsync(docs, now, ct);
 
@@ -688,18 +693,35 @@ internal sealed class Service(
         // How many documents a payout to each bound contact would pay against — the same OpenDocs
         // filter the booking applies, so the figure is what the booking will see. One list call per
         // page render; a vendor failure costs the column, not the page.
+        // The same list also feeds the duplicate-document check: a member whose expense line matches
+        // more than one document has an inflated balance, and the row says so instead of offering
+        // a payout. Null (unknown) when the list could not be read — the payout refuses on unknown.
         Dictionary<string, int>? openDocsByContact = null;
+        HashSet<Guid>? flaggedUsers = null;
         try
         {
-            openDocsByContact = OpenDocs(await client.ListPurchaseDocumentsAsync(ct))
+            var purchaseDocs = await client.ListPurchaseDocumentsAsync(ct);
+            openDocsByContact = OpenDocs(purchaseDocs)
                 .Where(d => !string.IsNullOrEmpty(d.ContactId))
                 .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+            flaggedUsers = (await FindDuplicateDocumentsAsync(purchaseDocs, contactById, ct))
+                .Select(m => m.Booking.SubmitterUserId)
+                .ToHashSet();
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts.");
+            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts and cannot rule out duplicates.");
         }
+
+        // A transfer already generated for the account and not yet booked: the balance it was paid
+        // from is still open in Holded, so paying the row again would pay it twice. A withdrawn
+        // transfer (cancelled at the bank) releases the row; so does one too old for the feed to
+        // book, which is a human's to settle in Holded by then.
+        var pendingFileByAccount = (await repo.GetSepaPayoutTransferRowsAsync(ct))
+            .Where(r => !r.IsBooked && !r.IsWithdrawn && !IsStale(r))
+            .GroupBy(r => r.SupplierAccountNum)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.GeneratedAt).First().FileName);
 
         // Accounts with ledger activity, plus bound ones with no lines yet, plus every Holded creditor
         // contact — a first-time submitter's account exists before it has any journal activity. The
@@ -732,7 +754,11 @@ internal sealed class Service(
                         : IbanFormatter.Mask(contact.Iban),
                     OpenDocumentCount: bound is { Count: 1 } && openDocsByContact is not null
                         ? openDocsByContact.GetValueOrDefault(bound[0].HoldedContactId)
-                        : null);
+                        : null,
+                    PendingPayoutFileName: pendingFileByAccount.GetValueOrDefault(num),
+                    HasDuplicateDocuments: bound is { Count: 1 }
+                        ? flaggedUsers?.Contains(bound[0].UserId)
+                        : false);
             }).ToList();
 
         // Accounts but not one name is the signature of an unusable contact list, which leaves the bind
@@ -1166,6 +1192,21 @@ internal sealed class Service(
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
+            // The page shows these as reasons instead of a checkbox; re-derived here because the
+            // posted selection is never trusted.
+            if (row.HasDuplicateDocuments is null)
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
+                    + "duplicate documents cannot be ruled out — try again later.");
+            if (row.HasDuplicateDocuments == true)
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
+                    + "on /Finance/HoldedDuplicates first.");
+            if (row.PendingPayoutFileName is { } pendingFile)
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
+                    + "not booked yet — book it or withdraw the transfer first.");
+
             // Name and IBAN both come off the bound contact, so a transfer cannot carry one
             // person's name over another person's account.
             if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
@@ -1292,6 +1333,85 @@ internal sealed class Service(
         }
     }
 
+    /// <summary>Withdraws one transfer the bank cancelled by hand before execution. The row is kept
+    /// and flagged; nothing in Humans pairs, books or counts it again. Only an unbooked row with no
+    /// Holded posting can be withdrawn — once money or a payment exists, booking is the only path.</summary>
+    public async Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var transfer = await repo.GetSepaTransferAsync(transferId, ct);
+        if (transfer is null)
+            return new SepaBookingResult(false, "That transfer no longer exists — reload the page.");
+        if (WithdrawRefusal(transfer) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(ct)).First(r => r.TransferId == transferId);
+        var now = clock.GetCurrentInstant();
+        await repo.SaveSepaTransferWithdrawnAsync(transferId, now, actorUserId, ct);
+
+        await audit.LogAsync(
+            AuditAction.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
+            $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
+            + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
+            actorUserId, transfer.UserId, nameof(User));
+
+        await SendWithdrawnEmailAsync(transfer, FileDate(row));
+
+        return new SepaBookingResult(true,
+            $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
+            + "the member has been told and the account is payable again.");
+    }
+
+    /// <summary>Why a transfer cannot be withdrawn, or null. The same rule renders the reason on
+    /// <c>/Finance/Sepa</c> in place of the button.</summary>
+    internal static string? WithdrawRefusal(SepaPayoutTransferRow row) =>
+        WithdrawRefusal(row.IsWithdrawn, row.IsBooked, row.HoldedBankMovementId, row.HoldedPaymentRefs, row.IbanMasked);
+
+    private static string? WithdrawRefusal(SepaPayoutTransfer t) =>
+        WithdrawRefusal(t.WithdrawnAt is not null, t.BookedAt is not null, t.HoldedBankMovementId, t.HoldedPaymentRefs, t.IbanMasked);
+
+    private static string? WithdrawRefusal(
+        bool withdrawn, bool booked, string? bankMovementId, string? paymentRefs, string ibanMasked)
+    {
+        if (withdrawn) return $"Transfer to {ibanMasked} is already withdrawn.";
+        if (booked) return $"Transfer to {ibanMasked} is booked in Holded — the money moved, so it cannot be withdrawn.";
+        if (bankMovementId is { Length: > 0 })
+            return $"Transfer to {ibanMasked} is tied to Sabadell line {bankMovementId} — it cannot be withdrawn.";
+        if (paymentRefs is { Length: > 0 })
+            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — settle it in Holded instead.";
+        return null;
+    }
+
+    /// <summary>The mirror of <see cref="SendPayoutEmailsAsync"/>: the member was told a transfer
+    /// was coming, so they are told it was cancelled. After the save, on no request token, for the
+    /// same reasons.</summary>
+    private async Task SendWithdrawnEmailAsync(SepaPayoutTransfer t, LocalDate announcedOn)
+    {
+        var ct = CancellationToken.None;
+        try
+        {
+            var infos = await users.GetUserInfosAsync([t.UserId], ct);
+            var targets = await userEmails.GetNotificationTargetEmailsAsync([t.UserId], ct);
+            if (!infos.TryGetValue(t.UserId, out var member)
+                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
+            {
+                logger.LogWarning(
+                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",
+                    t.Id, t.UserId);
+                return;
+            }
+
+            var language = member.PreferredLanguage;
+            await emailService.SendAsync(emails.SepaPayoutWithdrawn(
+                recipient, member.BurnerName, t.Amount, t.IbanMasked, announcedOn,
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to queue email for withdrawn SEPA payout transfer {TransferId}", t.Id);
+        }
+    }
+
     // ─── SEPA booking against the bank line (nobodies-collective/Humans#1185) ───
 
     /// <summary>The job name the sweep's audit entries carry in place of a human actor.</summary>
@@ -1368,6 +1488,8 @@ internal sealed class Service(
         var tolerance = ClampTolerance(toleranceDays);
         var (withReasons, unavailable) = await GetSepaPayoutRowsWithReasonsAsync(ct);
         if (withReasons.Count == 0 || unavailable is not null) return (withReasons, unavailable, [], null);
+        // A withdrawn transfer renders on its row and nowhere else: no line can be its payment.
+        var live = Live(withReasons);
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -1402,9 +1524,9 @@ internal sealed class Service(
                 // remittance text) matches on amount and date alone — and never while it could also
                 // be a whole file's debit.
                 return (Movement: m, Account: account, Matches:
-                    account is null && TextlessLineFitsAFile(withReasons, m, tolerance)
+                    account is null && TextlessLineFitsAFile(live, m, tolerance)
                         ? []
-                        : UnbookedMatches(withReasons, account, Math.Abs(m.Amount), m.Date, tolerance));
+                        : UnbookedMatches(live, account, Math.Abs(m.Amount), m.Date, tolerance));
             })
             .ToList();
 
@@ -1422,7 +1544,7 @@ internal sealed class Service(
         // booked rows, and has to stay processable to finish.
         var batchLines = movements
             .Where(NeedsAMatch)
-            .Select(m => (Movement: m, Files: BatchFiles(withReasons, m, movements, tolerance)))
+            .Select(m => (Movement: m, Files: BatchFiles(live, m, movements, tolerance)))
             .ToList();
         // Every line a file fits counts against it, ambiguous or not — as Process's rival check does.
         var batchClaimants = batchLines
@@ -1457,7 +1579,7 @@ internal sealed class Service(
                     ? $"{files.Count} payout files total {Euros(Math.Abs(m.Amount))} — settle it in Holded by hand"
                     : files.Count == 1
                         ? "another bank line matches that file's total too — settle it in Holded by hand"
-                        : account is null && TextlessLineFitsAFile(withReasons, m, tolerance)
+                        : account is null && TextlessLineFitsAFile(live, m, tolerance)
                             ? "its text names no creditor account, and it could be one transfer's line or "
                               + "a whole file's — settle it in Holded by hand"
                             : matches.Count == 0
@@ -1495,7 +1617,7 @@ internal sealed class Service(
             m.Id, m.Date, m.Amount, m.Description,
             QuotesFileReference: (m.Description ?? "").Contains(
                 fileId.ToString("N"), StringComparison.OrdinalIgnoreCase),
-            NotProcessableReason: withReasons
+            NotProcessableReason: live
                 .Where(r => r.FileId == fileId && !r.IsBooked && r.NotBookableReason is not null)
                 .Select(r => $"the transfer on {r.SupplierAccountNum}: {r.NotBookableReason}")
                 .FirstOrDefault());
@@ -1528,6 +1650,7 @@ internal sealed class Service(
         SepaPayoutTransferRow row, IReadOnlyDictionary<Guid, HoldedCreditorContact> bindingByUser)
     {
         if (row.IsBooked) return null;   // the row renders as booked; no reason to show
+        if (row.IsWithdrawn) return null;   // renders as withdrawn; nothing books it
         // Payments landed and the run stopped before booking. Holded keeps no tag on a purchase
         // payment, so a retry cannot see them and would post the amount again as a journal entry.
         if (row.PostedButNotBooked)
@@ -1557,7 +1680,7 @@ internal sealed class Service(
     {
         if (BookingUnavailableReason() is not null || !client.IsConfigured) return;
 
-        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
         if (pending.Count == 0 && unbooked.Count == 0) return;
@@ -1754,9 +1877,10 @@ internal sealed class Service(
         var file = rows.Where(r => r.FileId == fileId).ToList();
         if (file.Count == 0)
             return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
-        var unbooked = file.Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
+        // A withdrawn transfer is not the file's to book: the gate is over the rest.
+        var unbooked = Live(file).Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
         if (unbooked.Count == 0)
-            return new SepaBookingResult(false, "Every transfer in that file is already booked — nothing was posted.");
+            return new SepaBookingResult(false, "Every transfer in that file is already booked or withdrawn — nothing was posted.");
         var unmatched = unbooked.Where(r => !r.CanBook).ToList();
         if (unmatched.Count > 0)
             return new SepaBookingResult(false,
@@ -1824,7 +1948,9 @@ internal sealed class Service(
         // Same rule as a single booking: once one transfer is posted, the rest have to follow.
         var ct = CancellationToken.None;
 
-        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        // Withdrawn transfers left the file before the bank debited it: the total the line has to
+        // match is the rest.
+        var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var file = rows.Where(r => r.FileId == fileId).ToList();
         if (file.Count == 0)
             return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
@@ -1926,6 +2052,11 @@ internal sealed class Service(
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
 
+        // Cancelled at the bank: no line is this transfer's, whatever the amount says.
+        if (transfer.WithdrawnAt is not null)
+            return new SepaBookingResult(false,
+                $"Transfer to {transfer.IbanMasked} was withdrawn — nothing was posted to Holded.");
+
         // An earlier run posted payments and then stopped (PARTIAL or SHORT). Holded discards the
         // description on a purchase payment, so the step-4 tag sum cannot see them, and a retry
         // would post the whole amount again as a journal entry. Refuse until a human has settled it.
@@ -1988,7 +2119,7 @@ internal sealed class Service(
                 + "reload /Finance/Sepa.");
 
         // ── Step 2: re-validate the pairing here. The posted movement id is never trusted.
-        var allRows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var allRows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         if (batch is null && PairingRefusal(movement, feed, allRows) is { } pairing)
             return new SepaBookingResult(false, pairing);
 
@@ -2525,6 +2656,11 @@ internal sealed class Service(
             : null;
     }
 
+    /// <summary>The rows any matcher may see: a withdrawn transfer was cancelled at the bank, so no
+    /// line is its payment and no file total includes it. Every pairing path reads through this.</summary>
+    private static List<SepaPayoutTransferRow> Live(IEnumerable<SepaPayoutTransferRow> rows) =>
+        rows.Where(r => !r.IsWithdrawn).ToList();
+
     /// <summary>The unbooked transfers a bank line dated <paramref name="lineDate"/> for
     /// <paramref name="account"/> and <paramref name="amount"/> could be paying — any account when
     /// the line's text names none, since Sabadell drops the remittance text and the amount and date
@@ -2536,7 +2672,7 @@ internal sealed class Service(
     private List<SepaPayoutTransferRow> UnbookedMatches(
         IReadOnlyList<SepaPayoutTransferRow> rows, int? account, decimal amount, LocalDate lineDate,
         int tolerance) =>
-        rows.Where(r => r.BookedAt is null && (account is null || r.SupplierAccountNum == account)
+        rows.Where(r => r.BookedAt is null && !r.IsWithdrawn && (account is null || r.SupplierAccountNum == account)
                         && r.Amount == amount && !IsStale(r)
                         && InWindow(r, lineDate, tolerance, bounded: account is null))
             .ToList();
@@ -2558,7 +2694,7 @@ internal sealed class Service(
     /// a whole file's, so neither path takes it.</summary>
     private bool TextlessLineFitsAFile(
         IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m, int tolerance) =>
-        rows.GroupBy(r => r.FileId).Any(f =>
+        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId).Any(f =>
             f.Count() >= 2 && f.Sum(r => r.Amount) == Math.Abs(m.Amount)
             && f.Any(r => !r.IsBooked) && !IsStale(f.First())
             // A row booked against some other line means the bank did not debit this file as
@@ -2571,7 +2707,7 @@ internal sealed class Service(
     private List<Guid> BatchFiles(
         IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m,
         IReadOnlyList<HoldedBankMovementDto> feed, int tolerance) =>
-        rows.GroupBy(r => r.FileId)
+        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId)
             .Where(g => BatchLineRefusal(g.ToList(), m, rows, feed, tolerance) is null)
             .Select(g => g.Key)
             .ToList();
@@ -2678,6 +2814,285 @@ internal sealed class Service(
         return slug.Length == 0 ? "sepa" : slug;
     }
 
+    // ─── Holded duplicate documents (the 2026-10-18 outbox race) ──────────────────
+
+    /// <summary>The audit entity type of a document deletion: the expense line whose document was
+    /// kept. The line id is the one Guid in the story; Holded ids are strings and go in the text.</summary>
+    private const string ExpenseLineEntityType = "ExpenseLine";
+
+    /// <summary>The nightly check: the same matching the page runs, over every linked line, said
+    /// once in the log. Zero means zero. A failure here never fails the document sync.</summary>
+    private async Task LogDuplicateDocumentsAsync(IReadOnlyList<HoldedPurchaseDocListItemDto> docs, CancellationToken ct)
+    {
+        try
+        {
+            var matches = await FindDuplicateDocumentsAsync(docs, await ContactsByIdAsync(ct), ct);
+            if (matches.Count == 0)
+            {
+                logger.LogInformation("Holded duplicate check: zero expense lines match more than one purchase document.");
+                return;
+            }
+            logger.LogWarning(
+                "Holded duplicate check: {Lines} expense line(s) match more than one purchase document — "
+                + "{Docs} extra document(s) totalling {Amount} across {Members} member(s). Review them on "
+                + "/Finance/HoldedDuplicates; their creditor accounts are not payable until they are removed.",
+                matches.Count, matches.Sum(m => m.Duplicates.Count),
+                Euros(matches.Sum(m => m.Duplicates.Sum(d => d.Total))),
+                matches.Select(m => m.Booking.SubmitterUserId).Distinct().Count());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Holded duplicate check failed; the document sync continues without it.");
+        }
+    }
+
+    /// <summary>Runs the matcher over every linked expense line, each member searched across every
+    /// contact they hold.</summary>
+    private async Task<IReadOnlyList<HoldedDuplicateMatcher.Match>> FindDuplicateDocumentsAsync(
+        IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
+        IReadOnlyDictionary<string, HoldedContactDto> contactById, CancellationToken ct)
+    {
+        var bookings = await expenses.GetHoldedBookingsAsync(ct);
+        if (bookings.Count == 0) return [];
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        return HoldedDuplicateMatcher.Find(bookings, docs, MemberContacts(bookings, bindings, contactById));
+    }
+
+    /// <summary>Every Holded contact a member holds: the bound one, the ones their reports name, and
+    /// any creditor-range contact of the same name that is bound to nobody else — the race created a
+    /// second contact for three members, and its documents are theirs too.</summary>
+    private static Dictionary<Guid, IReadOnlySet<string>> MemberContacts(
+        IReadOnlyList<ExpenseHoldedBooking> bookings, IReadOnlyList<HoldedCreditorContact> bindings,
+        IReadOnlyDictionary<string, HoldedContactDto> contactById)
+    {
+        var boundUserByContact = bindings
+            .Where(b => !string.IsNullOrEmpty(b.HoldedContactId))
+            .GroupBy(b => b.HoldedContactId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().UserId, StringComparer.Ordinal);
+        var bindingByUser = bindings.ToDictionary(b => b.UserId);
+        var byName = contactById.Values
+            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+                        && !string.IsNullOrWhiteSpace(c.Name))
+            .ToLookup(c => c.Name!.Trim(), StringComparer.OrdinalIgnoreCase);
+
+        var result = new Dictionary<Guid, IReadOnlySet<string>>();
+        foreach (var group in bookings.GroupBy(b => b.SubmitterUserId))
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            if (bindingByUser.GetValueOrDefault(group.Key)?.HoldedContactId is { Length: > 0 } bound) set.Add(bound);
+            set.UnionWith(group.Where(b => !string.IsNullOrEmpty(b.HoldedContactId)).Select(b => b.HoldedContactId!));
+            foreach (var id in set.ToList())
+                if (contactById.TryGetValue(id, out var c) && !string.IsNullOrWhiteSpace(c.Name))
+                    foreach (var twin in byName[c.Name.Trim()])
+                        if (!boundUserByContact.TryGetValue(twin.Id, out var other) || other == group.Key)
+                            set.Add(twin.Id);
+            result[group.Key] = set;
+        }
+        return result;
+    }
+
+    public async Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await BuildDuplicatePlanAsync(ct);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Holded could not be read for /Finance/HoldedDuplicates.");
+            return new HoldedDuplicatesVm([], [], "Holded could not be read, so nothing can be judged: " + ex.Message);
+        }
+    }
+
+    /// <summary>The dry run, from live Holded reads: never a stored plan, so Apply judges what Holded
+    /// holds at the moment it runs.</summary>
+    private async Task<HoldedDuplicatesVm> BuildDuplicatePlanAsync(CancellationToken ct)
+    {
+        var docs = await client.ListPurchaseDocumentsAsync(ct);
+        var contactById = await ContactsByIdAsync(ct);
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var bookings = await expenses.GetHoldedBookingsAsync(ct);
+        var contactsByUser = MemberContacts(bookings, bindings, contactById);
+        var matches = HoldedDuplicateMatcher.Find(bookings, docs, contactsByUser);
+        var bindingByUser = bindings.ToDictionary(b => b.UserId);
+        var docsByContact = docs.Where(d => !string.IsNullOrEmpty(d.ContactId))
+            .ToLookup(d => d.ContactId!, StringComparer.Ordinal);
+
+        var members = matches
+            .GroupBy(m => m.Booking.SubmitterUserId)
+            .Select(g =>
+            {
+                var binding = bindingByUser.GetValueOrDefault(g.Key);
+                var lines = g.Select(m =>
+                {
+                    var deletable = new List<string>();
+                    var refused = new List<HoldedDuplicateRefusal>();
+                    foreach (var d in m.Duplicates)
+                        if (DeleteRefusal(d) is { } why) refused.Add(new HoldedDuplicateRefusal(d.Id, d.Total, why));
+                        else deletable.Add(d.Id);
+                    return new HoldedDuplicateLine(
+                        m.Booking.ExpenseReportId, m.Booking.LineId, m.Booking.Description,
+                        m.Booking.BookedAmount, m.Kept.Id, deletable, refused);
+                }).ToList();
+
+                // A contact the race created beside the bound one holds nothing but duplicates; once
+                // they are gone it is empty, and goes too. The bound contact is never one of these.
+                var deletableIds = lines.SelectMany(l => l.DeletableDocIds).ToHashSet(StringComparer.Ordinal);
+                var orphans = contactsByUser[g.Key]
+                    .Where(c => !string.Equals(c, binding?.HoldedContactId, StringComparison.Ordinal))
+                    .Where(c => docsByContact[c].Any() && docsByContact[c].All(d => deletableIds.Contains(d.Id)))
+                    .Order(StringComparer.Ordinal)
+                    .ToList();
+
+                var contact = (binding?.HoldedContactId is { Length: > 0 } boundId ? contactById.GetValueOrDefault(boundId) : null)
+                              ?? contactById.GetValueOrDefault(g.First().Kept.ContactId ?? "");
+                return new HoldedDuplicateMember(
+                    g.Key,
+                    contact?.Name ?? g.First().Kept.ContactName,
+                    binding?.HoldedContactId,
+                    contact?.SupplierAccountNum ?? binding?.SupplierAccountNum,
+                    lines, orphans);
+            })
+            .OrderBy(m => m.SupplierAccountNum ?? int.MaxValue)
+            .ThenBy(m => m.ContactName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Holded has no archive call for a contact, so an empty unbound one is listed, not touched.
+        var boundContacts = bindings.Select(b => b.HoldedContactId).ToHashSet(StringComparer.Ordinal);
+        var empty = contactById.Values
+            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+                        && !boundContacts.Contains(c.Id) && !docsByContact[c.Id].Any())
+            .OrderBy(c => c.SupplierAccountNum)
+            .Select(c => $"{c.SupplierAccountNum} {c.Name} ({c.Id})")
+            .ToList();
+
+        return new HoldedDuplicatesVm(members, empty, null);
+    }
+
+    /// <summary>Why a duplicate is a human's rather than Apply's: Holded refuses to delete a document
+    /// that carries a payment (a reconciled bank line shows as one), and a draft reports no
+    /// <c>payments_pending</c> to judge by, so it reads as paid and is left alone too.</summary>
+    private static string? DeleteRefusal(HoldedPurchaseDocListItemDto d)
+    {
+        if (d.PaymentsPending >= d.Total) return null;
+        return d.IsDraft == true
+            ? "still a draft in Holded — delete it by hand"
+            : $"has a payment on it ({Euros(d.Total - d.PaymentsPending)} of {Euros(d.Total)} paid) — settle it in Holded by hand";
+    }
+
+    public async Task<HoldedDuplicateApplyResult> RemoveHoldedDuplicatesAsync(Guid actorUserId)
+    {
+        // A deletion that has started finishes; no request token (memory/architecture/cancellation-token-propagation.md).
+        var ct = CancellationToken.None;
+
+        HoldedDuplicatesVm plan;
+        try
+        {
+            plan = await BuildDuplicatePlanAsync(ct);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Holded could not be read; no duplicate was deleted.");
+            return new HoldedDuplicateApplyResult([], "Holded could not be read — nothing was deleted: " + ex.Message, null);
+        }
+        if (!plan.HasWork)
+            return new HoldedDuplicateApplyResult([], "No duplicate document was found — nothing was deleted.", null);
+
+        var before = await ReadCreditorBalancesAsync(ct);
+        var results = new List<HoldedDuplicateMemberResult>();
+        foreach (var member in plan.Members)
+        {
+            var account = member.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
+            var deletedDocs = new List<string>();
+            var deletedContacts = new List<string>();
+            var failures = new List<string>();
+            foreach (var line in member.Lines)
+                foreach (var docId in line.DeletableDocIds)
+                {
+                    try
+                    {
+                        await client.DeletePurchaseDocumentAsync(docId, ct);
+                        deletedDocs.Add(docId);
+                        await audit.LogAsync(
+                            AuditAction.HoldedDuplicateRemoved, ExpenseLineEntityType, line.LineId,
+                            $"DELETED duplicate Holded purchase document {docId} ({Euros(line.Amount)}, "
+                            + $"'{line.Description}') of {member.ContactName} on creditor account {account}; "
+                            + $"kept {line.KeptDocId}.",
+                            actorUserId, member.UserId, nameof(User));
+                    }
+                    catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+                    {
+                        logger.LogError(ex, "Holded refused to delete duplicate purchase document {DocId}.", docId);
+                        failures.Add($"document {docId}: {ex.Message}");
+                    }
+                }
+
+            // A contact is deleted only once every document on it is gone, so a refused document
+            // keeps its contact.
+            if (failures.Count == 0)
+                foreach (var contactId in member.OrphanContactIds)
+                {
+                    try
+                    {
+                        await client.DeleteContactAsync(contactId, ct);
+                        deletedContacts.Add(contactId);
+                        await audit.LogAsync(
+                            AuditAction.HoldedDuplicateRemoved, nameof(User), member.UserId,
+                            $"DELETED duplicate Holded contact {contactId} of {member.ContactName}; kept "
+                            + $"{member.BoundContactId ?? "the bound contact"}.",
+                            actorUserId);
+                    }
+                    catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+                    {
+                        logger.LogError(ex, "Holded refused to delete duplicate contact {ContactId}.", contactId);
+                        failures.Add($"contact {contactId}: {ex.Message}");
+                    }
+                }
+
+            results.Add(new HoldedDuplicateMemberResult(
+                member.UserId, member.ContactName, member.SupplierAccountNum,
+                member.SupplierAccountNum is { } num ? before?.GetValueOrDefault(num) : null, null,
+                deletedDocs, deletedContacts, failures));
+        }
+
+        string? syncError = null;
+        try
+        {
+            await holded.SyncLedgerAsync(ct: ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "The ledger sync after removing Holded duplicates failed; the deletions stand.");
+            syncError = ex.Message;
+        }
+
+        var after = await ReadCreditorBalancesAsync(ct);
+        return new HoldedDuplicateApplyResult(
+            results.Select(r => r with
+            {
+                BalanceAfter = r.SupplierAccountNum is { } num ? after?.GetValueOrDefault(num) : null,
+            }).ToList(),
+            null, syncError);
+    }
+
+    /// <summary>Live creditor balances from Holded's chart of accounts, Holded's own sign; null when
+    /// it could not be read — the result then shows no figure rather than a stale one.</summary>
+    private async Task<Dictionary<int, decimal>?> ReadCreditorBalancesAsync(CancellationToken ct)
+    {
+        try
+        {
+            return (await client.ListAccountingAccountsAsync(ct))
+                .Where(a => a.Number is >= CreditorAccountMin and <= CreditorAccountMax)
+                .GroupBy(a => a.Number)
+                .ToDictionary(g => g.Key, g => g.First().Balance);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Holded's chart of accounts could not be read for the duplicate removal balances.");
+            return null;
+        }
+    }
+
     // ─── GDPR (Article 15 export) ───────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -2725,6 +3140,7 @@ internal sealed class Service(
                 BookedAt = p.BookedAt?.ToIso8601(),
                 p.HoldedBankMovementId,
                 ReconciledAt = p.ReconciledAt?.ToIso8601(),
+                WithdrawnAt = p.WithdrawnAt?.ToIso8601(),
             })),
         ];
     }

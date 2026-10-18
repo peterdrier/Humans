@@ -12,6 +12,7 @@ using Humans.Budget.Contracts;
 using Humans.Finance;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
+using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;
@@ -46,7 +47,16 @@ public class HoldedFinanceServiceTests
     private readonly IUserService _users = NoUsers();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IExpenseReportService _expenses = NoBookings();
     private readonly SepaOptions _sepa = new();
+
+    /// <summary>No expense line links to a Holded document, so the duplicate check finds nothing.</summary>
+    private static IExpenseReportService NoBookings()
+    {
+        var expenses = Substitute.For<IExpenseReportService>();
+        expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
+        return expenses;
+    }
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
     private static IUserService NoUsers()
@@ -62,6 +72,7 @@ public class HoldedFinanceServiceTests
         _client,
         _budget,
         _holded,
+        _expenses,
         _clock,
         _cache,
         _audit,
@@ -74,7 +85,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _clock, _cache, _audit,
+        _repo, _client, _budget, _holded, _expenses, _clock, _cache, _audit,
         _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
@@ -2046,6 +2057,8 @@ public class HoldedFinanceServiceTests
                 new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m,
                     FixedNow + Duration.FromHours(1), "bm-1", FixedNow + Duration.FromHours(2)),
                 new(FixedNow, "pending.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 23.45m, null, null, null),
+                new(FixedNow, "cancelled.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 4800m, null, null, null,
+                    FixedNow + Duration.FromHours(3)),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -2058,9 +2071,10 @@ public class HoldedFinanceServiceTests
             .And.Contain("c1").And.Contain("bm-1").And.Contain("ReconciledAt")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
         using var document = JsonDocument.Parse(json);
-        document.RootElement.GetArrayLength().Should().Be(2);
+        document.RootElement.GetArrayLength().Should().Be(3);
         var booked = document.RootElement[0];
         var pending = document.RootElement[1];
+        var withdrawn = document.RootElement[2];
         using var scope = new AssertionScope();
         booked.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
         booked.GetProperty("BookedAt").GetRawText().Should().Be("\"2026-05-01T13:00:00Z\"");
@@ -2068,6 +2082,9 @@ public class HoldedFinanceServiceTests
         pending.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
         pending.GetProperty("BookedAt").ValueKind.Should().Be(JsonValueKind.Null);
         pending.GetProperty("ReconciledAt").ValueKind.Should().Be(JsonValueKind.Null);
+        pending.GetProperty("WithdrawnAt").ValueKind.Should().Be(JsonValueKind.Null);
+        withdrawn.GetProperty("WithdrawnAt").GetRawText().Should().Be("\"2026-05-01T15:00:00Z\"");
+        withdrawn.GetProperty("BookedAt").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [HumansFact]

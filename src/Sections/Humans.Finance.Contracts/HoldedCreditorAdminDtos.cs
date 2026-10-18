@@ -15,6 +15,13 @@ namespace Humans.Finance.Contracts;
 /// <param name="OpenDocumentCount">How many approved, still-owing purchase documents the bound
 /// contact has — what a payout to this row would pay against, document by document. Null on an
 /// unbound or colliding row, and when Holded's document list could not be read.</param>
+/// <param name="PendingPayoutFileName">The generated SEPA file that still carries an unbooked,
+/// unwithdrawn transfer to this account, or null. While one exists the row is not payable again:
+/// the balance it was paid from is still open in Holded, so a second file would pay it twice.</param>
+/// <param name="HasDuplicateDocuments">True when an expense line of the bound member matches more
+/// than one Holded purchase document (<c>/Finance/HoldedDuplicates</c>): the balance is inflated by
+/// the extra documents, so the row is not payable until they are removed. Null when the check could
+/// not run (Holded's document list unreadable), which the payout also refuses on.</param>
 public sealed record HoldedCreditorAccountRow(
     int SupplierAccountNum,
     string Name,                    // Holded account name (legal name for member creditors)
@@ -22,7 +29,9 @@ public sealed record HoldedCreditorAccountRow(
     decimal OwedToMember,           // = max(0, -Balance)
     IReadOnlyList<CreditorContactBinding> Bindings,
     string? IbanMasked = null,
-    int? OpenDocumentCount = null);
+    int? OpenDocumentCount = null,
+    string? PendingPayoutFileName = null,
+    bool? HasDuplicateDocuments = false);
 
 /// <summary>A member's binding to their Holded creditor account (DTO projection of the entity).</summary>
 public sealed record CreditorContactBinding(

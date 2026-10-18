@@ -58,4 +58,13 @@ internal sealed class SepaPayoutTransfer
     /// <see cref="BookedAt"/> and a <see cref="HoldedBankMovementId"/>, null means the reconcile is
     /// still pending and the sweep will retry it.</summary>
     public Instant? ReconciledAt { get; set; }
+
+    /// <summary>When a finance admin withdrew this transfer because the bank cancelled it by hand
+    /// before execution. A withdrawn row is kept for the record and the Article 15 export, but no
+    /// matcher, booking or payability gate sees it again. Only an unbooked row can be withdrawn,
+    /// so this and <see cref="BookedAt"/> are never both set.</summary>
+    public Instant? WithdrawnAt { get; set; }
+
+    /// <summary>The finance admin who withdrew it. Bare FK (no nav).</summary>
+    public Guid? WithdrawnByUserId { get; set; }
 }

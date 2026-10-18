@@ -174,6 +174,24 @@ internal sealed class ExpenseReportService(
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default)
+    {
+        var reports = await repo.GetAllAsync(ct);
+        return reports
+            .SelectMany(report => PayableAllocation.Allocate(report)
+                .Where(a => a.Line.HoldedDocId is not null)
+                .Select(a => new ExpenseHoldedBooking(
+                    report.Id,
+                    a.Line.Id,
+                    report.SubmitterUserId,
+                    report.HoldedContactId,
+                    a.Line.HoldedDocId!,
+                    $"ER: {a.Line.Description}",
+                    $"Expense report {report.Id}",
+                    a.Booked)))
+            .ToList();
+    }
+
     public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default)
     {

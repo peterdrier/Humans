@@ -198,6 +198,21 @@ ledger, so paying one would post against a document that does not exist for acco
 | A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
 | A textless line dated outside the tolerance of every file of its amount | the panel; widen the tolerance on the page if it is that file's |
 | The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
+| Withdrawn (the bank cancelled it by hand) | the row renders as `Withdrawn` with who and when; no button; the row is out of every matcher and gate |
+
+### Withdrawing a transfer
+
+When the bank cancels a transfer by hand before execution (the 2026-10-18 file paid three inflated
+balances), **Withdraw** on the row (`POST /Finance/Sepa/Withdraw`, `FinanceAdminOrAdmin`,
+antiforgery, confirm dialog naming member, amount and file) stamps `WithdrawnAt` and the acting admin.
+Nothing is deleted. It is allowed only while the row is unbooked: no `BookedAt`, no
+`HoldedBankMovementId`, no `HoldedPaymentRefs` — a booked row shows the reason in place of the
+button. A withdrawn row drops out of the sweep, Book, Book file, Process and the "needs a human"
+panel, no longer counts toward the file's "every transfer paired" gate, and no longer blocks the
+account's payability on `/Finance/Creditors`. The file card counts it separately. One
+`AuditAction.SepaPayoutTransferWithdrawn` entry, one `sepa_payout_withdrawn` email to the member in
+their language saying the transfer announced on the file's date was cancelled before execution,
+and the Article 15 slice shows `WithdrawnAt`.
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | refused; nothing posted |
 | The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
@@ -371,6 +386,8 @@ Server-side, all-or-nothing:
 | Nothing selected, or one account selected twice | service |
 | Account unbound, or bound to more than one member | service |
 | Amount above the balance | service |
+| A transfer to the account is in a payout file that is not booked or withdrawn yet (within the 90-day feed window) | service |
+| The member has duplicate purchase documents in Holded, or Holded's document list could not be read to rule them out | service |
 | Amount below €0.01, more than 2 decimals, or above the cap | builder |
 | IBAN absent, containing non-ASCII account characters or non-digit check characters, or failing its checksum | service / builder |
 | Over-long `MsgId`, or two transfers on the same creditor account | builder |
@@ -386,7 +403,7 @@ screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it
 ## GDPR
 
 `SepaPayouts` is the member's Article 15 slice: every transfer paid to them, oldest first, with the
-**masked** IBAN and when it was booked. The Holded payment ids and the booking admin are not in it —
+**masked** IBAN, when it was booked, and when it was withdrawn. The Holded payment ids and the booking admin are not in it —
 they are internal accounting references, not the member's data. Article 17 retains the whole record — a payout file is the credit-transfer order
 the bank was given, and Spanish law requires the books and their supporting documents be kept
 (Código de Comercio Art. 30, Ley 58/2003 Art. 66; GDPR Art. 17(3)(b)). The basis is stated in
@@ -416,7 +433,13 @@ refused before any posting, a resumed file, and the sweep leaving the line alone
 `FinanceControllerTests.cs` covers the posted-cap parsing: unparseable or non-positive refuses
 before the service is called, a valid cap is parsed invariantly and passed through — the SEPA
 screen's file grouping, the "needs a human" panel, and the bank-feed-unreadable banner.
-`RepositoryTests.cs` pins the booking stamp (bank movement id, reconcile timestamp) and the screen's
+`SepaWithdrawTests.cs` covers the withdrawal: the allowed path's save, audit and email, the refusals
+(booked, tied to a line, posted payments, already withdrawn), and `SepaBankBookingTests.cs` the
+withdrawn row's exclusion from the sweep, Book, Book file's gate and the page. `CreditorPayabilityTests.cs`
+covers the two payability gates (unbooked payout file, duplicate documents) on the row and in the
+generation, and `HoldedDuplicateTests.cs` the matcher, the dry run, Apply's order and audit entries,
+and the nightly log line.
+`RepositoryTests.cs` pins the booking stamp (bank movement id, reconcile timestamp), the withdrawal stamp and the screen's
 flattened read; `Humans.Holded.Tests` pins the payment POST's decimal-string amount, the
 omitted-`treasury_id` shape, the ledger-entry POST's two balanced lines, the unreadable-response-is-
 permanent rule, and the bank-movements feed's parsing and reconcile call.

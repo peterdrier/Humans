@@ -123,6 +123,34 @@ public class ExpenseReportServiceHoldedOutboxTests
 
     /// <summary>One bookable line ("Wood", €50) — the minimum a real approved report carries, so
     /// the per-line push has a doc to create. Tests that need other shapes override Lines.</summary>
+    [HumansFact]
+    public async Task GetHoldedBookingsAsync_lists_linked_lines_with_the_values_the_push_wrote()
+    {
+        // The same description, notes and booked total ExpenseHoldedPublisher writes; a trimmed
+        // line reports what it booked, an unlinked or declined line is absent, a legacy
+        // report-level doc is not a line booking.
+        var report = MakeReport() with { Total = 30m, MaxAmount = 25m, HoldedContactId = "c-1" };
+        report = report with
+        {
+            Lines =
+            [
+                report.Lines[0] with { Amount = 20m, SortOrder = 0, HoldedDocId = "doc-a" },
+                report.Lines[0] with { Id = Guid.NewGuid(), Description = "Nails", Amount = 10m, SortOrder = 1, HoldedDocId = "doc-b" },
+                report.Lines[0] with { Id = Guid.NewGuid(), Description = "Declined", Amount = 5m, SortOrder = 2, HoldedDocId = null, Declined = true },
+            ],
+        };
+        var legacy = MakeReport("doc-legacy");
+        _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report, legacy]);
+
+        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        bookings.Should().HaveCount(2);
+        bookings[0].Should().Be(new ExpenseHoldedBooking(
+            report.Id, report.Lines[0].Id, SubmitterId, "c-1", "doc-a", "ER: Wood", $"Expense report {report.Id}", 20m));
+        bookings[1].HoldedDocId.Should().Be("doc-b");
+        bookings[1].BookedAmount.Should().Be(5m);
+    }
+
     private static ExpenseReportDto MakeReport(string? holdedDocId = null)
     {
         var reportId = Guid.NewGuid();

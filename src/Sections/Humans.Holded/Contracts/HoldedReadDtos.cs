@@ -68,6 +68,9 @@ public sealed record HoldedPurchaseDocListItemDto
     /// <summary>`description` — the doc's internal description ("Add an internal description" in
     /// Holded's UI). Null when blank.</summary>
     public string? Description { get; init; }
+    /// <summary>`notes` — the doc's notes field. Null when blank or when the list endpoint omits it,
+    /// so a null never proves the notes differ.</summary>
+    public string? Notes { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }

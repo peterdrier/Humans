@@ -1,0 +1,131 @@
+@model Humans.Finance.Models.HoldedDuplicatesVm
+@{
+    ViewData["Title"] = "Duplicate Holded Documents";
+    var names = ViewBag.MemberNames as Dictionary<Guid, string> ?? new Dictionary<Guid, string>();
+    string MemberName(Guid id) => names.TryGetValue(id, out var n) ? n : id.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Duplicate Holded Documents</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+        </a>
+        <a asp-action="Holded" class="btn btn-outline-secondary">Holded connector</a>
+    </div>
+</div>
+
+<p class="text-muted">
+    A dry run, read live from Holded. For every expense line that links to a purchase document, every
+    other document on the member's contacts carrying the same description, the same notes and the
+    line's booked amount is a duplicate of it — the outbox race pushed some lines twice. Two lines
+    with identical values each keep their own document and are not flagged. A document that carries a
+    payment is refused and listed for a human; a contact the race created beside the bound one is
+    deleted once its documents are gone. <strong>Apply</strong> deletes exactly what is listed here,
+    recomputed at the moment it runs, writes one audit entry per id, then re-syncs the ledger and
+    shows each creditor balance before and after. The nightly document sync runs the same check and
+    logs a warning while anything is flagged; a flagged member's account cannot be paid out.
+</p>
+
+@if (Model.Error is { } error)
+{
+    <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>@error</div>
+}
+else if (!Model.HasWork && Model.RefusedCount == 0)
+{
+    <div class="alert alert-success"><i class="fa-solid fa-check me-1"></i>No duplicate documents: every linked expense line matches exactly one Holded document.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div>
+                <strong>@Model.DocumentCount document@(Model.DocumentCount == 1 ? "" : "s")</strong> totalling
+                <strong>@Model.Total.ToEuro()</strong> on @Model.LineCount line@(Model.LineCount == 1 ? "" : "s") of
+                @Model.Members.Count member@(Model.Members.Count == 1 ? "" : "s"), and
+                <strong>@Model.ContactCount contact@(Model.ContactCount == 1 ? "" : "s")</strong> left empty by them.
+                @if (Model.RefusedCount > 0)
+                {
+                    <span class="text-danger">@Model.RefusedCount document@(Model.RefusedCount == 1 ? "" : "s") refused — see below.</span>
+                }
+            </div>
+            @if (Model.HasWork)
+            {
+                <form asp-action="ApplyHoldedDuplicates" method="post"
+                      data-confirm="Delete @Model.DocumentCount duplicate purchase documents (@Model.Total.ToEuro()) and @Model.ContactCount empty contacts from Holded? Documents that carry a payment are skipped. This cannot be undone.">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger text-nowrap">
+                        <i class="fa-solid fa-trash me-1"></i>Apply
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+}
+
+@foreach (var member in Model.Members)
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <strong>@MemberName(member.UserId)</strong>
+                <span class="text-muted">@member.ContactName</span>
+                @if (member.SupplierAccountNum is { } account)
+                {
+                    <a asp-action="CreditorStatement" asp-route-accountNum="@account" class="ms-2">@account</a>
+                }
+            </span>
+            <span>
+                <strong>@member.DeletableCount</strong> duplicate@(member.DeletableCount == 1 ? "" : "s") · <strong>@member.DeletableTotal.ToEuro()</strong>
+                @if (member.OrphanContactIds.Count > 0)
+                {
+                    <span class="badge text-bg-dark ms-2" title="Deleted once its documents are gone; the bound contact is @(member.BoundContactId ?? "—").">contact@(member.OrphanContactIds.Count == 1 ? "" : "s") @string.Join(", ", member.OrphanContactIds)</span>
+                }
+            </span>
+        </div>
+        <table class="table table-sm mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Line</th>
+                    <th class="text-end">Amount</th>
+                    <th>Kept</th>
+                    <th>Duplicates to delete</th>
+                    <th>Refused</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var line in member.Lines)
+            {
+                <tr>
+                    <td>@line.Description <div class="text-muted small font-monospace">report @line.ExpenseReportId</div></td>
+                    <td class="text-end">@line.Amount.ToEuro()</td>
+                    <td class="font-monospace small">@line.KeptDocId</td>
+                    <td class="font-monospace small">@(line.DeletableDocIds.Count == 0 ? "—" : string.Join(", ", line.DeletableDocIds))</td>
+                    <td class="small">
+                        @foreach (var r in line.Refused)
+                        {
+                            <div><span class="font-monospace">@r.DocId</span> <span class="text-danger">@r.Reason</span></div>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.EmptyUnboundContactIds.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Empty creditor contacts bound to nobody</div>
+        <div class="card-body small">
+            <p class="text-muted">No purchase document and no member binding. Holded has no archive call, so these are left for a human to archive in Holded.</p>
+            <ul class="mb-0 font-monospace">
+                @foreach (var c in Model.EmptyUnboundContactIds)
+                {
+                    <li>@c</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
