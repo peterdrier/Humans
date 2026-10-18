@@ -24,8 +24,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// silently dropped by the browser.
 /// </description></item>
 /// <item><description>
-/// The resx carve moved 112 <c>Camp_*</c>, <c>CampCard_*</c> and <c>Enum_CampVibe_*</c> keys
-/// out of <c>SharedResource</c>. A key the carve missed, or a call site bound to the wrong set,
+/// The section resource set owns <c>Camps_*</c> and <c>Enum_CampVibe_*</c> keys
+/// originally carved out of <c>SharedResource</c>. A key the carve missed, or a call site bound to the wrong set,
 /// renders the raw key — in every language, with no error.
 /// </description></item>
 /// <item><description>
@@ -83,6 +83,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Camp_", $"GET {url} rendered a raw Camps resource key");
+            html.Should().NotContain("Camps_", $"GET {url} rendered a raw Camps resource key");
             html.Should().NotContain("CampCard_", $"GET {url} rendered a raw CampCard key");
 
             // …and the mirror: a shared key the section still reads, left on the wrong localizer.
@@ -101,9 +102,9 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var html = await (await Client.GetAsync("/Camps", ct)).Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("Barrio Guide",
-            because: "Camp_Index_BarrioGuide resolves through IStringLocalizer<CampsResource>");
+            because: "Camps_Index_BarrioGuide resolves through IStringLocalizer<CampsResource>");
         html.Should().Contain("Filter",
-            because: "Camp_Index_FilterButton is on the section's own filter bar");
+            because: "Camps_Index_FilterButton is on the section's own filter bar");
         // <vc:access-matrix> binds through @addTagHelper *, Humans.Interfaces since the component
         // moved out of Shell (nobodies-collective/Humans#1056). An unbound <vc:> ships as
         // inert literal markup with a green build, so assert the emitted modal id, not just
@@ -159,10 +160,11 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("del Barrio");   // Camp_Index_BarrioGuide
-        html.Should().Contain("Filtrar");      // Camp_Index_FilterButton
+        html.Should().Contain("del Barrio");   // Camps_Index_BarrioGuide
+        html.Should().Contain("Filtrar");      // Camps_Index_FilterButton
         html.Should().NotContain("Barrio Guide 2026");
         html.Should().NotContain("Camp_");
+        html.Should().NotContain("Camps_");
     }
 
     private static string? ExtractAntiForgeryToken(string html)

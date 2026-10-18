@@ -1059,7 +1059,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Too Late", actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);
-        (await act()).ErrorKey.Should().Be("Camp_Edit_NameLocked");
+        (await act()).ErrorKey.Should().Be("Camps_Edit_NameLocked");
     }
 
     // ==========================================================================

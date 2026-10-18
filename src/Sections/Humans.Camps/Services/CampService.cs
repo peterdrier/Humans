@@ -1195,7 +1195,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
             if (season.NameLockDate.HasValue && today >= season.NameLockDate.Value)
             {
-                refusalKey = "Camp_Edit_NameLocked";
+                refusalKey = "Camps_Edit_NameLocked";
                 return null;
             }
 

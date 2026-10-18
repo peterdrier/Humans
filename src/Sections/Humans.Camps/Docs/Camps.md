@@ -190,6 +190,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- Section-owned resource keys use `Camps_` in all six cultures. Reflection-resolved enum keys retain their names; shared `Camp_Plural` stays in `SharedResource`.
+
 - Admin camp CSV downloads record `CampsExported` with the authenticated actor, public year and emitted data-row count, including empty/repeated downloads. Camps without a season produce no row and are not counted; existing contact/lead columns and CampAdmin/Admin access are preserved.
 
 Admin EE slot-cap updates reject malformed number binding with HTTP 400 before mutation; an explicitly submitted zero remains a valid cap.

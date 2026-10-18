@@ -322,10 +322,10 @@ internal sealed class CampController(
 
             if (result.RateLimited)
             {
-                SetError(campsLocalizer["Camp_Contact_RateLimited"].Value);
+                SetError(campsLocalizer["Camps_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(campsLocalizer["Camp_Contact_Success"].Value, campDisplayName));
+            SetSuccess(string.Format(campsLocalizer["Camps_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
@@ -1322,7 +1322,7 @@ internal sealed class CampController(
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camp_ContactPhoneLabel"].Value].Value);
+                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camps_ContactPhoneLabel"].Value].Value);
         }
     }
 

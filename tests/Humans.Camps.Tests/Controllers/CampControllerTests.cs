@@ -342,7 +342,7 @@ public class CampControllerTests
         var result = await controller.Register(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-        var label = campsLocalizer["Camp_ContactPhoneLabel"];
+        var label = campsLocalizer["Camps_ContactPhoneLabel"];
         label.ResourceNotFound.Should().BeFalse();
         var expected = sharedLocalizer["Validation_PhoneE164", label.Value];
         expected.ResourceNotFound.Should().BeFalse();
