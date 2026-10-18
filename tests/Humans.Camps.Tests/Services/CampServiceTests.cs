@@ -1565,6 +1565,59 @@ public sealed class CampServiceTests : CampsTestHarness
             Arg.Any<string>(), TestActorId, survivorId, nameof(User));
     }
 
+    [HumansTheory]
+    [InlineData(false, false, null)]
+    [InlineData(false, true, null)]
+    [InlineData(true, false, null)]
+    [InlineData(true, true, null)]
+    [InlineData(false, true, 2029)]
+    [InlineData(true, true, 2029)]
+    public async Task LeadMemberShortcuts_UseOnlyTheSelectedOrPublicYearsOpenSeason(
+        bool assignRole, bool hasPublicSeason, int? year)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const int publicYear = 2028;
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: publicYear));
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "continuing-camp" };
+        var current = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear, Status = CampSeasonStatus.Full };
+        var future = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear + 1, Status = CampSeasonStatus.Full };
+        CampsDb.Camps.Add(camp);
+        await CampsDb.CampSeasons.AddRangeAsync([
+            new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear - 1, Status = CampSeasonStatus.Active },
+            future], ct);
+        if (hasPublicSeason) CampsDb.CampSeasons.Add(current);
+        await SaveAllAsync(ct);
+        var userId = Guid.NewGuid();
+        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        _campRoleService.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
+        var roleId = Guid.NewGuid();
+
+        if (assignRole)
+            (await _service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, TestActorId, ct, year))
+                .Should().Be(hasPublicSeason ? AssignCampRoleOutcome.Assigned : AssignCampRoleOutcome.SeasonNotFound);
+        else
+            (await _service.AddCampMemberToActiveSeasonAsync(camp.Id, userId, TestActorId, ct, year))
+                .Should().Be(hasPublicSeason ? AddCampMemberOutcome.Added : AddCampMemberOutcome.NoActiveSeason);
+
+        var members = await CampsDb.CampMembers.AsNoTracking().ToListAsync(ct);
+        if (hasPublicSeason)
+        {
+            var expectedSeason = year.HasValue ? future : current;
+            members.Should().ContainSingle().Which.CampSeasonId.Should().Be(expectedSeason.Id);
+            await _campRoleService.Received(assignRole ? 1 : 0).AssignAsync(
+                expectedSeason.Id, roleId, Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            members.Should().BeEmpty();
+            await _campRoleService.DidNotReceiveWithAnyArgs().AssignAsync(default, default, default, default, default);
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task AddMemberAndAssignRoleInActiveSeason_creates_active_member_assigns_role_and_audits()
     {

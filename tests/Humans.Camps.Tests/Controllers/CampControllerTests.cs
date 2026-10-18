@@ -675,6 +675,64 @@ public class CampControllerTests
         controller.TempData[tempDataKey].Should().Be(translated);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Full, year: 2029);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        var controller = BuildController(actorId);
+
+        var result = assignRole
+            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, 2029)
+            : await controller.AddMember(camp.Slug, userId, ct, 2029);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(2029);
+        if (assignRole)
+            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, 2029);
+        else
+            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, 2029);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssignRole_UsesTheMembersOwnSeasonWithinTheCamp(bool foreignMember)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var member = MakeSeasonMember(Guid.NewGuid());
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        var first = camp.Seasons.Single();
+        var target = first with { Id = Guid.NewGuid(), Year = 2027, Members = foreignMember ? [] : [member] };
+        camp = camp with { Seasons = [first, target] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var roleId = Guid.NewGuid();
+
+        var result = await BuildController(actorId).AssignRole(camp.Slug, roleId, member.Id, ct);
+
+        if (foreignMember)
+            await _roles.DidNotReceiveWithAnyArgs().AssignAsync(default, default, default, default, default);
+        else
+        {
+            await _roles.Received(1).AssignAsync(target.Id, roleId, member.Id, actorId, ct);
+            result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(2027);
+        }
+    }
+
     [HumansFact]
     public async Task AddMember_PropagatesRequestCancellation()
     {

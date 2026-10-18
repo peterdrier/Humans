@@ -992,14 +992,14 @@ internal sealed class CampController(
     [Authorize]
     [HttpPost("{slug}/Members/Add")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct)
+    public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct, int? year = null)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
         try
         {
-            var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct);
+            var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct, year);
             if (outcome == AddCampMemberOutcome.InvalidUser)
                 SetError(campsLocalizer["Camps_Flash_HumanRequired"].Value);
             else if (outcome == AddCampMemberOutcome.NoActiveSeason)
@@ -1017,7 +1017,7 @@ internal sealed class CampController(
             SetError(campsLocalizer["Camps_Flash_HumanAddFailed"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToAction(nameof(Members), new { slug, year });
     }
 
     [Authorize]
@@ -1028,21 +1028,22 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Members.Any(member => member.Id == campMemberId)
+            && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         var outcome = openSeason is null
             ? AssignCampRoleOutcome.SeasonNotFound
             : await campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
 
         ApplyAssignRoleOutcomeFlash(outcome);
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToAction(nameof(Members), new { slug, year = openSeason?.Year });
     }
 
     /// <summary>Search-driven assign: adds the human as Active if needed (idempotent), then assigns the role.</summary>
     [Authorize]
     [HttpPost("{slug}/Roles/AssignByUser")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AssignRoleByUser(string slug, Guid roleDefinitionId, Guid userId, CancellationToken ct)
+    public async Task<IActionResult> AssignRoleByUser(string slug, Guid roleDefinitionId, Guid userId, CancellationToken ct, int? year = null)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
@@ -1050,14 +1051,14 @@ internal sealed class CampController(
         if (userId == Guid.Empty)
         {
             SetError(campsLocalizer["Camps_Flash_HumanRequired"].Value);
-            return RedirectToAction(nameof(Members), new { slug });
+            return RedirectToAction(nameof(Members), new { slug, year });
         }
 
         AssignCampRoleOutcome outcome;
         try
         {
             outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
-                camp.Id, roleDefinitionId, userId, user.Id, ct);
+                camp.Id, roleDefinitionId, userId, user.Id, ct, year);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -1067,12 +1068,12 @@ internal sealed class CampController(
         {
             logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError(campsLocalizer["Camps_Flash_RoleAssignFailed"].Value);
-            return RedirectToAction(nameof(Members), new { slug });
+            return RedirectToAction(nameof(Members), new { slug, year });
         }
 
         ApplyAssignRoleOutcomeFlash(outcome);
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToAction(nameof(Members), new { slug, year });
     }
 
     private void ApplyAssignRoleOutcomeFlash(AssignCampRoleOutcome outcome)

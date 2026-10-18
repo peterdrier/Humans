@@ -1546,15 +1546,17 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
     public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int? year = null)
     {
         if (userId == Guid.Empty)
             return AddCampMemberOutcome.InvalidUser;
 
+        var targetYear = year ?? await GetActiveYearAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         // Full is informational only (Peter, 2026-08-20) — it must not block camp
         // management, so a Full season is still usable here.
-        var openSeason = camp?.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
+        var openSeason = camp?.Seasons.FirstOrDefault(s => s.Year == targetYear
+            && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         if (openSeason is null)
             return AddCampMemberOutcome.NoActiveSeason;
 
@@ -1564,12 +1566,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int? year = null)
     {
+        var targetYear = year ?? await GetActiveYearAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         // Full is informational only (Peter, 2026-08-20) — it must not block camp
         // management, so a Full season is still usable here.
-        var openSeason = camp?.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
+        var openSeason = camp?.Seasons.FirstOrDefault(s => s.Year == targetYear
+            && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         if (openSeason is null)
             return AssignCampRoleOutcome.SeasonNotFound;
 
