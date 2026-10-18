@@ -137,7 +137,7 @@ internal sealed class HoldedClient : IHoldedClient
             var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
                 ?? throw new HoldedTransientException("Holded returned empty body");
 
-            _ = ReadPurchaseCurrency(node);
+            _ = ReadEuroCurrency(node);
             return new HoldedPurchaseDocumentDto
             {
                 Id = Prop(node, "id")?.GetValue<string>() ?? "",
@@ -484,6 +484,7 @@ internal sealed class HoldedClient : IHoldedClient
         {
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedTransientException("Holded returned empty body");
+            _ = ReadEuroCurrency(node);
             return new HoldedSalesDocumentDto
             {
                 Id = Prop(node, "id")?.GetValue<string>() ?? documentId,
@@ -978,7 +979,7 @@ internal sealed class HoldedClient : IHoldedClient
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
         PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
-        Currency = ReadPurchaseCurrency(n),
+        Currency = ReadEuroCurrency(n),
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {
@@ -988,14 +989,14 @@ internal sealed class HoldedClient : IHoldedClient
         }).ToList(),
     };
 
-    private static string ReadPurchaseCurrency(JsonNode? document)
+    private static string ReadEuroCurrency(JsonNode? document)
     {
         var currency = ReadRequiredString(Prop(document, "currency"), "currency");
         if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
         {
             var id = Prop(document, "id")?.GetValue<string>() ?? "(unknown)";
             throw new HoldedPermanentException(
-                IbanFormatter.MaskAllIn($"Holded purchase document {id} has unsupported currency '{currency}'; EUR is required."));
+                IbanFormatter.MaskAllIn($"Holded document {id} has unsupported currency '{currency}'; EUR is required."));
         }
         return currency;
     }
