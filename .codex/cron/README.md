@@ -5,9 +5,11 @@ repo — never your working checkout. Gates on build + test before publishing,
 opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
-The PR is then reviewed by a Claude cloud routine at 08:00 UTC running
+A separate Claude cloud routine currently runs at 08:00 UTC using
 [`/debt-review`](../../.claude/skills/debt-review/SKILL.md): per-commit keep/repair/revert,
 bot findings, follow-up issues, then stewards the PR inline (3-round ceiling).
+The nightly timer starts at 00:00 UTC, so a full 12-hour run can publish after
+that review slot. Review scheduling is separate from this systemd timer.
 
 Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
 the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
@@ -26,6 +28,10 @@ suite once at the end. Test-only changes do not qualify a run for publication.
 
 `TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
 its active batch afterward; final build/test and publication may extend past it.
+The service pins only the quota guard; `TIME_BUDGET` in `debt-runner.env`
+remains effective for scheduled runs. Set it to `12h` for the full window, or
+choose a shorter duration.
+
 There is no fix-count target. Work existing ledger rows before searching for new
 debt. One branch and PR contain all completed substantive fixes.
 
@@ -158,7 +164,7 @@ cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.timer   ~/.config/systemd
 # system-wide binary earlier on PATH will silently win over a newer
 # user-local one. Each run logs the resolved path + version of codex,
 # dotnet, git and gh at preflight, so a PATH regression shows up in the log.
-# Adjust humans-debt.timer's OnCalendar= if 06:00 UTC isn't quiet on your
+# Adjust humans-debt.timer's OnCalendar= if 00:00 UTC isn't quiet on your
 # machine. Keep the trailing UTC, or systemd reads the time in the machine's
 # local zone instead.
 
