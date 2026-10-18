@@ -214,6 +214,39 @@ public class EmailProvisioningServiceTests
             .And.NotContain("Check your personal email");
     }
 
+    [HumansTheory]
+    [InlineData(null, "Person@NOBODIES.TEAM", null)]
+    [InlineData("old@nobodies.team", "Person@NOBODIES.TEAM", null)]
+    [InlineData("old@nobodies.team", "personal@example.org", "personal@example.org")]
+    [InlineData("primary@example.org", "person@nobodies.team", "primary@example.org")]
+    public async Task ProvisionNobodiesEmailAsync_RecoveryNeverTargetsWorkspace(
+        string? primaryEmail, string oauthEmail, string? recoveryEmail)
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
+            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: oauthEmail));
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>()).Returns(primaryEmail is null
+            ? new List<UserEmailEditDto>()
+            : [new UserEmailEditDto(Guid.NewGuid(), primaryEmail, IsVerified: true, IsGoogle: false,
+                Provider: null, ProviderKey: null, IsPrimary: true, Visibility: null,
+                IsPendingVerification: false, GoogleEmailStatus: GoogleEmailStatus.Unknown)]);
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeTrue();
+        result.RecoveryEmail.Should().Be(recoveryEmail);
+        await f.WorkspaceUserService.Received(1).ProvisionAccountAsync("person@nobodies.team", "Person", "Test",
+            Arg.Any<string>(), recoveryEmail, Arg.Any<CancellationToken>());
+        if (recoveryEmail is null)
+            f.Emails.ReceivedCalls().Should().BeEmpty();
+        else
+            await f.Emails.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(message => message.RecipientEmail == recoveryEmail), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherUserEmail()
     {

@@ -192,7 +192,8 @@ internal sealed class EmailProvisioningService(
         var candidate = target?.Email ?? oauthEmail;
 
         if (candidate?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
-            return oauthEmail;
+            return oauthEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true
+                ? null : oauthEmail;
 
         return candidate;
     }
