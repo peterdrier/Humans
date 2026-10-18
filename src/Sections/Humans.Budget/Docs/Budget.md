@@ -194,6 +194,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- The active-year read accepts caller cancellation and forwards it to the repository query.
+
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
 - Year-status POSTs reject binding errors after resolving the actor and before mutation. A malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.

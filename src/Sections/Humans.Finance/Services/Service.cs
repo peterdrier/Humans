@@ -61,7 +61,7 @@ internal sealed class Service(
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
     {
-        var year = await budget.GetActiveYearAsync();
+        var year = await budget.GetActiveYearAsync(ct);
         var categories = year is null
             ? Array.Empty<(Guid Id, string Name, string Group)>()
             : year.Groups
@@ -299,7 +299,7 @@ internal sealed class Service(
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var managed = await repo.GetManagedAccountsAsync(ct);
-        var year = await budget.GetActiveYearAsync();
+        var year = await budget.GetActiveYearAsync(ct);
         var labels = year?.Groups
             .SelectMany(g => g.Categories.Select(c => (c.Id, Label: $"{g.Name} / {c.Name}")))
             .ToDictionary(x => x.Id, x => x.Label)
@@ -501,7 +501,7 @@ internal sealed class Service(
     private async Task<IReadOnlyList<HoldedCategoryMapRow>> BuildCategoryMapAsync(CancellationToken ct)
     {
         var map = await repo.GetCategoryMapAsync(ct);
-        var categories = await ActiveYearCategoriesAsync();
+        var categories = await ActiveYearCategoriesAsync(ct);
 
         return map.Select(m => new HoldedCategoryMapRow(
             m.BudgetCategoryId,
@@ -519,9 +519,9 @@ internal sealed class Service(
 
     /// <summary>Name and group of every category in the active budget year, by category id; empty
     /// when no year is active.</summary>
-    private async Task<Dictionary<Guid, (string Name, string Group)>> ActiveYearCategoriesAsync()
+    private async Task<Dictionary<Guid, (string Name, string Group)>> ActiveYearCategoriesAsync(CancellationToken ct)
     {
-        var year = await budget.GetActiveYearAsync();
+        var year = await budget.GetActiveYearAsync(ct);
         return year is null
             ? new Dictionary<Guid, (string Name, string Group)>()
             : year.Groups
@@ -541,7 +541,7 @@ internal sealed class Service(
 
         // Category names come from the active budget year, the same source the provisioning plan
         // uses. A doc pointing outside it keeps a null name rather than a lookup per row.
-        var categories = await ActiveYearCategoriesAsync();
+        var categories = await ActiveYearCategoriesAsync(ct);
 
         string? NameOf(Guid? categoryId) =>
             categoryId is { } id && categories.TryGetValue(id, out var c) ? c.Name : null;

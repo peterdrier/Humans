@@ -223,6 +223,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - Holded provisioning POSTs reject binding errors with HTTP 400 and a Warning after actor resolution, before planning or creating accounts. Missing actors retain Challenge; explicit false add-all flags remain valid.
 
 - The SEPA payout list forwards request cancellation through payout loading and member-name lookup.
+- Provisioning-plan, expense-account, category-map and connector-overview reads retain caller cancellation through the active Budget year lookup.
 
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`Service.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `IHoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.

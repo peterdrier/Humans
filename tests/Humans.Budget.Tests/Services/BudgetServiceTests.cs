@@ -66,6 +66,17 @@ public sealed class BudgetServiceTests
             NullLogger<BudgetServiceImpl>.Instance);
     }
 
+    [HumansFact]
+    public async Task GetActiveYearAsync_CancelledRead_AbortsRepositoryQuery()
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+
+        var read = () => _service.GetActiveYearAsync(request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansTheory]
     [InlineData(false, "isRestricted", true)]
     [InlineData(true, "isRestricted", true)]

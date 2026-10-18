@@ -186,6 +186,34 @@ public class HoldedFinanceServiceTests
         row.Docs[0].Date.Should().Be(new LocalDate(2026, 5, 1));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("provisioning")]
+    [Xunit.InlineData("expense-accounts")]
+    [Xunit.InlineData("category-map")]
+    [Xunit.InlineData("overview")]
+    public async Task BudgetEnrichedReads_PropagateRequestCancellation(string read)
+    {
+        SeedConnector();
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<BudgetYearDetail?>(null);
+        });
+        var service = MakeService();
+        Func<Task> load = read switch
+        {
+            "provisioning" => () => service.GetProvisioningPlanAsync(62900100, request.Token),
+            "expense-accounts" => () => service.ListExpenseAccountsAsync(true, request.Token),
+            "category-map" => () => service.GetCategoryMapAsync(request.Token),
+            "overview" => () => service.GetConnectorOverviewAsync(request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(read))
+        };
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
 
     [HumansFact]
@@ -195,7 +223,7 @@ public class HoldedFinanceServiceTests
         var catIdB = Guid.NewGuid();
 
         // Active year has two categories in one group.
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(),
             Year: "2026",
             Name: "Camp 2026",
@@ -254,7 +282,7 @@ public class HoldedFinanceServiceTests
     {
         var catId = Guid.NewGuid();
 
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(),
             Year: "2026",
             Name: "Camp 2026",
@@ -1601,7 +1629,7 @@ public class HoldedFinanceServiceTests
         // rows sharing a tag make tag attribution arbitrary, so the proposal must not reuse it.
         var toAddCat = Guid.NewGuid();
         var mappedCat = Guid.NewGuid();
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
             Status: BudgetYearStatus.Active, IsDeleted: false,
             Groups:
@@ -1727,7 +1755,7 @@ public class HoldedFinanceServiceTests
     {
         var catA = Guid.NewGuid();
         var catB = Guid.NewGuid();
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
             Status: BudgetYearStatus.Active, IsDeleted: false,
             Groups:
@@ -2061,7 +2089,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Seeds the active year with one group holding the given categories.</summary>
     private void ActiveYearWith(params (Guid Id, string Name)[] categories) =>
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(),
             Year: "2026",
             Name: "Camp 2026",
@@ -2270,7 +2298,7 @@ public class HoldedFinanceServiceTests
     public async Task GetConnectorOverview_NoActiveBudgetYear_StillRenders()
     {
         // The page is the connector's health, not the budget's — it must not go blank between years.
-        _budget.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
         SeedConnector(map: [new() { BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900101, IsActive = true }]);
 
         var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
@@ -3602,7 +3630,7 @@ public class HoldedFinanceServiceTests
             new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m-1", Label = "Workgroups / ALM 2027", IsActive = true },
             new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900151, HoldedAccountId = "m-2", Label = "Workgroups / ALM 2026", IsActive = false },
         });
-        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "2026", BudgetYearStatus.Active, false,
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "2026", BudgetYearStatus.Active, false,
         [
             new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), "Departments", 0, false, true, false, null,
             [

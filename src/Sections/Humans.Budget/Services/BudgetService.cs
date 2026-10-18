@@ -52,9 +52,9 @@ internal sealed class BudgetService(
         return year is null ? null : ToYearDetail(year);
     }
 
-    public async Task<BudgetYearDetail?> GetActiveYearAsync()
+    public async Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default)
     {
-        var year = await repository.GetActiveYearAsync();
+        var year = await repository.GetActiveYearAsync(ct);
         return year is null ? null : ToYearDetail(year);
     }
 

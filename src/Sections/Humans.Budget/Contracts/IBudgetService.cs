@@ -20,7 +20,7 @@ public interface IBudgetService : IApplicationService
     /// The active budget year with its full group → category → line item projection,
     /// or null when no year is active.
     /// </summary>
-    Task<BudgetYearDetail?> GetActiveYearAsync();
+    Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default);
 
     /// <summary>
     /// One budget year by id, same projection as <see cref="GetActiveYearAsync"/>. Expenses
