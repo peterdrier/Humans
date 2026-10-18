@@ -143,6 +143,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   for it (a rejected report resubmitting). Release and consume need the holding report.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
+- Grant admin actions reject invalid form binding with 400 after identity, program permission
+  and grant ownership checks. Malformed amounts never fall back to a program/request amount,
+  and malformed bulk selections never issue grants to only the valid subset.
 - The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
   ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.

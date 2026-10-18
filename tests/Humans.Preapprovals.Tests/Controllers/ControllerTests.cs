@@ -94,6 +94,41 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData("Issue", true)]
+    [Xunit.InlineData("IssueMany", true)]
+    [Xunit.InlineData("Approve", true)]
+    [Xunit.InlineData("Issue", false)]
+    [Xunit.InlineData("IssueMany", false)]
+    [Xunit.InlineData("Approve", false)]
+    public async Task MalformedGrantForm_DoesNotCommitMoney(string action, bool managesProgram)
+    {
+        var manager = SeedUser("Manager");
+        var program = await SeedProgramAsync(managers: managesProgram ? [manager] : []);
+        var beneficiary = SeedUser("Beneficiary");
+        var application = await SeedGrantAsync(program, beneficiary, status: GrantStatus.Applied);
+        var controller = BuildAdmin(manager);
+        var field = string.Equals(action, "IssueMany", StringComparison.Ordinal) ? "userIds[1]" : "amount";
+        controller.ModelState.AddModelError(field, "Invalid value");
+
+        var result = action switch
+        {
+            "Issue" => await controller.Issue(program.Id, beneficiary, null, null, Ct),
+            "IssueMany" => await controller.IssueMany(program.Id, [beneficiary], Ct),
+            _ => await controller.Approve(program.Id, application.Id, null, Ct)
+        };
+
+        if (managesProgram)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        (await ReadGrantsCountAsync()).Should().Be(1);
+        (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(RoleNames.FinanceAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
