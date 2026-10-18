@@ -219,7 +219,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
 
 - The Store index loads selected camp and department orders in batches through existing repository reads, then shares one product-name and live-price snapshot across the cards. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
-- Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
+- Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Active catalog-year resolution and live-price loading also pass the caller token to Settings; catalog-admin GETs preserve it through the same helper. Payment, invoice and order mutations retain their existing token boundaries.
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
 - **Team orders are non-billable.** `UpdateCounterpartyAsync` and `CreateStripeCheckoutSessionAsync` return localized refusals for any order whose `TeamId is not null`; `IssueInvoiceAsync` returns an operator refusal and `RecordStripePaymentAsync` rejects it with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.

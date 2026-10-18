@@ -44,7 +44,7 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var year = await GetCurrentEventYearAsync();
+        var year = await GetCurrentEventYearAsync(ct);
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
@@ -511,7 +511,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
-        var year = await GetCurrentEventYearAsync();
+        var year = await GetCurrentEventYearAsync(ct);
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -660,7 +660,7 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    public Task<int> GetCurrentEventYearAsync() => orderReader.GetCurrentEventYearAsync();
+    public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
 
     [ExternalWrite]
     public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(

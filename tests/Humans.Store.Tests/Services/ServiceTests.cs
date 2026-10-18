@@ -48,7 +48,7 @@ public class ServiceTests
 
     public ServiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -59,6 +59,20 @@ public class ServiceTests
     // ==========================================================================
     // Read paths (Task 2.3)
     // ==========================================================================
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_cancels_settings_read_before_loading_catalog()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromCanceled<EventSettingsInfo?>(call.Arg<CancellationToken>()));
+
+        var act = () => _service.GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()

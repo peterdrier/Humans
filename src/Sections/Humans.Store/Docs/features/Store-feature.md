@@ -28,7 +28,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `/Store/Admin/Catalog` lists every product for the current event year (active and inactive) with name, description, unit price, VAT rate, optional deposit, OrderableUntil deadline, and IsActive state.
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The authorization guard in `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable by Camp Leads; admins can extend or shorten it freely and are not blocked past the deadline.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `Service.AddLineAsync` rejects new lines against them with a clear error.
-- The active year is derived via `ISettingsService.GetActiveEventSettingsAsync()` (see Cross-Section Dependencies in `Store.md`).
+- The active year is derived via `ISettingsService.GetActiveEventSettingsAsync(ct)`, preserving read cancellation through catalog-year and live-price lookups (see Cross-Section Dependencies in `Store.md`).
 - Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)

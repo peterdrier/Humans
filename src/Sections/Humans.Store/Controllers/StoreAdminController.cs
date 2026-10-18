@@ -22,7 +22,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await storeService.GetCurrentEventYearAsync();
+        var year = await storeService.GetCurrentEventYearAsync(ct);
         var products = (await storeService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
@@ -33,7 +33,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary(int? year, CancellationToken ct)
     {
-        var defaultYear = await storeService.GetCurrentEventYearAsync();
+        var defaultYear = await storeService.GetCurrentEventYearAsync(ct);
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
@@ -114,7 +114,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var year = await storeService.GetCurrentEventYearAsync();
+        var year = await storeService.GetCurrentEventYearAsync(ct);
         var model = new ProductInputModel
         {
             Year = year,
