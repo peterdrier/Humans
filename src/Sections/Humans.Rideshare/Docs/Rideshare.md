@@ -264,7 +264,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - A human **cannot** accept or decline an interest on a posting they do not own.
 - A human **cannot** withdraw an interest they neither authored nor own the posting for.
 - Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster.
-- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does.
+- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does. The board list, map and current driver’s offer selector share the snapshot’s joinable-trip filter (active, seats available, direction and travel date).
 - The declined party **cannot** see a reason for the decline — none is stored.
 
 ## Triggers
