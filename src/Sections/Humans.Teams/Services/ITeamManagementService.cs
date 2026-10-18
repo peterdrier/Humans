@@ -53,7 +53,8 @@ internal sealed record TeamRosterSlotSummary(
     string Period,
     bool IsFilled,
     Guid? AssignedUserId,
-    string? AssignedUserName);
+    string? AssignedUserName,
+    bool IsPublic);
 
 internal sealed record AdminTeamSummary(
     Guid Id,

@@ -290,13 +290,16 @@ internal sealed class TeamController(
     {
         var roster = await teamService.GetRosterAsync(priority, status, period, ct);
         var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-        var visibleTeamSlugs = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(team => !team.IsHidden)
-            .Select(team => team.Slug)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        var teamsBySlug = teamsById.Values.ToDictionary(team => team.Slug, StringComparer.OrdinalIgnoreCase);
+        var viewerId = GetCurrentUserId();
 
         var slots = roster
-            .Where(slot => canSeeHiddenTeams || visibleTeamSlugs.Contains(slot.TeamSlug))
+            .Where(slot => canSeeHiddenTeams
+                || (teamsBySlug.TryGetValue(slot.TeamSlug, out var team) && !team.IsHidden))
+            .Where(slot => slot.IsPublic || canSeeHiddenTeams
+                || (viewerId is Guid userId && teamsBySlug.TryGetValue(slot.TeamSlug, out var team)
+                    && TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId)))
             .OrderBy(slot => slot.Priority switch
             {
                 nameof(SlotPriority.Critical) => 0,

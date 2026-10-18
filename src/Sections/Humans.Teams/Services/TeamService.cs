@@ -1604,7 +1604,8 @@ internal sealed class TeamService(
                     assignment?.AssignedUserId,
                     assignment?.AssignedUserId is Guid assignedUserId
                         ? usersById.GetValueOrDefault(assignedUserId)?.BurnerName
-                        : null));
+                        : null,
+                    definition.IsPublic));
             }
         }
 

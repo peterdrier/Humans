@@ -38,7 +38,7 @@ public class TeamControllerPageContentTests
         var teams = Substitute.For<ITeamManagementService>();
         TeamRosterSlotSummary Slot(string team, string role, int number, SlotPriority priority) =>
             new(team, team.ToLowerInvariant(), role, null, Guid.NewGuid(), number,
-                priority.ToString(), "", nameof(RolePeriod.Event), false, null, null);
+                priority.ToString(), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
         teams.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
         {
             Slot("Beta", "Lead", 1, SlotPriority.Important),
@@ -214,6 +214,62 @@ public class TeamControllerPageContentTests
 
     [HumansTheory]
     [InlineData(null)]
+    [InlineData("coordinator")]
+    [InlineData("parent")]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.Board)]
+    [InlineData(RoleNames.TeamsAdmin)]
+    public async Task Roster_PrivateRoles_RequireTeamManagementAccess(string? role)
+    {
+        var viewer = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var coordinator = new TeamMemberInfo(Guid.NewGuid(), viewer, "Coordinator", null, null, TeamMemberRole.Coordinator, now);
+        var parent = new TeamInfo(Guid.NewGuid(), "Parent", null, "parent", true, false,
+            SystemTeamType.None, false, false, false, false, now,
+            string.Equals(role, "parent", StringComparison.Ordinal) ? [coordinator] : []);
+        var child = parent with
+        {
+            Id = Guid.NewGuid(), Name = "Child", Slug = "child", ParentTeamId = parent.Id,
+            Members = string.Equals(role, "coordinator", StringComparison.Ordinal) ? [coordinator] : []
+        };
+        var other = child with { Id = Guid.NewGuid(), Name = "Other", Slug = "other", ParentTeamId = null, Members = [] };
+        var teams = Substitute.For<ITeamManagementService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [parent.Id] = parent, [child.Id] = child, [other.Id] = other
+        });
+        var publicSlot = new TeamRosterSlotSummary(child.Name, child.Slug, "Public role", null,
+            Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
+        var privateSlot = publicSlot with { RoleDefinitionId = Guid.NewGuid(), RoleName = "Private role", IsPublic = false };
+        var otherPrivate = privateSlot with { RoleDefinitionId = Guid.NewGuid(), TeamName = other.Name, TeamSlug = other.Slug };
+        teams.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { publicSlot, privateSlot, otherPrivate });
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, viewer.ToString()) };
+        if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(), Substitute.For<ITeamResourceService>(),
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
+            new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
+            Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) }
+            }
+        };
+
+        var result = await controller.Roster(null, null, null, TestContext.Current.CancellationToken);
+
+        var slots = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which.Slots;
+        var expected = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin
+            ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId, otherPrivate.RoleDefinitionId }
+            : role is "coordinator" or "parent"
+                ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId }
+                : new[] { publicSlot.RoleDefinitionId };
+        slots.Select(slot => slot.RoleDefinitionId).Should().BeEquivalentTo(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -241,7 +297,7 @@ public class TeamControllerPageContentTests
         teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { hiddenRequest, visibleRequest });
         var hiddenSlot = new TeamRosterSlotSummary(hidden.Name, hidden.Slug, "Lead", null,
-            Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null);
+            Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
         var visibleSlot = hiddenSlot with { TeamName = visible.Name, TeamSlug = visible.Slug };
         teams.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { hiddenSlot, visibleSlot });
         var pages = Substitute.For<ITeamPageService>();

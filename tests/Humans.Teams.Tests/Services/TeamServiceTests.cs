@@ -3043,6 +3043,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             TeamId = alphaTeam.Id,
             Team = alphaTeam,
             Name = "Lead",
+            IsPublic = false,
             SlotCount = 2,
             Priorities = [SlotPriority.Important, SlotPriority.None],
             SortOrder = 0,
@@ -3089,6 +3090,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             });
 
         var critical = result.Single(slot => string.Equals(slot.TeamName, "Beta", StringComparison.Ordinal));
+        critical.IsPublic.Should().BeTrue();
+        result.Where(slot => slot.RoleDefinitionId == alphaDefinition.Id).Should().OnlyContain(slot => !slot.IsPublic);
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
         critical.PriorityBadgeClass.Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
