@@ -80,19 +80,19 @@ internal sealed class TicketQueryService(
             .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
     }
 
-    public async Task<List<string>> GetAvailableTicketTypesAsync()
+    public async Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default)
     {
-        var types = await ticketRepository.GetDistinctTicketTypesAsync();
+        var types = await ticketRepository.GetDistinctTicketTypesAsync(ct);
         return types.ToList();
     }
 
-    private async Task<HashSet<Guid>> GetCurrentEventTicketHolderIdsAsync()
+    private async Task<HashSet<Guid>> GetCurrentEventTicketHolderIdsAsync(CancellationToken ct)
     {
-        var syncState = await ticketRepository.GetSyncStateAsync();
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
         if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
             return [];
 
-        var ids = await ticketRepository.GetEventTicketHolderUserIdsAsync(syncState.VendorEventId);
+        var ids = await ticketRepository.GetEventTicketHolderUserIdsAsync(syncState.VendorEventId, ct);
         return ids.ToHashSet();
     }
 
@@ -485,7 +485,7 @@ internal sealed class TicketQueryService(
     public async Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
-        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched)
+        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched, CancellationToken ct = default)
     {
         TicketPaymentStatus? parsedStatus = null;
         if (!string.IsNullOrEmpty(filterPaymentStatus) &&
@@ -496,9 +496,9 @@ internal sealed class TicketQueryService(
 
         var (rawRows, totalCount) = await ticketRepository.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            parsedStatus, filterTicketType, filterMatched);
+            parsedStatus, filterTicketType, filterMatched, ct);
 
-        var rows = await HydrateOrderMatchedUserNamesAsync(rawRows);
+        var rows = await HydrateOrderMatchedUserNamesAsync(rawRows, ct);
         return new OrdersPageResult { Rows = rows, TotalCount = totalCount };
     }
 
@@ -506,7 +506,7 @@ internal sealed class TicketQueryService(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
         string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
-        bool filterMultipleTickets = false)
+        bool filterMultipleTickets = false, CancellationToken ct = default)
     {
         TicketAttendeeStatus? parsedStatus = null;
         if (!string.IsNullOrEmpty(filterStatus) &&
@@ -517,13 +517,13 @@ internal sealed class TicketQueryService(
 
         var (rawRows, totalCount) = await ticketRepository.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets);
+            filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets, ct);
 
-        var rows = await HydrateAttendeeMatchedUserNamesAsync(rawRows);
+        var rows = await HydrateAttendeeMatchedUserNamesAsync(rawRows, ct);
         return new AttendeesPageResult { Rows = rows, TotalCount = totalCount };
     }
 
-    private async Task<List<OrderRow>> HydrateOrderMatchedUserNamesAsync(IReadOnlyList<OrderRow> rows)
+    private async Task<List<OrderRow>> HydrateOrderMatchedUserNamesAsync(IReadOnlyList<OrderRow> rows, CancellationToken ct)
     {
         var matchedIds = rows
             .Where(r => r.MatchedUserId is not null)
@@ -533,14 +533,14 @@ internal sealed class TicketQueryService(
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await userService.GetUserInfosAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds, ct);
         return rows.Select(row =>
             row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
                 ? row with { MatchedUserName = user.BurnerName }
                 : row).ToList();
     }
 
-    private async Task<List<AttendeeRow>> HydrateAttendeeMatchedUserNamesAsync(IReadOnlyList<AttendeeRow> rows)
+    private async Task<List<AttendeeRow>> HydrateAttendeeMatchedUserNamesAsync(IReadOnlyList<AttendeeRow> rows, CancellationToken ct)
     {
         var matchedIds = rows
             .Where(r => r.MatchedUserId is not null)
@@ -550,7 +550,7 @@ internal sealed class TicketQueryService(
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await userService.GetUserInfosAsync(matchedIds);
+        var users = await userService.GetUserInfosAsync(matchedIds, ct);
         return rows.Select(row =>
             row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
                 ? row with { MatchedUserName = user.BurnerName }
@@ -559,12 +559,12 @@ internal sealed class TicketQueryService(
 
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
-        int page, int pageSize)
+        int page, int pageSize, CancellationToken ct = default)
     {
-        var matchedUserIds = await GetCurrentEventTicketHolderIdsAsync();
+        var matchedUserIds = await GetCurrentEventTicketHolderIdsAsync(ct);
 
-        var allUsers = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
-        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var candidateIds = allUsers
@@ -572,11 +572,11 @@ internal sealed class TicketQueryService(
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            var participations = await userService.GetAllParticipationsForYearAsync(activeEvent.Year);
+            var participations = await userService.GetAllParticipationsForYearAsync(activeEvent.Year, ct);
             notAttendingSet = participations
                 .Where(ep => ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
@@ -594,9 +594,9 @@ internal sealed class TicketQueryService(
             };
         }
 
-        var emailsById = await userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
+        var emailsById = await userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds, ct);
         var candidateIdSet = candidateIds.ToHashSet();
-        var teamsByIdLookup = await teamService.GetTeamsAsync();
+        var teamsByIdLookup = await teamService.GetTeamsAsync(ct);
         var teamsByUser = new Dictionary<Guid, IReadOnlyList<string>>();
         foreach (var team in teamsByIdLookup.Values
             .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))

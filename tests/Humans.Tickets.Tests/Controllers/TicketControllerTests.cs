@@ -1,6 +1,10 @@
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
+using Humans.Tickets.Services.Dtos;
+using Humans.Tickets.Services.Stores;
+using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -25,6 +29,47 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
+    [HumansTheory]
+    [InlineData("orders")]
+    [InlineData("attendees")]
+    [InlineData("who-hasnt-bought")]
+    public async Task Admin_lists_preserve_request_cancellation(string page)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetOrdersPageAsync(null, "date", true, 1, 25, null, null, null, aborted.Token)
+            .Returns(Task.FromException<OrdersPageResult>(new OperationCanceledException(aborted.Token)));
+        queries.GetAttendeesPageAsync(null, "name", false, 1, 25, null, null, null, null, false, aborted.Token)
+            .Returns(Task.FromException<AttendeesPageResult>(new OperationCanceledException(aborted.Token)));
+        queries.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token)
+            .Returns(Task.FromException<WhoHasntBoughtResult>(new OperationCanceledException(aborted.Token)));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => queries);
+        await using var provider = services.BuildServiceProvider();
+        var decorator = new CachingTicketQueryService(provider.GetRequiredService<IServiceScopeFactory>(),
+            SystemClock.Instance, NullLogger<CachingTicketQueryService>.Instance);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), decorator, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(decorator, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token },
+            },
+        };
+        Func<Task> read = page switch
+        {
+            "orders" => async () => { await controller.Orders(null); },
+            "attendees" => async () => { await controller.Attendees(null); },
+            _ => async () => { await controller.WhoHasntBought(null); },
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]

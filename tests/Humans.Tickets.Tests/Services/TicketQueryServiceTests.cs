@@ -77,6 +77,27 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(new CampaignCodeTrackingData([], []));
     }
 
+    [HumansTheory]
+    [InlineData("orders")]
+    [InlineData("attendees")]
+    [InlineData("ticket-types")]
+    [InlineData("who-hasnt-bought")]
+    public async Task Admin_page_reads_honor_caller_cancellation(string page)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+
+        Func<Task> read = page switch
+        {
+            "orders" => async () => { await _service.GetOrdersPageAsync(null, "date", true, 1, 25, null, null, null, aborted.Token); },
+            "attendees" => async () => { await _service.GetAttendeesPageAsync(null, "name", false, 1, 25, null, null, null, null, false, aborted.Token); },
+            "ticket-types" => async () => { await _service.GetAvailableTicketTypesAsync(aborted.Token); },
+            _ => async () => { await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token); },
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task GetWhoHasntBoughtAsync_LargePageDoesNotWrapToEarlierHumans()
     {
@@ -652,7 +673,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetOrdersPageAsync(
-            null, "date", true, 1, 2, null, null, null);
+            null, "date", true, 1, 2, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalCount.Should().Be(5);
         result.Rows.Should().HaveCount(2);
@@ -661,6 +682,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows[0].TotalAmount.Should().Be(100m);
         result.Rows[0].VatAmount.Should().Be(9.09m);
         result.Rows[1].MatchedUserName.Should().BeNull();
+        await _userService.Received(1).GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(buyer.Id)), Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact(Timeout = 10000)]

@@ -35,7 +35,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// <summary>
     /// Get the distinct ticket type names across all attendees.
     /// </summary>
-    Task<List<string>> GetAvailableTicketTypesAsync();
+    Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Get code tracking data: campaign summaries and individual code details
@@ -49,7 +49,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
-        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched);
+        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched, CancellationToken ct = default);
 
     /// <summary>
     /// Get a paged list of attendees with filtering and sorting.
@@ -58,7 +58,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
         string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
-        bool filterMultipleTickets = false);
+        bool filterMultipleTickets = false, CancellationToken ct = default);
 
     /// <summary>
     /// Get data for the "who hasn't bought" page: all active humans with ticket
@@ -66,7 +66,7 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// </summary>
     Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
-        int page, int pageSize);
+        int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
     /// Get all attendees for CSV export, ordered by name.

@@ -41,7 +41,7 @@ internal sealed class TicketController(
 
         var result = await ticketQueryService.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterPaymentStatus, filterTicketType, filterMatched);
+            filterPaymentStatus, filterTicketType, filterMatched, HttpContext.RequestAborted);
 
         var model = new TicketOrdersViewModel
         {
@@ -55,7 +55,7 @@ internal sealed class TicketController(
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync(HttpContext.RequestAborted))
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -75,7 +75,7 @@ internal sealed class TicketController(
 
         var result = await ticketQueryService.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets);
+            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets, HttpContext.RequestAborted);
 
         var model = new TicketAttendeesViewModel
         {
@@ -91,7 +91,7 @@ internal sealed class TicketController(
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
             FilterMultipleTickets = filterMultipleTickets,
-            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync(HttpContext.RequestAborted))
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -127,7 +127,7 @@ internal sealed class TicketController(
         pageSize = pageSize.ClampPageSize();
 
         var result = await ticketQueryService.GetWhoHasntBoughtAsync(
-            search, filterTeam, filterTier, filterTicketStatus, page, pageSize);
+            search, filterTeam, filterTier, filterTicketStatus, page, pageSize, HttpContext.RequestAborted);
 
         var model = new WhoHasntBoughtViewModel
         {
