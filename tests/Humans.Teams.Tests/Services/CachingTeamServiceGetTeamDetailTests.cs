@@ -1,3 +1,5 @@
+using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
@@ -23,6 +25,8 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
     private readonly TeamPageService _pages;
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
 
     public CachingTeamServiceGetTeamDetailTests()
     {
@@ -49,10 +53,40 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
-            Substitute.For<Humans.Shifts.Contracts.IShiftManagementService>(),
-            Substitute.For<Humans.Settings.Contracts.ISettingsService>(),
+            _shifts,
+            _settings,
             userService,
             _roleAssignmentService);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("coordinator")]
+    [Xunit.InlineData("settings")]
+    [Xunit.InlineData("summary")]
+    public async Task TeamPage_EnrichmentReads_PropagateAbandonedRequest(string boundary)
+    {
+        var parent = MakeTeam("Parent");
+        var child = MakeTeam("Child");
+        child.ParentTeamId = parent.Id;
+        SeedTeams(parent, child);
+        await _service.GetTeamsAsync(Xunit.TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        void Check(string read, CancellationToken token)
+        {
+            if (string.Equals(boundary, read, StringComparison.Ordinal)) token.ThrowIfCancellationRequested();
+        }
+        _shifts.IsDeptCoordinatorAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => { Check("coordinator", call.Arg<CancellationToken>()); return false; });
+        var activeEvent = BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => { Check("settings", call.Arg<CancellationToken>()); return activeEvent; });
+        _shifts.GetShiftsSummaryAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => { Check("summary", call.Arg<CancellationToken>()); return new ShiftsSummaryData(0, 0, 0, 0, new HashSet<Guid>()); });
+
+        var read = () => _pages.GetTeamPageDetailAsync(parent.Slug, Guid.NewGuid(), false, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]

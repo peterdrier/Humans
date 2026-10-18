@@ -958,6 +958,35 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     // IsDeptCoordinatorAsync — sub-team manager support
     // ============================================================
 
+    [HumansTheory]
+    [Xunit.InlineData("coordinated-teams")]
+    [Xunit.InlineData("team")]
+    public async Task IsDeptCoordinatorAsync_Reads_HonourCallerCancellation(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        var userId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (string.Equals(boundary, "coordinated-teams", StringComparison.Ordinal))
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<Guid>>([]);
+            });
+        _teamService.GetTeamAsync(departmentId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (string.Equals(boundary, "team", StringComparison.Ordinal))
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<TeamInfo?>(null);
+            });
+
+        var read = () => _service.IsDeptCoordinatorAsync(userId, departmentId, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
     {

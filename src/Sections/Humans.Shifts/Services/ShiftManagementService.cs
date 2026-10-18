@@ -92,13 +92,13 @@ internal sealed class ShiftManagementService(
     private static bool IsInDirectory(TeamInfo team) =>
         team.ParentTeamId is null || team.IsPromotedToDirectory;
 
-    public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
+    public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default)
     {
-        var teamIds = await GetCoordinatorTeamIdsAsync(userId);
+        var teamIds = await GetCoordinatorTeamIdsAsync(userId, ct);
         if (teamIds.Contains(departmentTeamId))
             return true;
 
-        var team = await TeamService.GetTeamAsync(departmentTeamId);
+        var team = await TeamService.GetTeamAsync(departmentTeamId, ct);
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
@@ -1216,14 +1216,15 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds)
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
     {
         if (teamIds.Count == 0) return null;
 
         var rotas = await repo.GetRotasAsync(
             eventSettingsId,
             teamIds,
-            RotaReadShape.ShiftsWithSignups);
+            RotaReadShape.ShiftsWithSignups,
+            ct);
         if (rotas.Count == 0) return null;
 
         var allShifts = rotas.SelectMany(r => r.Shifts).ToList();

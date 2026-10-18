@@ -25,7 +25,7 @@ public interface IShiftManagementService : IApplicationService
     /// Whether the user is a department coordinator for the given team
     /// (has a management role on a parent team).
     /// </summary>
-    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId);
+    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
@@ -73,7 +73,7 @@ public interface IShiftManagementService : IApplicationService
     /// Gets shifts summary aggregated across one or more teams. Returns null if no rotas.
     /// </summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds);
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the number of distinct pending shift signups per team for the active event.

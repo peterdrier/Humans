@@ -250,6 +250,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
+- `IsDeptCoordinatorAsync` accepts an optional read token and forwards it through coordinator-cache misses and the parent-team lookup. `GetShiftsSummaryAsync` accepts the same optional token for its rota read, including summaries requested by team detail pages.
 - Browse and My shifts GETs forward request cancellation to viewer, cached per-user rows and signup history. Browse also forwards it through coordinator cache misses, filtered/day-option/row browse reads, department options and their calendar/team/user/repository lookups. Gallery browse and department reads use the same request token. My shifts also forwards it to active-event and team-name reads.
 
 - Dashboard and department volunteer-search boxes debounce independently per shift. Each edit clears the prior results and invalidates pending responses, so older results or errors cannot expose an outdated assignment choice. Range-voluntell searches apply the same isolation per rota input, clear its form’s selected identity immediately, and enable assignment only after picking a current result.

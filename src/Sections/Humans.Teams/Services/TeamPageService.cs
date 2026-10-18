@@ -63,10 +63,11 @@ internal sealed class TeamPageService(
             detail.ChildTeams,
             userId,
             detail.IsAuthenticated,
-            canManageShiftsByRole);
+            canManageShiftsByRole,
+            cancellationToken);
 
         var (subteamLeads, subteamMembers) = detail.IsAuthenticated && detail.ChildTeams.Count > 0
-            ? await BuildSubteamRollupAsync(detail.ChildTeams, members)
+            ? await BuildSubteamRollupAsync(detail.ChildTeams, members, cancellationToken)
             : ([], []);
 
         return new TeamPageDetailResult(
@@ -303,14 +304,15 @@ internal sealed class TeamPageService(
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
         BuildSubteamRollupAsync(
             IReadOnlyList<TeamPageTeamLink> childTeams,
-            IReadOnlyList<TeamPageMemberSummary> directMembers)
+            IReadOnlyList<TeamPageMemberSummary> directMembers,
+            CancellationToken cancellationToken)
     {
         var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
         var addedUserIds = new HashSet<Guid>();
 
         var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
-        var teamsById = await teamService.GetTeamsAsync();
+        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds, cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
         var childMembersByTeam = childTeamIds
             .Where(teamsById.ContainsKey)
@@ -348,7 +350,8 @@ internal sealed class TeamPageService(
         IReadOnlyList<TeamPageTeamLink> childTeams,
         Guid? userId,
         bool isAuthenticated,
-        bool canManageShiftsByRole)
+        bool canManageShiftsByRole,
+        CancellationToken cancellationToken)
     {
         if (!isAuthenticated ||
             !userId.HasValue ||
@@ -358,9 +361,9 @@ internal sealed class TeamPageService(
         }
 
         var canManageShifts = canManageShiftsByRole ||
-            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
+            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
@@ -370,7 +373,7 @@ internal sealed class TeamPageService(
         var teamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
         teamIds.AddRange(activeChildTeamIds);
 
-        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds);
+        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds, cancellationToken);
         if (summaryData is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
