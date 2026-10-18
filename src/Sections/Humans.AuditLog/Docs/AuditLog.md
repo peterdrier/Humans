@@ -33,7 +33,7 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 | Action | AuditAction | Enum stored as string, max 100 chars |
 | EntityType | string (100) | Type of the primary affected entity (e.g. `"User"`, `"Team"`, `"GoogleResource"`) |
 | EntityId | Guid | Id of the primary affected entity (non-nullable) |
-| Description | string (4000) | Human-readable description of what happened |
+| Description | text | Complete human-readable description of what happened |
 | OccurredAt | Instant | When the action occurred — callers stamp via `IClock` |
 | ActorUserId | Guid? | Bare cross-section Guid column — no FK constraint, no nav (nobodies-collective/Humans#992). Nullable because system jobs write audit with no actor. |
 | RelatedEntityId | Guid? | Id of a secondary related entity (e.g. UserId when EntityType=Team) |
@@ -127,6 +127,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 - Audit entries are append-only. `IAuditLogRepository` exposes `AddAsync` and `GetXxxAsync` — **no** `UpdateAsync`, **no** `DeleteAsync`, **no** `RemoveAsync`.
 - The `audit_log` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (created by `Migrations/AuditLog/20260810193154_BaselineAuditLog`). No application path can mutate or delete an existing row.
 - `LogAsync` is self-persisting — each call routes through `AuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>`, adds the entry, and calls `SaveChangesAsync`. Callers do not flush audit.
+- Descriptions preserve complete action details and job prefixes without a separate length cap. Valid 4000-character Workgroup notes still fit when their audit descriptions include action and document names.
 - Audit is called **after** the business save, never before (design-rules §7a). A business rollback never leaves a ghost audit row because audit hasn't written yet.
 - Audit commits separately from the business change. The rare failure mode is "business saved, audit did not" — logged loudly, detectable by reconciling row counts, and strictly better than "audit silently vanishes".
 - Audit save failures are swallowed after a log at Error inside `AuditLogService.PersistAsync`. The audit `LogAsync` overloads do not throw back to the caller.
