@@ -898,7 +898,7 @@ internal sealed class Service(
                 "Nothing was changed — two members must never share one Holded contact.");
 
         var now = clock.GetCurrentInstant();
-        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        if (!await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -907,7 +907,10 @@ internal sealed class Service(
             Source = CreditorContactSource.Manual,
             CreatedAt = now,
             UpdatedAt = now,
-        }, now, ct);
+        }, now, ct))
+            return CreditorBindResult.Failure(
+                "This member was bound by a concurrent action while you were binding. Reload and check " +
+                "/Finance/Creditors.");
         await audit.LogAsync(AuditAction.HoldedCreditorBound, HoldedCreditorAccount, userId,
             $"Bound creditor account {supplierAccountNum} (Holded contact {contact.Id})",
             actorUserId, userId, nameof(User));
@@ -990,6 +993,7 @@ internal sealed class Service(
         // legal-name or IBAN change after the first push does not reach Holded until the
         // link-check sync exists (peterdrier/Humans#1777).
         string contactId;
+        var minted = false;
         if (!string.IsNullOrEmpty(binding?.HoldedContactId))
             contactId = binding.HoldedContactId;
         else if (!string.IsNullOrEmpty(seedContactId))
@@ -1010,6 +1014,7 @@ internal sealed class Service(
                 Type = "creditor",
                 Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
             }, ct);
+            minted = true;
         }
 
         // A refused seed cannot collide, so anything left is a pre-existing overlap on the member's own
@@ -1032,11 +1037,21 @@ internal sealed class Service(
         // A binding still missing its number writes real content, so it cannot be skipped — but it can
         // still undo an admin's Bind or Unbind from the copy read before the create round-trip.
         // Re-reading here shrinks that window without a version column (nobodies-collective/Humans#995).
-        if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
+        //
+        // A contact this call just minted is the exception: a concurrent drain may have minted and bound
+        // its own meanwhile, and returning ours unbound is what left a member with two Holded contacts.
+        // So the minted case checks for exactly that, and retracts ours if it lost.
+        if (minted && binding is null)
+        {
+            var bound = await repo.GetCreditorContactByUserAsync(userId, ct);
+            if (bound is { HoldedContactId.Length: > 0 })
+                return await AdoptBoundContactAsync(userId, contactId, minted, bound, ct);
+        }
+        else if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
 
         var now = clock.GetCurrentInstant();
-        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        var written = await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
             Id = Guid.NewGuid(),                                   // ignored on update (keyed by UserId)
             UserId = userId,
@@ -1046,8 +1061,42 @@ internal sealed class Service(
             CreatedAt = now,
             UpdatedAt = now,
         }, now, ct);
+        if (written) return contactId;
 
-        return contactId;
+        // A concurrent run took the member's one binding slot between the read above and this write.
+        var winner = await repo.GetCreditorContactByUserAsync(userId, ct)
+            ?? throw new InvalidOperationException(
+                $"Creditor binding insert for member {userId} hit the unique index but no binding exists.");
+        return await AdoptBoundContactAsync(userId, contactId, minted, winner, ct);
+    }
+
+    /// <summary>The member is already bound to <paramref name="bound"/> — a concurrent run got there
+    /// first. That binding is the one contact the member keeps, so a contact this call minted is
+    /// deleted from Holded rather than left as a second creditor. A failed delete is logged, not thrown:
+    /// the bound contact is still the right answer, and the orphan is named in the log for an admin.</summary>
+    private async Task<string> AdoptBoundContactAsync(
+        Guid userId, string contactId, bool minted, HoldedCreditorContact bound, CancellationToken ct)
+    {
+        if (!minted || string.Equals(bound.HoldedContactId, contactId, StringComparison.Ordinal))
+            return bound.HoldedContactId;
+
+        try
+        {
+            await client.DeleteContactAsync(contactId, ct);
+            logger.LogWarning(
+                "Member {UserId} was bound to Holded contact {BoundContactId} by a concurrent push; the " +
+                "contact {MintedContactId} this push created was deleted from Holded.",
+                userId, bound.HoldedContactId, contactId);
+        }
+        catch (HoldedApiException ex)
+        {
+            logger.LogError(ex,
+                "Member {UserId} was bound to Holded contact {BoundContactId} by a concurrent push, but " +
+                "deleting the duplicate contact {MintedContactId} this push created failed — delete it " +
+                "in Holded by hand.",
+                userId, bound.HoldedContactId, contactId);
+        }
+        return bound.HoldedContactId;
     }
 
     public async Task SetCreditorAccountNumAsync(
