@@ -209,3 +209,4 @@ The shapes imply:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | Dead drift-notification link fixed; migration history cut; `ITeamResourceService` narrowed | peterdrier/Humans#1599 |
+| 2 | 2026-10-18 | Docs and comments caught up with the folded-in contracts and source fan-outs; Hangfire compat overload cut | pending |
