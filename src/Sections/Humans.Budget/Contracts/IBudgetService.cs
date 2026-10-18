@@ -33,7 +33,7 @@ public interface IBudgetService : IApplicationService
     /// One budget category with its group, year and line items. Expenses reads this to
     /// resolve the category an expense report is booked against.
     /// </summary>
-    Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id);
+    Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// The team ids the user coordinates a budget for, including teams inherited through

@@ -23,9 +23,9 @@ internal sealed class BudgetService(
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
-    public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false)
+    public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default)
     {
-        var years = await repository.GetAllYearsAsync(includeArchived);
+        var years = await repository.GetAllYearsAsync(includeArchived, ct);
         return years.Select(ToYearSummarySnapshot).ToList();
     }
 
@@ -273,9 +273,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted budget group {GroupId}", groupId);
     }
 
-    public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id)
+    public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var category = await repository.GetCategoryByIdAsync(id);
+        var category = await repository.GetCategoryByIdAsync(id, ct);
         if (category is null)
             return null;
 
@@ -289,7 +289,7 @@ internal sealed class BudgetService(
         var teamNamesById = new Dictionary<Guid, string>();
         if (teamIds.Count > 0)
         {
-            var teams = await teamService.GetTeamsAsync();
+            var teams = await teamService.GetTeamsAsync(ct);
             foreach (var teamId in teamIds)
             {
                 if (teams.TryGetValue(teamId, out var team))
@@ -514,9 +514,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId)
+    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)
     {
-        var entries = await repository.GetAuditLogAsync(budgetYearId);
+        var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
         return entries.Select(e => new BudgetAuditLogSnapshot(
             e.Id,
             e.BudgetYearId,

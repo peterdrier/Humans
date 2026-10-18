@@ -18,7 +18,7 @@ namespace Humans.Budget.Services;
 internal interface IBudgetManagement : IBudgetService, IApplicationService
 {
     // Budget Years
-    Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false);
+    Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
     Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
@@ -88,7 +88,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     // Audit Log
-    Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId);
+    Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
 
     // Summary Computation
     BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups);

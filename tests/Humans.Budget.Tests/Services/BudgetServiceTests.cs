@@ -83,6 +83,65 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
+    [InlineData("Index")]
+    [InlineData("YearDetail")]
+    [InlineData("CategoryDetail")]
+    [InlineData("AuditLog")]
+    [InlineData("CashFlow")]
+    [InlineData("Admin")]
+    public async Task AdminReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var (controller, budget, _) = CreateAdminController(true);
+        controller.HttpContext.RequestAborted = request.Token;
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetYearByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetCategorySnapshot?>(new OperationCanceledException(request.Token)));
+        budget.GetAllYearsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<BudgetYearSummarySnapshot>>(new OperationCanceledException(request.Token)));
+
+        Func<Task<IActionResult>> read = action switch
+        {
+            "Index" => controller.Index,
+            "YearDetail" => () => controller.YearDetail(_yearId),
+            "CategoryDetail" => () => controller.CategoryDetail(_yearId),
+            "AuditLog" => () => controller.AuditLog(null),
+            "CashFlow" => () => controller.CashFlow(),
+            _ => controller.Admin
+        };
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        switch (action)
+        {
+            case "YearDetail": _ = budget.Received(1).GetYearByIdAsync(_yearId, request.Token); break;
+            case "CategoryDetail": _ = budget.Received(1).GetCategoryByIdAsync(_yearId, request.Token); break;
+            case "Admin": _ = budget.Received(1).GetAllYearsAsync(true, request.Token); break;
+            default: _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("Category")]
+    [InlineData("Years")]
+    [InlineData("Audit")]
+    public async Task AdditionalReads_CancelledRead_AbortsRepositoryQuery(string read)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        Func<Task> query = read switch
+        {
+            "Category" => () => _service.GetCategoryByIdAsync(_yearId, request.Token),
+            "Years" => () => _service.GetAllYearsAsync(ct: request.Token),
+            _ => () => _service.GetAuditLogAsync(_yearId, request.Token)
+        };
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [InlineData(false, "isRestricted", true)]
     [InlineData(true, "isRestricted", true)]
     [InlineData(true, "sortOrder", true)]
