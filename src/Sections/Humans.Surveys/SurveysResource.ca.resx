@@ -391,4 +391,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Una votació d’Asociado no es pot editar després d’obrir-se.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El mode de votació d’Asociado no es pot canviar després d’obrir-se l’enquesta.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’enquesta. Torna-ho a provar.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Els valors de les opcions han de tenir com a màxim {0} caràcters.</value></data>
 </root>

@@ -391,4 +391,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Eine Abstimmung von Asociados kann nach ihrem Beginn nicht mehr bearbeitet werden.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Der Abstimmungsmodus einer Abstimmung von Asociados kann nach Beginn der Umfrage nicht geändert werden.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Die Umfrage konnte nicht gespeichert werden. Bitte versuche es erneut.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Optionswerte dürfen höchstens {0} Zeichen lang sein.</value></data>
 </root>

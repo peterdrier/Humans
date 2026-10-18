@@ -80,7 +80,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | Id | Guid | PK |
 | QuestionId | Guid | FK → SurveyQuestion, Cascade |
 | Order | int | |
-| Value | string | max 100; stable machine key (not localised; used as branching/export join key, or as a Grid column key) |
+| Value | string | max 100; create/update refuse overlong keys before persistence without truncating; stable machine key (not localised; used as branching/export join key, or as a Grid column key) |
 | Label | LocalizedText | jsonb |
 
 ### SurveyInvitation

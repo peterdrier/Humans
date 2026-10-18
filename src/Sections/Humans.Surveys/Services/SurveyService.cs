@@ -2669,6 +2669,10 @@ internal sealed class SurveyService(
     {
         foreach (var question in questions)
         {
+            if (question.Options.Any(option => option.Value.Length > 100))
+                return new("Surveys_Validation_OptionValueLength",
+                    $"Option values for question {question.Id} must be 100 characters or fewer.", 100);
+
             var error = question.Type switch
             {
                 SurveyQuestionType.Information => ValidateInformationQuestion(question),

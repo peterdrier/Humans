@@ -386,4 +386,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>An Asociado vote cannot be edited after it has opened.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Could not save the survey. Please try again.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Option values must be {0} characters or fewer.</value></data>
 </root>

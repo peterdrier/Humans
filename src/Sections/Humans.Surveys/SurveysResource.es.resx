@@ -405,4 +405,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Una votación de Asociado no se puede editar después de abrirse.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El modo de votación de Asociado no se puede cambiar después de abrirse la encuesta.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No se ha podido guardar la encuesta. Inténtalo de nuevo.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Los valores de las opciones deben tener como máximo {0} caracteres.</value></data>
 </root>

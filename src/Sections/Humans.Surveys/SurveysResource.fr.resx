@@ -391,4 +391,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Un vote des Asociados ne peut pas être modifié après son ouverture.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Le mode de vote des Asociados ne peut pas être modifié après l’ouverture du questionnaire.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer le questionnaire. Réessayez.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Les valeurs des options doivent comporter au maximum {0} caractères.</value></data>
 </root>
