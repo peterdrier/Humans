@@ -102,6 +102,87 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [HumansTheory]
+    [InlineData("matched", true)]
+    [InlineData("emails", true)]
+    [InlineData("aliases", true)]
+    [InlineData("hold", true)]
+    [InlineData("matched", false)]
+    [InlineData("emails", false)]
+    [InlineData("aliases", false)]
+    [InlineData("hold", false)]
+    public async Task Holdings_private_reads_retain_cancellation_at_each_boundary(string boundary, bool cancel)
+    {
+        var userId = Guid.NewGuid();
+        using var aborted = new CancellationTokenSource();
+        var repository = Substitute.For<ITicketRepository>();
+        repository.GetOrdersMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        repository.GetAttendeesVisibleToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _transferRepo.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(boundary is "matched" or "hold" ? 1 : 0);
+        repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["fallback@example.org"]);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
+        if (string.Equals(boundary, "hold", StringComparison.Ordinal))
+        {
+            repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new TicketSyncState { VendorEventId = "current" });
+            repository.HasEventTicketAsync(userId, "current", Arg.Any<CancellationToken>()).Returns(true);
+        }
+
+        async Task CancelAndCheckAsync(CancellationToken ct)
+        {
+            if (cancel) await aborted.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+        }
+
+        switch (boundary)
+        {
+            case "matched":
+                repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return 1;
+                });
+                break;
+            case "emails":
+                repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (IReadOnlyList<string>)["fallback@example.org"];
+                });
+                break;
+            case "aliases":
+                _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (IReadOnlyCollection<UserInfo>)Array.Empty<UserInfo>();
+                });
+                break;
+            case "hold":
+                _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (EventSettingsInfo?)null;
+                });
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(boundary));
+        }
+        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, _shiftManagementService, _cacheInvalidator, _auditLog, Clock);
+
+        if (cancel)
+        {
+            var read = () => service.GetUserTicketHoldingsAsync(userId, aborted.Token);
+            (await read.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(aborted.Token);
+        }
+        else
+        {
+            var result = await service.GetUserTicketHoldingsAsync(userId, aborted.Token);
+            result.TicketCount.Should().Be(boundary is "matched" or "hold" ? 1 : 0);
+            result.HasCurrentEventTicket.Should().Be(string.Equals(boundary, "hold", StringComparison.Ordinal));
+        }
+    }
+
     [HumansFact]
     public async Task GetWhoHasntBoughtAsync_LargePageDoesNotWrapToEarlierHumans()
     {

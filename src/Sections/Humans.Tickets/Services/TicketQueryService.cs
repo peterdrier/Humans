@@ -32,21 +32,21 @@ internal sealed class TicketQueryService(
     IAuditLogService auditLog,
     IClock clock) : ITicketManagement, IUserDataContributor
 {
-    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
+    private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
     {
         // Attendees only — buyers don't count for themselves.
         var matchedCount = await ticketRepository
-            .CountValidAttendeesMatchedToUserAsync(userId);
+            .CountValidAttendeesMatchedToUserAsync(userId, ct);
         if (matchedCount > 0)
             return matchedCount;
 
         // Fallback: attendee emails against the same verified-email → user index the sync
         // matches with, so an alias verified by two users counts for neither, as in sync.
-        var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync();
+        var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync(ct);
         if (attendeeEmails.Count == 0)
             return 0;
 
-        var (lookup, _) = VerifiedEmailLookup.Build(await userService.GetAllUserInfosAsync());
+        var (lookup, _) = VerifiedEmailLookup.Build(await userService.GetAllUserInfosAsync(ct));
         return attendeeEmails.Count(email => lookup.TryGetValue(email, out var owner) && owner == userId);
     }
 
@@ -806,13 +806,13 @@ internal sealed class TicketQueryService(
                 CheckedInAt: a.CheckedInAt))
             .ToList();
 
-        var ticketCount = await ComputeUserTicketCountAsync(userId);
+        var ticketCount = await ComputeUserTicketCountAsync(userId, ct);
         var syncState = await ticketRepository.GetSyncStateAsync(ct);
         var hasCurrentEventTicket = syncState is not null
             && !string.IsNullOrEmpty(syncState.VendorEventId)
             && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
         var postEventHoldDate = hasCurrentEventTicket
-            ? await GetPostEventHoldDateAsync()
+            ? await GetPostEventHoldDateAsync(ct)
             : null;
 
         return new UserTicketHoldings(
@@ -827,9 +827,9 @@ internal sealed class TicketQueryService(
         };
     }
 
-    private async Task<Instant?> GetPostEventHoldDateAsync()
+    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         if (activeEvent is null)
             return null;
 
