@@ -28,7 +28,8 @@ Sync-state reads return the persisted singleton or an unsaved Idle default; only
 ### SepaBankBooking (section-internal)
 
 Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`,
-`IMemoryCache`, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
+a singleton `TrackedCache<string, Dictionary<string, int>>` for sweep failure
+counts, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
 and scheduled bank-booking workflow: reads creditor bindings and payout rows,
 updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers`,
 and calls Holded through its contract. Its shared booking gate covers all entry

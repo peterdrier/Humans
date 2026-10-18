@@ -1,3 +1,6 @@
+using Humans.Base.Caching;
+using Humans.Base.Interfaces.Caching;
+using Microsoft.Extensions.Logging;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Finance.Contracts;
@@ -44,6 +47,12 @@ public sealed class Section : ISection
             });
 
         services.AddScoped<IHoldedRepository, Repository>();
+        // Sweep failure counts outlive scoped requests and jobs; expose their diagnostics.
+        services.AddSingleton(sp => new TrackedCache<string, Dictionary<string, int>>(
+            "Finance.SepaStuckBankLines", warmOnStartup: false,
+            sp.GetRequiredService<ILogger<Service>>()));
+        services.AddSingleton<ICacheStats>(sp =>
+            sp.GetRequiredService<TrackedCache<string, Dictionary<string, int>>>());
         services.AddScoped<Service>();
         services.AddScoped<IHoldedFinanceManagement>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());

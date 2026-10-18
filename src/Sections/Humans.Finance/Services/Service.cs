@@ -41,6 +41,7 @@ internal sealed class Service(
     IEmailService emailService,
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
+    TrackedCache<string, Dictionary<string, int>> bookingState,
     ILogger<Service> logger) : IHoldedFinanceManagement, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
@@ -53,7 +54,7 @@ internal sealed class Service(
 
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private readonly SepaBankBooking booking = new(repo, client, clock, cache, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
 

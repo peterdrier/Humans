@@ -8,7 +8,6 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
@@ -22,7 +21,7 @@ internal sealed class SepaBankBooking(
     IHoldedRepository repo,
     IHoldedClient client,
     IClock clock,
-    IMemoryCache cache,
+    TrackedCache<string, Dictionary<string, int>> bookingState,
     IAuditLogService audit,
     IOptions<SepaOptions> sepa,
     ILogger logger) : ISepaBankBooking, IApplicationService
@@ -56,7 +55,7 @@ internal sealed class SepaBankBooking(
     private const int StuckLineSkipAfterRuns = 3;
 
     /// <summary>Consecutive sweep runs each stuck line has failed, by Holded movement id, kept in
-    /// the process-wide memory cache under <see cref="CacheKeys.SepaStuckBankLines"/> because the
+    /// the singleton tracked cache under <see cref="CacheKeys.SepaStuckBankLines"/> because the
     /// service is scoped and the count must outlive one run. In memory because the sweep is one
     /// Hangfire job on one server — a restart only restarts the count, which keeps failing closed a
     /// little longer, the safe direction. A line absent from a run drops out, so a line that resolves,
@@ -411,7 +410,7 @@ internal sealed class SepaBankBooking(
     private async Task<IReadOnlyList<HoldedBankMovementDto>> ReadSweepFeedAsync(
         LocalDate from, CancellationToken ct)
     {
-        var previous = cache.Get<Dictionary<string, int>>(CacheKeys.SepaStuckBankLines) ?? [];
+        var previous = bookingState.TryGet(CacheKeys.SepaStuckBankLines, out var runsBefore) ? runsBefore : [];
         var thisRun = new Dictionary<string, int>(StringComparer.Ordinal);
         var skip = new HashSet<string>(StringComparer.Ordinal);
         while (true)
@@ -451,8 +450,8 @@ internal sealed class SepaBankBooking(
 
     private void RememberStuckLines(Dictionary<string, int> runs)
     {
-        if (runs.Count == 0) cache.Remove(CacheKeys.SepaStuckBankLines);
-        else cache.Set(CacheKeys.SepaStuckBankLines, runs);
+        if (runs.Count == 0) bookingState.Invalidate(CacheKeys.SepaStuckBankLines);
+        else bookingState.Set(CacheKeys.SepaStuckBankLines, runs);
     }
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
@@ -1166,9 +1165,10 @@ internal sealed class SepaBankBooking(
     /// Every other read of the feed — the booking's own re-read, the page, the post-reconcile check —
     /// skips them too, or the booking the sweep just unblocked would fail on the same line.</summary>
     private HashSet<string> SkippedStuckLineIds() =>
-        cache.Get<Dictionary<string, int>>(CacheKeys.SepaStuckBankLines)?
-            .Where(kv => kv.Value >= StuckLineSkipAfterRuns).Select(kv => kv.Key)
-            .ToHashSet(StringComparer.Ordinal) ?? [];
+        bookingState.TryGet(CacheKeys.SepaStuckBankLines, out var runs)
+            ? runs.Where(kv => kv.Value >= StuckLineSkipAfterRuns).Select(kv => kv.Key)
+                .ToHashSet(StringComparer.Ordinal)
+            : [];
 
     /// <summary>An outgoing line Holded has not started reconciling — the only kind that can still
     /// be a SEPA payout waiting to be booked. <c>partial</c> counts as started: somebody has already

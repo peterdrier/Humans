@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -48,6 +49,8 @@ public class SepaBankBookingTests
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
+        "Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance);
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly SepaOptions _sepa = new();
     private readonly Guid _userId = Guid.NewGuid();
@@ -55,7 +58,7 @@ public class SepaBankBookingTests
     private Service MakeService() => new(
         _repo, _client, _budget, _holded, _clock, _cache, _audit,
         Substitute.For<IUserService>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
-        TestFinanceEmails.Create(), Options.Create(_sepa),
+        TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
         NullLogger<Service>.Instance);
 
     public SepaBankBookingTests()

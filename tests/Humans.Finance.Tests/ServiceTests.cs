@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Finance.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -41,6 +42,8 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
+        "Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance);
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Guid Admin = Guid.NewGuid();
     private readonly IUserService _users = NoUsers();
@@ -69,13 +72,13 @@ public class HoldedFinanceServiceTests
         _userEmails,
         _emailService,
         TestFinanceEmails.Create(),
-        Options.Create(_sepa),
+        Options.Create(_sepa), _bookingState,
         NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
         _repo, _client, _budget, _holded, _clock, _cache, _audit,
-        _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), logger);
+        _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
