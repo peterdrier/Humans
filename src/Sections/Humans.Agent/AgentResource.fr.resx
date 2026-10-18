@@ -124,16 +124,16 @@
   <data name="Agent_ViewHistory" xml:space="preserve">
     <value>Historique</value>
   </data>
-  <data name="Help_WidgetButton" xml:space="preserve">
+  <data name="Agent_Help_WidgetButton" xml:space="preserve">
     <value>Aide</value>
   </data>
-  <data name="Help_Menu_TalkWithAgent" xml:space="preserve">
+  <data name="Agent_Help_Menu_TalkWithAgent" xml:space="preserve">
     <value>Parler avec l'Assistant</value>
   </data>
-  <data name="Help_Menu_CreateIssue" xml:space="preserve">
+  <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Créer un signalement</value>
   </data>
-  <data name="Help_Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_IssueProposed" xml:space="preserve">
     <value>Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Je n'ai pas réussi à formuler une réponse — peux-tu reformuler ta question ou réessayer ?</value></data>
