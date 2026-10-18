@@ -76,6 +76,7 @@ internal sealed class AdminLegalDocumentsController(
 
         var result = await adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
             ToUpsertRequest(model, folderPath), actorUserId.Value);
+        if (result is null) return NotFound();
         var document = result.Document;
 
         logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",

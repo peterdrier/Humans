@@ -181,11 +181,18 @@ internal sealed partial class LegalDocumentSyncService(
         return created;
     }
 
-    public async Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
+    public async Task<AdminLegalDocumentCreateResult?> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        if (await teamService.GetTeamAsync(request.TeamId, cancellationToken) is null)
+        {
+            logger.LogWarning("Rejected legal-document creation for missing team {TeamId} by user {ActorUserId}",
+                request.TeamId, actorUserId);
+            return null;
+        }
+
         var document = await CreateLegalDocumentAsync(request, cancellationToken);
         await audit.LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", document.Id,
             $"Created '{document.Name}': team {document.TeamId}, required {document.IsRequired}, " +
@@ -224,6 +231,13 @@ internal sealed partial class LegalDocumentSyncService(
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        if (await teamService.GetTeamAsync(request.TeamId, cancellationToken) is null)
+        {
+            logger.LogWarning("Rejected legal-document edit {DocumentId} for missing team {TeamId} by user {ActorUserId}",
+                documentId, request.TeamId, actorUserId);
+            return null;
+        }
+
         var updated = await repository.UpdateAsync(
             documentId,
             request.Name,

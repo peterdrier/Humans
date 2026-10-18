@@ -131,6 +131,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Legal-document creation and edits refuse empty or nonexistent owning teams with 404 before persistence, initial sync, cache invalidation or success audit. The service checks the team through `ITeamService`; existing inactive teams remain valid owners.
+
 - Manual version summaries are optional and trimmed. Summaries over 2000 characters are refused before persistence, cache invalidation or success audit; the admin editor shows the refusal. Blank summaries clear the existing value.
 
 - Canonical Spanish content must be non-blank. Sync refuses an empty canonical file before

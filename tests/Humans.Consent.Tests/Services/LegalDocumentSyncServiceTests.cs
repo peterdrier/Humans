@@ -1,3 +1,9 @@
+using System.Security.Claims;
+using Humans.Consent.Controllers;
+using Humans.Consent.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.Text;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -42,6 +48,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _repository = new LegalDocumentRepository(LegalDbFactory);
 
         _team = SeedTeam(Guid.NewGuid(), "Volunteers");
+
+        _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team);
 
         // Team-name stitch: return the seed team when queried.
         _teamService
@@ -136,6 +144,49 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task AdminDocumentWrites_reject_missing_teams_before_persistence_or_sync(bool edit, bool empty)
+    {
+        var document = await SeedDocumentAsync("Existing document");
+        StubGitHubFolder("privacy/", "Spanish agreement", "new-sha", "Initial version");
+        var targetTeamId = empty ? Guid.Empty : Guid.NewGuid();
+        var model = new LegalDocumentEditViewModel
+        {
+            Id = edit ? document.Id : null,
+            Name = "Changed document", TeamId = targetTeamId, GitHubFolderPath = "privacy/"
+        };
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
+        };
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+
+        var result = edit
+            ? await controller.EditLegalDocument(document.Id, model)
+            : await controller.CreateLegalDocument(model);
+
+        result.Should().BeOfType<NotFoundResult>();
+        await using var verify = LegalDbFactory.CreateDbContext();
+        var stored = await verify.LegalDocuments.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.Should().ContainSingle().Which.Name.Should().Be("Existing document");
+        stored[0].TeamId.Should().Be(_team.Id);
+        _invalidator.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _gitHub.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
+    }
+
     // ── CreateLegalDocumentWithInitialSyncAsync ──────────────────────────────
 
     [HumansFact(Timeout = 10000)]
@@ -149,7 +200,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
         var documents = await _service.GetLegalDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Document.Name.Should().Be("Privacy Policy");
+        result!.Document.Name.Should().Be("Privacy Policy");
         documents.Should().ContainSingle();
         documents[0].TeamName.Should().Be("Volunteers");
         documents[0].GitHubFolderPath.Should().Be("privacy/");
@@ -166,13 +217,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
             Arg.Is<string>(text => text.Contains("grace period 7 days", StringComparison.Ordinal)), _actorUserId);
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", result!.Document.Id,
             Arg.Is<string>(text => text.Contains("sha-1", StringComparison.Ordinal)), _actorUserId,
             Arg.Is<Guid?>(id => id.HasValue && id.Value != Guid.Empty), "DocumentVersion");
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
-        result.SyncMessage.Should().Contain("v1.0");
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
+        result!.SyncMessage.Should().Contain("v1.0");
 
         // One invalidation for the create, one for the version add from sync.
         _invalidator.Received(2).InvalidateAll();
@@ -187,7 +238,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
         _invalidator.Received(1).InvalidateAll(); // create only, no sync attempted
     }
 
@@ -201,10 +252,10 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Failed);
-        (await _repository.GetByIdAsync(result.Document.Id, Xunit.TestContext.Current.CancellationToken))
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Failed);
+        (await _repository.GetByIdAsync(result!.Document.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().NotBeNull();
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
             Arg.Any<string>(), _actorUserId);
         _audit.ReceivedCalls().Should().ContainSingle();
     }
