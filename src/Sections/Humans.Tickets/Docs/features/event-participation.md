@@ -27,7 +27,7 @@ Track yearly event participation status for each human, enabling self-service op
 ### As a ticket holder, my participation is auto-tracked
 - Ticket sync creates/updates participation records automatically
 - Valid ticket -> Ticketed status
-- Checked in -> Attended status (permanent, cannot revert); written by the ticket sync from per-ticket `CheckedInAt`, and directly by a Humans gate admit
+- Checked in -> Attended status (permanent, cannot revert); written by the ticket sync from per-ticket `CheckedInAt`, by contact import from the earliest scan among newly matched attendees, and directly by a Humans gate admit
 - Ticket purchase overrides a previous NotAttending declaration
 - Ticket void/transfer with no remaining tickets removes Ticketed record
 

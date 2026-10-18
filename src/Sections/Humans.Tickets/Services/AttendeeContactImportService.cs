@@ -106,12 +106,15 @@ internal sealed class AttendeeContactImportService(
         ticketCacheInvalidator.InvalidateAfterContactImport();
 
         var active = await settingsService.GetActiveEventSettingsAsync();
-        if (active is not null && importState.NewlyMatchedUserIds.Count > 0)
+        if (active is not null)
         {
-            foreach (var userId in importState.NewlyMatchedUserIds)
+            foreach (var group in importState.ToUpsert.GroupBy(a => a.MatchedUserId!.Value))
             {
+                var earliestScan = group.Min(a => a.CheckedInAt);
                 await users.SetParticipationFromTicketSyncAsync(
-                    userId, active.Year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
+                    group.Key, active.Year,
+                    earliestScan is not null ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
+                    earliestScan, ct);
             }
         }
 
@@ -244,7 +247,6 @@ internal sealed class AttendeeContactImportService(
             state.ToUpsert.Add(attendee);
         }
 
-        state.NewlyMatchedUserIds.Add(userId);
     }
 
     private async Task<AttendeeImportDecision> ClassifyAsync(
@@ -347,7 +349,6 @@ internal sealed class AttendeeContactImportService(
     private sealed class AttendeeImportApplyState
     {
         public List<TicketAttendee> ToUpsert { get; } = [];
-        public HashSet<Guid> NewlyMatchedUserIds { get; } = [];
         public int Attempted { get; set; }
         public int Created { get; set; }
         public int Attached { get; set; }
