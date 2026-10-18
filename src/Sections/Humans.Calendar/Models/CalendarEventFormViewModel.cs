@@ -38,6 +38,7 @@ internal sealed class CalendarEventFormViewModel
 
     public bool IsRecurring { get; set; }
 
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? RecurrenceRule { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]

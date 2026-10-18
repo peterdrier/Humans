@@ -95,6 +95,7 @@ public sealed class CalendarEventFormViewModelTests
         AssertError(new() { Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
         AssertError(new() { Description = new string('x', 4001) }, "Description", "Validation_MaxLength", "", 4000);
         AssertError(new() { Location = new string('x', 501) }, "Location", "Validation_MaxLength", "", 500);
+        AssertError(new() { RecurrenceRule = new string('x', 501) }, "RecurrenceRule", "Validation_MaxLength", "", 500);
         AssertError(new() { LocationUrl = "https://example.com/" + new string('x', 2000) }, "LocationUrl", "Validation_MaxLength", "", 2000);
         AssertError(new() { LocationUrl = "invalid" }, "LocationUrl", "Validation_InvalidValue");
     }
