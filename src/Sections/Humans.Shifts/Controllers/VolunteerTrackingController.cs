@@ -203,6 +203,12 @@ internal sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
+        if (form.UserId == Guid.Empty)
+        {
+            logger.LogWarning("Rejected camp setup form without a member ID from coordinator {CoordinatorId}", current.Id);
+            return BadRequest();
+        }
+
         var result = await service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
         if (!result.Ok)
         {
@@ -280,6 +286,12 @@ internal sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
+        if (form.UserId == Guid.Empty)
+        {
+            logger.LogWarning("Rejected day off form without a member ID from coordinator {CoordinatorId}", current.Id);
+            return BadRequest();
+        }
+
         var result = await service.SetDayOffAsync(
             form.UserId,
             form.DayOffset,
@@ -344,7 +356,7 @@ internal sealed class VolunteerTrackingController(
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetAvailabilityDay(
-        Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
+        Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)
     {
         var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
@@ -352,7 +364,8 @@ internal sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || userId is not { } targetUserId || dayOffset is not { } offset
+            || targetUserId == Guid.Empty)
         {
             logger.LogWarning("Rejected malformed coordinator availability addition for user {UserId}, day {DayOffset}",
                 userId, dayOffset);
@@ -360,16 +373,16 @@ internal sealed class VolunteerTrackingController(
         }
 
         var changed = await service.SetDayAvailabilityAsync(
-            userId,
+            targetUserId,
             es.Id,
-            dayOffset,
+            offset,
             available: true,
             ct);
         if (changed)
         {
             await auditLogService.LogAsync(
-                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
-                $"DayOffset={dayOffset}; marked available by coordinator", current.Id);
+                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), targetUserId,
+                $"DayOffset={offset}; marked available by coordinator", current.Id);
             SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
         }
         return RedirectBack(returnUrl);
@@ -379,7 +392,7 @@ internal sealed class VolunteerTrackingController(
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearAvailabilityDay(
-        Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
+        Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)
     {
         var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
@@ -387,7 +400,8 @@ internal sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || userId is not { } targetUserId || dayOffset is not { } offset
+            || targetUserId == Guid.Empty)
         {
             logger.LogWarning("Rejected malformed coordinator availability removal for user {UserId}, day {DayOffset}",
                 userId, dayOffset);
@@ -395,16 +409,16 @@ internal sealed class VolunteerTrackingController(
         }
 
         var changed = await service.SetDayAvailabilityAsync(
-            userId,
+            targetUserId,
             es.Id,
-            dayOffset,
+            offset,
             available: false,
             ct);
         if (changed)
         {
             await auditLogService.LogAsync(
-                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
-                $"DayOffset={dayOffset}; availability cleared by coordinator", current.Id);
+                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), targetUserId,
+                $"DayOffset={offset}; availability cleared by coordinator", current.Id);
             SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
         }
         return RedirectBack(returnUrl);
