@@ -228,7 +228,10 @@ internal sealed class ProfileViewModel
     public IReadOnlyList<UserEmailDisplayViewModel> BoardOnlyUserEmails =>
         UserEmails.Where(e => e.Visibility == ContactFieldVisibility.BoardOnly).ToList();
 
+    [BindNever]
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];
+
+    public List<Guid> RemovedLegacyContactFieldIds { get; set; } = [];
 
     public List<ContactFieldEditViewModel> EditableContactFields { get; set; } = [];
 

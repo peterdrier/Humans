@@ -67,7 +67,8 @@ internal sealed class ContactFieldService(
     public async Task SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
         var now = clock.GetCurrentInstant();
 
@@ -77,7 +78,10 @@ internal sealed class ContactFieldService(
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
 
-        var toDelete = existingFields.Where(cf => !incomingIds.Contains(cf.Id)).ToList();
+        // Zero is the retired email type, retained only for reading historical rows.
+        var toDelete = existingFields.Where(cf => cf.FieldType == default
+            ? removedLegacyContactFieldIds?.Contains(cf.Id) == true
+            : !incomingIds.Contains(cf.Id)).ToList();
 
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
@@ -86,6 +90,7 @@ internal sealed class ContactFieldService(
         {
             if (dto.Id.HasValue && existingById.TryGetValue(dto.Id.Value, out var existing))
             {
+                if (existing.FieldType == default) continue;
                 existing.FieldType = dto.FieldType;
                 existing.CustomLabel = dto.CustomLabel;
                 existing.Value = dto.Value;

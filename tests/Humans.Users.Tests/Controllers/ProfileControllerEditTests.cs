@@ -227,6 +227,74 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Legacy_contact_removal_ids_are_bound_before_any_profile_write(bool malformed)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        _controller.HttpContext.RequestServices = services;
+        _controller.Url = Substitute.For<IUrlHelper>();
+        var legacyId = Guid.NewGuid();
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BurnerName"] = "Burner", ["FirstName"] = "First", ["LastName"] = "Last",
+            ["NoPriorBurnExperience"] = "true", ["DietaryPreference"] = "omnivore",
+            ["RemovedLegacyContactFieldIds"] = malformed ? "not-a-guid" : legacyId.ToString()
+        };
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProfileViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = typeof(ProfileViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(_controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (ProfileViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(_controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = await _controller.Edit(model);
+
+        if (malformed)
+        {
+            result.Should().BeOfType<ViewResult>();
+            _controller.ModelState["RemovedLegacyContactFieldIds"]!.Errors.Should().ContainSingle();
+            _profileEditorService.ReceivedCalls().Should().BeEmpty();
+            _contactFields.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _contactFields.Received(1).SaveContactFieldsAsync(_profileId,
+                Arg.Is<IReadOnlyList<ContactFieldEditDto>>(rows => rows.Count == 0), CancellationToken.None,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(legacyId)));
+        }
+    }
+
+    [HumansFact]
+    public async Task Invalid_profile_edit_reloads_only_owners_legacy_contacts()
+    {
+        var legacy = new ContactField { Id = Guid.NewGuid(), ProfileId = _profileId, FieldType = default,
+            Value = "legacy@example.org", Visibility = ContactFieldVisibility.BoardOnly };
+        var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [], [],
+            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
+        var model = MakeValidModel(MembershipTier.Volunteer);
+        model.ContactFields = [new() { Id = Guid.NewGuid(), Value = "untrusted@example.org" }];
+        _controller.ModelState.AddModelError("BurnerName", "Required");
+
+        var result = await _controller.Edit(model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacy.Id);
+        model.ContactFields[0].Value.Should().Be("legacy@example.org");
+        _profileEditorService.ReceivedCalls().Should().BeEmpty();
+        _contactFields.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("emailEnabled", true)]
     [InlineData("alertEnabled", true)]
     [InlineData("emailEnabled", false)]

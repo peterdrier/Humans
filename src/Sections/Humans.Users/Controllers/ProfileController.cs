@@ -190,6 +190,10 @@ internal sealed class ProfileController(
     [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
+        var user = await GetCurrentUserInfoAsync();
+        if (user is null) return NotFound();
+        model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
+
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
         model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
@@ -200,10 +204,6 @@ internal sealed class ProfileController(
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
-
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
 
         ValidateEditSimpleFieldGuards(model);
         if (ModelState.ErrorCount > 0)
@@ -503,7 +503,8 @@ internal sealed class ProfileController(
             ))
             .ToList();
 
-        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
+        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos,
+            removedLegacyContactFieldIds: model.RemovedLegacyContactFieldIds.Count > 0 ? model.RemovedLegacyContactFieldIds : null);
     }
 
     private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
