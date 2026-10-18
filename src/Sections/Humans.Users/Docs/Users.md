@@ -686,6 +686,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - Human-picker prefills pair the resolved name with the resolved account ID, so an archived account ID is never reposted as the selected value.
 
 - Outbox, privacy and dietary/medical GETs carry request cancellation through their current-user reads and, for outbox, email history. Dietary load errors remain localized; an abandoned request propagates cancellation.
+- The profile editor retains request cancellation in its shift-tag lookup.
 
 - Dietary/medical page titles, preference choices, section labels and save/load feedback, plus profile and dietary Other-description prompts, render in all six supported cultures.
 

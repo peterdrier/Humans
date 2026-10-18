@@ -112,13 +112,13 @@ internal sealed class ShiftBrowsePageBuilder(
             ? periodFilteredShifts.Where(u => u.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
             : periodFilteredShifts;
 
-        var departments = await BuildDepartmentGroupsAsync(filteredShifts);
+        var departments = await BuildDepartmentGroupsAsync(filteredShifts, ct);
         // The day filter forces the flat, openings-ranked view — a department/period
         // grouping doesn't express "most openings first".
         var isUrgencySort = filterDay.HasValue || !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id, ct);
-        var allTags = await shiftManagement.GetTagsAsync();
+        var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var dayOptions = await BuildDayOptionsAsync(es, browseFlags, ct);
         // Preferred tag ids come from the cached ShiftUserView's
         // TagPreferences — the controller already fetched the
@@ -230,9 +230,9 @@ internal sealed class ShiftBrowsePageBuilder(
     }
 
     private async Task<List<DepartmentShiftGroup>> BuildDepartmentGroupsAsync(
-        IReadOnlyList<UrgentShiftInfo> shifts)
+        IReadOnlyList<UrgentShiftInfo> shifts, CancellationToken ct)
     {
-        var teamsById = await teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync(ct);
 
         return shifts
             .GroupBy(u => u.Rota.TeamId)

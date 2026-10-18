@@ -161,7 +161,7 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftProfiles.GetTagsAsync();
+        var allShiftTags = await shiftProfiles.GetTagsAsync(ct: ct);
         // Tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences;

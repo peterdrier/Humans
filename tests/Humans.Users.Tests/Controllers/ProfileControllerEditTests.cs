@@ -771,8 +771,9 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Get_PopulatesDietaryFieldsFromProfile()
+    public async Task Edit_Get_PopulatesDietaryFieldsAndPreservesTagReadCancellation()
     {
+        using var cancellation = new CancellationTokenSource();
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(new Profile
             {
@@ -785,13 +786,14 @@ public class ProfileControllerEditTests
                 AllergyOtherText = "Mango",
             }));
 
-        var result = await _controller.Edit(ct: TestContext.Current.CancellationToken);
+        var result = await _controller.Edit(ct: cancellation.Token);
 
         var viewModel = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<ProfileViewModel>().Subject;
         viewModel.DietaryPreference.Should().Be("Pescatarian");
         viewModel.Allergies.Should().BeEquivalentTo(["Dairy", "Other"]);
         viewModel.AllergyOtherText.Should().Be("Mango");
+        await _shiftMgmt.Received(1).GetTagsAsync(ct: cancellation.Token);
     }
 
     private static ProfileViewModel MakeValidModel(
