@@ -490,6 +490,99 @@ public class ShiftAdminControllerTests
         await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
     }
 
+    [HumansTheory]
+    [InlineData(false, "DayOffset", false, true, false)]
+    [InlineData(false, "StartTime", false, true, false)]
+    [InlineData(false, "DurationHours", false, true, false)]
+    [InlineData(false, "MinVolunteers", false, true, false)]
+    [InlineData(false, "MaxVolunteers", false, true, false)]
+    [InlineData(true, "DayOffset", false, true, false)]
+    [InlineData(true, "StartTime", false, true, false)]
+    [InlineData(true, "DurationHours", false, true, false)]
+    [InlineData(true, "MinVolunteers", false, true, false)]
+    [InlineData(true, "MaxVolunteers", false, true, false)]
+    [InlineData(true, "DurationHours", false, true, true)]
+    [InlineData(false, "", false, true, false)]
+    [InlineData(false, "", true, true, false)]
+    [InlineData(true, "", false, true, false)]
+    [InlineData(true, "", true, true, false)]
+    [InlineData(true, "", false, true, true)]
+    [InlineData(true, "StartTime", false, false, false)]
+    public async Task Shift_forms_require_explicit_date_time_duration_and_staffing(bool edit, string omitted, bool zeroChoices, bool ownTeam, bool allDay)
+    {
+        var rota = MakeRota(ownTeam ? TeamId : OtherTeamId);
+        rota.EventSettingsId = Event.Id;
+        rota.Period = allDay ? RotaPeriod.All : RotaPeriod.Event;
+        var shift = MakeShift(rota);
+        shift.IsAllDay = allDay;
+        rota.Shifts.Add(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        _shiftMgmt.CreateShiftAsync(Arg.Any<CreateShiftInput>()).Returns(ShiftMutationResult.Success("Created", shift.Id));
+        _shiftMgmt.UpdateShiftAsync(Arg.Any<UpdateShiftInput>()).Returns(ShiftMutationResult.Success("Updated", shift.Id));
+        var controller = BuildSut();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var day = zeroChoices ? 0 : 2;
+        var start = zeroChoices || allDay ? "00:00" : "09:30";
+        var duration = allDay ? 24d : zeroChoices ? 0.5d : 2.5d;
+        var minimum = zeroChoices ? 0 : 3;
+        var maximum = zeroChoices ? 1 : 7;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["RotaId"] = rota.Id.ToString(), ["DayOffset"] = day.ToString(CultureInfo.InvariantCulture),
+            ["StartTime"] = start, ["DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
+            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
+        };
+        if (!zeroChoices) fields["AdminOnly"] = "true";
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var formType = edit ? typeof(EditShiftModel) : typeof(CreateShiftModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = formType
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CreateShiftModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = edit ? await controller.EditShift(Slug, shift.Id, (EditShiftModel)model) : await controller.CreateShift(Slug, model);
+
+        if (!ownTeam || omitted.Length > 0)
+        {
+            await _shiftMgmt.DidNotReceive().CreateShiftAsync(Arg.Any<CreateShiftInput>());
+            await _shiftMgmt.DidNotReceive().UpdateShiftAsync(Arg.Any<UpdateShiftInput>());
+            if (!ownTeam) result.Should().BeOfType<NotFoundResult>();
+            else
+            {
+                if (edit) result.Should().BeOfType<ViewResult>();
+                else result.Should().BeOfType<RedirectToActionResult>();
+                controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            }
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var expectedTime = zeroChoices || allDay ? LocalTime.Midnight : new LocalTime(9, 30);
+            if (edit)
+                await _shiftMgmt.Received(1).UpdateShiftAsync(Arg.Is<UpdateShiftInput>(input => input.ShiftId == shift.Id
+                    && input.TeamId == TeamId && input.DayOffset == day && input.StartTime == expectedTime
+                    && input.DurationHours == duration && input.MinVolunteers == minimum && input.MaxVolunteers == maximum
+                    && input.AdminOnly == !zeroChoices));
+            else
+                await _shiftMgmt.Received(1).CreateShiftAsync(Arg.Is<CreateShiftInput>(input => input.RotaId == rota.Id
+                    && input.TeamId == TeamId && input.DayOffset == day && input.StartTime == expectedTime
+                    && input.DurationHours == duration && input.MinVolunteers == minimum && input.MaxVolunteers == maximum
+                    && input.AdminOnly == !zeroChoices));
+        }
+    }
+
     [HumansFact]
     public async Task EditShift_InvalidNumber_RendersRawAttemptAndPageDataWithoutSaving()
     {

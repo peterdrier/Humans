@@ -62,14 +62,19 @@ internal class CreateShiftModel
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     public int DayOffset { get; set; }
 
     [Required]
+    [BindRequired]
     public string StartTime { get; set; } = "08:00";
 
+    [BindRequired]
     public double DurationHours { get; set; } = 4;
 
+    [BindRequired]
     public int MinVolunteers { get; set; } = 1;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
     public bool AdminOnly { get; set; }
 }
