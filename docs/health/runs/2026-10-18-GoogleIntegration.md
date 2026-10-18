@@ -65,11 +65,16 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 - 9: test comments corrected by a sonnet executor, with no additions beyond the list. The outbox repository test's table name was also corrected to `google_sync_outbox`.
 - 2 (Peter: delete): the method is gone from `IGoogleSyncWrite` and both implementations. Users' suspension and Teams' system-team sync no longer call it, and the suspension job drops its now-unused team and Google dependencies. The outbox processor still accepts queued removal events, completing them without a call; a test pins that. Teams keeps writing the removal event with the member-left row.
 - 3 (Peter: internal): `IGoogleDriveSync` moved from `Contracts/` to `Services/` as an internal interface. Under D13, a Drive sync job still queued under the old type name is dropped at deploy.
+- 12 (Peter: per-issue rulings): applied after the push.
+  - nobodies-collective/Humans#33: kept, unchanged.
+  - nobodies-collective/Humans#1175: body refreshed. The `.Contracts` project is dropped and the SDK-using connectors now point at `Services/Workspace/`.
+  - nobodies-collective/Humans#1180: narrowed to `IGoogleGroupSync`, whose `RequestSyncAsync` and `ReconcileOneAsync` have no outside caller. Every `ITeamResourceService` read method has an outside caller, so it left scope; relabelled `size:S`.
+  - peterdrier/Humans#1846: closed as a duplicate of peterdrier/Humans#1969.
+  - peterdrier/Humans#1969: code pointers moved to `GoogleDriveAccessSyncService` and `GoogleClientError.IsDriveTargetRejection`.
 - 15: the team and parent-department grant loops folded into one local function. Reviewer verdict: approve. It checked that the two bodies were identical, the call order was preserved, the captured state was assigned before first use, and the local-function precedent in other section services.
 
 ## Skipped
 
-- 12: issue edits and closes are Peter's to make; this run never mutates an issue.
 - 13: the admin sidebar reaches both pages, and they are admin-only.
 - 14: the Tests thread did not confirm the gaps against the test bodies, so a ledger row would be unverified.
 - The Workgroups design record still names `IGoogleSyncService.CreateSubfolderAsync`; the method is on `IGoogleSyncWrite`. It is a dated design record, not a live claim, so it is left alone.
@@ -89,7 +94,7 @@ Off-section debt filed this run: `TEAMS-11` in `src/Sections/Humans.Teams/Docs/d
 
 - [x] 2 — `RemoveUserFromTeamResourcesAsync`: delete it (callers rely on reconciliation) or make it remove now? **Peter: delete — done.**
 - [x] 3 — `IGoogleDriveSync`: make it internal, or keep it public for Hangfire? **Peter: internal — done.**
-- [ ] 12 — apply the inbox verdicts to the five issues?
+- [x] 12 — apply the inbox verdicts to the five issues? **Peter: keep #33, fix #1175, narrow #1180, close #1846, fix #1969 — done.**
 
 ## File coverage
 
