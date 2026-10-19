@@ -2,6 +2,7 @@
   src/Sections/Humans.Auth/Services/MagicLinkService.cs
   src/Sections/Humans.Auth/Services/MagicLinkUrlBuilder.cs
   src/Sections/Humans.Auth/Services/MagicLinkRateLimiter.cs
+  src/Humans.Base/Extensions/MemoryCacheExtensions.cs
   src/Sections/Humans.Auth/Contracts/IMagicLinkService.cs
   src/Sections/Humans.Auth/AuthResource*.resx
   src/Humans.Web/Controllers/AccountController.cs
@@ -287,27 +288,13 @@ With magic link auth in place, importing a contact from MailerLite/TicketTailor 
 
 1. Create `User` via `UserManager.CreateAsync` — email, display name, `EmailConfirmed = true`
 2. Create `UserEmail` record (verified, notification target)
-3. Set `ContactSource` and `ExternalSourceId` on User (nullable fields, existing design from Aaron's PR)
+3. Set `ContactSource` and `ExternalSourceId` on User (nullable fields; see [Contact Accounts](../../../Humans.Users/Docs/features/contact-accounts.md))
 4. Do NOT set lockout, do NOT create fake credentials
 
 The user sits with `LastLoginAt == null`. When they authenticate by any method (magic link, Google, future), they claim their account. No merge, no AccountType enum, no special handling.
 
-### What This Replaces from Aaron's PR (#209)
-
-| Aaron's approach | This approach |
-|------------------|---------------|
-| `AccountType` enum (Member/Contact/Deactivated) | `LastLoginAt == null` for never-authenticated |
-| `LockoutEnd = MaxValue` to prevent login | No lockout needed — they just haven't authenticated yet |
-| `MergeContactToMemberAsync` | No merge — the contact IS the user |
-| Auto-merge on OAuth callback | Account linking on OAuth callback (simpler) |
-| `AccountMergeService` contact path | Not needed |
-
-**What we keep from Aaron's PR:**
-- `ContactSource` and `ExternalSourceId` on User (useful for tracking import origin)
-- Communication preference migration (already handled by Feature 28)
-
 ## Related Features
 
 - **Feature 28: Communication Preferences** — contacts imported with preferences; preserved on account claim
-- **Feature 29: Contact Accounts (Aaron's PR #209)** — superseded by this approach; admin UI and ContactSource fields are reusable
+- **Feature 29: Contact Accounts** — pre-provisioned users imported with `ContactSource`; they claim their account through this flow
 - **Future: Email/Password Auth** — magic link establishes the email-based auth pattern; password is an additive credential

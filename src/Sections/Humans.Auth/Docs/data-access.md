@@ -52,8 +52,8 @@ No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
 `IUserService`, `IEmailService`, the section's own `AuthEmails` builder,
 `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
-(same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
-`magic_link_signup:{normalizedEmail}` into `IMemoryCache`. Both link types
+(same section, `Services/`) which writes `magic_link_used:{sha256(token)}`,
+`magic_link_login:{userId}` and `magic_link_signup:{normalizedEmail}` into `IMemoryCache`. Both link types
 redeem through the same `magic_link_used:` sentinel — login tokens on
 `VerifyLoginTokenAsync`, signup tokens on `VerifyAndConsumeSignupTokenAsync`, which
 `ReleaseSignupToken` reverses when provisioning fails —
@@ -77,6 +77,12 @@ Coordinator question. The caller comes from the Shell's `ICurrentUserContext`.
 Cycle-safe (does not pull `IAuthorizationService`). No
 cache (reads route through the inner repo; hot reads can migrate to the cached
 row set incrementally).
+
+### AuthMetricsService (Singleton, hosted)
+
+No repository. Polled gauge service: reads
+`IRoleAssignmentManagement.GetActiveCountsByRoleAsync` per scope to feed the
+`humans.role_assignments_active` gauge. No cache.
 
 ### AuthEmails (Scoped, internal)
 

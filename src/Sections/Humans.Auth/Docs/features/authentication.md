@@ -9,6 +9,7 @@
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Constants/RoleGroups.cs
+  src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
   Authentication flow, role-claims transformation, role catalog, MembershipRequiredFilter, and policy names — review when auth/identity surfaces change.
@@ -147,7 +148,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **TeamsAdmin** | System-wide team management; view sync status but not execute |
 | **CampAdmin** | Camp management and season approval |
 | **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
-| **FeedbackAdmin** | None since #977 — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
+| **FeedbackAdmin** | None — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
 | **EventsAdmin** | Approve, reject, and request edits on event guide submissions |
@@ -171,7 +172,7 @@ The app registers named authorization policies (`PolicyNames` constants in `Huma
 
 ### Onboarding Name Gate
 
-A second global action filter, `NameRequiredFilter`, runs strictly after authentication. Any authenticated user whose profile has no real `BurnerName` (a Stub profile, or an Active profile with blank required names) is redirected to the burner + legal-name form at `OnboardingWidget/Names` before they can reach the rest of the app. It is the single gate covering OAuth/Google first sign-in, imported contacts hitting the magic-link `ExistingUser` branch, and legacy blank-`BurnerName` accounts (nobodies-collective/Humans#812). It only ever redirects — it **never blocks sign-in** — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, so the gate opens on the next request once names are saved. The `Account` and `Language` controllers, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, are exempt — as is a Backdoor-API-key-authenticated request, which has no name form for a machine to fill in.
+A second global action filter, `NameRequiredFilter`, runs strictly after authentication. Any authenticated user whose profile has no real `BurnerName` (a Stub profile, or an Active profile with blank required names) is redirected to the burner + legal-name form at `OnboardingWidget/Names` before they can reach the rest of the app. It is the single gate covering OAuth/Google first sign-in, imported contacts hitting the magic-link `ExistingUser` branch, and legacy blank-`BurnerName` accounts. It only ever redirects — it **never blocks sign-in** — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, so the gate opens on the next request once names are saved. The `Account` and `Language` controllers, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, are exempt — as is a Backdoor-API-key-authenticated request, which has no name form for a machine to fill in.
 
 See [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) for the full onboarding pipeline and gating details.
 
