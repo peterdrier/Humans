@@ -29,6 +29,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 
 **Acceptance Criteria:**
 - Admin enters the email prefix (e.g., "alice" for alice@nobodies.team)
+- The prefix is transliterated to ASCII and must be a valid Workspace username: at most 64 characters, no `@`, no leading, trailing or repeated periods, and not `abuse` or `postmaster`; an invalid prefix is refused before any account is created
 - Human must have first and last name in their profile
 - Account must not already exist in Google Workspace
 - Creates the Google Workspace account with `ChangePasswordAtNextLogin = true`
@@ -48,6 +49,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Mentions that 2FA setup is required on first login
 - Localized in all supported languages (en/es/de/fr/it/ca)
 - Sent through `IEmailService.SendAsync`, which writes the email outbox row
+- When there is no recovery address, or the hand-off to `IEmailService` throws, provisioning still succeeds (the account is created and linked) and the admin sees an info message to reset the password if credentials do not arrive; the in-app `WorkspaceCredentialsReady` notice then tells the person to contact an administrator for credentials
 
 ### US-32.3: Link Existing Workspace Account
 **As an** admin

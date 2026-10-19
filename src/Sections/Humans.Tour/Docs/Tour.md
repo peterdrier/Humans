@@ -26,7 +26,7 @@ full-bleed hero, scroll animations) rather than the Shell chrome.
   `ISectionNav` contribution visible only while anonymous) and a "New here?" link on the
   Welcome landing page (Onboarding's `Views/Welcome/Index.cshtml`, by URL). A signed-in member
   gets a dashboard action card (`SectionMemberDashboard`, an `ISectionMemberDashboard`
-  contribution rendering `TourCard` into the `member-dashboard` slot) and no nav slot — the
+  contribution rendering `TourCardViewComponent` into the `member-dashboard` slot) and no nav slot — the
   signed-in nav is too busy for one.
 - Photos are event photography reused from the nobodies.team site (same organization).
 - Copy names the event **Elsewhere** only — never "Nowhere" (no legal rights to that name).
@@ -51,7 +51,7 @@ None — content-only section. No tables, no DbContext, no repository, no migrat
 - The nav link is offered only while signed out (`SectionNavTests`); a member reaches the page
   from the dashboard card the section contributes (`SectionMemberDashboardTests`).
 - The fixed header bar renders on every Tour page with a link back to `/`.
-- All copy is deliberately hardcoded English (spec `docs/superpowers/specs/2026-08-12-burn-demo-pages-design.md`);
+- All copy is deliberately hardcoded English, because the audience is external visitors evaluating the platform;
   the section carries no resource set and binds no localizer.
 - The page degrades to fully visible content without JavaScript: the scroll-animation hidden
   state applies only under the `tour-js` class the layout's inline script sets. That script is

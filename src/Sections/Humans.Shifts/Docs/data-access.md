@@ -207,9 +207,10 @@ Repository: `IShiftManagementRepository`.
 |-------|-----|
 | EventSettings | R |
 | Shifts | R (via repo) |
-| Rotas | R (cached via `IShiftView`) |
+| Rotas | R (cached via the section-internal `IShiftRowView`) |
 
-Cross-section calls via `IShiftView` (cached), `ITeamService` (team
+Section-internal `IShiftRowView` (cached) and `EventCalendarResolver`. Cross-section
+calls via `ITeamService` (team
 projections for role-period estimates), `IUserService`. No own
 cache — relies on the per-rota `ShiftView.RotaView` eviction to refresh.
 

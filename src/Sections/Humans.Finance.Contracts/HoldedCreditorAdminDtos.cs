@@ -12,13 +12,17 @@ namespace Humans.Finance.Contracts;
 /// <param name="Name">The Holded account name, which is the legal name for member creditors.</param>
 /// <param name="Balance">The signed account balance; a negative value means the organization owes.</param>
 /// <param name="OwedToMember">The non-negative amount owed to the member, derived from the balance.</param>
+/// <param name="OpenDocumentCount">How many approved, still-owing purchase documents the bound
+/// contact has — what a payout to this row would pay against, document by document. Null on an
+/// unbound or colliding row, and when Holded's document list could not be read.</param>
 public sealed record HoldedCreditorAccountRow(
     int SupplierAccountNum,
     string Name,                    // Holded account name (legal name for member creditors)
     decimal? Balance,               // signed; negative = org owes
     decimal OwedToMember,           // = max(0, -Balance)
     IReadOnlyList<CreditorContactBinding> Bindings,
-    string? IbanMasked = null);
+    string? IbanMasked = null,
+    int? OpenDocumentCount = null);
 
 /// <summary>A member's binding to their Holded creditor account (DTO projection of the entity).</summary>
 public sealed record CreditorContactBinding(

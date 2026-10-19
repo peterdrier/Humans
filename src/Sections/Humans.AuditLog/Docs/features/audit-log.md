@@ -51,7 +51,7 @@ The full value catalog lives in [`src/Sections/Humans.AuditLog/Docs/AuditLog.md`
 
 The section splits into a write side and a read+render side:
 
-**`IAuditLogService` (write)** provides two `LogAsync` overloads:
+**`IAuditLogService` (write)** provides two `LogAsync` overloads (plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`):
 
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID

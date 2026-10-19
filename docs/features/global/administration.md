@@ -102,11 +102,14 @@ Human management is now on `UsersAdminController` under `/Users/Admin`, accessib
 | `/Users/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
 | `/Users/Admin/{id}` | AdminDetail | HumanAdmin, Board, Admin — member detail |
 | `/Users/Admin/{id}/Outbox` | AdminOutbox | HumanAdmin, Board, Admin — view email outbox |
-| `/Users/Admin/{id}/Suspend` | Suspend | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Unsuspend` | Unsuspend | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Reject` | Reject | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Reject` | RejectSignup | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/Roles` | Roles | HumanAdmin, Board, Admin — role assignments across members |
+| `/Users/Admin/{id}/RevealIban` | RevealIban | POST: Admin only |
+| `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
 ### GoogleController (`/Google/`) — Admin (mostly)
 
@@ -117,6 +120,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/SyncSettings` | Admin | POST: per-service sync mode configuration (no GET — form lives at `/Settings#google-sync`, peterdrier/Humans#1634) |
 | `/Google/SyncSystemTeams` | Admin | POST: Manually trigger `SystemTeamSyncJob`, recalculating Volunteers/Coordinators/Board membership (button on `/Google` Overview) |
 | `/Google/SyncResults` | Admin | GET: Results of last sync check |
+| `/Google/ActivityLog` | Admin | GET: Google sync activity log (filterable by date, action, source, success, resource) |
 | `/Google/CheckGroupSettings` | Admin | POST: Check Google Group settings for drift |
 | `/Google/GroupSettingsResults` | Admin | GET: Display group settings drift results |
 | `/Google/RemediateGroupSettings` | Admin | POST: Fix settings drift on one group |
@@ -129,12 +133,13 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Monitor/CheckDriveActivity` (`MonitorController`, not `GoogleController` — nobodies-collective/Humans#866) | Board, Admin | POST: Manual Drive Activity check |
 | `/Google/Resource/{id}` (`GoogleController`) | Board, Admin | GET: Per-resource sync audit log |
 | `/Google/Human/{id}` (`GoogleController`) | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
-| `/Google/Human/{id}/ProvisionEmail` | Admin | POST: Provision @nobodies.team email |
+| `/Google/Human/{id}/ProvisionEmail` | HumanAdmin, Admin | POST: Provision @nobodies.team email |
 | `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
 | `/Google/Accounts/Provision` | Admin | POST: Provision account |
 | `/Google/Accounts/Suspend` | Admin | POST: Suspend account |
 | `/Google/Accounts/Reactivate` | Admin | POST: Reactivate account |
 | `/Google/Accounts/ResetPassword` | Admin | POST: Reset password |
+| `/Google/Accounts/ResetPasswordAndGenerate2Fa` | Admin | POST: Reset password and issue recovery credentials (temp password plus backup code) |
 | `/Google/Accounts/Link` | Admin | POST: Link existing account |
 | `/Google/LinkGroupToTeam` | Admin | POST: Link group to team |
 | `/Google/CheckEmailRenames` | Admin | POST: Detect Google-side email renames |
@@ -205,6 +210,7 @@ Sections also contribute richer cards into the `admin-dashboard` chrome slot (`C
 
 | Card | Section | Content |
 |---|---|---|
+| Sign-in method | Shell | Google vs email-link sign-ins since the last restart |
 | Recent activity | Audit Log | Last 24h of audit history (AdminOnly) |
 | User set membership | Debug | Venn + UpSet plot over Active ∪ Ticketed ∪ Shifted, etc. |
 | Tier applications | Governance | Colaborador/Asociado application counts |
@@ -330,9 +336,9 @@ Sections also contribute richer cards into the `admin-dashboard` chrome slot (`C
 
 ### Role Separation: Board vs Admin
 
-Board and Admin are **roles**, not areas — there is one admin route prefix (`/Admin/`, `AdminController`, Admin only except where noted). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/AuditLog`, `/Google/*`) and are gated per-route by role.
+Board and Admin are **roles**, not areas — the only `/Admin/` route is the shared dashboard (`AdminController`). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/AuditLog`, `/Google/*`) and are gated per-route by role.
 
-Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Admin-only technical operations (configuration, sync settings, Hangfire, email preview, system team sync) stay under `/Admin/`.
+Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Admin-only technical operations (configuration, Hangfire, system team sync, sync settings) live in the Debug and Google groups of the admin shell.
 
 A user can hold both roles simultaneously. Admin is a superset for role assignment purposes.
 
@@ -395,7 +401,7 @@ _logger.LogInformation(
 
 ## Quick Actions (Sidebar)
 
-Not on the `/Admin` dashboard itself (that renders only the tile strip and section cards above) — reached via the admin sidebar's Google and Debug groups instead.
+Not on the `/Admin` dashboard itself (that renders only the tile strip and section cards above) — reached via the admin sidebar's Google and Debug groups instead. The sidebar shows one row per group, with the group's pages as tabs above the breadcrumb; see [`admin-shell.md`](../../sections/admin-shell.md).
 
 | Action | Link | Group |
 |--------|------|-------|

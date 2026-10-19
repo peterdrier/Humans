@@ -809,7 +809,7 @@ they leave `docs/docs.csproj`, whose only job is that glob.
 
 ### Stays in `docs/`
 
-**Point-in-time artifacts.** `docs/plans/2026-08-03-g0-first-audit/Store.md` and the execution
+**Point-in-time artifacts.** `docs/plans/2026-08-03-g0-first-audit/Store.md` (historical, since deleted — current invariants live in `src/Sections/Humans.Store/Docs/Store.md`) and the execution
 plans (`docs/superpowers/plans/2026-05-18-store-summary-aggregates.md`,
 `2026-05-27-store-team-orders.md`) record what a program did on a date. They are not the section's
 current truth, and freezing them beside living docs is how a section folder rots. Same reasoning as
@@ -1428,7 +1428,7 @@ serialized PR, which satisfies the reason for the rule.
 - nobodies-collective/Humans#1013 — the keystone analyzer (§10)
 - Q3 transition plan (historical, deleted) — pillar #2, gate ladder G5 predicates
 - `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` — the G4 recipe PR A follows
-- `docs/plans/2026-08-03-g0-first-audit/Store.md` — Store's G1/G3 audit (its G3 predicate-1 row is
+- `docs/plans/2026-08-03-g0-first-audit/Store.md` (historical, since deleted — current invariants live in `src/Sections/Humans.Store/Docs/Store.md`) — Store's G1/G3 audit (its G3 predicate-1 row is
   void per §5)
 - `memory/architecture/section-project-cycle-fix.md` — the cycle-fix playbook this doc adds;
   exercised 2026-08-09 by SystemSettings and Events (A1, template step 5b)

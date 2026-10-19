@@ -34,15 +34,15 @@ The `/Admin` route is the shared dashboard. One rule picks the layout for every 
 
 ## Actors & Roles
 
-Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns, Cantina, City Planning, Consent, Debug, Development (env-gated to `IsDevelopment()`), Early Entry, Email, Events, Expenses, Finance, Gate, Google, Governance, Holded, Issues, MailerLite, Onboarding, Rideshare, Scanner, Settings, Shifts, Store, Surveys, Tickets, Users, Workgroups. Each section contributes its groups via `ISectionAdminNav.Groups()` (`src/Sections/*/SectionAdminNav.cs`); `AdminNavComposition.Compose` merges same-label groups from different sections (Issues + Feedback into "Issues"), orders items by weight and groups by label. The per-role expected rows and tabs below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns, Cantina, City Planning, Consent, Debug, Development (env-gated to `IsDevelopment()`), Early Entry, Email, Events, Expenses, Finance, Gate, Google, Governance, Holded, Issues, MailerLite, Onboarding, Pre-approvals, Rideshare, Scanner, Settings, Shifts, Store, Surveys, Tickets, Users, Workgroups. Each section contributes its groups via `ISectionAdminNav.Groups()` (`src/Sections/*/SectionAdminNav.cs`); `AdminNavComposition.Compose` merges same-label groups from different sections (Issues + Feedback into "Issues"), orders items by weight and groups by label. The per-role expected rows and tabs below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync) |
+| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync) |
 | HumanAdmin | Users (Humans, Roles) |
 | TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal, Staff PINs) |
-| FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Holded connector), Holded, Store (Catalog, Summary, Payments, Order years) |
+| FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Holded connector), Holded, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years) |
 | StoreAdmin | Store (Catalog, Summary, Payments, Order years) |
 | EventsAdmin | Events (Dashboard, Moderation, Categories, Venues, Export) |
 | CantinaAdmin | Cantina (Roster) |
@@ -81,6 +81,7 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementService`).
 - **Feedback:** `feedback.open` tile, AdminOnly (`FeedbackService`, section-internal).
 - **Teams:** `teams.total` tile (`ITeamService`).
+- **Workgroups:** `workgroups.queue` tile, `BoardOrAdmin`.
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
 - **Email:** `email.outbox` tile (`IEmailOutboxManagement`, section-internal).
 - **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (Store's internal `Service`).
@@ -88,7 +89,7 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Governance:** the "Tier applications" card (`IGovernanceService`); also contributes the Voting tab pill's unvoted-application count.
 - **Debug:** the "User set membership" (Venn/UpSet) card.
 
-Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. Every piece above lives in the section it names and reads only that section, so none of them crosses a section boundary to render. Most reach their own data through their section's public read-side contract (`I<Section>Service` in `Contracts/`), which exists because something outside the section needs it. Store's and Expenses' tiles are the exception and not a violation: neither publishes a read contract, so each `SectionAdminTiles` resolves its own section's internal service — a section calling itself. Either way the shell holds no repository and writes nothing.
+Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`, plus the sign-in method card (`LoginMethodCardViewComponent`, `ShellChrome`). Every piece above lives in the section it names and reads only that section, so none of them crosses a section boundary to render. Most reach their own data through their section's public read-side contract (`I<Section>Service` in `Contracts/`), which exists because something outside the section needs it. Store's and Expenses' tiles are the exception and not a violation: neither publishes a read contract, so each `SectionAdminTiles` resolves its own section's internal service — a section calling itself. Either way the shell holds no repository and writes nothing.
 
 ## Architecture
 

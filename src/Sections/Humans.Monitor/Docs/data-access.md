@@ -20,7 +20,7 @@ No repository.
 
 | Table | R/W |
 |-------|-----|
-| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISettingsService`** — owned by the Settings section) |
+| system_settings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISettingsService`** — owned by the Settings section) |
 | GoogleResources | R (via `ITeamResourceService` — the GoogleIntegration section) |
 | Users / IdentityUserLogins | R (via `IUserService.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
 
@@ -38,7 +38,7 @@ Cross-section calls via `IGoogleDriveActivityClient` (GoogleIntegration —
 `ITeamResourceService`, `ISettingsService`, `IUserService`,
 `IAuditLogService`. No cache.
 
-**Cross-section table read/write (design-rule note):** `SystemSettings`
+**Cross-section table read/write (design-rule note):** `system_settings`
 is read/written through the owning Settings section's
 `ISettingsService` — this is the §9-compliant cross-section call
 (service interface, not a foreign repository), so it is **not** a violation.

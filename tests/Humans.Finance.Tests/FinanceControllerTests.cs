@@ -149,6 +149,9 @@ public class FinanceControllerTests
         int num, string name, decimal? balance, params CreditorContactBinding[] bindings) =>
         new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, bindings);
 
+    private static HoldedCreditorAccountRow RowWithDocs(int num, string name, decimal? balance, int? openDocs) =>
+        new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, [], OpenDocumentCount: openDocs);
+
     private void NameThem(params (Guid Id, string Burner)[] people) =>
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(people.ToDictionary(p => p.Id, p => MakeUserInfo(p.Id, p.Burner))
@@ -241,6 +244,19 @@ public class FinanceControllerTests
         var page = PageOf(await MakeController().Creditors(sort: "member", dir: "asc"));
 
         page.Accounts.Select(a => a.SupplierAccountNum).Should().Equal(40000007, 40000002);
+    }
+
+    [HumansFact]
+    public async Task Creditors_SortByOpenDocs_OrdersByTheCount_WithUncountedRowsFirstAscending()
+    {
+        // Ascending puts the "—" rows (no count) ahead of 0, so descending — the view a treasurer
+        // picks the next ~10-document test member from — puts the 100+ accounts on top.
+        Accounts([RowWithDocs(40000002, "Ada", -1m, 120), RowWithDocs(40000007, "Bo", -1m, 9), RowWithDocs(40000009, "Cy", -1m, null)]);
+
+        var page = PageOf(await MakeController().Creditors(sort: "opendocs", dir: "desc"));
+
+        page.SortBy.Should().Be("opendocs");
+        page.Accounts.Select(a => a.OpenDocs).Should().Equal(120, 9, null);
     }
 
     [HumansFact]

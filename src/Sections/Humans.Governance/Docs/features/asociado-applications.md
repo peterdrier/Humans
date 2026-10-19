@@ -261,7 +261,7 @@ When an Application is approved:
 1. **No Application for Volunteers**: Only Colaborador and Asociado require applications
 2. **Inline creation is one-shot**: Only during initial signup; afterwards use dedicated Application route
 3. **Single Pending Application**: User cannot have multiple pending applications
-4. **Motivation Required**: Must provide non-empty motivation statement
+4. **Motivation Required**: Motivation must be 50–2000 characters; additional information at most 1000; Asociado contribution and role-understanding answers (both required for Asociado) at most 2000
 5. **Board Votes on Applications**: See [Board Voting](board-voting.md)
 6. **Decision Note Required for Rejection**: Applicant deserves to know why
 7. **Audit Trail**: All state changes recorded with timestamp and actor

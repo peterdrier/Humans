@@ -177,9 +177,11 @@ Settled decisions. Later runs should stop re-litigating these.
   totals exclude unconfirmed entries, so some accounts legitimately never reconcile.
 - **The 45-day window is a quota choice, not a correctness one.** Reconciliation is what catches
   anything older; widening the window buys nothing and costs calls.
-- **`PayPurchaseDocumentAsync` returns `unconfirmed:{docId}` rather than throwing** when Holded
-  accepts a payment but returns no readable id. The money moved; losing the reference would cause
-  a second payment.
+- **`PayPurchaseDocumentAsync` reads the payment id off the document, not the POST.** The POST
+  answers `{"status":"paid"}` and nothing else (verified live 2026-10-18), so the id is the
+  `payments_detail` entry that is new after the POST and matches amount, date and treasury
+  account. When the re-read fails or no single entry matches it returns `unconfirmed:{docId}`
+  rather than throwing: the money moved, and losing the reference would cause a second payment.
 - **`ListContactsAsync` skips one unreadable contact; every other list fails the whole page.**
   A missing contact name is cosmetic; a missing ledger line or purchase total is wrong money.
   The chart fails the page as well — Peter's ruling of 2026-09-10 against skip-and-log

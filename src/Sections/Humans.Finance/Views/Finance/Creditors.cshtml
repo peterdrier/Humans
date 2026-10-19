@@ -144,6 +144,10 @@ else
                         <a asp-action="Creditors" asp-route-sort="balance" asp-route-dir="@ToggleDir("balance")"
                            class="text-decoration-none">@Header("Balance", "balance")</a>
                     </th>
+                    <th class="text-end" title="Approved, still-owing purchase documents on the bound Holded contact: how many payments a payout to this row would post.">
+                        <a asp-action="Creditors" asp-route-sort="opendocs" asp-route-dir="@ToggleDir("opendocs")"
+                           class="text-decoration-none">@Header("Open docs", "opendocs")</a>
+                    </th>
                     <th>
                         <a asp-action="Creditors" asp-route-sort="member" asp-route-dir="@ToggleDir("member")"
                            class="text-decoration-none">@Header("Member", "member")</a>
@@ -202,6 +206,16 @@ else
                         @if (r.Balance is { } bal)
                         {
                             <span class="@(bal > 0 ? "finance-positive fw-semibold" : bal < 0 ? "finance-negative fw-semibold" : "")">@bal.ToEuro()</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (r.OpenDocs is { } open)
+                        {
+                            @open
                         }
                         else
                         {

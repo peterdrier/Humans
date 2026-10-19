@@ -44,8 +44,7 @@ disappears from your profile.
 
 Go to **Profile → Communication preferences**
 (`/Profile/Me/CommunicationPreferences`). You can turn most kinds of email on or
-off — team updates, volunteer updates, governance, marketing, and so on — for
-both email and in-app alerts.
+off — team updates, volunteer updates, governance, marketing, and so on.
 
 A couple are always on because they're essential (system messages, and discount
 codes you've been given). And if you have a ticket for this year, ticket emails

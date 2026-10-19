@@ -136,7 +136,11 @@ public class HoldedClientTests
           "subtotal":"19.52","tax":"0.00","total":"19.52","currency":"EUR",
           "payments_total":"19.52","payments_pending":"0.00",
           "approved_at":"2026-05-10T09:00:00",
-          "tags":["camp-build-camp"]
+          "tags":["camp-build-camp"],
+          "payments_detail":[
+            {"id":"6ad492bfadfbf95ccf087fde","amount":"17.00","date":"2026-10-16","bank_id":"69d65af9b42dd1dd620d9330"},
+            {"id":"6ad492bfadfbf95ccf087fdf","amount":"2.52","date":"2026-10-17","bank_id":null}
+          ]
         }
         """;
         var handler = new StubHandler(req =>
@@ -155,6 +159,39 @@ public class HoldedClientTests
         doc.PaymentsPending.Should().Be(0);
         doc.ApprovedAt.Should().NotBeNull();
         doc.Tags.Should().ContainSingle("camp-build-camp");
+        // The live payments_detail shape (2026-10-18): a 2-dp amount string, a plain date, bank_id.
+        doc.Payments.Should().HaveCount(2);
+        doc.Payments[0].Should().Be(new HoldedPaymentDetailDto(
+            "6ad492bfadfbf95ccf087fde", 17.00m, new LocalDate(2026, 10, 16), "69d65af9b42dd1dd620d9330"));
+        doc.Payments[1].BankId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetPurchaseDocumentAsync_NoPaymentsDetail_ReadsAsNoPayments()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":"doc-123","total":"5.00"}"""));
+
+        var doc = await Make(handler).GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        doc.Payments.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetPurchaseDocumentAsync_MalformedPaymentsDetailEntry_IsDropped_NotTheDocument()
+    {
+        // One GUI-entered payment in an unexpected shape must not fail every reader of the document
+        // (the publisher, the paid poll, the before-read of a payment mid-allocation).
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"id":"doc-123","total":"5.00","payments_detail":[
+              {"id":"pay-bad-date","amount":"5.00","date":"yesterday","bank_id":"b1"},
+              {"id":"pay-bad-amount","amount":{"x":1},"date":"2026-10-16","bank_id":"b1"},
+              {"id":42,"amount":"5.00","date":"2026-10-16"},
+              {"id":"pay-ok","amount":"5.00","date":"2026-10-16","bank_id":"b1"}]}
+            """));
+
+        var doc = await Make(handler).GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        doc.Payments.Select(p => p.Id).Should().Equal("pay-ok");
     }
 
     [HumansFact]
@@ -236,17 +273,45 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedTransientException>();
     }
 
-    [HumansFact]
-    public async Task PayPurchaseDocumentAsync_PostsTheAmountAsAStringAndReturnsThePaymentId()
+    /// <summary>Routes a payment round-trip: the document is read before and after the POST, and the
+    /// POST itself answers <c>{"status":"paid"}</c> and nothing else — the live shape (2026-10-18).
+    /// <paramref name="afterDetail"/> is what the second read's <c>payments_detail</c> holds.</summary>
+    private static StubHandler PaymentHandler(
+        string beforeDetail, string afterDetail, Action<HttpRequestMessage>? onPost = null,
+        Func<int, HttpResponseMessage?>? overrideGet = null)
     {
-        string? capturedBody = null;
-        var handler = new StubHandler(req =>
+        var gets = 0;
+        return new StubHandler(req =>
         {
-            req.Method.Method.Should().Be("POST");
-            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123/payments");
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
-            return Respond(HttpStatusCode.Created, """{"id":"pay-9"}""");
+            if (req.Method == HttpMethod.Post)
+            {
+                req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123/payments");
+                onPost?.Invoke(req);
+                return Respond(HttpStatusCode.Created, """{"status":"paid"}""");
+            }
+            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123");
+            gets++;
+            if (overrideGet?.Invoke(gets) is { } forced) return forced;
+            var detail = gets == 1 ? beforeDetail : afterDetail;
+            return Respond(HttpStatusCode.OK, $$"""{"id":"doc-123","total":"50.00","payments_detail":[{{detail}}]}""");
         });
+    }
+
+    private const string OldPayment =
+        """{"id":"pay-old","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"}""";
+    private const string NewPayment =
+        """{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"}""";
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_PostsTheAmountAsAString_AndReadsTheIdOffTheDocument()
+    {
+        // The POST response carries no id — never did. The id is the payments_detail entry that is
+        // new after the POST and matches the amount, date and treasury account just sent, even when
+        // an identical earlier payment sits on the document.
+        string? capturedBody = null;
+        var handler = PaymentHandler(
+            OldPayment, OldPayment + "," + NewPayment,
+            onPost: req => capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
 
         var id = await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), "SEPA payout E1",
@@ -262,47 +327,58 @@ public class HoldedClientTests
     [HumansFact]
     public async Task PayPurchaseDocumentAsync_NoTreasuryAccount_OmitsTheKeyRatherThanSendingNull()
     {
-        // A null treasury_id is not "use the default" to Holded — the key is simply left out.
+        // A null treasury_id is not "use the default" to Holded — the key is simply left out, and
+        // the after-read then matches on amount and date alone, whatever bank Holded picked.
         string? capturedBody = null;
-        var handler = new StubHandler(req =>
-        {
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
-            return Respond(HttpStatusCode.Created, """{"id":"pay-9"}""");
-        });
+        var handler = PaymentHandler(
+            "", """{"id":"pay-9","amount":"5.00","date":"2026-08-25","bank_id":"whatever"}""",
+            onPost: req => capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
 
-        await Make(handler).PayPurchaseDocumentAsync(
+        var id = await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 5m, "", new LocalDate(2026, 8, 25), null,
             Xunit.TestContext.Current.CancellationToken);
 
+        id.Should().Be("pay-9");
         capturedBody.Should().NotContain("treasury_id");
         capturedBody.Should().NotContain("description");
     }
 
-    [HumansFact]
-    public async Task PayPurchaseDocumentAsync_ResponseWithoutAPaymentId_ReturnsAnUnconfirmedRef()
+    [HumansTheory]
+    [Xunit.InlineData("")]                                          // nothing new on the document
+    [Xunit.InlineData("""{"id":"pay-9","amount":"18.01","date":"2026-08-25","bank_id":"treasury-1"}""")]
+    [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-24","bank_id":"treasury-1"}""")]
+    [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-2"}""")]
+    [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"},{"id":"pay-10","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"}""")]
+    public async Task PayPurchaseDocumentAsync_NoSingleNewMatchingPayment_ReturnsAnUnconfirmedRef(string afterDetail)
     {
         // A 2xx means the payment posted. Throwing would lose it from the record and let the caller
         // pay again — the sentinel keeps it, naming the document a human has to check in Holded.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));
+        // Zero new matching entries and two of them are both "cannot tell which": the sentinel.
+        var handler = PaymentHandler(OldPayment, OldPayment + (afterDetail.Length == 0 ? "" : "," + afterDetail));
 
         var id = await Make(handler).PayPurchaseDocumentAsync(
-            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), null,
             Xunit.TestContext.Current.CancellationToken);
 
         id.Should().Be("unconfirmed:doc-123");
     }
 
     [HumansFact]
-    public async Task PayPurchaseDocumentAsync_BlankPaymentId_ReturnsAnUnconfirmedRef()
+    public async Task PayPurchaseDocumentAsync_DocumentReadFailsBeforeThePost_ThrowsAndPostsNothing()
     {
-        // An empty ref would defeat both the sentinel and the non-empty-refs re-booking gate.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, """{"id":""}"""));
+        // Without the before-list the new payment could not be told apart afterwards, so the read
+        // failing is a refusal: nothing is posted, and the caller handles it like any refused call.
+        var posts = 0;
+        var handler = PaymentHandler(
+            "", "", onPost: _ => posts++,
+            overrideGet: n => n == 1 ? Respond(HttpStatusCode.ServiceUnavailable, "") : null);
 
-        var id = await Make(handler).PayPurchaseDocumentAsync(
+        var act = async () => await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
             Xunit.TestContext.Current.CancellationToken);
 
-        id.Should().Be("unconfirmed:doc-123");
+        await act.Should().ThrowAsync<HoldedTransientException>();
+        posts.Should().Be(0);
     }
 
     [HumansTheory]
@@ -312,14 +388,18 @@ public class HoldedClientTests
     [Xunit.InlineData(true, true)]
     public async Task AcceptedFinancialPosting_UnreadableResponse_ReturnsAnUnconfirmedRef(bool ledgerEntry, bool invalidCharset)
     {
-        var calls = 0;
-        var handler = new StubHandler(_ =>
+        // For a ledger entry the unreadable body is the POST's own; for a payment it is the
+        // document re-read after the POST. Either way the money is posted and the ref is a sentinel.
+        var posts = 0;
+        HttpResponseMessage Unreadable()
         {
-            calls++;
-            var response = Respond(HttpStatusCode.Created, invalidCharset ? "{\"id\":\"posted-1\"}" : "not json");
+            var response = Respond(HttpStatusCode.OK, invalidCharset ? "{\"id\":\"posted-1\"}" : "not json");
             if (invalidCharset) response.Content.Headers.ContentType!.CharSet = "unsupported-charset";
             return response;
-        });
+        }
+        var handler = ledgerEntry
+            ? new StubHandler(_ => { posts++; return Unreadable(); })
+            : PaymentHandler("", "", onPost: _ => posts++, overrideGet: n => n == 2 ? Unreadable() : null);
         var client = Make(handler);
         var date = new LocalDate(2026, 8, 25);
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -329,7 +409,7 @@ public class HoldedClientTests
             : await client.PayPurchaseDocumentAsync("doc-123", 5m, "treasury-1", date, null, ct);
 
         id.Should().Be(ledgerEntry ? "unconfirmed:entry" : "unconfirmed:doc-123");
-        calls.Should().Be(1);
+        posts.Should().Be(1);
     }
 
     [HumansFact]

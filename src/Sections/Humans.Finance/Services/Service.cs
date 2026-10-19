@@ -594,6 +594,22 @@ internal sealed class Service(
             .Select(x => ToBinding(x.Binding))
             .ToList();
 
+        // How many documents a payout to each bound contact would pay against — the same OpenDocs
+        // filter the booking applies, so the figure is what the booking will see. One list call per
+        // page render; a vendor failure costs the column, not the page.
+        Dictionary<string, int>? openDocsByContact = null;
+        try
+        {
+            openDocsByContact = SepaBankBooking.OpenDocs(await client.ListPurchaseDocumentsAsync(ct))
+                .Where(d => !string.IsNullOrEmpty(d.ContactId))
+                .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts.");
+        }
+
         // Accounts with ledger activity, plus bound ones with no lines yet, plus every Holded creditor
         // contact — a first-time submitter's account exists before it has any journal activity. The
         // mirror spans the whole chart, so its balances are range-filtered here.
@@ -622,7 +638,10 @@ internal sealed class Service(
                     Bindings: bound ?? [],
                     IbanMasked: string.IsNullOrWhiteSpace(contact?.Iban)
                         ? null
-                        : IbanFormatter.Mask(contact.Iban));
+                        : IbanFormatter.Mask(contact.Iban),
+                    OpenDocumentCount: bound is { Count: 1 } && openDocsByContact is not null
+                        ? openDocsByContact.GetValueOrDefault(bound[0].HoldedContactId)
+                        : null);
             }).ToList();
 
         // Accounts but not one name is the signature of an unusable contact list, which leaves the bind

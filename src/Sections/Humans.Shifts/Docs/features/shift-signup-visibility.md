@@ -19,7 +19,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 ## Authorization
 
-> **Policy change (under evaluation):** Signup lists on the browse page (`/Shifts`) are temporarily visible to **all** authenticated viewers — not just coordinators/admins. The `isPrivileged` computation is intentionally retained in `ShiftsController` so the gate can be reinstated by flipping `ShowSignups` and `includeSignups` back to `isPrivileged` if folks object. Acceptance criteria below are written against the current (public) policy.
+> **Policy change (under evaluation):** Signup lists on the browse page (`/Shifts`) are temporarily visible to **all** authenticated viewers — not just coordinators/admins. The `isPrivileged` computation is intentionally retained in `ShiftsController` so the gate can be reinstated by making `ShowSignups` and the `IncludeSignups` browse flag in `ShiftBrowsePageBuilder` depend on `isPrivileged` again if folks object. Acceptance criteria below are written against the current (public) policy.
 
 - **Browse page (`/Shifts`):** Signup lists visible to every authenticated user. The `isPrivileged` variable still gates other admin-only behaviour (AdminOnly shift visibility, hidden rota visibility, browsing-while-closed).
 - **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveDepartmentAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team. Unchanged.
@@ -63,7 +63,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 ### Service Layer
 
-`GetBrowseShiftsAsync` is called with `includeSignups: true` unconditionally on `/Shifts` while the public policy is in effect. The service loads signups filtered to Confirmed + Pending status only and stitches display names in memory from the user snapshot. When the policy is reverted, both `ShowSignups` and `includeSignups` flip back to `isPrivileged` together.
+`ShiftBrowsePageBuilder` passes the `IncludeSignups` flag to `GetBrowseShiftsAsync` unconditionally on `/Shifts` while the public policy is in effect. The service loads signups filtered to Confirmed + Pending status only and stitches display names in memory from the user snapshot. When the policy is reverted, both `ShowSignups` and `IncludeSignups` flip back to `isPrivileged` together.
 
 ### ViewModel Changes
 

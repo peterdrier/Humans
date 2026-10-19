@@ -15,7 +15,7 @@
 
 ## Business Context
 
-The public team page (`/Team/{slug}`) renders coordinator cards when the team has `IsPublicPage && ShowCoordinatorsOnPublicPage` enabled, so anonymous visitors can see who the coordinator faces are without logging in. The authenticated `<vc:human>` hover popover surfaces a fuller card (city/country, full team list, languages, etc.) but is `[Authorize]`-gated by the existing `/Profile/{id}/Popover` action. Anonymous viewers got no hover affordance at all — only the static card.
+The public team page (`/Teams/{slug}`) renders coordinator cards when the team has `IsPublicPage && ShowCoordinatorsOnPublicPage` enabled, so anonymous visitors can see who the coordinator faces are without logging in. The authenticated `<vc:human>` hover popover surfaces a fuller card (city/country, full team list, languages, etc.) but is `[Authorize]`-gated by the existing `/Profile/{id}/Popover` action. Anonymous viewers got no hover affordance at all — only the static card.
 
 This feature adds a reduced popover for anonymous viewers that mirrors the data already visible on the public team page (avatar, BurnerName, public coordinator role labels) and explicitly omits everything else.
 
@@ -24,16 +24,16 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 ## User Stories
 
 ### US-PCP.1: Anonymous hover popover on public team page
-**As an** anonymous visitor on `/Team/{slug}`
+**As an** anonymous visitor on `/Teams/{slug}`
 **I want to** hover the coordinator card and see a small popover with the coordinator's name, avatar, and role
 **So that** I can recognize who is responsible without having to sign in
 
 **Acceptance Criteria:**
-- Anonymous `GET /Profile/{id}/PublicPopover` returns 200 with the reduced partial when the target user is an active coordinator on a team with `IsPublicPage && ShowCoordinatorsOnPublicPage`.
+- Anonymous `GET /Profile/{id}/PublicPopover` returns 200 with the reduced partial when the target user is a coordinator on an active, non-hidden team with `IsPublicPage && ShowCoordinatorsOnPublicPage`.
 - Returns 404 in every other case so anonymous probes cannot enumerate users.
 - Reduced partial surfaces only: avatar (72px), BurnerName, role labels formatted as a localized coordinator label followed by `" · {TeamName}"`.
 - Partial NEVER renders city/country, the full team list, languages, tier badge, or suspended badge.
-- On `/Team/{slug}` while logged out, hovering the coordinator card fires the popover.
+- On `/Teams/{slug}` while logged out, hovering the coordinator card fires the popover.
 - 404 from the endpoint disposes the popover silently (no error tooltip).
 
 ### US-PCP.2: Authenticated popover unchanged

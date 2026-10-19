@@ -11,12 +11,15 @@ namespace Humans.Finance.Models;
 /// <param name="Name">The Holded account name.</param>
 /// <param name="Bindings">Members bound to this creditor account.</param>
 /// <param name="IbanMasked">The linked Holded contact's masked IBAN, if available.</param>
+/// <param name="OpenDocs">Approved, still-owing purchase documents on the bound contact; null (shown
+/// as "—") on unbound and colliding rows, or when Holded's document list could not be read.</param>
 internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
     decimal? Balance,
     IReadOnlyList<CreditorBindingVm> Bindings,
-    string? IbanMasked = null)
+    string? IbanMasked = null,
+    int? OpenDocs = null)
 {
     /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
@@ -49,7 +52,7 @@ internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string 
 /// <summary>The /Finance/Creditors page model.</summary>
 /// <param name="Unresolved">Bindings with no 400000xx, so no account row to sit on. Nothing retries
 /// the resolution, so this is the only place they can be bound (nobodies-collective/Humans#972).</param>
-/// <param name="SortBy">Active column — "account" (default), "name", "balance" or "member".</param>
+/// <param name="SortBy">Active column — "account" (default), "name", "balance", "opendocs" or "member".</param>
 /// <param name="SortDir">"asc" or "desc"; the headers link to the opposite of whatever is active.</param>
 /// <param name="Sepa">Whether the payout column renders at all, and the per-transfer ceiling.</param>
 /// <param name="Accounts">Creditor accounts shown on the page.</param>

@@ -15,6 +15,7 @@
 | `TeamController` | Class | `[Authorize]` (authenticated) | — |
 | `TeamController.Index` | Action | `AllowAnonymous` | Override |
 | `TeamController.Details` | Action | `AllowAnonymous` | Override |
+| `TeamController.Tree` | Action | `AllowAnonymous` | Override (`/Teams/Tree` department tree; hidden and system teams never listed; anonymous viewers see only public-page departments and get links only to public/promoted teams — `TeamDirectoryBuilder.BuildTree(..., isAuthenticated)`) |
 | `TeamController.Summary` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `TeamController.CreateTeam` (GET/POST) | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `TeamController.EditTeam` (GET/POST) | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |

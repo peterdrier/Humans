@@ -89,10 +89,11 @@ internal sealed class FinanceController(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList(),
-                r.IbanMasked))
+                r.IbanMasked,
+                r.OpenDocumentCount))
             .ToList();
 
-        var sortBy = sort is "name" or "balance" or "member" ? sort : "account";
+        var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";
         var sortDir = string.Equals(dir, "desc", StringComparison.Ordinal) ? "desc" : "asc";
         var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
@@ -248,6 +249,7 @@ internal sealed class FinanceController(
         {
             "name" => r => r.Name.ToUpperInvariant(),
             "balance" => r => r.Balance ?? 0m,
+            "opendocs" => r => r.OpenDocs ?? -1,
             "member" => r => r.MemberSortKey,
             _ => r => r.SupplierAccountNum,
         };

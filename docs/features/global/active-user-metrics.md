@@ -52,8 +52,8 @@ The constraint shaping the design: containers bounce **daily or more often**. An
 
 Two new types, no DB schema:
 
-- `IUserActivityTracker` (Application) — `Touch(Guid)` / `CountActiveWithin(Duration)`.
-- `UserActivityTracker` (Infrastructure, singleton) — `ConcurrentDictionary<Guid, Instant>` keyed by user id, value is last-seen `Instant` from `IClock`.
+- `IUserActivityTracker` (`Humans.Base`) — `Touch(Guid)` / `CountActiveWithin(Duration)`.
+- `UserActivityTracker` (`Humans.Web`, singleton) — `ConcurrentDictionary<Guid, Instant>` keyed by user id, value is last-seen `Instant` from `IClock`.
 
 No persistence. No EF entity. No table.
 

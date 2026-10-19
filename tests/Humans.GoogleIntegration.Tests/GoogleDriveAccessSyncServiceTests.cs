@@ -650,6 +650,31 @@ public sealed class GoogleDriveAccessSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true, "Nobodies")]
+    [Xunit.InlineData(false, "Workgroups")]
+    public async Task ReconcileOneAsync_UnregisteredSharedDriveRoot_NamesTheDriveNeverThePlaceholder(bool driveNameKnown, string expectedName)
+    {
+        var service = CreateService(new StaticSource("drive-1", "Workgroups"));
+        StubFolder("drive-1", new DrivePermission("perm-1", "user", "reader", "old@nobodies.team", HasInheritedComponent: false));
+        _drivePermissions.DeletePermissionAsync("drive-1", "perm-1", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, null));
+        // Drive reads a Shared Drive root as an anonymous folder called "Drive" with no parents.
+        _drivePermissions.GetFileAsync("drive-1", Arg.Any<CancellationToken>())
+            .Returns(new DriveFileMetadataResult(new DriveFileMetadata("drive-1", "Drive", null, "drive-1", null), null));
+        _drivePermissions.GetSharedDriveAsync("drive-1", Arg.Any<CancellationToken>())
+            .Returns(driveNameKnown
+                ? new SharedDriveMetadataResult(new SharedDriveMetadata("drive-1", "Nobodies"), null)
+                : new SharedDriveMetadataResult(null, new GoogleClientError(503, "unavailable")));
+
+        var diff = await service.ReconcileOneAsync("drive-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ResourceName.Should().Be(expectedName);
+        await _removalNotifications.Received(1).NotifyRemovalAsync(
+            "old@nobodies.team", GoogleResourceType.DriveFolder, expectedName, Arg.Any<string?>(),
+            SyncRemovalReason.Reconciliation, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_FailedRemoval_DoesNotNotifyTheFormerMember()
     {

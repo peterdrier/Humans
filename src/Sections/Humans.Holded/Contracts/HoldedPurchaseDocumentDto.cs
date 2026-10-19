@@ -13,7 +13,16 @@ public sealed record HoldedPurchaseDocumentDto
     public required decimal PaymentsPending { get; init; }
     public Instant? ApprovedAt { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
+    /// <summary><c>payments_detail</c>: one entry per payment recorded on the document, in Holded's
+    /// order. The only place a payment's id can be read — <c>POST purchases/{id}/payments</c> answers
+    /// <c>{"status":"paid"}</c> and nothing else (verified live 2026-10-18).</summary>
+    public IReadOnlyList<HoldedPaymentDetailDto> Payments { get; init; } = [];
 }
+
+/// <summary>One payment on a purchase document, as <c>payments_detail[]</c> reports it:
+/// <c>{"id","amount","date","bank_id"}</c>. <paramref name="Date"/> is the plain <c>YYYY-MM-DD</c>
+/// the payment was posted with; <paramref name="BankId"/> is the treasury account it left.</summary>
+public sealed record HoldedPaymentDetailDto(string Id, decimal Amount, LocalDate Date, string? BankId);
 
 public sealed record HoldedPurchaseDocumentLineInput
 {

@@ -56,7 +56,7 @@ Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404
 
 **Acceptance Criteria:**
 - Templates exist in all six supported cultures (`en`, `es`, `de`, `it`, `fr`, `ca`)
-- Recipient's `User.PreferredLanguage` selects the culture; missing/blank falls back to `en`
+- Recipient's `User.PreferredLanguage` selects the culture; missing, blank or unsupported falls back to `en`
 
 ### US-41.4: Suppression for known non-events
 **As a** user whose `UserEmail` row was deleted (account anonymization, self-unlink, OAuth-rename-in-place)

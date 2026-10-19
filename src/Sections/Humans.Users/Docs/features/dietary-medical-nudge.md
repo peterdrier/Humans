@@ -171,7 +171,7 @@ Dietary/medical fields are `Profile`-owned (see the [Users](../Users.md) and [Sh
 - **Shifts** (reads, gate): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. Method `IShiftManagementService.HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct)` on the cross-section read interface. Pure-query, no `Include` of `User`. Internally calls `Shift.QualifiesForCantinaMeal()` (pure helper on the entity).
 - **Profile** (reads, form): The dietary/medical form view pre-populates from `UserInfo` (loaded by `ProfileController` via `IUserService`). The `DietaryPreference`/`Allergies`/`Intolerances`/`AllergyOtherText`/`IntoleranceOtherText`/`MedicalConditions` fields are now `Profile`-owned.
 - **Profile** (writes): The form POST calls `IProfileEditorService.SaveDietaryMedicalAsync(userId, command)`, which delegates to `IUserManagement.SaveDietaryMedicalAsync` and writes to the `profiles` table. No `IShiftManagement` call on the save path.
-- **Dashboard / ThingsToDo**: the Shell's `ThingsToDoViewComponent` is a pure aggregator over `ISectionThingsToDo` contributors; Users' own `SectionThingsToDo` calls `IShiftManagementService.HasQualifyingCantinaSignupAsync` for the gate and reads `DietaryPreference` off the already-loaded `ProfileInfo` for the dietary-empty check.
+- **Dashboard / ThingsToDo**: Base's `ThingsToDoViewComponent` is a pure aggregator over `ISectionThingsToDo` contributors; Users' own `SectionThingsToDo` calls `IShiftManagementService.HasQualifyingCantinaSignupAsync` for the gate and reads `DietaryPreference` off the already-loaded `ProfileInfo` for the dietary-empty check.
 
 ## Negative access rules
 

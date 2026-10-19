@@ -66,8 +66,8 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Cross-Section Dependencies
 
-Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync), Store
-(sales-document issuance + chart read), Holded section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync, bank feed), Workgroups
+(expense-account list), Store (sales-document issuance + chart read), Holded section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
@@ -76,9 +76,10 @@ are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); 
 singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
 section's `Section.cs`.
 
-**Consumers outside the section:** Expenses (`ExpenseReportService`, via
-`IHoldedClient.IsConfigured`) and Finance (`Service`) reach it through the public `Contracts/`
-folder.
+**Consumers outside the section:** Expenses (`ExpenseHoldedPublisher` and
+`ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
+`IHoldedClient.IsConfigured`), Finance (`Service`), Workgroups (`WorkgroupService`) and Store
+(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,
@@ -88,5 +89,5 @@ this section's connector types directly — each section names its own concrete 
 `SectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
-`IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's
+`IHoldedFinanceService` / `IHoldedFinanceWrite`) is the `IUserDataContributor` that exports the member's
 `holded_creditor_contacts` binding.

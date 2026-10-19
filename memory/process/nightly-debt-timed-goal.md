@@ -1,25 +1,23 @@
 ---
-name: Nightly debt runs use the whole work window
-description: Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, prioritizes production fixes, and uses the full timed goal.
+name: Nightly debt runs stop at time or quota boundaries
+description: Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, prioritizes production fixes, and checks cumulative weekly quota between committed rounds.
 ---
 
-Work actively for the full configured window, then finish the current task
-before completing the goal. One PR contains multiple independently validated
-fixes. Time is the only stopping rule: never give this worker a fix-count quota.
-The target is the ledger, which must end smaller ([[debt-ledger-must-shrink]]).
+Work in validated, committed rounds for at most 12 hours, finishing the active
+batch afterward. The wrapper checks live weekly quota before the first round
+and after each completed round. Stop new work if remaining quota falls below
+`100 - 12 * elapsed_days_since_weekly_reset`, or quota is unavailable. This
+leaves 16% at week's end; all account usage counts. Manual runs may explicitly
+set `IGNORE_QUOTA_CUTOFF=1`; it bypasses quota checks, never the 12-hour cap or
+validation. Never consume reset credits automatically.
 
-**Why:** The first trial stopped after 89 seconds and only deleted a stale
-ledger row. Successful pipeline plumbing was mistaken for useful debt work.
-
-**How to apply:** Use one native Codex goal session across turn boundaries.
-Preserve its objective, deadline, and dangerous permissions if the harness
-must continue it. An early completion must reactivate the same goal after the
-current turn finishes, then continue with the actual clock and original deadline;
-it must not fail the run or publish early. Do not kill the task
-at the work deadline or reserve early wind-down time. Stale-row deletion and
-documentation do not count as substantive fixes (fixing a row's code does); a ledger-only run cannot
-publish a debt PR. Report real fixes, validation, elapsed time, and skipped
-candidates. Counts describe the result; they never determine when to stop.
+Use one native goal session across rounds. Complete the goal after each clean,
+committed batch and return a cumulative report. The wrapper reactivates that
+same goal only while time and quota allow another round. No fix-count target.
+One PR contains all independently validated fixes. Work existing ledger rows
+first ([[debt-ledger-must-shrink]]). Ledger-only or test-only work cannot qualify
+a run for publication. Final build/test and publication may extend past the
+work deadline. Report real fixes, validation, elapsed time, and stop reason.
 
 **Production work first:** Standalone coverage, controller-policy pins, test
 scaffolding, and test cleanup are never sweep objectives. Add or update focused

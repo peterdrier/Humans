@@ -9,32 +9,37 @@ it first; it decides what is pre-approved, what closes outright and what is
 not debt. Where it and the rules below still leave a change unsafe, don't do
 it, and say why in your final message instead.
 
-## Required timed goal
+## Required timed goal and quota rounds
 
 The runner has already set your native `/goal`, without a token budget.
-First call `get_goal` to confirm it. Its objective is:
+First call `get_goal` to confirm it. Work under this prompt and `debt-ladder.md`
+on the supplied branch. Start: __WORK_STARTED_UTC__. Work deadline:
+__WORK_DEADLINE_UTC__ (Unix seconds __WORK_DEADLINE_EPOCH__); maximum work
+window __TIME_BUDGET__. Final validation/publication may extend past it.
 
-> Spend the full __TIME_BUDGET__ actively fixing substantive tech debt under
-> `.codex/prompts/daily-debt.md` and `debt-ladder.md`, on the supplied branch.
-> Start: __WORK_STARTED_UTC__. Work deadline: __WORK_DEADLINE_UTC__
-> (Unix seconds __WORK_DEADLINE_EPOCH__). Complete multiple verified fixes,
-> one coherent fix or batch per commit, for ONE PR containing the whole run.
-> Do not complete this goal until the deadline has passed AND the current task is
-> finished, tested, committed, and the working tree is clean.
+**Each round is one coherent fix or batch.** Investigate, implement, validate,
+and commit it, then call `update_goal` with `complete` and return a cumulative
+Markdown report covering every round so far. The working tree must be clean.
+Do not start another batch in this turn. The wrapper checks live account quota
+before the first round and after each completed round, then reactivates the same
+native goal when both quota and time allow another round. Keep this same session,
+branch, objective and deadline; never restart the clock or pause/clear the goal.
+Native continuation may carry unfinished work across turns; only complete the
+goal once the current batch is committed and all helpers have finished.
 
-The runner stays attached to this single Codex session. Native goal
-continuation carries work across turns; the wrapper reactivates the same goal
-and continues this session if you complete it prematurely. Keep the existing
-objective and deadline. Never restart the clock, pause/clear the goal, or declare it complete early.
+The default window is at most 12 hours. The weekly quota allowance grows by
+12 percentage points per day elapsed since the account's weekly reset:
+`minimum remaining = 100 - 12 * elapsed_days` (16% at the end of seven days).
+All account usage counts. Below this threshold, or when quota cannot be read,
+the wrapper stops new work and validates/publishes completed fixes. An explicit
+manual `IGNORE_QUOTA_CUTOFF=1` bypasses quota checks, including unavailable data;
+it does not bypass the 12-hour cap or validation. Never consume reset credits.
 
-`TIME_BUDGET` is a **minimum active work window**, not a kill timer. Check
-`date -u +%s` after each commit. Before the deadline, immediately take the
-next safe fix. After the deadline, stop taking new tasks, finish and validate
-what is already underway, then call `update_goal` with `complete`. There is
-no early wind-down allowance. Finishing the current task may extend the run;
-the wrapper's final build/test and publication happen afterward.
+Check `date -u +%s` after each commit. After the deadline, finish and validate
+the current batch, complete the goal and return the cumulative report. There is
+no early wind-down allowance or fix-count quota. Do not sleep to consume time.
 
-**The ledger is the target; time is the only stopping rule.** The debt
+**The ledger is the target; time and account quota bound the run.** The debt
 ledgers — `inbox:` in `docs/architecture/debt-ledger.yml` plus `inbox:` in every
 `src/Sections/*/Docs/debt.yml` — are a holding bucket, not an archive: debt we
 have already found and still need to fix. Work those rows before searching
@@ -195,9 +200,9 @@ investigation. Keep investigating production debt for the remaining window.
    Leave the full solution gate to the wrapper at the end.
 5. Commit. One coherent improvement or batch per commit; no per-file commits
    for repeated simple corrections.
-6. Check the clock. Before the deadline, return to target selection and
-   complete another fix. Only after the deadline AND finishing the current
-   task may you complete the goal and write the final report.
+6. Check the clock. After this completed batch, finish the round for the
+   wrapper quota check. Complete the goal and return the cumulative report
+   once the batch is validated, committed, and clean.
 
 ## Batching simple corrections
 
@@ -280,7 +285,8 @@ down it.
    shrinks the ledger but never counts as a fix and never ends a run.
 3. Work the open ledger rows: oldest `added:` first, using the rungs' order
    and mechanics when several are workable. Validate and commit each fix or
-   simple batch, delete the closed rows in the same commit, then take another.
+   simple batch, delete the closed rows in the same commit, then finish the
+   round for the wrapper quota check.
    Skip a row only when it needs a decision no rule answers (list it under
    **Needs Peter**, D3 format) or cannot be fixed safely unattended (say why).
    No category-bin skips (D4): every skipped row gets a one-line code check
@@ -291,7 +297,7 @@ down it.
 4. Only when no ledger row is actionable, work the rungs' Finds commands for
    new debt. One available item is not a reason to stop for the night.
 5. A rung's **Done-check** is the local validation gate. Run it once per
-   completed batch or individual fix before committing, then continue. The
+   completed batch or individual fix before committing and finishing the round. The
    wrapper runs the final full gate once before publishing the single PR.
 6. Apply the timed goal's stopping conditions during batch discovery and
    after every commit. If no seeded items remain, investigate the Finds results; do not repeatedly recheck

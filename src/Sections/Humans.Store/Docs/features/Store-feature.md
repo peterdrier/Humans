@@ -109,7 +109,7 @@ The section invariant doc is [`Store.md`](../Store.md).
   - **Cross-tab** — camps × products matrix with qty cells (blank for 0) and a per-product column-totals footer row. Both axes alphabetical. Column totals are consistent with by-item totals.
 - Service surface: `Service.GetStoreSummaryAsync(int year, CancellationToken)` returns a `SummaryDto` composing the three projections. Replaces the earlier `GetAllOrderSummariesAsync` stub (no production callers existed).
 - Single repository round-trip via `Repository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampsForYearAsync` (projecting each camp's seasons for the year) and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
-- Reachable from the admin nav under Money → "Store summary" (gated by the same policy so it stays hidden for non-admins).
+- Reachable from the admin nav under Store → "Summary" (gated by the same policy so it stays hidden for non-admins).
 
 ## Data Model
 
@@ -132,7 +132,7 @@ All cross-section linkage is bare `Guid` columns — no FK constraints, no nav p
 
 ```
                   AddLine / RemoveLine / EditCounterparty (Lead, Open only)
-                  RecordPayment (FinanceAdmin, any state)
+                  RecordPayment (Store admin, any state)
                   Pay (Lead, any state — Stripe Checkout)
                   ▲
                   │
@@ -150,7 +150,7 @@ All cross-section linkage is bare `Guid` columns — no FK constraints, no nav p
 
 ## Authorization
 
-Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`}). Logic:
+Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`, `RecordPayment`, `Refund`, `DeletePayment`}). Logic for the camp-order operations (the last three are Store-admin-only; `Refund` is FinanceAdmin/Admin only and `DeletePayment` Admin only — see `Store.md`):
 
 | Role | View | AddLine / RemoveLine / EditCounterparty | Pay |
 |---|---|---|---|
@@ -174,7 +174,7 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 
 ## Configuration
 
-The Store section reads several environment variables — see `Store.md` *Stripe Configuration* for the canonical contract. Summary:
+The Store section reads several environment variables — see `Store.md` *Stripe Connector* for the canonical contract. Summary:
 
 - `STRIPE_STORE_KEY` — production-narrow Restricted API Key (`rk_*`) with `checkout_session:write` scope only.
 - `STRIPE_STORE_WEBHOOK_SECRET` — webhook signing secret. Set manually in QA/prod; auto-stamped in PR-preview by the registrar.

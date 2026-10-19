@@ -48,12 +48,13 @@ Repository: `IAgentRepository`.
 | AgentMessages | R/W |
 | AgentSettings | R (via `IAgentSettingsService`) |
 
-Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
-`IAgentAbuseDetector`, `IAgentUserSnapshotProvider`,
-`IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`,
-`IAgentToolDispatcher`, `IAnthropicClient`. Implements
-`IUserDataContributor`, `IAgentTranscriptRead` (Backdoor's machine-API
-transcript surface). Uses `AnthropicOptions`. No `IMemoryCache`.
+Section-internal collaborators: `IAgentSettingsService`, `IAgentRateLimitStore`,
+`IAgentAbuseDetector`, `IAgentRetentionRunStore`, `IAgentUserSnapshotProvider`,
+`IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`, `IAgentToolDispatcher`,
+`IAnthropicClient`. Cross-section calls via `IUserService` (GDPR export display name).
+Implements `IUserDataContributor`, `IAgentConversationRetention`, `IAgentTranscriptRead`
+(Backdoor's machine-API transcript surface). Uses `AnthropicOptions` and `IClock`. No
+`IMemoryCache`.
 
 ### AgentAdminStatusService (Scoped, `Humans.Agent.Services`)
 
@@ -79,8 +80,9 @@ estimates. No DI, no DB access.
 
 Live under `src/Sections/Humans.Agent/Services/`. The settings
 service is the only one that touches `AgentSettings` directly (via
-`AgentRepository.GetAgentSettingsAsync` / `UpsertAgentSettingsAsync`),
-backed in-memory by `AgentSettingsStore`. The others are stateless
+`IAgentRepository.GetSettingsAsync` / `UpdateSettingsAsync`),
+backed in-memory by `AgentSettingsStore`, and audits each change through
+`IAuditLogService`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamService`,
 `IUserService`, `IRoleAssignmentService`, `IConsentService`,
 `IFeedbackService`, `ITicketService`, `IShiftView`,

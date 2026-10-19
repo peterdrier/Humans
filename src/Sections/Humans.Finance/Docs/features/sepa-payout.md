@@ -125,8 +125,18 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    bank movement id land on the row before anything is reconciled — the local save is the cheap
    write, and losing it after Holded already took the money was the original bug
    (nobodies-collective/Humans#1185), together with the comma-joined payment ids the run posted
-   (`HoldedPaymentRefs`). The line is then reconciled in Holded against **those payment ids**
-   (`{document_id: <payment id>, document_type: "payment"}`) — never against the purchase document
+   (`HoldedPaymentRefs`, plus an `entry:<amount>` token when a journal entry was posted). Holded's
+   payment `POST` answers only `{"status":"paid"}`; the id is the entry of the document's
+   `payments_detail` that is new after the POST and matches amount, date and bank account, read
+   before and after (`PayPurchaseDocumentAsync`). The line is then reconciled in Holded against
+   **those payment ids** (`{document_id: <payment id>, document_type: "payment"}`), all of them in
+   one call first; when Holded refuses a list longer than `ReconcileChunkSize` (50) with a 4xx, the
+   same ids go again in chunks of 50 against the same line, and the stamp then waits for the line
+   to read `reconciled` on the feed. A refused chunk does not stop the chunks behind it: the
+   refused ids are logged at Warning, and since the chunks already through left the line
+   `partial`, which the sweep never re-issues, those ids are a human's to finish in Holded. A line
+   that reads `partial` after every id was sent and the list was complete is logged at Warning with
+   the line id, the amount and the ids sent. Never against the purchase document
    ids: a `purchase` ref reads as "this line pays that document", and Holded mints a brand-new
    payment for the whole line amount on the first document named, leaving the payments just posted
    as unmatched legs (production, 2026-10-17: a 75.00 line, a phantom 75.00 payment, 150.00 of
@@ -150,9 +160,13 @@ ledger, so paying one would post against a document that does not exist for acco
 ### Known limits
 
 - **A payout that needed a journal entry stays reconcile-pending until a human reconciles it.**
-  Holded's reconcile cannot name a ledger entry, so the payments are linked and the entry's share of
-  the line is not; the line reads `partial` (or `pending`, when the whole payout was an entry) until
-  someone reconciles it in the Holded GUI. The row says so, and the sweep's re-issue cannot help.
+  The journal-entry remainder (the member's balance exceeds their open documents, e.g. Peter's loan,
+  David's incoming transfer) can never be linked to a bank line by API; Holded only links treasury
+  objects. The payments are linked and the entry's share of the line is not; such a line ends
+  `partial` (or `pending`, when the whole payout was an entry) and is closed by hand in Holded. The
+  row says so — "<amount> of this line was posted as a journal entry and needs a manual match in
+  Holded", the amount read off the `entry:` token in `HoldedPaymentRefs` — instead of the generic
+  reconcile-pending text, and the sweep's re-issue cannot help.
 - **A retry after `PARTIAL` or `SHORT` is refused.** Holded discards the description on a purchase
   payment, so the `SEPA payout E<id>` tag never reaches the ledger for a payment and the step-4 sum
   reads 0 for it — a retry would post the money again as a journal entry. A run that posted
@@ -167,7 +181,8 @@ ledger, so paying one would post against a document that does not exist for acco
   `Generated` in Humans for the record.
 - **`HoldedPaymentRefs` is back in use**, unbounded (`text`; the old 512 cap overflowed at about
   20 documents): the comma-joined payment ids a booking posted, in posting order, `unconfirmed:`
-  sentinels included. It is what the sweep re-issues the reconcile from.
+  sentinels included, plus `entry:<amount>` when a journal entry was posted. It is what the sweep
+  re-issues the reconcile from (payment ids only; the sentinels and the entry token are never sent).
 - **Outgoing lines are assumed to be negative** on the bank feed. If that is ever wrong, no line
   matches and every row waits — visible as rows that never leave "waiting for the Sabadell line".
 
@@ -220,7 +235,8 @@ text, so until that matching has earned trust a human approves each file on `/Fi
 `/Finance/Sepa`'s "bank lines needing a human" panel. The sweep also **re-issues the reconcile** for
 every row still `ReconcilePending`: rows sharing one bank line (a Processed file) are re-issued
 together, against the union of their recorded payment ids, when the line still reads `pending` in
-Holded; the row is stamped when the line then reads `reconciled`. A line Holded already reads
+Holded, through the same one-call-then-chunks path as the booking; the row is stamped when the line
+then reads `reconciled`. A line Holded already reads
 `reconciled` (a human in the GUI) is stamped as is. A line that reads `partial` is not re-issued —
 its payments are linked and what remains (a journal entry) is a human's — and a row with no payment
 id (booked before the ids were kept, or paid by an entry alone) only has its line's status read.

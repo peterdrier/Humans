@@ -37,7 +37,7 @@ Hide categories you're not interested in, and your choices are saved to your pro
 
 During the submission window, you can submit your own event. Give it a title (up to 80 characters), a description (up to 450 characters), a category, a start time, and a length between 15 minutes and 24 hours. You can optionally add a venue, a location note, and a host name. Once submitted, it waits for a moderator to approve it before it shows up in the public guide.
 
-If your event is sent back for edits or turned down, you'll get an email. You can fix it and resubmit while the window is still open.
+If your event is sent back for edits or turned down, you'll get an email. You can fix it and resubmit even after the window has closed.
 
 ![TODO: screenshot — event submission form with title, description, category, start time, and length fields]
 

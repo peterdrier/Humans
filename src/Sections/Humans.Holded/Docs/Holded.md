@@ -24,7 +24,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **Page rows are required**: null items fail the complete connector read as a permanent error; silently dropping malformed rows must never turn a page into an incomplete or empty reconciliation input.
 - **Cursor walks must progress**: a repeated cursor fails the complete read immediately, before refetching that page. Distinct cursors retain each endpoint's page cap; incomplete lists never reach replace-semantics reconciliation.
 - **Creation identities are required**: accepted purchase/contact/sales/expense-account creates must return a nonblank ID. Null bodies or missing/blank IDs fail permanently, so callers cannot automatically repeat an already accepted create or persist an unusable account reference. A contact update may reuse its known ID when the parsed response omits or blanks it.
-- **Write responses stay typed**: unreadable purchase-create, contact-upsert, sales-create and expense-account-create success bodies fail as permanent connector errors, including text-decoding failures, so callers can record failure rather than losing queue bookkeeping to a raw parsing exception. Accepted payments and ledger postings retain their operation-specific `unconfirmed:` reference when the success body cannot be decoded or parsed; callers must not repeat a posting because its response was unreadable.
+- **Write responses stay typed**: unreadable purchase-create, contact-upsert, sales-create and expense-account-create success bodies fail as permanent connector errors, including text-decoding failures, so callers can record failure rather than losing queue bookkeeping to a raw parsing exception. Accepted payments and ledger postings retain their operation-specific `unconfirmed:` reference when their id cannot be read — a payment's id comes from the document's `payments_detail` re-read after the POST (the POST body is `{"status":"paid"}` alone), an entry's from its own response body; callers must not repeat a posting because its reference is unconfirmed.
 - **Purchase document identity is required**: purchase documents need a nonblank ID; a missing or blank ID rejects the page. An absent `payments_pending` reads as 0 (nothing owed), which refuses a booking rather than over-paying.
 - **Document currency is explicit and EUR-only**: purchase reads and sales-document readbacks reject missing, null, blank or foreign currency as a permanent error. EUR codes are accepted case-insensitively; an unsupported document never shortens a full purchase list. Sales totals reach Store comparison or adoption only after currency validation.
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
@@ -146,13 +146,13 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector) only.
+- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceWrite.SyncAsync` (the nightly job's first step) and `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row on `/Holded`).
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts.IHoldedService` (+ `HoldedLedgerLineInfo`)
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, `IHoldedNightlySync` for the job, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

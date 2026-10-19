@@ -103,7 +103,7 @@ run_gate_repair() {
   rm -f "$repair_message"
   log "starting bounded Codex gate-repair pass for $failure_kind (deadline $repair_deadline)"
   export WORK_DIR="$work_dir" CODEX_MODEL="$codex_model" CODEX_EFFORT="$codex_effort" CODEX_DANGEROUS="$dangerous"
-  python3 "$work_dir/.codex/cron/run-goal.py" "$repair_prompt" "$repair_message" "$repair_deadline" repair \
+  python3 "$script_dir/run-goal.py" "$repair_prompt" "$repair_message" "$repair_deadline" repair \
     >>"$log_file" 2>&1 || repair_exit=$?
   if (( repair_exit != 0 )); then
     log "gate-repair Codex session failed (exit $repair_exit)"
@@ -132,6 +132,7 @@ main() {
   # file, not by editing this script.
   # ============================================================
   local script_dir
+  local requested_time_budget="${TIME_BUDGET-}" requested_quota_override="${IGNORE_QUOTA_CUTOFF-}"
   script_dir="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
   local env_file="$script_dir/debt-runner.env"
   if [[ -f "$env_file" ]]; then
@@ -143,7 +144,10 @@ main() {
 
   REPO_URL="${REPO_URL:-}"                                    # git remote to clone/push, e.g. git@github.com:peterdrier/Humans.git
   WORK_DIR="${WORK_DIR:-$HOME/.humans-debt-runner/clone}"      # DEDICATED clone. Never Peter's working checkout.
-  TIME_BUDGET="${TIME_BUDGET:-90m}"                            # minimum active work window; finish the current task afterward
+  # Per-run time/quota overrides take precedence over the saved environment file.
+  TIME_BUDGET="${requested_time_budget:-${TIME_BUDGET:-12h}}"
+  IGNORE_QUOTA_CUTOFF="${requested_quota_override:-${IGNORE_QUOTA_CUTOFF:-0}}"
+  export IGNORE_QUOTA_CUTOFF
   # Pinned rather than left to inherit the interactive `codex` config, so
   # changing Peter's own day-to-day model/effort preference doesn't silently
   # change what the nightly job runs.
@@ -163,7 +167,6 @@ main() {
   # Integration tests are outside nightly runs and manual runner trials.
   export VSTestTestCaseFilter='FullyQualifiedName!~Humans.Integration.Tests'
   readonly CLONE_MARKER_NAME=".codex-runner-clone"
-  readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
   readonly ENV_FILE_REL_PATH=".codex/cron/debt-runner.env"     # excluded from `git clean` inside WORK_DIR
 
   # ---- run state, deliberately global, not local ------------------------
@@ -200,6 +203,14 @@ main() {
   if ! budget_seconds="$(parse_seconds "$TIME_BUDGET")"; then
     exit_reason="invalid-time-budget"
     die "TIME_BUDGET must be a positive integer with optional s/m/h/d suffix"
+  fi
+  if (( budget_seconds > 43200 )); then
+    exit_reason="invalid-time-budget"
+    die "TIME_BUDGET cannot exceed 12h"
+  fi
+  if [[ "$IGNORE_QUOTA_CUTOFF" != 0 && "$IGNORE_QUOTA_CUTOFF" != 1 ]]; then
+    exit_reason="invalid-quota-override"
+    die "IGNORE_QUOTA_CUTOFF must be 0 or 1"
   fi
   if [[ ! "$GATE_REPAIR_ATTEMPTS" =~ ^[0-9]+$ ]]; then
     exit_reason="invalid-gate-repair-attempts"
@@ -352,7 +363,7 @@ main() {
   git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
   touch "$CLONE_MARKER_NAME"
 
-  local prompt_file="$WORK_DIR/$PROMPT_REL_PATH"
+  local prompt_file="$script_dir/../prompts/daily-debt.md"
   if [[ ! -f "$prompt_file" ]]; then
     exit_reason="prompt-file-missing"
     die "prompt file missing after refresh: $prompt_file"
@@ -467,18 +478,25 @@ main() {
   log "starting one Codex session, work deadline $work_deadline, dangerous mode $CODEX_DANGEROUS"
   export WORK_DIR CODEX_MODEL CODEX_EFFORT CODEX_DANGEROUS
   local codex_exit=0
-  python3 "$WORK_DIR/.codex/cron/run-goal.py" "$prompt_file" "$last_message_file" "$work_deadline" \
+  python3 "$script_dir/run-goal.py" "$prompt_file" "$last_message_file" "$work_deadline" \
     >>"$log_file" 2>&1 || codex_exit=$?
   commits_made="$(git rev-list --count "$head_before..HEAD")"
   local goal_blocked=false
   if (( codex_exit == 2 )); then
     goal_blocked=true
     log "Codex goal blocked; validating committed work for a draft PR"
+  elif (( codex_exit == 3 )); then
+    log "Quota guard stopped new work; validating any completed fixes"
+    if (( commits_made == 0 )); then
+      exit_reason="skip-quota"
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      return 0
+    fi
   elif (( codex_exit != 0 )); then
     exit_reason="codex-failed"
     die "Codex goal failed; preserving local work without publishing"
   fi
-  if [[ "$goal_blocked" == false ]] && (( $(date -u +%s) < work_deadline )); then
+  if [[ "$goal_blocked" == false ]] && (( codex_exit != 3 && $(date -u +%s) < work_deadline )); then
     exit_reason="goal-ended-early"
     die "Goal returned before the work deadline"
   fi
@@ -778,7 +796,7 @@ prune_old_logs() {
   find "$LOG_DIR" -maxdepth 1 -type f -name 'debt-*.log' -mtime "+$LOG_RETENTION_DAYS" -delete 2>/dev/null || true
 }
 
-# Whole-second work windows; reject typos rather than silently using 90m.
+# Whole-second work windows; reject typos rather than silently using the default.
 parse_seconds() {
   local spec="$1" num
   [[ "$spec" =~ ^([0-9]+)([smhd]?)$ ]] || return 1
