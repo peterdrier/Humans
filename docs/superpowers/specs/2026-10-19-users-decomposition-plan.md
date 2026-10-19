@@ -104,9 +104,11 @@ Columns and whole tables take the same shape:
    suppression). This keeps preview and QA correct without an operator step and is "self-healing on the
    read path", which the backfill rule allows.
 5. When the status endpoint reports the migration done in production, a retirement PR deletes the
-   migration, the fallback and the obsolete fields; a separate drop PR removes the legacy columns or
-   table with the pickaxe evidence
-   ([`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md)).
+   migration, the fallback and the obsolete fields; a separate drop PR then removes the legacy columns
+   or table. **The production `done` reading is the drop's approval** (Peter, 2026-10-19; recorded in
+   [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md),
+   "Standing approval"): the baseline entry cites the reading and the merged retirement PR, and no
+   per-case sign-off is needed.
 
 Enum pinch: `MembershipTier` → `Governance.Contracts`, `ConsentCheckStatus` → Consent's contracts,
 `ParticipationStatus`/`ParticipationSource` → `Tickets.Contracts`, `MessageCategory` → `Email.Contracts`,
@@ -181,8 +183,9 @@ Keys, pending counts and a boolean only; never row data. The counts are membersh
 
 **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen;
 a development session polls `https://<prod>/api/data-migrations` and, when `done` is true everywhere it
-matters, opens the retirement PR (delete migration, fallback, `[Obsolete]` fields) and then the drop PR.
-Follow-up outside this PR: a `/migration-retire` skill that does the poll and the retirement PR.
+matters, opens the retirement PR (delete migration, fallback, `[Obsolete]` fields) and then the drop PR,
+for which the production `done` reading is the approval (§3.1 step 5). Follow-up outside this PR: a
+`/migration-retire` skill that does the poll, the retirement PR and the drop PR.
 
 ## 4. Commit order
 
@@ -233,7 +236,7 @@ moves next (they establish the slots the data moves reuse), then the data moves 
 
 - Whole tables: new table + copy (§3.1), not table transfer.
 - All copies on one screen with a public status endpoint, permanent home in Debug (§3.3); existing Temp
-  screens fold into it.
+  screens fold into it. A migration reporting `done` on production is the approval for dropping what it replaced.
 - Google address flags move (#15).
 - Privacy page → Consent.
 - Audience segmentation stays; issue to file.
