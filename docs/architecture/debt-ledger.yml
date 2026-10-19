@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 87
+next_id: 88
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -261,3 +261,7 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-10-19
+    id: CENTRAL-87
+    what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
+    review: light

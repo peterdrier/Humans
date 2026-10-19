@@ -1,4 +1,8 @@
 # Section debt ledger for Humans.Auth. Shape: memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 2
-inbox: []
+next_id: 3
+inbox:
+  - added: 2026-10-19
+    id: AUTH-2
+    what: "MagicLinkService.SendLoginLinkAsync stamps User.MagicLinkSentAt and saves it through UserManager<User>.UpdateAsync, writing a Users-owned column from Auth (never touch another section's tables). Either move the stamp behind a Users write method or drop it, since IMagicLinkRateLimiter.TryReserveUserSendAsync already holds the cooldown in memory (the stamp only adds restart survival). Found by section-doctor on Auth."
+    review: panel
