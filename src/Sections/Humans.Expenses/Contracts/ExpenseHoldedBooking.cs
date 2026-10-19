@@ -7,12 +7,13 @@ namespace Humans.Expenses.Contracts;
 /// trimmed line carrying a negative adjustment line so the document total is the booked amount).
 /// Finance matches Holded's purchase list against these to find documents the push created twice.
 /// Legacy report-level documents (<see cref="ExpenseReportDto.HoldedDocId"/>) are not included:
-/// they predate per-line pushes and never raced.
+/// they predate per-line pushes and never raced. <see cref="CreditorUserId"/> is the submitter as
+/// they are now (the merge survivor), the member the creditor binding belongs to.
 /// </summary>
 public sealed record ExpenseHoldedBooking(
     Guid ExpenseReportId,
     Guid LineId,
-    Guid SubmitterUserId,
+    Guid CreditorUserId,
     string? HoldedContactId,
     string HoldedDocId,
     string Description,

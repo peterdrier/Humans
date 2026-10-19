@@ -67,10 +67,19 @@ public class SepaWithdrawTests
     {
         _repo.GetSepaTransferAsync(TransferId, Arg.Any<CancellationToken>()).Returns(new SepaPayoutTransfer
         {
-            Id = TransferId, FileId = Guid.NewGuid(), UserId = UserId, SupplierAccountNum = 41000060,
-            HoldedContactId = "c1", CreditorName = "Paul Vivien", Iban = "ES7921000813610123456789",
-            IbanMasked = "ES79****789", Amount = 4800m, BookedAt = bookedAt, HoldedBankMovementId = movementId,
-            HoldedPaymentRefs = paymentRefs, WithdrawnAt = withdrawnAt,
+            Id = TransferId,
+            FileId = Guid.NewGuid(),
+            UserId = UserId,
+            SupplierAccountNum = 41000060,
+            HoldedContactId = "c1",
+            CreditorName = "Paul Vivien",
+            Iban = "ES7921000813610123456789",
+            IbanMasked = "ES79****789",
+            Amount = 4800m,
+            BookedAt = bookedAt,
+            HoldedBankMovementId = movementId,
+            HoldedPaymentRefs = paymentRefs,
+            WithdrawnAt = withdrawnAt,
         });
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>
         {

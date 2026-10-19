@@ -61,7 +61,10 @@ public class HoldedDuplicateTests
 
     private static HoldedCreditorContact Binding(string contactId, Guid? userId = null) => new()
     {
-        UserId = userId ?? UserId, HoldedContactId = contactId, SupplierAccountNum = Account, Source = CreditorContactSource.Auto,
+        UserId = userId ?? UserId,
+        HoldedContactId = contactId,
+        SupplierAccountNum = Account,
+        Source = CreditorContactSource.Auto,
     };
 
     private static ExpenseHoldedBooking Booking(
@@ -71,11 +74,20 @@ public class HoldedDuplicateTests
     private static HoldedPurchaseDocListItemDto Doc(
         string id, decimal total = 120m, string description = "ER: Train to Madrid", string contactId = "c1",
         string? notes = null, decimal? pending = null, bool? draft = false, bool noNotes = false) => new()
-    {
-        Id = id, DocNumber = id, ContactId = contactId, ContactName = "Catherine Morgaine Ryan", Description = description,
-        Notes = noNotes ? null : notes ?? $"Expense report {ReportId}", Date = FixedNow, Subtotal = total, Tax = 0m,
-        Total = total, PaymentsPending = pending ?? total, IsDraft = draft,
-    };
+        {
+            Id = id,
+            DocNumber = id,
+            ContactId = contactId,
+            ContactName = "Catherine Morgaine Ryan",
+            Description = description,
+            Notes = noNotes ? null : notes ?? $"Expense report {ReportId}",
+            Date = FixedNow,
+            Subtotal = total,
+            Tax = 0m,
+            Total = total,
+            PaymentsPending = pending ?? total,
+            IsDraft = draft,
+        };
 
     private static readonly IReadOnlyDictionary<Guid, IReadOnlySet<string>> NoExtraContacts =
         new Dictionary<Guid, IReadOnlySet<string>>();
@@ -104,6 +116,18 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
+    public void Matcher_TwoIdenticalLinesOneExtraDocument_ClaimsItOnce()
+    {
+        // The extra document matches both lines; it is one duplicate, counted and deleted once.
+        var matches = HoldedDuplicateMatcher.Find(
+            [Booking("doc-a", 10m, "ER: Taxi"), Booking("doc-b", 10m, "ER: Taxi")],
+            [Doc("doc-a", 10m, "ER: Taxi"), Doc("doc-b", 10m, "ER: Taxi"), Doc("doc-c", 10m, "ER: Taxi")],
+            NoExtraContacts);
+
+        matches.SelectMany(m => m.Duplicates).Select(d => d.Id).Should().Equal("doc-c");
+    }
+
+    [HumansFact]
     public void Matcher_DifferentDescriptionTotalOrNotes_IsNotADuplicate()
     {
         var matches = HoldedDuplicateMatcher.Find([Booking("doc-a")],
@@ -119,11 +143,13 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public void Matcher_ADocumentWithoutNotes_StillMatchesOnDescriptionAndTotal()
+    public void Matcher_ADocumentWithoutNotes_IsNotADuplicate()
     {
+        // The push always writes notes; a same-description, same-total document without them is
+        // someone else's, and a match can end in a delete.
         var matches = HoldedDuplicateMatcher.Find([Booking("doc-a")], [Doc("doc-a"), Doc("doc-b", noNotes: true)], NoExtraContacts);
 
-        matches.Should().ContainSingle().Which.Duplicates.Select(d => d.Id).Should().Equal("doc-b");
+        matches.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -356,7 +382,11 @@ public class HoldedDuplicateTests
 
     private static HoldedAccountDto Account_(int number, decimal balance) => new()
     {
-        Id = number.ToString(System.Globalization.CultureInfo.InvariantCulture), Number = number, Name = "Creditor",
-        Debit = 0m, Credit = 0m, Balance = balance,
+        Id = number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        Number = number,
+        Name = "Creditor",
+        Debit = 0m,
+        Credit = 0m,
+        Balance = balance,
     };
 }

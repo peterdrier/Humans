@@ -151,6 +151,23 @@ public class ExpenseReportServiceHoldedOutboxTests
         bookings[1].BookedAmount.Should().Be(5m);
     }
 
+    [HumansFact]
+    public async Task GetHoldedBookingsAsync_SubmitterMergedAway_NamesTheSurvivor()
+    {
+        // #1704: the creditor binding sits on the survivor, so the booking has to name them too.
+        var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Alice Smith" };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(survivor) with { MergedUserIds = [SubmitterId] } }));
+        var report = MakeReport();
+        report = report with { Lines = [report.Lines[0] with { HoldedDocId = "doc-a" }] };
+        _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report]);
+
+        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        bookings.Should().ContainSingle().Which.CreditorUserId.Should().Be(survivor.Id);
+    }
+
     private static ExpenseReportDto MakeReport(string? holdedDocId = null)
     {
         var reportId = Guid.NewGuid();

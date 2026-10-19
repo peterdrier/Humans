@@ -79,9 +79,18 @@ public class CreditorPayabilityTests
 
     private static HoldedPurchaseDocListItemDto Doc(string id, decimal total, decimal? pending = null) => new()
     {
-        Id = id, DocNumber = id, ContactId = "c1", ContactName = "Paul Vivien", Description = "ER: Van hire",
-        Notes = $"Expense report {ReportId}", Date = FixedNow, Subtotal = total, Tax = 0m, Total = total,
-        PaymentsPending = pending ?? total, IsDraft = false,
+        Id = id,
+        DocNumber = id,
+        ContactId = "c1",
+        ContactName = "Paul Vivien",
+        Description = "ER: Van hire",
+        Notes = $"Expense report {ReportId}",
+        Date = FixedNow,
+        Subtotal = total,
+        Tax = 0m,
+        Total = total,
+        PaymentsPending = pending ?? total,
+        IsDraft = false,
     };
 
     private static ExpenseHoldedBooking Booking(string docId, Guid? lineId = null) =>

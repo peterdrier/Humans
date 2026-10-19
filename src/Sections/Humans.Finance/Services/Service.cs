@@ -706,7 +706,7 @@ internal sealed class Service(
                 .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
             flaggedUsers = (await FindDuplicateDocumentsAsync(purchaseDocs, contactById, ct))
-                .Select(m => m.Booking.SubmitterUserId)
+                .Select(m => m.Booking.CreditorUserId)
                 .ToHashSet();
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -2838,7 +2838,7 @@ internal sealed class Service(
                 + "/Finance/HoldedDuplicates; their creditor accounts are not payable until they are removed.",
                 matches.Count, matches.Sum(m => m.Duplicates.Count),
                 Euros(matches.Sum(m => m.Duplicates.Sum(d => d.Total))),
-                matches.Select(m => m.Booking.SubmitterUserId).Distinct().Count());
+                matches.Select(m => m.Booking.CreditorUserId).Distinct().Count());
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -2876,7 +2876,7 @@ internal sealed class Service(
             .ToLookup(c => c.Name!.Trim(), StringComparer.OrdinalIgnoreCase);
 
         var result = new Dictionary<Guid, IReadOnlySet<string>>();
-        foreach (var group in bookings.GroupBy(b => b.SubmitterUserId))
+        foreach (var group in bookings.GroupBy(b => b.CreditorUserId))
         {
             var set = new HashSet<string>(StringComparer.Ordinal);
             if (bindingByUser.GetValueOrDefault(group.Key)?.HoldedContactId is { Length: > 0 } bound) set.Add(bound);
@@ -2919,7 +2919,7 @@ internal sealed class Service(
             .ToLookup(d => d.ContactId!, StringComparer.Ordinal);
 
         var members = matches
-            .GroupBy(m => m.Booking.SubmitterUserId)
+            .GroupBy(m => m.Booking.CreditorUserId)
             .Select(g =>
             {
                 var binding = bindingByUser.GetValueOrDefault(g.Key);

@@ -525,7 +525,8 @@ public class FinanceControllerTests
         var admin = Guid.NewGuid();
         var row = Transfer(Guid.NewGuid(), "f.xml", Stamp(1), admin, Ana, 40000002) with
         {
-            WithdrawnAt = Stamp(2), WithdrawnByUserId = Bo,
+            WithdrawnAt = Stamp(2),
+            WithdrawnByUserId = Bo,
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));

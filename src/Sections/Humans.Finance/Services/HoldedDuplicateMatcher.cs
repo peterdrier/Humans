@@ -9,7 +9,9 @@ namespace Humans.Finance.Services;
 /// document on the member's contacts that carries the same description, the same notes and the
 /// line's booked total is a duplicate of it. Two lines with identical values legitimately produce
 /// two documents, each the kept document of its own line, so a document some line links to is never
-/// anyone's duplicate. Pure, so the nightly check, the page and the apply all run the same rule.
+/// anyone's duplicate, and an extra document matching several identical lines is the duplicate of
+/// the first of them only, so it is counted and deleted once. Pure, so the nightly check, the page
+/// and the apply all run the same rule.
 /// </summary>
 internal static class HoldedDuplicateMatcher
 {
@@ -20,12 +22,12 @@ internal static class HoldedDuplicateMatcher
         IReadOnlyList<HoldedPurchaseDocListItemDto> Duplicates);
 
     /// <summary>Whether <paramref name="doc"/> carries exactly what the push wrote for
-    /// <paramref name="booking"/>. A list that omits notes cannot contradict them, so a null reads
-    /// as a match; a present value has to be equal.</summary>
+    /// <paramref name="booking"/>. The push always writes notes, so a document without them is not
+    /// the push's and never matches: a match can end in a delete.</summary>
     internal static bool Matches(ExpenseHoldedBooking booking, HoldedPurchaseDocListItemDto doc) =>
         string.Equals(doc.Description, booking.Description, StringComparison.Ordinal)
         && doc.Total == booking.BookedAmount
-        && (doc.Notes is null || string.Equals(doc.Notes, booking.Notes, StringComparison.Ordinal));
+        && string.Equals(doc.Notes, booking.Notes, StringComparison.Ordinal);
 
     /// <summary>Every line with at least one duplicate. <paramref name="contactsByUser"/> widens
     /// the search from the line's own contact to every contact the member holds (the race also
@@ -44,25 +46,27 @@ internal static class HoldedDuplicateMatcher
             .ToLookup(d => d.ContactId!, StringComparer.Ordinal);
         var bookingContactsByUser = bookings
             .Where(b => !string.IsNullOrEmpty(b.HoldedContactId))
-            .GroupBy(b => b.SubmitterUserId)
+            .GroupBy(b => b.CreditorUserId)
             .ToDictionary(g => g.Key, g => g.Select(b => b.HoldedContactId!).ToHashSet(StringComparer.Ordinal));
 
+        var claimed = new HashSet<string>(StringComparer.Ordinal);
         var matches = new List<Match>();
         foreach (var booking in bookings)
         {
             if (!docById.TryGetValue(booking.HoldedDocId, out var kept)) continue;
 
             var contacts = new HashSet<string>(StringComparer.Ordinal);
-            if (contactsByUser.TryGetValue(booking.SubmitterUserId, out var known)) contacts.UnionWith(known);
-            if (bookingContactsByUser.TryGetValue(booking.SubmitterUserId, out var named)) contacts.UnionWith(named);
+            if (contactsByUser.TryGetValue(booking.CreditorUserId, out var known)) contacts.UnionWith(known);
+            if (bookingContactsByUser.TryGetValue(booking.CreditorUserId, out var named)) contacts.UnionWith(named);
             if (!string.IsNullOrEmpty(kept.ContactId)) contacts.Add(kept.ContactId);
 
             var duplicates = contacts
                 .SelectMany(c => docsByContact[c])
-                .Where(d => !keptIds.Contains(d.Id) && Matches(booking, d))
+                .Where(d => !keptIds.Contains(d.Id) && !claimed.Contains(d.Id) && Matches(booking, d))
                 .DistinctBy(d => d.Id, StringComparer.Ordinal)
                 .OrderBy(d => d.Id, StringComparer.Ordinal)
                 .ToList();
+            claimed.UnionWith(duplicates.Select(d => d.Id));
             if (duplicates.Count > 0) matches.Add(new Match(booking, kept, duplicates));
         }
         return matches;
