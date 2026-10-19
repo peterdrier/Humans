@@ -78,7 +78,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | AttachmentId | Guid? | FK → expense_attachments |
 | ParentLineId | Guid? | self-FK → expense_lines; non-null marks a proof row backing that Invoice line |
 | SortOrder | int | |
-| HoldedDocId | string? | the Holded purchase doc this line booked to (one doc per bookable line); null until pushed, on proof rows, on declined lines, and on lines the cap zeroed out; unique index (many NULLs allowed) and written only while null |
+| HoldedDocId | string? | the Holded purchase doc this line booked to (one doc per bookable line); null until pushed, on proof rows, on declined lines, and on lines the cap zeroed out; written only while null |
 | DeclinedAt | Instant? | when a reviewer declined the line; null while accepted. The declined flag (`ExpenseLine.Declined` / `ExpenseLineDto.Declined`) is derived from it, so there is no separate column to disagree |
 | DeclinedReason | string? | the reviewer's reason (≤1000 chars); shown to the submitter |
 | DeclinedByUserId | Guid? | the reviewer; scalar FK, never shown to the submitter (the audit entry names the actor) |

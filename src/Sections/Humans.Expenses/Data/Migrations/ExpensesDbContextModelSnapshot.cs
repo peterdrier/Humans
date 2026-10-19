@@ -114,9 +114,6 @@ namespace Humans.Expenses.Data.Migrations
 
                     b.HasIndex("ExpenseReportId");
 
-                    b.HasIndex("HoldedDocId")
-                        .IsUnique();
-
                     b.HasIndex("ParentLineId");
 
                     b.ToTable("expense_lines", (string)null);

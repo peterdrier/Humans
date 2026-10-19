@@ -37,9 +37,5 @@ internal sealed class ExpenseLineConfiguration : IEntityTypeConfiguration<Expens
             .OnDelete(DeleteBehavior.Restrict);
 
         b.HasIndex(x => x.ExpenseReportId);
-
-        // One Holded document per line: a duplicate create can never be recorded. Postgres allows
-        // many NULLs in a unique index, so unpushed lines are unaffected.
-        b.HasIndex(x => x.HoldedDocId).IsUnique();
     }
 }

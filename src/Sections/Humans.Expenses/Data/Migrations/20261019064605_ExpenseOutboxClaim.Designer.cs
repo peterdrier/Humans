@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Expenses.Data.Migrations
 {
     [DbContext(typeof(ExpensesDbContext))]
-    [Migration("20261018212333_ExpenseOutboxClaimAndLineDocIdUnique")]
-    partial class ExpenseOutboxClaimAndLineDocIdUnique
+    [Migration("20261019064605_ExpenseOutboxClaim")]
+    partial class ExpenseOutboxClaim
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -116,9 +116,6 @@ namespace Humans.Expenses.Data.Migrations
                     b.HasIndex("AttachmentId");
 
                     b.HasIndex("ExpenseReportId");
-
-                    b.HasIndex("HoldedDocId")
-                        .IsUnique();
 
                     b.HasIndex("ParentLineId");
 

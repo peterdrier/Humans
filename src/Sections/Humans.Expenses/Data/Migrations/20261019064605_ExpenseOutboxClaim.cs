@@ -7,7 +7,7 @@ using NodaTime;
 namespace Humans.Expenses.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class ExpenseOutboxClaimAndLineDocIdUnique : Migration
+    public partial class ExpenseOutboxClaim : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -23,21 +23,11 @@ namespace Humans.Expenses.Data.Migrations
                 table: "holded_expense_outbox_events",
                 type: "uuid",
                 nullable: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_expense_lines_HoldedDocId",
-                table: "expense_lines",
-                column: "HoldedDocId",
-                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_expense_lines_HoldedDocId",
-                table: "expense_lines");
-
             migrationBuilder.DropColumn(
                 name: "ClaimedAt",
                 table: "holded_expense_outbox_events");
