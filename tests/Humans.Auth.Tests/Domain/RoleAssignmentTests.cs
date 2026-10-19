@@ -1,5 +1,7 @@
 using AwesomeAssertions;
 using NodaTime;
+using Xunit;
+using Humans.Auth.Contracts;
 using Humans.Auth.Domain;
 
 namespace Humans.Auth.Tests.Domain;
@@ -112,5 +114,33 @@ public sealed class RoleAssignmentTests
         };
 
         assignment.IsActive(validTo).Should().BeFalse();
+    }
+
+    // The cached row and the entity must answer "active at now" identically.
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(10, true)]
+    [InlineData(20, false)]
+    [InlineData(21, false)]
+    public void RoleAssignmentRow_IsActiveAt_AgreesWithIsActive_AtTheBoundaries(int daysFromValidFrom, bool expected)
+    {
+        var validFrom = Instant.FromUtc(2024, 1, 1, 0, 0);
+        var validTo = validFrom + Duration.FromDays(20);
+        var now = validFrom + Duration.FromDays(daysFromValidFrom);
+        var assignment = new RoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RoleName = "Member",
+            ValidFrom = validFrom,
+            ValidTo = validTo,
+            CreatedAt = validFrom,
+            CreatedByUserId = Guid.NewGuid()
+        };
+        var row = new RoleAssignmentRow(assignment.Id, assignment.UserId, assignment.RoleName, validFrom, validTo);
+
+        row.IsActiveAt(now).Should().Be(expected);
+        assignment.IsActive(now).Should().Be(expected);
     }
 }
