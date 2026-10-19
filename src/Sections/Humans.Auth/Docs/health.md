@@ -48,16 +48,18 @@ own shape is a candidate for removal.
 | # | Question a caller is asking | Members that answer it | Note |
 |---|---|---|---|
 | S1 | *Does this person hold role X right now?* | `IsUserAdminAsync`, `IsUserBoardMemberAsync`, `IsUserTeamsAdminAsync`, `HasActiveRoleAsync`, `HasAnyActiveAssignmentAsync` | All but `HasAnyActiveAssignmentAsync` are `HasActiveRoleAsync` with a constant baked in |
-| S2 | *Who holds role X?* | `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`, `GetActiveCountsByRoleAsync` | Projections of one active-set scan |
+| S2 | *Who holds role X?* | `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`; internal `GetActiveCountsByRoleAsync` (the metrics gauge only) | Projections of one active-set scan |
 | S3 | *What does this person hold?* | `GetActiveForUserAsync`, `GetByUserIdAsync` | Active-only vs. full history |
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
-| S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync`, `HasOverlappingAssignmentAsync` | The invariant-bearing shape |
+| S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync` | The invariant-bearing shape; the overlap check is the repository's, asked only from inside `AssignRoleAsync` |
 | S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateNavBadgeCache`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
 | S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `ReleaseSignupToken`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |
 
+S1–S4 are `IRoleAssignmentService`; S5 and S6 are `IRoleAssignmentWrite`; the internal
+`IRoleAssignmentManagement` joins both and adds only what the section itself asks for.
 Implemented-but-uncontracted shapes ride along on the inner service: GDPR export/erasure
 (`IUserDataContributor`) and account-merge re-FK (`IUserMerge`). Both are crosscut interfaces
 the section implements rather than surface it publishes, and that is the right place for them.
@@ -70,7 +72,8 @@ Written fresh from the shapes above, not from today's tree.
   data. The repository exposes exactly the queries the shapes need — no method exists for a
   caller that does not exist.
 - **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
-  audit row, the notification, the Board team sync, the cache pokes. Nothing else may write.
+  audit row, the notification, the Board team sync, the cache pokes. Nothing else may write, and
+  no member exists on the service for a question only its own write path asks.
 - **The caching decorator wraps the service interface**, holding the whole row set in memory and
   deriving S1–S3 from it at the caller's clock instant. It is a decorator, so it may reach the
   inner service and never the repository; the row set it holds is the *only* thing it needs, so
@@ -80,11 +83,12 @@ Written fresh from the shapes above, not from today's tree.
   shape sit behind one collaborator; replay and cooldown state behind another. It names no
   `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`. One thing disqualifies it today:
   `SendLoginLinkAsync` stamps `user.MagicLinkSentAt` and persists it with `UserManager.UpdateAsync`
-  — a write into Users' table from Auth, not through a Users interface. That is debt (F42), not
-  the target: the cooldown belongs behind a Users write method or in `IMagicLinkRateLimiter`
-  alongside the signup reservation it already owns.
+  — a write into Users' table from Auth, not through a Users interface. That is debt (AUTH-2), not
+  the target: the per-user cooldown is already reserved in `IMagicLinkRateLimiter`, so the
+  persistent stamp's remaining job is to survive a restart, and it belongs behind a Users write
+  method if it stays.
 - **The section ships no controller, no view, no resx.** `AccountController` and
-  `Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
+  `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
   ASP.NET Identity's `SignInManager` and the cookie and external-auth handlers the Shell
   configures in `Program.cs`, and the actions that do more than render or challenge provision
   users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
@@ -97,36 +101,48 @@ Written fresh from the shapes above, not from today's tree.
 
 ## 4. Invariants
 
-Stated so a violation is recognisable. These restate `Auth.md`'s list in the form the run
-checks against.
+Stated so a violation is recognisable, each with the line that enforces it. These restate
+`Auth.md`'s list in the form the run checks against.
 
 1. An assignment is never resurrected. Ending a role stamps `ValidTo`; granting it again writes
-   a new row. `ValidTo` is never cleared.
+   a new row (`Services/RoleAssignmentService.cs:121`, `Services/RoleAssignmentService.cs:185`).
 2. `AssignRoleAsync` refuses when an active or open-ended assignment for the same
-   (user, role) overlaps the new window.
-3. `EndRoleAsync` refuses a row that is already ended or not yet active.
+   (user, role) overlaps the new window (`Services/RoleAssignmentService.cs:113`).
+3. `EndRoleAsync` refuses a row that is already ended or not yet active
+   (`Services/RoleAssignmentService.cs:180`).
 4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
    governs every read, in SQL and in memory alike. It is necessarily implemented more than
-   once (`RoleAssignment.IsActive`, `RoleAssignmentRow.IsActiveAt`,
-   `RoleAssignmentSummarySnapshot.IsActive`, and the repository's EF expressions, which cannot
+   once (`Domain/RoleAssignment.cs:35`, `Contracts/RoleAssignmentRow.cs:23`,
+   `Contracts/IRoleAssignmentService.cs:94`, and the repository's EF expressions, which cannot
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
-   is the violation (F29).
+   is the violation.
 5. Assign, end, and the bulk revoke invalidate the row cache and the claims cache for the
-   affected user before the call returns. The merge path (`ReassignAsync`) is the exception by
-   contract: it leaves invalidation to `AccountMergeService.MergeAsync`, which flushes after the
-   merge's commit point.
-6. Every single-row write leaves an audit entry attributed to the actor, and best-effort
-   notifies the affected person; a notification failure never fails the write.
-7. Granting or ending `Board` reconciles the Board system team.
+   affected user before the call returns (`Services/RoleAssignmentService.cs:131`,
+   `Services/RoleAssignmentService.cs:194`, `Services/RoleAssignmentService.cs:266`). The merge
+   path (`ReassignAsync`) is the exception by contract: it leaves invalidation to
+   `AccountMergeService.MergeAsync`, which flushes after the merge's commit point.
+6. Every single-row write leaves an audit entry attributed to the actor
+   (`Services/RoleAssignmentService.cs:133`, `Services/RoleAssignmentService.cs:196`), and
+   best-effort notifies the affected person; a notification failure never fails the write
+   (`Services/RoleAssignmentService.cs:153`, `Services/RoleAssignmentService.cs:216`).
+7. Granting or ending `Board` reconciles the Board system team
+   (`Services/RoleAssignmentService.cs:160`, `Services/RoleAssignmentService.cs:223`).
 8. Only an Admin may assign `Admin`; Board and HumanAdmin are confined to
-   `RoleNames.BoardManageableRoles`.
-9. A magic-link login token verifies once. A second presentation of the same token fails.
-10. A magic-link send never discloses whether the address is known — the caller sees one
-    outcome whether a login link, a signup link, or nothing at all was sent.
-11. Signup sends are capped at one per address per cooldown, and the reservation is released
-    when the send itself fails so a real user can retry.
-12. Verified emails only: an unverified address never resolves to a user on the sign-in path.
+   `RoleNames.BoardManageableRoles` (`Authorization/RoleAssignmentAuthorizationHandler.cs:22`,
+   `Authorization/RoleAssignmentAuthorizationHandler.cs:30`).
+9. A magic-link token, login or signup, redeems once; a second presentation of the same token
+   fails (`Services/MagicLinkService.cs:77`, `Services/MagicLinkService.cs:106`).
+10. A magic-link send never discloses whether the address is known — an unknown address falls
+    through to a signup send, and every rate-limited branch returns silently
+    (`Services/MagicLinkService.cs:51`).
+11. Login sends are capped at one per user per cooldown, reserved before the message is built
+    and released only when building or sending fails (`Services/MagicLinkService.cs:139`,
+    `Services/MagicLinkService.cs:157`). Signup sends are capped at one per inbox per cooldown,
+    released on a failed send (`Services/MagicLinkService.cs:171`,
+    `Services/MagicLinkService.cs:187`).
+12. Verified emails only: an unverified address never resolves to a user on the sign-in path
+    (`Services/MagicLinkService.cs:38`).
 
 ## 5. Seams — specified but not built
 
@@ -173,11 +189,14 @@ Settled decisions that read as smells. Stop re-litigating these.
 - **A Singleton repository over `IDbContextFactory`.** Deliberate: the repository owns each
   context's lifetime while `AuthDbContext` stays Scoped.
 - **`FindForMutationAsync` reads `AsNoTracking`.** Correct here — `UpdateAsync` re-attaches to
-  a *fresh* context, so tracking in the read context would buy nothing.
+  a *fresh* context, so tracking in the read context would buy nothing. That leaves its body
+  identical to `GetByIdAsync`'s; the two names say which caller mutates, so they stay two.
 - **`IRoleAssignmentCacheInvalidator` carries `[Grandfathered]` HUM0028.** Known debt with an
   issue; not a pattern to copy and not today's cleanup.
 - **`MagicLinkService` stamps `MagicLinkSentAt` after the send, not before.** A failed send
-  must not consume the user's cooldown.
+  must not consume the user's cooldown. The login cooldown is checked twice — the persistent
+  stamp, then the in-memory reservation: the reservation closes the overlapping-request race,
+  the stamp is what survives a restart.
 - **Auth is a horizontal that references vertical *leaves*.** Legal since Peter's Base-floor
   decision of 2026-08-14. The `[DontFix]` on `RoleAssignmentService` records the remaining
   inversion as a Peter-led item, not a bug to fix in passing.
