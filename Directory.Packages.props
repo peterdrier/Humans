@@ -103,7 +103,7 @@
          NU1903 fails restore). Drop when Testcontainers ships against SSH.NET >= 2026.0.0. -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
-    <PackageVersion Include="AngleSharp" Version="1.8.4" />
+    <PackageVersion Include="AngleSharp" Version="1.8.5" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
