@@ -207,4 +207,4 @@ Settled decisions that read as smells. Stop re-litigating these.
 | Run | Date | Headline | PR |
 |-----|------|----------|-----|
 | 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | [peterdrier/Humans#1575](https://github.com/peterdrier/Humans/pull/1575) |
-| 2 | 2026-10-19 | Dead overlap member gone, re-grant and boundary invariants pinned, docs and comments say what is true now | pending |
+| 2 | 2026-10-19 | Dead overlap member gone, re-grant and boundary invariants pinned, docs and comments say what is true now | [peterdrier/Humans#2035](https://github.com/peterdrier/Humans/pull/2035) |
