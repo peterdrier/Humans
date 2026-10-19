@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
@@ -46,6 +47,8 @@ namespace Humans.Expenses.Tests.Services;
 /// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
 /// section split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
+// The drain gate is static (one drain per process), so classes that drain run serially.
+[Collection("HoldedDrainGate")]
 public sealed partial class ExpenseReportServiceTests
 {
     private readonly IStringLocalizer<ExpensesResource> _localizer =

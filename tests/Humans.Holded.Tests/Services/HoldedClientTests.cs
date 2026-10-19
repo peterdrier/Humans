@@ -245,33 +245,6 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task DeletePurchaseDocumentAsync_SendsDeleteToTheDocumentPath()
-    {
-        HttpRequestMessage? sent = null;
-        var handler = new StubHandler(req =>
-        {
-            sent = req;
-            return new HttpResponseMessage(HttpStatusCode.NoContent);
-        });
-
-        await Make(handler).DeletePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
-
-        sent.Should().NotBeNull();
-        sent!.Method.Should().Be(HttpMethod.Delete);
-        sent.RequestUri!.AbsolutePath.Should().Be("/api/v2/purchases/doc-123");
-    }
-
-    [HumansFact]
-    public async Task DeletePurchaseDocumentAsync_NotFound_ReturnsNormally()
-    {
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.NotFound, """{"status":404}"""));
-
-        var act = async () => await Make(handler).DeletePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().NotThrowAsync();
-    }
-
-    [HumansFact]
     public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin

@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
@@ -17,9 +18,13 @@ using NSubstitute;
 namespace Humans.Expenses.Tests.Services;
 
 /// <summary>
-/// The production duplicate-document incident: overlapping drains over one outbox event each
-/// created their own Holded document. Runs the real repository over a shared in-memory store.
+/// The production duplicate-document incident: when a push loses the line's doc-id write, the
+/// stored document wins and the audit summary names the orphan. Runs the real repository over a
+/// shared in-memory store. The one-drain-at-a-time gate is covered in
+/// <c>ExpenseReportServiceHoldedOutboxTests</c>.
 /// </summary>
+// The drain gate is static (one drain per process), so classes that drain run serially.
+[Collection("HoldedDrainGate")]
 public class HoldedOutboxDuplicateGuardTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 10, 12, 0);
@@ -89,45 +94,11 @@ public class HoldedOutboxDuplicateGuardTests
     }
 
     [HumansFact]
-    public async Task TwoOverlappingDrains_CreateOneDocument_AndLeaveOneHoldedDocId()
-    {
-        // Drain 1 parks inside the Holded create call; drain 2 runs to completion meanwhile.
-        // On InMemory the claim fallback is load-check-save, not atomic, so this proves the claim
-        // is consulted before processing; atomicity on Postgres comes from the single conditional
-        // UPDATE in TryClaimOutboxAsync.
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
-            {
-                entered.TrySetResult();
-                await gate.Task.WaitAsync(TimeSpan.FromSeconds(10));
-                return "doc-A";
-            });
-
-        var drain1 = NewProcessor().DrainHoldedOutboxAsync(10, ct);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
-        await NewProcessor().DrainHoldedOutboxAsync(10, ct);
-        gate.SetResult();
-        await drain1;
-
-        await _holded.Received(1).CreatePurchaseDocumentAsync(
-            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
-        await _holded.DidNotReceiveWithAnyArgs().DeletePurchaseDocumentAsync(null!, default);
-        var report = await _repo.GetByIdAsync(_reportId, ct);
-        report!.Lines.Single().HoldedDocId.Should().Be("doc-A");
-        (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
-        await _audit.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
-            Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task LostDocIdRace_DeletesTheExtraDocument_AndContinuesWithTheStoredOne()
+    public async Task LostDocIdRace_KeepsTheStoredDocument_AndTheAuditSummaryNamesTheOrphan()
     {
         // The report snapshot the push works from shows no doc id; "doc-A" lands between that
-        // snapshot and this run's create (a concurrent push that got past the claim).
+        // snapshot and this run's create. Nothing is deleted in Holded: the audit entry names the
+        // extra document so it can be removed by hand.
         var ct = Xunit.TestContext.Current.CancellationToken;
         _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
@@ -138,39 +109,15 @@ public class HoldedOutboxDuplicateGuardTests
 
         await NewProcessor().DrainHoldedOutboxAsync(10, ct);
 
-        await _holded.Received(1).DeletePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().DeletePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
         await _holded.Received(1).ApprovePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().ApprovePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>());
         (await _repo.GetByIdAsync(_reportId, ct))!.Lines.Single().HoldedDocId.Should().Be("doc-A");
-        await _audit.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
-            Arg.Is<string>(d => d.Contains("doc-A", StringComparison.Ordinal)
-                && d.Contains("duplicate purchase document doc-B deleted", StringComparison.Ordinal)),
-            Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task LostDocIdRace_FailedDelete_StillCompletesAgainstTheStoredDocument()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
-            {
-                (await _repo.SetLineHoldedDocIdAsync(_lineId, "doc-A", Now, ct)).Should().BeTrue();
-                return "doc-B";
-            });
-        _holded.DeletePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new HoldedPermanentException("delete refused")));
-
-        await NewProcessor().DrainHoldedOutboxAsync(10, ct);
-
-        await _holded.Received(1).ApprovePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
         (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
         await _audit.Received(1).LogAsync(
             AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
             Arg.Is<string>(d => d.Contains("doc-A", StringComparison.Ordinal)
-                && d.Contains("doc-B could not be deleted", StringComparison.Ordinal)),
+                && d.Contains("orphan purchase document doc-B", StringComparison.Ordinal)
+                && d.Contains("manual removal in Holded", StringComparison.Ordinal)),
             Arg.Any<string>());
     }
 }

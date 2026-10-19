@@ -18,12 +18,4 @@ internal sealed class HoldedExpenseOutboxEvent
     /// </summary>
     public Instant? NextRetryAt { get; set; }
     public bool FailedPermanently { get; set; }
-    /// <summary>
-    /// When a drain run claimed this event (see <c>IExpenseRepository.TryClaimOutboxAsync</c>).
-    /// Null when unclaimed; a claim older than the processor's lease is treated as abandoned.
-    /// Released on retry, write-off and requeue.
-    /// </summary>
-    public Instant? ClaimedAt { get; set; }
-    /// <summary>The drain run that holds the claim; null when unclaimed.</summary>
-    public Guid? ClaimedBy { get; set; }
 }

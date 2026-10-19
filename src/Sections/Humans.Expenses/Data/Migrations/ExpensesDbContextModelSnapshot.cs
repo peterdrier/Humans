@@ -236,12 +236,6 @@ namespace Humans.Expenses.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Instant?>("ClaimedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ClaimedBy")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasMaxLength(32)

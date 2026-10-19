@@ -36,129 +36,129 @@ internal sealed class ExpenseReportBackgroundProcessor(
     internal const string OutboxJobName = "HoldedExpenseOutboxJob";
 
     /// <summary>
-    /// Lease on an outbox claim: a claim older than this belongs to a crashed or stuck run and
-    /// may be taken over. Comfortably longer than a normal drain of one batch.
+    /// One Holded drain at a time. Humans is one process on one server, so this is the
+    /// one-at-a-time guarantee for the Holded push; Hangfire's <c>[DisableConcurrentExecution]</c>
+    /// on <c>HoldedExpenseOutboxJob</c> stays as the outer guard. Static because the processor
+    /// is registered Scoped.
     /// </summary>
-    internal static readonly Duration OutboxClaimLease = Duration.FromMinutes(15);
+    private static readonly SemaphoreSlim DrainGate = new(1, 1);
 
     public async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
     {
-        // No Holded API key (PR-preview / local dev envs) → don't drain. A 401 here is a permanent
-        // error that would write off every queued event. Debug-level: this job runs every minute.
-        // The same flag is what makes /Expenses/{id} report NotConfigured instead of Queued.
-        if (!holdedClient.IsConfigured)
+        if (!await DrainGate.WaitAsync(0, ct))
         {
-            logger.LogDebug(
-                "HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
+            logger.LogInformation(
+                "Holded outbox drain already running in this process; skipping this tick");
             return;
         }
 
-        var drainStartedAt = clock.GetCurrentInstant();
-        var events = await repo
-            .GetUnprocessedOutboxAsync(drainStartedAt, batchSize, ct);
-
-        if (events.Count == 0)
+        try
         {
-            return;
-        }
-
-        var runId = Guid.NewGuid();
-        var staleBefore = drainStartedAt - OutboxClaimLease;
-        logger.LogInformation(
-            "Holded expense outbox drain {RunId} starting with {BatchSize} candidate events",
-            runId, events.Count);
-
-        foreach (var outboxEvent in events)
-        {
-            try
+            // No Holded API key (PR-preview / local dev envs) → don't drain. A 401 here is a permanent
+            // error that would write off every queued event. Debug-level: this job runs every few minutes.
+            // The same flag is what makes /Expenses/{id} report NotConfigured instead of Queued.
+            if (!holdedClient.IsConfigured)
             {
-                if (!await repo.TryClaimOutboxAsync(
-                        outboxEvent.Id, runId, clock.GetCurrentInstant(), staleBefore, ct))
-                {
-                    logger.LogDebug(
-                        "Outbox event {OutboxEventId} claimed by another run — skipping (run {RunId})",
-                        outboxEvent.Id, runId);
-                    continue;
-                }
-
-                var report = await repo
-                    .GetByIdAsync(outboxEvent.ExpenseReportId, ct);
-
-                if (report is null)
-                {
-                    logger.LogWarning(
-                        "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
-                        outboxEvent.Id, outboxEvent.ExpenseReportId);
-                    await WriteOffOutboxEventAsync(
-                        outboxEvent, "Report not found", ct);
-                    continue;
-                }
-
-                var now = clock.GetCurrentInstant();
-
-                switch (outboxEvent.EventType)
-                {
-                    case HoldedExpenseOutboxEventType.CreateIncomingDoc:
-                        await holdedPublisher.PublishAsync(
-                            outboxEvent.Id, report, now, ct);
-                        break;
-
-                    case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
-                        // v2 has no tag/doc-update endpoint (PUT /purchases/{id} is a full-replacement
-                        // update with no tags field, and no separate tag-assignment endpoint exists).
-                        // Recategorize-after-push is now done by reclassifying the line inside Holded
-                        // directly; the ledger mirror + reconciliation pull the correction back. The
-                        // enum member stays so any queued rows from before this change still drain
-                        // instead of poisoning the outbox.
-                        logger.LogInformation(
-                            "Skipping UpdateIncomingDocTag outbox event {OutboxEventId} for report " +
-                            "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
-                            "now done by reclassifying the line directly in Holded.",
-                            outboxEvent.Id, report.Id);
-                        await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, ct);
-                        break;
-
-                    default:
-                        throw new InvalidOperationException(
-                            $"Unknown outbox event type '{outboxEvent.EventType}'.");
-                }
+                logger.LogDebug(
+                    "HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
+                return;
             }
-            catch (HoldedTransientException ex)
+
+            var events = await repo
+                .GetUnprocessedOutboxAsync(clock.GetCurrentInstant(), batchSize, ct);
+
+            if (events.Count == 0)
             {
-                var attempts = outboxEvent.RetryCount + 1;
-                if (attempts >= MaxOutboxRetries)
+                return;
+            }
+
+            foreach (var outboxEvent in events)
+            {
+                try
+                {
+                    var report = await repo
+                        .GetByIdAsync(outboxEvent.ExpenseReportId, ct);
+
+                    if (report is null)
+                    {
+                        logger.LogWarning(
+                            "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
+                            outboxEvent.Id, outboxEvent.ExpenseReportId);
+                        await WriteOffOutboxEventAsync(
+                            outboxEvent, "Report not found", ct);
+                        continue;
+                    }
+
+                    var now = clock.GetCurrentInstant();
+
+                    switch (outboxEvent.EventType)
+                    {
+                        case HoldedExpenseOutboxEventType.CreateIncomingDoc:
+                            await holdedPublisher.PublishAsync(
+                                outboxEvent.Id, report, now, ct);
+                            break;
+
+                        case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
+                            // v2 has no tag/doc-update endpoint (PUT /purchases/{id} is a full-replacement
+                            // update with no tags field, and no separate tag-assignment endpoint exists).
+                            // Recategorize-after-push is now done by reclassifying the line inside Holded
+                            // directly; the ledger mirror + reconciliation pull the correction back. The
+                            // enum member stays so any queued rows from before this change still drain
+                            // instead of poisoning the outbox.
+                            logger.LogInformation(
+                                "Skipping UpdateIncomingDocTag outbox event {OutboxEventId} for report " +
+                                "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
+                                "now done by reclassifying the line directly in Holded.",
+                                outboxEvent.Id, report.Id);
+                            await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, ct);
+                            break;
+
+                        default:
+                            throw new InvalidOperationException(
+                                $"Unknown outbox event type '{outboxEvent.EventType}'.");
+                    }
+                }
+                catch (HoldedTransientException ex)
+                {
+                    var attempts = outboxEvent.RetryCount + 1;
+                    if (attempts >= MaxOutboxRetries)
+                    {
+                        logger.LogError(
+                            ex,
+                            "Holded outbox event {OutboxEventId} exhausted its {MaxRetries} attempts — writing it off",
+                            outboxEvent.Id, MaxOutboxRetries);
+                        await WriteOffOutboxEventAsync(
+                            outboxEvent,
+                            $"Gave up after {attempts} attempts. Last error: {ex.Message}",
+                            ct);
+                    }
+                    else
+                    {
+                        // Same curve as the Email outbox: 2, 4, 8 … minutes, so a Holded outage longer
+                        // than a few minutes is survived instead of being re-hit every 60 seconds.
+                        var nextRetryAt = clock.GetCurrentInstant()
+                            + Duration.FromMinutes((long)Math.Pow(2, attempts));
+                        logger.LogWarning(
+                            ex,
+                            "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
+                            outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
+                        await repo.IncrementOutboxRetryAsync(
+                            outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
+                    }
+                }
+                catch (HoldedPermanentException ex)
                 {
                     logger.LogError(
                         ex,
-                        "Holded outbox event {OutboxEventId} exhausted its {MaxRetries} attempts — writing it off",
-                        outboxEvent.Id, MaxOutboxRetries);
-                    await WriteOffOutboxEventAsync(
-                        outboxEvent,
-                        $"Gave up after {attempts} attempts. Last error: {ex.Message}",
-                        ct);
-                }
-                else
-                {
-                    // Same curve as the Email outbox: 2, 4, 8 … minutes, so a Holded outage longer
-                    // than a few minutes is survived instead of being re-hit every 60 seconds.
-                    var nextRetryAt = clock.GetCurrentInstant()
-                        + Duration.FromMinutes((long)Math.Pow(2, attempts));
-                    logger.LogWarning(
-                        ex,
-                        "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
-                        outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
-                    await repo.IncrementOutboxRetryAsync(
-                        outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
+                        "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
+                        outboxEvent.Id, ex.StatusCode);
+                    await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
                 }
             }
-            catch (HoldedPermanentException ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
-                    outboxEvent.Id, ex.StatusCode);
-                await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
-            }
+        }
+        finally
+        {
+            DrainGate.Release();
         }
     }
 
