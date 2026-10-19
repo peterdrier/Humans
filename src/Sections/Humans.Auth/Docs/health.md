@@ -87,7 +87,8 @@ Written fresh from the shapes above, not from today's tree.
   the target: the per-user cooldown is already reserved in `IMagicLinkRateLimiter`, so the
   persistent stamp's remaining job is to survive a restart, and it belongs behind a Users write
   method if it stays.
-- **The section ships no controller, no view, no resx.** `AccountController` and
+- **The section ships no controller and no view.** Its only resx is `AuthResource`, the copy of
+  the two sign-in emails it sends. `AccountController` and
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
   ASP.NET Identity's `SignInManager` and the cookie and external-auth handlers the Shell
   configures in `Program.cs`, and the actions that do more than render or challenge provision
