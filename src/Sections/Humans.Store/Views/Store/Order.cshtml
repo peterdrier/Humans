@@ -38,7 +38,7 @@
             </form>
             @if (order.BalanceEur != 0)
             {
-                <small class="text-muted">Only an already approved invoice can be recovered while the balance is nonzero.</small>
+                <small class="text-muted">@Localizer["Store_IssueInvoiceNeedsZeroBalance"]</small>
             }
         }
         @if (Model.CanDelete)

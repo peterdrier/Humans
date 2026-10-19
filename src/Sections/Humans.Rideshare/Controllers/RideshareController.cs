@@ -162,12 +162,6 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        if (!ModelState.IsValid)
-        {
-            logger.LogWarning("Rejected malformed rideshare interest form");
-            return BadRequest(ModelState);
-        }
-
         if (tripId == Guid.Empty)
         {
             SetError(localizer["Rideshare_PickAnOffer"]);

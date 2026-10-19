@@ -197,11 +197,14 @@ public class OnboardingWidgetControllerShiftsTests
             var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
             var descriptor = new ControllerParameterDescriptor
             {
-                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
             };
             var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
             {
-                Metadata = metadata, CacheToken = parameter
+                Metadata = metadata,
+                CacheToken = parameter
             });
             await services.GetRequiredService<ParameterBinder>().BindModelAsync(ctrl.ControllerContext, binder,
                 new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),

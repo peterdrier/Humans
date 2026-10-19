@@ -429,9 +429,13 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var profile = await CreateProfile(Guid.NewGuid());
         var legacy = new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = default,
-            Value = "legacy@example.org", Visibility = ContactFieldVisibility.BoardOnly,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = default,
+            Value = "legacy@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ContactFields.Add(legacy);
         await Db.SaveChangesAsync(ct);
@@ -453,12 +457,26 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var legacyId = Guid.NewGuid();
         var signalId = Guid.NewGuid();
         await Db.ContactFields.AddRangeAsync(
-            new ContactField { Id = legacyId, ProfileId = profile.Id, FieldType = default,
-                Value = "legacy@example.org", Visibility = ContactFieldVisibility.BoardOnly,
-                CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant() },
-            new ContactField { Id = signalId, ProfileId = profile.Id, FieldType = ContactFieldType.Signal,
-                Value = "signal-handle", Visibility = ContactFieldVisibility.MyTeams,
-                CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant() });
+            new ContactField
+            {
+                Id = legacyId,
+                ProfileId = profile.Id,
+                FieldType = default,
+                Value = "legacy@example.org",
+                Visibility = ContactFieldVisibility.BoardOnly,
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
+            },
+            new ContactField
+            {
+                Id = signalId,
+                ProfileId = profile.Id,
+                FieldType = ContactFieldType.Signal,
+                Value = "signal-handle",
+                Visibility = ContactFieldVisibility.MyTeams,
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
+            });
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         StubUserInfo(userId, profile);
         var info = await _userService.GetUserInfoAsync(userId);
@@ -482,12 +500,36 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var profile = await CreateProfile(Guid.NewGuid());
         var otherProfile = await CreateProfile(Guid.NewGuid());
         var now = Clock.GetCurrentInstant();
-        var legacy = new ContactField { Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = default,
-            Value = "legacy@example.org", Visibility = ContactFieldVisibility.BoardOnly, CreatedAt = now, UpdatedAt = now };
-        var phone = new ContactField { Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
-            Value = "old-number", Visibility = ContactFieldVisibility.MyTeams, CreatedAt = now, UpdatedAt = now };
-        var foreign = new ContactField { Id = Guid.NewGuid(), ProfileId = otherProfile.Id, FieldType = default,
-            Value = "other@example.org", Visibility = ContactFieldVisibility.BoardOnly, CreatedAt = now, UpdatedAt = now };
+        var legacy = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = default,
+            Value = "legacy@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var phone = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "old-number",
+            Visibility = ContactFieldVisibility.MyTeams,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var foreign = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = otherProfile.Id,
+            FieldType = default,
+            Value = "other@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
         await Db.ContactFields.AddRangeAsync(legacy, phone, foreign);
         await Db.SaveChangesAsync(ct);
         var fields = new List<ContactFieldEditDto>

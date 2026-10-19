@@ -139,46 +139,6 @@ public class HoldedFinanceServiceTests
 
     // ─── GetActualsForYear ────────────────────────────────────────────────────────
 
-    [HumansTheory]
-    [InlineData("actuals")]
-    [InlineData("unmatched")]
-    [InlineData("overview")]
-    public async Task CachedForeignCurrency_RemainsDiagnosticAndCannotBecomeEuroActuals(string read)
-    {
-        var doc = UnmatchedDoc("foreign", account: null, tagsJson: "[]");
-        doc.Currency = "USD";
-        doc.Total = 100m;
-        SeedConnector(docs: [doc]);
-        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedManagedAccount>());
-        var service = MakeService();
-
-        if (string.Equals(read, "actuals", StringComparison.Ordinal))
-        {
-            doc.IsApproved = true;
-            doc.BudgetCategoryId = Guid.NewGuid();
-            doc.MatchStatus = HoldedMatchStatus.Matched;
-            _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([doc]);
-            Func<Task> action = () => service.GetActualsForYearAsync(2026, TestContext.Current.CancellationToken);
-
-            var error = (await action.Should().ThrowAsync<HoldedPermanentException>()).Which;
-            error.Message.Should().Contain("EUR").And.Contain(doc.HoldedDocId);
-        }
-        else if (string.Equals(read, "unmatched", StringComparison.Ordinal))
-        {
-            _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([doc]);
-            var row = (await service.GetUnmatchedAsync(TestContext.Current.CancellationToken)).Should().ContainSingle().Which;
-
-            row.Currency.Should().Be("USD");
-            row.Reason.Should().Contain("currency");
-        }
-        else
-        {
-            var model = await service.GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-            model.Docs.Should().ContainSingle().Which.Currency.Should().Be("USD");
-        }
-    }
-
     [HumansFact]
     public async Task GetActualsForYear_SumsGrossDocTotals_ApprovedOnly()
     {
@@ -186,7 +146,7 @@ public class HoldedFinanceServiceTests
         _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
         {
             // The budget pages are gross/IVA-inclusive, so the actual is Total, not Subtotal.
-            new() { HoldedDocId = "d1", BudgetCategoryId = cat, Subtotal = 100m, Total = 121m, IsApproved = true, Currency = "EUR" },
+            new() { HoldedDocId = "d1", BudgetCategoryId = cat, Subtotal = 100m, Total = 121m, IsApproved = true },
             new() { HoldedDocId = "d2", BudgetCategoryId = cat, Subtotal = 50m, Total = 60.50m, IsApproved = true },
             new() { HoldedDocId = "d3", BudgetCategoryId = cat, Total = 999m, IsApproved = false },  // draft
             new() { HoldedDocId = "d4", BudgetCategoryId = cat, Total = 500m, IsApproved = null },   // pre-v2 row

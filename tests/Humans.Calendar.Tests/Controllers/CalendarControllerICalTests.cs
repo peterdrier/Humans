@@ -82,9 +82,13 @@ public class CalendarControllerICalTests
             .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Title"] = "Updated", ["OwningTeamId"] = teamId.ToString(), ["IsAllDay"] = "false",
-            ["StartLocal"] = "2026-06-02T10:00:00", ["EndLocal"] = "2026-06-02T11:00:00",
-            ["RecurrenceRule"] = "FREQ=WEEKLY", ["RecurrenceTimezone"] = "UTC"
+            ["Title"] = "Updated",
+            ["OwningTeamId"] = teamId.ToString(),
+            ["IsAllDay"] = "false",
+            ["StartLocal"] = "2026-06-02T10:00:00",
+            ["EndLocal"] = "2026-06-02T11:00:00",
+            ["RecurrenceRule"] = "FREQ=WEEKLY",
+            ["RecurrenceTimezone"] = "UTC"
         };
         if (choice is not null) fields["IsRecurring"] = choice;
         var registrations = new ServiceCollection().AddLogging();
@@ -97,7 +101,8 @@ public class CalendarControllerICalTests
             .GetMetadataForType(typeof(CalendarEventFormViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(CalendarEventFormViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(CalendarEventFormViewModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -187,7 +192,8 @@ public class CalendarControllerICalTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = formType
+            Metadata = metadata,
+            CacheToken = formType
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -259,9 +265,11 @@ public class CalendarControllerICalTests
             .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
         var form = new CalendarEventFormViewModel
         {
-            Title = "Updated", OwningTeamId = teamId,
+            Title = "Updated",
+            OwningTeamId = teamId,
             StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
-            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0), RecurrenceTimezone = "UTC"
+            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0),
+            RecurrenceTimezone = "UTC"
         };
         var ct = Xunit.TestContext.Current.CancellationToken;
 

@@ -229,7 +229,6 @@ internal sealed class BackdoorFinanceController(
                 contactName = u.ContactName,
                 description = u.Description,
                 total = u.Total,
-                currency = u.Currency,
                 reason = u.Reason,
                 holdedUrl = u.HoldedUrl,
             }),

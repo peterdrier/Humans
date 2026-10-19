@@ -80,19 +80,30 @@ public class CampControllerTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Name"] = "Alpha Camp", ["ContactEmail"] = "alpha@example.com", ["ContactPhone"] = "+34600000000",
-            ["BlurbLong"] = "Long description", ["BlurbShort"] = "Short description", ["Languages"] = "en",
-            ["SeasonId"] = camp.Seasons[0].Id.ToString(), ["MemberCount"] = "1",
-            ["AcceptingMembers"] = "0", ["KidsWelcome"] = "0", ["KidsVisiting"] = "0",
-            ["HasPerformanceSpace"] = "0", ["AdultPlayspace"] = "0",
-            ["SpaceRequirement"] = "", ["SoundZone"] = "", ["ElectricalGrid"] = ""
+            ["Name"] = "Alpha Camp",
+            ["ContactEmail"] = "alpha@example.com",
+            ["ContactPhone"] = "+34600000000",
+            ["BlurbLong"] = "Long description",
+            ["BlurbShort"] = "Short description",
+            ["Languages"] = "en",
+            ["SeasonId"] = camp.Seasons[0].Id.ToString(),
+            ["MemberCount"] = "1",
+            ["AcceptingMembers"] = "0",
+            ["KidsWelcome"] = "0",
+            ["KidsVisiting"] = "0",
+            ["HasPerformanceSpace"] = "0",
+            ["AdultPlayspace"] = "0",
+            ["SpaceRequirement"] = "",
+            ["SoundZone"] = "",
+            ["ElectricalGrid"] = ""
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = type
+            Metadata = metadata,
+            CacheToken = type
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

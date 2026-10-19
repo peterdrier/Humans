@@ -293,11 +293,14 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
         var descriptor = new ControllerParameterDescriptor
         {
-            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
         };
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = parameter
+            Metadata = metadata,
+            CacheToken = parameter
         });
         var values = new Dictionary<string, StringValues>(StringComparer.Ordinal);
         if (present) values[parameter.Name!] = "0";

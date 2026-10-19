@@ -167,9 +167,12 @@ public sealed class EventsModerationControllerTests
         var settings = BurnFixtures.Burn(year: 2026);
         var guideEvent = new Event
         {
-            Id = Guid.NewGuid(), CampId = isCampEvent ? Guid.NewGuid() : null,
-            CategoryId = categoryId, GuideSharedVenueId = venueId,
-            StartAt = Instant.FromUtc(2026, 8, 1, 12, 0), Title = "Event"
+            Id = Guid.NewGuid(),
+            CampId = isCampEvent ? Guid.NewGuid() : null,
+            CategoryId = categoryId,
+            GuideSharedVenueId = venueId,
+            StartAt = Instant.FromUtc(2026, 8, 1, 12, 0),
+            Title = "Event"
         };
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(

@@ -69,12 +69,18 @@ public class TicketControllerTests
         };
         Func<Task> read = page switch
         {
-            "orders" => async () => { await controller.Orders(null); },
-            "attendees" => async () => { await controller.Attendees(null); },
-            "codes" => async () => { await controller.Codes(null); },
-            "sales" => async () => { await controller.SalesAggregates(); },
-            "accountant-export" => async () => { await controller.ExportAccountantReport(); },
-            _ => async () => { await controller.WhoHasntBought(null); },
+            "orders" => async () => { await controller.Orders(null); }
+            ,
+            "attendees" => async () => { await controller.Attendees(null); }
+            ,
+            "codes" => async () => { await controller.Codes(null); }
+            ,
+            "sales" => async () => { await controller.SalesAggregates(); }
+            ,
+            "accountant-export" => async () => { await controller.ExportAccountantReport(); }
+            ,
+            _ => async () => { await controller.WhoHasntBought(null); }
+            ,
         };
 
         await read.Should().ThrowAsync<OperationCanceledException>();

@@ -72,15 +72,18 @@ public class EventsControllerTests
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["EventSettingsId"] = burn.Id.ToString(), ["MaxPrintSlots"] = printLimit,
-            ["SubmissionOpenAt"] = "2026-07-01T12:00", ["SubmissionCloseAt"] = "2026-07-31T12:00",
+            ["EventSettingsId"] = burn.Id.ToString(),
+            ["MaxPrintSlots"] = printLimit,
+            ["SubmissionOpenAt"] = "2026-07-01T12:00",
+            ["SubmissionCloseAt"] = "2026-07-31T12:00",
             ["GuidePublishAt"] = "2026-08-01T12:00"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(GuideSettingsViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(GuideSettingsViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(GuideSettingsViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -147,8 +150,11 @@ public class EventsControllerTests
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Name"] = "Updated", ["Slug"] = "updated-category", ["DisplayOrder"] = "0",
-            ["IsActive"] = choice ? "true" : "false", ["IsSensitive"] = choice ? "true" : "false"
+            ["Name"] = "Updated",
+            ["Slug"] = "updated-category",
+            ["DisplayOrder"] = "0",
+            ["IsActive"] = choice ? "true" : "false",
+            ["IsSensitive"] = choice ? "true" : "false"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var type = action.EndsWith("Category", StringComparison.Ordinal)
@@ -156,7 +162,8 @@ public class EventsControllerTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = type
+            Metadata = metadata,
+            CacheToken = type
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -268,7 +275,7 @@ public class EventsControllerTests
         Controller controller = isModerator
             ? new EventsModerationController(_guide, _users, _camps,
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsModerationController>.Instance)
-                { ControllerContext = author.ControllerContext }
+            { ControllerContext = author.ControllerContext }
             : author;
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -279,11 +286,17 @@ public class EventsControllerTests
         controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("/Events");
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Title"] = "Changed", ["Description"] = "Changed description",
-            ["CategoryId"] = existing.CategoryId.ToString(), ["VenueId"] = Guid.NewGuid().ToString(),
-            ["StartDate"] = "2026-08-01", ["StartTime"] = "00:00", ["DurationMinutes"] = "60",
-            ["IsRecurring"] = checkedChoices ? "true" : "false", ["RecurrenceDays"] = "0,1",
-            ["IsAllDay"] = checkedChoices && !isCamp ? "true" : "false", ["PriorityRank"] = "1"
+            ["Title"] = "Changed",
+            ["Description"] = "Changed description",
+            ["CategoryId"] = existing.CategoryId.ToString(),
+            ["VenueId"] = Guid.NewGuid().ToString(),
+            ["StartDate"] = "2026-08-01",
+            ["StartTime"] = "00:00",
+            ["DurationMinutes"] = "60",
+            ["IsRecurring"] = checkedChoices ? "true" : "false",
+            ["RecurrenceDays"] = "0,1",
+            ["IsAllDay"] = checkedChoices && !isCamp ? "true" : "false",
+            ["PriorityRank"] = "1"
         };
         fields.Remove(isCamp ? "IsAllDay" : "PriorityRank");
         if (string.Equals(scenario, "validBlankRank", StringComparison.Ordinal)) fields["PriorityRank"] = "";
@@ -293,7 +306,8 @@ public class EventsControllerTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = type
+            Metadata = metadata,
+            CacheToken = type
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

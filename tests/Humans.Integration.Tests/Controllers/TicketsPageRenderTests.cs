@@ -85,7 +85,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
 
             // The fallback for a key the carve missed is the key itself.
-            html.Should().NotContain("Tickets_TicketTransfer_", $"GET {url} rendered a raw resource key");
+            html.Should().NotContain("TicketTransfer_", $"GET {url} rendered a raw resource key");
         }
     }
 
@@ -126,7 +126,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().Contain("have any tickets to transfer");         // Tickets_TicketTransfer_NoTickets
         html.Should().Contain("Your transfer requests");               // Tickets_TicketTransfer_YourRequests
         html.Should().Contain("Back");                                 // Common_Back, from SharedResource
-        html.Should().NotContain("Tickets_TicketTransfer_", "a carved key rendered as its own name");
+        html.Should().NotContain("TicketTransfer_", "a carved key rendered as its own name");
         html.Should().NotContain("Common_", "a shared key rendered as its own name");
     }
 

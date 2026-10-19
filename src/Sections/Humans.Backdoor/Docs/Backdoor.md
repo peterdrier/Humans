@@ -66,7 +66,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/creditor-accounts/{num}/ledger` | read | One account's balance and cached journal lines, contact header included, via `GetCreditorLedgerAsync` |
 | `/api/backdoor/finance/category-map` | read | Every live `holded_category_map` row, via `GetCategoryMapAsync` |
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
-| `/api/backdoor/finance/holded-sync` | read | The purchase-doc sync's state plus the docs it could not match, via `GetDocSyncInfoAsync` + `GetUnmatchedAsync`; each unmatched total retains its document currency |
+| `/api/backdoor/finance/holded-sync` | read | The purchase-doc sync's state plus the docs it could not match, via `GetDocSyncInfoAsync` + `GetUnmatchedAsync` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
 | `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
 

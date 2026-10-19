@@ -230,7 +230,10 @@ public class TeamControllerPageContentTests
             string.Equals(role, "parent", StringComparison.Ordinal) ? [coordinator] : []);
         var child = parent with
         {
-            Id = Guid.NewGuid(), Name = "Child", Slug = "child", ParentTeamId = parent.Id,
+            Id = Guid.NewGuid(),
+            Name = "Child",
+            Slug = "child",
+            ParentTeamId = parent.Id,
             Members = string.Equals(role, "coordinator", StringComparison.Ordinal) ? [coordinator] : []
         };
         var other = child with { Id = Guid.NewGuid(), Name = "Other", Slug = "other", ParentTeamId = null, Members = [] };
@@ -238,7 +241,9 @@ public class TeamControllerPageContentTests
         var pages = Substitute.For<ITeamPageService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
-            [parent.Id] = parent, [child.Id] = child, [other.Id] = other
+            [parent.Id] = parent,
+            [child.Id] = child,
+            [other.Id] = other
         });
         var publicSlot = new TeamRosterSlotSummary(child.Name, child.Slug, "Public role", null,
             Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, null, IsPublic: true);
@@ -288,14 +293,18 @@ public class TeamControllerPageContentTests
         var visible = hidden with { Id = Guid.NewGuid(), Name = "Public", Slug = "public", IsHidden = false };
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
-            [hidden.Id] = hidden, [visible.Id] = visible
+            [hidden.Id] = hidden,
+            [visible.Id] = visible
         });
         var hiddenRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), hidden.Id, hidden.Name,
             userId, null, null, null, TeamJoinRequestStatus.Pending, null,
             Instant.FromUtc(2026, 10, 1, 0, 0), null, null, hidden.Slug);
         var visibleRequest = hiddenRequest with
         {
-            Id = Guid.NewGuid(), TeamId = visible.Id, TeamName = visible.Name, TeamSlug = visible.Slug
+            Id = Guid.NewGuid(),
+            TeamId = visible.Id,
+            TeamName = visible.Name,
+            TeamSlug = visible.Slug
         };
         teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { hiddenRequest, visibleRequest });

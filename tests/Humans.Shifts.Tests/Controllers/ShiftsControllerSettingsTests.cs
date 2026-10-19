@@ -108,13 +108,15 @@ public sealed class ShiftsControllerSettingsTests
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
             ["IsShiftBrowsingOpen"] = clear ? "false" : "true",
-            ["GlobalVolunteerCap"] = clear ? "" : "50", ["ReminderLeadTimeHours"] = clear ? "0" : "12"
+            ["GlobalVolunteerCap"] = clear ? "" : "50",
+            ["ReminderLeadTimeHours"] = clear ? "0" : "12"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(EventSettingsViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(EventSettingsViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(EventSettingsViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

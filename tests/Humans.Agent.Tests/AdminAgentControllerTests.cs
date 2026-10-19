@@ -93,16 +93,20 @@ public sealed class AdminAgentControllerTests
         };
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Enabled"] = zeroChoices ? "false" : "true", ["Model"] = "selected-model",
-            ["PreloadConfig"] = zeroChoices ? "0" : "1", ["DailyMessageCap"] = zeroChoices ? "0" : "40",
-            ["HourlyMessageCap"] = zeroChoices ? "0" : "20", ["DailyTokenCap"] = zeroChoices ? "0" : "60000",
+            ["Enabled"] = zeroChoices ? "false" : "true",
+            ["Model"] = "selected-model",
+            ["PreloadConfig"] = zeroChoices ? "0" : "1",
+            ["DailyMessageCap"] = zeroChoices ? "0" : "40",
+            ["HourlyMessageCap"] = zeroChoices ? "0" : "20",
+            ["DailyTokenCap"] = zeroChoices ? "0" : "60000",
             ["RetentionDays"] = zeroChoices ? "0" : "60"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(AdminAgentSettingsViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(AdminAgentSettingsViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(AdminAgentSettingsViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

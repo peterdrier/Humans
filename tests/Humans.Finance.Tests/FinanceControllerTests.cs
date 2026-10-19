@@ -103,7 +103,8 @@ public class FinanceControllerTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["blockStart"] = "62900100", ["addAll"] = addAll.ToString(CultureInfo.InvariantCulture)
+            ["blockStart"] = "62900100",
+            ["addAll"] = addAll.ToString(CultureInfo.InvariantCulture)
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var arguments = new object[] { 0, false };
@@ -114,11 +115,14 @@ public class FinanceControllerTests
             var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
             var descriptor = new ControllerParameterDescriptor
             {
-                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
             };
             var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
             {
-                Metadata = metadata, CacheToken = parameter
+                Metadata = metadata,
+                CacheToken = parameter
             });
             var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
                 new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

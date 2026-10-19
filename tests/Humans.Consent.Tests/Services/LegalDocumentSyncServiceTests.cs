@@ -182,15 +182,19 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         };
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Id"] = document.Id.ToString(), ["Name"] = "Changed document", ["TeamId"] = _team.Id.ToString(),
-            ["IsRequired"] = enabled ? "true" : "false", ["IsActive"] = enabled ? "true" : "false",
+            ["Id"] = document.Id.ToString(),
+            ["Name"] = "Changed document",
+            ["TeamId"] = _team.Id.ToString(),
+            ["IsRequired"] = enabled ? "true" : "false",
+            ["IsActive"] = enabled ? "true" : "false",
             ["GracePeriodDays"] = enabled ? "1" : "365"
         };
         if (omitted is not null) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(LegalDocumentEditViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(LegalDocumentEditViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(LegalDocumentEditViewModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -239,7 +243,9 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var model = new LegalDocumentEditViewModel
         {
             Id = edit ? document.Id : null,
-            Name = "Changed document", TeamId = targetTeamId, GitHubFolderPath = "privacy/"
+            Name = "Changed document",
+            TeamId = targetTeamId,
+            GitHubFolderPath = "privacy/"
         };
         var http = new DefaultHttpContext
         {

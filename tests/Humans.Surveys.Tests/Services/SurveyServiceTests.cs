@@ -355,7 +355,7 @@ public class SurveyServiceTests
 
         Func<Task> save = editing
             ? async () => { await service.UpdateAsync(surveyId, Input(information), Board(Guid.NewGuid()), TestContext.Current.CancellationToken); }
-            : async () => { await service.CreateAsync(Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken); };
+        : async () => { await service.CreateAsync(Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken); };
 
         (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         storagePath.Should().NotBeNull();

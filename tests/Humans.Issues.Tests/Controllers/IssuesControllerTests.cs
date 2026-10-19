@@ -230,7 +230,8 @@ public sealed class IssuesControllerTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(UpdateIssueStatusModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(UpdateIssueStatusModel)
+            Metadata = metadata,
+            CacheToken = typeof(UpdateIssueStatusModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -294,13 +295,15 @@ public sealed class IssuesControllerTests
         };
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Title"] = "Title", ["Description"] = "Description"
+            ["Title"] = "Title",
+            ["Description"] = "Description"
         };
         if (category is not null) fields["Category"] = category;
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SubmitIssueViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(SubmitIssueViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(SubmitIssueViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

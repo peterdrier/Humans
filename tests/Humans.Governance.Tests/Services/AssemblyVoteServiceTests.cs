@@ -883,8 +883,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         {
             Title = new(StringComparer.Ordinal) { ["en"] = "Existing", ["es"] = "Anterior" },
             OfficialText = new(StringComparer.Ordinal) { ["en"] = "Motion", ["es"] = "Moción" },
-            OfficialCulture = culture, Kind = kind, RequiredMajority = majority,
-            IndicativeAudience = audience, BallotDisclosure = disclosure, ClosesAt = new DateTime(2026, 9, 2, 15, 0, 0),
+            OfficialCulture = culture,
+            Kind = kind,
+            RequiredMajority = majority,
+            IndicativeAudience = audience,
+            BallotDisclosure = disclosure,
+            ClosesAt = new DateTime(2026, 9, 2, 15, 0, 0),
             Options = [new() { Key = "a", Label = new(StringComparer.Ordinal) { ["en"] = "A", ["es"] = "A" } },
                 new() { Key = "b", Label = new(StringComparer.Ordinal) { ["en"] = "B", ["es"] = "B" } }]
         };
@@ -907,20 +911,29 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Title[en]"] = "Changed", ["Title[es]"] = "Cambiada",
-            ["OfficialText[en]"] = "Motion", ["OfficialText[es]"] = "Moción",
-            ["OfficialCulture"] = culture, ["Kind"] = ((int)kind).ToString(CultureInfo.InvariantCulture),
+            ["Title[en]"] = "Changed",
+            ["Title[es]"] = "Cambiada",
+            ["OfficialText[en]"] = "Motion",
+            ["OfficialText[es]"] = "Moción",
+            ["OfficialCulture"] = culture,
+            ["Kind"] = ((int)kind).ToString(CultureInfo.InvariantCulture),
             ["RequiredMajority"] = ((int)majority).ToString(CultureInfo.InvariantCulture),
             ["IndicativeAudience"] = ((int)audience).ToString(CultureInfo.InvariantCulture),
-            ["BallotDisclosure"] = ((int)disclosure).ToString(CultureInfo.InvariantCulture), ["ClosesAt"] = "2026-09-02T15:00",
-            ["Options[0].Key"] = "a", ["Options[0].Label[en]"] = "A", ["Options[0].Label[es]"] = "A",
-            ["Options[1].Key"] = "b", ["Options[1].Label[en]"] = "B", ["Options[1].Label[es]"] = "B"
+            ["BallotDisclosure"] = ((int)disclosure).ToString(CultureInfo.InvariantCulture),
+            ["ClosesAt"] = "2026-09-02T15:00",
+            ["Options[0].Key"] = "a",
+            ["Options[0].Label[en]"] = "A",
+            ["Options[0].Label[es]"] = "A",
+            ["Options[1].Key"] = "b",
+            ["Options[1].Label[en]"] = "B",
+            ["Options[1].Label[es]"] = "B"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(AssemblyVoteDraftFormViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(AssemblyVoteDraftFormViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(AssemblyVoteDraftFormViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

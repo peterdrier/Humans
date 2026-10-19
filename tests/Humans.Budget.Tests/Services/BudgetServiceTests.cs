@@ -362,16 +362,21 @@ public sealed class BudgetServiceTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["budgetYearId"] = _yearId.ToString(), ["initialSalesCount"] = zero ? "0" : "123",
-            ["dailySalesRate"] = zero ? "0" : "5", ["averageTicketPrice"] = zero ? "0" : "120",
-            ["vatRate"] = zero ? "0" : "21", ["stripeFeePercent"] = zero ? "0" : "1.5",
-            ["stripeFeeFixed"] = zero ? "0" : "0.3", ["ticketTailorFeePercent"] = zero ? "0" : "0.5"
+            ["budgetYearId"] = _yearId.ToString(),
+            ["initialSalesCount"] = zero ? "0" : "123",
+            ["dailySalesRate"] = zero ? "0" : "5",
+            ["averageTicketPrice"] = zero ? "0" : "120",
+            ["vatRate"] = zero ? "0" : "21",
+            ["stripeFeePercent"] = zero ? "0" : "1.5",
+            ["stripeFeeFixed"] = zero ? "0" : "0.3",
+            ["ticketTailorFeePercent"] = zero ? "0" : "0.5"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(TicketingProjectionUpdateForm));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(TicketingProjectionUpdateForm)
+            Metadata = metadata,
+            CacheToken = typeof(TicketingProjectionUpdateForm)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -416,9 +421,16 @@ public sealed class BudgetServiceTests
 
         var result = await controller.UpdateTicketingProjection(groupId, new TicketingProjectionUpdateForm
         {
-            BudgetYearId = yearId, StartDate = new DateTime(2026, 4, 1), EventDate = new DateTime(2026, 4, 7),
-            InitialSalesCount = 10, DailySalesRate = 5m, AverageTicketPrice = 120m, VatRate = 21,
-            StripeFeePercent = 1.5m, StripeFeeFixed = 0.3m, TicketTailorFeePercent = 0.5m
+            BudgetYearId = yearId,
+            StartDate = new DateTime(2026, 4, 1),
+            EventDate = new DateTime(2026, 4, 7),
+            InitialSalesCount = 10,
+            DailySalesRate = 5m,
+            AverageTicketPrice = 120m,
+            VatRate = 21,
+            StripeFeePercent = 1.5m,
+            StripeFeeFixed = 0.3m,
+            TicketTailorFeePercent = 0.5m
         });
 
         await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
@@ -450,11 +462,14 @@ public sealed class BudgetServiceTests
         var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
         var descriptor = new ControllerParameterDescriptor
         {
-            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
         };
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = parameter
+            Metadata = metadata,
+            CacheToken = parameter
         });
         await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
             new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),

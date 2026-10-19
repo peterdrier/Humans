@@ -45,7 +45,9 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var reports = await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted);
+            // Newest first across every merged account id, not per id.
+            var reports = (await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted))
+                .OrderByDescending(r => r.CreatedAt).ToList();
             var activeYear = await budgetService.GetActiveYearAsync(HttpContext.RequestAborted);
             var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 

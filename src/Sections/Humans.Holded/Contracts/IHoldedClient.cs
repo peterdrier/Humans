@@ -87,8 +87,7 @@ public interface IHoldedClient
     Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
         HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default);
 
-    /// <summary>Reads a sales document back — the post-approval document number and EUR totals.
-    /// Missing or non-EUR currency fails permanently before issuance or recovery can use the amounts.</summary>
+    /// <summary>Reads a sales document back — the post-approval document number and totals.</summary>
     Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 

@@ -998,9 +998,13 @@ public class ServiceTests
         var originalTime = _clock.GetCurrentInstant() - Duration.FromDays(1);
         var order = new Order
         {
-            Id = Guid.NewGuid(), State = OrderState.Open, UpdatedAt = originalTime,
-            CounterpartyName = before.Name, CounterpartyVatId = before.VatId,
-            CounterpartyAddress = before.Address, CounterpartyCountryCode = before.CountryCode,
+            Id = Guid.NewGuid(),
+            State = OrderState.Open,
+            UpdatedAt = originalTime,
+            CounterpartyName = before.Name,
+            CounterpartyVatId = before.VatId,
+            CounterpartyAddress = before.Address,
+            CounterpartyCountryCode = before.CountryCode,
             CounterpartyEmail = before.Email
         };
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
@@ -1431,16 +1435,22 @@ public class ServiceTests
         var zero = string.Equals(scenario, "zero", StringComparison.Ordinal);
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Id"] = product.Id.ToString(), ["Year"] = "2026", ["Name"] = "Updated", ["Description"] = "Details",
-            ["UnitPriceEur"] = zero ? "0" : "20", ["VatRatePercent"] = zero ? "0" : "10",
-            ["IsActive"] = zero ? "false" : "true", ["OrderableUntil"] = "2026-10-01"
+            ["Id"] = product.Id.ToString(),
+            ["Year"] = "2026",
+            ["Name"] = "Updated",
+            ["Description"] = "Details",
+            ["UnitPriceEur"] = zero ? "0" : "20",
+            ["VatRatePercent"] = zero ? "0" : "10",
+            ["IsActive"] = zero ? "false" : "true",
+            ["OrderableUntil"] = "2026-10-01"
         };
         var missing = !zero && !string.Equals(scenario, "valid", StringComparison.Ordinal);
         if (missing) fields.Remove(scenario);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProductInputModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(ProductInputModel)
+            Metadata = metadata,
+            CacheToken = typeof(ProductInputModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),

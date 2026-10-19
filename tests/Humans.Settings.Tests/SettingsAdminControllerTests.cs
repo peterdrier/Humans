@@ -80,21 +80,30 @@ public sealed class SettingsAdminControllerTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Id"] = blankOptional ? "" : id.ToString(), ["EventName"] = "Nowhere 2026", ["TimeZoneId"] = "Etc/UTC",
-            ["GateOpeningDate"] = "2026-07-09", ["BuildStartOffset"] = "-30", ["FirstCrewStartOffset"] = "-24",
-            ["SetupWeekStartOffset"] = "-15", ["PreEventWeekStartOffset"] = "-8", ["FinishingWeekendStartOffset"] = "-3",
-            ["EventEndOffset"] = blankOptional ? "0" : "7", ["StrikeEndOffset"] = blankOptional ? "0" : "10",
+            ["Id"] = blankOptional ? "" : id.ToString(),
+            ["EventName"] = "Nowhere 2026",
+            ["TimeZoneId"] = "Etc/UTC",
+            ["GateOpeningDate"] = "2026-07-09",
+            ["BuildStartOffset"] = "-30",
+            ["FirstCrewStartOffset"] = "-24",
+            ["SetupWeekStartOffset"] = "-15",
+            ["PreEventWeekStartOffset"] = "-8",
+            ["FinishingWeekendStartOffset"] = "-3",
+            ["EventEndOffset"] = blankOptional ? "0" : "7",
+            ["StrikeEndOffset"] = blankOptional ? "0" : "10",
             ["EarlyEntryCapacityJson"] = blankOptional ? "{}" : "{\"-7\":50}",
             ["BarriosEarlyEntryAllocationJson"] = blankOptional ? "" : "{\"-7\":40}",
             ["EarlyEntryClose"] = blankOptional ? "" : "2026-07-01T12:00:00Z",
-            ["EarlyEntryStartOffset"] = blankOptional ? "" : "-7", ["IsActive"] = blankOptional ? "false" : "true",
+            ["EarlyEntryStartOffset"] = blankOptional ? "" : "-7",
+            ["IsActive"] = blankOptional ? "false" : "true",
             ["IsOffSeason"] = blankOptional ? "false" : "true"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(EventSettingsViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(EventSettingsViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(EventSettingsViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

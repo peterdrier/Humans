@@ -177,15 +177,20 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Name"] = "Changed program", ["Kind"] = zeroChoices ? "0" : "1",
-            ["Status"] = zeroChoices ? "0" : "1", ["AcceptsApplications"] = zeroChoices ? "false" : "true",
-            ["PerPersonAmount"] = "300", ["HoldedAccountNumber"] = "62900150", ["ClaimBy"] = "2026-06-01"
+            ["Name"] = "Changed program",
+            ["Kind"] = zeroChoices ? "0" : "1",
+            ["Status"] = zeroChoices ? "0" : "1",
+            ["AcceptsApplications"] = zeroChoices ? "false" : "true",
+            ["PerPersonAmount"] = "300",
+            ["HoldedAccountNumber"] = "62900150",
+            ["ClaimBy"] = "2026-06-01"
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProgramFormViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(ProgramFormViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(ProgramFormViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

@@ -224,11 +224,14 @@ public class ShiftAdminControllerTests
             var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
             var descriptor = new ControllerParameterDescriptor
             {
-                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
             };
             var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
             {
-                Metadata = metadata, CacheToken = parameter
+                Metadata = metadata,
+                CacheToken = parameter
             });
             await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
                 new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
@@ -331,22 +334,29 @@ public class ShiftAdminControllerTests
         var fields = staffing ? new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
             ["Days[0].DayOffset"] = firstDay.ToString(CultureInfo.InvariantCulture),
-            ["Days[0].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["Days[0].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
+            ["Days[0].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture),
+            ["Days[0].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
             ["Days[1].DayOffset"] = lastDay.ToString(CultureInfo.InvariantCulture),
-            ["Days[1].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["Days[1].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
+            ["Days[1].MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture),
+            ["Days[1].MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
         } : new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["StartDayOffset"] = start.ToString(CultureInfo.InvariantCulture), ["EndDayOffset"] = end.ToString(CultureInfo.InvariantCulture),
-            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
-            ["TimeSlots[0].StartTime"] = "00:00", ["TimeSlots[0].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
-            ["TimeSlots[1].StartTime"] = zero ? "01:00" : "09:30", ["TimeSlots[1].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture)
+            ["StartDayOffset"] = start.ToString(CultureInfo.InvariantCulture),
+            ["EndDayOffset"] = end.ToString(CultureInfo.InvariantCulture),
+            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture),
+            ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture),
+            ["TimeSlots[0].StartTime"] = "00:00",
+            ["TimeSlots[0].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
+            ["TimeSlots[1].StartTime"] = zero ? "01:00" : "09:30",
+            ["TimeSlots[1].DurationHours"] = duration.ToString(CultureInfo.InvariantCulture)
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var formType = staffing ? typeof(StaffingGridModel) : typeof(GenerateEventShiftsModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = formType
+            Metadata = metadata,
+            CacheToken = formType
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -510,14 +520,18 @@ public class ShiftAdminControllerTests
         var period = zeroChoices || omitted.Length > 0 ? RotaPeriod.Build : RotaPeriod.Strike;
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Name"] = "Changed rota", ["Priority"] = priority.ToString(), ["Policy"] = policy.ToString(), ["Period"] = period.ToString()
+            ["Name"] = "Changed rota",
+            ["Priority"] = priority.ToString(),
+            ["Policy"] = policy.ToString(),
+            ["Period"] = period.ToString()
         };
         if (omitted.Length > 0) fields.Remove(omitted);
         var formType = edit ? typeof(EditRotaModel) : typeof(CreateRotaModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = formType
+            Metadata = metadata,
+            CacheToken = formType
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -629,9 +643,12 @@ public class ShiftAdminControllerTests
         var maximum = zeroChoices ? 1 : 7;
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["RotaId"] = rota.Id.ToString(), ["DayOffset"] = day.ToString(CultureInfo.InvariantCulture),
-            ["StartTime"] = start, ["DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
-            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture), ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
+            ["RotaId"] = rota.Id.ToString(),
+            ["DayOffset"] = day.ToString(CultureInfo.InvariantCulture),
+            ["StartTime"] = start,
+            ["DurationHours"] = duration.ToString(CultureInfo.InvariantCulture),
+            ["MinVolunteers"] = minimum.ToString(CultureInfo.InvariantCulture),
+            ["MaxVolunteers"] = maximum.ToString(CultureInfo.InvariantCulture)
         };
         if (!zeroChoices) fields["AdminOnly"] = "true";
         if (omitted.Length > 0) fields.Remove(omitted);
@@ -639,7 +656,8 @@ public class ShiftAdminControllerTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = formType
+            Metadata = metadata,
+            CacheToken = formType
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

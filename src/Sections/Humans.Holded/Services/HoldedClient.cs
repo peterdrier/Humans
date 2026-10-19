@@ -137,7 +137,6 @@ internal sealed class HoldedClient : IHoldedClient
             var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
                 ?? throw new HoldedTransientException("Holded returned empty body");
 
-            _ = ReadEuroCurrency(node);
             return new HoldedPurchaseDocumentDto
             {
                 Id = Prop(node, "id")?.GetValue<string>() ?? "",
@@ -532,7 +531,6 @@ internal sealed class HoldedClient : IHoldedClient
         {
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedTransientException("Holded returned empty body");
-            _ = ReadEuroCurrency(node);
             return new HoldedSalesDocumentDto
             {
                 Id = Prop(node, "id")?.GetValue<string>() ?? documentId,
@@ -1027,7 +1025,7 @@ internal sealed class HoldedClient : IHoldedClient
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
         PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
-        Currency = ReadEuroCurrency(n),
+        Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {
@@ -1036,18 +1034,6 @@ internal sealed class HoldedClient : IHoldedClient
             Tags = ReadTags(Prop(p, "tags")),
         }).ToList(),
     };
-
-    private static string ReadEuroCurrency(JsonNode? document)
-    {
-        var currency = ReadRequiredString(Prop(document, "currency"), "currency");
-        if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
-        {
-            var id = Prop(document, "id")?.GetValue<string>() ?? "(unknown)";
-            throw new HoldedPermanentException(
-                IbanFormatter.MaskAllIn($"Holded document {id} has unsupported currency '{currency}'; EUR is required."));
-        }
-        return currency;
-    }
 
     private static IReadOnlyList<string> ReadTags(JsonNode? node) =>
         Arr(node).Where(t => t is not null).Select(t => t!.GetValue<string>()).ToList();

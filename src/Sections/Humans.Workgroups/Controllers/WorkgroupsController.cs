@@ -371,7 +371,7 @@ internal sealed class WorkgroupsController(
     [HttpPost("{slug}/Documents/{id:guid}/OpenComments")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> OpenComments(
-        string slug, Guid id, Instant opensAt, Instant closesAt, string categories, CancellationToken ct) =>
+        string slug, Guid id, Instant opensAt, Instant closesAt, string? categories, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.OpenCommentsAsync(id, userId,
                 new WorkgroupCommentWindow(opensAt, closesAt, SplitCategories(categories)), ct),
             "Workgroups_CommentsOpened", ct, documentId: id, owns: OwnsDocument(id));
@@ -393,8 +393,8 @@ internal sealed class WorkgroupsController(
     [HttpPost("{slug}/Documents/{id:guid}/Comments")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> AddComment(
-        string slug, Guid id, string category, string body, CancellationToken ct) =>
-        ActAsync(slug, (_, userId) => workgroups.AddCommentAsync(id, userId, category, body, ct),
+        string slug, Guid id, string? category, string? body, CancellationToken ct) =>
+        ActAsync(slug, (_, userId) => workgroups.AddCommentAsync(id, userId, category ?? string.Empty, body ?? string.Empty, ct),
             "Workgroups_CommentAdded", ct, documentId: id, memberOnly: false, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Documents/{id:guid}/Comments/RespondCategory")]
@@ -402,12 +402,12 @@ internal sealed class WorkgroupsController(
     public Task<IActionResult> RespondToCategory(
         string slug,
         Guid id,
-        string category,
+        string? category,
         [BindRequired] WorkgroupCommentDisposition disposition,
         string? response,
         CancellationToken ct) =>
         ActAsync(slug,
-            (_, userId) => workgroups.RespondToCategoryAsync(id, userId, category, disposition, response, ct),
+            (_, userId) => workgroups.RespondToCategoryAsync(id, userId, category ?? string.Empty, disposition, response, ct),
             "Workgroups_CommentsAnswered", ct, documentId: id, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Comments/{id:guid}/Respond")]
@@ -425,8 +425,8 @@ internal sealed class WorkgroupsController(
     [HttpPost("{slug}/Comments/{id:guid}/Hide")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> HideComment(
-        string slug, Guid id, Guid documentId, string reason, CancellationToken ct) =>
-        ActAsync(slug, (_, userId) => workgroups.HideCommentAsync(id, userId, reason, ct),
+        string slug, Guid id, Guid documentId, string? reason, CancellationToken ct) =>
+        ActAsync(slug, (_, userId) => workgroups.HideCommentAsync(id, userId, reason ?? string.Empty, ct),
             "Workgroups_CommentHidden", ct, documentId: documentId, owns: OwnsComment(documentId, id));
 
     // ── Plumbing ──────────────────────────────────────────────────────────

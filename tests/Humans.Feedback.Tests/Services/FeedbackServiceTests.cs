@@ -942,7 +942,8 @@ public sealed class FeedbackServiceTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(UpdateFeedbackStatusModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(UpdateFeedbackStatusModel)
+            Metadata = metadata,
+            CacheToken = typeof(UpdateFeedbackStatusModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),

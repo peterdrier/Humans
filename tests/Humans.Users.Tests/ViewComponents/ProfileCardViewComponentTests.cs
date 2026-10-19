@@ -102,7 +102,8 @@ public sealed class ProfileCardViewComponentTests
         var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
-            [parent.Id] = parent, [child.Id] = child
+            [parent.Id] = parent,
+            [child.Id] = child
         });
         var membership = Substitute.For<IMembershipCalculator>();
         membership.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())

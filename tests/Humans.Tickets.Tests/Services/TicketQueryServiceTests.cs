@@ -98,12 +98,18 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         Func<Task> read = page switch
         {
-            "orders" => async () => { await _service.GetOrdersPageAsync(null, "date", true, 1, 25, null, null, null, aborted.Token); },
-            "attendees" => async () => { await _service.GetAttendeesPageAsync(null, "name", false, 1, 25, null, null, null, null, false, aborted.Token); },
-            "ticket-types" => async () => { await _service.GetAvailableTicketTypesAsync(aborted.Token); },
-            "codes" => async () => { await _service.GetCodeTrackingDataAsync(null, aborted.Token); },
-            "sales" => async () => { await _service.GetSalesAggregatesAsync(aborted.Token); },
-            _ => async () => { await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token); },
+            "orders" => async () => { await _service.GetOrdersPageAsync(null, "date", true, 1, 25, null, null, null, aborted.Token); }
+            ,
+            "attendees" => async () => { await _service.GetAttendeesPageAsync(null, "name", false, 1, 25, null, null, null, null, false, aborted.Token); }
+            ,
+            "ticket-types" => async () => { await _service.GetAvailableTicketTypesAsync(aborted.Token); }
+            ,
+            "codes" => async () => { await _service.GetCodeTrackingDataAsync(null, aborted.Token); }
+            ,
+            "sales" => async () => { await _service.GetSalesAggregatesAsync(aborted.Token); }
+            ,
+            _ => async () => { await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token); }
+            ,
         };
 
         await read.Should().ThrowAsync<OperationCanceledException>();

@@ -122,18 +122,27 @@ public sealed class RideshareControllerTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Id"] = Guid.NewGuid().ToString(), ["Direction"] = "0",
-            ["MemberPlaceLabel"] = "Paris", ["PickupPlaceLabel"] = "Paris",
-            ["DepartureDate"] = "2026-07-03", ["DesiredDate"] = "2026-07-03",
-            ["ExpectedDurationDays"] = "1", ["SeatsOffered"] = "1", ["PartySize"] = "1",
-            ["VehicleType"] = "0", ["LuggageCapacity"] = "0", ["LuggageLoad"] = "0", ["CostSharing"] = "0"
+            ["Id"] = Guid.NewGuid().ToString(),
+            ["Direction"] = "0",
+            ["MemberPlaceLabel"] = "Paris",
+            ["PickupPlaceLabel"] = "Paris",
+            ["DepartureDate"] = "2026-07-03",
+            ["DesiredDate"] = "2026-07-03",
+            ["ExpectedDurationDays"] = "1",
+            ["SeatsOffered"] = "1",
+            ["PartySize"] = "1",
+            ["VehicleType"] = "0",
+            ["LuggageCapacity"] = "0",
+            ["LuggageLoad"] = "0",
+            ["CostSharing"] = "0"
         };
         if (omitted is not null) fields.Remove(omitted);
         var formType = offer ? typeof(OfferFormViewModel) : typeof(RequestFormViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = formType
+            Metadata = metadata,
+            CacheToken = formType
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -175,21 +184,6 @@ public sealed class RideshareControllerTests
                 await _rideshare.Received(1).UpdateRequestAsync(Arg.Any<Guid>(), _me,
                     Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1), Ct);
         }
-    }
-
-    [HumansTheory]
-    [InlineData("seats")]
-    [InlineData("requestId")]
-    public async Task Interest_MalformedForm_DoesNotCreateAnInterest(string field)
-    {
-        var controller = BuildController();
-        controller.ModelState.AddModelError(field, "Invalid value");
-
-        var result = await controller.Interest(Guid.NewGuid(), Guid.NewGuid(), 0, null, Ct);
-
-        result.Should().BeOfType<BadRequestObjectResult>().Which.StatusCode.Should().Be(400);
-        await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default, default);
-        controller.TempData.Should().BeEmpty();
     }
 
     [HumansFact]

@@ -184,8 +184,11 @@ public class ProfileControllerEditTests
         var contactId = Guid.NewGuid();
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["BurnerName"] = "Burner", ["FirstName"] = "First", ["LastName"] = "Last",
-            ["NoPriorBurnExperience"] = "true", ["DietaryPreference"] = "omnivore",
+            ["BurnerName"] = "Burner",
+            ["FirstName"] = "First",
+            ["LastName"] = "Last",
+            ["NoPriorBurnExperience"] = "true",
+            ["DietaryPreference"] = "omnivore",
             ["EditableContactFields[0].Id"] = contactId.ToString(),
             ["EditableContactFields[0].FieldType"] = string.Equals(scenario, "retired", StringComparison.Ordinal) ? "0" : "Signal",
             ["EditableContactFields[0].Value"] = "contact-handle",
@@ -197,7 +200,8 @@ public class ProfileControllerEditTests
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProfileViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(ProfileViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(ProfileViewModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(_controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -239,14 +243,18 @@ public class ProfileControllerEditTests
         var legacyId = Guid.NewGuid();
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
-            ["BurnerName"] = "Burner", ["FirstName"] = "First", ["LastName"] = "Last",
-            ["NoPriorBurnExperience"] = "true", ["DietaryPreference"] = "omnivore",
+            ["BurnerName"] = "Burner",
+            ["FirstName"] = "First",
+            ["LastName"] = "Last",
+            ["NoPriorBurnExperience"] = "true",
+            ["DietaryPreference"] = "omnivore",
             ["RemovedLegacyContactFieldIds"] = malformed ? "not-a-guid" : legacyId.ToString()
         };
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProfileViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = typeof(ProfileViewModel)
+            Metadata = metadata,
+            CacheToken = typeof(ProfileViewModel)
         });
         var binding = DefaultModelBindingContext.CreateBindingContext(_controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
@@ -276,8 +284,14 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Invalid_profile_edit_reloads_only_owners_legacy_contacts()
     {
-        var legacy = new ContactField { Id = Guid.NewGuid(), ProfileId = _profileId, FieldType = default,
-            Value = "legacy@example.org", Visibility = ContactFieldVisibility.BoardOnly };
+        var legacy = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = _profileId,
+            FieldType = default,
+            Value = "legacy@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly
+        };
         var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [], [],
             new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
@@ -328,11 +342,14 @@ public class ProfileControllerEditTests
         var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
         var descriptor = new ControllerParameterDescriptor
         {
-            Name = field, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            Name = field,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
         };
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = parameter
+            Metadata = metadata,
+            CacheToken = parameter
         });
 
         var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
@@ -476,7 +493,9 @@ public class ProfileControllerEditTests
             ("EditableLanguages[1].LanguageCode", "Validation_MaxLength", ["", 10]));
         AssertErrors(new ContactFieldEditViewModel
         {
-            FieldType = (ContactFieldType)0, Value = "handle", Visibility = ContactFieldVisibility.BoardOnly
+            FieldType = (ContactFieldType)0,
+            Value = "handle",
+            Visibility = ContactFieldVisibility.BoardOnly
         }, ("FieldType", "Validation_InvalidValue", []));
         AssertErrors(new EmailsViewModel { NewEmail = "invalid" },
             ("NewEmail", "Validation_EmailAddress", []));

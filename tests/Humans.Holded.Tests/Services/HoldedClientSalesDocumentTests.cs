@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
@@ -134,27 +133,22 @@ public class HoldedClientSalesDocumentTests
             kind, "doc-9", Xunit.TestContext.Current.CancellationToken);
     }
 
-    [HumansTheory]
-    [InlineData(HoldedSalesDocumentKind.Invoice, "EUR")]
-    [InlineData(HoldedSalesDocumentKind.Invoice, "eur")]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "EUR")]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "eur")]
-    public async Task GetSalesDocumentAsync_ParsesTotalsAndKeepsTheRawBody(HoldedSalesDocumentKind kind, string currency)
+    [HumansFact]
+    public async Task GetSalesDocumentAsync_ParsesTotalsAndKeepsTheRawBody()
     {
         // Decimals arrive as strings, per the connector invariant.
-        var json = $$"""
+        const string json = """
         {"id":"doc-9","document_number":"2026-0007","subtotal":"160.00","tax":"21.00",
-         "total":"181.00","status":"pending","currency":"{{currency}}"}
+         "total":"181.00","status":"pending"}
         """;
         var handler = new StubHandler(req =>
         {
-            req.RequestUri!.PathAndQuery.Should().Be(kind == HoldedSalesDocumentKind.Invoice
-                ? "/api/v2/invoices/doc-9" : "/api/v2/sales-receipts/doc-9");
+            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/invoices/doc-9");
             return Respond(HttpStatusCode.OK, json);
         });
 
         var doc = await Make(handler).GetSalesDocumentAsync(
-            kind, "doc-9", Xunit.TestContext.Current.CancellationToken);
+            HoldedSalesDocumentKind.Invoice, "doc-9", Xunit.TestContext.Current.CancellationToken);
 
         doc.Id.Should().Be("doc-9");
         doc.DocNumber.Should().Be("2026-0007");
@@ -166,10 +160,10 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansTheory]
-    [InlineData(HoldedSalesDocumentKind.Invoice, "{\"currency\":\"EUR\"}")]
-    [InlineData(HoldedSalesDocumentKind.Invoice, "{\"total\":null,\"currency\":\"EUR\"}")]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{\"currency\":\"EUR\"}")]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{\"total\":null,\"currency\":\"EUR\"}")]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "{}")]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "{\"total\":null}")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{}")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{\"total\":null}")]
     public async Task GetSalesDocumentAsync_RejectsAnAbsentTotal(
         HoldedSalesDocumentKind kind, string json)
     {
@@ -186,33 +180,12 @@ public class HoldedClientSalesDocumentTests
     [InlineData(HoldedSalesDocumentKind.SalesReceipt)]
     public async Task GetSalesDocumentAsync_PreservesAnExplicitZeroTotal(HoldedSalesDocumentKind kind)
     {
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, "{\"total\":\"0.00\",\"currency\":\"EUR\"}"));
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, "{\"total\":\"0.00\"}"));
 
         var document = await Make(handler).GetSalesDocumentAsync(
             kind, "doc-9", TestContext.Current.CancellationToken);
 
         document.Total.Should().Be(0m);
-    }
-
-    [HumansTheory]
-    [InlineData(HoldedSalesDocumentKind.Invoice, null, false)]
-    [InlineData(HoldedSalesDocumentKind.Invoice, null, true)]
-    [InlineData(HoldedSalesDocumentKind.Invoice, " ", true)]
-    [InlineData(HoldedSalesDocumentKind.Invoice, "USD", true)]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, null, false)]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, null, true)]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, " ", true)]
-    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "USD", true)]
-    public async Task GetSalesDocumentAsync_RequiresExplicitEuroCurrency(
-        HoldedSalesDocumentKind kind, string? currency, bool present)
-    {
-        var document = JsonNode.Parse("""{"id":"doc-9","subtotal":"160.00","tax":"21.00","total":"181.00","draft":false}""")!.AsObject();
-        if (present) document["currency"] = currency;
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, document.ToJsonString()));
-
-        var act = async () => await Make(handler).GetSalesDocumentAsync(kind, "doc-9", TestContext.Current.CancellationToken);
-
-        (await act.Should().ThrowAsync<HoldedPermanentException>()).Which.Message.Should().Contain("currency");
     }
 
     [HumansFact]

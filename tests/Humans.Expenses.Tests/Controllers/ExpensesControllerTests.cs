@@ -40,16 +40,25 @@ public sealed class ExpensesControllerTests
         var reportId = Guid.NewGuid();
         var lineId = Guid.NewGuid();
         var user = UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])
-            with { MergedUserIds = [isMergedSubmitter ? sourceId : Guid.NewGuid()] };
+            with
+        { MergedUserIds = [isMergedSubmitter ? sourceId : Guid.NewGuid()] };
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(user);
         users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(user);
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
         {
-            Id = reportId, SubmitterUserId = sourceId, Status = ExpenseReportStatus.Approved,
-            HoldedAccountNumber = 0, BudgetCategoryId = null, BudgetYearId = null,
-            PayeeName = "Historical name", PayeeIban = "", Total = 10m, CreatedAt = default, UpdatedAt = default,
+            Id = reportId,
+            SubmitterUserId = sourceId,
+            Status = ExpenseReportStatus.Approved,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            PayeeName = "Historical name",
+            PayeeIban = "",
+            Total = 10m,
+            CreatedAt = default,
+            UpdatedAt = default,
             Lines = [new ExpenseLineDto
             {
                 Id = lineId, ExpenseReportId = reportId, Description = "Invoice", Amount = 10m,
@@ -374,10 +383,18 @@ public sealed class ExpensesControllerTests
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
         var first = new ExpenseReportDto
         {
-            Id = Guid.NewGuid(), SubmitterUserId = actorId, BudgetYearId = yearId,
-            BudgetCategoryId = categoryId, HoldedAccountNumber = 0,
-            Status = ExpenseReportStatus.Approved, PayeeName = "Submitter", PayeeIban = "",
-            Total = 10, CreatedAt = default, UpdatedAt = default, Lines = []
+            Id = Guid.NewGuid(),
+            SubmitterUserId = actorId,
+            BudgetYearId = yearId,
+            BudgetCategoryId = categoryId,
+            HoldedAccountNumber = 0,
+            Status = ExpenseReportStatus.Approved,
+            PayeeName = "Submitter",
+            PayeeIban = "",
+            Total = 10,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = []
         };
         var second = first with { Id = Guid.NewGuid() };
         var reports = Substitute.For<IExpenseReportManagement>();

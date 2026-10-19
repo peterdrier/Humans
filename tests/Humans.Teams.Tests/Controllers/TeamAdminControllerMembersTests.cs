@@ -68,7 +68,7 @@ public class TeamAdminControllerMembersTests
 
         var result = edit
             ? await controller.EditRole(team.Slug, Guid.NewGuid(), new EditRoleDefinitionModel
-                { Name = "Role", SlotCount = 1, Priorities = ["None"] })
+            { Name = "Role", SlotCount = 1, Priorities = ["None"] })
             : await controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" });
 
         if (allowed)
@@ -252,11 +252,14 @@ public class TeamAdminControllerMembersTests
             var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
             var descriptor = new ControllerParameterDescriptor
             {
-                Name = "restrict", ParameterType = parameter.ParameterType, ParameterInfo = parameter
+                Name = "restrict",
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
             };
             var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
             {
-                Metadata = metadata, CacheToken = parameter
+                Metadata = metadata,
+                CacheToken = parameter
             });
             await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
                 new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),

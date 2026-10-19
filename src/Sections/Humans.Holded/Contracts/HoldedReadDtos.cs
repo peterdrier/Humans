@@ -80,7 +80,6 @@ public sealed record HoldedPurchaseDocListItemDto
     // still a draft. Null when Holded does not report the field, which Finance treats as
     // not-yet-approved.
     public bool? IsDraft { get; init; }
-    /// <summary>Document currency. Purchase API reads require explicit EUR codes, case-insensitively.</summary>
     public string Currency { get; init; } = "eur";
     public IReadOnlyList<string> Tags { get; init; } = []; // doc-level tags
     public IReadOnlyList<HoldedPurchaseLineDto> Lines { get; init; } = [];

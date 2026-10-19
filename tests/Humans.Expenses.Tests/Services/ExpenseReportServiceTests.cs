@@ -577,7 +577,8 @@ public sealed partial class ExpenseReportServiceTests
         var sourceId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
         var survivor = UserInfo.Create(new User { Id = survivorId }, [], [], [], null, [])
-            with { MergedUserIds = [sourceId] };
+            with
+        { MergedUserIds = [sourceId] };
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
         var ownReportId = Guid.NewGuid();

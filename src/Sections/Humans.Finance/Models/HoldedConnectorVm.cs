@@ -78,8 +78,7 @@ internal sealed record HoldedDocVm(
     string? CategoryName,
     string? BookedAccountId,
     string TagsJson,
-    Instant LastSyncedAt,
-    string Currency);
+    Instant LastSyncedAt);
 
 /// <summary>One budget category on the <c>/Finance/HoldedAccounts</c> plan.</summary>
 internal sealed record HoldedProvisioningRow(
