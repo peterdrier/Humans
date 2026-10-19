@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Humans.Base.Configuration;
 
@@ -14,8 +13,7 @@ namespace Humans.Auth.Services;
 /// </summary>
 internal sealed class MagicLinkUrlBuilder(
     IDataProtectionProvider dataProtection,
-    IOptions<EmailSettings> emailSettings,
-    ILogger<MagicLinkUrlBuilder> logger) : IMagicLinkUrlBuilder
+    IOptions<EmailSettings> emailSettings) : IMagicLinkUrlBuilder
 {
     private const string LoginProtectorPurpose = "MagicLinkLogin";
     private const string SignupProtectorPurpose = "MagicLinkSignup";
@@ -43,7 +41,6 @@ internal sealed class MagicLinkUrlBuilder(
         }
         catch (CryptographicException)
         {
-            logger.LogInformation("Magic link login: invalid or expired token");
             return null;
         }
     }
