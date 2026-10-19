@@ -1926,7 +1926,7 @@ internal sealed class Service(
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
 
-        // An earlier run posted payments and then stopped (PARTIAL or SHORT). Holded discards the
+        // An earlier run posted payments and then stopped (PARTIAL). Holded discards the
         // description on a purchase payment, so the step-4 tag sum cannot see them, and a retry
         // would post the whole amount again as a journal entry. Refuse until a human has settled it.
         if (transfer.HoldedPaymentRefs is { Length: > 0 })
@@ -2001,7 +2001,7 @@ internal sealed class Service(
         decimal posted;
         try
         {
-            // The live chart total, not the nightly mirror: booking needs what is owed now.
+            // The live chart total, not the nightly mirror: the audit entry names what was owed now.
             owedNow = (await client.ListAccountingAccountsAsync(ct))
                 .Where(a => a.Number == transfer.SupplierAccountNum)
                 .Select(a => -a.Balance)
@@ -2036,19 +2036,17 @@ internal sealed class Service(
                 "Holded's creditor balance could not be read — nothing was posted.");
         }
 
-        // ── Step 5: the arithmetic. The balance refusal applies only to a run that posted nothing:
-        // once part of this transfer is provably in Holded, owedNow has already fallen by that much
-        // and re-applying the full-amount test would refuse a legitimate resume.
-        if (posted <= CentEpsilon && owedNow < transfer.Amount - CentEpsilon)
-            return new SepaBookingResult(false,
-                $"Creditor account {transfer.SupplierAccountNum} owes {Euros(Math.Max(0m, owedNow))}, "
-                + $"less than the {Euros(transfer.Amount)} this transfer pays — nothing was posted.");
-
+        // ── Step 5: the arithmetic. The whole transfer, less what is already posted — never capped
+        // by what the account owes now. The file went to the bank and the money left, so the ledger
+        // has to show it whatever the balance says: an account that owed less than the transfer
+        // (two files from one balance, documents hand-paid in between) simply ends up overpaid,
+        // which the audit entry names and the next creditor read shows as a negative balance.
+        //
         // Rounded to cents once, here: every posting is sent to Holded formatted to two decimals, so
-        // an unrounded cap would let each document round up on its own and the total drift over.
-        var toPost = Math.Round(
-            Math.Min(transfer.Amount - posted, owedNow), 2, MidpointRounding.AwayFromZero);
+        // an unrounded total would let each document round up on its own and the total drift over.
+        var toPost = Math.Round(transfer.Amount - posted, 2, MidpointRounding.AwayFromZero);
         var resumed = posted > CentEpsilon;
+        var overpaidBy = Math.Round(toPost - owedNow, 2, MidpointRounding.AwayFromZero);
 
         var paidDocs = new List<(string DocId, decimal Amount, string Ref)>();
         string? entryRef = null;
@@ -2117,25 +2115,6 @@ internal sealed class Service(
             }
         }
 
-        // ── Step 7b: the run has to have closed the gap. owedNow caps toPost, so a resume against an
-        // account that owes less than the transfer still has to pay posts only part of it — stamping
-        // Booked there would claim money that never reached the ledger.
-        var shortfall = transfer.Amount - posted - (toPost - remaining);
-        if (shortfall > CentEpsilon)
-        {
-            await RememberLandedPaymentsAsync();
-            await AuditBookingAsync(
-                $"SHORT SEPA booking of {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor "
-                + $"account {transfer.SupplierAccountNum} against Sabadell line {movement.Id}: only "
-                + $"{Euros(posted + toPost - remaining)} is posted ({PostingSummary()} this run; "
-                + $"{Euros(posted)} before it) and the account owes {Euros(Math.Max(0m, owedNow))}. "
-                + $"The transfer is NOT booked; {NextStep()}.");
-            return new SepaBookingResult(false,
-                $"Only {Euros(posted + toPost - remaining)} of {Euros(transfer.Amount)} could be "
-                + $"posted — creditor account {transfer.SupplierAccountNum} owes "
-                + $"{Euros(Math.Max(0m, owedNow))}; the transfer is NOT booked, {NextStep()}.");
-        }
-
         // ── Step 8: persist, then reconcile, then stamp. Deliberately not the other order — losing
         // the local save after Holded took the money is nobodies-collective/Humans#1185 itself.
         var now = clock.GetCurrentInstant();
@@ -2177,6 +2156,12 @@ internal sealed class Service(
 
         var summary = PostingSummary();
         var resumedPart = resumed ? $"; resumed ({Euros(posted)} already posted)" : "";
+        // The Board's view of a transfer that paid more than the account owed: named here, since
+        // nothing refused it and the balance alone will not say which transfer did it.
+        var overpaidPart = toPost > CentEpsilon && overpaidBy > CentEpsilon
+            ? $"; OVERPAID — the account owed {Euros(Math.Max(0m, owedNow))}, so this leaves it "
+              + $"{Euros(overpaidBy)} in credit"
+            : "";
 
         // The line is shared with the rest of the file: it is reconciled once, by the batch, after
         // the last transfer — a reconcile now would name only this transfer's part of it.
@@ -2188,8 +2173,8 @@ internal sealed class Service(
                 $"Booked SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
                 + $"{transfer.SupplierAccountNum} against Sabadell line {movement.Id} dated "
                 + $"{movement.Date.ToInvariantDate()}, one of {batch.TransferCount} transfers the bank "
-                + $"debited as that one line ({Euros(movement.Amount)}): {summary}{resumedPart}; the line "
-                + "is reconciled once the whole file is booked.");
+                + $"debited as that one line ({Euros(movement.Amount)}): {summary}{resumedPart}"
+                + $"{overpaidPart}; the line is reconciled once the whole file is booked.");
             return new SepaBookingResult(true, $"Booked {Euros(transfer.Amount)}: {summary}.");
         }
 
@@ -2208,7 +2193,7 @@ internal sealed class Service(
             $"Booked SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
             + $"{transfer.SupplierAccountNum} against Sabadell line {movement.Id} dated "
             + $"{movement.Date.ToInvariantDate()}: {summary}"
-            + $"{resumedPart}; {reconcilePart}";
+            + $"{resumedPart}{overpaidPart}; {reconcilePart}";
 
         await AuditBookingAsync(description);
 

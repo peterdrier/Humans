@@ -101,7 +101,8 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    and date; no other pending line could have paid this transfer; no other row already carries this
    movement id.
 3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
-   `owedNow = -Balance` — the account's live total, not a windowed reconstruction.
+   `owedNow = -Balance` — the account's live total, not a windowed reconstruction. It gates nothing;
+   it is what the audit entry names when the transfer pays more than the account owes.
 4. **What is already posted**, from the ledger entries on the creditor account tagged with this
    transfer's row id — this is what makes a retry resume instead of double-pay. The window runs
    from the day the file was generated (or the bank line, whichever is earlier) to today, with a
@@ -109,18 +110,19 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    dated them the **click**, which can be weeks off. The account number is filtered here as well as
    in the query — both legs of our journal entry carry the same tag, so an unfiltered read would net
    to zero and re-post everything.
-5. **The arithmetic**: `toPost = min(transfer.Amount - posted, owedNow)`, rounded to cents. Fresh
-   and not enough owed → refuse, post nothing. Already fully posted → post nothing, skip to
-   reconcile. Otherwise post the gap.
+5. **The arithmetic**: `toPost = transfer.Amount - posted`, rounded to cents — never capped by
+   `owedNow`. The file went to the bank and the money left, so the whole transfer reaches the
+   ledger whatever the balance says. Already fully posted → post nothing, skip to reconcile.
+   Otherwise post the gap.
 6. **FIFO document payments**, oldest first, dated the **bank line's** date (not today) —
    `POST /api/v2/purchases/{id}/payments`, description `SEPA payout E<transfer id>`.
 7. **The remainder as one journal entry**, same date and tag, debit the creditor account, credit
    `Sepa:TreasuryLedgerAccount`.
-7b. **The gap has to be closed.** `owedNow` caps `toPost`, so a resume against an account that no
-   longer owes the outstanding part can only post some of it. Then nothing is stamped: the shortfall
-   is audited (`SHORT SEPA booking …`, naming what is posted and what the account owes), the admin is
-   told, and the row stays unbooked and retryable. `Booked` never means less than the transfer's
-   amount reached the ledger.
+7b. **Overpayment is booked and named, not refused.** When `toPost` exceeds `owedNow` (two files
+   generated from one balance, documents hand-paid in Holded in between), the remainder entry
+   leaves the creditor account in credit. The booking audit entry says `OVERPAID — the account owed
+   <x>, so this leaves it <y> in credit`; the next ledger sync shows the negative balance on
+   `/Finance/Creditors`. Refusing here would leave money that already left the bank unbooked.
 8. **Persist first, then reconcile.** `BookedAt`, the acting admin (or null for the sweep) and the
    bank movement id land on the row before anything is reconciled — the local save is the cheap
    write, and losing it after Holded already took the money was the original bug
@@ -167,7 +169,7 @@ ledger, so paying one would post against a document that does not exist for acco
   row says so — "<amount> of this line was posted as a journal entry and needs a manual match in
   Holded", the amount read off the `entry:` token in `HoldedPaymentRefs` — instead of the generic
   reconcile-pending text, and the sweep's re-issue cannot help.
-- **A retry after `PARTIAL` or `SHORT` is refused.** Holded discards the description on a purchase
+- **A retry after `PARTIAL` is refused.** Holded discards the description on a purchase
   payment, so the `SEPA payout E<id>` tag never reaches the ledger for a payment and the step-4 sum
   reads 0 for it — a retry would post the money again as a journal entry. A run that posted
   payments and then stopped writes their ids to `HoldedPaymentRefs` with `BookedAt` still null
@@ -197,9 +199,8 @@ ledger, so paying one would post against a document that does not exist for acco
 | A textless line whose amount is also a multi-transfer file's total | neither the transfer nor the file takes it; the panel says so |
 | A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
 | A textless line dated outside the tolerance of every file of its amount | the panel; widen the tolerance on the page if it is that file's |
-| The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
-| The live balance owes less than the transfer | refused; nothing posted |
+| The live balance owes less than the transfer | booked in full; the account goes into credit and the audit entry says `OVERPAID` |
 | The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
 | The bank line is dated before the file that asked for the transfer was generated (less two days' slack) | it does not match; the line renders in the "needs a human" panel |
 | Two unreconciled lines could each have paid one transfer | refused; both render in the "needs a human" panel |
@@ -313,7 +314,7 @@ panel with the reason.
    so it stamps only if Holded then reads the line `reconciled`; otherwise the rows stay
    reconcile-pending and the sweep's re-check picks them up.
 
-A refusal part-way (Holded refuses a posting, a balance falls short) stops the run: transfers already
+A refusal part-way (Holded refuses a posting) stops the run: transfers already
 booked stay booked against the line, the failing one is audited as usual, and pressing Process again
 books only the rest. The sweep never books a line for a whole file.
 
@@ -405,9 +406,10 @@ member, rebound member, unconfigured treasury and ledger account) and what `/Fin
 in each case. `SepaBankBookingTests.cs` covers the bank-line-driven flow: the matcher (amount,
 account, ambiguity, already-booked, already-reconciled), the resume arithmetic, FIFO allocation
 dated the bank line, the payment-id reconcile and when it stamps, the refused retry after a
-PARTIAL or SHORT run, the sweep's re-issue, and its own booking pass — plus the
+PARTIAL run, the sweep's re-issue, and its own booking pass — plus the
 ways a booking could over-post or over-claim: a second booking racing the first, a resume from a
-click-dated legacy posting, a resume that cannot close the gap, the tagged credit leg on the bank
+click-dated legacy posting, a transfer or resume beyond what the account owes (booked in full,
+audited `OVERPAID`), the tagged credit leg on the bank
 account, a failed row save, and what `/Finance/Sepa` shows (the candidate line, the "needs a human"
 reasons, the unreadable feed, and a stale row that no longer blocks a newer one) — plus the
 one-line-for-a-file Process: the file card's line and reference badge, two files of one total, an

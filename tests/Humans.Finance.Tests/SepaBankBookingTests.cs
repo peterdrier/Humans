@@ -176,24 +176,6 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ShortRun_RecordsTheLandedPaymentIds()
-    {
-        // €5 is already posted and the account owes only €10 more; the run pays one document and
-        // cannot close the gap. The payment is on the row, so the next attempt refuses rather than
-        // posting over it.
-        SeedTaggedLines(TaggedLine(5m));
-        SeedOwed(10m);
-        SeedOpenDocs(Doc("d1", 10m, 1));
-
-        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
-
-        result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain("NOT booked");
-        await _repo.Received(1).SaveSepaTransferPaymentRefsAsync(
-            TransferId, "pay-d1", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Booking_ResumedWhenEverythingIsAlreadyPosted_PostsNothing_AndStampsBooked()
     {
         // A run that crashed after the last posting: Holded already holds the whole €30 under this
@@ -221,22 +203,45 @@ public class SepaBankBookingTests
     // ─── AC 2: the live creditor balance ────────────────────────────────────────
 
     [HumansFact]
-    public async Task Booking_LiveBalanceOwesLessThanTheTransfer_RefusesAndPostsNothing()
+    public async Task Booking_LiveBalanceOwesLessThanTheTransfer_BooksTheWholeTransfer_AndAuditsTheOverpayment()
     {
-        // Two files generated from one balance, or documents hand-paid in Holded in between.
+        // Two files generated from one balance, or documents hand-paid in Holded in between. The
+        // file went to the bank and the money left, so the whole €30 is booked regardless: the one
+        // open €20 document, then a €10 journal entry that leaves the account in credit.
         SeedOwed(20m);
+        SeedOpenDocs(Doc("d1", 20m, 1));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _client.Received(1).PayPurchaseDocumentAsync(
+            "d1", 20m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
+        await _client.Received(1).PostLedgerEntryAsync(
+            LineDate, Account, 57200001, 10m, Tag, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("OVERPAID", StringComparison.Ordinal)
+                                && d.Contains("owed 20.00 EUR", StringComparison.Ordinal)
+                                && d.Contains("10.00 EUR in credit", StringComparison.Ordinal)),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task Booking_LiveBalanceCoversTheTransfer_AuditsNoOverpayment()
+    {
+        SeedOwed(30m);
         SeedOpenDocs(Doc("d1", 30m, 1));
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain("owes 20.00 EUR").And.Contain("30.00 EUR this transfer pays");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default!, default);
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+        result.Succeeded.Should().BeTrue();
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("OVERPAID", StringComparison.Ordinal)),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
     }
 
     // ─── AC 3: dated by the bank line, and the line ends up reconciled ──────────
@@ -1157,24 +1162,27 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ResumeThatCannotCoverTheGap_DoesNotStampBooked_AndAuditsTheShortfall()
+    public async Task Booking_ResumeBeyondWhatTheAccountOwes_PostsTheWholeGap_AndStampsBooked()
     {
         // €5 is already posted and the account now owes only €10 — someone hand-paid the documents
-        // in Holded. The run can post €10 of the outstanding €25, which is not a booking.
+        // in Holded. The money left the bank all the same: the outstanding €25 is posted as one
+        // journal entry, the row is booked, and the audit entry says the account is now €15 in credit.
         SeedTaggedLines(TaggedLine(5m));
         SeedOwed(10m);
         SeedOpenDocs();
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain("Only 15.00 EUR of 30.00 EUR").And.Contain("NOT booked");
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+        result.Succeeded.Should().BeTrue();
+        await _client.Received(1).PostLedgerEntryAsync(
+            LineDate, Account, 57200001, 25m, Tag, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
-            Arg.Is<string>(d => d.Contains("SHORT SEPA booking", StringComparison.Ordinal)
-                                && d.Contains("only 15.00 EUR is posted", StringComparison.Ordinal)),
+            Arg.Is<string>(d => d.Contains("resumed (5.00 EUR already posted)", StringComparison.Ordinal)
+                                && d.Contains("15.00 EUR in credit", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
     }
 
