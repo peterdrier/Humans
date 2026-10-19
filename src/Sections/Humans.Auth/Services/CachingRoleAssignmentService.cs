@@ -111,11 +111,6 @@ internal sealed class CachingRoleAssignmentService
     // Pass-through to inner service (scope-resolved per call)
     // ==========================================================================
 
-    public Task<bool> HasOverlappingAssignmentAsync(
-        Guid userId, string roleName, Instant validFrom, Instant? validTo = null,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken));
-
     public Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default) =>

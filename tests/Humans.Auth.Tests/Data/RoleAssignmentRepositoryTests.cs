@@ -167,6 +167,46 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task HasOverlappingAssignmentAsync_EndedRow_DoesNotOverlapOpenEndedRangeFromNow()
+    {
+        var userId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        await SeedAssignmentAsync(userId, RoleNames.Board,
+            now - Duration.FromDays(20), now - Duration.FromDays(10));
+
+        var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
+            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        hasOverlap.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task HasOverlappingAssignmentAsync_NotYetStarted_OverlapsOpenEndedRangeFromNow()
+    {
+        var userId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        await SeedAssignmentAsync(userId, RoleNames.Board, now + Duration.FromDays(10), null);
+
+        var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
+            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        hasOverlap.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task HasOverlappingAssignmentAsync_OtherRole_DoesNotOverlap()
+    {
+        var userId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(5), null);
+
+        var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
+            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        hasOverlap.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task HasActiveRoleAsync_ReturnsTrueForActiveAssignment()
     {
         var userId = Guid.NewGuid();

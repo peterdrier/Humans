@@ -35,14 +35,6 @@ internal sealed class RoleAssignmentService(
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string RoleAssignments = "RoleAssignments";
 
-    public Task<bool> HasOverlappingAssignmentAsync(
-        Guid userId,
-        string roleName,
-        Instant validFrom,
-        Instant? validTo = null,
-        CancellationToken cancellationToken = default) =>
-        repository.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken);
-
     public async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default)
