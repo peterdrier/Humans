@@ -155,7 +155,7 @@ public sealed record DataMigration(
     string Section,
     string Title,
     string Retires,                                // what the retirement PR deletes once done
-    Func<IServiceProvider, CancellationToken, Task<DataMigrationStatus>> Status,   // pending count + sample
+    Func<IServiceProvider, CancellationToken, Task<DataMigrationStatus>> Status,   // pending count + every pending row
     Func<IServiceProvider, Guid, CancellationToken, Task<int>> Apply);            // actor, rows written
 ```
 
@@ -167,9 +167,12 @@ and the host only calls the interface. Commit 0 re-homes the four existing Temp 
 and views, so they get a done signal too.
 
 **Screen:** `GET /Debug/DataMigrations` (`AdminOnly`): one row per registered migration with section,
-title, pending count, a sample of what would change, and an **Apply** button (`data-confirm`,
-`[ValidateAntiForgeryToken]`, audit-logged `AuditAction.DataMigrationApplied` with key, actor, rows).
-Idempotent: a second apply finds zero pending. Linked from the Debug admin nav.
+title, pending count, the full list of pending rows (UserId plus the legacy values that will be
+copied, as [`no-data-backfills`](../../../memory/process/no-data-backfills.md) requires: the operator
+sees every row before confirming; the dataset fits in RAM, so no sampling or paging), and an
+**Apply** button (`data-confirm`, `[ValidateAntiForgeryToken]`, audit-logged
+`AuditAction.DataMigrationApplied` with key, actor, rows). Idempotent: a second apply finds zero
+pending. Linked from the Debug admin nav.
 
 **Endpoint:** `GET /api/data-migrations` (`[AllowAnonymous]`, mapped through `ISectionEndpoints` next to
 the Shell's `/api/version` precedent):
