@@ -17,8 +17,7 @@ public sealed record RoleAssignmentRow(
 {
     /// <summary>
     /// Canonical "is this assignment active at <paramref name="now"/>?" predicate.
-    /// Lives on the row record (design-rules §15d) so the caching decorator
-    /// doesn't reimplement the business rule inline.
+    /// Lives on the row record so the caching decorator doesn't reimplement the rule.
     /// </summary>
     public bool IsActiveAt(Instant now) =>
         ValidFrom <= now && (ValidTo is null || ValidTo > now);

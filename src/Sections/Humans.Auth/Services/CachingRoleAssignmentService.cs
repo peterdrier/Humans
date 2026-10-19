@@ -8,25 +8,19 @@ namespace Humans.Auth.Services;
 
 /// <summary>
 /// Singleton caching decorator for <see cref="IRoleAssignmentManagement"/>.
-/// Caches the full set of <c>role_assignments</c> rows so cross-section reads
-/// such as <see cref="GetActiveCountsByRoleAsync"/> can be derived in memory
-/// at any clock instant. Invalidated wholesale via explicit
+/// Caches the full set of <c>role_assignments</c> rows so
+/// <see cref="GetActiveCountsByRoleAsync"/> and <see cref="GetActiveForUserAsync"/>
+/// are derived in memory at any clock instant. Invalidated wholesale via explicit
 /// <c>IRoleAssignmentCacheInvalidator.InvalidateAll()</c> calls inside
 /// <c>RoleAssignmentService</c>'s mutating methods, and via
-/// <c>IRoleAssignmentManagement.InvalidateRoleAssignmentCache()</c> from
+/// <c>IRoleAssignmentWrite.InvalidateRoleAssignmentCache()</c> from
 /// <c>AccountMergeService</c> after a merge fold. No EF interceptor —
 /// all writes go through <c>RoleAssignmentService</c>.
 /// </summary>
 /// <remarks>
-/// Mirrors <c>CachingLegalDocumentSyncService</c>: warmed on startup via the
-/// <see cref="TrackedCache{TKey,TValue}"/> base, wholesale flush on writes,
-/// stats exposed via <c>/Debug/CacheStats</c>. Reads served from cache:
-/// <see cref="GetActiveCountsByRoleAsync"/>,
-/// <see cref="GetActiveForUserAsync"/>. Every other surface method passes
-/// through to the inner service via a freshly resolved scope. Other read
-/// methods can be migrated to cached derivations incrementally as new
-/// callers arrive — the cache shape (<see cref="RoleAssignmentRow"/>) holds
-/// the fields needed to answer "active-at-now" predicates by user or role.
+/// Warmed on startup via the <see cref="TrackedCache{TKey,TValue}"/> base, wholesale
+/// flush on writes, stats exposed via <c>/Debug/CacheStats</c>. Every other surface
+/// method passes through to the inner service via a freshly resolved scope.
 /// </remarks>
 internal sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
@@ -54,10 +48,6 @@ internal sealed class CachingRoleAssignmentService
         _clock = clock;
     }
 
-    // ==========================================================================
-    // Reads served from cache
-    // ==========================================================================
-
     public async Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct);
@@ -74,15 +64,7 @@ internal sealed class CachingRoleAssignmentService
         return counts;
     }
 
-    // ==========================================================================
-    // IRoleAssignmentCacheInvalidator
-    // ==========================================================================
-
     public void InvalidateAll() => Clear();
-
-    // ==========================================================================
-    // Warm / load
-    // ==========================================================================
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
@@ -106,10 +88,6 @@ internal sealed class CachingRoleAssignmentService
             Set(row.Id, row);
         }
     }
-
-    // ==========================================================================
-    // Pass-through to inner service (scope-resolved per call)
-    // ==========================================================================
 
     public Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
@@ -184,10 +162,6 @@ internal sealed class CachingRoleAssignmentService
     // Implemented directly on the decorator (it IS the cache invalidator);
     // no need to flow through the inner service.
     void IRoleAssignmentWrite.InvalidateRoleAssignmentCache() => InvalidateAll();
-
-    // ==========================================================================
-    // Inner-service resolution
-    // ==========================================================================
 
     private async Task<TResult> WithInner<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)
     {

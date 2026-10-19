@@ -14,24 +14,17 @@ public interface IRoleAssignmentService : IApplicationService
 
     Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Checks if a user has an active Admin role assignment.
-    /// </summary>
+    /// <summary>True if the user has an active Admin assignment.</summary>
     Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks if a user has an active Board role assignment.
-    /// </summary>
+    /// <summary>True if the user has an active Board assignment.</summary>
     Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks if a user has an active TeamsAdmin role assignment.
-    /// </summary>
+    /// <summary>True if the user has an active TeamsAdmin assignment.</summary>
     Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user has an active assignment for the specified role.
-    /// Generic version — prefer the specific Is*Async methods when available.
+    /// True if the user has an active assignment for the specified role.
     /// </summary>
     Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
 
@@ -62,9 +55,8 @@ public interface IRoleAssignmentService : IApplicationService
         string roleName, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all currently active role assignments for the user
-    /// (ValidFrom &lt;= now and ValidTo is null or in the future).
-    /// Used by the agent snapshot provider.
+    /// All assignments active now (ValidFrom &lt;= now, ValidTo null or later).
+    /// Served from the row cache.
     /// </summary>
     Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }

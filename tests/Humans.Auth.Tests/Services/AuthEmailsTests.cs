@@ -10,7 +10,7 @@ namespace Humans.Auth.Tests.Services;
 /// The per-template routing policy Auth stamps on its own messages — template name and
 /// opt-out category — plus the gallery-coverage gate: every template
 /// <see cref="AuthEmails"/> can build has a sample in <see cref="AuthEmailPreviews"/>, so a
-/// new template cannot ship invisible (peterdrier/Humans#1651). Transport (opt-out,
+/// new template cannot ship invisible. Transport (opt-out,
 /// unsubscribe, wrapping, enqueue, the immediate drain these two names key) stays Email's,
 /// covered there.
 /// </summary>

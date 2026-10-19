@@ -13,14 +13,13 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 // The subject is internal to Humans.Auth; this project reaches it through that assembly's
-// InternalsVisibleTo. Assertions are unchanged from before the move.
+// InternalsVisibleTo.
 using MagicLinkService = Humans.Auth.Services.MagicLinkService;
 
 namespace Humans.Auth.Tests.Services;
 
 public sealed class MagicLinkServiceTests : IDisposable
 {
-    // The service takes only a clock from the old shared harness, so this holds its own.
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 25, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
@@ -192,7 +191,7 @@ public sealed class MagicLinkServiceTests : IDisposable
             Email = "alice@gmail.com",
             DisplayName = "Alice",
             CreatedAt = Clock.GetCurrentInstant(),
-            MagicLinkSentAt = Clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
+            MagicLinkSentAt = Clock.GetCurrentInstant() - Duration.FromSeconds(30)
         };
 
         _userEmailService
@@ -210,11 +209,9 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
-        // First call succeeds
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
 
-        // Subsequent TryReserveSignupSendAsync returns false
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
 
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
@@ -348,10 +345,8 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
-        // The verified-only FindByAddressAsync already skips unverified rows;
-        // the default substitute returns no rows. Post-PR-2
-        // there is no User.Email-column fallback either, so the service routes
-        // straight to the signup-link branch.
+        // The verified-only FindByAddressAsync skips unverified rows (the default
+        // substitute returns none), so the service routes to the signup-link branch.
         await _service.SendMagicLinkAsync("alice@work.com", null, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(
@@ -433,7 +428,7 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task VerifyAndConsumeSignupTokenAsync_TokenAlreadyConsumed_ReturnsNull()
     {
-        // F41: the replay a signup link used to allow. The payload still decodes —
+        // F41: a consumed signup link must not redeem again. The payload still decodes —
         // only the reservation stops the second redemption.
         _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
@@ -500,8 +495,7 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task FindUserByVerifiedEmailAsync_NoVerifiedUserEmail_ReturnsNull()
     {
-        // Post-PR-2 there is no User.Email column fallback; the only path is
-        // through the verified UserEmail row. Default substitute returns null.
+        // Only a verified UserEmail row resolves a user. Default substitute returns null.
         var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();

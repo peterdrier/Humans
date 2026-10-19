@@ -41,14 +41,10 @@ public interface IRoleAssignmentWrite : IApplicationService
     void InvalidateNavBadgeCache();
 
     /// <summary>
-    /// Evicts the singleton role-assignment row cache (the one backing
-    /// <c>GetActiveCountsByRoleAsync</c>). Called post-commit by
-    /// <c>AccountMergeService.MergeAsync</c> after a fold, since the fold's
-    /// bulk re-FK happens through <c>IRoleAssignmentRepository.ReassignToUserAsync</c>
-    /// without flowing through one of this service's standalone write
-    /// methods. Other writes (<see cref="AssignRoleAsync"/>,
-    /// <see cref="EndRoleAsync"/>, <see cref="RevokeAllActiveAsync"/>)
-    /// invalidate themselves and do not require the caller to do so.
+    /// Evicts the singleton role-assignment row cache.
+    /// <c>AccountMergeService.MergeAsync</c> calls it after commit, because the fold re-FKs
+    /// rows through <c>IRoleAssignmentRepository.ReassignToUserAsync</c> and bypasses the
+    /// service's self-invalidating writes.
     /// </summary>
     void InvalidateRoleAssignmentCache();
 }

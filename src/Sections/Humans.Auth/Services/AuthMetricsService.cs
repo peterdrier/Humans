@@ -7,8 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Owns the Auth-section observable gauge split out of <c>HumansMetricsService</c>
-/// (nobodies-collective/Humans#1091): active role-assignment counts by role.
+/// Owns the Auth-section observable gauge: active role-assignment counts by role.
 /// </summary>
 internal sealed class AuthMetricsService : PolledGaugeService
 {

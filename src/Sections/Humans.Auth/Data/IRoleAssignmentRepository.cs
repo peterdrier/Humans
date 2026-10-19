@@ -13,17 +13,9 @@ namespace Humans.Auth.Data;
 /// There are no cross-domain navigation properties to <c>.Include()</c>;
 /// <c>RoleAssignmentService</c> stitches display data in memory via
 /// <c>IUserService</c>.
-///
-/// Auth is low-traffic (handful of admin writes per month, a few reads per
-/// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
-/// so each method owns its own <c>AuthDbContext</c> lifetime.
 /// </remarks>
 internal interface IRoleAssignmentRepository : IRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     /// <summary>
     /// Loads a single role assignment by id for mutation via
     /// <see cref="UpdateAsync"/>. Cross-domain navs are NOT populated.
@@ -79,9 +71,7 @@ internal interface IRoleAssignmentRepository : IRepository
 
     /// <summary>
     /// Returns true if the user has any active role assignment at
-    /// <paramref name="now"/> (regardless of role name). Used by the
-    /// membership calculator to distinguish governance members from plain
-    /// volunteers.
+    /// <paramref name="now"/> (regardless of role name).
     /// </summary>
     Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,
@@ -90,9 +80,7 @@ internal interface IRoleAssignmentRepository : IRepository
 
     /// <summary>
     /// Returns the distinct set of user IDs that have at least one active
-    /// role assignment at <paramref name="now"/>. Used by batch jobs
-    /// (e.g., membership status reconciliation) that need to enumerate every
-    /// governance-active user.
+    /// role assignment at <paramref name="now"/>.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         Instant now,
@@ -118,16 +106,11 @@ internal interface IRoleAssignmentRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Counts active assignments at <paramref name="now"/> grouped by role
-    /// name. Used by the metrics snapshot refresh.
+    /// Counts active assignments at <paramref name="now"/> grouped by role name.
     /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
         CancellationToken ct = default);
-
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
 
     /// <summary>
     /// Persists a new role assignment. Commits immediately.

@@ -4,8 +4,7 @@ namespace Humans.Auth.Services;
 /// Abstracts the framework-side concerns of magic-link auth: Data Protection
 /// token generation/validation and URL construction using
 /// <c>EmailSettings.BaseUrl</c>. Lets <see cref="MagicLinkService"/> name
-/// neither <c>IDataProtectionProvider</c> nor <c>EmailSettings</c>. Same pattern
-/// as <c>IUnsubscribeTokenProvider</c>. Section-internal: only
+/// neither <c>IDataProtectionProvider</c> nor <c>EmailSettings</c>. Section-internal: only
 /// <c>MagicLinkService</c> injects it and only <c>Section.Register</c> binds it.
 /// </summary>
 internal interface IMagicLinkUrlBuilder

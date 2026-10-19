@@ -37,7 +37,6 @@ internal sealed class RoleAssignmentConfiguration : IEntityTypeConfiguration<Rol
         builder.HasIndex(ra => ra.RoleName);
         builder.HasIndex(ra => new { ra.UserId, ra.RoleName, ra.ValidFrom });
 
-        // Partial index for active role assignments (no end date)
         builder.HasIndex(ra => new { ra.UserId, ra.RoleName })
             .HasFilter("\"ValidTo\" IS NULL");
     }

@@ -14,10 +14,6 @@ namespace Humans.Auth.Services;
 /// state behind <see cref="IMagicLinkRateLimiter"/>, so this type names no <c>DbContext</c>,
 /// no <c>IDataProtectionProvider</c> and no <c>IMemoryCache</c>.
 /// </summary>
-/// <remarks>
-/// It sends through <c>Humans.Email.Contracts</c> — a vertical section's leaf, legal from a
-/// horizontal since Peter's Base-floor decision of 2026-08-14.
-/// </remarks>
 internal sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,
@@ -47,7 +43,6 @@ internal sealed class MagicLinkService(
             }
         }
 
-        // No match — send signup link (with rate limiting).
         await SendSignupLinkAsync(email, returnUrl, ct);
     }
 
@@ -73,7 +68,6 @@ internal sealed class MagicLinkService(
             return null;
         }
 
-        // Replay-prevention: consume token for its lifetime.
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
@@ -102,7 +96,6 @@ internal sealed class MagicLinkService(
         if (payload is null)
             return null;
 
-        // Replay-prevention: consume token for its lifetime, as the login path does.
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogInformation("Magic link signup: token already used for email {Email}",
@@ -127,7 +120,6 @@ internal sealed class MagicLinkService(
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
-        // Rate limit: one magic link per 60 seconds per user
         var now = clock.GetCurrentInstant();
         if (user.MagicLinkSentAt is not null &&
             now - user.MagicLinkSentAt.Value < RateLimitCooldown)
@@ -167,7 +159,6 @@ internal sealed class MagicLinkService(
 
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
-        // Rate limit signup emails: one per 60 seconds per email address
         if (!await rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
         {
             logger.LogDebug("Magic link signup rate-limited for {Email}", email);

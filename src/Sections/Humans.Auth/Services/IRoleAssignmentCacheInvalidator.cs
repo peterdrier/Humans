@@ -4,24 +4,21 @@ using Humans.Base.Interfaces;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Cross-section signal for the global role-assignment cache. Implemented
+/// Section-internal eviction hook for the role-assignment row cache. Implemented
 /// by the Singleton <c>CachingRoleAssignmentService</c> decorator and
 /// called by <c>RoleAssignmentService</c>'s mutating methods (and, via
-/// <c>IRoleAssignmentManagement.InvalidateRoleAssignmentCache()</c>, by
+/// <c>IRoleAssignmentWrite.InvalidateRoleAssignmentCache()</c>, by
 /// <c>AccountMergeService</c> after a merge fold). No EF interceptor —
 /// all <c>role_assignments</c> writes go through <c>RoleAssignmentService</c>.
 /// </summary>
 /// <remarks>
-/// Bag-shaped cache (whole-set replacement on rebuild) — same pattern as
-/// <c>ILegalDocumentCacheInvalidator</c>. The cached unit is the
-/// full set of role-assignment rows; per-row invalidation is not used
-/// because writes are rare and a wholesale reload is cheap.
+/// The cached unit is the full set of role-assignment rows; per-row invalidation is
+/// not used because writes are rare and a wholesale reload is cheap.
 ///
 /// Distinct from <c>IRoleAssignmentClaimsCacheInvalidator</c>:
 /// the claims invalidator targets per-user authentication claims (cookie /
-/// per-request roles), while this invalidator targets the singleton list
-/// cache that backs cross-section reads such as
-/// <c>IRoleAssignmentManagement.GetActiveCountsByRoleAsync</c>.
+/// per-request roles), while this invalidator targets the singleton row
+/// cache that backs <c>GetActiveCountsByRoleAsync</c> and <c>GetActiveForUserAsync</c>.
 /// </remarks>
 [Grandfathered(
     ruleId: "HUM0028",

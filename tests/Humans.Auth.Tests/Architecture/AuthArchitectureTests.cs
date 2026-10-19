@@ -8,9 +8,6 @@ using NodaTime;
 
 namespace Humans.Auth.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests for the Auth section's role-assignment faces.
-/// </summary>
 public class AuthArchitectureTests
 {
     [HumansFact]

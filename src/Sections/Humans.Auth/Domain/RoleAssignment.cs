@@ -27,11 +27,7 @@ internal sealed class RoleAssignment
     /// <summary>Bare cross-section id — no FK constraint, no navigation property.</summary>
     public Guid CreatedByUserId { get; init; }
 
-    /// <summary>
-    /// Determines if this role assignment is currently active.
-    /// </summary>
-    /// <param name="asOf">The point in time to check against.</param>
-    /// <returns>True if the role is active at the specified time.</returns>
+    /// <summary>True if the assignment is active at <paramref name="asOf"/>.</summary>
     public bool IsActive(Instant asOf)
     {
         if (asOf < ValidFrom)

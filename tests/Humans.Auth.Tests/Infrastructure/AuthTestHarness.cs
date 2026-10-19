@@ -17,15 +17,10 @@ namespace Humans.Auth.Tests.Infrastructure;
 /// and a dictionary-backed <see cref="IUserService"/>.
 /// </summary>
 /// <remarks>
-/// Campaigns' shape rather than Teams'. Teams copied <c>ServiceTestHarness</c> wholesale
-/// because 5,000 lines of test bodies read <c>Db.Teams</c>/<c>Db.Users</c>; Auth's service
-/// reads exactly two members of <c>IUserService</c> — <c>GetUserInfoAsync</c> and
-/// <c>GetUserInfosAsync</c>, both for display-name stitching (design-rules §6b) — so
-/// rewriting the *stub* keeps the test bodies unchanged and keeps
-/// <c>HumansDbContext</c> off a section test project's compile path entirely. That matters
-/// beyond tidiness: §858 peel 15 deletes <c>HumansDbContext</c>, and copying the harness
-/// would have taken a dependency on it in the same week.
-/// <c>UserInfo.Create</c> is Governance's <c>UserInfoFixtures</c> projection.
+/// Auth's service reads only <c>GetUserInfoAsync</c> and <c>GetUserInfosAsync</c> from
+/// <c>IUserService</c>, for display-name stitching, so the stub is a dictionary rather than
+/// a seeded user database. <c>UserInfo.Create</c> is Governance's <c>UserInfoFixtures</c>
+/// projection.
 /// </remarks>
 public abstract class AuthTestHarness : IDisposable
 {
@@ -51,7 +46,7 @@ public abstract class AuthTestHarness : IDisposable
 
     /// <summary>
     /// Registers a person the service can stitch a display name for. Returns the
-    /// <see cref="User"/> so call sites that used the shared harness's seeder read the same.
+    /// <see cref="User"/>.
     /// </summary>
     private protected User SeedUser(Guid? id = null, string displayName = "Test User")
     {

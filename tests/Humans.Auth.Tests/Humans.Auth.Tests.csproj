@@ -14,7 +14,7 @@
       RoleAssignmentAuthorizationHandlerTests builds an AuthorizationHandlerContext, so the
       test project names Microsoft.AspNetCore.Authorization directly. Plain Microsoft.NET.Sdk
       does not get the shared framework and Central Package Management has no PackageVersion
-      for the AspNetCore packages (template step 8).
+      for the AspNetCore packages.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

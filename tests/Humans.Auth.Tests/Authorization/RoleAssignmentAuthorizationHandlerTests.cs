@@ -18,8 +18,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
 {
     private readonly RoleAssignmentAuthorizationHandler _handler = new();
 
-    // --- Admin override ---
-
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
@@ -38,8 +36,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         var result = await EvaluateAsync(user, roleName);
         result.Should().BeTrue();
     }
-
-    // --- Board access ---
 
     [HumansTheory]
     [InlineData(RoleNames.Board)]
@@ -67,8 +63,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // --- HumanAdmin access ---
-
     [HumansTheory]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.HumanAdmin)]
@@ -94,8 +88,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         var result = await EvaluateAsync(user, RoleNames.Admin);
         result.Should().BeFalse();
     }
-
-    // --- Denial cases ---
 
     [HumansFact]
     public async Task RegularUser_DeniedForAnyRole()
@@ -128,8 +120,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         var result = await EvaluateAsync(user, RoleNames.Board);
         result.Should().BeFalse();
     }
-
-    // --- Helpers ---
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, string roleName)
     {

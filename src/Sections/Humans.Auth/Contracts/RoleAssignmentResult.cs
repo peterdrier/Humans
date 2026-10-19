@@ -5,14 +5,8 @@ namespace Humans.Auth.Contracts;
 /// <c>ErrorKey</c> for the failure the caller is expected to render.
 /// </summary>
 /// <remarks>
-/// Shape-identical to <c>Humans.Onboarding.Contracts.OnboardingResult</c>, which
-/// <c>AssignRoleAsync</c>/<c>EndRoleAsync</c> returned while the service was in Base. That
-/// type cannot follow the section: Onboarding is a *vertical* section and Auth is a
-/// horizontal one, so <c>Humans.Auth.Contracts</c> referencing
-/// <c>Humans.Onboarding.Contracts</c> is the reference <c>peters-hard-rules.md</c> forbids
-/// outright. It was never Auth's vocabulary either — the three services that give
-/// <c>OnboardingResult</c> its name are the onboarding funnel's own siblings; role
-/// assignment is not one of them. The section owns its boundary type; its outside callers
-/// read the same two members they always did.
+/// Auth owns this type rather than reusing <c>Humans.Onboarding.Contracts.OnboardingResult</c>:
+/// Auth.Contracts must not reference Onboarding.Contracts (<c>peters-hard-rules.md</c>), and
+/// role assignment is not part of the onboarding funnel.
 /// </remarks>
 public record RoleAssignmentResult(bool Success, string? ErrorKey = null);

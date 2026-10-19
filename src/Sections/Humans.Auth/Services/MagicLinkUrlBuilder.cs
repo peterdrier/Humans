@@ -9,7 +9,7 @@ namespace Humans.Auth.Services;
 /// Implementation of <see cref="IMagicLinkUrlBuilder"/>. Uses
 /// ASP.NET Core <see cref="IDataProtectionProvider"/> for token
 /// protection/validation and <see cref="EmailSettings.BaseUrl"/> for URL
-/// construction. Mirrors <c>UnsubscribeTokenProvider</c>.
+/// construction.
 /// </summary>
 internal sealed class MagicLinkUrlBuilder(
     IDataProtectionProvider dataProtection,

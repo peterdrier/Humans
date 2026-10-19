@@ -92,12 +92,6 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
 
         result.Should().NotBeNull();
         result.Id.Should().Be(assignment.Id);
-        // Cross-domain navs must NOT be populated by the repository.
-#pragma warning disable CS0618
-        // Use property presence only (in-memory EF in tests may auto-fix the back-ref
-        // to a seeded User graph; what matters is the repository does not .Include it
-        // explicitly). No assertion needed for in-memory here beyond the positive path.
-#pragma warning restore CS0618
     }
 
     [HumansFact]

@@ -5,17 +5,12 @@ using Humans.Auth.Domain;
 namespace Humans.Auth.Data;
 
 /// <summary>
-/// EF-backed implementation of <see cref="IRoleAssignmentRepository"/>. The
-/// only non-test writer of <c>role_assignments</c>.
+/// EF-backed implementation of <see cref="IRoleAssignmentRepository"/>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>AuthDbContext</c> remains Scoped.
 /// </summary>
 internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> factory) : IRoleAssignmentRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     public async Task<RoleAssignment?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -193,10 +188,6 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
 
         return rows.ToDictionary(r => r.Role, r => r.Count, StringComparer.Ordinal);
     }
-
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
 
     public async Task AddAsync(RoleAssignment assignment, CancellationToken ct = default)
     {

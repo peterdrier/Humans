@@ -53,12 +53,8 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
         // only exclusive because TryReserveAsync takes read and write under one lock —
         // remove that and several racers can each believe they created the entry.
         //
-        // Honest about what this catches: measured against the non-atomic implementation
-        // it goes red in roughly two runs out of three, and neither more racers nor more
-        // rounds moved that much — a 4-core box only opens the window so often. So it is
-        // a partial guard, not a proof. It cannot fail the other way (with the lock there
-        // is exactly one winner every round), so it is never flaky, and it states the
-        // invariant next to the code that has to keep it.
+        // A partial guard: against a non-atomic implementation it goes red only on some
+        // runs. With the lock there is exactly one winner every round, so it is never flaky.
         const int Rounds = 25;
         const int Racers = 64;
 

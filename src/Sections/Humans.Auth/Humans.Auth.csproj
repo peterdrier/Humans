@@ -19,43 +19,24 @@
     <InternalsVisibleTo Include="Humans.Auth.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
-    <!--
-      Temporary, one direction of Teams finding 36's trade. TeamsTestHarness seeds
-      role_assignments rows for Teams' own role tests. Comes out when that fixture is
-      rewritten.
-    -->
+    <!-- Temporary: TeamsTestHarness seeds role_assignments rows for Teams' own role tests; comes out when that fixture is rewritten. -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
-      Three horizontal sections (AuditLog and Gdpr by section project, Notifications by its leaf):
-      AuditLog  — RoleAssignmentService writes an audit row per assign/end.
-      Gdpr      — role assignments are an Article 15 export slice.
-      Notifications — best-effort in-app notice to the human whose role changed.
-
-      Two *vertical* leaves are also here, both for the magic-link sign-in path that came home
-      at nobodies-collective/Humans#866 G5 lane 4b-2i:
-
-      Users.Contracts — already required before that lane (IUserService for assignee/creator
-                        display stitching); MagicLinkService adds UserManager<User> and
-                        IUserEmailService on top.
+      One reason per reference:
+      AuditLog      — RoleAssignmentService writes an audit row per assign/end.
+      Gdpr          — role assignments are an Article 15 export slice.
+      Notifications.Contracts — best-effort in-app notice to the human whose role changed.
+      Users.Contracts — IUserService for assignee/creator display stitching;
+                        MagicLinkService adds UserManager<User> and IUserEmailService.
       Email.Contracts — IEmailService, which MagicLinkService injects to send the
-                        login/signup mail built by the section's own AuthEmails. This
-                        reference is exactly what the old "a horizontal may not
-                        reference a vertical" reading forbade, and it is
-                        why the orchestrator sat in Humans.Application until now. Peter's
-                        Base-floor decision of 2026-08-14 supersedes that reading: leaves are
-                        referenceable from anywhere, so hosting a section's own sign-in path in
-                        the hub bought nothing. AuthArchitectureTests.SectionReferencesNoVerticalSection,
-                        which pinned this list on the old premise, was retired in the same lane —
-                        this comment is the record now, so keep a reason beside every name.
-
-      Humans.Teams.Contracts arrived at G5 lane 5c: ISystemTeamSync moved onto that leaf when
-      Humans.Application was emptied, and RoleAssignmentService injects it to reconcile the
-      Board system team. A leaf, not the section — the horizontal/vertical rule still holds.
-      There is still deliberately no Humans.Onboarding.Contracts reference.
+                        login/signup mail built by the section's own AuthEmails.
+      Teams.Contracts — ISystemTeamSync, which RoleAssignmentService injects to reconcile
+                        the Board system team.
+      No Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
