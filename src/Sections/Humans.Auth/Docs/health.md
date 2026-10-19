@@ -106,44 +106,44 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
 `Auth.md`'s list in the form the run checks against.
 
 1. An assignment is never resurrected. Ending a role stamps `ValidTo`; granting it again writes
-   a new row (`Services/RoleAssignmentService.cs:121`, `Services/RoleAssignmentService.cs:185`).
+   a new row (`Services/RoleAssignmentService.cs:122`, `Services/RoleAssignmentService.cs:185`).
 2. `AssignRoleAsync` refuses when an active or open-ended assignment for the same
-   (user, role) overlaps the new window (`Services/RoleAssignmentService.cs:113`).
+   (user, role) overlaps the new window (`Services/RoleAssignmentService.cs:105`).
 3. `EndRoleAsync` refuses a row that is already ended or not yet active
-   (`Services/RoleAssignmentService.cs:180`).
+   (`Services/RoleAssignmentService.cs:172`).
 4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
    governs every read, in SQL and in memory alike. It is necessarily implemented more than
-   once (`Domain/RoleAssignment.cs:35`, `Contracts/RoleAssignmentRow.cs:23`,
-   `Contracts/IRoleAssignmentService.cs:94`, and the repository's EF expressions, which cannot
+   once (`Domain/RoleAssignment.cs:38`, `Contracts/RoleAssignmentRow.cs:23`,
+   `Contracts/IRoleAssignmentService.cs:87`, and the repository's EF expressions, which cannot
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
    is the violation.
 5. Assign, end, and the bulk revoke invalidate the row cache and the claims cache for the
    affected user before the call returns (`Services/RoleAssignmentService.cs:131`,
-   `Services/RoleAssignmentService.cs:194`, `Services/RoleAssignmentService.cs:266`). The merge
+   `Services/RoleAssignmentService.cs:194`, `Services/RoleAssignmentService.cs:259`). The merge
    path (`ReassignAsync`) is the exception by contract: it leaves invalidation to
    `AccountMergeService.MergeAsync`, which flushes after the merge's commit point.
 6. Every single-row write leaves an audit entry attributed to the actor
-   (`Services/RoleAssignmentService.cs:133`, `Services/RoleAssignmentService.cs:196`), and
+   (`Services/RoleAssignmentService.cs:125`, `Services/RoleAssignmentService.cs:188`), and
    best-effort notifies the affected person; a notification failure never fails the write
-   (`Services/RoleAssignmentService.cs:153`, `Services/RoleAssignmentService.cs:216`).
+   (`Services/RoleAssignmentService.cs:145`, `Services/RoleAssignmentService.cs:208`).
 7. Granting or ending `Board` reconciles the Board system team
-   (`Services/RoleAssignmentService.cs:160`, `Services/RoleAssignmentService.cs:223`).
+   (`Services/RoleAssignmentService.cs:152`, `Services/RoleAssignmentService.cs:215`).
 8. Only an Admin may assign `Admin`; Board and HumanAdmin are confined to
    `RoleNames.BoardManageableRoles` (`Authorization/RoleAssignmentAuthorizationHandler.cs:22`,
    `Authorization/RoleAssignmentAuthorizationHandler.cs:30`).
 9. A magic-link token, login or signup, redeems once; a second presentation of the same token
-   fails (`Services/MagicLinkService.cs:77`, `Services/MagicLinkService.cs:106`).
+   fails (`Services/MagicLinkService.cs:71`, `Services/MagicLinkService.cs:99`).
 10. A magic-link send never discloses whether the address is known — an unknown address falls
     through to a signup send, and every rate-limited branch returns silently
-    (`Services/MagicLinkService.cs:51`).
+    (`Services/MagicLinkService.cs:46`).
 11. Login sends are capped at one per user per cooldown, reserved before the message is built
-    and released only when building or sending fails (`Services/MagicLinkService.cs:139`,
-    `Services/MagicLinkService.cs:157`). Signup sends are capped at one per inbox per cooldown,
-    released on a failed send (`Services/MagicLinkService.cs:171`,
-    `Services/MagicLinkService.cs:187`).
+    and released only when building or sending fails (`Services/MagicLinkService.cs:131`,
+    `Services/MagicLinkService.cs:149`). Signup sends are capped at one per inbox per cooldown,
+    released on a failed send (`Services/MagicLinkService.cs:162`,
+    `Services/MagicLinkService.cs:178`).
 12. Verified emails only: an unverified address never resolves to a user on the sign-in path
-    (`Services/MagicLinkService.cs:38`).
+    (`Services/MagicLinkService.cs:34`).
 
 ## 5. Seams — specified but not built
 
@@ -207,3 +207,4 @@ Settled decisions that read as smells. Stop re-litigating these.
 | Run | Date | Headline | PR |
 |-----|------|----------|-----|
 | 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | [peterdrier/Humans#1575](https://github.com/peterdrier/Humans/pull/1575) |
+| 2 | 2026-10-19 | Dead overlap member gone, re-grant and boundary invariants pinned, docs and comments say what is true now | pending |
