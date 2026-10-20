@@ -74,12 +74,15 @@ themes:
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"
     review: panel
-    last_swept: 2026-06-13
-    remaining: 15
+    last_swept: 2026-10-20
+    remaining: 14
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
     notes: >-
+      Burn-down resumed 2026-10-20 (Peter: "parked = defer till later, later is
+      now"), one owner per PR, self-only invalidators first. IIssuesBadgeCacheInvalidator
+      is gone: IssuesService was its only caller and already owned the cache.
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
@@ -104,7 +107,7 @@ themes:
       intra-section sibling signals that must stay (Consent, ActiveTeams,
       UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
       NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
-      service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge,
+      service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge [absorbed 2026-10-20],
       CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
       seams. Peter 2026-06-13: LEAVE in rotation (re-check periodically, do not
