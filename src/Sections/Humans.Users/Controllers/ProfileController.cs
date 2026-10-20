@@ -51,8 +51,6 @@ internal sealed class ProfileController(
     IOnboardingIntake onboardingService,
     IShiftSignups shiftSignupService,
     ISettingsService settingsService,
-    IShiftVolunteerProfiles shiftProfiles,
-    IShiftView shiftView,
     IGdprService gdprExportService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
@@ -155,15 +153,9 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftProfiles.GetTagsAsync(ct: ct);
-        // Tag prefs from cached ShiftUserView, not repo.
-        var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
-        var preferredShiftTags = userShiftView.TagPreferences;
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
-            allShiftTags,
-            preferredShiftTags,
             preview,
             p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
@@ -186,11 +178,6 @@ internal sealed class ProfileController(
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return NotFound();
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
-
-        // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
-        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         if (!ModelState.IsValid)
         {
@@ -248,8 +235,6 @@ internal sealed class ProfileController(
 
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
-        await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
-
         // Meal pref + allergies were persisted as part of the ProfileSaveRequest
         // above (Profile now owns dietary). Intolerances + medical are untouched —
         // they're owned by the DietaryMedical page.
@@ -282,7 +267,7 @@ internal sealed class ProfileController(
 
         // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
         // Validated here, before any persistence, so a bad submit can't half-save
-        // (main profile written but shift profile rejected, or vice versa).
+        // (a partial save).
         if (model.Allergies.Contains(DietaryOptions.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
         {
             ModelState.AddModelError(nameof(model.AllergyOtherText),

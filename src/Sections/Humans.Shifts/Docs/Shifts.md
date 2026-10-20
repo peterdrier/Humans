@@ -220,8 +220,8 @@ Selected routes:
 | `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` | Grid export, burner names only |
 | `POST /Shifts/Dashboard/VolunteerTracking/{SetCampSetup,ClearCampSetup,SetDayOff,ClearDayOff,SetAvailabilityDay,ClearAvailabilityDay}` | Coordinator edits to a volunteer's build-week status and per-day availability (`VolunteerTrackingWrite`) |
 | `GET /Shifts/Admin/Workload` | Per-person / per-department hour workload (`ShiftDashboardAccess`) |
-| `GET /Profile/Me/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages) |
-| `POST /Profile/Me/ShiftInfo` | Save shift-matching profile |
+| `GET /Profile/Me/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages, preferred shift tags); linked from `/Profile/Me/Edit` |
+| `POST /Profile/Me/ShiftInfo` | Save shift-matching profile and tag preferences (`SetVolunteerTagPreferencesAsync`) |
 
 The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryRosterController` in `Humans.EarlyEntry`; Shifts only contributes to it through `IEarlyEntryProvider`.
 

@@ -1,8 +1,6 @@
 @model Humans.Users.Models.ProfileViewModel
-@* The shift-preference card below renders two Shifts_ keys, which moved into the section's
-   own set at its G5 move (nobodies-collective/Humans#866). Shell can reference a section, so
-   the call sites rebind here rather than the pair being split off the identical card on
-   /Shifts (design §15 step 3b, Consent's direction). *@
+@* The shift-preference card below links to /Profile/Me/ShiftInfo and renders two Shifts_ keys
+   from the section's own set. *@
 @inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["ProfileEdit_Title"].Value;
@@ -445,25 +443,12 @@
                         <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
 
-                    @if (Model.AllShiftTags.Count > 0)
-                    {
-                        <hr />
-                        <div class="mb-3">
-                            <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
-                            <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (var tag in Model.AllShiftTags)
-                                {
-                                    var isPreferred = Model.EditableShiftTagIds.Contains(tag.Id);
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="EditableShiftTagIds" value="@tag.Id" id="prof-shift-tag-@tag.Id.ToString("N")"
-                                               @if (isPreferred) { <text>checked</text> } />
-                                        <label class="form-check-label" for="prof-shift-tag-@tag.Id.ToString("N")">@tag.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
+                    <hr />
+                    <div class="mb-3">
+                        <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
+                        <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                        <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Profile_ShiftInfo"]</a>
+                    </div>
                 </div>
             </div>
 

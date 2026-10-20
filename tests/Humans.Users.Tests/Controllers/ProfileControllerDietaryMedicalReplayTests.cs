@@ -57,7 +57,6 @@ public class ProfileControllerDietaryMedicalReplayTests
     private readonly UserManager<User> _userManager;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
-    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftSignups _signupService = Substitute.For<IShiftSignups>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -90,8 +89,6 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IOnboardingIntake>(),
             _signupService,
             Substitute.For<ISettingsService>(),
-            _shiftMgmt,
-            Substitute.For<IShiftView>(),
             Substitute.For<IGdprService>(),
             configuration,
             new ConfigurationRegistry(),

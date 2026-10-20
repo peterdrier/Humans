@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;
@@ -251,14 +250,6 @@ internal sealed class ProfileViewModel
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
 
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
-
-    public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
-
-    /// <summary>
-    /// IDs of shift tags the user has marked as preferred. Owner only.
-    /// Posted from the Edit form so the same submit saves preferences alongside the profile.
-    /// </summary>
-    public List<Guid> EditableShiftTagIds { get; set; } = [];
 
     /// <summary>
     /// Dietary preference (single choice). Surfaced on the Edit page as a second

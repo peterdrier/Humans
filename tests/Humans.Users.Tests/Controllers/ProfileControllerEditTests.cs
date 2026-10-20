@@ -63,8 +63,6 @@ public class ProfileControllerEditTests
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ProfileController _controller;
@@ -100,8 +98,6 @@ public class ProfileControllerEditTests
             _onboardingService,
             Substitute.For<IShiftSignups>(),
             _settings,
-            _shiftMgmt,
-            _shiftView,
             _gdprService,
             _configuration,
             new ConfigurationRegistry(),
@@ -134,11 +130,6 @@ public class ProfileControllerEditTests
                 Arg.Any<MembershipTier>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
             .Returns(new ApplicationDecisionResult(true));
-
-        // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
-        // an empty view so the GET path doesn't NRE before the dietary population.
-        _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(ShiftUserSummary.Empty(_userId));
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
@@ -803,63 +794,6 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var tagId1 = Guid.NewGuid();
-        var tagId2 = Guid.NewGuid();
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.EditableShiftTagIds = [tagId1, tagId2];
-
-        await _controller.Edit(model);
-
-        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
-            _userId,
-            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2 && ids.Contains(tagId1) && ids.Contains(tagId2)));
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.EditableShiftTagIds = [];
-
-        await _controller.Edit(model);
-
-        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
-            _userId,
-            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 0));
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_ValidationFailure_RepopulatesAllShiftTagsAndDoesNotCallSetPreferences()
-    {
-        var tag1 = new ShiftTagSummary(Guid.NewGuid(), "Heavy lifting");
-        var tag2 = new ShiftTagSummary(Guid.NewGuid(), "Working in the sun");
-        _shiftMgmt.GetTagsAsync(Arg.Any<string?>())
-            .Returns(new List<ShiftTagSummary> { tag1, tag2 });
-
-        // Force ModelState invalid before the action runs.
-        _controller.ModelState.AddModelError("BurnerName", "Required");
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-
-        var result = await _controller.Edit(model);
-
-        var viewResult = result.Should().BeOfType<ViewResult>().Subject;
-        var returnedModel = viewResult.Model.Should().BeOfType<ProfileViewModel>().Subject;
-        returnedModel.AllShiftTags.Should().HaveCountGreaterThan(0);
-
-        await _shiftMgmt.DidNotReceiveWithAnyArgs()
-            .SetVolunteerTagPreferencesAsync(Guid.Empty, null!);
-    }
-
-    [HumansFact]
     public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToProfile()
     {
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
@@ -965,7 +899,6 @@ public class ProfileControllerEditTests
         viewModel.DietaryPreference.Should().Be("Pescatarian");
         viewModel.Allergies.Should().BeEquivalentTo(["Dairy", "Other"]);
         viewModel.AllergyOtherText.Should().Be("Mango");
-        await _shiftMgmt.Received(1).GetTagsAsync(ct: cancellation.Token);
     }
 
     private static ProfileViewModel MakeValidModel(

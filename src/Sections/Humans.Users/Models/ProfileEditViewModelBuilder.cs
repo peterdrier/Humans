@@ -1,5 +1,4 @@
 using Humans.Governance.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
@@ -10,15 +9,11 @@ internal static class ProfileEditViewModelBuilder
     public static ProfileViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        IReadOnlyList<ShiftTagSummary> allShiftTags,
-        IReadOnlyList<ShiftTagPreferenceInfo> preferredShiftTags,
         bool preview,
         Func<ProfileInfo, string?> customPictureUrl)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
-        ArgumentNullException.ThrowIfNull(allShiftTags);
-        ArgumentNullException.ThrowIfNull(preferredShiftTags);
         ArgumentNullException.ThrowIfNull(customPictureUrl);
 
         var profile = info.Profile;
@@ -93,11 +88,7 @@ internal static class ProfileEditViewModelBuilder
                 Id = pl.Id,
                 LanguageCode = pl.LanguageCode,
                 Proficiency = pl.Proficiency
-            }).ToList(),
-            AllShiftTags = allShiftTags
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList(),
-            EditableShiftTagIds = preferredShiftTags.Select(t => t.ShiftTagId).ToList()
+            }).ToList()
         };
     }
 
