@@ -5,7 +5,6 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
@@ -13,15 +12,11 @@
   <ItemGroup>
     <!--
       The section is one controller; a plain Microsoft.NET.Sdk test project does not get the
-      shared framework and cannot get there with a PackageReference (design §15 step 1/8).
+      shared framework and cannot get there with a PackageReference.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <!--
-    No EF Core package: Scanner owns no tables, so there is no DbContext to fixture. That is
-    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
-    /CapturingLogger compile items — see the comment there.
-  -->
+  <!-- No EF Core package: Scanner owns no tables, so there is no DbContext to fixture. -->
 
 </Project>

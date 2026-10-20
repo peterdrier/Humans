@@ -43,7 +43,7 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
     private static (string Url, string Copy)[] Pages =>
     [
-        ("/Scanner", "In-browser scanner tools"),           // Scanner_Index_Intro
+        ("/Scanner", "Camera tools for ticket staff"),      // Scanner_Index_Intro
         ("/Scanner/Barcode", "Barcode scanner"),            // Scanner_Barcode_Title
         ("/Scanner/Tickets", "Scan a ticket to see"),       // Scanner_Tickets_Intro
     ];
