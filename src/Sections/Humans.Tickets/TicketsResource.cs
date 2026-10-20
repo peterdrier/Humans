@@ -10,9 +10,8 @@ namespace Humans.Tickets;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set is the <c>TicketTransfer_*</c> keys read by the transfer wizard — the only
-/// view in the section that localizes anything. The admin ticket views carry no
-/// <c>Localizer[…]</c> call at all.
+/// Section-owned keys use <c>Tickets_</c>; the transfer wizard uses
+/// <c>Tickets_TicketTransfer_*</c>.
 /// <para>
 /// Keys that look like this section's and are <em>not</em> here stayed behind because their
 /// renderer is Shell's: <c>Dashboard_Ticket*</c>, <c>Guest_Tickets*</c>, <c>Home_Tickets*</c>,

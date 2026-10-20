@@ -125,7 +125,7 @@ public class NotificationMeterProviderTests : IDisposable
             });
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
-        var controller = new NotificationsController(inbox, _userService, _provider)
+        var controller = new NotificationsController(inbox, _userService, _provider, NullLogger<NotificationsController>.Instance)
         {
             ControllerContext = new()
             {

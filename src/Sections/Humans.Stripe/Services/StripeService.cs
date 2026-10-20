@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -53,7 +54,8 @@ internal sealed class StripeSettings
 
 }
 
-internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
+internal sealed class StripeService(
+    IOptions<StripeSettings> settings, ILogger<StripeService> logger, IHttpClient? httpClient = null) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
 
@@ -87,7 +89,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
         if (!_settings.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe Store key is not configured.");
 
-        var client = new StripeClient(_settings.StoreKey);
+        var client = new StripeClient(_settings.StoreKey, httpClient: httpClient);
         var sessions = new SessionService(client);
 
         var options = new SessionCreateOptions
@@ -154,7 +156,7 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
-        var client = new StripeClient(_settings.TicketsKey);
+        var client = new StripeClient(_settings.TicketsKey, httpClient: httpClient);
         var piService = new PaymentIntentService(client);
 
         PaymentIntent pi;
@@ -180,6 +182,17 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
+        // Asynchronous capture can succeed before its balance transaction exists. Returning
+        // zero here would permanently mark Tickets' fee enrichment complete instead of retrying.
+        var bt = charge.BalanceTransaction;
+        if (bt is null)
+        {
+            logger.LogDebug("PaymentIntent {Id} is awaiting its balance transaction", paymentIntentId);
+            return null;
+        }
+        if (!string.Equals(bt.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Stripe balance transaction does not declare EUR currency.");
+
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
         string? methodDetail = null;
@@ -188,11 +201,12 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
 
         decimal stripeFee = 0;
         decimal applicationFee = 0;
-        var bt = charge.BalanceTransaction;
-        if (bt?.FeeDetails is not null)
+        if (bt.FeeDetails is not null)
         {
             foreach (var fd in bt.FeeDetails)
             {
+                if (!string.Equals(fd.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Stripe fee does not declare EUR currency.");
                 if (string.Equals(fd.Type, "stripe_fee", StringComparison.Ordinal))
                     stripeFee += FromStripeMinorUnits(fd.Amount);
                 else if (string.Equals(fd.Type, "application_fee", StringComparison.Ordinal))
@@ -240,7 +254,12 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             _ => StoreCheckoutEventKind.Other,
         };
 
-        StoreCheckoutSessionData? session = stripeEvent.Data.Object is Session s ? MapSession(s) : null;
+        StoreCheckoutSessionData? session = null;
+        if (stripeEvent.Data.Object is Session s)
+        {
+            session = MapSession(s);
+            if (session is null) return null;
+        }
 
         return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);
     }
@@ -255,14 +274,15 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
-        var client = new StripeClient(_settings.StoreKey);
+        var client = new StripeClient(_settings.StoreKey, httpClient: httpClient);
         var sessions = new SessionService(client);
         var results = new List<StoreCheckoutSessionData>();
         try
         {
             await foreach (var s in sessions.ListAutoPagingAsync(new SessionListOptions { Limit = 100 }, cancellationToken: ct))
             {
-                results.Add(MapSession(s));
+                results.Add(MapSession(s) ?? throw new InvalidOperationException(
+                    "Stripe Store Checkout list contains a session without explicit EUR currency."));
             }
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
@@ -281,8 +301,16 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
     /// webhook-parse and reconciliation-list paths so both read the order-id metadata,
     /// amount, payment status, and creation time identically.
     /// </summary>
-    private static StoreCheckoutSessionData MapSession(Session s)
+    private StoreCheckoutSessionData? MapSession(Session s)
     {
+        if (!string.Equals(s.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "Rejected Stripe Checkout session {SessionId} with unsupported currency {Currency}; EUR is required",
+                IbanFormatter.MaskAllIn(s.Id), IbanFormatter.MaskAllIn(s.Currency ?? "(missing)"));
+            return null;
+        }
+
         Guid? orderId = null;
         if (s.Metadata is not null &&
             s.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) &&

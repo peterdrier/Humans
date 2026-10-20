@@ -66,7 +66,7 @@ internal static class TeamDirectoryBuilder
                     && t.IsActive
                     && ((t.ParentTeamId is null && t.IsPublicPage)
                         || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
-                .Select(t => CreateDirectorySummary(t, teamsById, userId))
+                .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams: false))
                 .ToList();
 
             return new TeamDirectoryResult(
@@ -93,7 +93,7 @@ internal static class TeamDirectoryBuilder
             .Where(t => t.ParentTeamId is null || t.IsPromotedToDirectory);
 
         var summaries = directoryTeams
-            .Select(t => CreateDirectorySummary(t, teamsById, userId))
+            .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams))
             .ToList();
 
         var myTeams = summaries
@@ -124,9 +124,12 @@ internal static class TeamDirectoryBuilder
     private static TeamDirectorySummary CreateDirectorySummary(
         TeamInfo team,
         IReadOnlyDictionary<Guid, TeamInfo> teamById,
-        Guid? userId)
+        Guid? userId,
+        bool canSeeHiddenTeams)
     {
-        TeamInfo? parent = team.ParentTeamId.HasValue && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
+        TeamInfo? parent = team.ParentTeamId.HasValue
+            && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
+            && (!resolvedParent.IsHidden || canSeeHiddenTeams)
             ? resolvedParent
             : null;
         var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);

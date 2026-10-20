@@ -40,31 +40,31 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="TicketTransfer_Pending" xml:space="preserve">
+  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve">
     <value>Pendent de revisió</value>
   </data>
-  <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferència ja pendent</value></data>
-  <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancel·la la sol·licitud</value></data>
-  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Ja ha fet el check-in — no es pot transferir</value></data>
-  <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Això sol·licitarà la transferència de l'entrada {0} ({1}) a {2}.</value></data>
-  <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>El nostre equip d'entrades ho processarà i t'ho farà saber aviat.</value></data>
-  <data name="TicketTransfer_Continue" xml:space="preserve"><value>Continua</value></data>
-  <data name="TicketTransfer_NoneTransferable" xml:space="preserve"><value>Cap de les teves entrades es pot transferir ara mateix.</value></data>
-  <data name="TicketTransfer_NoRequests" xml:space="preserve"><value>No has sol·licitat cap transferència.</value></data>
-  <data name="TicketTransfer_NoTickets" xml:space="preserve"><value>No tens cap entrada per transferir.</value></data>
-  <data name="TicketTransfer_NotTransferable" xml:space="preserve"><value>No transferible</value></data>
-  <data name="TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motiu de la transferència (opcional, visible per a l'equip d'entrades)</value></data>
-  <data name="TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Cerca per nom, o enganxa el seu correu exacte…</value></data>
-  <data name="TicketTransfer_Requested" xml:space="preserve"><value>Sol·licitada</value></data>
-  <data name="TicketTransfer_RequestTransfer" xml:space="preserve"><value>Sol·licita la transferència</value></data>
-  <data name="TicketTransfer_StatusApproved" xml:space="preserve"><value>Completada</value></data>
-  <data name="TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancel·lada</value></data>
-  <data name="TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancel·lada per l'equip</value></data>
-  <data name="TicketTransfer_Step1" xml:space="preserve"><value>1. Tria l'entrada que vols transferir</value></data>
-  <data name="TicketTransfer_Step2" xml:space="preserve"><value>2. A qui l'envies?</value></data>
-  <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Confirma</value></data>
-  <data name="TicketTransfer_Title" xml:space="preserve"><value>Transfereix una entrada</value></data>
-  <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Les teves sol·licituds de transferència</value></data>
+  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferència ja pendent</value></data>
+  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancel·la la sol·licitud</value></data>
+  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Ja ha fet el check-in — no es pot transferir</value></data>
+  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Això sol·licitarà la transferència de l'entrada {0} ({1}) a {2}.</value></data>
+  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>El nostre equip d'entrades ho processarà i t'ho farà saber aviat.</value></data>
+  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Continua</value></data>
+  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>Cap de les teves entrades es pot transferir ara mateix.</value></data>
+  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>No has sol·licitat cap transferència.</value></data>
+  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>No tens cap entrada per transferir.</value></data>
+  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>No transferible</value></data>
+  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motiu de la transferència (opcional, visible per a l'equip d'entrades)</value></data>
+  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Cerca per nom, o enganxa el seu correu exacte…</value></data>
+  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Sol·licitada</value></data>
+  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Sol·licita la transferència</value></data>
+  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Completada</value></data>
+  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancel·lada</value></data>
+  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancel·lada per l'equip</value></data>
+  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Tria l'entrada que vols transferir</value></data>
+  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. A qui l'envies?</value></data>
+  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Confirma</value></data>
+  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Transfereix una entrada</value></data>
+  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Les teves sol·licituds de transferència</value></data>
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>No s'ha pogut preparar la transferència: tria una de les teves entrades i una persona destinatària vàlida que no siguis tu.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transferència sol·licitada. El nostre equip d'entrades la processarà i t'ho farà saber aviat.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transferència cancel·lada.</value></data>

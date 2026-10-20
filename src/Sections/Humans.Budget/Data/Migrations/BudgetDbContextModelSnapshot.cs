@@ -37,8 +37,7 @@ namespace Humans.Budget.Data.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid");
@@ -53,15 +52,13 @@ namespace Humans.Budget.Data.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("NewValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("text");
 
                     b.Property<Instant>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("OldValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

@@ -12,7 +12,7 @@
         <div class="flex-grow-1">
             <div class="input-group input-group-sm mb-2">
                 <span class="input-group-text">@Localizer["Survey_Admin_Builder_ValueLabel"]</span>
-                <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Option.Value"
+                <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Option.Value" maxlength="100"
                        placeholder="@Localizer["Survey_Admin_Builder_ValuePlaceholder_Option"]" />
             </div>
             <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", Localizer["Survey_Admin_Builder_Field_OptionLabel"], Model.Option.Label))" />

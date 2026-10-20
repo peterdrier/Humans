@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Globalization;
+using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
@@ -9,11 +11,14 @@ using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -84,6 +89,56 @@ public sealed class ShiftsControllerSettingsTests
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return ctrl;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("IsShiftBrowsingOpen", false)]
+    [Xunit.InlineData("GlobalVolunteerCap", false)]
+    [Xunit.InlineData("ReminderLeadTimeHours", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("", true)]
+    public async Task Settings_require_posted_browsing_cap_and_reminder_choices(string omitted, bool clear)
+    {
+        _burnSettings.GetActiveAsync().Returns(ActiveEvent);
+        var controller = BuildSut();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["IsShiftBrowsingOpen"] = clear ? "false" : "true",
+            ["GlobalVolunteerCap"] = clear ? "" : "50",
+            ["ReminderLeadTimeHours"] = clear ? "0" : "12"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(EventSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(EventSettingsViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (EventSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        (await controller.Settings(model)).Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
+
+        if (omitted.Length > 0)
+        {
+            _shiftMgmt.ReceivedCalls().Should().BeEmpty();
+            _burnSettings.ReceivedCalls().Should().BeEmpty();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Invalid event settings.");
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, !clear, clear ? null : 50, clear ? 0 : 12);
+        }
     }
 
     [HumansFact]

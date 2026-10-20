@@ -104,13 +104,13 @@ internal sealed class TicketTransferService(
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_NotCurrentHolder");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
-            return TicketTransferMutationResult.Refused("TicketTransfer_NotTransferable");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_NotTransferable");
 
         // A gate scan keeps Status = Valid and records the scan in CheckedInAt,
         // so the Valid check above does not catch an already-used ticket — guard
         // on CheckedInAt explicitly.
         if (attendee.CheckedInAt is not null)
-            return TicketTransferMutationResult.Refused("TicketTransfer_CheckedIn");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_CheckedIn");
 
         var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct);
         if (receiverInfo is null || receiverInfo.Id != dto.ReceiverUserId)
@@ -125,7 +125,7 @@ internal sealed class TicketTransferService(
             .Any(r => r.OriginalTicketAttendeeId == dto.OriginalAttendeeId
                 && r.Status == TicketTransferStatus.Pending);
         if (existingPending)
-            return TicketTransferMutationResult.Refused("TicketTransfer_AlreadyPending");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_AlreadyPending");
 
         var receiverLegalName = receiverProfile.FullName;
         var receiverEmail = await userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct);

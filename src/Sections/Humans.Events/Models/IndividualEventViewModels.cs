@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Events.Contracts;
 
@@ -91,14 +92,17 @@ internal sealed class IndividualEventFormViewModel
 
     [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Start Time")]
+    [BindRequired]
     public TimeSpan StartTime { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [Range(15, 1440, ErrorMessage = "Validation_Range")]
     [Display(Name = "Duration (minutes)")]
+    [BindRequired]
     public int DurationMinutes { get; set; } = 60;
 
     [Display(Name = "All day")]
+    [BindRequired]
     public bool IsAllDay { get; set; }
 
     [MaxLength(120, ErrorMessage = "Validation_MaxLength")]
@@ -110,6 +114,7 @@ internal sealed class IndividualEventFormViewModel
     public string? Host { get; set; }
 
     [Display(Name = "Recurring")]
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     [Display(Name = "Recurrence Days")]

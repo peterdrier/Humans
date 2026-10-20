@@ -7,6 +7,7 @@ using Humans.Base.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 using Humans.Base.Authorization;
@@ -38,20 +39,21 @@ internal sealed class BudgetAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var activeYear = await budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync(ct);
             if (activeYear is null)
             {
-                ViewBag.Years = await budgetService.GetAllYearsAsync();
+                ViewBag.Years = await budgetService.GetAllYearsAsync(ct: ct);
                 return View("NoActiveYear");
             }
 
-            var allYears = await budgetService.GetAllYearsAsync();
-            var model = await BuildFinanceOverviewAsync(activeYear, allYears);
+            var allYears = await budgetService.GetAllYearsAsync(ct: ct);
+            var model = await BuildFinanceOverviewAsync(activeYear, allYears, ct);
             return View("YearDetail", model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading finance index");
             SetError("Failed to load budget data.");
@@ -62,16 +64,17 @@ internal sealed class BudgetAdminController(
     [HttpGet("Years/{id:guid}")]
     public async Task<IActionResult> YearDetail(Guid id)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var year = await budgetService.GetYearByIdAsync(id);
+            var year = await budgetService.GetYearByIdAsync(id, ct);
             if (year is null) return NotFound();
 
-            var allYears = await budgetService.GetAllYearsAsync();
-            var model = await BuildFinanceOverviewAsync(year, allYears);
+            var allYears = await budgetService.GetAllYearsAsync(ct: ct);
+            var model = await BuildFinanceOverviewAsync(year, allYears, ct);
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading budget year {YearId}", id);
             SetError("Failed to load budget year.");
@@ -82,19 +85,20 @@ internal sealed class BudgetAdminController(
     [HttpGet("Categories/{id:guid}")]
     public async Task<IActionResult> CategoryDetail(Guid id)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var category = await budgetService.GetCategoryByIdAsync(id);
+            var category = await budgetService.GetCategoryByIdAsync(id, ct);
             if (category is null) return NotFound();
 
-            ViewBag.Teams = (await teamService.GetTeamsAsync()).Values
+            ViewBag.Teams = (await teamService.GetTeamsAsync(ct)).Values
                 .Where(t => t.IsActive)
                 .OrderBy(t => t.Name, StringComparer.Ordinal)
                 .ToList();
 
             return View(category);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading budget category {CategoryId}", id);
             SetError("Failed to load category.");
@@ -105,20 +109,21 @@ internal sealed class BudgetAdminController(
     [HttpGet("AuditLog/{yearId:guid?}")]
     public async Task<IActionResult> AuditLog(Guid? yearId)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             if (!yearId.HasValue)
             {
-                var active = await budgetService.GetActiveYearAsync();
+                var active = await budgetService.GetActiveYearAsync(ct);
                 yearId = active?.Id;
             }
 
-            var entries = await budgetService.GetAuditLogAsync(yearId);
+            var entries = await budgetService.GetAuditLogAsync(yearId, ct);
             ViewBag.YearId = yearId;
-            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true);
+            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
             return View(entries);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading budget audit log");
             SetError("Failed to load audit log.");
@@ -129,20 +134,21 @@ internal sealed class BudgetAdminController(
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var activeYear = await budgetService.GetActiveYearAsync();
+            var activeYear = await budgetService.GetActiveYearAsync(ct);
             if (activeYear is null)
             {
                 SetInfo("No active budget year.");
                 return RedirectToAction(nameof(Index));
             }
 
-            var grossTicketRevenue = await ticketingBudgetService.GetGrossTicketRevenueAsync(activeYear);
+            var grossTicketRevenue = await ticketingBudgetService.GetGrossTicketRevenueAsync(activeYear, ct);
             var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading cash flow view");
             SetError("Failed to load cash flow data.");
@@ -153,12 +159,13 @@ internal sealed class BudgetAdminController(
     [HttpGet("Admin")]
     public async Task<IActionResult> Admin()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var years = await budgetService.GetAllYearsAsync(includeArchived: true);
+            var years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
             return View(years);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading finance admin");
             SetError("Failed to load finance admin.");
@@ -219,7 +226,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Years/{id:guid}/UpdateStatus")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateYearStatus(Guid id, BudgetYearStatus status)
+    public async Task<IActionResult> UpdateYearStatus(Guid id, [BindRequired] BudgetYearStatus status)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -288,7 +295,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Groups/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, bool isRestricted)
+    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, [BindRequired] bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -315,7 +322,7 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Groups/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, bool isRestricted)
+    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, [BindRequired] bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -363,8 +370,8 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Categories/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, decimal allocatedAmount,
-        ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
+    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, [BindRequired] decimal allocatedAmount,
+        [BindRequired] ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -391,8 +398,8 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("Categories/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateCategory(Guid id, string name, decimal allocatedAmount,
-        ExpenditureType expenditureType)
+    public async Task<IActionResult> UpdateCategory(Guid id, string name, [BindRequired] decimal allocatedAmount,
+        [BindRequired] ExpenditureType expenditureType)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -440,8 +447,8 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
+    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -470,8 +477,8 @@ internal sealed class BudgetAdminController(
 
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate, Guid budgetCategoryId)
+    public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate, Guid budgetCategoryId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -549,6 +556,11 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ticketing projection form for group {GroupId}", groupId);
+            return BadRequest(ModelState);
+        }
 
         try
         {
@@ -566,6 +578,7 @@ internal sealed class BudgetAdminController(
                     form.StripeFeeFixed,
                     form.TicketTailorFeePercent),
                 user.Id);
+            if (count is null) return NotFound();
             SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
         }
         catch (Exception ex)
@@ -601,7 +614,7 @@ internal sealed class BudgetAdminController(
     }
 
     /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
-    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears, CancellationToken ct)
     {
         var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
 
@@ -611,7 +624,7 @@ internal sealed class BudgetAdminController(
             var actualSold = budgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            var projections = await budgetService.GetTicketingProjectionEntriesAsync(ticketingGroup.Id);
+            var projections = await budgetService.GetTicketingProjectionEntriesAsync(ticketingGroup.Id, ct);
             if (projections.Count > 0)
             {
                 var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
@@ -629,7 +642,7 @@ internal sealed class BudgetAdminController(
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {
-            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear);
+            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear, ct);
             holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId);
         }
 

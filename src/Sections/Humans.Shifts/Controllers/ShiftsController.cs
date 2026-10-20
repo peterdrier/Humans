@@ -352,7 +352,7 @@ internal sealed class ShiftsController(
         {
             foreach (var teamId in teamIds)
             {
-                if (!await shiftMgmt.CanApproveSignupsAsync(user.Id, teamId))
+                if (!await shiftMgmt.CanApproveSignupsAsync(user.Id, teamId, HttpContext.RequestAborted))
                     bailLockedTeamIds.Add(teamId);
             }
         }

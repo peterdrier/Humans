@@ -33,6 +33,51 @@ namespace Humans.Calendar.Tests.Services;
 public class CalendarServiceValidationTests
 {
     [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task EventWithResultAsync_RecurrenceRuleMustFitStorage(bool update, bool oversized)
+    {
+        // The 147-position rule is exactly 500 characters; the next position exceeds the limit.
+        var rule = "FREQ=YEARLY;BYSETPOS=" + string.Join(',', Enumerable.Range(1, oversized ? 148 : 147));
+        Action parse = () => _ = new Ical.Net.DataTypes.RecurrencePattern(rule);
+        parse.Should().NotThrow();
+        rule.Length.Should().Be(oversized ? 504 : 500);
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        var service = BuildService(repo, audit);
+        var ev = new Humans.Calendar.Domain.CalendarEvent { Id = Guid.NewGuid() };
+        repo.UpdateAsync(ev.Id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(ev);
+                return true;
+            });
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var dto = new CreateCalendarEventDto("Planning", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, rule, "UTC");
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        if (oversized)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+            result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
+            repo.ReceivedCalls().Should().BeEmpty();
+            audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue(result.ErrorMessage);
+            result.Event!.RecurrenceRule.Should().Be(rule);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("FREQ=WEEKLY;BYDAY=0MO", false, false)]
     [InlineData("FREQ=MONTHLY;BYDAY=-0WE", true, false)]
     [InlineData("FREQ=YEARLY;BYDAY=+0FR", false, true)]

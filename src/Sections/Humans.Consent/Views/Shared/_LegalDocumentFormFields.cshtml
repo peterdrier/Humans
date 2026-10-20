@@ -52,9 +52,11 @@
 <div class="mb-3 form-check">
     <input asp-for="IsRequired" type="checkbox" class="form-check-input" />
     <label asp-for="IsRequired" class="form-check-label">Required for membership</label>
+    <span asp-validation-for="IsRequired" class="text-danger d-block"></span>
 </div>
 
 <div class="mb-3 form-check">
     <input asp-for="IsActive" type="checkbox" class="form-check-input" />
     <label asp-for="IsActive" class="form-check-label">Active</label>
+    <span asp-validation-for="IsActive" class="text-danger d-block"></span>
 </div>

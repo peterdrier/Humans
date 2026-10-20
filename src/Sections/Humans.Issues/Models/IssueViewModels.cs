@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using NodaTime;
@@ -23,6 +24,7 @@ internal sealed class SubmitIssueViewModel
     public string Description { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public IssueCategory Category { get; set; }
 
     /// <summary>
@@ -175,6 +177,7 @@ internal sealed class PostIssueCommentModel
 internal sealed class UpdateIssueStatusModel
 {
     [Required]
+    [BindRequired]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueStatus Status { get; set; }
 }

@@ -21,7 +21,7 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
         // their booking still derives from the category map at push time.
         b.Property(x => x.HoldedAccountNumber).IsRequired().HasDefaultValue(0);
         b.Property(x => x.HoldedAccountId).HasMaxLength(64);
-        b.Property(x => x.PayeeName).HasMaxLength(200).IsRequired();
+        b.Property(x => x.PayeeName).HasMaxLength(513).IsRequired();
         b.Property(x => x.PayeeIban).HasMaxLength(34).IsRequired();
         b.Property(x => x.Total).HasColumnType("decimal(12,2)");
         b.Property(x => x.MaxAmount).HasColumnType("decimal(12,2)");

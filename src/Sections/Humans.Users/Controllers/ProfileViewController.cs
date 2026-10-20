@@ -111,7 +111,7 @@ internal sealed class ProfileViewController(
             || (await authorizationService.AuthorizeAsync(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
 
-        var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile);
+        var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile, ct);
         var teamMessageOptions = !isOwnProfile
             && await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct)
                 ? (await teamMessageOptionsProvider.GetOptionsAsync(viewer.Id, ct))
@@ -151,14 +151,14 @@ internal sealed class ProfileViewController(
             return (false, null);
         }
 
-        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
+        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
         var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         if (!viewerCanViewShiftHistory)
         {
             return (false, null);
         }
 
-        var noShows = await shiftSignupService.GetNoShowHistoryAsync(profileUserId);
+        var noShows = await shiftSignupService.GetNoShowHistoryAsync(profileUserId, ct);
         if (noShows.Count == 0)
         {
             return (true, null);
@@ -204,12 +204,12 @@ internal sealed class ProfileViewController(
     /// panels appear under consistent access rules. The rows themselves come from
     /// <c>&lt;vc:audit-log&gt;</c> in the view.
     /// </summary>
-    private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile)
+    private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile, CancellationToken ct)
     {
         if (isOwnProfile)
             return false;
 
-        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
+        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)).Succeeded;
         return viewerIsCoordinator || isPrivilegedApprover;
     }

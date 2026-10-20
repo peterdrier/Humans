@@ -105,11 +105,11 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
         var html = await response.Content.ReadAsStringAsync(ct);
 
         // The fallback for a key the carve missed is the key itself.
-        html.Should().NotContain("Notification_", "GET /Notifications rendered a raw resource key");
+        html.Should().NotContain("Notifications_", "GET /Notifications rendered a raw resource key");
 
-        html.Should().Contain("All notifications");        // Notification_PageTitle
-        html.Should().Contain("Needs your attention");     // Notification_Section_NeedsAttention
-        html.Should().Contain("Search notifications...");  // Notification_SearchPlaceholder
+        html.Should().Contain("All notifications");        // Notifications_PageTitle
+        html.Should().Contain("Needs your attention");     // Notifications_Section_NeedsAttention
+        html.Should().Contain("Search notifications...");  // Notifications_SearchPlaceholder
         html.Should().Contain(ActionableTitle);
         html.Should().Contain(InformationalTitle);
     }
@@ -128,8 +128,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().NotContain("Notification_", "the popup partial rendered a raw resource key");
-        html.Should().Contain("Notifications");   // Notification_Popup_Title
+        html.Should().NotContain("Notifications_", "the popup partial rendered a raw resource key");
+        html.Should().Contain("Notifications");   // Notifications_Popup_Title
         html.Should().Contain(ActionableTitle);
     }
 
@@ -151,8 +151,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         html.Should().Contain("id=\"notificationBellWrapper\"", "the bell component did not render");
         html.Should().Contain("aria-label=\"Notifications\"");
-        html.Should().NotContain("Notification_Bell_AriaLabel");
-        html.Should().NotContain("Notification_Popup_AriaLabel");
+        html.Should().NotContain("Notifications_Bell_AriaLabel");
+        html.Should().NotContain("Notifications_Popup_AriaLabel");
     }
 
     [HumansFact(Timeout = 120000)]
@@ -182,11 +182,11 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Todas las notificaciones");   // Notification_PageTitle
-        html.Should().Contain("Buscar notificaciones");      // Notification_SearchPlaceholder
-        html.Should().Contain("Requiere tu atenci");         // Notification_Section_NeedsAttention
+        html.Should().Contain("Todas las notificaciones");   // Notifications_PageTitle
+        html.Should().Contain("Buscar notificaciones");      // Notifications_SearchPlaceholder
+        html.Should().Contain("Requiere tu atenci");         // Notifications_Section_NeedsAttention
         html.Should().NotContain("All notifications");
-        html.Should().NotContain("Notification_");
+        html.Should().NotContain("Notifications_");
     }
 
     private static string? ExtractAntiForgeryToken(string html)

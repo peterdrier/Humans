@@ -48,11 +48,31 @@ public class ShiftVolunteerSearchBuilderTests
             .Returns([new HumanSearchResult(_candidateId, Guid.NewGuid(), "Ann", null, "Name", null, null, 100)]);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
-        _tracking.GetAvailableForDayAsync(Arg.Any<Guid>(), Arg.Any<int>()).Returns([]);
+        _tracking.GetAvailableForDayAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 
     private ShiftVolunteerSearchBuilder BuildSut() =>
         new(_burnSettings, _userService, _shiftView, _signupService, _tracking);
+
+    [HumansFact]
+    public async Task SearchReads_PreserveCancellationAcrossEventAndCandidateLookups()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var target = MakeShift(PastBurnId, 1, new LocalTime(10, 0), Duration.FromHours(4));
+        SetCachedSignups();
+        _signupService.GetByUserAsync(_candidateId, PastBurnId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await BuildSut().BuildForShiftAsync(target, "ann", false, cancellation.Token);
+
+        Assert.Single(result.Results);
+        await _burnSettings.Received(1).GetActiveAsync(cancellation.Token);
+        await _burnSettings.Received(1).GetByIdAsync(PastBurnId, cancellation.Token);
+        await _userService.Received(1).SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token);
+        await _tracking.Received(1).GetAvailableForDayAsync(PastBurnId, 1, cancellation.Token);
+        await _shiftView.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
+        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+        await _signupService.Received(1).GetByUserAsync(_candidateId, PastBurnId, cancellation.Token);
+    }
 
     [HumansFact]
     public async Task TargetInActiveBurn_ReusesCachedViewAndResolvesTheBurnOnce()

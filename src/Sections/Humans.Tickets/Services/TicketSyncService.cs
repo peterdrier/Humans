@@ -160,8 +160,8 @@ internal sealed class TicketSyncService(
         {
             // Transient: preserve LastSyncAt, retry next run.
             logger.LogWarning(
-                "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run",
-                (int?)ex.StatusCode, eventId);
+                "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run: {Reason}",
+                (int?)ex.StatusCode, eventId, ex.Message);
 
             return await DeferSyncAsync(syncState);
         }

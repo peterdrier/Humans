@@ -267,6 +267,9 @@
   <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Der Ausschluss nicht verfügbarer Optionen ändert den offiziellen Gewinner.</value></data>
   <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Sensitivitätsanalyse — aktuell verfügbare Optionen</value></data>
   <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Methode</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (offiziell)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Condorcet-Prüfung</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Borda-Auszählung</value></data>
   <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Gewinner</value></data>
   <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Anmerkungen</value></data>
   <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Kein eindeutiger Gewinner</value></data>
@@ -388,4 +391,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Eine Abstimmung von Asociados kann nach ihrem Beginn nicht mehr bearbeitet werden.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Der Abstimmungsmodus einer Abstimmung von Asociados kann nach Beginn der Umfrage nicht geändert werden.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Die Umfrage konnte nicht gespeichert werden. Bitte versuche es erneut.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Optionswerte dürfen höchstens {0} Zeichen lang sein.</value></data>
 </root>

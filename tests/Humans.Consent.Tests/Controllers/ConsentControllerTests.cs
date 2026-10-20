@@ -78,6 +78,26 @@ public sealed class ConsentControllerTests
         return ctrl;
     }
 
+    [HumansFact]
+    public async Task Submit_UnavailableContent_ShowsExistingFailureMessage()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable"));
+        var controller = BuildSut(userId);
+
+        Assert.IsType<RedirectToActionResult>(await controller.Submit(new ConsentSubmitModel
+        {
+            DocumentVersionId = versionId,
+            ExplicitConsent = true
+        }));
+        Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
+        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
+    }
+
     private static ProfileInfo StubProfile() => UserFixtures.Profile();
 
     private static ProfileInfo ActiveProfile() => UserFixtures.Profile(

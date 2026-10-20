@@ -22,7 +22,7 @@ public sealed class GatedUploadsFileProviderTests : IDisposable
 
     public GatedUploadsFileProviderTests()
     {
-        foreach (var file in new[] { "css/site.css", "uploads/issues/x/y.png", "uploads/profile-pictures/p.jpg", "uploads/camps/c.jpg" })
+        foreach (var file in new[] { "css/site.css", "uploads/issues/x/y.png", "uploads/profile-pictures/p.jpg", "uploads/expense-attachments/a.pdf", "uploads/expense-attachments/a.jpg", "uploads/camps/c.jpg" })
         {
             var full = Path.Combine(_root, file.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -63,6 +63,12 @@ public sealed class GatedUploadsFileProviderTests : IDisposable
     [InlineData("/uploads\\issues\\x\\y.png")]
     [InlineData("/uploads/profile-pictures/p.jpg")]
     [InlineData("/uploads//profile-pictures/p.jpg")]
+    [InlineData("/uploads/expense-attachments/a.pdf")]
+    [InlineData("/uploads/expense-attachments/a.jpg")]
+    [InlineData("/uploads//expense-attachments/a.pdf")]
+    [InlineData("/uploads/other/../expense-attachments/a.pdf")]
+    [InlineData("/UPLOADS/EXPENSE-ATTACHMENTS/a.pdf")]
+    [InlineData("/uploads\\expense-attachments\\a.pdf")]
     public async Task GatedUploadPath_AnySpelling_IsNotServed(string path)
     {
         (await GetStatusAsync(path)).Should().Be(StatusCodes.Status404NotFound);

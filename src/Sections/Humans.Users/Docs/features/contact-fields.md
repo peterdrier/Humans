@@ -65,7 +65,8 @@ Members need to share contact information (Signal, Telegram, WhatsApp, Discord, 
 **So that** my contact information stays current
 
 **Acceptance Criteria:**
-- Can edit value, type, and visibility of existing fields
+- Can edit value, type, and visibility of current contact types
+- Historical email contacts are read-only, preserve their visibility, and survive ordinary saves; the owner can explicitly select them for removal
 - Can delete fields
 - Can reorder fields
 - Empty fields are automatically removed on save
@@ -198,8 +199,8 @@ IContactFieldService
 │   → Returns fields filtered by viewer's access level
 ├── GetAllContactFieldsAsync(profileId)
 │   → Returns all fields for editing (owner only)
-├── SaveContactFieldsAsync(profileId, fields)
-│   → Upsert/delete contact fields
+├── SaveContactFieldsAsync(profileId, fields, cancellationToken, removedLegacyContactFieldIds)
+│   → Upsert/delete current fields; remove historical email rows only by explicit, profile-scoped IDs
 └── GetViewerAccessLevelAsync(ownerUserId, viewerUserId)
     → Determines what visibility level viewer has
 ```

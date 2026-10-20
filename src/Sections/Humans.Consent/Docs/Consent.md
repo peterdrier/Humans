@@ -131,6 +131,18 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
+
+- Legal-document creation and edits refuse empty or nonexistent owning teams with 404 before persistence, initial sync, cache invalidation or success audit. The service checks the team through `ITeamService`; existing inactive teams remain valid owners.
+
+- Manual version summaries are optional and trimmed. Summaries over 2000 characters are refused before persistence, cache invalidation or success audit; the admin editor shows the refusal. Blank summaries clear the existing value.
+
+- Canonical Spanish content must be non-blank. Sync refuses an empty canonical file before
+  publishing a version or changing its SHA. Review treats missing/blank canonical content as
+  unavailable, and submission records no consent or metrics for it (`ContentUnavailable`).
+  The consent page uses its existing localized failure message; onboarding's unavailable-document
+  path handles an unavailable review. Hashes always cover the exact canonical text.
+
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures. Consent resources consistently use `Consent_`, including the shared review form consumed by Onboarding and the empty-state message reused by Governance.
@@ -140,6 +152,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Legal content reads retain caller cancellation through GitHub reads, including anonymous Legal and Governance pages. Caller-cancelled reads propagate without caching unavailable content; already-cancelled callers also stop on cache hits. A fetch timeout without caller cancellation degrades to unavailable content like any other GitHub failure.
 
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
+- Legal-document admin list, create and edit GETs retain request cancellation through document reads and the active-team picker. POST redisplay reads keep their mutation boundary.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
 - Required-version snapshots for all documents and for a single team share the same latest-effective-version selection; documents without an effective version are omitted.

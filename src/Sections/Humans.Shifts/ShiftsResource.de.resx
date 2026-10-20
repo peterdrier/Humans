@@ -1274,4 +1274,5 @@
   <data name="Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Danke für dieses Jahr. Die Schichten öffnen wieder, sobald der Vorstand das nächste Event veröffentlicht.</value>
   </data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Die Begründung darf höchstens 1000 Zeichen lang sein.</value></data>
 </root>

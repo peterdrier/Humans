@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
@@ -8,9 +9,11 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -83,6 +86,64 @@ public class FinanceControllerTests
         else Assert.IsType<RedirectToActionResult>(result);
         if (!hasActor || invalidField is not null) Assert.Empty(_connector.ReceivedCalls());
         else await _connector.Received(1).ProvisionAsync(62900100, false, actorId);
+    }
+
+    [HumansTheory]
+    [InlineData("blockStart", false)]
+    [InlineData("addAll", false)]
+    [InlineData("", false)]
+    [InlineData("", true)]
+    public async Task ProvisionHoldedAccounts_requires_posted_block_and_batch_choice(string omitted, bool addAll)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = MakeControllerWithHttpContext(actorId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["blockStart"] = "62900100",
+            ["addAll"] = addAll.ToString(CultureInfo.InvariantCulture)
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var arguments = new object[] { 0, false };
+        var parameters = typeof(FinanceController).GetMethod(nameof(FinanceController.ProvisionHoldedAccounts))!.GetParameters();
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+            if (binding.IsModelSet) arguments[index] = binding.Model!;
+        }
+
+        var result = await controller.ProvisionHoldedAccounts((int)arguments[0], (bool)arguments[1]);
+
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _connector.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _connector.Received(1).ProvisionAsync(62900100, addAll, actorId);
+        }
     }
 
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
@@ -284,6 +345,43 @@ public class FinanceControllerTests
         await _connector.DidNotReceive().GenerateSepaPayoutAsync(
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GenerateSepa_InvalidBinding_DoesNotGeneratePartialBatch(bool hasActor)
+    {
+        var controller = hasActor ? MakeControllerWithHttpContext(Ana) : MakeController();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(int[]));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = metadata
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)
+            {
+                ["selected"] = new StringValues(["40000004", "not-an-account"])
+            }), CultureInfo.InvariantCulture), metadata, bindingInfo: null, modelName: "selected");
+        await binder.BindModelAsync(binding);
+        var selected = Assert.IsType<int[]>(binding.Result.Model);
+        selected.Should().Equal(40000004);
+        controller.ModelState.IsValid.Should().BeFalse();
+        _connector.GenerateSepaPayoutAsync(Arg.Any<IReadOnlyList<SepaPayoutSelection>>(),
+            Arg.Any<decimal>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new SepaPayoutResult("f.xml", "<xml/>", null));
+
+        var result = await controller.GenerateSepa(selected,
+            new Dictionary<int, string> { [40000004] = "10.00" }, "100.00",
+            Xunit.TestContext.Current.CancellationToken);
+
+        if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<ChallengeResult>();
+        await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default, default);
     }
 
     [HumansFact]

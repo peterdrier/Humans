@@ -57,7 +57,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | UserId | Guid | index; bare FK (driver) — no navigation |
 | Year | int | index; the active burn year at creation |
 | Direction | RideshareDirection | string(50) |
-| MemberPlaceLabel | string | max 200, required |
+| MemberPlaceLabel | string | max 256, required |
 | MemberLatitude | double | required |
 | MemberLongitude | double | required |
 | WaypointsJson | string? | text; JSON array of `{label, latitude, longitude}`; null/empty = direct |
@@ -92,7 +92,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | UserId | Guid | index; bare FK (rider) — no navigation |
 | Year | int | index |
 | Direction | RideshareDirection | string(50) |
-| PickupPlaceLabel | string | max 200, required |
+| PickupPlaceLabel | string | max 256, required |
 | PickupLatitude | double | required |
 | PickupLongitude | double | required |
 | DesiredDate | LocalDate | required |
@@ -245,13 +245,15 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
-- **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override.
+- **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override. Offer and request labels accept the full 256-character profile city in forms and storage, without shortening it.
 - **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
 - **Rule failures are localized.** Mutation services return a refusal carrying a `RideshareResource` key and format arguments; member and admin controllers localize it and preserve the form or toast flow. Dependency faults propagate without becoming refusal feedback. Not-found and unauthorized exceptions retain their separate 404/403 paths. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
+- **Offer and request forms require posted choices and counts.** Direction, vehicle type, luggage capacity/load, cost sharing, duration, seats and party size cannot silently fall back to zero-valued choices or initial counts when omitted. Invalid forms show field errors before any save; explicitly posted zero-valued choices remain valid.
 - **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
 - **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active` and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
 - **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
+- **Interest messages are limited to 1000 characters after trimming.** Longer messages receive a localized refusal before persistence or notification; messages at the limit remain valid.
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
 
@@ -263,7 +265,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - A human **cannot** accept or decline an interest on a posting they do not own.
 - A human **cannot** withdraw an interest they neither authored nor own the posting for.
 - Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster.
-- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does.
+- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does. The board list, map and current driver’s offer selector share the snapshot’s joinable-trip filter (active, seats available, direction and travel date).
 - The declined party **cannot** see a reason for the decline — none is stored.
 
 ## Triggers

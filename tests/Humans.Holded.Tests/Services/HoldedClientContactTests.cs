@@ -432,6 +432,32 @@ public class HoldedClientContactTests
         body.Should().Contain("\"country_code\":\"ES\"");
     }
 
+    [HumansFact]
+    public async Task DeleteContactAsync_SendsDeleteToTheContactPath()
+    {
+        HttpRequestMessage? seen = null;
+        var handler = new StubHandler(req =>
+        {
+            seen = req;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        });
+
+        await Make(handler).DeleteContactAsync("contact-1", Xunit.TestContext.Current.CancellationToken);
+
+        seen!.Method.Should().Be(HttpMethod.Delete);
+        seen.RequestUri!.AbsolutePath.Should().Be("/api/v2/contacts/contact-1");
+    }
+
+    [HumansFact]
+    public async Task DeleteContactAsync_AlreadyGone_IsSuccess()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.NotFound, """{"error":"not found"}"""));
+
+        var act = () => Make(handler).DeleteContactAsync("gone", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+    }
+
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

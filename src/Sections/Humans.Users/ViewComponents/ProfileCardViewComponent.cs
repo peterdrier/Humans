@@ -78,7 +78,7 @@ public sealed class ProfileCardViewComponent(
             .Select(tm => new TeamMembershipViewModel
             {
                 TeamId = tm.TeamInfo.Id,
-                TeamName = GetDisplayName(tm.TeamInfo, teamsById),
+                TeamName = GetDisplayName(tm.TeamInfo, teamsById, viewMode != ProfileCardViewMode.Public),
                 TeamSlug = tm.TeamInfo.Slug,
                 IsCoordinator = tm.Membership!.Role == TeamMemberRole.Coordinator,
                 IsSystemTeam = tm.TeamInfo.IsSystemTeam
@@ -157,8 +157,10 @@ public sealed class ProfileCardViewComponent(
 
     private static string GetDisplayName(
         TeamInfo team,
-        IReadOnlyDictionary<Guid, TeamInfo> teamsById) =>
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        bool canSeeHiddenTeams) =>
         team.ParentTeamId is { } parentTeamId && teamsById.TryGetValue(parentTeamId, out var parent)
+            && (!parent.IsHidden || canSeeHiddenTeams)
             ? $"{parent.Name} - {team.Name}"
             : team.Name;
 }

@@ -197,7 +197,25 @@ internal sealed class ExpenseHoldedPublisher(
                         Notes = $"Expense report {report.Id}",
                         Lines = docLines,
                     }, ct);
-                await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct);
+                if (!await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct))
+                {
+                    // Lost a race: another push already recorded a document for this line. The one
+                    // we just created is an orphan; carry on with the stored one and name the orphan
+                    // in the audit summary so it gets removed in Holded by hand.
+                    var created = holdedDocId;
+                    var stored = (await repo.GetByIdAsync(report.Id, ct))
+                        ?.Lines.FirstOrDefault(l => l.Id == line.Id)?.HoldedDocId;
+                    if (string.IsNullOrEmpty(stored))
+                        throw new InvalidOperationException(
+                            $"Line {line.Id} lost the doc-id race but has no stored Holded document id.");
+                    logger.LogError(
+                        "Expense line {LineId} lost the Holded doc-id race: this run created purchase document " +
+                        "{CreatedDocId} but {StoredDocId} was already stored — the orphan needs manual removal in Holded",
+                        line.Id, created, stored);
+                    notes.Add(
+                        $"'{line.Description}': orphan purchase document {created} created by a concurrent push needs manual removal in Holded — {stored} already recorded.");
+                    holdedDocId = stored;
+                }
             }
             pushedDocIds.Add(holdedDocId);
 

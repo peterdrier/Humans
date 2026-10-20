@@ -17,9 +17,9 @@ internal sealed class StoreOrderReader(
     ISettingsService settingsService) : IApplicationService
 {
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    public async Task<int> GetCurrentEventYearAsync()
+    public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
@@ -33,7 +33,7 @@ internal sealed class StoreOrderReader(
     public async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
-        var catalogYear = await GetCurrentEventYearAsync();
+        var catalogYear = await GetCurrentEventYearAsync(ct);
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
         foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
             prices[product.Id] = new BalanceCalculator.ProductPrice(

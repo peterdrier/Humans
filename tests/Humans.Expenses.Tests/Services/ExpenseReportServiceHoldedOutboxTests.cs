@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
@@ -23,6 +24,8 @@ using Humans.Expenses.Tests.Infrastructure;
 
 namespace Humans.Expenses.Tests.Services;
 
+// The drain gate is static (one drain per process), so classes that drain run serially.
+[Collection("HoldedDrainGate")]
 public class ExpenseReportServiceHoldedOutboxTests
 {
     private readonly IStringLocalizer<ExpensesResource> _localizer =
@@ -72,6 +75,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.IsConfigured.Returns(true);
         _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
+
+        // The doc-id write is conditional; it succeeds unless a test says another push got there first.
+        _repo.SetLineHoldedDocIdAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(_category);
@@ -238,6 +246,78 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
             .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
+    }
+
+    // ─── one drain at a time ───────────────────────────────────────────────────
+
+    private ExpenseReportBackgroundProcessor NewProcessor() => new(
+        _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, _auditLog, _clock,
+        NullLogger<ExpenseReportBackgroundProcessor>.Instance);
+
+    [HumansFact]
+    public async Task OverlappingDrain_IsSkipped_AndTheEventIsProcessedOnce()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                entered.TrySetResult();
+                await release.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                return "holded-doc-1";
+            });
+
+        var first = NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        // A different processor instance (the type is Scoped) still hits the same gate.
+        await NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        // Only the first drain ever read the queue; the second created nothing.
+        await _repo.Received(1).GetUnprocessedOutboxAsync(
+            Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+
+        release.SetResult();
+        await first;
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task NextDrain_RunsNormally_AfterADrainThatThrew()
+    {
+        // A non-Holded exception escapes the processor; the gate must still be released.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException<string>(new InvalidOperationException("boom")),
+                Task.FromResult("holded-doc-1"));
+
+        var act = () => NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        await NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+
+        await _holdedClient.Received(2).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     // ─── CreateIncomingDoc happy path ──────────────────────────────────────────

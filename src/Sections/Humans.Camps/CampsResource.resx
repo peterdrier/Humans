@@ -35,71 +35,71 @@
   <!-- ======================== -->
   <!-- Common / Shared          -->
   <!-- ======================== -->
-  <data name="Camp_Singular" xml:space="preserve"><value>Barrio</value></data>
-  <data name="Camp_AdminTitle" xml:space="preserve"><value>Barrios Admin</value></data>
-  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Active shift signups for the current event (pending or confirmed)</value></data>
-  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} active shift signups</value></data>
-  <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Has this camp ever been called "Swiss Camp"</value></data>
-  <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
-  <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>
-  <data name="Camp_ContactButton" xml:space="preserve"><value>Contact this barrio</value></data>
-  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Log in to contact this camp</value></data>
-  <data name="Camp_ContactLoginDetail" xml:space="preserve"><value>Your email stays private.</value></data>
-  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve"><value>Logging in lets you record that you're part of this camp, and shows any events it's hosting. Your email stays private.</value></data>
-  <data name="Camp_Contact_Title" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
-  <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
-  <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contact</value></data>
-  <data name="Camp_Contact_MessageLabel" xml:space="preserve"><value>Your message</value></data>
-  <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
-  <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Your email will be added as reply-to so they can respond directly</value></data>
-  <data name="Camp_Contact_Send" xml:space="preserve"><value>Send</value></data>
-  <data name="Camp_Contact_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = camp name</comment></data>
-  <data name="Camp_Contact_RateLimited" xml:space="preserve"><value>You've already contacted this barrio recently. Please wait a few minutes before sending another message.</value></data>
-  <data name="Camp_Links_Header" xml:space="preserve"><value>Links &amp; Contact</value></data>
-  <data name="Camp_Edit_Links" xml:space="preserve"><value>Links</value></data>
-  <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Add link</value></data>
-  <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>We strongly recommend adding a website for your barrio so visitors can learn more about you.</value></data>
-  <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
-  <data name="Camp_AboutHeading" xml:space="preserve"><value>About Your {0}</value></data>
-  <data name="Camp_AcceptingMembersLabel" xml:space="preserve"><value>Accepting New Humans?</value></data>
-  <data name="Camp_AdultPlayspaceLabel" xml:space="preserve"><value>Adult Playspace</value></data>
-  <data name="Camp_BlurbLongLabel" xml:space="preserve"><value>Full Description</value></data>
-  <data name="Camp_BlurbLongPlaceholder" xml:space="preserve"><value>Tell the world about your camp.</value></data>
-  <data name="Camp_BlurbShortLabel" xml:space="preserve"><value>Short Description</value></data>
-  <data name="Camp_BlurbShortPlaceholder" xml:space="preserve"><value>One or two sentences about your camp (max 300 chars)</value></data>
-  <data name="Camp_CommunityHeading" xml:space="preserve"><value>Community</value></data>
-  <data name="Camp_ContactEmailLabel" xml:space="preserve"><value>Contact Email</value></data>
-  <data name="Camp_ContactPhoneLabel" xml:space="preserve"><value>Contact Phone</value></data>
-  <data name="Camp_ContactPhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
-  <data name="Camp_CultureHeading" xml:space="preserve"><value>Culture &amp; Events</value></data>
-  <data name="Camp_Edit_AutoCreatedFromNameChange" xml:space="preserve"><value>Auto-created from name change</value></data>
-  <data name="Camp_Edit_ContainersSeparate" xml:space="preserve"><value>Containers are now managed separately.</value></data>
-  <data name="Camp_Edit_HideHistoricalNames" xml:space="preserve"><value>Hide historical names</value></data>
-  <data name="Camp_Edit_HistoricalNamesHeading" xml:space="preserve"><value>Historical Names</value></data>
-  <data name="Camp_Edit_HistoricalNamesHelp" xml:space="preserve"><value>Names this camp was previously known as.</value></data>
-  <data name="Camp_Edit_ImageAlt" xml:space="preserve"><value>Camp image</value></data>
-  <data name="Camp_Edit_ImagesHeading" xml:space="preserve"><value>Images ({0}/{1})</value></data>
-  <data name="Camp_Edit_ImageUploadHelp" xml:space="preserve"><value>JPEG, PNG, or WebP. Max 10MB.</value></data>
-  <data name="Camp_Edit_ManageContainers" xml:space="preserve"><value>Manage containers →</value></data>
-  <data name="Camp_Edit_MembersRolesDescription" xml:space="preserve"><value>Manage active members, roles, leads, and pending join requests.</value></data>
-  <data name="Camp_Edit_MembersRolesHeading" xml:space="preserve"><value>Members &amp; Roles</value></data>
-  <data name="Camp_Edit_NameLocked" xml:space="preserve"><value>Name is locked for this season.</value></data>
-  <data name="Camp_Edit_OpenMembersRoles" xml:space="preserve"><value>Open members &amp; roles</value></data>
-  <data name="Camp_Edit_OpenStore" xml:space="preserve"><value>Open store</value></data>
-  <data name="Camp_Edit_PreviousNamePlaceholder" xml:space="preserve"><value>Previous camp name</value></data>
-  <data name="Camp_Edit_StoreDescription" xml:space="preserve"><value>Place an order for this camp.</value></data>
-  <data name="Camp_Edit_StoreHeading" xml:space="preserve"><value>Store</value></data>
-  <data name="Camp_Edit_UploadImage" xml:space="preserve"><value>Upload Image</value></data>
-  <data name="Camp_ElectricalGridLabel" xml:space="preserve"><value>Electrical Grid</value></data>
-  <data name="Camp_HistoryHeading" xml:space="preserve"><value>History</value></data>
-  <data name="Camp_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accepting Members</value></data>
-  <data name="Camp_Index_AllOption" xml:space="preserve"><value>All</value></data>
-  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Barrio Guide 2026</value></data>
-  <data name="Camp_Index_FilterButton" xml:space="preserve"><value>Filter</value></data>
-  <data name="Camp_Index_KidsWelcomeFilter" xml:space="preserve"><value>Kids Welcome</value></data>
-  <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No {0} found for the selected filters.</value></data>
-  <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>No {0} match your search.</value></data>
-  <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pending approval</value></data>
+  <data name="Camps_Singular" xml:space="preserve"><value>Barrio</value></data>
+  <data name="Camps_AdminTitle" xml:space="preserve"><value>Barrios Admin</value></data>
+  <data name="Camps_ShiftSignupBadgeTitle" xml:space="preserve"><value>Active shift signups for the current event (pending or confirmed)</value></data>
+  <data name="Camps_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} active shift signups</value></data>
+  <data name="Camps_SwissCampLabel" xml:space="preserve"><value>Has this camp ever been called "Swiss Camp"</value></data>
+  <data name="Camps_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
+  <data name="Camps_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>
+  <data name="Camps_ContactButton" xml:space="preserve"><value>Contact this barrio</value></data>
+  <data name="Camps_ContactLoginHint" xml:space="preserve"><value>Log in to contact this camp</value></data>
+  <data name="Camps_ContactLoginDetail" xml:space="preserve"><value>Your email stays private.</value></data>
+  <data name="Camps_ContactLoginDetailOpenSeason" xml:space="preserve"><value>Logging in lets you record that you're part of this camp, and shows any events it's hosting. Your email stays private.</value></data>
+  <data name="Camps_Contact_Title" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
+  <data name="Camps_Contact_Heading" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
+  <data name="Camps_Contact_Breadcrumb" xml:space="preserve"><value>Contact</value></data>
+  <data name="Camps_Contact_MessageLabel" xml:space="preserve"><value>Your message</value></data>
+  <data name="Camps_Contact_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
+  <data name="Camps_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Your email will be added as reply-to so they can respond directly</value></data>
+  <data name="Camps_Contact_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Camps_Contact_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = camp name</comment></data>
+  <data name="Camps_Contact_RateLimited" xml:space="preserve"><value>You've already contacted this barrio recently. Please wait a few minutes before sending another message.</value></data>
+  <data name="Camps_Links_Header" xml:space="preserve"><value>Links &amp; Contact</value></data>
+  <data name="Camps_Edit_Links" xml:space="preserve"><value>Links</value></data>
+  <data name="Camps_Edit_AddLink" xml:space="preserve"><value>Add link</value></data>
+  <data name="Camps_Edit_WebsiteNudge" xml:space="preserve"><value>We strongly recommend adding a website for your barrio so visitors can learn more about you.</value></data>
+  <data name="Camps_Card_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
+  <data name="Camps_AboutHeading" xml:space="preserve"><value>About Your {0}</value></data>
+  <data name="Camps_AcceptingMembersLabel" xml:space="preserve"><value>Accepting New Humans?</value></data>
+  <data name="Camps_AdultPlayspaceLabel" xml:space="preserve"><value>Adult Playspace</value></data>
+  <data name="Camps_BlurbLongLabel" xml:space="preserve"><value>Full Description</value></data>
+  <data name="Camps_BlurbLongPlaceholder" xml:space="preserve"><value>Tell the world about your camp.</value></data>
+  <data name="Camps_BlurbShortLabel" xml:space="preserve"><value>Short Description</value></data>
+  <data name="Camps_BlurbShortPlaceholder" xml:space="preserve"><value>One or two sentences about your camp (max 300 chars)</value></data>
+  <data name="Camps_CommunityHeading" xml:space="preserve"><value>Community</value></data>
+  <data name="Camps_ContactEmailLabel" xml:space="preserve"><value>Contact Email</value></data>
+  <data name="Camps_ContactPhoneLabel" xml:space="preserve"><value>Contact Phone</value></data>
+  <data name="Camps_ContactPhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
+  <data name="Camps_CultureHeading" xml:space="preserve"><value>Culture &amp; Events</value></data>
+  <data name="Camps_Edit_AutoCreatedFromNameChange" xml:space="preserve"><value>Auto-created from name change</value></data>
+  <data name="Camps_Edit_ContainersSeparate" xml:space="preserve"><value>Containers are now managed separately.</value></data>
+  <data name="Camps_Edit_HideHistoricalNames" xml:space="preserve"><value>Hide historical names</value></data>
+  <data name="Camps_Edit_HistoricalNamesHeading" xml:space="preserve"><value>Historical Names</value></data>
+  <data name="Camps_Edit_HistoricalNamesHelp" xml:space="preserve"><value>Names this camp was previously known as.</value></data>
+  <data name="Camps_Edit_ImageAlt" xml:space="preserve"><value>Camp image</value></data>
+  <data name="Camps_Edit_ImagesHeading" xml:space="preserve"><value>Images ({0}/{1})</value></data>
+  <data name="Camps_Edit_ImageUploadHelp" xml:space="preserve"><value>JPEG, PNG, or WebP. Max 10MB.</value></data>
+  <data name="Camps_Edit_ManageContainers" xml:space="preserve"><value>Manage containers →</value></data>
+  <data name="Camps_Edit_MembersRolesDescription" xml:space="preserve"><value>Manage active members, roles, leads, and pending join requests.</value></data>
+  <data name="Camps_Edit_MembersRolesHeading" xml:space="preserve"><value>Members &amp; Roles</value></data>
+  <data name="Camps_Edit_NameLocked" xml:space="preserve"><value>Name is locked for this season.</value></data>
+  <data name="Camps_Edit_OpenMembersRoles" xml:space="preserve"><value>Open members &amp; roles</value></data>
+  <data name="Camps_Edit_OpenStore" xml:space="preserve"><value>Open store</value></data>
+  <data name="Camps_Edit_PreviousNamePlaceholder" xml:space="preserve"><value>Previous camp name</value></data>
+  <data name="Camps_Edit_StoreDescription" xml:space="preserve"><value>Place an order for this camp.</value></data>
+  <data name="Camps_Edit_StoreHeading" xml:space="preserve"><value>Store</value></data>
+  <data name="Camps_Edit_UploadImage" xml:space="preserve"><value>Upload Image</value></data>
+  <data name="Camps_ElectricalGridLabel" xml:space="preserve"><value>Electrical Grid</value></data>
+  <data name="Camps_HistoryHeading" xml:space="preserve"><value>History</value></data>
+  <data name="Camps_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accepting Members</value></data>
+  <data name="Camps_Index_AllOption" xml:space="preserve"><value>All</value></data>
+  <data name="Camps_Index_BarrioGuide" xml:space="preserve"><value>Barrio Guide 2026</value></data>
+  <data name="Camps_Index_FilterButton" xml:space="preserve"><value>Filter</value></data>
+  <data name="Camps_Index_KidsWelcomeFilter" xml:space="preserve"><value>Kids Welcome</value></data>
+  <data name="Camps_Index_NoFilterResults" xml:space="preserve"><value>No {0} found for the selected filters.</value></data>
+  <data name="Camps_Index_NoSearchResults" xml:space="preserve"><value>No {0} match your search.</value></data>
+  <data name="Camps_Index_PendingApproval" xml:space="preserve"><value>pending approval</value></data>
   <data name="Camps_MyCamps_Title" xml:space="preserve"><value>My Barrios</value></data>
   <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Active</value></data>
   <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>Pending</value></data>
@@ -107,41 +107,41 @@
   <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Leads</value></data>
   <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>open slot</value></data>
   <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>open slots</value></data>
-  <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Search</value></data>
-  <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Type a {0} name…</value></data>
-  <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Show lead positions</value></data>
-  <data name="Camp_Index_SoundZoneLabel" xml:space="preserve"><value>Sound Zone</value></data>
-  <data name="Camp_Index_VibeLabel" xml:space="preserve"><value>Vibe</value></data>
-  <data name="Camp_KidsAreaDescriptionLabel" xml:space="preserve"><value>Kids Area Description</value></data>
-  <data name="Camp_KidsAreaDescriptionPlaceholder" xml:space="preserve"><value>Describe your kids area if applicable</value></data>
-  <data name="Camp_KidsVisitingLabel" xml:space="preserve"><value>Kids Visiting Policy</value></data>
-  <data name="Camp_KidsWelcomeLabel" xml:space="preserve"><value>Kids Welcome?</value></data>
-  <data name="Camp_LanguagesLabel" xml:space="preserve"><value>Languages Spoken</value></data>
-  <data name="Camp_LanguagesPlaceholder" xml:space="preserve"><value>e.g. English, Spanish, German</value></data>
-  <data name="Camp_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
-  <data name="Camp_MemberCountLabel" xml:space="preserve"><value>Expected Humans</value></data>
-  <data name="Camp_NoPreference" xml:space="preserve"><value>No Preference</value></data>
-  <data name="Camp_NotSure" xml:space="preserve"><value>Not Sure</value></data>
-  <data name="Camp_PerformanceSpaceLabel" xml:space="preserve"><value>Performance Space</value></data>
-  <data name="Camp_PerformanceTypesLabel" xml:space="preserve"><value>Performance Types</value></data>
-  <data name="Camp_PerformanceTypesPlaceholder" xml:space="preserve"><value>e.g. Music, Theater, Workshops</value></data>
-  <data name="Camp_PlacementHeading" xml:space="preserve"><value>Placement</value></data>
-  <data name="Camp_PreviousNamesHelp" xml:space="preserve"><value>If your camp has had different names in past years, list them here.</value></data>
-  <data name="Camp_PreviousNamesLabel" xml:space="preserve"><value>Previous Names</value></data>
-  <data name="Camp_PreviousNamesPlaceholder" xml:space="preserve"><value>Comma-separated list of previous camp names</value></data>
-  <data name="Camp_Register_Breadcrumb" xml:space="preserve"><value>Register</value></data>
-  <data name="Camp_Register_Heading" xml:space="preserve"><value>Register Your {0}</value></data>
-  <data name="Camp_Register_ImportantInfo" xml:space="preserve"><value>Important Information</value></data>
-  <data name="Camp_Register_Season" xml:space="preserve"><value>season</value></data>
-  <data name="Camp_Register_Submit" xml:space="preserve"><value>Register {0}</value></data>
-  <data name="Camp_SoundZoneLabel" xml:space="preserve"><value>Sound Zone Preference</value></data>
-  <data name="Camp_SpaceRequirementLabel" xml:space="preserve"><value>Space Requirement</value></data>
-  <data name="Camp_TimesParticipatingLabel" xml:space="preserve"><value>Times Participating</value></data>
-  <data name="Camp_VibesLabel" xml:space="preserve"><value>Vibes</value></data>
-  <data name="CampCard_AcceptingMembers" xml:space="preserve"><value>Accepting Members</value></data>
-  <data name="CampCard_Full" xml:space="preserve"><value>Full</value></data>
-  <data name="CampCard_KidsWelcome" xml:space="preserve"><value>Kids Welcome</value></data>
-  <data name="CampCard_TimesAtNowhere" xml:space="preserve"><value>{0} year(s)</value></data>
+  <data name="Camps_Index_SearchLabel" xml:space="preserve"><value>Search</value></data>
+  <data name="Camps_Index_SearchPlaceholder" xml:space="preserve"><value>Type a {0} name…</value></data>
+  <data name="Camps_Index_ShowLeadPositions" xml:space="preserve"><value>Show lead positions</value></data>
+  <data name="Camps_Index_SoundZoneLabel" xml:space="preserve"><value>Sound Zone</value></data>
+  <data name="Camps_Index_VibeLabel" xml:space="preserve"><value>Vibe</value></data>
+  <data name="Camps_KidsAreaDescriptionLabel" xml:space="preserve"><value>Kids Area Description</value></data>
+  <data name="Camps_KidsAreaDescriptionPlaceholder" xml:space="preserve"><value>Describe your kids area if applicable</value></data>
+  <data name="Camps_KidsVisitingLabel" xml:space="preserve"><value>Kids Visiting Policy</value></data>
+  <data name="Camps_KidsWelcomeLabel" xml:space="preserve"><value>Kids Welcome?</value></data>
+  <data name="Camps_LanguagesLabel" xml:space="preserve"><value>Languages Spoken</value></data>
+  <data name="Camps_LanguagesPlaceholder" xml:space="preserve"><value>e.g. English, Spanish, German</value></data>
+  <data name="Camps_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
+  <data name="Camps_MemberCountLabel" xml:space="preserve"><value>Expected Humans</value></data>
+  <data name="Camps_NoPreference" xml:space="preserve"><value>No Preference</value></data>
+  <data name="Camps_NotSure" xml:space="preserve"><value>Not Sure</value></data>
+  <data name="Camps_PerformanceSpaceLabel" xml:space="preserve"><value>Performance Space</value></data>
+  <data name="Camps_PerformanceTypesLabel" xml:space="preserve"><value>Performance Types</value></data>
+  <data name="Camps_PerformanceTypesPlaceholder" xml:space="preserve"><value>e.g. Music, Theater, Workshops</value></data>
+  <data name="Camps_PlacementHeading" xml:space="preserve"><value>Placement</value></data>
+  <data name="Camps_PreviousNamesHelp" xml:space="preserve"><value>If your camp has had different names in past years, list them here.</value></data>
+  <data name="Camps_PreviousNamesLabel" xml:space="preserve"><value>Previous Names</value></data>
+  <data name="Camps_PreviousNamesPlaceholder" xml:space="preserve"><value>Comma-separated list of previous camp names</value></data>
+  <data name="Camps_Register_Breadcrumb" xml:space="preserve"><value>Register</value></data>
+  <data name="Camps_Register_Heading" xml:space="preserve"><value>Register Your {0}</value></data>
+  <data name="Camps_Register_ImportantInfo" xml:space="preserve"><value>Important Information</value></data>
+  <data name="Camps_Register_Season" xml:space="preserve"><value>season</value></data>
+  <data name="Camps_Register_Submit" xml:space="preserve"><value>Register {0}</value></data>
+  <data name="Camps_SoundZoneLabel" xml:space="preserve"><value>Sound Zone Preference</value></data>
+  <data name="Camps_SpaceRequirementLabel" xml:space="preserve"><value>Space Requirement</value></data>
+  <data name="Camps_TimesParticipatingLabel" xml:space="preserve"><value>Times Participating</value></data>
+  <data name="Camps_VibesLabel" xml:space="preserve"><value>Vibes</value></data>
+  <data name="Camps_Card_AcceptingMembers" xml:space="preserve"><value>Accepting Members</value></data>
+  <data name="Camps_Card_Full" xml:space="preserve"><value>Full</value></data>
+  <data name="Camps_Card_KidsWelcome" xml:space="preserve"><value>Kids Welcome</value></data>
+  <data name="Camps_Card_TimesAtNowhere" xml:space="preserve"><value>{0} year(s)</value></data>
   <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Adult</value></data>
   <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Chill out</value></data>
   <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Electronic music</value></data>
@@ -152,19 +152,19 @@
   <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Sober</value></data>
   <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Wellness</value></data>
   <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Workshop</value></data>
-  <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Also known as:</value></data>
-  <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
-  <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>No humans recorded for this season yet.</value></data>
+  <data name="Camps_Details_AlsoKnownAs" xml:space="preserve"><value>Also known as:</value></data>
+  <data name="Camps_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
+  <data name="Camps_Details_RosterEmpty" xml:space="preserve"><value>No humans recorded for this season yet.</value></data>
   <data name="Camps_Details_Roster" xml:space="preserve"><value>Roster {0}</value></data>
-  <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>No camp roles defined yet.</value></data>
-  <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin can add them at</value></data>
-  <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp roles</value></data>
-  <data name="Camp_Members_RoleRequiredBadge" xml:space="preserve"><value>required</value></data>
-  <data name="Camp_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} filled</value></data>
-  <data name="Camp_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Over capacity</value></data>
-  <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>More assignments than the configured slot count.</value></data>
-  <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Search by name. The human is added to the camp's open season as Active.</value></data>
-  <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No pending requests.</value></data>
+  <data name="Camps_Members_NoRolesDefined" xml:space="preserve"><value>No camp roles defined yet.</value></data>
+  <data name="Camps_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin can add them at</value></data>
+  <data name="Camps_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp roles</value></data>
+  <data name="Camps_Members_RoleRequiredBadge" xml:space="preserve"><value>required</value></data>
+  <data name="Camps_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} filled</value></data>
+  <data name="Camps_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Over capacity</value></data>
+  <data name="Camps_Members_RoleOverCapacityTitle" xml:space="preserve"><value>More assignments than the configured slot count.</value></data>
+  <data name="Camps_Members_AddMemberSearchHelp" xml:space="preserve"><value>Search by name. The human is added to the camp's open season as Active.</value></data>
+  <data name="Camps_Members_NoPendingRequests" xml:space="preserve"><value>No pending requests.</value></data>
   <data name="Camps_Members_Members" xml:space="preserve"><value>Members</value></data>
   <data name="Camps_Members_Roles" xml:space="preserve"><value>Roles</value></data>
   <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Show description</value></data>

@@ -32,6 +32,9 @@ internal static class SepaText
         ['ł'] = "l",
     };
 
+    public static string Euros(decimal amount) =>
+        amount.ToString("F2", CultureInfo.InvariantCulture) + " EUR";
+
     public static string Normalize(string? value, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value)) return "";

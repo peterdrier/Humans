@@ -81,6 +81,8 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 ## Invariants
 
+- Section-owned resource keys use the `Notifications_` prefix in all six cultures.
+
 - Known-recipient emission and shared role broadcasts use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
   oversized title is retained at the start of the body before the body is excerpted.
@@ -95,6 +97,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 - `INotificationService.SendToRoleAsync(role, …)` resolves recipients via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — never via `DbContext.RoleAssignments` directly.
 - `Informational` notifications respect each recipient's `InboxEnabled` preference for the source's `MessageCategory`; `Actionable` notifications always go through (they cannot be suppressed by user preference).
 - Resolution is **shared**: when any recipient resolves a notification, `Notification.ResolvedAt` and `ResolvedByUserId` are set once and the resolution is visible to all recipients. Read state (`NotificationRecipient.ReadAt`) remains per-user.
+- Bulk resolve/dismiss reject selection-binding errors with HTTP 400 and a Warning before changing any notification, including valid IDs in a malformed selection. Missing actors still receive Unauthorized.
 - Inbox resolve operations require `Actionable`; dismiss operations require `Informational`, for both single and bulk actions. The service selects the class and the repository checks it alongside recipient ownership before writing shared resolution fields. A wrong-class single action returns Forbidden without changing state.
 - Notification fan-out should be fire-and-forget from the caller's perspective. (Note: the dispatch methods themselves are not `try/catch`-wrapped today — callers wrap the call when needed; see `design-rules` §7a for the current pattern.)
 - In-app notifications and email notifications are separate surfaces — emitting a notification does not automatically queue an email. Sections that need both send both.

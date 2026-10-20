@@ -103,7 +103,7 @@ internal sealed class UsersAdminController(
         var now = clock.GetCurrentInstant();
 
         var (assignments, totalCount) = await roleAssignmentService.GetFilteredAsync(
-            role, activeOnly: !showInactive, page, pageSize, now);
+            role, activeOnly: !showInactive, page, pageSize, now, HttpContext.RequestAborted);
 
         var viewModel = new AdminRoleAssignmentListViewModel
         {
@@ -259,7 +259,7 @@ internal sealed class UsersAdminController(
     [HttpGet("{id:guid}/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        if (await _userService.GetRawUserInfoAsync(id) is null)
+        if (await _userService.GetRawUserInfoAsync(id, HttpContext.RequestAborted) is null)
             return NotFound();
 
         var viewModel = new CreateRoleAssignmentViewModel

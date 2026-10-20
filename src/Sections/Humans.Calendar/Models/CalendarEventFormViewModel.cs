@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Calendar.Services.Dtos;
 using NodaTime;
 
@@ -36,11 +37,14 @@ internal sealed class CalendarEventFormViewModel
 
     public bool IsAllDay { get; set; }
 
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? RecurrenceRule { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = [];

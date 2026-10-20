@@ -107,8 +107,8 @@ namespace Humans.Rideshare.Data.Migrations
 
                     b.Property<string>("PickupPlaceLabel")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -224,8 +224,8 @@ namespace Humans.Rideshare.Data.Migrations
 
                     b.Property<string>("MemberPlaceLabel")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("OvernightPlan")
                         .HasMaxLength(1000)

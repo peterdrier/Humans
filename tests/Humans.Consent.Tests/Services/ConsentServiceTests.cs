@@ -207,6 +207,36 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .ExplicitConsent.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData(" \r\n ", false)]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData("", true)]
+    [Xunit.InlineData(" \r\n ", true)]
+    public async Task Consent_WithoutCanonicalContent_IsUnavailable(string? canonical, bool review)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var content = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "English translation" };
+        if (canonical is not null) content["es"] = canonical;
+        SeedDocumentVersion(versionId, "Test Doc", content);
+
+        if (review)
+            (await _service.GetConsentReviewDetailAsync(versionId, userId, Xunit.TestContext.Current.CancellationToken))
+                .Should().BeNull();
+        else
+        {
+            var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent",
+                Xunit.TestContext.Current.CancellationToken);
+            result.Success.Should().BeFalse();
+            result.ErrorKey.Should().Be("ContentUnavailable");
+            _metrics.DidNotReceive().RecordConsentGiven();
+            await _notificationInboxService.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default, default);
+        }
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     [HumansFact]
     public async Task SubmitConsentAsync_ComputesCorrectSha256Hash()
     {

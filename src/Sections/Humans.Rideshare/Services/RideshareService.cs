@@ -266,6 +266,10 @@ internal sealed class RideshareService(
         if (trip.Interests.Any(i => i.FromUserId == fromUserId && i.RequestId == requestId && i.Status == InterestStatus.Pending))
             return new(Refusal: new("Rideshare_Error_AlreadyInterested"));
 
+        var cleanedMessage = Clean(message);
+        if (cleanedMessage is { Length: > 1000 })
+            return new(Refusal: new("Rideshare_Error_MessageTooLong", 1000));
+
         var interest = new RideshareInterest
         {
             Id = Guid.NewGuid(),
@@ -273,7 +277,7 @@ internal sealed class RideshareService(
             TripId = trip.Id,
             RequestId = request?.Id,
             Seats = seats,
-            Message = Clean(message),
+            Message = cleanedMessage,
             Status = InterestStatus.Pending,
             CreatedAt = clock.GetCurrentInstant(),
         };

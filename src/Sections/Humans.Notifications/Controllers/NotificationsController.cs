@@ -12,7 +12,8 @@ namespace Humans.Notifications.Controllers;
 internal sealed class NotificationsController(
     INotificationInboxService inboxService,
     IUserService userService,
-    NotificationMeterProvider meterProvider) : HumansControllerBase(userService)
+    NotificationMeterProvider meterProvider,
+    ILogger<NotificationsController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -136,6 +137,12 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed notification bulk-resolve selection for user {UserId}", userId.Value);
+            return BadRequest(ModelState);
+        }
+
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
@@ -153,6 +160,12 @@ internal sealed class NotificationsController(
     {
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed notification bulk-dismiss selection for user {UserId}", userId.Value);
+            return BadRequest(ModelState);
+        }
 
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));

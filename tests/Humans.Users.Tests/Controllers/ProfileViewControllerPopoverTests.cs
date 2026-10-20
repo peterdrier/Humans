@@ -49,6 +49,7 @@ public class ProfileViewControllerPopoverTests
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IShiftSignups _shiftSignups = Substitute.For<IShiftSignups>();
     private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
@@ -85,7 +86,7 @@ public class ProfileViewControllerPopoverTests
             _emailMessages,
             _commPrefService,
             _auditLogService,
-            Substitute.For<IShiftSignups>(),
+            _shiftSignups,
             _settings,
             _shiftManagement,
             localizer,
@@ -108,6 +109,30 @@ public class ProfileViewControllerPopoverTests
         _authorizationService.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
+    }
+
+    [HumansFact]
+    public async Task ViewProfile_PreservesCancellationInShiftHistoryReads()
+    {
+        using var source = new CancellationTokenSource();
+        var targetId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(new[] { Guid.NewGuid() });
+        _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<NoShowHistoryEntry>());
+
+        var result = await _controller.ViewProfile(targetId, source.Token);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ProfileViewModel>().Subject;
+        model.CanViewShiftSignups.Should().BeTrue();
+        model.CanViewSentMessages.Should().BeTrue();
+        await _shiftManagement.Received(2).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
+        await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
     }
 
     [HumansFact]
@@ -324,7 +349,7 @@ public class ProfileViewControllerPopoverTests
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
         _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([option]);
 
         var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
@@ -343,7 +368,7 @@ public class ProfileViewControllerPopoverTests
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(false);
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
 

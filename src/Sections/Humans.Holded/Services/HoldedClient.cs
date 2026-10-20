@@ -600,6 +600,26 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
+    public async Task DeleteContactAsync(string contactId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
+        AttachAuth(req);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        // The goal state already holds: a retried cleanup finds the contact gone.
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
+        {
+            // The id was created seconds ago by this process, so a 404 most likely means the DELETE
+            // route is wrong and the contact still exists in Holded.
+            _logger.LogError(
+                "Holded contact {ContactId} answered 404 to DELETE — it was just created by this process, " +
+                "so the route is most likely wrong and the contact still exists in Holded; treated as deleted",
+                contactId);
+        }
+    }
+
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
         const int pageSafetyCap = 50; // 10 000+ contacts (limit=200/page) — far above a small nonprofit's vendor/member list

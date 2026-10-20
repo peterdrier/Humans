@@ -45,14 +45,16 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var reports = await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted);
-            var activeYear = await budgetService.GetActiveYearAsync();
+            // Newest first across every merged account id, not per id.
+            var reports = (await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted))
+                .OrderByDescending(r => r.CreatedAt).ToList();
+            var activeYear = await budgetService.GetActiveYearAsync(HttpContext.RequestAborted);
             var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
             var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
 
             var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
+            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted);
             var openGrants = (await preapprovals.ListClaimableForUserAsync(user.Id, HttpContext.RequestAborted))
                 .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
@@ -216,7 +218,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var bookingLabel = (await ResolveBookingLabelsAsync([report], HttpContext.RequestAborted))[report.Id];
-            var isSubmitter = report.SubmitterUserId == user.Id;
+            var isSubmitter = user.AllUserIds.Contains(report.SubmitterUserId);
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
             // member needs the member's answer.
@@ -421,7 +423,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
-        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user);
         if (!allowed) return Forbid();
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
@@ -440,7 +442,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
-        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user);
         if (!allowed) return Forbid();
 
         var invoiceLine = report.Lines.FirstOrDefault(
@@ -565,7 +567,7 @@ internal sealed class ExpensesController(
         {
             var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
-            if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
+            if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
             // The IBAN on this page is always the report submitter's — the page sets who gets paid
             // for this report, and that is never the viewer when an admin opens it.
@@ -576,7 +578,7 @@ internal sealed class ExpensesController(
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
                 ReportStatus = report.Status,
-                MemberName = report.SubmitterUserId == user.Id
+                MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
                     ? null
                     : (await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted))?.BurnerName,
             };
@@ -596,7 +598,7 @@ internal sealed class ExpensesController(
     {
         var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-        if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
+        if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
         var result = await service.SaveSubmitterIbanWithResultAsync(
             id, user.Id, model.Iban);
@@ -616,7 +618,7 @@ internal sealed class ExpensesController(
         model.HasIban = iban.HasIban;
         model.MaskedIban = iban.MaskedIban;
         model.ReportStatus = report.Status;
-        model.MemberName = report.SubmitterUserId == user.Id
+        model.MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
             ? null
             : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName;
         return View(model);
@@ -906,18 +908,18 @@ internal sealed class ExpensesController(
     /// receipts, so access is wider than the Edit grant that decides whether the controls render.
     /// </summary>
     private async Task<(bool Allowed, bool CanEditLines)> ResolveLinePageAccessAsync(
-        ExpenseReportDto report, Guid userId)
+        ExpenseReportDto report, UserInfo user)
     {
         var canEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
-        return (canEditLines || report.SubmitterUserId == userId, canEditLines);
+        return (canEditLines || user.AllUserIds.Contains(report.SubmitterUserId), canEditLines);
     }
 
     /// <summary>
     /// The submitter keeps this at any status — it is their own profile — on top of whoever the
     /// Edit grant covers.
     /// </summary>
-    private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, Guid userId) =>
-        report.SubmitterUserId == userId || await AllowsAsync(report, ExpenseReportOperation.Edit);
+    private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, UserInfo user) =>
+        user.AllUserIds.Contains(report.SubmitterUserId) || await AllowsAsync(report, ExpenseReportOperation.Edit);
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports, CancellationToken ct)
@@ -933,7 +935,7 @@ internal sealed class ExpensesController(
 
     /// <summary>Report id → what it books to, as a label: the Holded account's label (retired
     /// accounts included, so an old report still reads), or for reports that predate the account
-    /// column, their category in the active year.</summary>
+    /// column, their category in the booked year (active year only for unpinned legacy rows).</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
@@ -941,7 +943,8 @@ internal sealed class ExpensesController(
         if (reports.Count == 0) return labels;
 
         Dictionary<int, string>? accountLabels = null;
-        Dictionary<Guid, string>? categoryLabels = null;
+        Dictionary<Guid, string>? unpinnedCategoryLabels = null;
+        var categoryLabelsByYear = new Dictionary<Guid, Dictionary<Guid, string>>();
         foreach (var report in reports)
         {
             if (report.HoldedAccountNumber != 0)
@@ -955,10 +958,23 @@ internal sealed class ExpensesController(
             }
             else
             {
-                categoryLabels ??= (await budgetService.GetActiveYearAsync())?.Groups
-                    .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
-                    .ToDictionary(x => x.Id, x => x.Display)
-                    ?? [];
+                var categoryLabels = report.BudgetYearId is { } yearId
+                    ? categoryLabelsByYear.GetValueOrDefault(yearId)
+                    : unpinnedCategoryLabels;
+                if (categoryLabels is null)
+                {
+                    var year = report.BudgetYearId is { } bookedYearId
+                        ? await budgetService.GetYearByIdAsync(bookedYearId, ct)
+                        : await budgetService.GetActiveYearAsync(ct);
+                    categoryLabels = year?.Groups
+                        .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
+                        .ToDictionary(x => x.Id, x => x.Display)
+                        ?? [];
+                    if (report.BudgetYearId is { } loadedYearId)
+                        categoryLabelsByYear[loadedYearId] = categoryLabels;
+                    else
+                        unpinnedCategoryLabels = categoryLabels;
+                }
                 labels[report.Id] = report.BudgetCategoryId is { } categoryId
                                     && categoryLabels.TryGetValue(categoryId, out var categoryLabel)
                     ? categoryLabel
@@ -982,7 +998,7 @@ internal sealed class ExpensesController(
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
-        model.Accounts = await BuildAccountOptionsAsync();
+        model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
         // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between
         // the member's own pre-approvals. The one the report holds stays listed in any state.
         var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();

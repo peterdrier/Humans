@@ -20,8 +20,7 @@ internal sealed class AgentController(
     IAgentService agent,
     IAuthorizationService auth,
     IAgentSettingsService settings,
-    IUserService users,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService users) : HumansControllerBase(users)
 {
     private static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions
     {
@@ -170,7 +169,7 @@ internal sealed class AgentController(
             return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
 
         var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
-        var users1 = await users.GetUserInfosAsync(distinctUserIds, ct);
+        var users1 = await UserService.GetUserInfosAsync(distinctUserIds, ct);
         return rows.Select(r => new AgentConversationRow(
             Conversation: r,
             DisplayName: users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : null)
@@ -190,7 +189,7 @@ internal sealed class AgentController(
         bool isAdmin, AgentConversationTranscriptSnapshot conv, CancellationToken ct)
     {
         if (!isAdmin) return null;
-        var owner = await users.GetUserInfoAsync(conv.UserId, ct);
+        var owner = await UserService.GetUserInfoAsync(conv.UserId, ct);
         return owner?.BurnerName ?? conv.UserId.ToString();
     }
 

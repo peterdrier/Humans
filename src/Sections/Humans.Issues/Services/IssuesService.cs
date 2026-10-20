@@ -192,12 +192,13 @@ internal sealed class IssuesService(
         {
             try
             {
-                // A failed submission owns no row that could later erase this upload.
-                await fileStorage.DeleteAsync(issue.ScreenshotStoragePath, CancellationToken.None);
+                // A failed acknowledgement may follow a committed save; only remove an unreferenced upload.
+                if (await repo.GetByIdAsync(issueId, CancellationToken.None) is null)
+                    await fileStorage.DeleteAsync(issue.ScreenshotStoragePath, CancellationToken.None);
             }
             catch (Exception cleanupError)
             {
-                logger.LogWarning(cleanupError, "Failed to remove screenshot for unpersisted issue {IssueId}", issueId);
+                logger.LogWarning(cleanupError, "Failed to verify or clean up screenshot after issue {IssueId} submission failed", issueId);
             }
             throw;
         }

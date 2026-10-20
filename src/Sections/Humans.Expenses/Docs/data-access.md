@@ -35,7 +35,7 @@ grant's lifecycle follows the report's), plus the section's own `ExpensesEmails`
 ### ExpenseReportBackgroundProcessor (Scoped — `IExpenseReportBackgroundProcessor`)
 
 Repository: `IExpenseRepository` (reads approved reports, updates
-`HoldedExpenseOutboxEvents`). Selection, retry/backoff, permanent-failure audit and the
+`HoldedExpenseOutboxEvents`). Selection, the in-process single-drain gate, retry/backoff, permanent-failure audit and the
 configured-key gate live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
 calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IHoldedFinanceService`,
 `IHoldedFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.

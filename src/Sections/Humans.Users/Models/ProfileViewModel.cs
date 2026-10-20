@@ -1,5 +1,6 @@
 using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Campaigns.Contracts;
@@ -227,7 +228,10 @@ internal sealed class ProfileViewModel
     public IReadOnlyList<UserEmailDisplayViewModel> BoardOnlyUserEmails =>
         UserEmails.Where(e => e.Visibility == ContactFieldVisibility.BoardOnly).ToList();
 
+    [BindNever]
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];
+
+    public List<Guid> RemovedLegacyContactFieldIds { get; set; } = [];
 
     public List<ContactFieldEditViewModel> EditableContactFields { get; set; } = [];
 
@@ -394,6 +398,8 @@ internal sealed class ContactFieldEditViewModel
     public Guid? Id { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
+    [Range((int)ContactFieldType.Phone, (int)ContactFieldType.Other, ErrorMessage = "Validation_InvalidValue")]
     public ContactFieldType FieldType { get; set; }
 
     [StringLength(100, ErrorMessage = "Validation_MaxLength")]
@@ -405,6 +411,7 @@ internal sealed class ContactFieldEditViewModel
     public string Value { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
     public int DisplayOrder { get; set; }

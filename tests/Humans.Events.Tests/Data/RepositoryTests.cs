@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
+using Humans.Events.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
@@ -28,6 +29,22 @@ public sealed class EventRepositoryTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+    }
+
+    [HumansFact]
+    public void RecurrenceStorage_AccommodatesEverySelectedDayInTheEventWindow()
+    {
+        const int eventEndOffset = 37;
+        var offsets = EventRecurrenceDays.DisplayDaysToOffsets(
+            "Mon Tue Wed Thu Fri Sat Sun", new LocalDate(2026, 7, 9), eventEndOffset)!;
+
+        EventRecurrenceDays.HasOnlyEventOffsets(offsets, eventEndOffset).Should().BeTrue();
+        var storageLimit = _db.Model.FindEntityType(typeof(Event))!
+            .FindProperty(nameof(Event.RecurrenceDays))!.GetMaxLength();
+
+        // InMemory does not enforce relational column lengths.
+        offsets.Length.Should().BeLessThanOrEqualTo(storageLimit ?? int.MaxValue,
+            "every valid selected day must fit the persisted recurrence field");
     }
 
     [HumansFact]

@@ -201,6 +201,54 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.SingleChoice, false, 100)]
+    [InlineData(SurveyQuestionType.SingleChoice, false, 101)]
+    [InlineData(SurveyQuestionType.MultiChoice, false, 100)]
+    [InlineData(SurveyQuestionType.MultiChoice, false, 101)]
+    [InlineData(SurveyQuestionType.Grid, false, 100)]
+    [InlineData(SurveyQuestionType.Grid, false, 101)]
+    [InlineData(SurveyQuestionType.RankedChoice, false, 100)]
+    [InlineData(SurveyQuestionType.RankedChoice, false, 101)]
+    [InlineData(SurveyQuestionType.SingleChoice, true, 100)]
+    [InlineData(SurveyQuestionType.SingleChoice, true, 101)]
+    public async Task Authoring_enforces_option_value_storage_limit(SurveyQuestionType type, bool editing, int length)
+    {
+        var actor = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: actor);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var options = new[] { Opt(new string('x', length), "First", 1), Opt("second", "Second", 2) };
+        var question = type switch
+        {
+            SurveyQuestionType.Grid => GridInput(columns: options),
+            SurveyQuestionType.RankedChoice => RankedInput(options: options),
+            _ => Q("Choose", type, 1, 1, options)
+        };
+        var service = CreateService();
+
+        var result = editing
+            ? await service.UpdateAsync(survey.Id, Input(question), new SurveyViewer(actor, false), TestContext.Current.CancellationToken)
+            : await service.CreateAsync(Input(question), actor, TestContext.Current.CancellationToken);
+
+        if (length > 100)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.Error!.Key.Should().Be("Surveys_Validation_OptionValueLength");
+            result.Error.Args.Should().Equal(100);
+            await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+            await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            if (editing)
+                await _repo.Received(1).UpdateAsync(Arg.Is<Survey>(s => s.Questions.Single().Options.First().Value.Length == 100), Arg.Any<CancellationToken>());
+            else
+                await _repo.Received(1).AddAsync(Arg.Is<Survey>(s => s.Questions.Single().Options.First().Value.Length == 100), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task CreateAsync_persists_grid_configuration()
     {
@@ -255,6 +303,73 @@ public class SurveyServiceTests
         image.Label.Resolve("en", "en").Should().Be("Fire risk");
         await _fileStorage.Received(1).SaveAsync(
             image.StoragePath, content, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public async Task Failed_authoring_save_preserves_images_when_commit_cannot_be_ruled_out(
+        bool editing, bool committed, bool verificationFails)
+    {
+        var options = new DbContextOptionsBuilder<SurveysDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
+        var surveyId = Guid.NewGuid();
+        if (editing)
+        {
+            var existing = SurveyWith(SurveyStatus.Draft, null, null);
+            surveyId = existing.Id;
+            await repository.AddAsync(existing, TestContext.Current.CancellationToken);
+        }
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            verificationFails && call.ArgAt<CancellationToken>(1) == CancellationToken.None
+                ? Task.FromException<Survey?>(new IOException("Verification unavailable"))
+                : repository.GetByIdAsync(call.ArgAt<Guid>(0), call.ArgAt<CancellationToken>(1)));
+        var failure = new IOException("Save acknowledgement lost");
+        _repo.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var survey = call.ArgAt<Survey>(0);
+            surveyId = survey.Id;
+            if (committed) await repository.AddAsync(survey, call.ArgAt<CancellationToken>(1));
+            throw failure;
+        });
+        _repo.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (committed) await repository.UpdateAsync(call.ArgAt<Survey>(0), call.ArgAt<CancellationToken>(1));
+            throw failure;
+        });
+        string? storagePath = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { storagePath = call.ArgAt<string>(0); return Task.CompletedTask; });
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages: [new InformationImageInput(null, L("Label"), L("Alt"),
+                Upload: new SurveyImageUpload(content, "image/png", "image.png", 3))]);
+        var service = CreateService();
+
+        Func<Task> save = editing
+            ? async () => { await service.UpdateAsync(surveyId, Input(information), Board(Guid.NewGuid()), TestContext.Current.CancellationToken); }
+        : async () => { await service.CreateAsync(Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken); };
+
+        (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        storagePath.Should().NotBeNull();
+        if (committed)
+        {
+            var saved = await repository.GetByIdAsync(surveyId, TestContext.Current.CancellationToken);
+            saved!.Questions.Single().InformationImages!.Single().StoragePath.Should().Be(storagePath);
+            await _fileStorage.DidNotReceive().DeleteAsync(storagePath!, Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            (await repository.GetByIdAsync(surveyId, TestContext.Current.CancellationToken)).Should().BeNull();
+            await _fileStorage.Received(1).DeleteAsync(storagePath!, CancellationToken.None);
+        }
     }
 
     [HumansFact]
@@ -4829,8 +4944,8 @@ public class SurveyServiceTests
         ranked.OriginalPreferenceCycle.Should().HaveCount(4);
         ranked.OriginalPreferenceCycle[0].Should().Be(ranked.OriginalPreferenceCycle[^1]);
         ranked.CurrentPreferenceCycle.Should().BeEmpty();
-        ranked.Methods.Select(method => method.Method).Should().Equal(
-            "Ranked Pairs (official)", "Condorcet check", "Borda Count");
+        ranked.Methods.Select(method => method.MethodKey).Should().Equal(
+            "Surveys_Results_MethodRankedPairsOfficial", "Surveys_Results_MethodCondorcetCheck", "Surveys_Results_MethodBordaCount");
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "c", StringComparison.Ordinal))
             .RejectionCount.Should().Be(1);
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "b", StringComparison.Ordinal))

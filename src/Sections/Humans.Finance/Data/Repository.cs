@@ -53,13 +53,13 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
     // ── Docs ─────────────────────────────────────────────────────────────────
 
-    public async Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
+    public async Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
     {
-        if (docs.Count == 0) return;
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = docs.Select(d => d.HoldedDocId).ToList();
+        var ids = docs.Select(d => d.HoldedDocId).ToHashSet(StringComparer.Ordinal);
         var existing = await ctx.HoldedExpenseDocs
-            .Where(d => ids.Contains(d.HoldedDocId)).ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+            .ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+        ctx.HoldedExpenseDocs.RemoveRange(existing.Values.Where(d => !ids.Contains(d.HoldedDocId)));
         foreach (var d in docs)
         {
             if (existing.TryGetValue(d.HoldedDocId, out var cur))
@@ -130,7 +130,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedCreditorContacts.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task UpsertCreditorContactAsync(
+    public async Task<bool> UpsertCreditorContactAsync(
         HoldedCreditorContact row, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -148,7 +148,41 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             row.UpdatedAt = now;
             ctx.HoldedCreditorContacts.Add(row);
         }
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // Another run bound this member after the existence check above.
+            return false;
+        }
+        return true;
+    }
+
+    public async Task<bool> TryInsertCreditorContactAsync(
+        HoldedCreditorContact row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.HoldedCreditorContacts.Add(row);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // The member is already bound; the existing binding is untouched.
+            return false;
+        }
+        return true;
     }
 
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)

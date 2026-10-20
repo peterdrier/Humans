@@ -201,6 +201,19 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     // ============================================================
 
     [HumansFact]
+    public async Task GetShiftsSummary_CancelledRequest_AbortsRotaRead()
+    {
+        var (settings, rota) = SeedScenario();
+        await SaveAllAsync(Ct);
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+
+        var read = () => _service.GetShiftsSummaryAsync(settings.Id, [rota.TeamId], request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task GetShiftsSummary_ReturnsNull_WhenNoTeamsRequested()
     {
         (await _service.GetShiftsSummaryAsync(Guid.NewGuid(), [])).Should().BeNull();

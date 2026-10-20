@@ -11,8 +11,8 @@ public interface IConsentSubmission
 {
     /// <summary>
     /// Records an explicit consent for <paramref name="documentVersionId"/>. Refuses a stub
-    /// profile (no verified legal name) and a version the user has already signed, in both
-    /// cases through <see cref="ConsentSubmitResult.ErrorKey"/> rather than an exception.
+    /// profile (no verified legal name), an already-signed version or unavailable canonical
+    /// Spanish content through <see cref="ConsentSubmitResult.ErrorKey"/> rather than an exception.
     /// Consent records are append-only (design-rules §12).
     /// </summary>
     Task<ConsentSubmitResult> SubmitConsentAsync(

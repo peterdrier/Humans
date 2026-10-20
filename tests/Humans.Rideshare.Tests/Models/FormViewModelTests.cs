@@ -1,3 +1,5 @@
+using Humans.Rideshare.Data;
+using Microsoft.EntityFrameworkCore;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -38,7 +40,7 @@ public sealed class FormViewModelTests
         {
             (new OfferFormViewModel(), "MemberPlaceLabel", "Validation_Required", ["MemberPlaceLabel"]),
             (new OfferFormViewModel { MemberPlaceLabel = "Town" }, "DepartureDate", "Validation_Required", ["DepartureDate"]),
-            (new OfferFormViewModel { MemberPlaceLabel = new string('x', 201) }, "MemberPlaceLabel", "Validation_MaxLength", ["MemberPlaceLabel", 200]),
+            (new OfferFormViewModel { MemberPlaceLabel = new string('x', 257) }, "MemberPlaceLabel", "Validation_MaxLength", ["MemberPlaceLabel", 256]),
             (new OfferFormViewModel { WaypointLabels = new string('x', 2001) }, "WaypointLabels", "Validation_MaxLength", ["WaypointLabels", 2000]),
             (new OfferFormViewModel { OvernightPlan = new string('x', 1001) }, "OvernightPlan", "Validation_MaxLength", ["OvernightPlan", 1000]),
             (new OfferFormViewModel { CapacityNote = new string('x', 501) }, "CapacityNote", "Validation_MaxLength", ["CapacityNote", 500]),
@@ -50,7 +52,7 @@ public sealed class FormViewModelTests
             (new OfferFormViewModel { SeatsOffered = 21 }, "SeatsOffered", "Validation_Range", ["SeatsOffered", 1, 20]),
             (new RequestFormViewModel(), "PickupPlaceLabel", "Validation_Required", ["PickupPlaceLabel"]),
             (new RequestFormViewModel { PickupPlaceLabel = "Town" }, "DesiredDate", "Validation_Required", ["DesiredDate"]),
-            (new RequestFormViewModel { PickupPlaceLabel = new string('x', 201) }, "PickupPlaceLabel", "Validation_MaxLength", ["PickupPlaceLabel", 200]),
+            (new RequestFormViewModel { PickupPlaceLabel = new string('x', 257) }, "PickupPlaceLabel", "Validation_MaxLength", ["PickupPlaceLabel", 256]),
             (new RequestFormViewModel { Notes = new string('x', 1001) }, "Notes", "Validation_MaxLength", ["Notes", 1000]),
             (new RequestFormViewModel { Latitude = 91 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
             (new RequestFormViewModel { Longitude = 181 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
@@ -149,21 +151,44 @@ public sealed class FormViewModelTests
             request.DesiredDate, request.PartySize, request.LuggageLoad, request.CanContributeToFuel, request.Notes));
     }
 
-    [HumansFact]
-    public void ForNew_PrefillsTheProfilesPlace_AndTheDirectionsWindowStart()
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(201)]
+    [InlineData(256)]
+    public void ForNew_PrefillsTheProfilesPlace_AndTheDirectionsWindowStart(int cityLength)
     {
-        var user = User(UserFixtures.Profile(city: "Berlin", latitude: 52.52, longitude: 13.405));
+        var city = cityLength == 0 ? "Berlin" : new string('x', cityLength);
+        var user = User(UserFixtures.Profile(city: city, latitude: 52.52, longitude: 13.405));
 
         var offer = OfferFormViewModel.ForNew(user, RideshareDirection.Outbound, Settings, Today);
         offer.IsEdit.Should().BeFalse();
-        offer.MemberPlaceLabel.Should().Be("Berlin");
+        offer.MemberPlaceLabel.Should().Be(city);
         (offer.Latitude, offer.Longitude).Should().Be((52.52, 13.405));
         offer.DepartureDate.Should().Be("2026-07-12");
 
         var request = RequestFormViewModel.ForNew(user, RideshareDirection.Inbound, Settings, Today);
-        request.PickupPlaceLabel.Should().Be("Berlin");
+        request.PickupPlaceLabel.Should().Be(city);
         (request.Latitude, request.Longitude).Should().Be((52.52, 13.405));
         request.DesiredDate.Should().Be("2026-07-01");
+
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        foreach (var form in new object[] { offer, request })
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            services.GetRequiredService<IObjectModelValidator>().Validate(context, null, "", form);
+            context.ModelState.IsValid.Should().BeTrue("a valid profile city must produce a submittable prefilled form");
+        }
+        offer.ToSave()!.MemberPlaceLabel.Should().Be(city);
+        request.ToSave()!.PickupPlaceLabel.Should().Be(city);
+        using var db = new RideshareDbContext(new DbContextOptionsBuilder<RideshareDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        // InMemory does not enforce varchar bounds; both complete labels must fit production storage.
+        city.Length.Should().BeLessThanOrEqualTo(db.Model.FindEntityType(typeof(RideshareTrip))!
+            .FindProperty(nameof(RideshareTrip.MemberPlaceLabel))!.GetMaxLength() ?? int.MaxValue);
+        city.Length.Should().BeLessThanOrEqualTo(db.Model.FindEntityType(typeof(RideshareRequest))!
+            .FindProperty(nameof(RideshareRequest.PickupPlaceLabel))!.GetMaxLength() ?? int.MaxValue);
     }
 
     [HumansFact]

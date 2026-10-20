@@ -3,6 +3,7 @@ using System.Text.Json;
 using Humans.Settings.Contracts;
 using NodaTime;
 using NodaTime.Text;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Settings.Models;
 
@@ -13,12 +14,14 @@ namespace Humans.Settings.Models;
 /// </summary>
 internal sealed class EventSettingsViewModel : IValidatableObject
 {
+    [BindRequired]
     public Guid? Id { get; set; }
 
     [Required, MaxLength(256)]
     public string EventName { get; set; } = string.Empty;
 
     [Required, MaxLength(100)]
+    [BindRequired]
     public string TimeZoneId { get; set; } = "Europe/Madrid";
 
     [Required]
@@ -26,33 +29,45 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     // The build window is [BuildStartOffset, 0) and the four sub-periods below
     // partition it, so build starts on the first-crew day.
+    [BindRequired]
     public int BuildStartOffset { get; set; } = -25;
     [Range(0, int.MaxValue, ErrorMessage = "Event end must be on or after gate-opening day.")]
+    [BindRequired]
     public int EventEndOffset { get; set; } = 6;
+    [BindRequired]
     public int StrikeEndOffset { get; set; } = 9;
 
     // Build sub-period boundaries — defaults match the entity defaults set by EF config.
     [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
+    [BindRequired]
     public int FirstCrewStartOffset { get; set; } = -25;
 
     [Range(int.MinValue, -1, ErrorMessage = "Set-up week start must be a negative offset relative to gate-opening day.")]
+    [BindRequired]
     public int SetupWeekStartOffset { get; set; } = -16;
 
     [Range(int.MinValue, -1, ErrorMessage = "Pre-event week start must be a negative offset relative to gate-opening day.")]
+    [BindRequired]
     public int PreEventWeekStartOffset { get; set; } = -9;
 
     [Range(int.MinValue, -1, ErrorMessage = "Finishing weekend start must be a negative offset relative to gate-opening day.")]
+    [BindRequired]
     public int FinishingWeekendStartOffset { get; set; } = -4;
 
+    [BindRequired]
     public string EarlyEntryCapacityJson { get; set; } = "{}";
+    [BindRequired]
     public string? BarriosEarlyEntryAllocationJson { get; set; }
 
+    [BindRequired]
     public string? EarlyEntryClose { get; set; }
 
     /// <summary>Negative day offset from <see cref="GateOpeningDate"/>; null until configured.</summary>
+    [BindRequired]
     public int? EarlyEntryStartOffset { get; set; }
 
     /// <summary>The cycle is wrapped: the member dashboard hides its in-season cards.</summary>
+    [BindRequired]
     public bool IsOffSeason { get; set; }
 
     /// <summary>
@@ -60,6 +75,7 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
     /// withdrawing a cycle is not something this form does.
     /// </summary>
+    [BindRequired]
     public bool IsActive { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

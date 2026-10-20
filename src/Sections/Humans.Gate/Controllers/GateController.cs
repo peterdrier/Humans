@@ -40,7 +40,8 @@ internal sealed class GateController(
     GatePinThrottle pinThrottle,
     GateVendorMirrorLedger mirrorLedger,
     IBackgroundJobClient backgroundJobs,
-    IClock clock) : HumansControllerBase(users)
+    IClock clock,
+    ILogger<GateController> logger) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
     private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
@@ -71,11 +72,17 @@ internal sealed class GateController(
     [Authorize(Policy = PolicyNames.GateAdmit)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decision(
-        string barcode, bool idConfirmed, bool childWithAdult, bool overrideEarly,
+        string barcode, bool? idConfirmed, bool childWithAdult, bool overrideEarly,
         string? supervisorPin, string? laneId, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } scanner)
             return Unauthorized();
+
+        if (!ModelState.IsValid || idConfirmed is not { } confirmed)
+        {
+            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner);
+            return BadRequest();
+        }
 
         // Overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) require the shared
         // supervisor PIN, verified server-side before anything is recorded. One PIN for all
@@ -89,7 +96,7 @@ internal sealed class GateController(
         }
 
         var decision = await gate.RecordDecisionAsync(
-            new GateDecisionInput(barcode, idConfirmed, childWithAdult, laneId,
+            new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
                 ClientScanAt: null, Note: null, OverrideByUserId: overrideBy),
             scanner, ct);
 

@@ -30,7 +30,6 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
             .IsRequired();
 
         builder.Property(e => e.Description)
-            .HasMaxLength(4000)
             .IsRequired();
 
         builder.Property(e => e.OccurredAt)

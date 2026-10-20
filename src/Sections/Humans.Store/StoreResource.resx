@@ -72,6 +72,7 @@
   <data name="Store_RemoveLineFailed" xml:space="preserve"><value>Could not remove line.</value></data>
   <data name="Store_LineRemoved" xml:space="preserve"><value>Line removed.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Could not update counterparty.</value></data>
+  <data name="Store_CounterpartyTooLong" xml:space="preserve"><value>Billing details are too long. Shorten the values and try again.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Counterparty updated.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Recorded.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} overpaid — owed back to the camp.</value></data>

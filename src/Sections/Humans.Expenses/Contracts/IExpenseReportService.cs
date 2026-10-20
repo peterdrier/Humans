@@ -29,7 +29,7 @@ public interface IExpenseReportService : IApplicationService
 
     /// <summary>
     /// The review queue as <paramref name="viewerUserId"/> may see it: every non-draft,
-    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports plus those
+    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports (including merged accounts) plus those
     /// booked to a budget category they coordinate.
     /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(

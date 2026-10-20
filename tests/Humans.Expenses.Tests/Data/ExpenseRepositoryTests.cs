@@ -537,6 +537,26 @@ public class ExpenseRepositoryTests
         loaded.UpdatedAt.Should().Be(updatedAt);
     }
 
+    [HumansFact]
+    public async Task SetLineHoldedDocIdAsync_SecondWriteIsRefused_AndKeepsTheFirstId()
+    {
+        var report = MakeReport(status: ExpenseReportStatus.Approved);
+        await Seed(report);
+        var lineId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = lineId, Description = "x", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
+        var firstAt = Instant.FromUtc(2026, 5, 5, 1, 0);
+
+        var first = await _sut.SetLineHoldedDocIdAsync(lineId, "doc-A", firstAt, Xunit.TestContext.Current.CancellationToken);
+        var second = await _sut.SetLineHoldedDocIdAsync(lineId, "doc-B", firstAt + Duration.FromHours(1), Xunit.TestContext.Current.CancellationToken);
+
+        first.Should().BeTrue();
+        second.Should().BeFalse();
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Single(l => l.Id == lineId).HoldedDocId.Should().Be("doc-A");
+        loaded.UpdatedAt.Should().Be(firstAt);
+    }
+
     private async Task Seed(params ExpenseReport[] reports)
     {
         await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);

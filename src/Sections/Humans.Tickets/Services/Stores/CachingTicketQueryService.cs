@@ -59,8 +59,8 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         return holdings ?? new UserTicketHoldings(0, []);
     }
 
-    public Task<List<string>> GetAvailableTicketTypesAsync() =>
-        WithInner(inner => inner.GetAvailableTicketTypesAsync());
+    public Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetAvailableTicketTypesAsync(ct));
 
     public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
         WithInner(inner => inner.GetDashboardStatsAsync());
@@ -71,43 +71,43 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         WithInner(inner => inner.CalculateBreakEvenAsync(
             ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget));
 
-    public Task<TicketSalesAggregates> GetSalesAggregatesAsync() =>
-        WithInner(inner => inner.GetSalesAggregatesAsync());
+    public Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetSalesAggregatesAsync(ct));
 
-    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search) =>
-        WithInner(inner => inner.GetCodeTrackingDataAsync(search));
+    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetCodeTrackingDataAsync(search, ct));
 
     public Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
-        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) =>
+        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched, CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterPaymentStatus, filterTicketType, filterMatched));
+            filterPaymentStatus, filterTicketType, filterMatched, ct));
 
     public Task<AttendeesPageResult> GetAttendeesPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
         string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
-        bool filterMultipleTickets = false) =>
+        bool filterMultipleTickets = false, CancellationToken ct = default) =>
         WithInner(inner => inner.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets));
+            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets, ct));
 
     public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
-        int page, int pageSize) =>
+        int page, int pageSize, CancellationToken ct = default) =>
         WithInner(inner => inner.GetWhoHasntBoughtAsync(
-            search, filterTeam, filterTier, filterTicketStatus, page, pageSize));
+            search, filterTeam, filterTier, filterTicketStatus, page, pageSize, ct));
 
-    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId));
+    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId, ct));
 
-    public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId));
+    public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId, ct));
 
-    public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId) =>
-        WithInner(inner => inner.GetDonationExportDataAsync(actorUserId));
+    public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetDonationExportDataAsync(actorUserId, ct));
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));

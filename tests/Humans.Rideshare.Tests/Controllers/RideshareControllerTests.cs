@@ -1,3 +1,7 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.Primitives;
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -93,6 +97,93 @@ public sealed class RideshareControllerTests
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("L:Rideshare_Error_NotEnoughSeats");
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         AssertExpectedWarnings(1);
+    }
+
+    [HumansTheory]
+    [InlineData(true, "Direction", true)]
+    [InlineData(true, "VehicleType", true)]
+    [InlineData(true, "LuggageCapacity", true)]
+    [InlineData(true, "CostSharing", true)]
+    [InlineData(true, "ExpectedDurationDays", true)]
+    [InlineData(true, "SeatsOffered", true)]
+    [InlineData(false, "Direction", true)]
+    [InlineData(false, "LuggageLoad", true)]
+    [InlineData(false, "PartySize", true)]
+    [InlineData(true, null, true)]
+    [InlineData(false, null, true)]
+    [InlineData(true, "CostSharing", false)]
+    [InlineData(false, "LuggageLoad", false)]
+    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn)
+    {
+        var controller = BuildController(signedIn);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = Guid.NewGuid().ToString(),
+            ["Direction"] = "0",
+            ["MemberPlaceLabel"] = "Paris",
+            ["PickupPlaceLabel"] = "Paris",
+            ["DepartureDate"] = "2026-07-03",
+            ["DesiredDate"] = "2026-07-03",
+            ["ExpectedDurationDays"] = "1",
+            ["SeatsOffered"] = "1",
+            ["PartySize"] = "1",
+            ["VehicleType"] = "0",
+            ["LuggageCapacity"] = "0",
+            ["LuggageLoad"] = "0",
+            ["CostSharing"] = "0"
+        };
+        if (omitted is not null) fields.Remove(omitted);
+        var formType = offer ? typeof(OfferFormViewModel) : typeof(RequestFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = formType
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+        _rideshare.UpdateOfferAsync(Arg.Any<Guid>(), _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult());
+        _rideshare.UpdateRequestAsync(Arg.Any<Guid>(), _me, Arg.Any<RequestSave>(), Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult());
+
+        var result = offer
+            ? await controller.Offer((OfferFormViewModel)model, Ct)
+            : await controller.RideRequest((RequestFormViewModel)model, Ct);
+
+        if (!signedIn)
+        {
+            result.Should().BeOfType<ChallengeResult>();
+            _rideshare.ReceivedCalls().Should().BeEmpty();
+        }
+        else if (omitted is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _rideshare.ReceivedCalls().Should().BeEmpty();
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            if (offer)
+                await _rideshare.Received(1).UpdateOfferAsync(Arg.Any<Guid>(), _me,
+                    Arg.Is<TripSave>(save => (int)save.Direction == 0 && (int)save.VehicleType == 0
+                        && (int)save.LuggageCapacity == 0 && (int)save.CostSharing == 0
+                        && save.ExpectedDurationDays == 1 && save.SeatsOffered == 1), Ct);
+            else
+                await _rideshare.Received(1).UpdateRequestAsync(Arg.Any<Guid>(), _me,
+                    Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1), Ct);
+        }
     }
 
     [HumansFact]

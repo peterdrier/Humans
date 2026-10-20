@@ -152,6 +152,52 @@ public class MembershipCalculatorTests
         snapshot.Status.Should().Be(MembershipStatus.Inactive);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task MembershipReads_UseSurvivorsTeamsAndConsentRequirements(bool mergedAlias, bool snapshotRead)
+    {
+        var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        var volunteerVersion = Guid.NewGuid();
+        var coordinatorVersion = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedActiveRole(userId);
+        SeedVolunteersTeamMember(userId);
+        var department = SeedTeam("Geeks", SystemTeamType.None);
+        SeedTeamMember(userId, department.Id, TeamMemberRole.Coordinator);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, volunteerVersion);
+        SeedRequiredVersion(SystemTeamIds.Coordinators, coordinatorVersion);
+        SeedConsent(userId, volunteerVersion);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        if (mergedAlias)
+        {
+            var survivor = await _userService.GetUserInfoAsync(userId, ct);
+            _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(survivor);
+            // Consent records already follow merged identities; team rows belong to the survivor.
+            _consentService.GetConsentedVersionIdsAsync(inputId, Arg.Any<CancellationToken>())
+                .Returns(_consentedVersionsByUser[userId]);
+        }
+
+        if (snapshotRead)
+        {
+            var snapshot = await _service.GetMembershipSnapshotAsync(inputId, ct);
+            snapshot.Status.Should().Be(MembershipStatus.Active);
+            snapshot.IsVolunteerMember.Should().BeTrue();
+            snapshot.RequiredConsentCount.Should().Be(2);
+            snapshot.PendingConsentCount.Should().Be(1);
+            snapshot.MissingConsentVersionIds.Should().Equal(coordinatorVersion);
+            snapshot.Should().BeSameAs(await _service.GetMembershipSnapshotAsync(userId, ct));
+        }
+        else
+        {
+            var teams = await _service.GetRequiredTeamIdsForUserAsync(inputId, ct);
+            teams.Should().Contain([SystemTeamIds.Volunteers, SystemTeamIds.Coordinators, department.Id]);
+        }
+    }
+
     // --- GetRequiredTeamIdsForUserAsync tests ---
 
     [HumansFact]

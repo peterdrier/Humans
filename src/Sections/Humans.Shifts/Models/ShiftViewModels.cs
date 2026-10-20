@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -15,8 +16,11 @@ namespace Humans.Shifts.Models;
 /// </summary>
 internal sealed class EventSettingsViewModel
 {
+    [BindRequired]
     public bool IsShiftBrowsingOpen { get; set; }
+    [BindRequired]
     public int? GlobalVolunteerCap { get; set; }
+    [BindRequired]
     public int ReminderLeadTimeHours { get; set; } = 24;
 }
 
@@ -28,8 +32,11 @@ internal class CreateRotaModel
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     public ShiftPriority Priority { get; set; }
+    [BindRequired]
     public SignupPolicy Policy { get; set; }
+    [BindRequired]
     public RotaPeriod Period { get; set; } = RotaPeriod.Event;
 
     [MaxLength(2000)]
@@ -55,14 +62,19 @@ internal class CreateShiftModel
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     public int DayOffset { get; set; }
 
     [Required]
+    [BindRequired]
     public string StartTime { get; set; } = "08:00";
 
+    [BindRequired]
     public double DurationHours { get; set; } = 4;
 
+    [BindRequired]
     public int MinVolunteers { get; set; } = 1;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
     public bool AdminOnly { get; set; }
 }
@@ -80,23 +92,32 @@ internal sealed class StaffingGridModel
 
 internal sealed class DayStaffingEntry
 {
+    [BindRequired]
     public int DayOffset { get; set; }
+    [BindRequired]
     public int MinVolunteers { get; set; } = 2;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
 }
 
 internal sealed class GenerateEventShiftsModel
 {
+    [BindRequired]
     public int StartDayOffset { get; set; }
+    [BindRequired]
     public int EndDayOffset { get; set; }
     public List<TimeSlotEntry> TimeSlots { get; set; } = [];
+    [BindRequired]
     public int MinVolunteers { get; set; } = 2;
+    [BindRequired]
     public int MaxVolunteers { get; set; } = 5;
 }
 
 internal sealed class TimeSlotEntry
 {
+    [BindRequired]
     public string StartTime { get; set; } = "08:00";
+    [BindRequired]
     public double DurationHours { get; set; } = 4;
 }
 

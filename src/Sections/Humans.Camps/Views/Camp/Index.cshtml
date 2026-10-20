@@ -9,7 +9,7 @@
     <div class="d-flex gap-2">
         <vc:access-matrix section="Camps" />
         <a asp-controller="CampAdmin" asp-action="Index" class="btn btn-outline-secondary" authorize-policy="CampAdminOrAdmin">
-            <i class="fa-solid fa-shield-halved me-1"></i> @Localizer["Camp_AdminTitle"]
+            <i class="fa-solid fa-shield-halved me-1"></i> @Localizer["Camps_AdminTitle"]
             @if (pendingCount > 0)
             {
                 <span class="badge bg-danger ms-1">@pendingCount</span>
@@ -18,13 +18,13 @@
         </a>
         <a href="https://drive.google.com/file/d/1orfoEDH6uFz3Hn6ioaqVo-EG_Iuv1Dji/view"
            class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer">
-            <i class="fa-solid fa-book me-1"></i> @Localizer["Camp_Index_BarrioGuide"]
+            <i class="fa-solid fa-book me-1"></i> @Localizer["Camps_Index_BarrioGuide"]
             <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
         </a>
         @if (RoleChecks.IsActiveMember(User))
         {
             <a asp-action="Register" class="btn btn-primary">
-                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Register_Submit", Localizer["Camp_Singular"]]
+                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camps_Register_Submit", Localizer["Camps_Singular"]]
             </a>
         }
     </div>
@@ -35,44 +35,44 @@
     <div class="card-body">
         <div class="form-check mb-3">
             <input asp-for="Filters.ShowLeadPositions" class="form-check-input" type="checkbox" />
-            <label asp-for="Filters.ShowLeadPositions" class="form-check-label">@Localizer["Camp_Index_ShowLeadPositions"]</label>
+            <label asp-for="Filters.ShowLeadPositions" class="form-check-label">@Localizer["Camps_Index_ShowLeadPositions"]</label>
         </div>
         <div class="row g-3 align-items-end">
             <div class="col-md-12">
-                <label asp-for="Filters.Search" class="form-label">@Localizer["Camp_Index_SearchLabel"]</label>
+                <label asp-for="Filters.Search" class="form-label">@Localizer["Camps_Index_SearchLabel"]</label>
                 <input type="search" asp-for="Filters.Search" id="camp-name-search" class="form-control"
-                       placeholder="@Localizer["Camp_Index_SearchPlaceholder", Localizer["Camp_Singular"].Value.ToLower()]"
+                       placeholder="@Localizer["Camps_Index_SearchPlaceholder", Localizer["Camps_Singular"].Value.ToLower()]"
                        autocomplete="off" />
             </div>
             <div class="col-md-3">
-                <label class="form-label">@Localizer["Camp_Index_VibeLabel"]</label>
+                <label class="form-label">@Localizer["Camps_Index_VibeLabel"]</label>
                 <select asp-for="Filters.Vibe" class="form-select"
                         asp-items="@Localizer.EnumSelectItems<CampVibe>()">
-                    <option value="">@Localizer["Camp_Index_AllOption"]</option>
+                    <option value="">@Localizer["Camps_Index_AllOption"]</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">@Localizer["Camp_Index_SoundZoneLabel"]</label>
+                <label class="form-label">@Localizer["Camps_Index_SoundZoneLabel"]</label>
                 <select asp-for="Filters.SoundZone" class="form-select"
                         asp-items="@SharedLocalizer.EnumSelectItems<SoundZone>()">
-                    <option value="">@Localizer["Camp_Index_AllOption"]</option>
+                    <option value="">@Localizer["Camps_Index_AllOption"]</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <div class="form-check mt-4">
                     <input asp-for="Filters.KidsFriendly" class="form-check-input" type="checkbox" />
-                    <label asp-for="Filters.KidsFriendly" class="form-check-label">@Localizer["Camp_Index_KidsWelcomeFilter"]</label>
+                    <label asp-for="Filters.KidsFriendly" class="form-check-label">@Localizer["Camps_Index_KidsWelcomeFilter"]</label>
                 </div>
             </div>
             <div class="col-md-2">
                 <div class="form-check mt-4">
                     <input asp-for="Filters.AcceptingMembers" class="form-check-input" type="checkbox" />
-                    <label asp-for="Filters.AcceptingMembers" class="form-check-label">@Localizer["Camp_Index_AcceptingMembersFilter"]</label>
+                    <label asp-for="Filters.AcceptingMembers" class="form-check-label">@Localizer["Camps_Index_AcceptingMembersFilter"]</label>
                 </div>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="fa-solid fa-filter me-1"></i> @Localizer["Camp_Index_FilterButton"]
+                    <i class="fa-solid fa-filter me-1"></i> @Localizer["Camps_Index_FilterButton"]
                 </button>
             </div>
         </div>
@@ -80,12 +80,12 @@
 </form>
 
 <div id="camp-search-empty" class="alert alert-info" style="display: none;">
-    @Localizer["Camp_Index_NoSearchResults", SharedLocalizer["Camp_Plural"]]
+    @Localizer["Camps_Index_NoSearchResults", SharedLocalizer["Camp_Plural"]]
 </div>
 
 @if (Model.MyCamps.Any())
 {
-    <h4 class="mb-3">@Localizer["Camps_MyCamps_Title"] <small class="text-muted">(@Localizer["Camp_Index_PendingApproval"])</small></h4>
+    <h4 class="mb-3">@Localizer["Camps_MyCamps_Title"] <small class="text-muted">(@Localizer["Camps_Index_PendingApproval"])</small></h4>
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
         @foreach (var camp in Model.MyCamps)
         {
@@ -106,7 +106,7 @@
 else
 {
     <div class="alert alert-info">
-        @Localizer["Camp_Index_NoFilterResults", SharedLocalizer["Camp_Plural"]]
+        @Localizer["Camps_Index_NoFilterResults", SharedLocalizer["Camp_Plural"]]
     </div>
 }
 

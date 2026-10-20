@@ -74,7 +74,7 @@ public class TicketTransferControllerTests
             transfers.GetMyAttendeesAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
             transfers.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
             var key = unknown ? "untranslated provider failure" : cancel
-                ? "Tickets_TicketTransfer_NotFound" : "TicketTransfer_AlreadyPending";
+                ? "Tickets_TicketTransfer_NotFound" : "Tickets_TicketTransfer_AlreadyPending";
             transfers.CreateRequestAsync(Arg.Any<TicketTransferRequestDto>(), userId, Arg.Any<CancellationToken>())
                 .Returns(_ => unknown
                     ? Task.FromException<TicketTransferMutationResult>(new InvalidOperationException(key))
@@ -117,7 +117,7 @@ public class TicketTransferControllerTests
                 var result = await controller.Submit(Guid.NewGuid(), Guid.NewGuid(), "Reason", TestContext.Current.CancellationToken);
                 var view = result.Should().BeOfType<ViewResult>().Subject;
                 var model = view.Model.Should().BeOfType<TicketTransferWizardViewModel>().Subject;
-                model.Error.Should().Be(localizer["TicketTransfer_AlreadyPending"].Value);
+                model.Error.Should().Be(localizer["Tickets_TicketTransfer_AlreadyPending"].Value);
             }
         }
         finally

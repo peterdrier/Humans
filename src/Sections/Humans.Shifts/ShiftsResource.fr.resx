@@ -1274,4 +1274,5 @@
   <data name="Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Merci pour cette année. Les créneaux rouvriront quand le Conseil publiera le prochain événement.</value>
   </data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Le motif ne peut pas dépasser 1 000 caractères.</value></data>
 </root>

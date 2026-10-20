@@ -5,7 +5,8 @@ namespace Humans.Web.Hosting;
 
 /// <summary>
 /// Wraps the web-root file provider so upload subfolders that must be served through a gated
-/// controller (profile pictures: GDPR gate; issue screenshots: reach check) are structurally
+/// controller (profile pictures: GDPR gate; issue screenshots: reach check; expense attachments:
+/// report authorization) are structurally
 /// unreachable by <c>UseStaticFiles</c>. The subpath is canonicalized before the check
 /// (repeated separators, <c>.</c>/<c>..</c> segments, <c>\</c>), so alternate spellings of a
 /// gated path cannot slip past a raw prefix comparison and still resolve to the same file.
@@ -16,6 +17,7 @@ internal sealed class GatedUploadsFileProvider(IFileProvider inner) : IFileProvi
     [
         ["uploads", "profile-pictures"],
         ["uploads", "issues"],
+        ["uploads", "expense-attachments"],
     ];
 
     public IFileInfo GetFileInfo(string subpath) =>

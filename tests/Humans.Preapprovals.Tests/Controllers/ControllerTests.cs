@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Authorization;
@@ -12,11 +13,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using NSubstitute;
 
 namespace Humans.Preapprovals.Tests.Controllers;
@@ -94,6 +98,41 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData("Issue", true)]
+    [Xunit.InlineData("IssueMany", true)]
+    [Xunit.InlineData("Approve", true)]
+    [Xunit.InlineData("Issue", false)]
+    [Xunit.InlineData("IssueMany", false)]
+    [Xunit.InlineData("Approve", false)]
+    public async Task MalformedGrantForm_DoesNotCommitMoney(string action, bool managesProgram)
+    {
+        var manager = SeedUser("Manager");
+        var program = await SeedProgramAsync(managers: managesProgram ? [manager] : []);
+        var beneficiary = SeedUser("Beneficiary");
+        var application = await SeedGrantAsync(program, beneficiary, status: GrantStatus.Applied);
+        var controller = BuildAdmin(manager);
+        var field = string.Equals(action, "IssueMany", StringComparison.Ordinal) ? "userIds[1]" : "amount";
+        controller.ModelState.AddModelError(field, "Invalid value");
+
+        var result = action switch
+        {
+            "Issue" => await controller.Issue(program.Id, beneficiary, null, null, Ct),
+            "IssueMany" => await controller.IssueMany(program.Id, [beneficiary], Ct),
+            _ => await controller.Approve(program.Id, application.Id, null, Ct)
+        };
+
+        if (managesProgram)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        (await ReadGrantsCountAsync()).Should().Be(1);
+        (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(RoleNames.FinanceAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
@@ -115,6 +154,81 @@ public sealed class ControllerTests : PreapprovalsTestHarness
 
         result.Should().BeOfType<RedirectToActionResult>();
         (await NewService().GetProgramsAsync(Ct)).Should().ContainSingle().Which.Name.Should().Be("2026 Creativity");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "Kind", false)]
+    [Xunit.InlineData(false, "Status", false)]
+    [Xunit.InlineData(false, "AcceptsApplications", false)]
+    [Xunit.InlineData(false, "", false)]
+    [Xunit.InlineData(false, "", true)]
+    [Xunit.InlineData(true, "Kind", false)]
+    [Xunit.InlineData(true, "Status", false)]
+    [Xunit.InlineData(true, "AcceptsApplications", false)]
+    [Xunit.InlineData(true, "", false)]
+    [Xunit.InlineData(true, "", true)]
+    public async Task Program_forms_require_explicit_kind_status_and_application_choice(bool editing, string omitted, bool zeroChoices)
+    {
+        var existing = editing ? await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, status: ProgramStatus.Closed) : null;
+        var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Changed program",
+            ["Kind"] = zeroChoices ? "0" : "1",
+            ["Status"] = zeroChoices ? "0" : "1",
+            ["AcceptsApplications"] = zeroChoices ? "false" : "true",
+            ["PerPersonAmount"] = "300",
+            ["HoldedAccountNumber"] = "62900150",
+            ["ClaimBy"] = "2026-06-01"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProgramFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(ProgramFormViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (ProgramFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = editing ? await controller.Edit(existing!.Id, model, Ct) : await controller.New(model, Ct);
+
+        var stored = await NewService().GetProgramsAsync(Ct);
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            if (editing)
+            {
+                var program = stored.Should().ContainSingle().Subject;
+                program.Name.Should().Be("2026 Creativity");
+                program.Kind.Should().Be(ProgramKind.PerGrantAmount);
+                program.Status.Should().Be(ProgramStatus.Closed);
+                program.AcceptsApplications.Should().BeTrue();
+            }
+            else stored.Should().BeEmpty();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            Email.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var program = stored.Should().ContainSingle().Subject;
+            program.Name.Should().Be("Changed program");
+            program.Kind.Should().Be(zeroChoices ? ProgramKind.FixedPerPerson : ProgramKind.PerGrantAmount);
+            program.Status.Should().Be(zeroChoices ? ProgramStatus.Open : ProgramStatus.Closed);
+            program.AcceptsApplications.Should().Be(!zeroChoices);
+        }
     }
 
     [HumansFact]

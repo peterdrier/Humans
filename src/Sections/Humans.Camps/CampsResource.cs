@@ -6,6 +6,7 @@ namespace Humans.Camps;
 /// internal marker in silence. The <c>.cs</c> and the <c>.resx</c> files must sit in the same
 /// folder: this type's namespace determines the manifest prefix.
 ///
+/// Section-owned keys use <c>Camps_</c>; enum display keys retain their reflection-resolved names.
 /// <para>
 /// <c>Camp_Plural</c> stays in <c>SharedResource</c> — Shell's nav and dashboard, the guest
 /// landing page, Containers' breadcrumb and Events' barrio form all render it, and a key
