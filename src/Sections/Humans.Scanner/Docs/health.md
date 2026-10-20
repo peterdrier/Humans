@@ -23,7 +23,7 @@ Neither tool marks anyone as arrived. Admission is the Gate section's job.
 
 | Question shape | Asked by | Answered by |
 |---|---|---|
-| "Which tools are here?" | the admin sidebar's Tickets group | `GET /Scanner` |
+| "Which tools are here?" | the admin sidebar's own Scanner group | `GET /Scanner` |
 | "What does this barcode encode?" | ticket staff, camera in hand | `GET /Scanner/Barcode` + `barcode.js`, browser only |
 | "Whose ticket is this, and what does the door need to know about them?" | ticket staff, camera or keyboard | `GET /Scanner/Tickets` (the page) + `GET /Scanner/Tickets/Card?barcode=` (the answer, one partial) |
 
@@ -32,7 +32,7 @@ even though it takes seven cross-section reads to assemble: the card is the unit
 reads.
 
 Vocabulary: none of its own. The card speaks Tickets' `TicketStubInfo`/`TicketAttendeeStatus`,
-EarlyEntry's `EarlyEntryRosterRow`, Calendar's `CalendarFeedItem`, and Shifts' `BurnSettingsInfo`.
+EarlyEntry's `EarlyEntryRosterRow`, Calendar's `CalendarFeedItem`, and Settings' `EventSettingsInfo`.
 
 ## 3. Structure
 
@@ -52,29 +52,37 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
 ## 4. Invariants
 
 - Every route requires the `ScannerAccess` policy (TicketAdmin, Board, Admin, or the
-  gate-terminal account by well-known id). Pinned by `EndpointAuthorizationTests` in
-  `Humans.Web.Tests`.
-- `/Scanner/Barcode` never sends a decoded value to the server.
+  gate-terminal account by well-known id): `src/Sections/Humans.Scanner/Controllers/ScannerController.cs:18`,
+  policy body at `src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs:63`.
+- `/Scanner/Barcode` never sends a decoded value to the server: decoded values go only to the
+  page list or the `onHit` callback (`src/Sections/Humans.Scanner/wwwroot/js/scanner/barcode.js:54`),
+  and `Barcode.cshtml` passes no callback.
 - The card lookup writes nothing: no check-in, no participation, no ticket state, no audit
-  row. `ScannerController` has no non-GET action.
-- Only orders flagged as the current event are searched; a blank or unknown barcode yields
-  the not-found card (blank: without echoing a code).
-- Door context is assembled only when the ticket has a matched member; otherwise every
+  row. Every action is a GET (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:38`
+  is the only one that reads data) and the controller injects only read interfaces.
+- Only orders flagged as the current event are searched
+  (`src/Sections/Humans.Tickets/Services/TicketQueryService.cs:78`); a blank barcode yields the
+  not-found card without echoing a code (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:42`).
+- Door context is assembled only when the ticket has a matched member
+  (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:56`); otherwise every
   per-person field is null. An empty pending-consents list means "all signed" and is
   distinct from null.
-- Check-in is read for the active event year only; a prior year's check-in never shows.
-- The provide list carries only Shifts-sourced feed items plus events the member submitted
-  outside a camp, expanded per occurrence when an active event cycle gives a time zone.
-- The camera stream is stopped on Stop, on page hide and before unload.
+- Check-in is read for the active event year only
+  (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:67`).
+- The provide list carries only Shifts-sourced feed items
+  (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:100`) plus events the member
+  submitted outside a camp (`src/Sections/Humans.Scanner/Controllers/ScannerController.cs:103`),
+  expanded per occurrence when the active event gives a time zone.
+- Only the latest ticket lookup may replace the card, and a redirect is a failure, never a card
+  (`src/Sections/Humans.Scanner/wwwroot/js/scanner/tickets.js:22`).
+- The camera stream is stopped on Stop, on page hide and before unload
+  (`src/Sections/Humans.Scanner/wwwroot/js/scanner/barcode.js:277`).
 
 ## 5. Seams
 
 - **Events-owned provide items.** A read on `IEventService` returning the feed items for
   events a member is hosting would let `GetProvideItemsAsync` shrink to two calls and a
   merge, and delete this section's copy of Events' occurrence-to-feed-item rule.
-- **Event-cycle cutover.** `IBurnSettingsService.GetActiveAsync` is the Shifts-owned twin of
-  Settings' staged `IEventSettingsInfo` (nobodies-collective/Humans#1104). The card's year
-  and time zone move with that cutover; nothing here should be shaped around Shifts.
 - **Vendor verification.** The barcode spec's follow-up — ask the vendor whether a ticket is
   valid or already used — is unbuilt. It would be a new tool with its own route, never a
   server round-trip added to `/Scanner/Barcode`.
