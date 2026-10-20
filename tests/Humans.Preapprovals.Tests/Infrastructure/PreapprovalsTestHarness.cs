@@ -113,7 +113,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
         var userId = id ?? Guid.NewGuid();
         _users[userId] = new UserInfo(
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, null, null, null, false, false, null, null, null,
+            null, null, null, null, null, false, false, null, null,
             null, null, null, [], [], [],
             UserFixtures.Profile(burnerName: burnerName, membershipTier: MembershipTier.Volunteer), [])
         { MergedUserIds = mergedIds ?? [] };

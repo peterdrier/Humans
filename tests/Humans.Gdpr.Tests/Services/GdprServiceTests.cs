@@ -59,7 +59,6 @@ public class GdprServiceTests
         DeletionEligibleAfter: null,
         UnsubscribedFromCampaigns: false,
         SuppressScheduleChangeEmails: false,
-        MagicLinkSentAt: null,
         ContactSource: null,
         ExternalSourceId: null,
         MergedToUserId: null,

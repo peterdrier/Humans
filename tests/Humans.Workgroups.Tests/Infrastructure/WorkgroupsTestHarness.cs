@@ -334,7 +334,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private static UserInfo UserInfoFor(
         Guid id, string burnerName, ProfileInfo? profile, string language, MembershipTier tier) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
-        null, null, null, null, null, false, false, null, null, null,
+        null, null, null, null, null, false, false, null, null,
         null, null, null, [], [], [],
         profile ?? UserFixtures.Profile(burnerName: burnerName, membershipTier: tier), []);
 
