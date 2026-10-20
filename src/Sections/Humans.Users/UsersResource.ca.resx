@@ -751,13 +751,6 @@
   <!-- ======================== -->
   <!-- Sent messages            -->
   <!-- ======================== -->
-  <data name="Outbox_AdminTitle" xml:space="preserve"><value>Correus</value></data>
-  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Torna a Administració</value></data>
-  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Torna al perfil</value></data>
-  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>Correus que el sistema ha enviat a aquest human.</value></data>
-  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>Correus que el sistema t'ha enviat (en els últims 150 dies).</value></data>
-  <data name="Outbox_Empty" xml:space="preserve"><value>No hi ha cap correu registrat.</value></data>
-  <data name="Outbox_Subject" xml:space="preserve"><value>Assumpte</value></data>
 
   <!-- ======================== -->
   <!-- Facilitated message      -->

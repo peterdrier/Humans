@@ -23,7 +23,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -62,7 +61,6 @@ internal sealed class ProfileController(
     // The tier-application copy and the generic Common_/Validation_ strings this controller
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
-    IEmailOutboxService emailOutboxService,
     IClock clock,
     IGovernanceService governanceService,
     IGovernanceWrite governanceWrite,
@@ -621,18 +619,6 @@ internal sealed class ProfileController(
         }
 
         SetError(localizer["Profile_NotAttending_UndoFailed"].Value);
-    }
-
-    [HttpGet("Me/Outbox")]
-    public async Task<IActionResult> MyOutbox()
-    {
-        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-        if (user is null)
-            return NotFound();
-
-        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id, HttpContext.RequestAborted);
-
-        return View("Outbox", messages);
     }
 
     [HttpGet("Me/Privacy")]

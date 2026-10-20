@@ -101,7 +101,7 @@ Human management is now on `UsersAdminController` under `/Users/Admin`, accessib
 |-------|--------|-------|
 | `/Users/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
 | `/Users/Admin/{id}` | AdminDetail | HumanAdmin, Board, Admin — member detail |
-| `/Users/Admin/{id}/Outbox` | AdminOutbox | HumanAdmin, Board, Admin — view email outbox |
+| `/Users/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | HumanAdmin, Board, Admin — view email outbox |
 | `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Reject` | RejectSignup | POST: HumanAdmin, Board, Admin |

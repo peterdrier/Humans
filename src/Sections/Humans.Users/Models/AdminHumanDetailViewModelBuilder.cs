@@ -15,7 +15,6 @@ internal static class AdminHumanDetailViewModelBuilder
         int consentCount,
         IReadOnlyList<RoleAssignmentSummarySnapshot> roleAssignments,
         IReadOnlyDictionary<Guid, string> roleCreatorNamesByUserId,
-        int outboxCount,
         Instant now,
         string? rejectedByName)
     {
@@ -49,7 +48,6 @@ internal static class AdminHumanDetailViewModelBuilder
             RejectedByName = rejectedByName,
             ApplicationCount = applications.Count,
             ConsentCount = consentCount,
-            OutboxCount = outboxCount,
             Applications = applications
                 .OrderByDescending(a => a.SubmittedAt)
                 .Take(5)

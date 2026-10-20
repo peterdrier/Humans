@@ -56,7 +56,6 @@ internal sealed class AdminHumanDetailViewModel
 
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
-    public int OutboxCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];

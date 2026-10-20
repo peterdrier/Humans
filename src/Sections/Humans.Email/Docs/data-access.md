@@ -21,6 +21,8 @@ pause flag).
 | EmailDailySendCounts | R/W (dashboard reads; backfill inserts — never overwrites, #1195) |
 | system_settings | R/W (key `IsEmailSendingPaused`, **via `ISettingsService`** — the Settings section owns the table) |
 
+The per-user reads (`GetMessagesForUserAsync`, `GetMessageCountForUserAsync`) touch `EmailOutboxMessages` only; their callers are `MemberOutboxController` and `OutboxCardViewComponent`, both in this section.
+
 `IsEmailPausedAsync` / `SetEmailPausedAsync` read/write the
 `IsEmailSendingPaused` key through `ISettingsService`. Cross-section
 calls via `ISettingsService` and `IAuditLogService` (admin retry, discard, pause and resume after save), plus `IClock`. No `IMemoryCache`.

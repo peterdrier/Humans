@@ -57,4 +57,12 @@
   <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Prova] {0}</value></data>
   <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Prova] Previsualització del correu</value></data>
   <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Deixar de rebre aquests correus</value></data>
+  <data name="Email_Outbox_AdminTitle" xml:space="preserve"><value>Correus</value></data>
+  <data name="Email_Outbox_BackToAdmin" xml:space="preserve"><value>Torna a Administració</value></data>
+  <data name="Email_Outbox_BackToProfile" xml:space="preserve"><value>Torna al perfil</value></data>
+  <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>Correus que el sistema ha enviat a aquest human.</value></data>
+  <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>Correus que el sistema t'ha enviat (en els últims 150 dies).</value></data>
+  <data name="Email_Outbox_Empty" xml:space="preserve"><value>No hi ha cap correu registrat.</value></data>
+  <data name="Email_Outbox_Subject" xml:space="preserve"><value>Assumpte</value></data>
+  <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Els meus correus</value></data>
 </root>

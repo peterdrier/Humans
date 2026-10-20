@@ -2,7 +2,7 @@
 @{
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;
-    ViewData["Title"] = isAdminView ? Localizer["Outbox_AdminTitle"].Value : Localizer["Profile_MyEmails"].Value;
+    ViewData["Title"] = isAdminView ? Localizer["Email_Outbox_AdminTitle"].Value : Localizer["Email_Outbox_MyTitle"].Value;
 }
 
 <div class="row">
@@ -12,25 +12,25 @@
             @if (isAdminView)
             {
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@humanId.Value" class="btn btn-outline-secondary btn-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Outbox_BackToAdmin"]
+                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Email_Outbox_BackToAdmin"]
                 </a>
             }
             else
             {
-                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Outbox_BackToProfile"]
+                <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Email_Outbox_BackToProfile"]
                 </a>
             }
         </div>
 
 
         <p class="text-muted">
-            @(isAdminView ? Localizer["Outbox_DescriptionAdmin"].Value : Localizer["Outbox_DescriptionSelf"].Value)
+            @(isAdminView ? Localizer["Email_Outbox_DescriptionAdmin"].Value : Localizer["Email_Outbox_DescriptionSelf"].Value)
         </p>
 
         @if (!Model.Any())
         {
-            <div class="text-muted text-center py-5">@Localizer["Outbox_Empty"]</div>
+            <div class="text-muted text-center py-5">@Localizer["Email_Outbox_Empty"]</div>
         }
         else
         {
@@ -39,7 +39,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>@Localizer["Outbox_Subject"]</th>
+                                <th>@Localizer["Email_Outbox_Subject"]</th>
                                 <th>@SharedLocalizer["Common_Status"]</th>
                                 <th>@SharedLocalizer["Common_Date"]</th>
                             </tr>

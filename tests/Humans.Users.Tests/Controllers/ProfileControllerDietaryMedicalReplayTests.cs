@@ -98,7 +98,6 @@ public class ProfileControllerDietaryMedicalReplayTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             Substitute.For<IGovernanceService>(),
             Substitute.For<IGovernanceWrite>(),

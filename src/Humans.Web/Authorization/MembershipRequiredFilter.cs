@@ -47,7 +47,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         ("Profile", "Edit"),
         ("Profile", "DeclareNotAttending"),
         ("Profile", "UndoNotAttending"),
-        ("Profile", "MyOutbox"),
+        ("MemberOutbox", "MyOutbox"),
         ("Profile", "Privacy"),
         ("Profile", "RequestDeletion"),
         ("Profile", "DietaryMedical"),

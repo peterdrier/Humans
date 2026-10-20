@@ -63,7 +63,6 @@ public class UsersAdminControllerPurgeTests
         var c = new UsersAdminController(
             _userService,
             _userEmails,
-            Substitute.For<IEmailOutboxService>(),
             _roleAssignments,
             Substitute.For<IRoleAssignmentWrite>(),
             Substitute.For<IGovernanceService>(),

@@ -57,4 +57,12 @@
   <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Test] {0}</value></data>
   <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Test] E-Mail-Vorschau</value></data>
   <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Diese E-Mails abbestellen</value></data>
+  <data name="Email_Outbox_AdminTitle" xml:space="preserve"><value>E-Mails</value></data>
+  <data name="Email_Outbox_BackToAdmin" xml:space="preserve"><value>Zurück zur Administration</value></data>
+  <data name="Email_Outbox_BackToProfile" xml:space="preserve"><value>Zurück zum Profil</value></data>
+  <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>E-Mails, die das System an diesen Human gesendet hat.</value></data>
+  <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>E-Mails, die das System an dich gesendet hat (innerhalb der letzten 150 Tage).</value></data>
+  <data name="Email_Outbox_Empty" xml:space="preserve"><value>Keine E-Mails vorhanden.</value></data>
+  <data name="Email_Outbox_Subject" xml:space="preserve"><value>Betreff</value></data>
+  <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Meine E-Mails</value></data>
 </root>

@@ -37,6 +37,13 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
+    // MemberOutboxController is internal to Humans.Email and serves /Profile/Me/Outbox.
+    private static readonly Type MemberOutboxControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Email.Controllers.MemberOutboxController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Email.Controllers.MemberOutboxController not found in any section assembly.");
     private static readonly Type UserControllerType = typeof(ProfileController).Assembly
         .GetType("Humans.Users.Controllers.UserController", throwOnError: true)!;
     [HumansFact]
@@ -136,7 +143,7 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.Edit)),
             (typeof(ProfileController), nameof(ProfileController.DeclareNotAttending)),
             (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
-            (typeof(ProfileController), nameof(ProfileController.MyOutbox)),
+            (MemberOutboxControllerType, "MyOutbox"),
             (typeof(ProfileController), nameof(ProfileController.Privacy)),
             (typeof(ProfileController), nameof(ProfileController.DietaryMedical)),
             (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
@@ -179,7 +186,7 @@ public class MembershipRequiredFilterTests
         foreach (var type in new[]
         {
             typeof(ProfileController), typeof(ProfileEmailsController),
-            OnboardingWidgetControllerType, UserControllerType,
+            OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type

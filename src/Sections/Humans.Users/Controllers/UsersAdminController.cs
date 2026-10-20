@@ -5,7 +5,6 @@ using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
-using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
@@ -25,7 +24,6 @@ namespace Humans.Users.Controllers;
 internal sealed class UsersAdminController(
     IUserManagement userService,
     IUserEmailService userEmailService,
-    IEmailOutboxService emailOutboxService,
     IRoleAssignmentService roleAssignmentService,
     IRoleAssignmentWrite roleAssignmentWrite,
     IGovernanceService applicationDecisionService,
@@ -140,7 +138,6 @@ internal sealed class UsersAdminController(
         var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
                 roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
-        var outboxCount = await emailOutboxService.GetMessageCountForUserAsync(id, ct);
 
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
             ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
@@ -153,20 +150,10 @@ internal sealed class UsersAdminController(
             consentCount,
             roleAssignments,
             roleCreatorNamesByUserId,
-            outboxCount,
             clock.GetCurrentInstant(),
             rejectedByName);
 
         return View(viewModel);
-    }
-
-    [HttpGet("{id:guid}/Outbox")]
-    public async Task<IActionResult> AdminOutbox(Guid id, CancellationToken ct)
-    {
-        var messages = await emailOutboxService.GetMessagesForUserAsync(id, ct);
-
-        ViewBag.HumanId = id;
-        return View("~/Views/Profile/Outbox.cshtml", messages);
     }
 
     [HttpPost("{id:guid}/Suspend")]

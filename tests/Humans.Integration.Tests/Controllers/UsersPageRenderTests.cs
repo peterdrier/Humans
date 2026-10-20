@@ -68,7 +68,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     private static readonly string[] ProfilePrefixes =
     [
         "Profile_", "ProfileEdit_", "ProfilePrivacy_", "ProfileCard_", "CommPrefs_",
-        "Emails_", "EmailGrid_", "Outbox_", "LinkedAccounts_", "VerifyEmail_",
+        "Emails_", "EmailGrid_", "Email_Outbox_", "LinkedAccounts_", "VerifyEmail_",
         "SendMessage_", "Users_Unsubscribe_", "AccountStatus_", "AccountDeletion_",
         "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
         "AdminAddRole_", "AdminRoles_", "Enum_",
@@ -83,7 +83,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Privacy", "My Data"),                                  // ProfilePrivacy_Title
         ("/Profile/Me/DietaryMedical", "Dietary"),                           // Profile_DietaryMedical_PageTitle
         ("/Profile/Me/CommunicationPreferences", "Communication Preferences"),// CommPrefs_Title
-        ("/Profile/Me/Outbox", "My Emails"),                                 // Profile_MyEmails
+        ("/Profile/Me/Outbox", "My Emails"),                                 // Email_Outbox_MyTitle (served by Email)
     ];
 
     [HumansFact(Timeout = 180000)]

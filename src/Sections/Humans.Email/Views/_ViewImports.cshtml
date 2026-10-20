@@ -12,5 +12,11 @@
 @using Humans.Base
 @using Humans.Base.Models
 @using Humans.Base.Models.Tables
+@using Microsoft.Extensions.Localization
+@* EmailResource for the section's own copy; SharedLocalizer for Common_ and the
+   Enum_EmailOutboxStatus_ badge names, which stay in SharedResource (Campaigns and Surveys
+   persist that enum too). *@
+@inject IStringLocalizer<EmailResource> Localizer
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

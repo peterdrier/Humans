@@ -55,7 +55,7 @@ Every external entry point, grouped by the question it answers.
 | **Show me a message without sending it** | `IEmailPreviewService.RenderSystemMessage`; `IEmailPreviewManagement.RenderMarkdown` (internal) | Two arms of one job: a finished always-send message, and a half-typed Markdown body. The second is internal because only this section's own `EmailPreviewController` serves it. |
 | **Put my templates in the gallery** | `IEmailPreviewContributor` | The fan-out that keeps the gallery from naming other sections. Email contributes to it like anyone else. |
 | **Which templates cannot wait?** | `TimeSensitiveTemplates` | One list, read by both the immediate drain and the batch order, so they cannot disagree. |
-| **What have we sent this person?** | `IEmailOutboxService` — per-user list, per-user count (dashboard stats are internal, on `IEmailOutboxManagement`) | Consumed by Shell's profile and user-admin pages. |
+| **What have we sent this person?** | `IEmailOutboxService` — per-user list, per-user count (dashboard stats are internal, on `IEmailOutboxManagement`) | Consumed by Email's own member-outbox pages and admin-detail card. |
 | **Drain the queue / prune the queue** | `IEmailOutboxProcessor`, `IEmailOutboxRetention`, `IImmediateOutboxProcessor` | Job-facing. The first two have no consumer outside the section any more; Shell registers the third. |
 | **Admin operates the queue** | `IEmailOutboxManagement` (internal) behind `/Email/EmailOutbox` and the `/Settings#email` tab — pause, resume, retry, discard, volume, backfill | Section-internal; `EmailController` and the settings tab component are its only callers. |
 | **Admin reads the templates** | `/Email/EmailPreview` | Every contributor's samples, rendered in each of the six cultures. |

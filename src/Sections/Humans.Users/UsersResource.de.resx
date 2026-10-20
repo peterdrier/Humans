@@ -751,13 +751,6 @@
   <!-- ======================== -->
   <!-- Sent messages            -->
   <!-- ======================== -->
-  <data name="Outbox_AdminTitle" xml:space="preserve"><value>E-Mails</value></data>
-  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Zurück zur Administration</value></data>
-  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Zurück zum Profil</value></data>
-  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>E-Mails, die das System an diesen Human gesendet hat.</value></data>
-  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>E-Mails, die das System an dich gesendet hat (innerhalb der letzten 150 Tage).</value></data>
-  <data name="Outbox_Empty" xml:space="preserve"><value>Keine E-Mails vorhanden.</value></data>
-  <data name="Outbox_Subject" xml:space="preserve"><value>Betreff</value></data>
 
   <!-- ======================== -->
   <!-- Facilitated message      -->

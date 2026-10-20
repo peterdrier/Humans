@@ -2,7 +2,6 @@
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
-    var outboxCount = Model.OutboxCount;
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
@@ -202,7 +201,7 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Email Outbox (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
@@ -210,14 +209,6 @@
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
-        <div class="card mb-4">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-envelope me-2"></i> Email Outbox</span>
-                <a asp-action="AdminOutbox" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">
-                    View emails <span class="badge bg-secondary ms-1">@outboxCount</span>
-                </a>
-            </div>
-        </div>
     </div>
 
     <div class="col-md-4">
