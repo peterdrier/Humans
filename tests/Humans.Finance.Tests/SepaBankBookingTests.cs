@@ -60,7 +60,7 @@ public class SepaBankBookingTests
     private Service MakeService() => MakeService(NullLogger<Service>.Instance);
 
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, Substitute.For<IExpenseReportService>(), _clock, _cache, _audit,
+        _repo, _client, _budget, _holded, Substitute.For<IExpenseHoldedBookingService>(), _clock, _cache, _audit,
         Substitute.For<IUserService>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
         TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
 

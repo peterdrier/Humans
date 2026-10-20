@@ -41,7 +41,7 @@ Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`
 and the facade's logger. Owns purchase-document fetching and matching,
 `HoldedExpenseDocs` snapshot replacement and `HoldedDocSyncStates` writes. Reads the
 category map and managed-account registry; no Budget, user or email dependency.
-The existing `IHoldedFinanceWrite.SyncAsync` entry point delegates here. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseReportService`, which the sync itself never does).
+The existing `IHoldedFinanceWrite.SyncAsync` entry point delegates here. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseHoldedBookingService`, which the sync itself never does).
 
 ### Service (Scoped)
 
@@ -97,7 +97,7 @@ existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocu
 `WithdrawSepaTransferAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
 (`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw` and
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines
-through `IExpenseReportService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
+through `IExpenseHoldedBookingService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
 deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
 
 `ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire

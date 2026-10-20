@@ -37,6 +37,9 @@ public sealed class Section : ISection
         services.AddScoped<IExpenseReportManagement>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportBackgroundProcessor, ExpenseReportBackgroundProcessor>();
+        // Finance's read of what each line wrote on Holded; takes nothing from Finance, so Finance
+        // can depend on it while ExpenseReportService depends on IHoldedFinanceService.
+        services.AddScoped<IExpenseHoldedBookingService, ExpenseHoldedBookingService>();
         // Owns the user-scoped expense_reports table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpenseReportService>());
 

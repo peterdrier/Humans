@@ -50,13 +50,13 @@ public class HoldedFinanceServiceTests
     private readonly IUserService _users = NoUsers();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IExpenseReportService _expenses = NoBookings();
+    private readonly IExpenseHoldedBookingService _expenses = NoBookings();
     private readonly SepaOptions _sepa = new();
 
     /// <summary>No expense line links to a Holded document, so the duplicate check finds nothing.</summary>
-    private static IExpenseReportService NoBookings()
+    private static IExpenseHoldedBookingService NoBookings()
     {
-        var expenses = Substitute.For<IExpenseReportService>();
+        var expenses = Substitute.For<IExpenseHoldedBookingService>();
         expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         return expenses;
     }
