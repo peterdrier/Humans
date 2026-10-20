@@ -22,7 +22,6 @@ using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
@@ -63,7 +62,6 @@ internal sealed class ProfileController(
     // The tier-application copy and the generic Common_/Validation_ strings this controller
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ICampaignService campaignService,
     IEmailOutboxService emailOutboxService,
     IClock clock,
     IGovernanceService governanceService,
@@ -109,8 +107,6 @@ internal sealed class ProfileController(
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
 
-        var campaignGrants = await campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
-
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -120,7 +116,6 @@ internal sealed class ProfileController(
             IsApproved = profile?.IsApproved ?? false,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
-            CampaignGrants = campaignGrants,
             // Onsite chip — own profile, always visible. Issue
             // nobodies-collective/Humans#736.
             OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),

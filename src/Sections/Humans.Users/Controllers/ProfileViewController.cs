@@ -23,7 +23,6 @@ using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;

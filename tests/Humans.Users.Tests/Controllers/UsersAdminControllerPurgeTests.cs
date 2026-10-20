@@ -3,7 +3,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base;
-using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
@@ -69,7 +68,6 @@ public class UsersAdminControllerPurgeTests
             Substitute.For<IRoleAssignmentWrite>(),
             Substitute.For<IGovernanceService>(),
             Substitute.For<IConsentService>(),
-            Substitute.For<ICampaignService>(),
             _lifecycle,
             _onboarding,
             _audience,

@@ -1,4 +1,3 @@
-using Humans.Campaigns.Contracts;
 using Humans.Base.Models;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
@@ -57,7 +56,6 @@ internal sealed class AdminHumanDetailViewModel
 
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
-    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
     public int OutboxCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];

@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
@@ -240,8 +239,6 @@ internal sealed class ProfileViewModel
     public List<VolunteerHistoryEntryEditViewModel> EditableVolunteerHistory { get; set; } = [];
 
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
-
-    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
 
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 

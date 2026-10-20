@@ -1,9 +1,7 @@
-@using Humans.Campaigns.Contracts
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
-    var campaignGrants = Model.CampaignGrants;
     var outboxCount = Model.OutboxCount;
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
@@ -211,37 +209,6 @@
         <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
-
-        @if (campaignGrants.Any())
-        {
-            Func<CampaignGrantSummary, IHtmlContent> codeCell =
-                @<text><code>@item.Code</code></text>;
-            Func<CampaignGrantSummary, IHtmlContent> statusCell = @<text>
-                @if (item.LatestEmailStatus.HasValue)
-                {
-                    var badgeClass = item.LatestEmailStatus switch
-                    {
-                        EmailOutboxStatus.Sent => "bg-success",
-                        EmailOutboxStatus.Failed => "bg-danger",
-                        EmailOutboxStatus.Queued => "bg-warning",
-                        _ => "bg-secondary"
-                    };
-                    <span class="badge @badgeClass">@item.LatestEmailStatus</span>
-                }
-            </text>;
-            var campaignCodesTable = TableModel.For(campaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
-                .Column("Campaign", g => g.CampaignTitle)
-                .Template("Code", codeCell)
-                .Column("Assigned", g => g.AssignedAt, c => c.Date())
-                .Template("Status", statusCell)
-                .Build();
-            <div class="card mb-4">
-                <div class="card-header"><h6 class="mb-0">Campaign Codes</h6></div>
-                <div class="card-body p-0">
-                    <partial name="_Table" model="campaignCodesTable" />
-                </div>
-            </div>
-        }
 
         <div class="card mb-4">
             <div class="card-body d-flex justify-content-between align-items-center">

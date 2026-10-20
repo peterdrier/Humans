@@ -6,7 +6,6 @@ using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
@@ -99,7 +98,6 @@ public class ProfileControllerDietaryMedicalReplayTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ICampaignService>(),
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             Substitute.For<IGovernanceService>(),

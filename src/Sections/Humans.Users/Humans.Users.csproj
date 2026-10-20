@@ -60,7 +60,6 @@
     -->
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Users
       type. Note the reverse direction is sanctioned and

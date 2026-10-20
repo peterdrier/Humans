@@ -232,9 +232,6 @@
   <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations alimentaires et médicales.</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Problèmes de santé</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
-  <data name="Profile_Assigned" xml:space="preserve"><value>Attribué</value></data>
-  <data name="Profile_Campaign" xml:space="preserve"><value>Campagne</value></data>
-  <data name="Profile_Code" xml:space="preserve"><value>Code</value></data>
   <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Produits laitiers</value></data>
   <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Œuf</value></data>
   <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Arachide</value></data>
@@ -248,13 +245,11 @@
   <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Profile_MarkedAt" xml:space="preserve"><value>Marqué le</value></data>
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Marqué par</value></data>
-  <data name="Profile_MyCodes" xml:space="preserve"><value>Mes codes</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>Mes e-mails</value></data>
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>Aucun message enregistré sur la plateforme.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>Historique des absences ({0})</value></data>
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Sur place depuis {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Enregistré à l'entrée</value></data>
-  <data name="Profile_Redeemed" xml:space="preserve"><value>Utilisé</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Messages envoyés</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Infos du quart</value></data>
 

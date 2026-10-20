@@ -7,7 +7,6 @@ using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;

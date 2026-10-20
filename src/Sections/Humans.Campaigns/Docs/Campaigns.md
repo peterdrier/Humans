@@ -116,7 +116,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 - TicketAdmin **cannot** create, edit, activate, or complete campaigns. They can only view details and generate codes.
 - Regular humans and other roles have no access to campaign management.
-- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`); no human can see another human's grants outside the admin views.
+- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
+- The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `HumanAdminBoardOrAdmin`, the same policy as the host page; any other viewer or audience gets nothing.
 
 ## Triggers
 
@@ -154,7 +155,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets), `GetActiveOrCompletedGrantsForUserAsync` (Users `ProfileController`), `GetAllGrantsForUserAsync` (Users admin). DTOs only. |
+| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
 | `ICampaignWrite` | 2 | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes), `UpdateGrantEmailStatusAsync` (Email outbox records delivery state). Unavoidable: both are driven by another section's job. |
 
 `CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending, resend and retry are not public: the section's controller injects the concrete service.
@@ -165,6 +166,17 @@ email template is copied into audit. Refused mutations emit no success entry.
 - **Cross-section reads** route through `ITeamService.GetTeamsAsync` / `GetTeamAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
 - **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`.
 - **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`).
+
+### User parts
+
+`SectionUserParts` (`IUserPart`) contributes two cards to Users' pages; Users names neither:
+
+| Slot | Component | Audience |
+|---|---|---|
+| `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all six cultures) | Own profile only |
+| `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `HumanAdminBoardOrAdmin` |
+
+Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
 
 ### Touch-and-clean guidance
 

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
@@ -31,7 +30,6 @@ internal sealed class UsersAdminController(
     IRoleAssignmentWrite roleAssignmentWrite,
     IGovernanceService applicationDecisionService,
     IConsentService consentService,
-    ICampaignService campaignService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IUsersAudienceService audienceService,
@@ -142,7 +140,6 @@ internal sealed class UsersAdminController(
         var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
                 roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
-        var campaignGrants = await campaignService.GetAllGrantsForUserAsync(id, ct);
         var outboxCount = await emailOutboxService.GetMessageCountForUserAsync(id, ct);
 
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
@@ -156,7 +153,6 @@ internal sealed class UsersAdminController(
             consentCount,
             roleAssignments,
             roleCreatorNamesByUserId,
-            campaignGrants,
             outboxCount,
             clock.GetCurrentInstant(),
             rejectedByName);

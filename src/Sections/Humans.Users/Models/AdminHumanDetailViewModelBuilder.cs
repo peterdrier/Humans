@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
-using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -16,7 +15,6 @@ internal static class AdminHumanDetailViewModelBuilder
         int consentCount,
         IReadOnlyList<RoleAssignmentSummarySnapshot> roleAssignments,
         IReadOnlyDictionary<Guid, string> roleCreatorNamesByUserId,
-        IReadOnlyList<CampaignGrantSummary> campaignGrants,
         int outboxCount,
         Instant now,
         string? rejectedByName)
@@ -26,7 +24,6 @@ internal static class AdminHumanDetailViewModelBuilder
         ArgumentNullException.ThrowIfNull(userEmails);
         ArgumentNullException.ThrowIfNull(roleAssignments);
         ArgumentNullException.ThrowIfNull(roleCreatorNamesByUserId);
-        ArgumentNullException.ThrowIfNull(campaignGrants);
 
         var profile = info.Profile;
 
@@ -52,7 +49,6 @@ internal static class AdminHumanDetailViewModelBuilder
             RejectedByName = rejectedByName,
             ApplicationCount = applications.Count,
             ConsentCount = consentCount,
-            CampaignGrants = campaignGrants,
             OutboxCount = outboxCount,
             Applications = applications
                 .OrderByDescending(a => a.SubmittedAt)

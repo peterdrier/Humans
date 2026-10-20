@@ -66,7 +66,7 @@ Pages:
 
 ## Self-Service Code Lookup
 
-Humans can view their campaign codes on their profile page. The profile page shows a "My Codes" section listing all `CampaignGrant` records for the current user, including the campaign title and the code value.
+Humans can view their campaign codes on their profile page. The profile page shows a "My Codes" card (Campaigns' `MyCodesViewComponent`, contributed to the profile user-part slot) listing the current user's grants from Active or Completed campaigns, with the campaign title, code, assigned date and redeemed state. Admins see every grant on `/Users/Admin/{id}` in the "Campaign Codes" card (`CampaignCodesViewComponent`).
 
 ## Authorization
 

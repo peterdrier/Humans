@@ -232,9 +232,6 @@
   <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació alimentària i mèdica.</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Afeccions mèdiques</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
-  <data name="Profile_Assigned" xml:space="preserve"><value>Assignat</value></data>
-  <data name="Profile_Campaign" xml:space="preserve"><value>Campanya</value></data>
-  <data name="Profile_Code" xml:space="preserve"><value>Codi</value></data>
   <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Lactis</value></data>
   <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Ou</value></data>
   <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Cacauet</value></data>
@@ -248,13 +245,11 @@
   <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>
   <data name="Profile_MarkedAt" xml:space="preserve"><value>Marcat el</value></data>
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Marcat per</value></data>
-  <data name="Profile_MyCodes" xml:space="preserve"><value>Els meus codis</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>Els meus correus</value></data>
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>No hi ha cap missatge dins la plataforma registrat.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>Historial d'absències ({0})</value></data>
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Al recinte des de {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in fet a la porta</value></data>
-  <data name="Profile_Redeemed" xml:space="preserve"><value>Bescanviat</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Missatges enviats</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Informació del torn</value></data>
 

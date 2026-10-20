@@ -135,37 +135,6 @@
                           title="@Localizer["Profile_SentMessages"].Value"
                           empty-text="@Localizer["Profile_NoSentMessages"].Value" />
         }
-
-        @if (Model.IsOwnProfile && Model.CampaignGrants.Any())
-        {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">@Localizer["Profile_MyCodes"]</h5>
-                </div>
-                <div class="card-body p-0">
-                    @{
-                        Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> redeemedCell =
-                            @<text>
-                                @if (item.RedeemedAt.HasValue)
-                                {
-                                    <span class="badge bg-success">@item.RedeemedAt.Value.ToDate()</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">&mdash;</span>
-                                }
-                            </text>;
-                        var grantsTable = TableModel.For(Model.CampaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
-                            .Column(Localizer["Profile_Campaign"].Value, g => g.CampaignTitle)
-                            .Column(Localizer["Profile_Code"].Value, g => g.Code)
-                            .Column(Localizer["Profile_Assigned"].Value, g => g.AssignedAt, c => c.Date())
-                            .Template(Localizer["Profile_Redeemed"].Value, redeemedCell)
-                            .Build();
-                    }
-                    <partial name="_Table" model="grantsTable" />
-                </div>
-            </div>
-        }
     </div>
 
     @if (Model.IsOwnProfile)
