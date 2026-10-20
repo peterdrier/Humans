@@ -81,12 +81,10 @@ Written fresh from the shapes above, not from today's tree.
   discards.
 - **Sign-in is nearly an orchestrator.** `MagicLinkService` owns no table. Token minting and URL
   shape sit behind one collaborator; replay and cooldown state behind another. It names no
-  `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`. One thing disqualifies it today:
-  `SendLoginLinkAsync` stamps `user.MagicLinkSentAt` and persists it with `UserManager.UpdateAsync`
-  — a write into Users' table from Auth, not through a Users interface. That is debt (AUTH-2), not
-  the target: the per-user cooldown is already reserved in `IMagicLinkRateLimiter`, so the
-  persistent stamp's remaining job is to survive a restart, and it belongs behind a Users write
-  method if it stays.
+  `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`, and since 2026-10-20 it writes
+  nothing: the `MagicLinkSentAt` stamp that used to persist the cooldown through
+  `UserManager.UpdateAsync` is gone (AUTH-2, Peter chose to drop restart survival), so
+  `UserManager<User>` is lookup-only here.
 - **The section ships no controller and no view.** Its only resx is `AuthResource`, the copy of
   the two sign-in emails it sends. `AccountController` and
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
@@ -194,10 +192,9 @@ Settled decisions that read as smells. Stop re-litigating these.
   identical to `GetByIdAsync`'s; the two names say which caller mutates, so they stay two.
 - **`IRoleAssignmentCacheInvalidator` carries `[Grandfathered]` HUM0028.** Known debt with an
   issue; not a pattern to copy and not today's cleanup.
-- **`MagicLinkService` stamps `MagicLinkSentAt` after the send, not before.** A failed send
-  must not consume the user's cooldown. The login cooldown is checked twice — the persistent
-  stamp, then the in-memory reservation: the reservation closes the overlapping-request race,
-  the stamp is what survives a restart.
+- **`MagicLinkService` releases the cooldown reservation on a failed send.** A failed send
+  must not consume the user's cooldown. The login cooldown is the in-memory reservation alone;
+  it closes the overlapping-request race and is deliberately not persisted.
 - **Auth is a horizontal that references vertical *leaves*.** Legal since Peter's Base-floor
   decision of 2026-08-14. The `[DontFix]` on `RoleAssignmentService` records the remaining
   inversion as a Peter-led item, not a bug to fix in passing.
