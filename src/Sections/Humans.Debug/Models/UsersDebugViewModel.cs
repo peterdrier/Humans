@@ -1,7 +1,7 @@
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Users.Models;
+namespace Humans.Debug.Models;
 
 internal sealed record UsersDebugViewModel(
     IReadOnlyList<UserDebugRow> Rows,

@@ -40,6 +40,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/Translations` | GET | Admin | Localisation string reference gallery |
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
+| `/Users/Admin/Debug` | GET | Admin | All-users debug grid (`UsersDebugController`; URL kept from when Users owned it): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
 | `/Debug/DataMigrations` | GET | Admin | Every registered data migration: section, key, title, what it retires, pending count and every pending row |
 | `/Debug/DataMigrations/Apply` | POST | Admin | Run one migration (`key`) for the acting admin; `data-confirm`, antiforgery, audited `DataMigrationApplied` |
 | `/api/data-migrations` | GET | Anonymous | Data-migration progress JSON — keys, pending counts, done flags; never row data |
@@ -94,6 +95,8 @@ The single screen and status endpoint for every section's legacy → new copy, a
 Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
 
 `/Debug/DataMigrations` and `/api/data-migrations` compose every section's `ISectionDataMigrations` contribution and audit through `IAuditLogService`; they name no section.
+
+The all-users grid reads `IUserService.GetAllRawUserInfosAsync` and the `UserInfo` projection only.
 
 The widget gallery and the dashboard card read other sections through their contracts: `ITeamService`, `ICampService`, `IShiftManagementService`, `IEventService`, `IUserService`, `IShiftView`, and `ISettingsService` (Settings' supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`. `MemberTermStatus` (Governance), `MyGoogleResources` (GoogleIntegration) and `NotificationBell` (Notifications) get no gallery card at all — they already render on the page through the member-dashboard and header-right chrome-slot demos, and a `WidgetGallery` contribution would only duplicate them.
 

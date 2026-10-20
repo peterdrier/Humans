@@ -31,7 +31,7 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
-| **Admin views** | list / detail / roles roster / audience / debug grid / merges | `UsersAdminController`, `UsersAdminAccountMergesController`, `UsersAdminDebugController` |
+| **Admin views** | list / detail / roles roster / audience / merges | `UsersAdminController`, `UsersAdminAccountMergesController` |
 
 Recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
 

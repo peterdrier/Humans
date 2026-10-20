@@ -1,4 +1,4 @@
-using Humans.Users.Models;
+using Humans.Debug.Models;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
@@ -6,21 +6,20 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
-namespace Humans.Users.Controllers;
+namespace Humans.Debug.Controllers;
 
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
 // (tombstones included: this is the cache diagnostic, it shows what is in the cache), no secondary queries.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-internal sealed class UsersAdminDebugController(IUserManagement userService) : HumansControllerBase(userService)
+internal sealed class UsersDebugController(IUserService userService) : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
     private const int DefaultPageSize = 25;
 
-    private readonly IUserManagement _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(int page = 1, int pageSize = DefaultPageSize,

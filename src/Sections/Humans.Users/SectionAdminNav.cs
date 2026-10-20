@@ -4,7 +4,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Users;
 
 /// <summary>
-/// Users' admin sidebar group: member admin, then the debug list. Auth adds the role roster
+/// Users' admin sidebar group: member admin, merges, email problems and audience. Auth adds the role roster
 /// (Weight 10) to the same group. Users' data migrations run from <c>/Debug/DataMigrations</c>
 /// (<see cref="SectionDataMigrations"/>).
 /// </summary>
@@ -18,8 +18,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             new("Email problems", "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly, Weight: 40),
             // Read-only member-base segmentation stats (accounts × ticket × profile),
             // not a messaging tool.
-            new("Audience segmentation", "UsersAdmin", "Audience", null, null, "fa-solid fa-chart-pie", PolicyNames.AdminOnly, Weight: 50),
-            new("All users (debug)", "UsersAdminDebug", "Index", null, null, "fa-solid fa-bug-slash", PolicyNames.AdminOnly, Weight: 60)
+            new("Audience segmentation", "UsersAdmin", "Audience", null, null, "fa-solid fa-chart-pie", PolicyNames.AdminOnly, Weight: 50)
         ])
     ];
 }

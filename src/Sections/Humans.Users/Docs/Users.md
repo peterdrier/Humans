@@ -149,7 +149,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Routing
 
-The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, messaging, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `UserController` (`/User/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `UsersAdminDebugController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`SectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
+The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, messaging, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `UserController` (`/User/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`SectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
 
 Authentication routes are served by `AccountController`, which lives in `Humans.Web/Controllers/` (the Shell) but dispatches into this section's services (`ExternalLoginService`, `IMagicLinkService`, `AccountProvisioningService`):
 
@@ -648,7 +648,7 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 | `/Users/Admin/AccountMerges` | Unified account-merge queue — pending merge requests **and** detected duplicate pairs (`UsersAdminAccountMergesController`, `AdminOnly` — see [Part 1 — Users / Identity](#part-1--users--identity)). Admin picks the survivor; the other account is folded in and tombstoned. |
 | `/Users/Admin/AccountMerges/Merge` | POST — merge a detected duplicate pair (no request row) |
 | `/Users/Admin/AccountMerges/{requestId}/Merge`, `/Dismiss`, `/Close` | POST — accept a pending request with the chosen survivor / dismiss it (`Rejected`) / close a request whose accounts are already merged |
-| `/Users/Admin/Debug` | Pages below one become one; large offsets cannot overflow back into earlier rows. Flat paginated/sortable table of every user, every column derived from the cached `UserInfo` snapshot — no secondary queries (`UsersAdminDebugController`, `AdminOnly`) |
+| `/Users/Admin/Debug` | Served by Debug's `UsersDebugController` (URL kept); the all-users debug grid reads `IUserService.GetAllRawUserInfosAsync`. See `Debug.md` |
 | `/Profile/Admin/EmailProblems` | List UserEmail invariant violations across all accounts (`ProfileAdminController`, `AdminOnly`) |
 | `/Profile/Admin/EmailProblems/DeleteOrphanEmail` | POST — delete a single orphan UserEmail row |
 
