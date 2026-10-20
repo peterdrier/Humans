@@ -73,7 +73,7 @@ internal sealed class ProfileEmailsController(
         if (user is null)
             return NotFound();
 
-        var viewModel = await BuildEmailsViewModelAsync(user);
+        var viewModel = await BuildEmailsViewModelAsync(user, ct: HttpContext.RequestAborted);
         return View(viewModel);
     }
 

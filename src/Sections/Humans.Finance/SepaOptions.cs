@@ -1,3 +1,5 @@
+using Humans.Finance.Models;
+
 namespace Humans.Finance;
 
 /// <summary>
@@ -36,4 +38,21 @@ internal sealed class SepaOptions
     /// purchase documents do not cover. Never inferred, for the same reason. Unset means
     /// <c>/Finance/Sepa</c> says so instead of offering Book buttons.</summary>
     public int? TreasuryLedgerAccount { get; set; }
+
+    /// <summary>Checks the configured debtor identity before generation or bank booking is offered.</summary>
+    public SepaPayoutSettings GetPayoutSettings()
+    {
+        // Never inferred: a file presented under a guessed name, account or presenter id is rejected
+        // by the bank at best, and paid out of the wrong account at worst.
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(CreditorName)) missing.Add("Sepa:CreditorName");
+        if (string.IsNullOrWhiteSpace(CreditorIban)) missing.Add("Sepa:CreditorIban");
+        if (string.IsNullOrWhiteSpace(CreditorIdentifier)) missing.Add("Sepa:CreditorIdentifier");
+
+        return new SepaPayoutSettings(
+            MaxPayoutPerTransfer,
+            missing.Count == 0
+                ? null
+                : $"SEPA payout is unavailable — not configured: {string.Join(", ", missing)}.");
+    }
 }

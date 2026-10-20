@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Base.Attributes;
 
 namespace Humans.Store.Models;
@@ -19,9 +20,11 @@ internal sealed class ProductInputModel
     [MarkdownContent]
     public string Description { get; set; } = string.Empty;
 
+    [BindRequired]
     [Range(0.0, 1_000_000.0)]
     public decimal UnitPriceEur { get; set; }
 
+    [BindRequired]
     [Range(0.0, 100.0)]
     public decimal VatRatePercent { get; set; }
 
@@ -36,5 +39,6 @@ internal sealed class ProductInputModel
     [RegularExpression(@"^\d{4}-\d{2}-\d{2}$", ErrorMessage = "Use YYYY-MM-DD format")]
     public string OrderableUntil { get; set; } = string.Empty;
 
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 }

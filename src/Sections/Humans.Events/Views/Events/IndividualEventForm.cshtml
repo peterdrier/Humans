@@ -33,7 +33,7 @@
               asp-controller="Events"
               asp-action="@(isEdit ? "Update" : "Create")"
               asp-route-eventId="@Model.Id">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div asp-validation-summary="All" class="text-danger"></div>
 
             <div class="mb-3">
                 <label asp-for="Title" class="form-label">@Localizer["Events_Submission_FieldTitle"]</label>

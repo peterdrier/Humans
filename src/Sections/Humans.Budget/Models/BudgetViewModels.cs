@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Teams.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
@@ -28,12 +29,19 @@ internal sealed class TicketingProjectionUpdateForm
 {
     public DateTime? StartDate { get; init; }
     public DateTime? EventDate { get; init; }
+    [BindRequired]
     public int InitialSalesCount { get; init; }
+    [BindRequired]
     public decimal DailySalesRate { get; init; }
+    [BindRequired]
     public decimal AverageTicketPrice { get; init; }
+    [BindRequired]
     public int VatRate { get; init; }
+    [BindRequired]
     public decimal StripeFeePercent { get; init; }
+    [BindRequired]
     public decimal StripeFeeFixed { get; init; }
+    [BindRequired]
     public decimal TicketTailorFeePercent { get; init; }
     public Guid BudgetYearId { get; init; }
 }

@@ -484,4 +484,5 @@
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Select days within the event calendar.</value></data>
   <data name="Dashboard_OffSeasonTitle" xml:space="preserve"><value>Season wrapped</value></data>
   <data name="Dashboard_OffSeasonBody" xml:space="preserve"><value>Thanks for this year. Shifts open again when the Board publishes the next event.</value></data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Reasons cannot exceed 1,000 characters.</value></data>
 </root>

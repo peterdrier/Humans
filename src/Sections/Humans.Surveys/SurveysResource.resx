@@ -262,6 +262,9 @@
   <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excluding unavailable options changes the official winner.</value></data>
   <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Sensitivity analysis — current available options</value></data>
   <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Method</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (official)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Condorcet check</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Borda Count</value></data>
   <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Winner</value></data>
   <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>No unique winner</value></data>
@@ -383,4 +386,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>An Asociado vote cannot be edited after it has opened.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Could not save the survey. Please try again.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Option values must be {0} characters or fewer.</value></data>
 </root>

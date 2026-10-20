@@ -20,26 +20,26 @@ public interface IBudgetService : IApplicationService
     /// The active budget year with its full group → category → line item projection,
     /// or null when no year is active.
     /// </summary>
-    Task<BudgetYearDetail?> GetActiveYearAsync();
+    Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default);
 
     /// <summary>
     /// One budget year by id, same projection as <see cref="GetActiveYearAsync"/>. Expenses
     /// reads this to offer the categories of the year a pending report is already booked to,
     /// which is not always the active one.
     /// </summary>
-    Task<BudgetYearDetail?> GetYearByIdAsync(Guid id);
+    Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// One budget category with its group, year and line items. Expenses reads this to
     /// resolve the category an expense report is booked against.
     /// </summary>
-    Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id);
+    Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// The team ids the user coordinates a budget for, including teams inherited through
     /// the team hierarchy.
     /// </summary>
-    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId);
+    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Income/expense totals and categorical breakdowns for an already-loaded set of

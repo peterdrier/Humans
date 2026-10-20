@@ -27,6 +27,78 @@ public sealed class ExpensesControllerTests
     private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
 
     [HumansTheory]
+    [Xunit.InlineData("Iban", true)]
+    [Xunit.InlineData("Iban", false)]
+    [Xunit.InlineData("LineEdit", true)]
+    [Xunit.InlineData("LineEdit", false)]
+    [Xunit.InlineData("LineProofs", true)]
+    [Xunit.InlineData("LineProofs", false)]
+    public async Task Historical_report_owner_pages_follow_the_merge_chain(string page, bool isMergedSubmitter)
+    {
+        var actorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var lineId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])
+            with
+        { MergedUserIds = [isMergedSubmitter ? sourceId : Guid.NewGuid()] };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(user);
+        users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(user);
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
+        {
+            Id = reportId,
+            SubmitterUserId = sourceId,
+            Status = ExpenseReportStatus.Approved,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            PayeeName = "Historical name",
+            PayeeIban = "",
+            Total = 10m,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = [new ExpenseLineDto
+            {
+                Id = lineId, ExpenseReportId = reportId, Description = "Invoice", Amount = 10m,
+                LineType = ExpenseLineType.Invoice, SortOrder = 0
+            }]
+        });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
+            TestClock, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = page switch
+        {
+            "Iban" => await controller.Iban(reportId),
+            "LineEdit" => await controller.LineEdit(reportId, lineId),
+            _ => await controller.LineProofs(reportId, lineId)
+        };
+
+        if (isMergedSubmitter)
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model;
+            if (model is ExpenseLineEditViewModel line) line.CanEditLines.Should().BeFalse();
+            if (model is ExpenseLineProofsViewModel proofs) proofs.CanEditLines.Should().BeFalse();
+            if (model is ExpenseIbanViewModel iban) iban.MemberName.Should().BeNull();
+        }
+        else
+            result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Detail", "View")]
     [Xunit.InlineData("EditGet", "Edit")]
     [Xunit.InlineData("EditPost", "Edit")]
@@ -146,7 +218,7 @@ public sealed class ExpensesControllerTests
         reports.GetAsync(reportId).Returns(report);
         reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
-            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>());
+            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), users);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), report,
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -277,7 +349,7 @@ public sealed class ExpensesControllerTests
             Lines = []
         }]);
         var budget = Substitute.For<IBudgetService>();
-        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var context = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -297,6 +369,69 @@ public sealed class ExpensesControllerTests
         result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpensesIndexViewModel>()
             .Which.IsCoordinator.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Index_LabelsLegacyReportsFromTheirBookedYear()
+    {
+        var actorId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        var first = new ExpenseReportDto
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = actorId,
+            BudgetYearId = yearId,
+            BudgetCategoryId = categoryId,
+            HoldedAccountNumber = 0,
+            Status = ExpenseReportStatus.Approved,
+            PayeeName = "Submitter",
+            PayeeIban = "",
+            Total = 10,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = []
+        };
+        var second = first with { Id = Guid.NewGuid() };
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetForSubmitterAsync(actorId, Arg.Any<CancellationToken>()).Returns([first, second]);
+        reports.GetCoordinatorQueueAsync(actorId, Arg.Any<CancellationToken>()).Returns([]);
+        var budget = Substitute.For<IBudgetService>();
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "Current", BudgetYearStatus.Active, false, []));
+        budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
+            [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
+                [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
+        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        using var request = new CancellationTokenSource();
+        var context = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(users, reports, budget,
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(),
+            Substitute.For<IAuthorizationService>(), TestClock,
+            NullLogger<ExpensesController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Index();
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ExpensesIndexViewModel>().Which;
+        model.BookingLabels[first.Id].Should().Be("Old group / Old category");
+        model.BookingLabels[second.Id].Should().Be("Old group / Old category");
+        await budget.Received(1).GetYearByIdAsync(yearId, context.RequestAborted);
+        await budget.Received(1).GetEffectiveCoordinatorTeamIdsAsync(actorId, context.RequestAborted);
     }
 
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>

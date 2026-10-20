@@ -144,6 +144,7 @@ nobodies-collective/Humans#933.)
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
+- Decision requests require an explicit ID confirmation (`true` or `false`); malformed input or a missing confirmation returns 400 before PIN checks or scan writes.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
 - `scannedByUserId` is server-derived from the authenticated principal (the gate account); an

@@ -1,3 +1,10 @@
+using Humans.Tickets.Models;
+using Humans.Tickets.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using Xunit;
 using Humans.Tickets.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -75,6 +82,175 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
             .Returns(new CampaignCodeTrackingData([], []));
+    }
+
+    [HumansTheory]
+    [InlineData("orders")]
+    [InlineData("attendees")]
+    [InlineData("ticket-types")]
+    [InlineData("who-hasnt-bought")]
+    [InlineData("codes")]
+    [InlineData("sales")]
+    public async Task Admin_page_reads_honor_caller_cancellation(string page)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+
+        Func<Task> read = page switch
+        {
+            "orders" => async () => { await _service.GetOrdersPageAsync(null, "date", true, 1, 25, null, null, null, aborted.Token); }
+            ,
+            "attendees" => async () => { await _service.GetAttendeesPageAsync(null, "name", false, 1, 25, null, null, null, null, false, aborted.Token); }
+            ,
+            "ticket-types" => async () => { await _service.GetAvailableTicketTypesAsync(aborted.Token); }
+            ,
+            "codes" => async () => { await _service.GetCodeTrackingDataAsync(null, aborted.Token); }
+            ,
+            "sales" => async () => { await _service.GetSalesAggregatesAsync(aborted.Token); }
+            ,
+            _ => async () => { await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, aborted.Token); }
+            ,
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("matched", true)]
+    [InlineData("emails", true)]
+    [InlineData("aliases", true)]
+    [InlineData("hold", true)]
+    [InlineData("matched", false)]
+    [InlineData("emails", false)]
+    [InlineData("aliases", false)]
+    [InlineData("hold", false)]
+    public async Task Holdings_private_reads_retain_cancellation_at_each_boundary(string boundary, bool cancel)
+    {
+        var userId = Guid.NewGuid();
+        using var aborted = new CancellationTokenSource();
+        var repository = Substitute.For<ITicketRepository>();
+        repository.GetOrdersMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        repository.GetAttendeesVisibleToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _transferRepo.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(boundary is "matched" or "hold" ? 1 : 0);
+        repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["fallback@example.org"]);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
+        if (string.Equals(boundary, "hold", StringComparison.Ordinal))
+        {
+            repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new TicketSyncState { VendorEventId = "current" });
+            repository.HasEventTicketAsync(userId, "current", Arg.Any<CancellationToken>()).Returns(true);
+        }
+
+        async Task CancelAndCheckAsync(CancellationToken ct)
+        {
+            if (cancel) await aborted.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+        }
+
+        switch (boundary)
+        {
+            case "matched":
+                repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return 1;
+                });
+                break;
+            case "emails":
+                repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (IReadOnlyList<string>)["fallback@example.org"];
+                });
+                break;
+            case "aliases":
+                _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (IReadOnlyCollection<UserInfo>)Array.Empty<UserInfo>();
+                });
+                break;
+            case "hold":
+                _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+                {
+                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
+                    return (EventSettingsInfo?)null;
+                });
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(boundary));
+        }
+        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, _shiftManagementService, _cacheInvalidator, _auditLog, Clock);
+
+        if (cancel)
+        {
+            var read = () => service.GetUserTicketHoldingsAsync(userId, aborted.Token);
+            (await read.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(aborted.Token);
+        }
+        else
+        {
+            var result = await service.GetUserTicketHoldingsAsync(userId, aborted.Token);
+            result.TicketCount.Should().Be(boundary is "matched" or "hold" ? 1 : 0);
+            result.HasCurrentEventTicket.Should().Be(string.Equals(boundary, "hold", StringComparison.Ordinal));
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("attendees", true, true)]
+    [InlineData("orders", true, true)]
+    [InlineData("donations", true, true)]
+    [InlineData("attendees", false, true)]
+    [InlineData("orders", false, true)]
+    [InlineData("donations", false, true)]
+    [InlineData("attendees", true, false)]
+    [InlineData("orders", true, false)]
+    [InlineData("donations", true, false)]
+    public async Task Csv_export_reads_honor_browser_cancellation_and_preserve_completed_read_audits(string export, bool cancelled, bool hasActor)
+    {
+        var actor = Guid.NewGuid();
+        using var aborted = new CancellationTokenSource();
+        if (cancelled) await aborted.CancelAsync();
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), _service, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(_service, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, _userService, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = aborted.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity(hasActor
+                        ? [new Claim(ClaimTypes.NameIdentifier, actor.ToString())] : [], "Test"))
+                }
+            }
+        };
+        Func<Task<IActionResult>> read = export switch
+        {
+            "attendees" => controller.ExportAttendees,
+            "orders" => controller.ExportOrders,
+            _ => controller.ExportDonations
+        };
+
+        if (!hasActor)
+        {
+            (await read()).Should().BeOfType<ForbidResult>();
+            _auditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else if (cancelled)
+        {
+            (await read.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(aborted.Token);
+            _auditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            var result = (await read()).Should().BeOfType<FileContentResult>().Which;
+            result.FileDownloadName.Should().Be(string.Equals(export, "donations", StringComparison.Ordinal)
+                ? "ticketing-donations.csv" : export + "-export.csv");
+            result.FileContents.Should().NotBeEmpty();
+            _auditLog.ReceivedCalls().Should().ContainSingle();
+        }
     }
 
     [HumansFact]
@@ -652,7 +828,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetOrdersPageAsync(
-            null, "date", true, 1, 2, null, null, null);
+            null, "date", true, 1, 2, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalCount.Should().Be(5);
         result.Rows.Should().HaveCount(2);
@@ -661,6 +837,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows[0].TotalAmount.Should().Be(100m);
         result.Rows[0].VatAmount.Should().Be(9.09m);
         result.Rows[1].MatchedUserName.Should().BeNull();
+        await _userService.Received(1).GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(buyer.Id)), Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact(Timeout = 10000)]

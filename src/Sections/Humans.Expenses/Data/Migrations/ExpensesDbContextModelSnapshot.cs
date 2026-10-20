@@ -190,8 +190,8 @@ namespace Humans.Expenses.Data.Migrations
 
                     b.Property<string>("PayeeName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(513)
+                        .HasColumnType("character varying(513)");
 
                     b.Property<Guid?>("PreapprovalGrantId")
                         .HasColumnType("uuid");

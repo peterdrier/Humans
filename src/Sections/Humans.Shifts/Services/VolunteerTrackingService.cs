@@ -36,10 +36,10 @@ internal sealed class VolunteerTrackingService(
     }
 
     public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
-        Guid eventSettingsId, int dayOffset)
+        Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
     {
         // EF can't translate List<int>.Contains over jsonb; load all and filter in memory (small user base).
-        var all = await trackingRepo.GetAvailabilityForEventAsync(eventSettingsId);
+        var all = await trackingRepo.GetAvailabilityForEventAsync(eventSettingsId, ct: ct);
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
             .Select(availability => new GeneralAvailabilitySnapshot(

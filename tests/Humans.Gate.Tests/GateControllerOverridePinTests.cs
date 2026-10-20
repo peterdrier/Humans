@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -57,7 +58,7 @@ public class GateControllerOverridePinTests
         var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
         mirrorLedger ??= new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
         var controller = new GateController(_gate, _users, config, throttle, mirrorLedger,
-            backgroundJobs ?? Substitute.For<IBackgroundJobClient>(), _clock);
+            backgroundJobs ?? Substitute.For<IBackgroundJobClient>(), _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext
         {
@@ -75,6 +76,41 @@ public class GateControllerOverridePinTests
 
     private static GateScanCardViewModel CardOf(IActionResult result) =>
         Assert.IsType<GateScanCardViewModel>(Assert.IsType<PartialViewResult>(result).Model);
+
+    [HumansTheory]
+    [InlineData(null, null, true)]
+    [InlineData(null, "idConfirmed", true)]
+    [InlineData(true, "childWithAdult", true)]
+    [InlineData(true, "overrideEarly", true)]
+    [InlineData(null, null, false)]
+    [InlineData(null, "idConfirmed", false)]
+    public async Task Decision_MissingOrMalformedValues_DoNotRecordADefaultedVerdict(
+        bool? idConfirmed, string? invalidField, bool authenticated)
+    {
+        var controller = BuildController(Pin);
+        if (!authenticated) controller.HttpContext.User = new ClaimsPrincipal();
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid boolean.");
+
+        var result = await controller.Decision(Barcode, idConfirmed, childWithAdult: false,
+            overrideEarly: false, supervisorPin: null, laneId: null, TestContext.Current.CancellationToken);
+
+        if (authenticated) Assert.IsType<BadRequestResult>(result);
+        else Assert.IsType<UnauthorizedResult>(result);
+        await _gate.DidNotReceive().RecordDecisionAsync(
+            Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Decision_ExplicitIdConfirmation_RecordsTheDecision()
+    {
+        var controller = BuildController(Pin);
+
+        await controller.Decision(Barcode, idConfirmed: true, childWithAdult: false,
+            overrideEarly: false, supervisorPin: null, laneId: null, TestContext.Current.CancellationToken);
+
+        await _gate.Received(1).RecordDecisionAsync(
+            Arg.Is<GateDecisionInput>(i => i.IdConfirmed), _gateAccount, Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task Override_WrongPin_IsRefused_AndNothingIsRecorded()

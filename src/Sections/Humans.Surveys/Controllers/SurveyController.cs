@@ -220,7 +220,7 @@ internal sealed class SurveyController(
     public async Task<IActionResult> PublicStart(
         string slug,
         string culture,
-        ResponseAnonymity anonymity,
+        ResponseAnonymity? anonymity,
         CancellationToken ct)
     {
         if (IsReservedSlug(slug)) return NotFound();
@@ -237,15 +237,11 @@ internal sealed class SurveyController(
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var userId = GetCurrentUserId();
-        var resolvedAnonymity = editable.IsAsociadoVote
-            ? ResponseAnonymity.CompletionTracked
-            : !editable.AllowAnonymous
-                ? ResponseAnonymity.Identified
-                : userId is null
-                    ? ResponseAnonymity.Anonymous
-                    : Enum.IsDefined(anonymity)
-                        ? anonymity
-                        : ResponseAnonymity.Identified;
+        if (SurveyWizardFlow.ResolvePublicAnonymity(editable, userId, anonymity) is not { } resolvedAnonymity)
+        {
+            logger.LogWarning("Rejected public survey start without a valid anonymity choice for {SurveyId}", ctx.SurveyId);
+            return BadRequest();
+        }
 
         Guid? participationId = null;
         Guid? draftResponseId = null;

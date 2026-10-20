@@ -1,3 +1,8 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -25,6 +30,58 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansTheory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    public async Task RoleForms_InvalidBinding_NeverMutates(bool edit, bool ajax, bool allowed)
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        controller.ModelState.AddModelError("EstimatedHours", "Invalid hours");
+
+        var result = edit
+            ? await controller.EditRole(team.Slug, Guid.NewGuid(), new EditRoleDefinitionModel
+            { Name = "Role", SlotCount = 1, Priorities = ["None"] })
+            : await controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" });
+
+        if (allowed)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else if (ajax)
+            result.Should().BeOfType<UnauthorizedResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        teams.ReceivedCalls().Should().NotContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.CreateRoleDefinitionAsync), StringComparison.Ordinal)
+            || string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.UpdateRoleDefinitionAsync), StringComparison.Ordinal));
+    }
+
     [HumansFact]
     public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
     {
@@ -148,10 +205,12 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
-    [InlineData(true, true)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task InheritedAccess_InvalidBinding_DoesNotDispatch(bool allowed, bool invalidBinding)
+    [InlineData(true, true, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, true)]
+    public async Task InheritedAccess_InvalidOrMissingChoice_DoesNotDispatch(bool allowed, bool invalidBinding, bool missingChoice)
     {
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
@@ -183,13 +242,36 @@ public class TeamAdminControllerMembersTests
             Url = Substitute.For<IUrlHelper>()
         };
         if (invalidBinding) controller.ModelState.AddModelError("restrict", "Not a boolean.");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingChoice)
+        {
+            http.RequestServices = services;
+            var parameter = typeof(TeamAdminController).GetMethod("ToggleRestrictInheritedAccess")!.GetParameters()[2];
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = "restrict",
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
         var result = await controller.ToggleRestrictInheritedAccess(team.Slug, resourceId, false);
 
         if (!allowed) Assert.IsType<ForbidResult>(result);
-        else if (invalidBinding) Assert.IsType<BadRequestObjectResult>(result);
+        else if (invalidBinding || missingChoice) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
-        if (!allowed || invalidBinding)
+        if (!allowed || invalidBinding || missingChoice)
             await resourceWrite.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
                 Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         else await resourceWrite.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);

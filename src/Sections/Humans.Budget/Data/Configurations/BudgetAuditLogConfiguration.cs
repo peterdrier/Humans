@@ -13,9 +13,7 @@ internal sealed class BudgetAuditLogConfiguration : IEntityTypeConfiguration<Bud
 
         builder.Property(a => a.EntityType).HasMaxLength(100).IsRequired();
         builder.Property(a => a.FieldName).HasMaxLength(100);
-        builder.Property(a => a.OldValue).HasMaxLength(1000);
-        builder.Property(a => a.NewValue).HasMaxLength(1000);
-        builder.Property(a => a.Description).HasMaxLength(1000).IsRequired();
+        builder.Property(a => a.Description).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
         // Explicit index: replaces the convention index that died with the ActorUserId

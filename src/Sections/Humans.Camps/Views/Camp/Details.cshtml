@@ -73,7 +73,7 @@
                 {
                     <p class="text-muted mb-0">
                         <i class="fa-solid fa-clock-rotate-left me-1"></i>
-                        @Localizer["Camp_Details_AlsoKnownAs"] @string.Join(", ", Model.HistoricalNames)
+                        @Localizer["Camps_Details_AlsoKnownAs"] @string.Join(", ", Model.HistoricalNames)
                     </p>
                 }
             </div>
@@ -81,12 +81,12 @@
                 @if (Model.IsSwissCamp)
                 {
                     <span class="badge bg-danger fs-6">
-                        <i class="fa-solid fa-flag me-1"></i>@Localizer["Camp_Details_SwissCampBadge"]
+                        <i class="fa-solid fa-flag me-1"></i>@Localizer["Camps_Details_SwissCampBadge"]
                     </span>
                 }
                 @if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
                 {
-                    <span class="badge bg-warning text-dark fs-6">@Localizer["CampCard_Full"]</span>
+                    <span class="badge bg-warning text-dark fs-6">@Localizer["Camps_Card_Full"]</span>
                 }
             </div>
         </div>
@@ -121,25 +121,25 @@
             @* Community info *@
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-users me-1"></i> @Localizer["Camp_CommunityHeading"]
+                    <i class="fa-solid fa-users me-1"></i> @Localizer["Camps_CommunityHeading"]
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <dl>
-                                <dt>@Localizer["Camp_LanguagesLabel"]</dt>
+                                <dt>@Localizer["Camps_LanguagesLabel"]</dt>
                                 <dd>@season.Languages</dd>
-                                <dt>@Localizer["Camp_AcceptingMembersLabel"]</dt>
+                                <dt>@Localizer["Camps_AcceptingMembersLabel"]</dt>
                                 <dd>@SharedLocalizer.EnumDisplay(season.AcceptingMembers)</dd>
-                                <dt>@Localizer["Camp_KidsWelcomeLabel"]</dt>
+                                <dt>@Localizer["Camps_KidsWelcomeLabel"]</dt>
                                 <dd>@SharedLocalizer.EnumDisplay(season.KidsWelcome)</dd>
                                 @if (season.KidsWelcome != YesNoMaybe.No)
                                 {
-                                    <dt>@Localizer["Camp_KidsVisitingLabel"]</dt>
+                                    <dt>@Localizer["Camps_KidsVisitingLabel"]</dt>
                                     <dd>@SharedLocalizer.EnumDisplay(season.KidsVisiting)</dd>
                                     @if (!string.IsNullOrEmpty(season.KidsAreaDescription))
                                     {
-                                        <dt>@Localizer["Camp_KidsAreaDescriptionLabel"]</dt>
+                                        <dt>@Localizer["Camps_KidsAreaDescriptionLabel"]</dt>
                                         <dd>@Html.SanitizedMarkdown(season.KidsAreaDescription)</dd>
                                     }
                                 }
@@ -147,9 +147,9 @@
                         </div>
                         <div class="col-md-6">
                             <dl>
-                                <dt>@Localizer["Camp_AdultPlayspaceLabel"]</dt>
+                                <dt>@Localizer["Camps_AdultPlayspaceLabel"]</dt>
                                 <dd>@SharedLocalizer.EnumDisplay(season.AdultPlayspace)</dd>
-                                <dt>@Localizer["Camp_MemberCountLabel"]</dt>
+                                <dt>@Localizer["Camps_MemberCountLabel"]</dt>
                                 <dd>@season.MemberCount</dd>
                             </dl>
                         </div>
@@ -162,7 +162,7 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-heart-pulse me-1"></i> @Localizer["Camp_VibesLabel"]
+                        <i class="fa-solid fa-heart-pulse me-1"></i> @Localizer["Camps_VibesLabel"]
                     </div>
                     <div class="card-body">
                         <div class="d-flex flex-wrap gap-2">
@@ -180,15 +180,15 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camp_CultureHeading"]
+                        <i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camps_CultureHeading"]
                     </div>
                     <div class="card-body">
                         <dl>
-                            <dt>@Localizer["Camp_PerformanceSpaceLabel"]</dt>
+                            <dt>@Localizer["Camps_PerformanceSpaceLabel"]</dt>
                             <dd>@SharedLocalizer.EnumDisplay(season.HasPerformanceSpace)</dd>
                             @if (!string.IsNullOrEmpty(season.PerformanceTypes))
                             {
-                                <dt>@Localizer["Camp_PerformanceTypesLabel"]</dt>
+                                <dt>@Localizer["Camps_PerformanceTypesLabel"]</dt>
                                 <dd>@season.PerformanceTypes</dd>
                             }
                         </dl>
@@ -204,7 +204,7 @@
                 NodaTime.LocalDateTime? placementClosesAt = ViewBag.PlacementClosesAt;
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camp_PlacementHeading"]</span>
+                        <span><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camps_PlacementHeading"]</span>
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted small">@CityPlanningLocalizer["CityPlanning_PlacementPhase"]:</span>
                             @if (isPlacementOpen)
@@ -231,19 +231,19 @@
                                 <dl>
                                     @if (season.SoundZone.HasValue)
                                     {
-                                        <dt>@Localizer["Camp_Index_SoundZoneLabel"]</dt>
+                                        <dt>@Localizer["Camps_Index_SoundZoneLabel"]</dt>
                                         <dd><span class="badge bg-info">@SharedLocalizer.EnumDisplay(season.SoundZone.Value)</span></dd>
                                     }
                                     @if (season.SpaceRequirement.HasValue)
                                     {
-                                        <dt>@Localizer["Camp_SpaceRequirementLabel"]</dt>
+                                        <dt>@Localizer["Camps_SpaceRequirementLabel"]</dt>
                                         <dd>@SharedLocalizer.EnumDisplay(season.SpaceRequirement.Value)</dd>
                                     }
                                     @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
                                     {
                                         <dt>@Localizer["Camps_Details_Containers"]</dt>
                                         <dd><a asp-controller="Container" asp-action="Index"
-                                               asp-route-slug="@Model.Slug" asp-route-year="@season.Year">@Localizer["Camp_Edit_ManageContainers"]</a></dd>
+                                               asp-route-slug="@Model.Slug" asp-route-year="@season.Year">@Localizer["Camps_Edit_ManageContainers"]</a></dd>
                                     }
                                 </dl>
                             </div>
@@ -251,7 +251,7 @@
                                 <dl>
                                     @if (season.ElectricalGrid.HasValue)
                                     {
-                                        <dt>@Localizer["Camp_ElectricalGridLabel"]</dt>
+                                        <dt>@Localizer["Camps_ElectricalGridLabel"]</dt>
                                         <dd>@SharedLocalizer.EnumDisplay(season.ElectricalGrid.Value)</dd>
                                     }
                                 </dl>
@@ -270,7 +270,7 @@
         @* Links & Contact *@
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fa-solid fa-link me-1"></i> @Localizer["Camp_Links_Header"]
+                <i class="fa-solid fa-link me-1"></i> @Localizer["Camps_Links_Header"]
             </div>
             <div class="card-body">
                 @if (Model.Links.Count > 0)
@@ -291,14 +291,14 @@
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <a asp-action="Contact" asp-route-slug="@Model.Slug" class="btn btn-primary w-100">
-                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactButton"]
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camps_ContactButton"]
                     </a>
                 }
                 else
                 {
                     <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path"
                        class="btn btn-outline-primary w-100">
-                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camps_ContactLoginHint"]
                     </a>
                     @* Only name the events and membership cards when the authenticated branch would
                        actually render them, read off the camp rather than the viewer: Model.Membership
@@ -320,8 +320,8 @@
                         && Model.CurrentSeason.Year == Model.PublicYear;
                     <p class="small text-muted text-center mt-2 mb-0">
                         @(loginShowsMore
-                            ? Localizer["Camp_ContactLoginDetailOpenSeason"]
-                            : Localizer["Camp_ContactLoginDetail"])
+                            ? Localizer["Camps_ContactLoginDetailOpenSeason"]
+                            : Localizer["Camps_ContactLoginDetail"])
                     </p>
                 }
             </div>
@@ -333,7 +333,7 @@
             <div class="card mb-4">
                 <div class="card-body text-center">
                     <i class="fa-solid fa-fire fa-2x text-warning mb-2"></i>
-                    <h5>@Localizer["Camp_TimesParticipatingLabel"]: @Model.TimesAtNowhere</h5>
+                    <h5>@Localizer["Camps_TimesParticipatingLabel"]: @Model.TimesAtNowhere</h5>
                 </div>
             </div>
         }
@@ -426,11 +426,11 @@
                         <i class="fa-solid fa-pen-to-square me-1"></i>
                         @if (Model.IsCurrentUserLead)
                         {
-                            <text>@Localizer["Camps_Details_EditAndAssignRoles", Localizer["Camp_Singular"].Value]</text>
+                            <text>@Localizer["Camps_Details_EditAndAssignRoles", Localizer["Camps_Singular"].Value]</text>
                         }
                         else
                         {
-                            <text>Edit @Localizer["Camp_Singular"]</text>
+                            <text>Edit @Localizer["Camps_Singular"]</text>
                         }
                     </a>
                     <a asp-controller="Events" asp-action="MySubmissions" class="btn btn-outline-primary">

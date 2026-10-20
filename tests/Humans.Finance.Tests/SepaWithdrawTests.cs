@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -41,6 +42,7 @@ public class SepaWithdrawTests
         _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(),
         Substitute.For<IExpenseReportService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
         _audit, _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
+        new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         NullLogger<Service>.Instance);
 
     public SepaWithdrawTests()

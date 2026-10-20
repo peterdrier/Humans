@@ -22,8 +22,9 @@ internal sealed record BoardViewModel(
 
     public static BoardViewModel Build(RideshareSnapshot snapshot, LocalDate date, RideshareDirection direction, Guid currentUserId)
     {
-        var mine = snapshot.Trips
-            .Where(t => t.UserId == currentUserId && t.IsJoinable && t.Direction == direction && t.CoversDate(date))
+        var joinableTrips = snapshot.JoinableTrips(date, direction);
+        var mine = joinableTrips
+            .Where(t => t.UserId == currentUserId)
             .OrderBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt)
             .Select(t => new MyOfferOption(t.Id, t.MemberPlaceLabel, t.DepartureDate, t.SeatsRemaining))
             .ToList();
@@ -34,7 +35,7 @@ internal sealed record BoardViewModel(
             direction,
             snapshot.Settings,
             currentUserId,
-            snapshot.JoinableTrips(date, direction)
+            joinableTrips
                 .OrderBy(t => t.DepartureDate).ThenBy(t => t.MemberPlaceLabel, StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.CreatedAt).ToList(),
             snapshot.ActiveRequests(date, direction)
                 .OrderBy(r => r.PickupPlaceLabel, StringComparer.CurrentCultureIgnoreCase).ThenBy(r => r.CreatedAt).ToList(),

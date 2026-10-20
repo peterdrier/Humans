@@ -1274,4 +1274,5 @@
   <data name="Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Gràcies per aquest any. Els torns tornaran a obrir-se quan la Junta publiqui el proper esdeveniment.</value>
   </data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>El motiu no pot superar els 1000 caràcters.</value></data>
 </root>

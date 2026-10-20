@@ -33,7 +33,7 @@ public class ServiceStripeReconciliationTests
 
     public ServiceStripeReconciliationTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         // Mapping-chain stubs so GetOrderAsync resolves without throwing.
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());

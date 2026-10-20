@@ -267,6 +267,9 @@
   <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excloure les opcions no disponibles canvia el guanyador oficial.</value></data>
   <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Anàlisi de sensibilitat — opcions disponibles actuals</value></data>
   <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Mètode</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (oficial)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Comprovació de Condorcet</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Recompte de Borda</value></data>
   <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Guanyador</value></data>
   <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Sense guanyador únic</value></data>
@@ -388,4 +391,5 @@
   <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Una votació d’Asociado no es pot editar després d’obrir-se.</value></data>
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El mode de votació d’Asociado no es pot canviar després d’obrir-se l’enquesta.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’enquesta. Torna-ho a provar.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Els valors de les opcions han de tenir com a màxim {0} caràcters.</value></data>
 </root>

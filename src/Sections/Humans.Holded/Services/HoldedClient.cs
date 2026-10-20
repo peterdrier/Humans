@@ -223,13 +223,6 @@ internal sealed class HoldedClient : IHoldedClient
         using var resp = await SendAsync(req, ct);
     }
 
-    public async Task DeleteContactAsync(string contactId, CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-    }
-
     public async Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)
@@ -611,6 +604,26 @@ internal sealed class HoldedClient : IHoldedClient
             // outbox batch and leave its own event neither processed nor failed.
             throw new HoldedPermanentException(
                 $"Holded contact {contactId} could not be read.", ex);
+        }
+    }
+
+    public async Task DeleteContactAsync(string contactId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
+        AttachAuth(req);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        // The goal state already holds: a retried cleanup finds the contact gone.
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
+        {
+            // The id was created seconds ago by this process, so a 404 most likely means the DELETE
+            // route is wrong and the contact still exists in Holded.
+            _logger.LogError(
+                "Holded contact {ContactId} answered 404 to DELETE — it was just created by this process, " +
+                "so the route is most likely wrong and the contact still exists in Holded; treated as deleted",
+                contactId);
         }
     }
 

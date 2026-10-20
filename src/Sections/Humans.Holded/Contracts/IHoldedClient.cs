@@ -98,8 +98,10 @@ public interface IHoldedClient
     /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 
-    /// <summary>Deletes a contact (DELETE /contacts/{id}). Only for a contact that owns no documents;
-    /// Holded keeps a contact's documents, so deleting a non-empty one is the caller's bug.</summary>
+    /// <summary>Deletes one contact via DELETE v2/contacts/{id}. A contact already gone (404) is success.
+    /// Used to retract a contact minted by a push that lost a binding race, and to remove a duplicate
+    /// contact that owns no documents — Holded keeps a contact's documents, so deleting a non-empty one
+    /// is the caller's bug.</summary>
     Task DeleteContactAsync(string contactId, CancellationToken ct = default);
 
     /// <summary>Lists journal lines from GET v2/ledger-entries across a date window. Paginates internally

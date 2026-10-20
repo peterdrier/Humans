@@ -23,6 +23,7 @@ public sealed class EventsModerationControllerTests
 {
     private readonly IEventManagement _guide = Substitute.For<IEventManagement>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansTheory]
     [Xunit.InlineData(false)]
@@ -120,14 +121,20 @@ public sealed class EventsModerationControllerTests
         var laterModeratorId = Guid.NewGuid();
         var submitterId = Guid.NewGuid();
         var pending = new EventInfo(
-            Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "Music", "music", false, null,
+            Guid.NewGuid(), Guid.NewGuid(), null, submitterId, Guid.NewGuid(), "Music", "music", false, null,
             "Pending event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60,
             false, null, null, EventStatus.Pending, Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0),
             [
                 new EventModerationHistoryInfo(moderatorId, EventModerationActionType.ResubmitRequested, "Fix the time", Instant.FromUtc(2026, 7, 2, 0, 0)),
                 new EventModerationHistoryInfo(laterModeratorId, EventModerationActionType.Approved, null, Instant.FromUtc(2026, 7, 3, 0, 0)),
             ]);
-        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
+        var settings = BurnFixtures.Burn(year: 2026);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
+            Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
+            settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
+        _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+        _guide.GetCampEventsForOverlapAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<CampEventOverlap>());
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -135,11 +142,68 @@ public sealed class EventsModerationControllerTests
 
         var controller = BuildController(moderatorId, pending.Id);
 
-        var result = await controller.Index(null);
+        using var request = new CancellationTokenSource();
+        var result = await controller.Index(null, request.Token);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ModerationQueueViewModel>().Which;
         var history = model.Events.Single().History;
         history.Select(h => h.ActorUserId).Should().Equal(laterModeratorId, moderatorId);
+        await _guide.Received(1).GetGuideSettingsAsync(request.Token);
+        await _guide.Received(1).GetEventSettingsByIdAsync(settings.Id, request.Token);
+        await _guide.Received(1).GetEventStatusCountsAsync(request.Token);
+        await _guide.Received(1).GetEventsByStatusAsync(EventStatus.Pending, request.Token);
+        await _guide.Received(1).GetCampEventsForOverlapAsync(request.Token);
+        await _camps.Received(1).GetCampsForYearAsync(2026, request.Token);
+        await _users.Received(1).GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(submitterId)), request.Token);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Edit_PreservesCancellationThroughFormLookups(bool isCampEvent)
+    {
+        var categoryId = Guid.NewGuid();
+        var venueId = Guid.NewGuid();
+        var settings = BurnFixtures.Burn(year: 2026);
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = isCampEvent ? Guid.NewGuid() : null,
+            CategoryId = categoryId,
+            GuideSharedVenueId = venueId,
+            StartAt = Instant.FromUtc(2026, 8, 1, 12, 0),
+            Title = "Event"
+        };
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
+            Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
+            settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
+        _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<EventCategoryView>());
+        _guide.GetCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+            .Returns(new EventCategoryView(categoryId, "Old", "old", false, 0, false));
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<EventVenueView>());
+        _guide.GetVenueAsync(venueId, Arg.Any<CancellationToken>())
+            .Returns(new EventVenueView(venueId, "Old venue", null, null, 0, false));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+        var controller = BuildController(Guid.NewGuid(), guideEvent.Id);
+        using var request = new CancellationTokenSource();
+
+        var result = await controller.Edit(guideEvent.Id, request.Token);
+
+        result.Should().BeOfType<ViewResult>();
+        await _guide.Received(1).GetEventForModerationAsync(guideEvent.Id, request.Token);
+        await _guide.Received(1).GetGuideSettingsAsync(request.Token);
+        await _guide.Received(1).GetEventSettingsByIdAsync(settings.Id, request.Token);
+        await _guide.Received(1).GetActiveCategoriesAsync(request.Token);
+        await _guide.Received(1).GetCategoryAsync(categoryId, request.Token);
+        if (isCampEvent)
+            await _camps.Received(1).GetCampsForYearAsync(2026, request.Token);
+        else
+        {
+            await _guide.Received(1).GetActiveVenuesAsync(request.Token);
+            await _guide.Received(1).GetVenueAsync(venueId, request.Token);
+        }
     }
 
     private EventsModerationController BuildController(Guid moderatorId, Guid eventId)
@@ -150,7 +214,7 @@ public sealed class EventsModerationControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, moderatorId.ToString())], "test")),
         };
         var controller = new EventsModerationController(
-            _guide, _users, Substitute.For<ICampService>(),
+            _guide, _users, _camps,
             NullLogger<EventsModerationController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

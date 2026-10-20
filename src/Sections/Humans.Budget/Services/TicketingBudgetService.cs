@@ -91,11 +91,19 @@ internal sealed class TicketingBudgetService(
         }
     }
 
-    public async Task<int> UpdateProjectionAndRefreshAsync(
+    public async Task<int?> UpdateProjectionAndRefreshAsync(
         TicketingProjectionUpdateCommand command,
         Guid actorUserId,
         CancellationToken ct = default)
     {
+        var year = await budgetService.GetYearByIdAsync(command.BudgetYearId, ct);
+        if (year?.Groups.Any(group => group.Id == command.BudgetGroupId) != true)
+        {
+            logger.LogWarning("Rejected ticketing projection for group {GroupId} outside budget year {YearId}",
+                command.BudgetGroupId, command.BudgetYearId);
+            return null;
+        }
+
         await budgetService.UpdateTicketingProjectionAsync(
             command.BudgetGroupId,
             command.StartDate,

@@ -267,7 +267,7 @@ internal sealed class CampController(
     [HttpGet("{slug}/Contact")]
     public async Task<IActionResult> Contact(string slug)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
         var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
@@ -322,10 +322,10 @@ internal sealed class CampController(
 
             if (result.RateLimited)
             {
-                SetError(campsLocalizer["Camp_Contact_RateLimited"].Value);
+                SetError(campsLocalizer["Camps_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(campsLocalizer["Camp_Contact_Success"].Value, campDisplayName));
+            SetSuccess(string.Format(campsLocalizer["Camps_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
@@ -968,17 +968,23 @@ internal sealed class CampController(
     [HttpPost("{slug}/Members/{campMemberId:guid}/EarlyEntry")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetMemberEarlyEntry(
-        string slug, Guid campMemberId, bool granted, CancellationToken cancellationToken)
+        string slug, Guid campMemberId, bool? granted, CancellationToken cancellationToken)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid || granted is not { } requestedGrant)
+        {
+            logger.LogWarning("Rejected malformed Early Entry change for member {CampMemberId} in camp {CampId} by user {UserId}", campMemberId, camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var outcome = await _campService.SetEarlyEntryAsync(
-            camp.Id, campMemberId, granted, user.Id, cancellationToken);
+            camp.Id, campMemberId, requestedGrant, user.Id, cancellationToken);
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
         if (outcome == SetEarlyEntryOutcome.Success)
-            SetSuccess(campsLocalizer[granted ? "Camps_Flash_EarlyEntryGranted" : "Camps_Flash_EarlyEntryRevoked"].Value);
+            SetSuccess(campsLocalizer[requestedGrant ? "Camps_Flash_EarlyEntryGranted" : "Camps_Flash_EarlyEntryRevoked"].Value);
         else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
             SetError(campsLocalizer["Camps_Flash_EarlyEntryCapReached"].Value);
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
@@ -996,6 +1002,12 @@ internal sealed class CampController(
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed member-add form for camp {CampId} by user {UserId}", camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         try
         {
@@ -1047,6 +1059,12 @@ internal sealed class CampController(
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role-assignment form for camp {CampId} by user {UserId}", camp.Id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         if (userId == Guid.Empty)
         {
@@ -1322,7 +1340,7 @@ internal sealed class CampController(
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camp_ContactPhoneLabel"].Value].Value);
+                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camps_ContactPhoneLabel"].Value].Value);
         }
     }
 

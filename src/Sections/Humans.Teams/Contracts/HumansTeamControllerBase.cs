@@ -46,27 +46,30 @@ public abstract class HumansTeamControllerBase(
 
     protected Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentAccessAsync(
         string slug,
-        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync)
+        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync,
+        CancellationToken ct = default)
     {
         return ResolveTeamAccessAsync(
             slug,
             static team => team.SystemTeamType == SystemTeamType.None,
-            canAccessAsync);
+            canAccessAsync,
+            ct);
     }
 
     private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamAccessAsync(
         string slug,
         Func<TeamInfo, bool> teamFilter,
-        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync)
+        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync,
+        CancellationToken ct = default)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null)
         {
             return (errorResult, null!, null!);
         }
 
         var normalizedSlug = slug.ToLowerInvariant();
-        var teamsById = await teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var team = teamsById.Values.FirstOrDefault(
             t => string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
                  || string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));

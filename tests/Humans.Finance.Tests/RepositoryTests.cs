@@ -4,13 +4,14 @@ using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
 /// <summary>
 /// The repository owns every Finance table. What is pinned here is the part
-/// that is not a one-line query: what an upsert keeps, what it overwrites, and what it refuses to
-/// overwrite with nothing.
+/// that is not a one-line query: what a document snapshot replaces, what updates preserve,
+/// and which binding facts cannot be erased by missing metadata.
 /// </summary>
 public class RepositoryTests
 {
@@ -37,14 +38,14 @@ public class RepositoryTests
     // ─── Expense docs ────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task UpsertDocs_ReSyncingADoc_RewritesTheFactsAndKeepsCreatedAt()
+    public async Task ReplaceDocs_ReSyncingADoc_RewritesTheFactsAndKeepsCreatedAt()
     {
         var (repo, factory) = Make();
-        await repo.UpsertDocsAsync([Doc("h-1", total: 100m, category: null,
+        await repo.ReplaceDocsAsync([Doc("h-1", total: 100m, category: null,
             status: HoldedMatchStatus.Unmatched)], Created, Ct);
 
         var categoryId = Guid.NewGuid();
-        await repo.UpsertDocsAsync([Doc("h-1", total: 250m, category: categoryId,
+        await repo.ReplaceDocsAsync([Doc("h-1", total: 250m, category: categoryId,
             status: HoldedMatchStatus.Matched, isApproved: true)], Now, Ct);
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
@@ -59,21 +60,47 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task UpsertDocs_KeyedOnTheHoldedIdNotOurGuid_SoAReSyncDoesNotDuplicate()
+    public async Task ReplaceDocs_KeyedOnTheHoldedIdNotOurGuid_SoAReSyncDoesNotDuplicate()
     {
         var (repo, factory) = Make();
-        await repo.UpsertDocsAsync([Doc("h-1")], Created, Ct);
-        await repo.UpsertDocsAsync([Doc("h-1"), Doc("h-2")], Now, Ct);
+        await repo.ReplaceDocsAsync([Doc("h-1")], Created, Ct);
+        await repo.ReplaceDocsAsync([Doc("h-1"), Doc("h-2")], Now, Ct);
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
         ctx.HoldedExpenseDocs.Select(d => d.HoldedDocId).Should().BeEquivalentTo(["h-1", "h-2"]);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReplaceDocs_RemovesDocumentsMissingFromTheCompleteSnapshot(bool emptySnapshot)
+    {
+        var (repo, _) = Make();
+        var categoryId = Guid.NewGuid();
+        await repo.ReplaceDocsAsync(
+        [
+            Doc("keep", total: 100m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true),
+            Doc("deleted-matched", total: 200m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true),
+            Doc("deleted-unmatched"),
+        ], Created, Ct);
+        IReadOnlyList<HoldedExpenseDoc> snapshot = emptySnapshot
+            ? []
+            : [Doc("keep", total: 100m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true)];
+
+        await repo.ReplaceDocsAsync(snapshot, Now, Ct);
+
+        var all = await repo.GetAllDocsAsync(Ct);
+        all.Select(d => d.HoldedDocId).Should().BeEquivalentTo(snapshot.Select(d => d.HoldedDocId));
+        var actuals = await repo.GetMatchedForYearAsync(2026, Ct);
+        actuals.Sum(d => d.Total).Should().Be(emptySnapshot ? 0m : 100m);
+        (await repo.GetUnmatchedAsync(Ct)).Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task GetUnmatched_ReturnsOnlyUnmatchedDocs_NewestFirst()
     {
         var (repo, _) = Make();
-        await repo.UpsertDocsAsync(
+        await repo.ReplaceDocsAsync(
         [
             Doc("old", date: new LocalDate(2026, 1, 1)),
             Doc("new", date: new LocalDate(2026, 6, 1)),
@@ -89,7 +116,7 @@ public class RepositoryTests
     public async Task GetMatchedForYear_IsKeyedOnTheDocsOwnCalendarYear()
     {
         var (repo, _) = Make();
-        await repo.UpsertDocsAsync(
+        await repo.ReplaceDocsAsync(
         [
             Doc("in", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
                 date: new LocalDate(2026, 12, 31)),
@@ -109,7 +136,7 @@ public class RepositoryTests
         // /Finance/Holded browses every doc. The unmatched read filters to one status and the
         // matched read to one year, so neither composes into this (nobodies-collective/Humans#1000).
         var (repo, _) = Make();
-        await repo.UpsertDocsAsync(
+        await repo.ReplaceDocsAsync(
         [
             Doc("matched-2026", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
                 date: new LocalDate(2026, 5, 1)),
@@ -144,6 +171,35 @@ public class RepositoryTests
         stored.HoldedContactId.Should().Be("contact-2");
         stored.SupplierAccountNum.Should().Be(40000004);
         stored.UpdatedAt.Should().Be(Now);
+    }
+
+    [HumansFact]
+    public async Task UpsertCreditorContact_ReturnsTrue_OnInsert_AndOnUpdate()
+    {
+        // The false branch (Postgres 23505 on IX_holded_creditor_contacts_UserId) cannot be raised here:
+        // EF InMemory enforces no unique indexes. It is covered in the service tests via the substitute.
+        var (repo, _) = Make();
+        var userId = Guid.NewGuid();
+
+        (await repo.UpsertCreditorContactAsync(Binding(userId, "contact-1", 40000004), Created, Ct))
+            .Should().BeTrue();
+        (await repo.UpsertCreditorContactAsync(Binding(userId, "contact-2", 40000004), Now, Ct))
+            .Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task TryInsertCreditorContact_ReturnsTrue_AndStoresTheRowOnAFreshMember()
+    {
+        // The false branch (Postgres 23505 on IX_holded_creditor_contacts_UserId) cannot be raised here:
+        // EF InMemory enforces no unique indexes. It is covered in the service tests via the substitute.
+        var (repo, factory) = Make();
+        var userId = Guid.NewGuid();
+
+        (await repo.TryInsertCreditorContactAsync(Binding(userId, "contact-1", 40000004), Ct))
+            .Should().BeTrue();
+
+        await using var ctx = await factory.CreateDbContextAsync(Ct);
+        ctx.HoldedCreditorContacts.Single().HoldedContactId.Should().Be("contact-1");
     }
 
     [HumansFact]

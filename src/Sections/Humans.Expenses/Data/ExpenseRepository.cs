@@ -496,17 +496,36 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SetLineHoldedDocIdAsync(
+    /// <inheritdoc />
+    /// <remarks>
+    /// Relational: one <c>UPDATE ... WHERE HoldedDocId IS NULL</c>, so of two racing writers only
+    /// one lands. The non-relational fallback (EF InMemory, tests) is load-check-save and not atomic.
+    /// </remarks>
+    public async Task<bool> SetLineHoldedDocIdAsync(
         Guid lineId, string holdedDocId, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (ctx.Database.IsRelational())
+        {
+            var rows = await ctx.ExpenseLines
+                .Where(x => x.Id == lineId && x.HoldedDocId == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.HoldedDocId, holdedDocId), ct);
+            if (rows != 1) return false;
+            var reportId = await ctx.ExpenseLines
+                .Where(x => x.Id == lineId).Select(x => x.ExpenseReportId).FirstAsync(ct);
+            await ctx.ExpenseReports.Where(x => x.Id == reportId)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.UpdatedAt, updatedAt), ct);
+            return true;
+        }
+
         var line = await ctx.ExpenseLines.FirstOrDefaultAsync(x => x.Id == lineId, ct);
-        if (line is null) return;
+        if (line is null || line.HoldedDocId is not null) return false;
         line.HoldedDocId = holdedDocId;
         var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == line.ExpenseReportId, ct);
         if (r is not null) r.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task SetHoldedContactLinkAsync(

@@ -18,7 +18,7 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
     Task<bool> SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets);
 
     Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
-        Guid eventSettingsId, int dayOffset);
+        Guid eventSettingsId, int dayOffset, CancellationToken ct = default);
 
     /// <summary>
     /// Add (available=true) or remove (available=false) one build-day offset from

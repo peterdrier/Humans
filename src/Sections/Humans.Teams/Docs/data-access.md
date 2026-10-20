@@ -121,8 +121,15 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftManagementService`, `ISettingsService` and `IUserService`;
-the mapper and the directory builder are pure.
+`IShiftManagementService`, `ISettingsService`, `IUserService` and Auth’s
+`IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
+member/child projections over the cached `TeamInfo` snapshot, with live
+pending-request reads through `ITeamManagementService`. The My Teams projection
+uses the cached team and user-membership reads for parent names and manageable
+pending counts, keeping Auth role checks out of the decorator;
+the roster expands the cached role definitions of active non-system teams and resolves assigned-user names through Users.
+The mapper is pure. The directory page service passes the same cached snapshot and Auth role checks
+to the directory builder, which hides private parent metadata; directory reads do not reload the inner dataset.
 
 ### TeamsEmails (Scoped, internal)
 

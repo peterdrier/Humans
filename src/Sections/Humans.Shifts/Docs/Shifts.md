@@ -27,7 +27,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts may surface it as a derived view but does not write to it.
-- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy.
+- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy. Department expansion and rota metadata reads retain caller cancellation.
 
 ## Data Model
 
@@ -70,6 +70,8 @@ Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancell
 
 Other transitions throw `InvalidOperationException`. `Cancel` is system-only (for example, account deletion) and skips reviewer attribution.
 
+User-supplied refusal, bail and removal reasons (including range actions) must fit 1,000 characters. Overlong reasons are refused before any signup mutation, cache invalidation, audit or notification. Accepted reasons are stored and audited in full.
+
 **Table:** `shift_signups`
 
 Aggregate-local navs: `ShiftSignup.Shift`. Cross-domain navs to `User` (volunteer / enroller / reviewer) are **stripped from the entity** — `UserId` / `EnrolledByUserId` / `ReviewedByUserId` are bare Guid columns with no FK constraint (nobodies-collective/Humans#992). Display data resolves through `IUserService.GetUserInfosAsync`.
@@ -83,9 +85,11 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 `UserId` is a bare Guid column with no navigation property and no FK constraint.
 
 <!-- wheat: docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md §Deviations from spec -->
-**Coordinator per-day writes:** `VolunteerTrackingService.SetDayAvailabilityAsync` accepts additions only for a known event calendar and an offset in `[BuildStartOffset, 0)`, matching the heatmap/build strip and day-off window. Invalid additions create no row, write no audit and invalidate no cache. Removing an existing offset remains allowed, including old entries outside that window; other availability offsets are preserved.
+**Coordinator per-day writes:** `VolunteerTrackingService.SetDayAvailabilityAsync` accepts additions only for a known event calendar and an offset in `[BuildStartOffset, 0)`, matching the heatmap/build strip and day-off window. Invalid additions create no row, write no audit and invalidate no cache. Removing an existing offset remains allowed, including old entries outside that window; other availability offsets are preserved. Coordinator per-day add/remove forms require a non-empty member ID and a present day offset, and reject binding errors after actor resolution, before availability writes or audit entries; valid explicit offset `0` removals remain allowed.
 
 ### VolunteerBuildStatus
+
+Coordinator camp-setup and day-off forms reject empty member IDs before creating tracking rows or audit entries.
 
 Per-user per-event build-period coordination state. Drives the Volunteer Tracking sub-page (gap detection, "went to camp set-up" marker, day-off list). Tracks two orthogonal facts that the schedule itself cannot infer:
 
@@ -247,9 +251,14 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - The member shift-profile wizard localizes breadcrumb navigation labels in all six supported cultures.
 
 - The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.
+- Department shift-management, email-preview and volunteer/tag search GETs retain request cancellation through viewer and department authorization and their rota, profile, consent, availability, signup, team and tag reads plus staffing charts. Caller-cancelled volunteer searches propagate cancellation without a failure response or log. Invalid mutation-form redisplays use the default token.
+- Member shift-browser tag and team reads retain request cancellation.
+- Global rota search retains caller cancellation for both GUID lookups and text queries.
+- The My Shifts bail-lock check retains request cancellation through its role and department-coordinator reads.
 
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
+- `IsDeptCoordinatorAsync` accepts an optional read token and forwards it through coordinator-cache misses and the parent-team lookup. `GetShiftsSummaryAsync` accepts the same optional token for its rota read, including summaries requested by team detail pages.
 - Browse and My shifts GETs forward request cancellation to viewer, cached per-user rows and signup history. Browse also forwards it through coordinator cache misses, filtered/day-option/row browse reads, department options and their calendar/team/user/repository lookups. Gallery browse and department reads use the same request token. My shifts also forwards it to active-event and team-name reads.
 
 - Dashboard and department volunteer-search boxes debounce independently per shift. Each edit clears the prior results and invalidates pending responses, so older results or errors cannot expose an outdated assignment choice. Range-voluntell searches apply the same isolation per rota input, clear its form’s selected identity immediately, and enable assignment only after picking a current result.
@@ -274,13 +283,18 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - Voluntell (single and range) is permitted on **past shifts** so coordinators can correct the rota retroactively; capacity ceiling and overlap checks still apply. Self-signup remains unavailable for past shifts (a browsing-window property, not a hard service guard). In the department admin view, past and future shifts are managed through the **same Manage control**: a unified panel listing confirmed humans with **Remove** (always), plus **Mark No-Show** and **Bail Range** only when the shift is past (post-shift corrections). Past shifts additionally list no-show/bailed humans as read-only history. The **Voluntell** control is available on all shifts.
 - Range signups (build/strike rotas) create signups for every all-day shift in the date range under one `SignupBlockId`; conflicts and capacity are reported as warnings, not failures (provided at least one slot is available). The whole block is bailed/approved/refused atomically by `BailRangeAsync` / `ApproveRangeAsync` / `RefuseRangeAsync`.
 - "Active event" has one home: Settings' `SaveEventSettingsAsync` enforces at-most-one-Active row. Shifts' knobs row carries no `IsActive` invariant of its own — `SaveKnobsAsync`/`CreateRotaAsync` no longer check or set it (nobodies-collective/Humans#1631). A knobs row is created on demand: the first rota or knob edit against an event id Settings knows about creates it.
-- Rota period (Build, Event, Strike, All) determines the shift creation UX (all-day vs time-slotted) and signup UX (date-range vs individual). Day offsets entered in the create/edit shift form must fall within the rota's period range. The per-period windows are Build `[BuildStartOffset, -1]`, Event `[0, EventEndOffset]`, Strike `[EventEndOffset + 1, StrikeEndOffset]`, All `[BuildStartOffset, StrikeEndOffset]` — both edges inclusive.
+- Shifts settings require explicit browsing, volunteer-cap and reminder fields before reading the active event or saving. Missing fields cannot close browsing, remove a cap or reset reminder timing. An explicitly blank cap still removes it; explicit false and zero remain valid.
+- Rota create/edit forms require explicit priority, signup policy, and period. Omitted choices cannot reset existing settings; explicit zero-valued choices remain valid. Department and rota ownership checks precede form validation.
+- Bulk staffing forms require each day row’s offset, minimum and maximum. Event generation requires both range endpoints, staffing limits, and every time slot’s start and duration. A missing value rejects the whole form before generation; a complete sibling row cannot be saved alone. Explicit day zero, zero minimum and midnight remain valid after department authorization.
+- Shift create/edit forms require explicit day, start time, duration, minimum and maximum staffing before a write. Omission cannot move or resize a shift or replace staffing with initializer defaults. Midnight, day zero, zero minimum and the unchecked Admin checkbox remain valid; all-day edits post their hidden time and duration. Existing department and shift ownership checks run first.
+- Rota period (Build, Event, Strike, All) determines the shift creation UX (all-day vs time-slotted) and signup UX (date-range vs individual). Day offsets entered in the create/edit shift form must fall within the rota's period range. The per-period windows are Build `[BuildStartOffset, -1]`, Event `[0, EventEndOffset]`, Strike `[EventEndOffset + 1, StrikeEndOffset]`, All `[BuildStartOffset, StrikeEndOffset]` — both edges inclusive. Bulk all-day staffing validates the entire day set against the same bounds before inserting any shifts, including All rotas. Coordinator range-voluntell offers this full window for All rotas, rather than only Strike dates.
 - A rota may only be created on a non-system team (`SystemTeamType.None`) and only against a real Settings cycle (any status, not just active); both are rejected with an `InvalidOperationException` rather than a result object, because the create form cannot offer an invalid target.
 - A rota may only be **moved** to a top-level department: the target must exist, have no `ParentTeamId`, not be a system team, and not already own the rota. Each rejection returns a `RotaMoveResult.Failure` with its own message and writes no audit entry.
 - Shift create, update and both bulk-generation paths require `MinVolunteers ≥ 0`, `MaxVolunteers ≥ 1` and minimum ≤ maximum. Timed durations must be positive and finite; all-day durations remain ignored. Invalid inputs return an operator refusal before changing rows or generating any shifts.
 - Bulk build/strike staffing generation is **additive**: day offsets that already have a shift on the rota are skipped rather than updated, so re-submitting the grid never clobbers existing staffing. When the same day appears twice in one submission the last entry wins.
 - Medical data is now a `Profile` field (Users section), present on the cached `UserInfo`. It is restricted to Admin and NoInfoAdmin (`MedicalDataViewer` policy / `ShiftRoleChecks.CanViewMedical`) and **gated at every render/serialize surface** (volunteer search, the volunteer badges partial), not stripped at a service. `IShiftManagement.GetShiftProfileAsync` no longer carries medical (it returns only Skills/Quirks/Languages).
 - When shift browsing is closed (`IsShiftBrowsingOpen = false`), regular volunteers can only see shifts if they already have signups (`hasSignups = true`). Coordinators and privileged roles can always browse. Sign-up and range sign-up are also gated by this flag.
+- No-show history reads carry caller cancellation through signup and event-calendar lookups.
 - Signup creation and confirmation share an in-process gate across single, range, member and coordinator paths. Duplicate and capacity checks see prior committed enrollments; the gate is released after the save, before audits and notices.
 - Early-entry freeze: after `EventSettings.EarlyEntryClose`, non-privileged humans cannot sign up for, range-sign-up to, bail from, or have approval issued on Build-period shifts. Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinators bypass the freeze.
 - Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants. Single and range signup use the same confirmed-only rule; Pending signups only reserve their exact shift against duplicate signup.
@@ -324,6 +338,9 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and profile reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
+- Coordinator range assignment requires both day offsets and rejects missing or malformed
+  values with 400 after department authorization and rota ownership checks, before enrollment.
+  Explicit day zero remains valid input.
 - Range signup and assignment localize missing rota, empty range, already-assigned range, fully conflicting range, fully booked range and restricted-range rejections in all six cultures. Multi-day signup also localizes duplicate-day and time-conflict summaries, partially full shift and early-entry warnings, and the nothing-to-add result.
 - Duplicate signup, missing shift, closed browsing, restricted shift, closed early-entry signup and full-shift rejections use the six-culture Shifts resources across their single, range and coordinator assignment call sites. Single-shift time conflicts (including the missing-team label) and advisory early-entry-capacity warnings also use those resources; capacity warnings identify the day and do not block signup.
 - Regular humans **cannot** approve, refuse, or bail other humans' signups. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.

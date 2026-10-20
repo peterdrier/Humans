@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Services;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
@@ -161,7 +162,7 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftProfiles.GetTagsAsync();
+        var allShiftTags = await shiftProfiles.GetTagsAsync(ct: ct);
         // Tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences;
@@ -189,6 +190,10 @@ internal sealed class ProfileController(
     [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
+        var user = await GetCurrentUserInfoAsync();
+        if (user is null) return NotFound();
+        model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
+
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
         model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
@@ -199,10 +204,6 @@ internal sealed class ProfileController(
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
-
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
 
         ValidateEditSimpleFieldGuards(model);
         if (ModelState.ErrorCount > 0)
@@ -502,7 +503,8 @@ internal sealed class ProfileController(
             ))
             .ToList();
 
-        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
+        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos,
+            removedLegacyContactFieldIds: model.RemovedLegacyContactFieldIds.Count > 0 ? model.RemovedLegacyContactFieldIds : null);
     }
 
     private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
@@ -845,7 +847,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
     {
         try
         {

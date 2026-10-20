@@ -28,7 +28,8 @@ internal interface IAdminLegalDocumentService : IApplicationService
     /// Creates a legal document and runs the initial content sync when a
     /// GitHub folder path was supplied.
     /// </summary>
-    Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
+    /// <returns>The created document and sync result, or null when its team does not exist.</returns>
+    Task<AdminLegalDocumentCreateResult?> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
         Guid actorUserId,
         CancellationToken cancellationToken = default);
@@ -43,7 +44,7 @@ internal interface IAdminLegalDocumentService : IApplicationService
 
     Task<string?> SyncLegalDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<bool> UpdateVersionSummaryAsync(
+    Task<VersionSummaryUpdateResult> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
@@ -85,4 +86,11 @@ internal enum AdminLegalDocumentInitialSyncStatus
     AlreadyCurrent,
     Synced,
     Failed
+}
+
+internal enum VersionSummaryUpdateResult
+{
+    NotFound,
+    Updated,
+    TooLong
 }

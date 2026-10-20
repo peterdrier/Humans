@@ -118,6 +118,7 @@ public class ShiftsControllerUserActiveSignupsTests
     [InlineData(true, "rows")]
     [InlineData(true, "event")]
     [InlineData(true, "teams")]
+    [InlineData(true, "approval")]
     public async Task MemberPageReads_ObserveRequestCancellation(bool mine, string boundary)
     {
         var controller = BuildSut();
@@ -138,8 +139,17 @@ public class ShiftsControllerUserActiveSignupsTests
             _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(
                 new ShiftUserView(_userId, null, null, null, [],
                     [MakeSignup(ActiveBurnId, "Gate", 1, new LocalTime(10, 0), SignupStatus.Confirmed)]));
-            _teamService.GetTeamsAsync(aborted.Token)
-                .Returns(Task.FromCanceled<IReadOnlyDictionary<Guid, TeamInfo>>(aborted.Token));
+            if (string.Equals(boundary, "approval", StringComparison.Ordinal))
+            {
+                var closedBurn = ActiveBurn with { EarlyEntryClose = _clock.GetCurrentInstant() - Duration.FromSeconds(1) };
+                _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(
+                    closedBurn);
+                _shiftMgmt.CanApproveSignupsAsync(_userId, Arg.Any<Guid>(), aborted.Token)
+                    .Returns(Task.FromCanceled<bool>(aborted.Token));
+            }
+            else
+                _teamService.GetTeamsAsync(aborted.Token)
+                    .Returns(Task.FromCanceled<IReadOnlyDictionary<Guid, TeamInfo>>(aborted.Token));
         }
 
         var act = () => mine ? controller.Mine() : controller.Index(null, null, null, null);

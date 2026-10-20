@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Settings.Contracts;
 
@@ -13,19 +14,23 @@ internal sealed class GuideSettingsViewModel
 
     [Required]
     [Display(Name = "Submission Opens")]
+    [BindRequired]
     public DateTime SubmissionOpenAt { get; set; }
 
     [Required]
     [Display(Name = "Submission Closes")]
+    [BindRequired]
     public DateTime SubmissionCloseAt { get; set; }
 
     [Required]
     [Display(Name = "Guide Published")]
+    [BindRequired]
     public DateTime GuidePublishAt { get; set; }
 
     [Required]
     [Range(0, 10000)]
     [Display(Name = "Max Print Slots")]
+    [BindRequired]
     public int MaxPrintSlots { get; set; } = 100;
 
     public List<EventSettingsOptionViewModel> AvailableEventSettings { get; set; } = [];
@@ -71,12 +76,15 @@ internal sealed class EventCategoryFormViewModel
     public string Slug { get; set; } = string.Empty;
 
     [Display(Name = "Sensitive")]
+    [BindRequired]
     public bool IsSensitive { get; set; }
 
     [Display(Name = "Active")]
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 
     [Display(Name = "Display Order")]
+    [BindRequired]
     public int DisplayOrder { get; set; }
 }
 
@@ -111,8 +119,10 @@ internal sealed class GuideVenueFormViewModel
     public string? LocationDescription { get; set; }
 
     [Display(Name = "Active")]
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 
     [Display(Name = "Display Order")]
+    [BindRequired]
     public int DisplayOrder { get; set; }
 }

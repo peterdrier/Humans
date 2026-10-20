@@ -15,7 +15,7 @@ internal sealed class RideshareTripConfiguration : IEntityTypeConfiguration<Ride
         builder.Property(t => t.UserId).IsRequired();
         builder.Property(t => t.Year).IsRequired();
         builder.Property(t => t.Direction).IsRequired().HasConversion<string>().HasMaxLength(50);
-        builder.Property(t => t.MemberPlaceLabel).HasMaxLength(200).IsRequired();
+        builder.Property(t => t.MemberPlaceLabel).HasMaxLength(256).IsRequired();
         builder.Property(t => t.MemberLatitude).IsRequired();
         builder.Property(t => t.MemberLongitude).IsRequired();
         builder.Property(t => t.WaypointsJson).HasColumnType("text");

@@ -61,7 +61,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, SystemClock.Instance, _localizer, _consentLocalizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

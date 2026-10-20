@@ -25,6 +25,24 @@ collision guard).
 
 Sync-state reads return the persisted singleton or an unsaved Idle default; only `SaveDocSyncStateAsync` inserts or updates `HoldedDocSyncStates`.
 
+### SepaBankBooking (section-internal)
+
+Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`,
+a singleton `TrackedCache<string, Dictionary<string, int>>` for sweep failure
+counts, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
+and scheduled bank-booking workflow: reads creditor bindings and payout rows,
+updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers`,
+and calls Holded through its contract. Its shared booking gate covers all entry
+points. No provisioning, Budget or email dependency.
+
+### HoldedDocumentSync (section-internal)
+
+Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`
+and the facade's logger. Owns purchase-document fetching and matching,
+`HoldedExpenseDocs` snapshot replacement and `HoldedDocSyncStates` writes. Reads the
+category map and managed-account registry; no Budget, user or email dependency.
+The existing `IHoldedFinanceWrite.SyncAsync` entry point delegates here. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseReportService`, which the sync itself never does).
+
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.
@@ -36,7 +54,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass), `SaveSepaTransferWithdrawnAsync` (`WithdrawnAt`/`WithdrawnByUserId` only, a transfer the bank cancelled). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are updated only by the composed `SepaBankBooking` owner — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass); the one other update is `SaveSepaTransferWithdrawnAsync` (`WithdrawnAt`/`WithdrawnByUserId` only, a transfer the bank cancelled, written by the facade's `WithdrawSepaTransferAsync`). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /

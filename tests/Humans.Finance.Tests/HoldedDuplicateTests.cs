@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -45,7 +46,9 @@ public class HoldedDuplicateTests
         _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), _audit, Substitute.For<IUserService>(),
         Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
-        Options.Create(new SepaOptions()), logger ?? NullLogger<Service>.Instance);
+        Options.Create(new SepaOptions()),
+        new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
+        logger ?? NullLogger<Service>.Instance);
 
     public HoldedDuplicateTests()
     {

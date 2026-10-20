@@ -451,7 +451,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // Persist the fallback without streaming it: when no prose arrives the
                 // widget renders its own localized handoff line live, and a streamed
                 // delta would override that localization.
-                assistantText = LocalizedReply("Help_Agent_IssueProposed", conversation.Locale);
+                assistantText = LocalizedReply("Agent_IssueProposed", conversation.Locale);
             }
             else
             {

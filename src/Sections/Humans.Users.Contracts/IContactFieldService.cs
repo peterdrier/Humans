@@ -31,15 +31,18 @@ public interface IContactFieldService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Saves contact fields for a profile (upsert/delete).
+    /// Saves current contact fields for a profile (upsert/delete).
+    /// Historical email fields remain unchanged unless explicitly selected for removal.
     /// </summary>
     /// <param name="profileId">The profile to save contact fields for.</param>
-    /// <param name="fields">The contact fields to save.</param>
+    /// <param name="fields">The current contact fields to save.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="removedLegacyContactFieldIds">Historical email IDs to remove from this profile only.</param>
     Task SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);
 
     /// <summary>
     /// Gets the maximum visibility level that a viewer can see for a profile owner.

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Events.Contracts;
 
@@ -52,11 +53,13 @@ internal sealed class CampEventFormViewModel
 
     [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Start Time")]
+    [BindRequired]
     public TimeSpan StartTime { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [Range(15, 480, ErrorMessage = "Validation_Range")]
     [Display(Name = "Duration (minutes)")]
+    [BindRequired]
     public int DurationMinutes { get; set; } = 60;
 
     [MaxLength(120, ErrorMessage = "Validation_MaxLength")]
@@ -68,6 +71,7 @@ internal sealed class CampEventFormViewModel
     public string? Host { get; set; }
 
     [Display(Name = "Recurring")]
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     [Display(Name = "Recurrence Days")]

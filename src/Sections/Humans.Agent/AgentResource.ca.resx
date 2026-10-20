@@ -124,16 +124,16 @@
   <data name="Agent_ViewHistory" xml:space="preserve">
     <value>Historial</value>
   </data>
-  <data name="Help_WidgetButton" xml:space="preserve">
+  <data name="Agent_Help_WidgetButton" xml:space="preserve">
     <value>Ajuda</value>
   </data>
-  <data name="Help_Menu_TalkWithAgent" xml:space="preserve">
+  <data name="Agent_Help_Menu_TalkWithAgent" xml:space="preserve">
     <value>Parlar amb l'Assistent</value>
   </data>
-  <data name="Help_Menu_CreateIssue" xml:space="preserve">
+  <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Crear incidència</value>
   </data>
-  <data name="Help_Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_IssueProposed" xml:space="preserve">
     <value>No puc respondre això jo mateix. He redactat una incidència per a l'equip — revisa-la i envia-la, si us plau.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he pogut preparar una resposta per a això. Podries reformular la pregunta o tornar-ho a intentar?</value></data>

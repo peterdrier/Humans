@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Base.Extensions;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
@@ -13,9 +14,10 @@ internal sealed class RequestFormViewModel
     public Guid? Id { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public RideshareDirection Direction { get; set; }
 
-    [Required(ErrorMessage = "Validation_Required"), StringLength(200, ErrorMessage = "Validation_MaxLength")]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string PickupPlaceLabel { get; set; } = string.Empty;
 
     /// <summary>Null = geocode the label.</summary>
@@ -29,9 +31,11 @@ internal sealed class RequestFormViewModel
     public string DesiredDate { get; set; } = string.Empty;
 
     [Range(1, 20, ErrorMessage = "Validation_Range")]
+    [BindRequired]
     public int PartySize { get; set; } = 1;
 
     [Required(ErrorMessage = "Validation_Required")]
+    [BindRequired]
     public LuggageSize LuggageLoad { get; set; }
 
     public bool CanContributeToFuel { get; set; } = true;

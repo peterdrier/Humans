@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -546,7 +547,7 @@ internal sealed class TeamAdminController(
 
     [HttpPost("Resources/{resourceId}/RestrictInheritedAccess")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, bool restrict)
+    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, [BindRequired] bool restrict)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
         if (currentUserNotFound is not null)
@@ -747,6 +748,12 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role creation for team {TeamId} by user {UserId}", team.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var priorities = model.Priorities
@@ -779,6 +786,12 @@ internal sealed class TeamAdminController(
         if (teamError is not null)
         {
             return isAjax ? Unauthorized() : teamError;
+        }
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed role update for team {TeamId} by user {UserId}", team.Id, user.Id);
+            return BadRequest(ModelState);
         }
 
         try

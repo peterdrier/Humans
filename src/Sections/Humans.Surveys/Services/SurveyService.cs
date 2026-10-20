@@ -239,7 +239,7 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
             throw;
         }
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
@@ -359,7 +359,7 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
             throw;
         }
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
@@ -1530,8 +1530,8 @@ internal sealed class SurveyService(
                 answer.RankedValue!.RankGroups,
                 answer.RankedValue.Rejected.ToHashSet(StringComparer.Ordinal)))
             .ToList();
-        RankedMethodResult Method(string name, string? winner, bool tieBreak) => new(
-            name,
+        RankedMethodResult Method(string key, string? winner, bool tieBreak) => new(
+            key,
             winner,
             winner is null ? null : labels.GetValueOrDefault(winner, winner),
             tieBreak);
@@ -1547,14 +1547,14 @@ internal sealed class SurveyService(
             var rankedPairs = RankedChoiceCounter.CountRankedPairs(authored, matrix, candidates);
             var condorcet = RankedChoiceCounter.CheckCondorcet(authored, matrix, candidates);
             var borda = RankedChoiceCounter.CountBorda(authored, ballots, candidates);
-            var official = Method("Ranked Pairs (official)", rankedPairs.Winner, rankedPairs.TieBreakUsed);
+            var official = Method("Surveys_Results_MethodRankedPairsOfficial", rankedPairs.Winner, rankedPairs.TieBreakUsed);
             return (
                 matrix,
                 official,
                 [
                     official,
-                    Method("Condorcet check", condorcet.Winner, false),
-                    Method("Borda Count", borda.Winner, borda.TieBreakUsed),
+                    Method("Surveys_Results_MethodCondorcetCheck", condorcet.Winner, false),
+                    Method("Surveys_Results_MethodBordaCount", borda.Winner, borda.TieBreakUsed),
                 ],
                 condorcet.SmallestCycle);
         }
@@ -2575,6 +2575,24 @@ internal sealed class SurveyService(
 
     private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
 
+    private async Task CleanupFailedInformationImageUploadAsync(
+        Guid surveyId, IReadOnlyList<string> newStoragePaths)
+    {
+        if (newStoragePaths.Count == 0) return;
+        try
+        {
+            // A failed acknowledgement may follow a committed save. Retain any existing
+            // survey's image versions, just as successful edits do for other open builders.
+            if (await repo.GetByIdAsync(surveyId, CancellationToken.None) is null)
+                await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to verify survey {SurveyId} after a failed save; retaining newly uploaded images", surveyId);
+        }
+    }
+
     private async Task DeleteFilesBestEffortAsync(
         IEnumerable<string> storagePaths,
         CancellationToken ct)
@@ -2651,6 +2669,10 @@ internal sealed class SurveyService(
     {
         foreach (var question in questions)
         {
+            if (question.Options.Any(option => option.Value.Length > 100))
+                return new("Surveys_Validation_OptionValueLength",
+                    $"Option values for question {question.Id} must be 100 characters or fewer.", 100);
+
             var error = question.Type switch
             {
                 SurveyQuestionType.Information => ValidateInformationQuestion(question),

@@ -831,50 +831,50 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Unsub_Title" xml:space="preserve">
+  <data name="Users_Unsubscribe_Title" xml:space="preserve">
     <value>Annulla iscrizione e-mail</value>
   </data>
-  <data name="Unsub_Heading" xml:space="preserve">
+  <data name="Users_Unsubscribe_Heading" xml:space="preserve">
     <value>Annullare l'iscrizione alle e-mail {0}?</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_Greeting" xml:space="preserve">
+  <data name="Users_Unsubscribe_Greeting" xml:space="preserve">
     <value>Ciao {0},</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Unsub_ConfirmMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve">
     <value>Se confermi, non riceverai più e-mail {0} da Humans.</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_ConfirmButton" xml:space="preserve">
+  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve">
     <value>Conferma annullamento</value>
   </data>
-  <data name="Unsub_DoneTitle" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve">
     <value>Iscrizione annullata</value>
   </data>
-  <data name="Unsub_DoneMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve">
     <value>Non riceverai più e-mail {0} da Humans.</value>
     <comment>{0} = category name</comment>
   </data>
-  <data name="Unsub_DoneManage" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve">
     <value>Puoi gestire le preferenze di comunicazione dalle tue</value>
   </data>
-  <data name="Unsub_DoneManageLink" xml:space="preserve">
+  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve">
     <value>preferenze di comunicazione</value>
   </data>
-  <data name="Unsub_BackHome" xml:space="preserve">
+  <data name="Users_Unsubscribe_BackHome" xml:space="preserve">
     <value>Torna alla home</value>
   </data>
-  <data name="Unsub_ExpiredTitle" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve">
     <value>Link di annullamento scaduto</value>
   </data>
-  <data name="Unsub_ExpiredHeading" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve">
     <value>Questo link di annullamento è scaduto</value>
   </data>
-  <data name="Unsub_ExpiredMessage" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve">
     <value>Usa il link da un'e-mail più recente, o</value>
   </data>
-  <data name="Unsub_ExpiredSignIn" xml:space="preserve">
+  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve">
     <value>accedi per gestire le preferenze di comunicazione</value>
   </data>
 

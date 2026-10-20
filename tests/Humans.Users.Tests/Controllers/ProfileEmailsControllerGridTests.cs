@@ -141,6 +141,22 @@ public class ProfileEmailsControllerGridTests
             .Returns(AuthorizationResult.Success());
     }
 
+    [HumansFact]
+    public async Task Emails_RequestAborted_CancelsEmailGridReads()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _controller.HttpContext.RequestAborted = aborted.Token;
+        _userManager.GetLoginsAsync(Arg.Any<User>()).Returns([]);
+        _userEmailService.GetUserEmailsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _userEmailService.GetUserEmailsAsync(_userId, aborted.Token)
+            .Returns(Task.FromException<IReadOnlyList<UserEmailEditDto>>(new OperationCanceledException(aborted.Token)));
+
+        var read = () => _controller.Emails();
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansTheory]
     [InlineData("SetPrimary", true)]
     [InlineData("SetEmailVisibility", true)]

@@ -135,7 +135,7 @@
                                             <form asp-action="RefuseRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
-                                                <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
+                                                <input type="text" name="reason" maxlength="1000" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
                                                 <button type="submit" class="btn btn-sm btn-danger">Refuse Range</button>
                                             </form>
                                         }
@@ -155,7 +155,7 @@
                                             }
                                             <form asp-action="RefuseSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
-                                                <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
+                                                <input type="text" name="reason" maxlength="1000" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
                                                 <button type="submit" class="btn btn-sm btn-danger">Refuse</button>
                                             </form>
                                         }
@@ -778,9 +778,12 @@
                 {
                     var rangeVoluntellId = "range-voluntell-" + rota.Id.ToString("N");
                     var firstShiftId = rota.Shifts.OrderBy(s => s.DayOffset).First().Id;
-                    var rvPeriodRange = rota.Period == RotaPeriod.Build
-                        ? (Start: Model.EventSettings.BuildStartOffset, End: -1)
-                        : (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset);
+                    var rvPeriodRange = rota.Period switch
+                    {
+                        RotaPeriod.Build => (Start: Model.EventSettings.BuildStartOffset, End: -1),
+                        RotaPeriod.Strike => (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset),
+                        _ => (Start: Model.EventSettings.BuildStartOffset, End: Model.EventSettings.StrikeEndOffset)
+                    };
                     <div class="mt-3 border-top pt-3">
                         <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#@rangeVoluntellId">
                             Voluntell Range

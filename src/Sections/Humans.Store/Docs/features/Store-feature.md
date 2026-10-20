@@ -28,7 +28,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `/Store/Admin/Catalog` lists every product for the current event year (active and inactive) with name, description, unit price, VAT rate, optional deposit, OrderableUntil deadline, and IsActive state.
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The authorization guard in `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable by Camp Leads; admins can extend or shorten it freely and are not blocked past the deadline.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `Service.AddLineAsync` rejects new lines against them with a clear error.
-- The active year is derived via `ISettingsService.GetActiveEventSettingsAsync()` (see Cross-Section Dependencies in `Store.md`).
+- The active year is derived via `ISettingsService.GetActiveEventSettingsAsync(ct)`, preserving read cancellation through catalog-year and live-price lookups (see Cross-Section Dependencies in `Store.md`).
 - Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)
@@ -36,6 +36,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Camp Lead, **I want** to add lines to my camp's Store order over the season as needs firm up, **so that** the camp's accumulating purchases are tracked in one ledger that maps directly to a single year-end factura.
 
 **Acceptance Criteria:**
+- The index and editable order catalogs display products alphabetically; controllers own their display order.
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
 - "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.

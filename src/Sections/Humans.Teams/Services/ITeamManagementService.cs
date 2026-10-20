@@ -6,55 +6,6 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
-internal sealed record TeamDirectorySummary(
-    Guid Id,
-    string Name,
-    string? Description,
-    string Slug,
-    int MemberCount,
-    bool IsSystemTeam,
-    bool IsHidden,
-    bool RequiresApproval,
-    bool IsPublicPage,
-    bool IsCurrentUserMember,
-    bool IsCurrentUserCoordinator,
-    string? ParentTeamName,
-    string? ParentTeamSlug)
-{
-    public string SortKey => ParentTeamName is not null ? $"{ParentTeamName} - {Name}" : Name;
-}
-
-internal sealed record TeamDirectoryResult(
-    bool IsAuthenticated,
-    bool CanCreateTeam,
-    IReadOnlyList<TeamDirectorySummary> MyTeams,
-    IReadOnlyList<TeamDirectorySummary> Departments,
-    IReadOnlyList<TeamDirectorySummary> SystemTeams,
-    IReadOnlyList<TeamDirectorySummary> HiddenTeams);
-
-internal sealed record TeamDetailMemberSummary(
-    Guid UserId,
-    string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant JoinedAt);
-
-internal sealed record TeamDetailResult(
-    TeamPageTeamSummary Team,
-    IReadOnlyList<TeamDetailMemberSummary> Members,
-    IReadOnlyList<TeamPageTeamLink> ChildTeams,
-    IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
-    bool IsAuthenticated,
-    bool IsCurrentUserMember,
-    bool IsCurrentUserCoordinator,
-    bool CanCurrentUserJoin,
-    bool CanCurrentUserLeave,
-    bool CanCurrentUserManage,
-    bool CanCurrentUserEditTeam,
-    Guid? CurrentUserPendingRequestId,
-    int PendingRequestCount);
-
 internal sealed record TeamPageCallToActionInput(string? Text, string? Url, CallToActionStyle Style);
 
 internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage)
@@ -63,30 +14,6 @@ internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage
 
     public static TeamPageUpdateResult Failed(string message) => new(false, message);
 }
-
-internal sealed record MyTeamMembershipSummary(
-    Guid TeamId,
-    string TeamName,
-    string TeamSlug,
-    bool IsSystemTeam,
-    TeamMemberRole Role,
-    Instant JoinedAt,
-    bool CanLeave,
-    int PendingRequestCount);
-
-internal sealed record TeamRosterSlotSummary(
-    string TeamName,
-    string TeamSlug,
-    string RoleName,
-    string? RoleDescription,
-    Guid RoleDefinitionId,
-    int SlotNumber,
-    string Priority,
-    string PriorityBadgeClass,
-    string Period,
-    bool IsFilled,
-    Guid? AssignedUserId,
-    string? AssignedUserName);
 
 internal sealed record AdminTeamSummary(
     Guid Id,
@@ -187,24 +114,6 @@ internal interface ITeamManagementService : ITeamManagement
     /// Gets a team by its ID.
     /// </summary>
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the summarized team directory for anonymous or authenticated viewers.
-    /// </summary>
-    Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the detail-page data for a visible team, including viewer-specific membership and management state.
-    /// Returns null when the team does not exist or is not visible to the viewer.
-    /// </summary>
-    Task<TeamDetailResult?> GetTeamDetailAsync(string slug, Guid? userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the current user's team memberships with viewer-specific pending-request counts.
-    /// </summary>
-    Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates a team's details, returning expected validation or unique-constraint refusals.
@@ -360,15 +269,6 @@ internal interface ITeamManagementService : ITeamManagement
     Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the public roster summary with optional filters applied.
-    /// </summary>
-    Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
-        string? priority,
-        string? status,
-        string? period,
         CancellationToken cancellationToken = default);
 
     /// <summary>

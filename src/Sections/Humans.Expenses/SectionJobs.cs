@@ -10,6 +10,6 @@ internal sealed class SectionJobs : ISectionJobs
     {
         // Push approved expense reports to Holded as purchase documents.
         yield return new RecurringJobDescriptor(
-            "expenses-holded-outbox", typeof(HoldedExpenseOutboxJob), "*/1 * * * *");
+            "expenses-holded-outbox", typeof(HoldedExpenseOutboxJob), "*/5 * * * *");
     }
 }

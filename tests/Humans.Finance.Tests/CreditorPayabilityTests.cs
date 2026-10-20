@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -50,7 +51,8 @@ public class CreditorPayabilityTests
         _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
         _userEmails, Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
-        Options.Create(_sepa), NullLogger<Service>.Instance);
+        Options.Create(_sepa), new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
+        NullLogger<Service>.Instance);
 
     public CreditorPayabilityTests()
     {

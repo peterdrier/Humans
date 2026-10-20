@@ -62,7 +62,7 @@ public class ServiceIssueInvoiceTests
 
     public ServiceIssueInvoiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
         _holded.IsConfigured.Returns(true);
@@ -636,6 +636,38 @@ public class ServiceIssueInvoiceTests
         savedOrder.Should().NotBeNull();
         savedOrder!.State.Should().Be(OrderState.InvoiceIssued);
         savedOrder.IssuedInvoiceId.Should().Be(saved.Id);
+    }
+
+    [HumansTheory]
+    [InlineData(-10, false)]
+    [InlineData(10, false)]
+    [InlineData(-10, true)]
+    [InlineData(10, true)]
+    public async Task Changed_payment_balance_allows_approved_recovery_but_never_draft_approval(int offsetEur, bool isDraft)
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        order.Payments.Single().AmountEur += offsetEur;
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: isDraft));
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().Be(!isDraft);
+        await _holded.DidNotReceiveWithAnyArgs().CreateSalesDocumentAsync(default, default!);
+        await _holded.DidNotReceiveWithAnyArgs().ApproveSalesDocumentAsync(default, default!);
+        if (isDraft)
+        {
+            result.Refusal.Should().Match("*balance is zero*");
+            await _repo.DidNotReceiveWithAnyArgs().SaveIssuedInvoiceAsync(default!, default!);
+            order.State.Should().Be(OrderState.Open);
+        }
+        else
+        {
+            await _repo.Received(1).SaveIssuedInvoiceAsync(
+                Arg.Is<Invoice>(invoice => string.Equals(invoice.HoldedDocId, "doc-earlier", StringComparison.Ordinal)),
+                Arg.Is<Order>(saved => saved.Id == order.Id && saved.State == OrderState.InvoiceIssued),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     [HumansFact]

@@ -279,6 +279,74 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await _pictureStorage.Received(1).DeleteAsync(PicKey(profileId, "image/png"), CancellationToken.None);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SaveProfileAsync_LostSaveAcknowledgement_PreservesCommittedPicture(bool replacingPicture)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: replacingPicture);
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
+            .AddInterceptors(new LoseProfileSaveAcknowledgement()).Options;
+        var service = new UserService(
+            new UserRepository(new TestDbContextFactory(options), Clock),
+            _communicationPreferenceRepository, AdminAuthorization,
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+            _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var command = new UserProfileSaveCommand(
+            "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
+
+        var save = () => service.SaveProfileAsync(userId, command, [4, 5, 6], ct);
+
+        await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Profile save acknowledgement lost");
+        var saved = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
+        saved.ProfilePictureStorageKey.Should().NotBeNull();
+        var picture = await _service.GetProfilePictureAsync(profileId, ct);
+        picture.Should().NotBeNull();
+        picture!.Value.Data.Should().Equal(4, 5, 6);
+        if (replacingPicture)
+            _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+    }
+
+    private sealed class LoseProfileSaveAcknowledgement : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("Profile save acknowledgement lost");
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_UnverifiableFailedSave_PreservesUploadedBytesAndOriginalFailure()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        var existing = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
+        var repo = Substitute.For<IUserRepository>();
+        repo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
+        repo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+        repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Could not verify the committed picture"));
+        var service = new UserService(
+            repo, _communicationPreferenceRepository, AdminAuthorization,
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+            _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var command = new UserProfileSaveCommand(
+            "Updated name", "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, false, UserProfilePictureMutation.Set, "image/png");
+
+        var save = () => service.SaveProfileAsync(userId, command, [4, 5, 6], ct);
+
+        await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database unavailable");
+        _fileStorage.Files.Should().HaveCount(2);
+        _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+        _fileStorage.Files.Values.Should().Contain(bytes => bytes.SequenceEqual(new byte[] { 4, 5, 6 }));
+        await repo.Received(1).GetProfilePictureLocationAsync(profileId, CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_SameContentTypeReplace_FailedMetadataSaveKeepsThePreviousBytes()
     {

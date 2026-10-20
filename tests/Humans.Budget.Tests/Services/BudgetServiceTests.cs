@@ -1,6 +1,13 @@
 using AwesomeAssertions;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using System.Security.Claims;
 using Humans.Budget.Controllers;
+using Humans.Budget.Models;
 using Humans.Finance.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -67,6 +74,147 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task YearReads_CancelledRead_AbortsRepositoryQuery(bool active)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+
+        var read = () => active
+            ? _service.GetActiveYearAsync(request.Token)
+            : _service.GetYearByIdAsync(_yearId, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("Index")]
+    [InlineData("YearDetail")]
+    [InlineData("CategoryDetail")]
+    [InlineData("AuditLog")]
+    [InlineData("CashFlow")]
+    [InlineData("Admin")]
+    public async Task AdminReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var (controller, budget, _) = CreateAdminController(true);
+        controller.HttpContext.RequestAborted = request.Token;
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetYearByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetCategorySnapshot?>(new OperationCanceledException(request.Token)));
+        budget.GetAllYearsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<BudgetYearSummarySnapshot>>(new OperationCanceledException(request.Token)));
+
+        Func<Task<IActionResult>> read = action switch
+        {
+            "Index" => controller.Index,
+            "YearDetail" => () => controller.YearDetail(_yearId),
+            "CategoryDetail" => () => controller.CategoryDetail(_yearId),
+            "AuditLog" => () => controller.AuditLog(null),
+            "CashFlow" => () => controller.CashFlow(),
+            _ => controller.Admin
+        };
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        switch (action)
+        {
+            case "YearDetail": _ = budget.Received(1).GetYearByIdAsync(_yearId, request.Token); break;
+            case "CategoryDetail": _ = budget.Received(1).GetCategoryByIdAsync(_yearId, request.Token); break;
+            case "Admin": _ = budget.Received(1).GetAllYearsAsync(true, request.Token); break;
+            default: _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("Index", true)]
+    [InlineData("Summary", true)]
+    [InlineData("CategoryDetail", true)]
+    [InlineData("Index", false)]
+    [InlineData("Summary", false)]
+    [InlineData("CategoryDetail", false)]
+    public async Task MemberReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action, bool cancelActorRead)
+    {
+        using var request = new CancellationTokenSource();
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        admin.HttpContext.RequestAborted = request.Token;
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(_ => cancelActorRead
+            ? new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new OperationCanceledException(request.Token)))
+            : new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = viewerId }, [], [], [], null, [])));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        budget.GetCoordinatorBudgetViewDataAsync(viewerId, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CoordinatorBudgetViewData>(new OperationCanceledException(request.Token)));
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+        budget.GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CoordinatorCategoryDetailViewData>(new OperationCanceledException(request.Token)));
+        var controller = new BudgetController(budget, auth, users,
+            Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
+        {
+            ControllerContext = admin.ControllerContext,
+            TempData = admin.TempData,
+            Url = admin.Url
+        };
+        Func<Task<IActionResult>> read = action switch
+        {
+            "Index" => controller.Index,
+            "Summary" => controller.Summary,
+            _ => () => controller.CategoryDetail(_yearId)
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        _ = users.Received(1).GetUserInfoAsync(viewerId, request.Token);
+        if (!cancelActorRead)
+        {
+            switch (action)
+            {
+                case "Index": _ = budget.Received(1).GetCoordinatorBudgetViewDataAsync(viewerId, true, request.Token); break;
+                case "Summary": _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
+                default: _ = budget.Received(1).GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, request.Token); break;
+            }
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CoordinatorViews_CancelledRead_AbortsRepositoryQuery(bool category)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        Func<Task> query = category
+            ? () => _service.GetCoordinatorCategoryDetailViewDataAsync(_yearId, Guid.NewGuid(), true, request.Token)
+            : () => _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), true, request.Token);
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("Category")]
+    [InlineData("Years")]
+    [InlineData("Audit")]
+    public async Task AdditionalReads_CancelledRead_AbortsRepositoryQuery(string read)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        Func<Task> query = read switch
+        {
+            "Category" => () => _service.GetCategoryByIdAsync(_yearId, request.Token),
+            "Years" => () => _service.GetAllYearsAsync(ct: request.Token),
+            _ => () => _service.GetAuditLogAsync(_yearId, request.Token)
+        };
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [InlineData(false, "isRestricted", true)]
     [InlineData(true, "isRestricted", true)]
     [InlineData(true, "sortOrder", true)]
@@ -93,30 +241,248 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task YearStatus_MalformedBinding_DoesNotResetActiveYear(bool malformed)
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, null, false)]
+    [InlineData(true, null, false)]
+    public async Task Group_forms_require_explicit_restriction_before_exposing_details(bool update, bool? restriction, bool viewerExists)
+    {
+        var category = await SeedCategoryAsync(isRestricted: true);
+        var group = category.BudgetGroup!;
+        var (controller, _, _) = CreateAdminController(viewerExists, _service);
+        if (restriction is null)
+            await BindMissingParameterAsync(controller,
+                update ? nameof(BudgetAdminController.UpdateGroup) : nameof(BudgetAdminController.CreateGroup), "isRestricted");
+
+        var result = update
+            ? await controller.UpdateGroup(group.Id, "Changed group", 0, restriction ?? false)
+            : await controller.CreateGroup(group.BudgetYearId, "New group", restriction ?? false);
+
+        var refused = restriction is null || !viewerExists;
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (refused)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState["isRestricted"]!.Errors.Should().ContainSingle();
+        }
+        else result.Should().BeOfType<RedirectToActionResult>();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var groups = await db.BudgetGroups.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        groups.Should().HaveCount(update || refused ? 1 : 2);
+        var saved = groups.Single(g => g.Id == group.Id);
+        saved.IsRestricted.Should().Be(!update || refused || restriction == true);
+        if (update)
+        {
+            saved.Name.Should().Be(refused ? "Departments" : "Changed group");
+            var coordinator = Guid.NewGuid();
+            _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinator, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
+            _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+            (await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinator, false))
+                .ShouldForbid.Should().Be(refused || restriction == true);
+        }
+        else if (!refused) groups.Single(g => g.Id != group.Id).IsRestricted.Should().Be(restriction!.Value);
+        if (refused) (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(false, true, false)]
+    public async Task YearStatus_InvalidOrMissingBinding_DoesNotResetActiveYear(bool malformed, bool missingStatus, bool viewerExists)
     {
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
-        var (controller, _, _) = CreateAdminController(true, _service);
+        var (controller, _, _) = CreateAdminController(viewerExists, _service);
         if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
+        if (missingStatus)
+            await BindMissingParameterAsync(controller, nameof(BudgetAdminController.UpdateYearStatus), "status");
 
         var result = await controller.UpdateYearStatus(year.Id, BudgetYearStatus.Draft);
+        var refused = malformed || missingStatus || !viewerExists;
 
-        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (refused) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<RedirectToActionResult>();
         await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         (await db.BudgetYears.SingleAsync(y => y.Id == year.Id, TestContext.Current.CancellationToken))
-            .Status.Should().Be(malformed ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
-        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(malformed ? 2 : 3);
+            .Status.Should().Be(refused ? BudgetYearStatus.Active : BudgetYearStatus.Draft);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(refused ? 2 : 3);
+    }
+
+    [HumansTheory]
+    [InlineData("DailySalesRate", true)]
+    [InlineData("VatRate", true)]
+    [InlineData("StartDate", true)]
+    [InlineData("DailySalesRate", false)]
+    [InlineData(null, true)]
+    public async Task ProjectionForm_InvalidBinding_DoesNotSaveOrRegenerate(string? invalidField, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null)
+            controller.ModelState.AddModelError(invalidField, "Invalid value.");
+
+        var result = await controller.UpdateTicketingProjection(_yearId,
+            new TicketingProjectionUpdateForm { BudgetYearId = _yearId });
+
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else
+        {
+            await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
+                0, 0m, 0m, 0, 0m, 0m, 0m, viewerId);
+            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("InitialSalesCount", false, true)]
+    [InlineData("DailySalesRate", false, true)]
+    [InlineData("AverageTicketPrice", false, true)]
+    [InlineData("VatRate", false, true)]
+    [InlineData("StripeFeePercent", false, true)]
+    [InlineData("StripeFeeFixed", false, true)]
+    [InlineData("TicketTailorFeePercent", false, true)]
+    [InlineData("", false, true)]
+    [InlineData("", true, true)]
+    [InlineData("VatRate", false, false)]
+    public async Task Projection_form_requires_explicit_financial_assumptions(string omitted, bool zero, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["budgetYearId"] = _yearId.ToString(),
+            ["initialSalesCount"] = zero ? "0" : "123",
+            ["dailySalesRate"] = zero ? "0" : "5",
+            ["averageTicketPrice"] = zero ? "0" : "120",
+            ["vatRate"] = zero ? "0" : "21",
+            ["stripeFeePercent"] = zero ? "0" : "1.5",
+            ["stripeFeeFixed"] = zero ? "0" : "0.3",
+            ["ticketTailorFeePercent"] = zero ? "0" : "0.5"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(TicketingProjectionUpdateForm));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(TicketingProjectionUpdateForm)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (TicketingProjectionUpdateForm)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = await controller.UpdateTicketingProjection(_yearId, model);
+
+        if (!viewerExists) result.Should().BeOfType<NotFoundResult>();
+        else if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
+                zero ? 0 : 123, zero ? 0m : 5m, zero ? 0m : 120m, zero ? 0 : 21,
+                zero ? 0m : 1.5m, zero ? 0m : 0.3m, zero ? 0m : 0.5m, viewerId);
+            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+        }
+        if (!viewerExists || omitted.Length > 0) budget.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("missingYear")]
+    [InlineData("foreignYear")]
+    [InlineData("missingGroup")]
+    [InlineData("valid")]
+    public async Task Projection_update_validates_group_year_before_parameters_or_forecasts(string scenario)
+    {
+        var seeded = await SeedTicketingYearAsync();
+        var other = await SeedCategoryAsync(isTicketingGroup: true);
+        var valid = string.Equals(scenario, "valid", StringComparison.Ordinal);
+        var yearId = string.Equals(scenario, "missingYear", StringComparison.Ordinal) ? Guid.Empty
+            : string.Equals(scenario, "foreignYear", StringComparison.Ordinal) ? other.BudgetGroup!.BudgetYearId : _yearId;
+        var groupId = string.Equals(scenario, "missingGroup", StringComparison.Ordinal) ? Guid.NewGuid() : seeded.GroupId;
+        var (controller, _, _) = CreateAdminController(true, _service);
+
+        var result = await controller.UpdateTicketingProjection(groupId, new TicketingProjectionUpdateForm
+        {
+            BudgetYearId = yearId,
+            StartDate = new DateTime(2026, 4, 1),
+            EventDate = new DateTime(2026, 4, 7),
+            InitialSalesCount = 10,
+            DailySalesRate = 5m,
+            AverageTicketPrice = 120m,
+            VatRate = 21,
+            StripeFeePercent = 1.5m,
+            StripeFeeFixed = 0.3m,
+            TicketTailorFeePercent = 0.5m
+        });
+
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var saved = await db.TicketingProjections.AsNoTracking().SingleAsync(p => p.Id == seeded.ProjectionId, TestContext.Current.CancellationToken);
+        saved.InitialSalesCount.Should().Be(valid ? 10 : 0);
+        if (!valid)
+        {
+            (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+            result.Should().BeOfType<NotFoundResult>();
+            controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            saved.DailySalesRate.Should().Be(5m);
+            saved.AverageTicketPrice.Should().Be(120m);
+            controller.TempData.ContainsKey("SuccessMessage").Should().BeTrue();
+        }
+    }
+
+    private static async Task BindMissingParameterAsync(Controller controller, string actionName, string field)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var parameter = controller.GetType().GetMethod(actionName)!.GetParameters()
+            .Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = parameter
+        });
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
     }
 
     private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetManagement>();
+        budget.GetYearByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(
+            new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false,
+                [new BudgetGroupDetail(_yearId, _yearId, "Ticketing", 0, false, false, true, null, [])]));
         var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
@@ -128,7 +494,7 @@ public sealed class BudgetServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
         };
         var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
-            new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
+            new TicketingBudgetService(tickets, budgetOverride ?? budget, Clock, NullLogger<TicketingBudgetService>.Instance),
             Clock, users, Substitute.For<IHoldedFinanceService>(),
             NullLogger<BudgetAdminController>.Instance)
         {
@@ -140,22 +506,50 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(0, "amount", true)]
-    [InlineData(0, "amount", false)]
-    [InlineData(0, null, true)]
-    [InlineData(1, "amount", true)]
-    [InlineData(1, "amount", false)]
-    [InlineData(1, null, true)]
-    [InlineData(2, "amount", true)]
-    [InlineData(2, "amount", false)]
-    [InlineData(2, null, true)]
-    [InlineData(3, "amount", true)]
-    [InlineData(3, "amount", false)]
-    [InlineData(3, null, true)]
-    public async Task FinancialForm_InvalidBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists)
+    [InlineData(0, "amount", true, false)]
+    [InlineData(0, "amount", false, false)]
+    [InlineData(0, null, true, false)]
+    [InlineData(1, "amount", true, false)]
+    [InlineData(1, "amount", false, false)]
+    [InlineData(1, null, true, false)]
+    [InlineData(2, "amount", true, false)]
+    [InlineData(2, "amount", false, false)]
+    [InlineData(2, null, true, false)]
+    [InlineData(3, "amount", true, false)]
+    [InlineData(3, "amount", false, false)]
+    [InlineData(3, null, true, false)]
+    [InlineData(0, "amount", true, true)]
+    [InlineData(0, "amount", false, true)]
+    [InlineData(1, "amount", true, true)]
+    [InlineData(1, "amount", false, true)]
+    [InlineData(2, "amount", true, true)]
+    [InlineData(2, "amount", false, true)]
+    [InlineData(3, "amount", true, true)]
+    [InlineData(3, "amount", false, true)]
+    [InlineData(0, "expenditureType", true, true)]
+    [InlineData(0, "expenditureType", false, true)]
+    [InlineData(1, "expenditureType", true, true)]
+    [InlineData(1, "expenditureType", false, true)]
+    [InlineData(2, "vatRate", true, true)]
+    [InlineData(2, "vatRate", false, true)]
+    [InlineData(3, "vatRate", true, true)]
+    [InlineData(3, "vatRate", false, true)]
+    public async Task FinancialForm_InvalidOrMissingBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists, bool missingValue)
     {
         var (controller, budget, viewerId) = CreateAdminController(viewerExists);
-        if (invalidField is not null)
+        if (missingValue)
+        {
+            var actionName = action switch
+            {
+                0 => nameof(BudgetAdminController.CreateCategory),
+                1 => nameof(BudgetAdminController.UpdateCategory),
+                2 => nameof(BudgetAdminController.CreateLineItem),
+                _ => nameof(BudgetAdminController.UpdateLineItem)
+            };
+            await BindMissingParameterAsync(controller, actionName,
+                invalidField is "expenditureType" or "vatRate" ? invalidField : action < 2 ? "allocatedAmount" : "amount");
+        }
+        else if (invalidField is not null)
             controller.ModelState.AddModelError(action < 2 ? "allocatedAmount" : invalidField, "Invalid number.");
 
         var result = action switch
@@ -179,13 +573,21 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed)
+    [InlineData(false, true, true, false, "amount")]
+    [InlineData(true, true, true, false, "amount")]
+    [InlineData(false, true, false, false, "amount")]
+    [InlineData(true, true, false, false, "amount")]
+    [InlineData(false, false, true, false, "amount")]
+    [InlineData(true, false, true, false, "amount")]
+    [InlineData(false, false, true, true, "amount")]
+    [InlineData(true, false, true, true, "amount")]
+    [InlineData(false, false, false, true, "amount")]
+    [InlineData(true, false, false, true, "amount")]
+    [InlineData(false, false, false, true, "vatRate")]
+    [InlineData(false, false, true, true, "vatRate")]
+    [InlineData(true, false, false, true, "vatRate")]
+    [InlineData(true, false, true, true, "vatRate")]
+    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed, bool missingValue, string missingField)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
         var users = Substitute.For<IUserService>();
@@ -207,14 +609,18 @@ public sealed class BudgetServiceTests
             TempData = admin.TempData,
             Url = admin.Url
         };
-        if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        if (missingValue)
+            await BindMissingParameterAsync(controller,
+                update ? nameof(BudgetController.UpdateLineItem) : nameof(BudgetController.CreateLineItem), missingField);
+        else if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        var invalid = malformed || missingValue;
         budget.ClearReceivedCalls();
         var result = update
             ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0)
             : await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0);
-        if (allowed && malformed) Assert.IsType<BadRequestObjectResult>(result);
+        if (allowed && invalid) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
-        if (allowed && !malformed)
+        if (allowed && !invalid)
         {
             if (update) await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
             else await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
@@ -247,6 +653,37 @@ public sealed class BudgetServiceTests
 
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
             .WithMessage("*between 0 and 21*");
+    }
+
+    [HumansTheory]
+    [InlineData(600)]
+    [InlineData(2000)]
+    public async Task Line_note_audit_preserves_valid_values_within_its_storage_columns(int noteLength)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var before = new string('x', noteLength);
+        var after = new string('y', noteLength);
+        var line = await _service.CreateLineItemAsync(category.Id, "Item", 100m,
+            null, before, null, 0, actor);
+
+        await _service.UpdateLineItemAsync(line.Id, "Item", 100m, null, after, null, 0, actor);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var audits = await ctx.BudgetAuditLogs.Where(a => a.EntityId == line.Id)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        var audit = audits.Single(a => string.Equals(a.FieldName, nameof(BudgetLineItem.Notes), StringComparison.Ordinal));
+        audit.OldValue.Should().Be(before);
+        audit.NewValue.Should().Be(after);
+        audit.Description.Should().Contain(before).And.Contain(after);
+        (await ctx.BudgetLineItems.SingleAsync(l => l.Id == line.Id, TestContext.Current.CancellationToken))
+            .Notes.Should().Be(after);
+
+        // InMemory does not enforce varchar bounds; the produced audit must also fit its mapped columns.
+        var mapping = ctx.Model.FindEntityType(typeof(BudgetAuditLog))!;
+        audit.OldValue!.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.OldValue))!.GetMaxLength() ?? int.MaxValue);
+        audit.NewValue!.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.NewValue))!.GetMaxLength() ?? int.MaxValue);
+        audit.Description.Length.Should().BeLessThanOrEqualTo(mapping.FindProperty(nameof(BudgetAuditLog.Description))!.GetMaxLength() ?? int.MaxValue);
     }
 
     [HumansFact]
@@ -437,14 +874,15 @@ public sealed class BudgetServiceTests
     public async Task GetEffectiveCoordinatorTeamIdsAsync_UsesTheTeamsOwnedScope()
     {
         var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
         Guid[] expected = [Guid.NewGuid(), Guid.NewGuid()];
         _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var result = await _service.GetEffectiveCoordinatorTeamIdsAsync(userId, request.Token);
 
         result.Should().BeEquivalentTo(expected);
-        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
+        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, request.Token);
         await _teamService.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 

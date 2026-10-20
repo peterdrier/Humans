@@ -42,11 +42,11 @@ public class ShiftBrowsePageBuilderDayFilterTests
 
     private ShiftBrowsePageBuilder CreateBuilder()
     {
-        _shiftManagement.GetTagsAsync().Returns(Array.Empty<ShiftTagSummary>());
+        _shiftManagement.GetTagsAsync(ct: Arg.Any<CancellationToken>()).Returns(Array.Empty<ShiftTagSummary>());
         _shiftManagement.GetDepartmentCoveragePiesAsync(
                 Arg.Any<Guid>(), Arg.Any<LocalDate?>(), Arg.Any<LocalDate?>(), ct: Arg.Any<CancellationToken>())
             .Returns(Array.Empty<DepartmentCoveragePie>());
-        _teamService.GetTeamsAsync().Returns(new Dictionary<Guid, TeamInfo>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         return new ShiftBrowsePageBuilder(_shiftManagement, _burnSettings, _teamService);
     }
 
@@ -66,6 +66,30 @@ public class ShiftBrowsePageBuilderDayFilterTests
         Sort: sort,
         Periods: null,
         IsPrivileged: false);
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task BuildAsync_PreservesCancellationInTeamAndTagReads(bool tags)
+    {
+        var builder = CreateBuilder();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var ct = cancellation.Token;
+        var failure = new OperationCanceledException(ct);
+        _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), ct)
+            .Returns(Array.Empty<UrgentShiftInfo>());
+        if (tags)
+            _shiftManagement.GetTagsAsync(ct: ct)
+                .Returns(Task.FromException<IReadOnlyList<ShiftTagSummary>>(failure));
+        else
+            _teamService.GetTeamsAsync(ct)
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, TeamInfo>>(failure));
+
+        var act = () => builder.BuildAsync(RequestFor(day: null), ct);
+
+        (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+    }
 
     [HumansFact]
     public async Task DaySelected_RanksRotasByRemainingOpenings_FullRotaLast()

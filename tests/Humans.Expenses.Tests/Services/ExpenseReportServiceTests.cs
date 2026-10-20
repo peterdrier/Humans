@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
@@ -46,6 +47,8 @@ namespace Humans.Expenses.Tests.Services;
 /// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
 /// section split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
+// The drain gate is static (one drain per process), so classes that drain run serially.
+[Collection("HoldedDrainGate")]
 public sealed partial class ExpenseReportServiceTests
 {
     private readonly IStringLocalizer<ExpensesResource> _localizer =
@@ -151,7 +154,7 @@ public sealed partial class ExpenseReportServiceTests
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
@@ -290,7 +293,7 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, false, "Invoice", 10m,
             lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var actor = UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
@@ -407,7 +410,7 @@ public sealed partial class ExpenseReportServiceTests
         // A budget-category account needs the active year to pin the draft's category to. The
         // refusal is a result, not an exception: the form shows it instead of a generic failure.
         SetupActiveYear();
-        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
 
         var submitter = Guid.NewGuid();
         var result = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: Xunit.TestContext.Current.CancellationToken);
@@ -484,7 +487,7 @@ public sealed partial class ExpenseReportServiceTests
     public async Task CreateDraftAsync_OnAnUnmappedAccount_NeedsNoActiveYear()
     {
         SetupActiveYear();
-        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
         var userId = Guid.NewGuid();
 
         var id = (await _sut.CreateDraftAsync(userId, userId, OtherAccountNumber, null, ct: Xunit.TestContext.Current.CancellationToken)).ReportId!.Value;
@@ -566,6 +569,78 @@ public sealed partial class ExpenseReportServiceTests
         var mine = await _sut.GetForSubmitterAsync(me, Xunit.TestContext.Current.CancellationToken);
         mine.Should().HaveCount(1);
         mine[0].SubmitterUserId.Should().Be(me);
+    }
+
+    [HumansFact]
+    public async Task Merged_submitter_lists_all_historical_reports_without_another_humans_reports()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var survivorId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        var survivor = UserInfo.Create(new User { Id = survivorId }, [], [], [], null, [])
+            with
+        { MergedUserIds = [sourceId] };
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
+        var ownReportId = Guid.NewGuid();
+        var sourceReportId = Guid.NewGuid();
+        await SeedReportWithStatus(ownReportId, survivorId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(sourceReportId, sourceId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(Guid.NewGuid(), otherId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+
+        foreach (var id in new[] { survivorId, sourceId })
+        {
+            (await _sut.GetForSubmitterAsync(id, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
+            (await _sut.GetReviewQueueAsync(id, false, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("edit")]
+    [Xunit.InlineData("submit")]
+    [Xunit.InlineData("withdraw")]
+    [Xunit.InlineData("iban")]
+    public async Task Merged_submitter_can_manage_historical_reports_and_updates_the_surviving_profile(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var sourceId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        SetupUserAndProfile(sourceId, "Old Name", "ES9121000418450200051332");
+        SetupUserAndProfile(survivorId, "Current Name", "ES9121000418450200051332");
+        var reportId = (await _sut.CreateDraftAsync(sourceId, sourceId, CategoryAccountNumber, "Supplies", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(reportId, sourceId, false, "Timber", 10m, ct: ct)).LineId!.Value;
+        using var receipt = new MemoryStream([1, 2, 3]);
+        (await _sut.AttachFileToLineWithResultAsync(reportId, sourceId, false, lineId,
+            "receipt.pdf", "application/pdf", receipt, ct)).Succeeded.Should().BeTrue();
+        if (string.Equals(operation, "withdraw", StringComparison.Ordinal))
+            (await _sut.SubmitWithResultAsync(reportId, sourceId, false, ct)).Succeeded.Should().BeTrue();
+        var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))! with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _userServiceWrite.SetProfileIbanAsync(survivorId, Arg.Any<string?>(), ct).Returns(true);
+
+        switch (operation)
+        {
+            case "edit":
+                (await _sut.AddLineWithResultAsync(reportId, survivorId, false, "More timber", 5m, ct: ct)).Succeeded.Should().BeTrue();
+                break;
+            case "submit":
+                (await _sut.SubmitWithResultAsync(reportId, survivorId, false, ct)).Succeeded.Should().BeTrue();
+                break;
+            case "withdraw":
+                (await _sut.WithdrawWithResultAsync(reportId, survivorId, ct)).Succeeded.Should().BeTrue();
+                break;
+            case "iban":
+                (await _sut.SaveSubmitterIbanWithResultAsync(reportId, survivorId, "ES9121000418450200051332", ct)).Succeeded.Should().BeTrue();
+                await _userServiceWrite.Received(1).SetProfileIbanAsync(survivorId, "ES9121000418450200051332", ct);
+                await _userServiceWrite.DidNotReceive().SetProfileIbanAsync(sourceId, Arg.Any<string?>(), ct);
+                break;
+        }
+
+        (await _sut.GetAsync(reportId, ct))!.SubmitterUserId.Should().Be(sourceId);
     }
 
     // ─────────────────────────────── 4.3 ─────────────────────────────────────
@@ -1586,8 +1661,11 @@ public sealed partial class ExpenseReportServiceTests
 
     // ─────────────────────────────── 4.4 ─────────────────────────────────────
 
-    [HumansFact]
-    public async Task SubmitAsync_FlipsToSubmitted_SnapshotsPayeeData()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(100)]
+    [Xunit.InlineData(256)]
+    public async Task SubmitAsync_FlipsToSubmitted_SnapshotsPayeeData(int namePartLength)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1596,14 +1674,21 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
 
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        var legalName = namePartLength == 0
+            ? "Alice Tester" : $"{new string('A', namePartLength)} {new string('B', namePartLength)}";
+        SetupUserAndProfile(submitter, legalName, "ES9121000418450200051332");
 
         var ok = (await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken)).Succeeded;
 
         ok.Should().BeTrue();
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        loaded.PayeeName.Should().Be("Alice Tester");
+        loaded.PayeeName.Should().Be(legalName);
+        // InMemory does not enforce varchar bounds; the complete snapshot must fit production storage.
+        await using var context = new ExpensesDbContext(_expensesOptions);
+        var payeeNameMapping = context.Model.FindEntityType(typeof(ExpenseReport))!
+            .FindProperty(nameof(ExpenseReport.PayeeName))!;
+        loaded.PayeeName.Length.Should().BeLessThanOrEqualTo(payeeNameMapping.GetMaxLength() ?? int.MaxValue);
         loaded.PayeeIban.Should().Be("ES9121000418450200051332");
         loaded.SubmittedAt.Should().Be(FakeNow);
     }
@@ -3072,6 +3157,44 @@ public sealed partial class ExpenseReportServiceTests
         queue.Select(r => r.Id).Should().BeEquivalentTo([ownId]);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task BudgetBackedMemberReads_AbortAbandonedRequests(bool index)
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<BudgetYearDetail?>(null);
+        });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetForSubmitterAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        reports.GetCoordinatorQueueAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        var context = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(_userService, reports, _budgetService, _holdedFinance, _preapprovals,
+            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+        Func<Task> read = index
+            ? () => controller.Index()
+            : () => _sut.GetCoordinatorQueueAsync(userId, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
     {
@@ -3922,7 +4045,7 @@ public sealed partial class ExpenseReportServiceTests
 
         var category = MakeCategorySnapshot(categoryId, teamId, "Test Category", groupId, yearId);
 
-        _budgetService.GetActiveYearAsync().Returns(yearDetail);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(yearDetail);
         _budgetService.GetYearByIdAsync(yearId).Returns(yearDetail);
         _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
         StubExpenseAccounts((categoryId, CategoryAccountNumber, CategoryAccountId));

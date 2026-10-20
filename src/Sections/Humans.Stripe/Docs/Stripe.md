@@ -66,17 +66,19 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
   convention only; no test enforces it (nobodies-collective/Humans#866 retired the one that did).
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
-- `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
+- `ParseStoreCheckoutEvent` returns `null` for an invalid signature, unsupported session currency or an unset
   signing secret; it never throws and never partially trusts a payload.
 - The network reads return `null` for exactly the cases this section checks, and for
   nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
-  (`permission_error`), or Stripe answered and the PaymentIntent has no charge.
+  (`permission_error`), or Stripe answered and the PaymentIntent has no charge or its balance
+  transaction is not available yet after asynchronous capture. A missing balance transaction
+  never becomes an explicit zero; a present transaction with no fee entries still reports zero.
   `ListStoreCheckoutSessionsAsync`: the Store key is unset or lacks the read scope.
   **Every other Stripe failure propagates** — an authentication error, a rate limit, a
   transport failure, cancellation. `null` never means "the call failed": it means the section
   checked and has nothing to hand back, either because the configuration says Stripe cannot be
   asked or — `GetPaymentDetailsAsync` only — because Stripe was asked and the intent carries no
-  charge to report fees from.
+  charge or balance transaction to report fees from.
 - `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
   mistake an unreadable account for an account with no sessions and false-flag recorded
   payments as orphans.
@@ -84,6 +86,10 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - EUR ↔ minor units round half away from zero, both directions, in one place
   (`ToStripeMinorUnits` / `FromStripeMinorUnits`).
+- Ticket fee reads require explicit EUR currency, case-insensitively, on the balance
+  transaction and every fee entry. The charge's currency cannot establish the settlement
+  currency. Missing or foreign currencies throw before returning any fee amounts.
+- Store session reads require explicit EUR currency, case-insensitively, before projecting `AmountEur`. Webhooks reject foreign or missing currency; reconciliation rejects the whole list instead of silently dropping sessions. Adaptive Pricing's customer presentment currency does not replace the integration currency or amount.
 - The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
   and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.
 

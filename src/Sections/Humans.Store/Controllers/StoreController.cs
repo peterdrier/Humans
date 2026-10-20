@@ -57,7 +57,7 @@ internal sealed class StoreController(
         var model = new IndexViewModel
         {
             Year = pageData.Year,
-            Catalog = pageData.Catalog,
+            Catalog = pageData.Catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             Counterparties = pageData.Counterparties,
             CanManageByCounterparty = canManage
         };
@@ -88,7 +88,7 @@ internal sealed class StoreController(
             canDeleteAuth && order.BalanceEur == 0m && order.State == OrderState.Open,
             canIssueAuth && order.State == OrderState.Open && order.Lines.Count > 0,
             canRecordPayment,
-            catalog,
+            catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds));
     }
 

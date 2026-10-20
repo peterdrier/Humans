@@ -57,6 +57,13 @@ internal sealed class TicketTailorService : ITicketVendorService
         {
             foreach (var order in page)
             {
+                var total = order.Total
+                    ?? throw new HttpRequestException($"TicketTailor order {order.Id} is missing required total.");
+                if (string.IsNullOrWhiteSpace(order.Status))
+                    throw new HttpRequestException($"TicketTailor order {order.Id} is missing required status.");
+                if (!string.Equals(order.Currency?.Code, "eur", StringComparison.OrdinalIgnoreCase))
+                    throw new HttpRequestException($"TicketTailor order {order.Id} does not declare EUR currency.");
+
                 var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
                 var buyer = order.BuyerDetails;
 
@@ -68,10 +75,10 @@ internal sealed class TicketTailorService : ITicketVendorService
                     VendorOrderId: order.Id,
                     BuyerName: buyer?.Name ?? $"{buyer?.FirstName} {buyer?.LastName}".Trim(),
                     BuyerEmail: buyer?.Email ?? string.Empty,
-                    TotalAmount: (order.Total ?? 0) / 100m, // TT stores amounts in cents
-                    Currency: order.Currency?.Code?.ToUpperInvariant() ?? "EUR",
+                    TotalAmount: total / 100m, // TT stores amounts in cents
+                    Currency: "EUR",
                     DiscountCode: discountCode,
-                    PaymentStatus: order.Status ?? "completed",
+                    PaymentStatus: order.Status,
                     VendorDashboardUrl: null, // TT doesn't expose dashboard URLs via API
                     PurchasedAt: purchasedAt,
                     StripePaymentIntentId: order.TxnId,

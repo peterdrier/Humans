@@ -99,6 +99,12 @@ internal sealed class ConsentService(
 
         if (version is null)
             return null;
+        if (string.IsNullOrWhiteSpace(version.Content.GetValueOrDefault("es")))
+        {
+            logger.LogWarning("Canonical Spanish content is unavailable for review of version {DocumentVersionId}",
+                documentVersionId);
+            return null;
+        }
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var consentRecord = await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
@@ -137,13 +143,21 @@ internal sealed class ConsentService(
         if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
+        // Hash only an available canonical document, never a translation or an empty fallback.
+        var canonicalContent = version.Content.GetValueOrDefault("es");
+        if (string.IsNullOrWhiteSpace(canonicalContent))
+        {
+            logger.LogWarning("Consent refused: canonical Spanish content is unavailable for version {DocumentVersionId}",
+                documentVersionId);
+            return new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable");
+        }
+
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
 
-        var canonicalContent = version.Content.GetValueOrDefault("es", string.Empty);
         var contentHash = ComputeContentHash(canonicalContent);
 
         var userAgentLength = Math.Min(500, userAgent.Length);

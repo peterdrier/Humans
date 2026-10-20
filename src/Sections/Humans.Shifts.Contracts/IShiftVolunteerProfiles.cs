@@ -24,12 +24,12 @@ public interface IShiftVolunteerProfiles
     /// <c>null</c> when the user has none. Dietary and medical data moved to
     /// Profile — read those via <c>IUserService</c>.
     /// </summary>
-    Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId);
+    Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets shift tags, optionally filtered by name (case-insensitive contains).
     /// </summary>
-    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null);
+    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
     /// <summary>
     /// Sets a volunteer's tag preferences, replacing any existing ones.

@@ -62,10 +62,10 @@ public sealed class ShiftAdminPageBuilderTests
         // Stub every collaborator BuildAsync touches on the IncompleteOnboarding=true
         // path so it runs to completion without an NRE. GetRotasByDepartmentAsync is
         // re-stubbed per test with the scenario's rotas.
-        _shiftManagement.GetTagsAsync().Returns([]);
-        _shiftManagement.GetStaffingSnapshotAsync(Event.Id, Department.Id)
+        _shiftManagement.GetTagsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
+        _shiftManagement.GetStaffingSnapshotAsync(Event.Id, Department.Id, ct: Arg.Any<CancellationToken>())
             .Returns(ShiftStaffingSnapshot.Empty);
-        _shiftManagement.GetShiftProfileAsync(Arg.Any<Guid>())
+        _shiftManagement.GetShiftProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((ShiftVolunteerProfileInfo?)null);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -73,6 +73,31 @@ public sealed class ShiftAdminPageBuilderTests
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansFact]
+    public async Task BuildAsync_PreservesCancellationThroughAllPageReads()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { MakeRota(MakeShift(MakePending(userId))) });
+        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+                Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
+
+        await builder.BuildAsync(new ShiftAdminPageRequest(
+            Department, Event, true, true, false, true, TestNow), cancellation.Token);
+
+        await _shiftManagement.Received(1).GetRotasByDepartmentAsync(Department.Id, Event.Id, cancellation.Token);
+        await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
+            Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, cancellation.Token);
+        await _userService.Received(2).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+        await _shiftManagement.Received(1).GetShiftProfileAsync(userId, cancellation.Token);
+        await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
+        await _shiftManagement.Received(1).GetTagsAsync(ct: cancellation.Token);
+        await _shiftManagement.Received(1).GetStaffingSnapshotAsync(Event.Id, Department.Id, ct: cancellation.Token);
     }
 
     [HumansFact]

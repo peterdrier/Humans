@@ -943,6 +943,64 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         votes[0].UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
+    [HumansTheory]
+    [InlineData(4000, true)]
+    [InlineData(4001, false)]
+    public async Task CastBoardVoteAsync_enforces_note_limit_without_overwriting_an_existing_vote(int length, bool accepted)
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var boardMemberId = Guid.NewGuid();
+        await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.Yay, "initial",
+            TestContext.Current.CancellationToken);
+        var note = new string('x', length);
+
+        var result = await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.No, note,
+            TestContext.Current.CancellationToken);
+
+        result.Success.Should().Be(accepted);
+        result.ErrorKey.Should().Be(accepted ? null : "NoteTooLong");
+        ClearAllTrackers();
+        var stored = await GovernanceDb.BoardVotes.SingleAsync(vote => vote.ApplicationId == application.Id,
+            TestContext.Current.CancellationToken);
+        stored.Vote.Should().Be(accepted ? VoteChoice.No : VoteChoice.Yay);
+        stored.Note.Should().Be(accepted ? note : "initial");
+    }
+
+    [HumansTheory]
+    [InlineData(true, 4000)]
+    [InlineData(false, 4000)]
+    [InlineData(true, 4001)]
+    [InlineData(false, 4001)]
+    public async Task Finalize_enforces_decision_note_limit_before_changing_application_or_votes(bool approve, int length)
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(application.Id);
+        var note = new string('x', length);
+
+        var result = approve
+            ? await _service.ApproveAsync(application.Id, Guid.NewGuid(), note, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken)
+            : await _service.RejectAsync(application.Id, Guid.NewGuid(), note, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken);
+
+        var accepted = length <= 4000;
+        result.Success.Should().Be(accepted);
+        result.ErrorKey.Should().Be(accepted ? null : "DecisionNoteTooLong");
+        ClearAllTrackers();
+        var stored = await GovernanceDb.Applications.SingleAsync(app => app.Id == application.Id,
+            TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(accepted
+            ? approve ? ApplicationStatus.Approved : ApplicationStatus.Rejected
+            : ApplicationStatus.Submitted);
+        stored.DecisionNote.Should().Be(accepted ? note : null);
+        (await GovernanceDb.BoardVotes.CountAsync(vote => vote.ApplicationId == application.Id,
+            TestContext.Current.CancellationToken)).Should().Be(accepted ? 0 : 1);
+        if (!accepted)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+            _userServiceWrite.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     // --- GetUserApplicationsAsync ---
 
     [HumansFact]

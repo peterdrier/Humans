@@ -104,6 +104,32 @@ public class UsersAdminControllerPurgeTests
         return c;
     }
 
+    [HumansFact]
+    public async Task Roles_PreservesRequestCancellation()
+    {
+        using var source = new CancellationTokenSource();
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = source.Token;
+        _roleAssignments.GetFilteredAsync(null, true, 1, 50, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((Array.Empty<RoleAssignmentSummarySnapshot>(), 0));
+
+        (await controller.Roles(null)).Should().BeOfType<ViewResult>();
+
+        await _roleAssignments.Received(1).GetFilteredAsync(null, true, 1, 50, Arg.Any<Instant>(), source.Token);
+    }
+
+    [HumansFact]
+    public async Task AddRoleGet_PreservesRequestCancellation()
+    {
+        using var source = new CancellationTokenSource();
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = source.Token;
+
+        (await controller.AddRole(_adminUserId)).Should().BeOfType<ViewResult>();
+
+        await _userService.Received(1).GetRawUserInfoAsync(_adminUserId, source.Token);
+    }
+
     [HumansTheory]
     [InlineData(" \tBare Human\n")]
     [InlineData("  member@example.org\t")]

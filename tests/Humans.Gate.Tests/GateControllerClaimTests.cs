@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -40,7 +41,7 @@ public class GateControllerClaimTests
         _controller = new GateController(
             _gate, _users, new ConfigurationBuilder().Build(), _throttle,
             new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())),
-            Substitute.For<IBackgroundJobClient>(), _clock);
+            Substitute.For<IBackgroundJobClient>(), _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext { Session = _session };
         _controller.ControllerContext = new ControllerContext { HttpContext = http };

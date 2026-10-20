@@ -97,7 +97,7 @@
                             <td colspan="2">
                                 <form asp-controller="AdminLegalDocuments" asp-action="UpdateVersionSummary" asp-route-id="@Model.Id" asp-route-versionId="@version.Id" method="post" class="d-flex gap-2">
                                     @Html.AntiForgeryToken()
-                                    <input type="text" name="changesSummary" value="@version.ChangesSummary" class="form-control form-control-sm" placeholder="Describe changes..." />
+                                    <input type="text" name="changesSummary" maxlength="2000" value="@version.ChangesSummary" class="form-control form-control-sm" placeholder="Describe changes..." />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>
                                 </form>
                             </td>

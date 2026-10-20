@@ -14,6 +14,11 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 
 namespace Humans.Surveys.Tests.Controllers;
 
@@ -25,6 +30,85 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyControllerTests
 {
     private const string Token = "invite-token";
+
+    [HumansTheory]
+    [Xunit.InlineData(true, true, false, null, null)]
+    [Xunit.InlineData(true, true, false, "Identified", ResponseAnonymity.Identified)]
+    [Xunit.InlineData(true, true, false, "CompletionTracked", ResponseAnonymity.CompletionTracked)]
+    [Xunit.InlineData(true, true, false, "Anonymous", ResponseAnonymity.Anonymous)]
+    [Xunit.InlineData(false, true, false, null, ResponseAnonymity.Anonymous)]
+    [Xunit.InlineData(true, false, false, null, ResponseAnonymity.Identified)]
+    [Xunit.InlineData(true, false, true, null, ResponseAnonymity.CompletionTracked)]
+    [Xunit.InlineData(true, true, false, "invalid", null)]
+    public async Task Public_start_requires_an_explicit_choice_only_when_the_respondent_chooses_privacy(
+        bool loggedIn, bool allowAnonymous, bool asociadoVote, string? posted, ResponseAnonymity? expected)
+    {
+        var surveyId = Guid.NewGuid();
+        Guid? userId = loggedIn ? Guid.NewGuid() : null;
+        var participationId = Guid.NewGuid();
+        var draftId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolvePublicContextAsync("volunteer-survey", userId, Arg.Any<CancellationToken>()).Returns(
+            new SurveyPublicContext(surveyId, Detail(surveyId, "Thanks!", allowAnonymous: allowAnonymous,
+                publicSlug: "volunteer-survey", isAsociadoVote: asociadoVote)));
+        surveys.StartPublicTrackedResponseAsync(surveyId, Arg.Any<Guid>(), Arg.Any<ResponseAnonymity>(), "en", Arg.Any<CancellationToken>())
+            .Returns(call => new SurveyPublicStart(participationId,
+                call.Arg<ResponseAnonymity>() == ResponseAnonymity.Identified ? draftId : null, []));
+        var sut = CreateController(surveys, out var session, userId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        sut.HttpContext.RequestServices = services;
+        sut.Url = Substitute.For<IUrlHelper>();
+        var method = typeof(SurveyController).GetMethod(nameof(SurveyController.PublicStart))!;
+        var parameter = method.GetParameters().Single(p => string.Equals(p.Name, "anonymity", StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = parameter
+        });
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        if (posted is not null) fields["Anonymity"] = posted;
+        var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(sut.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+        var argument = binding.IsModelSet ? binding.Model : Activator.CreateInstance(parameter.ParameterType);
+
+        var result = await (Task<IActionResult>)method.Invoke(sut,
+            ["volunteer-survey", "en", argument, Xunit.TestContext.Current.CancellationToken])!;
+
+        if (expected is null)
+        {
+            result.Should().BeOfType<BadRequestResult>();
+            session.Keys.Should().BeEmpty();
+            surveys.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
+                .NotContain(nameof(ISurveyService.StartPublicTrackedResponseAsync))
+                .And.NotContain(nameof(ISurveyService.IncrementPublicStartedAsync));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            var state = SurveyWizardSession.LoadBySlug(session, "volunteer-survey");
+            state.Should().NotBeNull();
+            state!.Anonymity.Should().Be(expected.Value);
+            state.UserId.Should().Be(expected == ResponseAnonymity.Anonymous ? null : userId);
+            state.DraftResponseId.Should().Be(expected == ResponseAnonymity.Identified ? draftId : null);
+            await surveys.Received(1).IncrementPublicStartedAsync(surveyId, Xunit.TestContext.Current.CancellationToken);
+            if (expected == ResponseAnonymity.Anonymous)
+                await surveys.DidNotReceive().StartPublicTrackedResponseAsync(surveyId, Arg.Any<Guid>(),
+                    Arg.Any<ResponseAnonymity>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            else
+                await surveys.Received(1).StartPublicTrackedResponseAsync(surveyId, userId!.Value,
+                    expected.Value, "en", Xunit.TestContext.Current.CancellationToken);
+        }
+    }
 
     [HumansFact]
     public async Task Submitting_leaves_the_thank_you_marker_in_session()

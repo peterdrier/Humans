@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -42,6 +45,315 @@ public class EventsControllerTests
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
+
+    [HumansTheory]
+    [Xunit.InlineData("SubmissionOpenAt", "0")]
+    [Xunit.InlineData("SubmissionCloseAt", "0")]
+    [Xunit.InlineData("GuidePublishAt", "0")]
+    [Xunit.InlineData("MaxPrintSlots", "0")]
+    [Xunit.InlineData("", "0")]
+    [Xunit.InlineData("", "10000")]
+    public async Task Guide_settings_require_posted_window_dates_and_print_limit(string omitted, string printLimit)
+    {
+        var burn = MakeBurnSettings();
+        _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
+        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
+        _guide.SaveGuideSettingsAsync(null, burn.Id, default, default, default, 0).ReturnsForAnyArgs(true);
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["EventSettingsId"] = burn.Id.ToString(),
+            ["MaxPrintSlots"] = printLimit,
+            ["SubmissionOpenAt"] = "2026-07-01T12:00",
+            ["SubmissionCloseAt"] = "2026-07-31T12:00",
+            ["GuidePublishAt"] = "2026-08-01T12:00"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(GuideSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(GuideSettingsViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (GuideSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.SaveSettings(model);
+
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _guide.ReceivedCalls().Should().NotContain(call =>
+                call.GetMethodInfo().Name == nameof(IEventManagement.SaveGuideSettingsAsync));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _guide.Received(1).SaveGuideSettingsAsync(null, burn.Id,
+                new LocalDateTime(2026, 7, 1, 12, 0), new LocalDateTime(2026, 7, 31, 12, 0),
+                new LocalDateTime(2026, 8, 1, 12, 0), int.Parse(printLimit, CultureInfo.InvariantCulture));
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("CreateCategory", "IsSensitive", false)]
+    [Xunit.InlineData("CreateCategory", "IsActive", false)]
+    [Xunit.InlineData("CreateCategory", "DisplayOrder", false)]
+    [Xunit.InlineData("CreateCategory", "", false)]
+    [Xunit.InlineData("CreateCategory", "", true)]
+    [Xunit.InlineData("EditCategory", "IsSensitive", false)]
+    [Xunit.InlineData("EditCategory", "IsActive", false)]
+    [Xunit.InlineData("EditCategory", "DisplayOrder", false)]
+    [Xunit.InlineData("EditCategory", "", false)]
+    [Xunit.InlineData("EditCategory", "", true)]
+    [Xunit.InlineData("CreateVenue", "IsActive", false)]
+    [Xunit.InlineData("CreateVenue", "DisplayOrder", false)]
+    [Xunit.InlineData("CreateVenue", "", false)]
+    [Xunit.InlineData("CreateVenue", "", true)]
+    [Xunit.InlineData("EditVenue", "IsActive", false)]
+    [Xunit.InlineData("EditVenue", "DisplayOrder", false)]
+    [Xunit.InlineData("EditVenue", "", false)]
+    [Xunit.InlineData("EditVenue", "", true)]
+    public async Task Taxonomy_forms_require_explicit_metadata_before_saving(string action, string omitted, bool choice)
+    {
+        var id = Guid.NewGuid();
+        _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new EventCategoryView(id, "Old category", "old-category", true, 7, false));
+        _guide.GetVenueAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new EventVenueView(id, "Old venue", null, null, 7, false));
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Updated",
+            ["Slug"] = "updated-category",
+            ["DisplayOrder"] = "0",
+            ["IsActive"] = choice ? "true" : "false",
+            ["IsSensitive"] = choice ? "true" : "false"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var type = action.EndsWith("Category", StringComparison.Ordinal)
+            ? typeof(EventCategoryFormViewModel) : typeof(GuideVenueFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = action switch
+        {
+            "CreateCategory" => await controller.CreateCategory((EventCategoryFormViewModel)model),
+            "EditCategory" => await controller.EditCategory(id, (EventCategoryFormViewModel)model),
+            "CreateVenue" => await controller.CreateVenue((GuideVenueFormViewModel)model),
+            _ => await controller.EditVenue(id, (GuideVenueFormViewModel)model)
+        };
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.CreateCategoryAsync) or nameof(IEventManagement.UpdateCategoryAsync)
+            or nameof(IEventManagement.CreateVenueAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var saved = writes.Should().ContainSingle().Which.GetArguments()[0];
+            if (saved is EventCategory category)
+            {
+                category.IsSensitive.Should().Be(choice);
+                category.IsActive.Should().Be(choice);
+                category.DisplayOrder.Should().Be(0);
+            }
+            else
+            {
+                var venue = saved.Should().BeOfType<EventVenue>().Which;
+                venue.IsActive.Should().Be(choice);
+                venue.DisplayOrder.Should().Be(0);
+            }
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Create", "StartTime")]
+    [Xunit.InlineData("Create", "DurationMinutes")]
+    [Xunit.InlineData("Create", "IsRecurring")]
+    [Xunit.InlineData("Create", "IsAllDay")]
+    [Xunit.InlineData("Create", "validFalse")]
+    [Xunit.InlineData("Create", "validTrue")]
+    [Xunit.InlineData("Update", "StartTime")]
+    [Xunit.InlineData("Update", "DurationMinutes")]
+    [Xunit.InlineData("Update", "IsRecurring")]
+    [Xunit.InlineData("Update", "IsAllDay")]
+    [Xunit.InlineData("Update", "validFalse")]
+    [Xunit.InlineData("Update", "validTrue")]
+    [Xunit.InlineData("BarrioCreate", "StartTime")]
+    [Xunit.InlineData("BarrioCreate", "DurationMinutes")]
+    [Xunit.InlineData("BarrioCreate", "IsRecurring")]
+    [Xunit.InlineData("BarrioCreate", "validFalse")]
+    [Xunit.InlineData("BarrioCreate", "validTrue")]
+    [Xunit.InlineData("BarrioUpdate", "StartTime")]
+    [Xunit.InlineData("BarrioUpdate", "DurationMinutes")]
+    [Xunit.InlineData("BarrioUpdate", "IsRecurring")]
+    [Xunit.InlineData("BarrioUpdate", "validFalse")]
+    [Xunit.InlineData("BarrioUpdate", "validTrue")]
+    [Xunit.InlineData("AdminIndividual", "StartTime")]
+    [Xunit.InlineData("AdminIndividual", "DurationMinutes")]
+    [Xunit.InlineData("AdminIndividual", "IsRecurring")]
+    [Xunit.InlineData("AdminIndividual", "IsAllDay")]
+    [Xunit.InlineData("AdminIndividual", "validFalse")]
+    [Xunit.InlineData("AdminIndividual", "validTrue")]
+    [Xunit.InlineData("AdminCamp", "StartTime")]
+    [Xunit.InlineData("AdminCamp", "DurationMinutes")]
+    [Xunit.InlineData("AdminCamp", "IsRecurring")]
+    [Xunit.InlineData("AdminCamp", "PriorityRank")]
+    [Xunit.InlineData("AdminCamp", "validBlankRank")]
+    [Xunit.InlineData("AdminCamp", "validFalse")]
+    [Xunit.InlineData("AdminCamp", "validTrue")]
+    public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var isModerator = route.StartsWith("Admin", StringComparison.Ordinal);
+        var isCamp = route.StartsWith("Barrio", StringComparison.Ordinal) || string.Equals(route, "AdminCamp", StringComparison.Ordinal);
+        var valid = scenario.StartsWith("valid", StringComparison.Ordinal);
+        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal);
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { LeadUserIds = [userId] };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        StubEditableGuideSettings();
+        var existing = MakeEvent(isCamp ? campId : null, userId,
+            isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested);
+        int? originalRank = isCamp ? 2 : null;
+        existing.PriorityRank = originalRank;
+        existing.DurationMinutes = 180;
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0,1";
+        _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _guide.GetCampEventAsync(existing.Id, campId, Arg.Any<CancellationToken>()).Returns(existing);
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var author = BuildController(userId);
+        Controller controller = isModerator
+            ? new EventsModerationController(_guide, _users, _camps,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsModerationController>.Instance)
+            { ControllerContext = author.ControllerContext }
+            : author;
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("/Events");
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Title"] = "Changed",
+            ["Description"] = "Changed description",
+            ["CategoryId"] = existing.CategoryId.ToString(),
+            ["VenueId"] = Guid.NewGuid().ToString(),
+            ["StartDate"] = "2026-08-01",
+            ["StartTime"] = "00:00",
+            ["DurationMinutes"] = "60",
+            ["IsRecurring"] = checkedChoices ? "true" : "false",
+            ["RecurrenceDays"] = "0,1",
+            ["IsAllDay"] = checkedChoices && !isCamp ? "true" : "false",
+            ["PriorityRank"] = "1"
+        };
+        fields.Remove(isCamp ? "IsAllDay" : "PriorityRank");
+        if (string.Equals(scenario, "validBlankRank", StringComparison.Ordinal)) fields["PriorityRank"] = "";
+        if (!valid) fields.Remove(scenario);
+        var type = isModerator ? typeof(AdminEventFormViewModel)
+            : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = route switch
+        {
+            "Create" => await author.Create((IndividualEventFormViewModel)model),
+            "Update" => await author.Update(existing.Id, (IndividualEventFormViewModel)model),
+            "BarrioCreate" => await author.BarrioCreate(camp.Slug, (CampEventFormViewModel)model),
+            "BarrioUpdate" => await author.BarrioUpdate(camp.Slug, existing.Id, (CampEventFormViewModel)model),
+            _ => await ((EventsModerationController)controller).Update(existing.Id, (AdminEventFormViewModel)model)
+        };
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.SubmitEventAsync) or nameof(IEventManagement.UpdateAndResubmitAsync) or nameof(IEventManagement.AdminUpdateAsync)).ToList();
+        if (!valid)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+            existing.Title.Should().Be("Test Event");
+            existing.PriorityRank.Should().Be(originalRank);
+            existing.DurationMinutes.Should().Be(180);
+            existing.IsRecurring.Should().BeTrue();
+            existing.RecurrenceDays.Should().Be("0,1");
+            existing.StartAt.Should().Be(Instant.FromUtc(2026, 8, 1, 18, 0));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var saved = (Event)writes.Should().ContainSingle().Which.GetArguments()[0]!;
+            saved.IsRecurring.Should().Be(checkedChoices);
+            if (isCamp)
+            {
+                int? expectedRank = string.Equals(scenario, "validBlankRank", StringComparison.Ordinal) ? null : 1;
+                saved.PriorityRank.Should().Be(expectedRank);
+            }
+            saved.DurationMinutes.Should().Be(checkedChoices && !isCamp ? 1440 : 60);
+            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData("Create")]

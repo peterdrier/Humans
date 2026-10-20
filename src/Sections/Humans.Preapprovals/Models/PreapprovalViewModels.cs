@@ -5,6 +5,7 @@ using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Users.Contracts;
 using NodaTime;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Preapprovals.Models;
 
@@ -76,6 +77,7 @@ internal sealed class ProgramFormViewModel
     [StringLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     public ProgramKind Kind { get; set; } = ProgramKind.FixedPerPerson;
 
     [Range(0.01, 1_000_000)]
@@ -87,11 +89,13 @@ internal sealed class ProgramFormViewModel
     [Required]
     public int? HoldedAccountNumber { get; set; }
 
+    [BindRequired]
     public bool AcceptsApplications { get; set; }
 
     [Required]
     public LocalDate? ClaimBy { get; set; }
 
+    [BindRequired]
     public ProgramStatus Status { get; set; } = ProgramStatus.Open;
 
     public List<Guid> ManagerUserIds { get; set; } = [];

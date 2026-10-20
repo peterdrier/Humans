@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Settings.Contracts;
@@ -8,7 +9,12 @@ using Humans.Settings.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
+using NodaTime;
 using NSubstitute;
 using TestContext = Xunit.TestContext;
 
@@ -45,6 +51,97 @@ public sealed class SettingsAdminControllerTests
         GateOpeningDate = "2026-07-09",
         IsActive = isActive,
     };
+
+    [HumansTheory]
+    [Xunit.InlineData("Id", false)]
+    [Xunit.InlineData("TimeZoneId", false)]
+    [Xunit.InlineData("BuildStartOffset", false)]
+    [Xunit.InlineData("EventEndOffset", false)]
+    [Xunit.InlineData("StrikeEndOffset", false)]
+    [Xunit.InlineData("FirstCrewStartOffset", false)]
+    [Xunit.InlineData("SetupWeekStartOffset", false)]
+    [Xunit.InlineData("PreEventWeekStartOffset", false)]
+    [Xunit.InlineData("FinishingWeekendStartOffset", false)]
+    [Xunit.InlineData("EarlyEntryCapacityJson", false)]
+    [Xunit.InlineData("BarriosEarlyEntryAllocationJson", false)]
+    [Xunit.InlineData("EarlyEntryClose", false)]
+    [Xunit.InlineData("EarlyEntryStartOffset", false)]
+    [Xunit.InlineData("IsActive", false)]
+    [Xunit.InlineData("IsOffSeason", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("", true)]
+    public async Task Event_form_requires_posted_values_before_replacing_cycle_settings(string omitted, bool blankOptional)
+    {
+        var id = Guid.NewGuid();
+        var controller = BuildSut();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Id"] = blankOptional ? "" : id.ToString(),
+            ["EventName"] = "Nowhere 2026",
+            ["TimeZoneId"] = "Etc/UTC",
+            ["GateOpeningDate"] = "2026-07-09",
+            ["BuildStartOffset"] = "-30",
+            ["FirstCrewStartOffset"] = "-24",
+            ["SetupWeekStartOffset"] = "-15",
+            ["PreEventWeekStartOffset"] = "-8",
+            ["FinishingWeekendStartOffset"] = "-3",
+            ["EventEndOffset"] = blankOptional ? "0" : "7",
+            ["StrikeEndOffset"] = blankOptional ? "0" : "10",
+            ["EarlyEntryCapacityJson"] = blankOptional ? "{}" : "{\"-7\":50}",
+            ["BarriosEarlyEntryAllocationJson"] = blankOptional ? "" : "{\"-7\":40}",
+            ["EarlyEntryClose"] = blankOptional ? "" : "2026-07-01T12:00:00Z",
+            ["EarlyEntryStartOffset"] = blankOptional ? "" : "-7",
+            ["IsActive"] = blankOptional ? "false" : "true",
+            ["IsOffSeason"] = blankOptional ? "false" : "true"
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(EventSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(EventSettingsViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (EventSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        (await controller.Index(model, TestContext.Current.CancellationToken)).Should().BeOfType<RedirectResult>();
+
+        if (omitted.Length > 0)
+        {
+            _settings.ReceivedCalls().Should().BeEmpty();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            controller.TempData.Should().ContainKey(TempDataKeys.ErrorMessage);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            var saved = Xunit.Assert.IsType<EventSettingsInfo>(_settings.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]);
+            saved.Id.Should().NotBe(Guid.Empty);
+            if (!blankOptional) saved.Id.Should().Be(id);
+            saved.TimeZoneId.Should().Be("Etc/UTC");
+            saved.BuildStartOffset.Should().Be(-30);
+            saved.FirstCrewStartOffset.Should().Be(-24);
+            saved.SetupWeekStartOffset.Should().Be(-15);
+            saved.PreEventWeekStartOffset.Should().Be(-8);
+            saved.FinishingWeekendStartOffset.Should().Be(-3);
+            saved.EventEndOffset.Should().Be(blankOptional ? 0 : 7);
+            saved.StrikeEndOffset.Should().Be(blankOptional ? 0 : 10);
+            saved.EarlyEntryCapacity.Should().BeEquivalentTo(blankOptional ? new Dictionary<int, int>() : new() { [-7] = 50 });
+            saved.BarriosEarlyEntryAllocation.Should().BeEquivalentTo(blankOptional ? null : new Dictionary<int, int> { [-7] = 40 });
+            saved.EarlyEntryClose.Should().Be(blankOptional ? null : Instant.FromUtc(2026, 7, 1, 12, 0));
+            saved.EarlyEntryStartOffset.Should().Be(blankOptional ? null : -7);
+            saved.Status.Should().Be(blankOptional ? EventSettingsStatus.Inactive : EventSettingsStatus.Active);
+            saved.IsOffSeason.Should().Be(!blankOptional);
+        }
+    }
 
     [HumansFact]
     public async Task Index_Post_RedirectsBackToTheRowItJustSaved()

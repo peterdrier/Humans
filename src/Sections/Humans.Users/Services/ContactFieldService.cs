@@ -1,3 +1,4 @@
+using Humans.Users.Helpers;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
@@ -33,7 +34,7 @@ internal sealed class ContactFieldService(
 
         var accessLevel = await GetViewerAccessLevelAsync(
             info.Id, viewerUserId, cancellationToken);
-        var allowedVisibilities = GetAllowedVisibilities(accessLevel);
+        var allowedVisibilities = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
 
         return info.Profile.ContactFields
             .Where(cf => allowedVisibilities.Contains(cf.Visibility))
@@ -66,7 +67,8 @@ internal sealed class ContactFieldService(
     public async Task SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
         var now = clock.GetCurrentInstant();
 
@@ -76,7 +78,10 @@ internal sealed class ContactFieldService(
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
 
-        var toDelete = existingFields.Where(cf => !incomingIds.Contains(cf.Id)).ToList();
+        // Zero is the retired email type, retained only for reading historical rows.
+        var toDelete = existingFields.Where(cf => cf.FieldType == default
+            ? removedLegacyContactFieldIds?.Contains(cf.Id) == true
+            : !incomingIds.Contains(cf.Id)).ToList();
 
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
@@ -85,6 +90,7 @@ internal sealed class ContactFieldService(
         {
             if (dto.Id.HasValue && existingById.TryGetValue(dto.Id.Value, out var existing))
             {
+                if (existing.FieldType == default) continue;
                 existing.FieldType = dto.FieldType;
                 existing.CustomLabel = dto.CustomLabel;
                 existing.Value = dto.Value;
@@ -169,28 +175,4 @@ internal sealed class ContactFieldService(
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
         => userRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
-
-    private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
-        accessLevel switch
-        {
-            ContactFieldVisibility.BoardOnly =>
-            [
-                ContactFieldVisibility.BoardOnly,
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.CoordinatorsAndBoard =>
-            [
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.MyTeams =>
-            [
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            _ => [ContactFieldVisibility.AllActiveProfiles]
-        };
 }

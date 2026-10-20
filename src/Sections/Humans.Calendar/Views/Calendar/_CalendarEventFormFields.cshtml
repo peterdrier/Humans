@@ -163,7 +163,7 @@
     <div class="row">
         <div class="col-12 mb-3 d-none" data-rec="custom">
             <label asp-for="RecurrenceRule" class="form-label">@Localizer["Calendar_RRule"]</label>
-            <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
+            <input asp-for="RecurrenceRule" class="form-control" maxlength="500" placeholder="FREQ=WEEKLY;BYDAY=TU" />
             <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
         </div>
     </div>
