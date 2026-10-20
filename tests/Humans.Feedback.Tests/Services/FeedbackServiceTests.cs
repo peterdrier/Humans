@@ -30,7 +30,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
-using Humans.Base.Caching;
 using FeedbackServiceImpl = Humans.Feedback.Services.FeedbackService;
 using Humans.Feedback.Contracts;
 
@@ -109,8 +108,7 @@ public sealed class FeedbackServiceTests
         _service = new FeedbackServiceImpl(
             _repository, userService, userEmailService, teamService,
             _emailService, _emailMessages, _notificationService,
-            _auditLog, new NavBadgeCacheInvalidator(_cache),
-            _fileStorage, _cache, Clock,
+            _auditLog, _fileStorage, _cache, Clock,
             NullLogger<FeedbackServiceImpl>.Instance);
     }
 
@@ -156,7 +154,7 @@ public sealed class FeedbackServiceTests
                 .ThrowsAsync(new InvalidOperationException("Provider not found; database unavailable"));
             service = new FeedbackServiceImpl(brokenRepo, users, Substitute.For<IUserEmailService>(), teams,
                 _emailService, _emailMessages, _notificationService, _auditLog,
-                new NavBadgeCacheInvalidator(_cache), _fileStorage, _cache, Clock,
+                _fileStorage, _cache, Clock,
                 NullLogger<FeedbackServiceImpl>.Instance);
         }
         var controller = new FeedbackController(service, teams, users, NullLogger<FeedbackController>.Instance)
@@ -753,8 +751,7 @@ public sealed class FeedbackServiceTests
         await SeedReportAsync(userId, "b", "/b");
         (await _service.GetActionableCountAsync(ct)).Should().Be(1, "the count is cached");
 
-        // What INavBadgeCacheInvalidator does to this cache.
-        _cache.Remove(CacheKeys.FeedbackBadgeCount);
+        _cache.Remove(FeedbackServiceImpl.BadgeCacheKey);
         (await _service.GetActionableCountAsync(ct)).Should().Be(2, "eviction forces a recount");
     }
 

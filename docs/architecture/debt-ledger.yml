@@ -75,7 +75,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-10-20
-    remaining: 14
+    remaining: 13
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -83,6 +83,10 @@ themes:
       Burn-down resumed 2026-10-20 (Peter: "parked = defer till later, later is
       now"), one owner per PR, self-only invalidators first. IIssuesBadgeCacheInvalidator
       is gone: IssuesService was its only caller and already owned the cache.
+      INavBadgeCacheInvalidator is gone too: it only ever evicted Feedback's
+      count, so the Auth, Governance and Issues calls (and
+      IRoleAssignmentWrite.InvalidateNavBadgeCache) were dead; FeedbackService
+      now evicts its own key.
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
@@ -105,7 +109,7 @@ themes:
       breaks. Caller-map classification of all 16: 1 self/ordering-sensitive
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
-      UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
+      UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge [removed 2026-10-20],
       NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
       service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge [absorbed 2026-10-20],
       CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly

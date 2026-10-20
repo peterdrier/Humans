@@ -158,7 +158,7 @@ Since #977:
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
 - Audit log (`AuditLogEntry`) — tracks status changes
-- `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
+- `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`FeedbackService.BadgeCacheKey`, 2-min TTL) and evicted by that service
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`
 
 Triage mutations return explicit missing/refused/success results. Missing reports map to 404; dependency failures follow the logged error path, regardless of exception wording. Undefined statuses leave the report and audit unchanged.

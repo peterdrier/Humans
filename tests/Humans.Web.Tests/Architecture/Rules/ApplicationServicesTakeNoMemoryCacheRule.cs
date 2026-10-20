@@ -60,11 +60,11 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Nav-badge count caches moved out of NavBadgesViewComponent into their
         // owning services (memory/code/viewcomponent-no-cache.md) — same inline
         // badge-count caching IssuesService/NotificationMeterProvider already do.
-        // Each wraps a real repo/DB query and is evicted via the existing
-        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (AdminDashboardService
+        // Each wraps a real repo/DB query; Feedback evicts its own key, Governance
+        // via IVotingBadgeCacheInvalidator. (AdminDashboardService
         // is NOT here — its reads are already cache-served by CachingUserService, so it
         // stays cache-free; double-caching it would be §4b.)
-        SectionType("Humans.Feedback.Services.FeedbackService"),  // CacheKeys.FeedbackBadgeCount
+        SectionType("Humans.Feedback.Services.FeedbackService"),  // FeedbackService.BadgeCacheKey
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).

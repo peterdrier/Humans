@@ -19,12 +19,11 @@ Repository: `IIssuesRepository`.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `NavBadge:Issues:{userId:N}` (`IssuesService.BadgeCacheKey`, evicted in-service) | 2 min | yes | yes | yes |
-| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
-`IAuditLogService`, `INavBadgeCacheInvalidator`,
+`IAuditLogService`,
 `ISectionCatalog`, `IFileStorage` (screenshot bytes; the row keeps only the key; atomic uploads and failed-submission cleanup). Routes through `IssueSectionRouting`
 (Singleton, owns no table): the queue lookup built from every
 `IIssueQueueOwner` DI discovered — each owning section declares its own queue

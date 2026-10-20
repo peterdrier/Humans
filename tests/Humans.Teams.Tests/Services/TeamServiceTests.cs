@@ -65,7 +65,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             AuditLog,
             Notifier,
             Substitute.For<ISystemTeamSync>(),
-            Substitute.For<INavBadgeCacheInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IRoleAssignmentCacheInvalidator>(),
             Clock,

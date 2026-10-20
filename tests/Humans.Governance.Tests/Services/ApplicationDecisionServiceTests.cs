@@ -82,7 +82,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
@@ -123,7 +122,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _notificationService,
         _syncJob,
         _metrics,
-        _navBadge,
         _notificationMeter,
         _votingBadge,
         _cache,
@@ -223,7 +221,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         stored.Status.Should().Be(ApplicationStatus.Submitted);
         results.Should().ContainSingle(result => result.Success);
         results.Should().ContainSingle(result => string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal));
-        _navBadge.Received(1).Invalidate();
         _notificationMeter.Received(1).Invalidate();
     }
 
@@ -285,7 +282,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             null, null, null, "en", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        _navBadge.Received().Invalidate();
         _notificationMeter.Received().Invalidate();
         _votingBadge.Received().Invalidate(boardMemberId);
     }
@@ -318,7 +314,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(expectedSuccess ? 1 : 0);
         if (!expectedSuccess)
         {
-            _navBadge.ReceivedCalls().Should().BeEmpty();
             _notificationMeter.ReceivedCalls().Should().BeEmpty();
         }
     }
@@ -540,7 +535,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        _navBadge.Received().Invalidate();
         _notificationMeter.Received().Invalidate();
     }
 

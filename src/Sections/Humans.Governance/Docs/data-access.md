@@ -39,7 +39,6 @@ Repository: `IApplicationRepository`.
 
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
-| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserService`, `IUserWrite` (`SetMembershipTierAsync`),

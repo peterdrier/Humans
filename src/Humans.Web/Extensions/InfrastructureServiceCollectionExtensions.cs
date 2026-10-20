@@ -82,7 +82,6 @@ public static class InfrastructureServiceCollectionExtensions
         // the section that owns the file is not always the section that owns the line
         // (design §15 step 4), and Section.Register may not register another layer's type.
         services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
-        services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
 

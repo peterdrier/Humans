@@ -152,13 +152,6 @@ internal sealed class CachingRoleAssignmentService
         inner.InvalidateClaimsCacheForUser(userId);
     }
 
-    public void InvalidateNavBadgeCache()
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentManagement>(InnerServiceKey);
-        inner.InvalidateNavBadgeCache();
-    }
-
     // Implemented directly on the decorator (it IS the cache invalidator);
     // no need to flow through the inner service.
     void IRoleAssignmentWrite.InvalidateRoleAssignmentCache() => InvalidateAll();

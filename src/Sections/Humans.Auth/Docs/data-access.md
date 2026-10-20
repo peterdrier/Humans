@@ -29,7 +29,6 @@ Repository: `IRoleAssignmentRepository`.
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
 | `Auth.RoleAssignmentRow` TrackedCache (`IRoleAssignmentCacheInvalidator`) | yes (wholesale flush on write) |
-| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,

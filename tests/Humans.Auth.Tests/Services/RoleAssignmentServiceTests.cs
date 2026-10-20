@@ -25,7 +25,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 {
     private readonly IRoleAssignmentRepository _repository;
     private readonly IUserService _userService;
-    private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
     private readonly IRoleAssignmentCacheInvalidator _rowCache;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -38,7 +37,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         _userService = NewStubUserService();
 
-        _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _rowCache = Substitute.For<IRoleAssignmentCacheInvalidator>();
         _systemTeamSync = Substitute.For<ISystemTeamSync>();
@@ -49,7 +47,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             AuditLog,
             Notifier,
             _systemTeamSync,
-            _navBadge,
             _claimsInvalidator,
             _rowCache,
             Clock,
@@ -69,7 +66,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         result.Success.Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
-        _navBadge.Received(1).Invalidate();
     }
 
     [HumansFact]
@@ -90,7 +86,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         result.Success.Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
-        _navBadge.Received(1).Invalidate();
     }
 
     [HumansFact]
@@ -299,7 +294,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         await _service.RevokeAllActiveAsync(userId, TestContext.Current.CancellationToken);
 
         _rowCache.Received(1).InvalidateAll();
-        _navBadge.DidNotReceive().Invalidate();
         await Notifier.DidNotReceive().SendAsync(
             Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),

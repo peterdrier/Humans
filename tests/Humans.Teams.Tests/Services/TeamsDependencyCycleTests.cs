@@ -39,7 +39,6 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
-        services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());

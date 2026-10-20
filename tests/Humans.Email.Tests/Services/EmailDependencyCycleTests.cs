@@ -44,7 +44,6 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
-        services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());

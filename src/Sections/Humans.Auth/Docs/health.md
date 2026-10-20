@@ -52,7 +52,7 @@ own shape is a candidate for removal.
 | S3 | *What does this person hold?* | `GetActiveForUserAsync`, `GetByUserIdAsync` | Active-only vs. full history |
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync` | The invariant-bearing shape; the overlap check is the repository's, asked only from inside `AssignRoleAsync` |
-| S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateNavBadgeCache`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
+| S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
 | S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `ReleaseSignupToken`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |

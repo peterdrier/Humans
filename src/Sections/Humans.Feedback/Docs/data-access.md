@@ -24,7 +24,7 @@ Repository: `IFeedbackRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `FeedbackBadgeCount` | 2 min | yes | yes | yes (via `INavBadgeCacheInvalidator`) |
+| `FeedbackBadgeCount` | 2 min | yes | yes | yes (in-service) |
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `ITeamService`, `IEmailService`, the section's own `FeedbackEmails`

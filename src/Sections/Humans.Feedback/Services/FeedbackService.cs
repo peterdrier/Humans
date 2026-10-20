@@ -4,9 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Base.Caching;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
@@ -22,7 +20,7 @@ namespace Humans.Feedback.Services;
 /// The Feedback section's service. Admin triage over the historical rows —
 /// Feedback stopped accepting new reports in nobodies-collective/Humans#977, so
 /// there is deliberately no create path.
-/// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.
+/// Owns the nav-badge actionable count and evicts it after every write that can move it.
 /// </summary>
 internal sealed class FeedbackService(
     IFeedbackRepository repository,
@@ -33,7 +31,6 @@ internal sealed class FeedbackService(
     FeedbackEmails emailMessages,
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
-    INavBadgeCacheInvalidator navBadge,
     IFileStorage fileStorage,
     IMemoryCache cache,
     IClock clock,
@@ -42,6 +39,8 @@ internal sealed class FeedbackService(
     internal const string FeedbackReports = "FeedbackReports";
     private static readonly TrackedLock ReplyDeliveryLock = new("Feedback.ReplyDelivery");
 
+    /// <summary>The nav-badge actionable count's cache key; this service is its only reader and evicter.</summary>
+    internal const string BadgeCacheKey = "FeedbackBadgeCount";
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public async Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
@@ -119,7 +118,7 @@ internal sealed class FeedbackService(
                 "API");
         }
 
-        navBadge.Invalidate();
+        cache.Remove(BadgeCacheKey);
         return FeedbackMutationResult.Success;
     }
 
@@ -186,7 +185,7 @@ internal sealed class FeedbackService(
         // The reply is durable. A failed handoff remains visible and the recurring job retries it.
         await TryCompleteReplyEmailAsync(message, CancellationToken.None);
 
-        navBadge.Invalidate();
+        cache.Remove(BadgeCacheKey);
         logger.LogInformation(
             "Feedback admin reply posted on {ReportId} by {UserId}", reportId, senderUserId);
         return new(true, Message: new FeedbackMessageInfo(
@@ -383,7 +382,7 @@ internal sealed class FeedbackService(
 
     public async Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default) =>
-        await cache.GetOrCreateAsync(CacheKeys.FeedbackBadgeCount, async entry =>
+        await cache.GetOrCreateAsync(BadgeCacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
             return await repository.GetActionableCountAsync(cancellationToken);
@@ -457,7 +456,7 @@ internal sealed class FeedbackService(
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         var screenshotKeys = await repository.EraseForUserAsync(userId, ct);
-        navBadge.Invalidate();
+        cache.Remove(BadgeCacheKey);
 
         // The screenshots are the reporter's own uploads — they go with the rows.
         foreach (var key in screenshotKeys)

@@ -18,7 +18,7 @@ Before adding a dependency on `UserService` or `ProfileService` from a higher-le
 - **Read-for-display** (profile page wants tickets/campaigns/applications data) → move the assembly up to the caller (controller/view-model). Don't let Profile aggregate.
 - **Data that really belongs on Profile** (membership level, event-attendance flag) → denormalize onto Profile; the owning section pushes updates via an inbound call (Applications → Profile on approval, Tickets → Profile on event-ticket purchase).
 - **Cascade-on-delete** → extract an orchestrator (e.g. `IAccountDeletionService`) that lives above User/Profile and calls each section to clean up.
-- **Cache invalidation across sections** → narrow invalidator interface owned by the foundational service and implemented by the higher-level section (same pattern as `IShiftAuthorizationInvalidator`, `INavBadgeCacheInvalidator`, `IFullProfileInvalidator`).
+- **Cache invalidation across sections** → narrow invalidator interface owned by the foundational service and implemented by the higher-level section (same pattern as `IShiftAuthorizationInvalidator`, `IFullProfileInvalidator`).
 
 If a dependency seems unavoidable, the feature is probably in the wrong service — check whether it belongs on a higher-level orchestrator instead.
 

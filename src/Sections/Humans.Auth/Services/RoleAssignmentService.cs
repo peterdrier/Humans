@@ -26,7 +26,6 @@ internal sealed class RoleAssignmentService(
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     ISystemTeamSync systemTeamSyncJob,
-    INavBadgeCacheInvalidator navBadge,
     IRoleAssignmentClaimsCacheInvalidator claimsInvalidator,
     IRoleAssignmentCacheInvalidator roleAssignmentCacheInvalidator,
     IClock clock,
@@ -127,7 +126,6 @@ internal sealed class RoleAssignmentService(
             $"'{roleName}'",
             assignerId);
 
-        navBadge.Invalidate();
         claimsInvalidator.Invalidate(userId);
 
         // Best-effort in-app notification.
@@ -190,7 +188,6 @@ internal sealed class RoleAssignmentService(
             $"'{roleAssignment.RoleName}'",
             enderId);
 
-        navBadge.Invalidate();
         claimsInvalidator.Invalidate(roleAssignment.UserId);
 
         // Best-effort in-app notification.
@@ -269,8 +266,6 @@ internal sealed class RoleAssignmentService(
     }
 
     public void InvalidateClaimsCacheForUser(Guid userId) => claimsInvalidator.Invalidate(userId);
-
-    public void InvalidateNavBadgeCache() => navBadge.Invalidate();
 
     public void InvalidateRoleAssignmentCache() => roleAssignmentCacheInvalidator.InvalidateAll();
 

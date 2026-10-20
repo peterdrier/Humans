@@ -37,7 +37,6 @@ internal sealed class ApplicationDecisionService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
-    INavBadgeCacheInvalidator navBadge,
     INotificationMeterCacheInvalidator notificationMeter,
     IVotingBadgeCacheInvalidator votingBadge,
     IMemoryCache cache,
@@ -183,7 +182,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         await repository.FinalizeAsync(application, cancellationToken);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
@@ -315,7 +313,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.AddAsync(application, ct);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
@@ -340,7 +337,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.UpdateAsync(application, ct);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 

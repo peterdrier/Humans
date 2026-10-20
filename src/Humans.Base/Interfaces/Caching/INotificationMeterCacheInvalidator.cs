@@ -5,7 +5,6 @@ namespace Humans.Base.Interfaces.Caching;
 
 /// <summary>
 /// Cross-cutting invalidator for the notification meters cache.
-/// See <see cref="INavBadgeCacheInvalidator"/> for the same rationale.
 /// </summary>
 [Grandfathered(
     ruleId: "HUM0028",

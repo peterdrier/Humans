@@ -69,8 +69,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > and the `TrackedCache<TKey, TValue>` base class
 > (`Caching/TrackedCache.cs`) that every section-owned Singleton
 > caching decorator below inherits. Cross-cutting invalidator interfaces
-> (`INavBadgeCacheInvalidator`,
-> `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
+> (`INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
 > `IRoleAssignmentClaimsCacheInvalidator`, `IActiveTeamsCacheInvalidator`,
 > `ICampLeadJoinRequestsBadgeCacheInvalidator`, `IShiftAuthorizationInvalidator`,
 > `IUserInfoInvalidator`, `IShiftViewInvalidator`, `IEarlyEntryInvalidator`)
@@ -369,7 +368,7 @@ separately below the key table.
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
+| `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
 | `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
