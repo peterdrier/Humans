@@ -65,4 +65,36 @@
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>Aucun e-mail enregistré.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Objet</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Mes e-mails</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve">
+    <value>Envoyer un message à {0}</value>
+  </data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envoyer un message</value>
+  </data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve">
+    <value>Envoyer un message à {0}</value>
+  </data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclure mes coordonnées</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Votre nom et votre e-mail seront inclus pour que la personne puisse vous répondre directement.</value>
+  </data>
+  <data name="Email_SendMessage_Send" xml:space="preserve">
+    <value>Envoyer le message</value>
+  </data>
+  <data name="Email_SendMessage_Success" xml:space="preserve">
+    <value>Votre message a été envoyé à {0}.</value>
+  </data>
+  <data name="Email_SendMessage_FromTeamButton" xml:space="preserve">
+    <value>Envoyer un message à {0} de la part de {1}</value>
+  </data>
+  <data name="Email_SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Vous envoyez au nom de {0}. Les réponses seront adressées à {1}.</value>
+  </data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Cette personne a choisi de ne pas recevoir de messages.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
 </root>

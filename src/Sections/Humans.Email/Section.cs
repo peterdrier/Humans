@@ -55,6 +55,7 @@ public sealed class Section : ISection
         services.AddSingleton<IEmailPreviewManagement>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
         services.AddScoped<IEmailPreviewContributor, FacilitatedMessagePreviews>();
+        services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
         services.AddScoped<IEmailService, OutboxEmailService>();
         services.AddScoped<ComposerSelfSendService>();
 

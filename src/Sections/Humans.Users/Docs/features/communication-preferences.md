@@ -53,7 +53,7 @@ When a user has a matched `TicketAttendee` record (auto-matched by email), their
 
 ### Facilitated Messages Opt-Out
 
-When a user opts out of Facilitated Messages, the "Send Message" button is hidden from their profile card, and the `/Profile/{id}/SendMessage` action redirects with an error message. This prevents other users from sending messages to someone who doesn't want them.
+When a user opts out of Facilitated Messages, the "Send Message" button is hidden from their profile card, and the `/Profile/{id}/SendMessage` action (Email's `FacilitatedMessageController`) redirects with an error message. This prevents other users from sending messages to someone who doesn't want them.
 
 ## Data Model
 

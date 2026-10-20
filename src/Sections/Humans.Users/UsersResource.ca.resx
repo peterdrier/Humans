@@ -755,38 +755,8 @@
   <!-- ======================== -->
   <!-- Facilitated message      -->
   <!-- ======================== -->
-  <data name="SendMessage_Title" xml:space="preserve">
-    <value>Envia un missatge a {0}</value>
-  </data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve">
-    <value>Envia missatge</value>
-  </data>
-  <data name="SendMessage_Heading" xml:space="preserve">
-    <value>Envia un missatge a {0}</value>
-  </data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve">
-    <value>Missatge</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
-    <value>Inclou la meva informació de contacte</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
-    <value>El teu nom i correu electrònic s’inclouran perquè et puguin respondre directament.</value>
-  </data>
-  <data name="SendMessage_Send" xml:space="preserve">
-    <value>Envia missatge</value>
-  </data>
-  <data name="SendMessage_Success" xml:space="preserve">
-    <value>El teu missatge s’ha enviat a {0}.</value>
-  </data>
   <data name="SendMessage_Button" xml:space="preserve">
     <value>Envia un missatge a {0}</value>
-  </data>
-  <data name="SendMessage_FromTeamButton" xml:space="preserve">
-    <value>Envia un missatge a {0} des de {1}</value>
-  </data>
-  <data name="SendMessage_FromTeamNotice" xml:space="preserve">
-    <value>Estàs enviant en nom de {0}. Les respostes s'enviaran a {1}.</value>
   </data>
 
   <!-- ======================== -->
@@ -1058,7 +1028,6 @@
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
   <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No s'han pogut carregar les preferències de comunicació.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Aquest correu està vinculat a un altre compte. En verificar-lo se sol·licitarà una fusió de comptes. Consulta la safata d'entrada per a l'enllaç de verificació.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correu verificat. S'ha enviat una sol·licitud de fusió per a la revisió administrativa. El correu {0} s'afegirà al teu compte quan s'aprovi.</value><comment>{0} = email address</comment></data>

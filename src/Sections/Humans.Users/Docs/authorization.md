@@ -2,7 +2,7 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers, messaging, search) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
+| `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers, search) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileEmailsController.VerifyEmail` (`Me/Emails/Verify`) | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.Picture` | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |

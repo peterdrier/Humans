@@ -28,8 +28,8 @@ public sealed class OutboxCardViewComponentTests
     {
         IUserPart contribution = new SectionUserParts();
 
-        contribution.Parts().Should().BeEquivalentTo(
-            [new UserPart(UserPartSlots.AdminDetail, typeof(OutboxCardViewComponent), 200)]);
+        contribution.Parts().Should().Contain(
+            new UserPart(UserPartSlots.AdminDetail, typeof(OutboxCardViewComponent), 200));
     }
 
     [HumansTheory]

@@ -1,8 +1,8 @@
-using Humans.Users.Models;
+using Humans.Email.Models;
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Email.Tests.Models;
 
 /// <summary>
 /// Validation coverage for <see cref="SendMessageViewModel"/>. Browsers submit

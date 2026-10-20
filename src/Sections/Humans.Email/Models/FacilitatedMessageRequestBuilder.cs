@@ -1,7 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
-namespace Humans.Users.Models;
+namespace Humans.Email.Models;
 
 internal sealed record FacilitatedMessageRequest(
     string RecipientEmail,

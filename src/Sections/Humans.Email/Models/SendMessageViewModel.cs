@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Humans.Users.Models;
+namespace Humans.Email.Models;
 
 internal sealed class SendMessageViewModel
 {

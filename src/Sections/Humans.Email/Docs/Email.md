@@ -104,6 +104,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `GET /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCountsPreview` — backfill review step (never-overwrite preview) |
 | `POST /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCounts` — backfill confirm step |
 | `GET /Profile/Me/Outbox` | authenticated | `MemberOutboxController.MyOutbox` — own outbox history; takes no user id. Exempt from the Active-membership gate (`MembershipRequiredFilter`), like the rest of own-profile maintenance. |
+| `GET /Profile/{id}/SendMessage` | authenticated | `FacilitatedMessageController.SendMessage` — the composer for a one-off message to another member; redirects to the profile for self or an opted-out recipient, 403 for a requested team the viewer may not send as. URL kept from when Users served it. |
+| `POST /Profile/{id}/SendMessage` | authenticated, anti-forgery | `FacilitatedMessageController.SendMessage` — relays the message through `IEmailMessageFactory.FacilitatedMessage` and `IEmailService`, then audits `FacilitatedMessageSent` (team sends name and link the team, never copy its address into the audit text). Same guards as the GET, re-checked. |
 | `GET /Users/Admin/{id}/Outbox` | `HumanAdminBoardOrAdmin` | `MemberOutboxController.AdminOutbox` — another user's outbox history. Both routes keep their `Profile` / `Users/Admin` prefixes so the URLs did not change when the pages left Users. |
 
 ## Actors & Roles
@@ -170,6 +172,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Cross-Section Dependencies
 
+- **Teams / GoogleIntegration:** `TeamMessageOptionsProvider` (facilitated messaging, no tables) lists the teams a viewer may send as — `ITeamService.GetTeamsAsync` for the viewer's coordinated active teams and `ITeamResourceService.GetResourcesByTeamIdsAsync` for a linked, synced Google Group. `Humans.Email` references `Humans.Teams.Contracts` and `Humans.GoogleIntegration` for these two reads (acyclic: neither reaches Email).
 - **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `ICommunicationPreferenceService` — checked by `OutboxEmailService` for per-category opt-outs and to generate `List-Unsubscribe` headers. Users' merge orchestrator also fans out to Email's `IUserMerge` implementation; Email only mutates its own outbox rows.
 - **Campaigns:** `ICampaignWrite` receives the delivery status; Campaigns queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.

@@ -755,38 +755,8 @@
   <!-- ======================== -->
   <!-- Facilitated message      -->
   <!-- ======================== -->
-  <data name="SendMessage_Title" xml:space="preserve">
-    <value>Enviar un mensaje a {0}</value>
-  </data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve">
-    <value>Enviar mensaje</value>
-  </data>
-  <data name="SendMessage_Heading" xml:space="preserve">
-    <value>Enviar un mensaje a {0}</value>
-  </data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve">
-    <value>Mensaje</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
-    <value>Incluir mi información de contacto</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
-    <value>Tu nombre y correo electrónico se incluirán para que puedan responderte directamente.</value>
-  </data>
-  <data name="SendMessage_Send" xml:space="preserve">
-    <value>Enviar mensaje</value>
-  </data>
-  <data name="SendMessage_Success" xml:space="preserve">
-    <value>Tu mensaje ha sido enviado a {0}.</value>
-  </data>
   <data name="SendMessage_Button" xml:space="preserve">
     <value>Enviar un mensaje a {0}</value>
-  </data>
-  <data name="SendMessage_FromTeamButton" xml:space="preserve">
-    <value>Enviar un mensaje a {0} desde {1}</value>
-  </data>
-  <data name="SendMessage_FromTeamNotice" xml:space="preserve">
-    <value>Estás enviando en nombre de {0}. Las respuestas se enviarán a {1}.</value>
   </data>
 
   <!-- ======================== -->
@@ -1058,7 +1028,6 @@
 &lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Esta persona ha decidido no recibir mensajes.</value></data>
   <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No se pudieron cargar las preferencias de comunicación.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Este correo está vinculado a otra cuenta. Al verificarlo se solicitará una fusión de cuentas. Consulta tu bandeja de entrada para ver el enlace de verificación.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correo verificado. Se ha enviado una solicitud de fusión para revisión administrativa. El correo {0} se añadirá a tu cuenta cuando se apruebe.</value><comment>{0} = email address</comment></data>

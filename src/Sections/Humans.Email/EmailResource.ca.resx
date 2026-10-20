@@ -65,4 +65,36 @@
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>No hi ha cap correu registrat.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Assumpte</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Els meus correus</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Missatge</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclou la meva informació de contacte</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>El teu nom i correu electrònic s’inclouran perquè et puguin respondre directament.</value>
+  </data>
+  <data name="Email_SendMessage_Send" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Email_SendMessage_Success" xml:space="preserve">
+    <value>El teu missatge s’ha enviat a {0}.</value>
+  </data>
+  <data name="Email_SendMessage_FromTeamButton" xml:space="preserve">
+    <value>Envia un missatge a {0} des de {1}</value>
+  </data>
+  <data name="Email_SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Estàs enviant en nom de {0}. Les respostes s'enviaran a {1}.</value>
+  </data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
 </root>

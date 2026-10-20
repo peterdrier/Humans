@@ -119,15 +119,6 @@ whose only identity is an external login. `BackfillLegacyIdentityEmailsAsync`
 admin via `IAuditLogService`, and returns the `(UserId, Email)` pairs it wrote.
 Timestamps come from `IClock`.
 
-### TeamMessageOptionsProvider (Scoped, internal — `IOrchestrator`)
-
-No repository, no cache, no direct DB access. Section-internal
-`ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
-for — active teams the viewer coordinates whose linked Google Group is synced.
-Cross-section reads via `ITeamService.GetTeamsAsync` and
-`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
-neither section's tables.
-
 ## Human Lifecycle
 
 Folder: `src/Sections/Humans.Users/Services/`. Orchestrator — owns no DB

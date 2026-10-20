@@ -62,7 +62,7 @@ The shapes imply one register with one cache and one write funnel:
   funnel too. Merge is an ordered fan-out over `IUserMerge` with the tombstone last.
 - **Controllers translate only.** The `/Profile` surface is one controller per shape:
   `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids)
-  and `ProfileViewController` (others' profiles, popovers, messaging, search).
+  and `ProfileViewController` (others' profiles, popovers, search).
 - **Repair screens are temporary** and sit under an admin nav group named Temp; each retires
   when its count reads zero in production.
 

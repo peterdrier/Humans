@@ -755,38 +755,8 @@
   <!-- ======================== -->
   <!-- Facilitated message      -->
   <!-- ======================== -->
-  <data name="SendMessage_Title" xml:space="preserve">
-    <value>{0} eine Nachricht senden</value>
-  </data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve">
-    <value>Nachricht senden</value>
-  </data>
-  <data name="SendMessage_Heading" xml:space="preserve">
-    <value>{0} eine Nachricht senden</value>
-  </data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve">
-    <value>Nachricht</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
-    <value>Meine Kontaktdaten einschließen</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
-    <value>Dein Name und deine E-Mail-Adresse werden hinzugefügt, damit die Person dir direkt antworten kann.</value>
-  </data>
-  <data name="SendMessage_Send" xml:space="preserve">
-    <value>Nachricht senden</value>
-  </data>
-  <data name="SendMessage_Success" xml:space="preserve">
-    <value>Deine Nachricht wurde an {0} gesendet.</value>
-  </data>
   <data name="SendMessage_Button" xml:space="preserve">
     <value>{0} eine Nachricht senden</value>
-  </data>
-  <data name="SendMessage_FromTeamButton" xml:space="preserve">
-    <value>{0} eine Nachricht von {1} senden</value>
-  </data>
-  <data name="SendMessage_FromTeamNotice" xml:space="preserve">
-    <value>Du sendest im Namen von {0}. Antworten gehen an {1}.</value>
   </data>
 
   <!-- ======================== -->
@@ -1058,7 +1028,6 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Diese Person hat den Empfang von Nachrichten abgelehnt.</value></data>
   <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Kommunikationseinstellungen konnten nicht geladen werden.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-Mail verifiziert. Eine Zusammenführungsanfrage wurde zur Prüfung durch die Administration eingereicht. Die E-Mail-Adresse {0} wird nach der Genehmigung deinem Konto hinzugefügt.</value><comment>{0} = email address</comment></data>

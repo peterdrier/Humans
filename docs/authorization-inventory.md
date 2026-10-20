@@ -249,6 +249,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Endpoint | Roles | Note |
 |---|---|---|
 | `GoogleController` actions with broader policies (`Sync`, `SyncPreview`, `ProvisionEmail`, `Resource`, `Human`) and `MonitorController.CheckDriveActivity` | TeamsAdmin/Board/Admin / Board/Admin / HumanAdmin/Board/Admin / HumanAdmin/Admin | Each action has its own policy. |
+| `FacilitatedMessageController.SendMessage` (GET/POST `/Profile/{id}/SendMessage`) | `[Authorize]` (any authenticated human) | Email serves it; refuses self-send, opted-out recipients and teams the viewer may not send as. |
 | `MemberOutboxController.AdminOutbox` | `HumanAdminBoardOrAdmin` | Email's "Email Outbox" card on the admin human-detail page links here. |
 
 ### Runtime-Only Guards (no attribute, enforced in method body)

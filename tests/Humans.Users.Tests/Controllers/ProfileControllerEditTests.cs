@@ -488,9 +488,6 @@ public class ProfileControllerEditTests
             ("NewEmail", "Validation_EmailAddress", []));
         AssertErrors(new EmailsViewModel { NewEmail = new string('x', 245) + "@example.com" },
             ("NewEmail", "Validation_MaxLength", ["", 256]));
-        AssertErrors(new SendMessageViewModel(), ("Message", "Validation_Required", []));
-        AssertErrors(new SendMessageViewModel { Message = new string('x', 2001) },
-            ("Message", "Validation_MaxLength", ["", 2000]));
     }
 
     [HumansFact]

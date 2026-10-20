@@ -54,4 +54,16 @@
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>No emails on record.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Subject</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>My Emails</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve"><value>Send Message</value></data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Your name and email will be included so they can reply to you directly.</value></data>
+  <data name="Email_SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
+  <data name="Email_SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_FromTeamButton" xml:space="preserve"><value>Send {0} a message from {1}</value><comment>{0} = recipient name; {1} = team name</comment></data>
+  <data name="Email_SendMessage_FromTeamNotice" xml:space="preserve"><value>You are sending on behalf of {0}. Replies will go to {1}.</value><comment>{0} = team name; {1} = team email</comment></data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
 </root>

@@ -93,7 +93,7 @@ graph LR
     ExtLogin[ExternalLoginService]:::users
     UsersAudience[UsersAudienceService]:::users
     HumanLifecycle[HumanLifecycleService]:::users
-    TeamMsgOpts[TeamMessageOptionsProvider]:::users
+    TeamMsgOpts[TeamMessageOptionsProvider]:::email
     UserNameSync[UserNameSyncService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
