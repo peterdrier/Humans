@@ -35,7 +35,7 @@ Repository: `IApplicationRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `NavBadge:Voting:{userId}` (`IVotingBadgeCacheInvalidator`) | 2 min | yes | yes | yes (per voter, via `IVotingBadgeCacheInvalidator`) |
+| `NavBadge:Voting:{userId}` (`ApplicationDecisionService.VotingBadgeCacheKey`) | 2 min | yes | yes | yes (per voter, in-service) |
 
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|

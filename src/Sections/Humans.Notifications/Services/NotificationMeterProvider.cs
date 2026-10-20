@@ -233,7 +233,7 @@ internal sealed class NotificationMeterProvider(
         return counts!;
     }
 
-    // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (CacheKeys.VotingBadge).
+    // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (ApplicationDecisionService.VotingBadgeCacheKey).
     private Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken) =>
         applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
 

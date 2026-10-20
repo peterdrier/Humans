@@ -83,7 +83,6 @@ public static class InfrastructureServiceCollectionExtensions
         // (design §15 step 4), and Section.Register may not register another layer's type.
         services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
-        services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
 
         // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
         // fetcher (its signatures name only string) and three of its four consumers are not

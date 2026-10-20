@@ -69,7 +69,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > and the `TrackedCache<TKey, TValue>` base class
 > (`Caching/TrackedCache.cs`) that every section-owned Singleton
 > caching decorator below inherits. Cross-cutting invalidator interfaces
-> (`INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
+> (`INotificationMeterCacheInvalidator`,
 > `IRoleAssignmentClaimsCacheInvalidator`, `IActiveTeamsCacheInvalidator`,
 > `ICampLeadJoinRequestsBadgeCacheInvalidator`, `IShiftAuthorizationInvalidator`,
 > `IUserInfoInvalidator`, `IShiftViewInvalidator`, `IEarlyEntryInvalidator`)
@@ -373,7 +373,7 @@ separately below the key table.
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
 | `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
 | `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
-| `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
+| `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | IssuesService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
