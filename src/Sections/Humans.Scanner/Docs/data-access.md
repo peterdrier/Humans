@@ -4,7 +4,7 @@
 
 Folder: `src/Sections/Humans.Scanner/Controllers/`. No owned DB tables, no
 service, no repository, no `DbContext`, no cache — the section is two camera
-pages and the partial one of them renders, and every value on screen is read
+pages and the ticket-card partial one of them fetches, and every value on screen is read
 through another section's public contract.
 
 ### ScannerController (Scoped)

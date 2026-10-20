@@ -37,8 +37,8 @@ EarlyEntry's `EarlyEntryRosterRow`, Calendar's `CalendarFeedItem`, and Settings'
 ## 3. Structure
 
 The shapes imply what is built: one controller that translates a barcode into a card, one
-render model for that card, one partial that draws it, two pages that share the camera
-module, and the camera module itself with a thin ticket-lookup wrapper over it. No service
+render model for that card, one partial that draws it, two pages that share one camera-pane
+partial and the camera module, and the camera module itself with a thin ticket-lookup wrapper over it. No service
 layer — the section has no business rule of its own to enforce once, only reads to
 compose. No repository, no tables, no cache: every read goes through the owning section's
 interface, which already caches where it should.

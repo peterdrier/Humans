@@ -1,0 +1,26 @@
+@* The camera card Barcode.cshtml and Tickets.cshtml share. Each page's inline script looks these ids up with getElementById, so renaming an id means editing both pages' scripts. *@
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-primary" id="scanner-start">
+                <i class="fa-solid fa-play me-1" aria-hidden="true"></i>
+                @Localizer["Scanner_Barcode_Scan"]
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="scanner-stop" disabled>
+                <i class="fa-solid fa-stop me-1" aria-hidden="true"></i>
+                @Localizer["Scanner_Barcode_Stop"]
+            </button>
+        </div>
+
+        <div id="scanner-status" class="small text-muted mb-2" aria-live="polite"></div>
+
+        <video id="scanner-video"
+               class="w-100 rounded border bg-dark"
+               style="aspect-ratio: 4 / 3; object-fit: cover;"
+               playsinline
+               muted
+               aria-label="@Localizer["Scanner_Barcode_VideoAria"]"></video>
+
+        <div id="scanner-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+    </div>
+</div>

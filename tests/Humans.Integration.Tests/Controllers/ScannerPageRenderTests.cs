@@ -70,7 +70,7 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_ticket_card_renders_the_stub_component_the_section_can_actually_bind()
     {
-        // /Scanner/Tickets/Card is the section's only partial, and the one place a section view
+        // /Scanner/Tickets/Card is the section's only partial endpoint, and the one place a section view
         // uses <vc:ticket-stub>. The component lives in Humans.Tickets for exactly this
         // reason — a Shell-resident component is inert markup from a section view. The
         // not-found branch proves the partial renders at all; the found branch needs a seeded
