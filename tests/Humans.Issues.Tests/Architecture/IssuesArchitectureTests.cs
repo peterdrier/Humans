@@ -19,16 +19,6 @@ public class IssuesArchitectureTests
     // ── IssuesService ────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void IssuesService_TakesIssuesBadgeInvalidator()
-    {
-        var ctor = typeof(IssuesService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
-            because: "IssuesService evicts the per-user actionable counts through this invalidator (memory/code/viewcomponent-no-cache.md)");
-    }
-
-    [HumansFact]
     public void IssuesService_TakesNavBadgeInvalidator()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();

@@ -99,9 +99,6 @@ public static class MemoryCacheExtensions
     public static void InvalidateVotingBadge(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.VotingBadge(userId));
 
-    public static void InvalidateIssuesBadge(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.IssuesBadge(userId));
-
     public static void InvalidateCampLeadJoinRequestsBadge(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
 

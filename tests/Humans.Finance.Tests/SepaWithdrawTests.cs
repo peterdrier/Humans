@@ -40,7 +40,7 @@ public class SepaWithdrawTests
 
     private Service MakeService() => new(
         _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(),
-        Substitute.For<IExpenseReportService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
+        Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
         _audit, _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         NullLogger<Service>.Instance);
@@ -55,7 +55,7 @@ public class SepaWithdrawTests
                     FallbackPictureUrl: null, CreatedAt: FixedNow, LastLoginAt: null,
                     LastConsentReminderSentAt: null, DeletionRequestedAt: null, DeletionScheduledFor: null,
                     DeletionEligibleAfter: null, UnsubscribedFromCampaigns: false,
-                    SuppressScheduleChangeEmails: false, MagicLinkSentAt: null, ContactSource: null,
+                    SuppressScheduleChangeEmails: false, ContactSource: null,
                     ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
                     UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),

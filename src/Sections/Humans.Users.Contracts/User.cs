@@ -121,9 +121,6 @@ public class User : IdentityUser<Guid>
 
     public bool SuppressScheduleChangeEmails { get; set; }
 
-    /// <summary>When the last magic link login email was sent (rate limiting).</summary>
-    public Instant? MagicLinkSentAt { get; set; }
-
     /// <summary>
     /// DEPRECATED (nobodies-collective/Humans#687): the Google rejection/validation state is now
     /// per-address on <see cref="UserEmail.GoogleEmailStatus"/> — the address Google actually

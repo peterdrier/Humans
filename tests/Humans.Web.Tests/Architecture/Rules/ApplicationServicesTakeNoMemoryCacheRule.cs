@@ -50,7 +50,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     private static readonly HashSet<Type> Allowlist =
     [
         SectionType("Humans.Camps.Services.CampContactService"),
-        SectionType("Humans.Issues.Services.IssuesService"),  // CacheKeys.IssuesBadge(userId)
+        SectionType("Humans.Issues.Services.IssuesService"),  // IssuesService.BadgeCacheKey(userId)
         SectionType("Humans.Consent.Services.LegalDocumentService"),
         SectionType("Humans.Notifications.Services.NotificationEmitter"),
         SectionType("Humans.Notifications.Services.NotificationInboxService"),

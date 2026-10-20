@@ -35,7 +35,7 @@ internal sealed class Service(
     // The ledger mirror is the Holded section's; all line/balance reads go through its contract.
     IHoldedService holded,
     // What each expense line wrote on its Holded document, for the duplicate-document check.
-    IExpenseReportService expenses,
+    IExpenseHoldedBookingService expenses,
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,

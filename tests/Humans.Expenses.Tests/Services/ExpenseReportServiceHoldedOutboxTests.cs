@@ -153,7 +153,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var legacy = MakeReport("doc-legacy");
         _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report, legacy]);
 
-        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var bookings = await new ExpenseHoldedBookingService(_repo, _userService).GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
 
         bookings.Should().HaveCount(2);
         bookings[0].Should().Be(new ExpenseHoldedBooking(
@@ -174,7 +174,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         report = report with { Lines = [report.Lines[0] with { HoldedDocId = "doc-a" }] };
         _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report]);
 
-        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var bookings = await new ExpenseHoldedBookingService(_repo, _userService).GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
 
         bookings.Should().ContainSingle().Which.CreditorUserId.Should().Be(survivor.Id);
     }

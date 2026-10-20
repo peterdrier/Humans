@@ -1,7 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Base.Caching;
 using Humans.Base.Hosting;
 using Humans.Email.Contracts;
 using Humans.Issues.Contracts;
@@ -45,7 +43,6 @@ public sealed class Section : ISection
         services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
         // Owns the user-scoped issues / issue_comments tables → GDPR export contributor.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
-        services.AddScoped<IIssuesBadgeCacheInvalidator, IssuesBadgeCacheInvalidator>();
 
         // Resource-based handler for IssuesOperationRequirement.Handle. The *policies*
         // register through ISectionPolicies when the section owns them; shared platform policies stay in Shell.

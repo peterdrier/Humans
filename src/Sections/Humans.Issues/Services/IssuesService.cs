@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
-using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
@@ -34,7 +33,6 @@ internal sealed class IssuesService(
     INotificationAutoResolve notificationInbox,
     IAuditLogService audit,
     INavBadgeCacheInvalidator navBadge,
-    IIssuesBadgeCacheInvalidator issuesBadge,
     IMemoryCache cache,
     IClock clock,
     IFileStorage fileStorage,
@@ -203,7 +201,7 @@ internal sealed class IssuesService(
             throw;
         }
         navBadge.Invalidate();
-        issuesBadge.InvalidateMany(
+        EvictBadgeCounts(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
         await DispatchSubmittedNotificationAsync(issue, ct);
@@ -489,7 +487,7 @@ internal sealed class IssuesService(
         navBadge.Invalidate();
         if (statusChangedToOpen || resolveWithComment)
         {
-            issuesBadge.InvalidateMany(
+            EvictBadgeCounts(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
         }
 
@@ -575,7 +573,7 @@ internal sealed class IssuesService(
                 await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
 
             navBadge.Invalidate();
-            issuesBadge.InvalidateMany(
+            EvictBadgeCounts(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
 
             return IssueMutationResult.Success();
@@ -665,7 +663,7 @@ internal sealed class IssuesService(
                 AuditAction.IssueSectionChanged, issueId, actorUserId,
                 $"section: {oldSection} → {nextSection}");
             navBadge.Invalidate();
-            issuesBadge.InvalidateMany(
+            EvictBadgeCounts(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
 
             return IssueMutationResult.Success();
@@ -722,7 +720,7 @@ internal sealed class IssuesService(
 
     public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.IssuesBadge(viewer.UserId);
+        var cacheKey = BadgeCacheKey(viewer.UserId);
         return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
@@ -732,6 +730,14 @@ internal sealed class IssuesService(
             var sections = routing.SectionsForRoles(viewer.Roles);
             return await repo.CountActionableAsync(sections, viewer.UserId, ct);
         });
+    }
+
+    /// <summary>Cache key for one viewer's actionable count; this service is its only reader and evicter.</summary>
+    internal static string BadgeCacheKey(Guid userId) => $"NavBadge:Issues:{userId:N}";
+
+    private void EvictBadgeCounts(IEnumerable<Guid> userIds)
+    {
+        foreach (var id in userIds) cache.Remove(BadgeCacheKey(id));
     }
 
     /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current &amp; previous sections.</summary>
@@ -850,7 +856,7 @@ internal sealed class IssuesService(
         }
 
         var screenshotKeys = await repo.EraseForUserAsync(userId, ct);
-        issuesBadge.InvalidateMany(badgeUserIds);
+        EvictBadgeCounts(badgeUserIds);
 
         // The screenshots are the reporter's own uploads — they go with the rows.
         await DeleteScreenshotsAsync(screenshotKeys);

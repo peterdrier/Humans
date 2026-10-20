@@ -39,7 +39,7 @@ public class HoldedDuplicateTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
+    private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private Service MakeService(ILogger<Service>? logger = null) => new(

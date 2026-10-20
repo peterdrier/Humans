@@ -37,7 +37,7 @@ public class CreditorPayabilityTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
+    private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly SepaOptions _sepa = new()

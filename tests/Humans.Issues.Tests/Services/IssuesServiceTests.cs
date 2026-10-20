@@ -82,7 +82,6 @@ public sealed class IssuesServiceTests
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
     private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly IssuesApplicationService _service;
@@ -129,7 +128,6 @@ public sealed class IssuesServiceTests
         _notificationService = Substitute.For<INotificationEmitter>();
         _notificationInbox = Substitute.For<INotificationAutoResolve>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
-        _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
 
         var issuesDbOptions = NewSectionDbOptions<IssuesDbContext>();
         _issuesDb = new IssuesDbContext(issuesDbOptions);
@@ -138,10 +136,18 @@ public sealed class IssuesServiceTests
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache,
+            Cache,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
+
+    private void PrimeBadgeCounts(params Guid[] userIds)
+    {
+        foreach (var id in userIds) Cache.Set(IssuesApplicationService.BadgeCacheKey(id), -1);
+    }
+
+    private bool BadgeCountCached(Guid userId) =>
+        Cache.TryGetValue(IssuesApplicationService.BadgeCacheKey(userId), out _);
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
         where TContext : DbContext =>
@@ -365,6 +371,8 @@ public sealed class IssuesServiceTests
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var bystanderId = Guid.NewGuid();
+        PrimeBadgeCounts(userId, bystanderId);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -376,8 +384,8 @@ public sealed class IssuesServiceTests
         issue.ReporterUserId.Should().Be(userId);
         issue.Section.Should().Be("Tickets");
         _navBadge.Received(1).Invalidate();
-        _issuesBadge.Received(1).InvalidateMany(
-            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)));
+        BadgeCountCached(userId).Should().BeFalse();
+        BadgeCountCached(bystanderId).Should().BeTrue();
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Triage);
@@ -453,7 +461,7 @@ public sealed class IssuesServiceTests
             var service = new IssuesApplicationService(
                 repo, _userService, _userEmailService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-                _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+                Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
             {
@@ -501,7 +509,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
         var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
@@ -631,13 +639,13 @@ public sealed class IssuesServiceTests
     public async Task PostCommentAsync_reporter_on_terminal_auto_reopens_to_Open()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
+        PrimeBadgeCounts(reporterId);
 
         await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
-        _issuesBadge.Received(1).InvalidateMany(
-            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(reporterId)));
+        BadgeCountCached(reporterId).Should().BeFalse();
     }
 
     [HumansFact]
@@ -1033,6 +1041,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
+        PrimeBadgeCounts(reporterId);
 
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1040,8 +1049,7 @@ public sealed class IssuesServiceTests
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
-        _issuesBadge.Received(1).InvalidateMany(
-            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(reporterId)));
+        BadgeCountCached(reporterId).Should().BeFalse();
     }
 
     [HumansFact]
@@ -1190,7 +1198,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var result = field switch
@@ -1388,6 +1396,7 @@ public sealed class IssuesServiceTests
         var teamsAdminId = Guid.NewGuid();
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([ticketAdminId]);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TeamsAdmin, Arg.Any<CancellationToken>()).Returns([teamsAdminId]);
+        PrimeBadgeCounts(ticketAdminId, teamsAdminId);
 
         await _service.UpdateSectionAsync(issueId, Admin, "Teams", actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1396,8 +1405,8 @@ public sealed class IssuesServiceTests
 
         _navBadge.Received(1).Invalidate();
         // Both queues' holders: the issue left one count and joined the other.
-        _issuesBadge.Received(1).InvalidateMany(
-            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Contains(ticketAdminId) && ids.Contains(teamsAdminId)));
+        BadgeCountCached(ticketAdminId).Should().BeFalse();
+        BadgeCountCached(teamsAdminId).Should().BeFalse();
 
         await AuditLog.Received().LogAsync(
             AuditAction.IssueSectionChanged,
@@ -1799,8 +1808,6 @@ public sealed class IssuesServiceTests
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>()).Returns([Admin.UserId]);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.CampAdmin, Arg.Any<CancellationToken>()).Returns([owner.UserId]);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([unrelated.UserId]);
-        _issuesBadge.When(b => b.InvalidateMany(Arg.Any<IEnumerable<Guid>>()))
-            .Do(call => new IssuesBadgeCacheInvalidator(Cache).InvalidateMany(call.ArgAt<IEnumerable<Guid>>(0)));
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(2);
         (await _service.GetActionableCountForViewerAsync(owner, ct)).Should().Be(1);
@@ -2214,7 +2221,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
-            _issuesBadge, Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         if (gdprErasure) await service.EraseForUserAsync(reporterId, Ct);
         else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
