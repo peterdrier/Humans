@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
+using NodaTime;
 
 namespace Humans.Finance.Services;
 
@@ -32,6 +33,21 @@ internal sealed class FinanceEmails(
             L("Finance_Email_SepaPayoutGenerated_Subject"),
             Lf("Finance_Email_SepaPayoutGenerated_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked)),
             "sepa_payout_generated", MessageCategory.System));
+
+    /// <summary>
+    /// A transfer announced by <see cref="SepaPayoutGenerated"/> was cancelled at the bank before
+    /// it executed and withdrawn from its file. <paramref name="announcedOn"/> is the file's
+    /// generation day in the organisation's zone, rendered in the recipient's culture.
+    /// </summary>
+    public EmailMessage SepaPayoutWithdrawn(
+        string userEmail, string userName, decimal amount, string ibanMasked, LocalDate announcedOn,
+        string? culture = null)
+        => Localized(culture, () => new EmailMessage(
+            userEmail, userName,
+            L("Finance_Email_SepaPayoutWithdrawn_Subject"),
+            Lf("Finance_Email_SepaPayoutWithdrawn_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked),
+                announcedOn.ToString("d", CultureInfo.CurrentCulture)),
+            "sepa_payout_withdrawn", MessageCategory.System));
 
     private string L(string key) => localizer[key].Value;
 

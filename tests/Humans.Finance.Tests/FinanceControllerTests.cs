@@ -586,6 +586,98 @@ public class FinanceControllerTests
         await _connector.Received(1).BookSepaTransferAsync(transferId, "mov-1", Ana);
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task WithdrawSepaTransfer_PassesTheActorThrough_AndReportsTheOutcome(bool succeeded)
+    {
+        var transferId = Guid.NewGuid();
+        _connector.WithdrawSepaTransferAsync(transferId, Ana, Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(succeeded, succeeded ? "Withdrew it." : "It is booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.WithdrawSepaTransfer(transferId, days: 7);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
+        redirect.RouteValues!["days"].Should().Be(7);
+        var key = succeeded ? Humans.Base.Constants.TempDataKeys.SuccessMessage : Humans.Base.Constants.TempDataKeys.ErrorMessage;
+        controller.TempData[key].Should().Be(succeeded ? "Withdrew it." : "It is booked.");
+    }
+
+    [HumansFact]
+    public async Task WithdrawSepaTransfer_WithoutAnActor_ChallengesAndTouchesNothing()
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await controller.WithdrawSepaTransfer(Guid.NewGuid());
+
+        result.Should().BeOfType<ChallengeResult>();
+        Assert.Empty(_connector.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task Sepa_ResolvesTheWithdrawingAdminsName()
+    {
+        var admin = Guid.NewGuid();
+        var row = Transfer(Guid.NewGuid(), "f.xml", Stamp(1), admin, Ana, 40000002) with
+        {
+            WithdrawnAt = Stamp(2),
+            WithdrawnByUserId = Bo,
+        };
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));
+        NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        var transfer = page.Files.Single().Transfers.Single();
+        transfer.Row.IsWithdrawn.Should().BeTrue();
+        transfer.WithdrawnByName.Should().Be("Zoe");
+    }
+
+    [HumansFact]
+    public async Task HoldedDuplicates_RendersThePlanWithMemberNames()
+    {
+        var vm = new HoldedDuplicatesVm(
+            [new HoldedDuplicateMember(Ana, "Ana Ruiz", "c1", 41000067, [], [])], [], null);
+        _connector.GetHoldedDuplicatesAsync(Arg.Any<CancellationToken>()).Returns(vm);
+        NameThem((Ana, "Ada"));
+        var controller = MakeController();
+
+        var result = await controller.HoldedDuplicates(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
+        ((Dictionary<Guid, string>)controller.ViewBag.MemberNames)[Ana].Should().Be("Ada");
+    }
+
+    [HumansFact]
+    public async Task ApplyHoldedDuplicates_RunsAsTheActor_AndRendersTheResultView()
+    {
+        var applied = new HoldedDuplicateApplyResult([], null, null);
+        _connector.RemoveHoldedDuplicatesAsync(Ana).Returns(applied);
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.ApplyHoldedDuplicates();
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be("HoldedDuplicatesApplied");
+        view.Model.Should().BeSameAs(applied);
+    }
+
+    [HumansFact]
+    public async Task ApplyHoldedDuplicates_WithoutAnActor_ChallengesAndDeletesNothing()
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await controller.ApplyHoldedDuplicates();
+
+        result.Should().BeOfType<ChallengeResult>();
+        Assert.Empty(_connector.ReceivedCalls());
+    }
+
     [HumansFact]
     public async Task BookSepaFile_PassesTheFileAndMovementIdThrough()
     {

@@ -216,6 +216,13 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
+    public async Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/purchases/{documentId}");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+    }
+
     public async Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)
@@ -1038,6 +1045,7 @@ internal sealed class HoldedClient : IHoldedClient
         ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
         Description = Prop(n, "description")?.GetValue<string>(),
+        Notes = Prop(n, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),

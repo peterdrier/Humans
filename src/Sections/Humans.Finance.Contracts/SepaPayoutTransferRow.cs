@@ -37,6 +37,10 @@ namespace Humans.Finance.Contracts;
 /// <param name="CandidateMatchedByText">True when the candidate line's text names this transfer's
 /// creditor account; false when it was matched on amount and date alone, because Sabadell dropped
 /// the remittance text.</param>
+/// <param name="WithdrawnAt">When a finance admin withdrew the transfer because the bank cancelled
+/// it by hand before execution; null on a live row. A withdrawn row is kept for the record only:
+/// no matcher pairs it, no booking accepts it, and it blocks no payout.</param>
+/// <param name="WithdrawnByUserId">The finance admin who withdrew it.</param>
 public sealed record SepaPayoutTransferRow(
     Guid TransferId,
     Guid FileId,
@@ -60,10 +64,16 @@ public sealed record SepaPayoutTransferRow(
     decimal? CandidateBankMovementAmount = null,
     string? CandidateBankMovementDescription = null,
     SepaBatchLineVm? BatchLine = null,
-    bool CandidateMatchedByText = false)
+    bool CandidateMatchedByText = false,
+    Instant? WithdrawnAt = null,
+    Guid? WithdrawnByUserId = null)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;
+
+    /// <summary>Withdrawn is exactly "has a <see cref="WithdrawnAt"/>". Never true together with
+    /// <see cref="IsBooked"/>: only an unbooked row can be withdrawn.</summary>
+    public bool IsWithdrawn => WithdrawnAt is not null;
 
     /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
     public bool ReconcilePending =>
@@ -100,7 +110,7 @@ public sealed record SepaPayoutTransferRow(
     /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it
     /// before clicking Book; they are filled together with the id and are null without it.</summary>
     public bool CanBook =>
-        !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
+        !IsBooked && !IsWithdrawn && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }
 
 /// <summary>One Sabadell line that looks like the bank debited a whole multi-transfer file at once —

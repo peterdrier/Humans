@@ -107,6 +107,8 @@ internal sealed class SepaBankBooking(
         var tolerance = ClampTolerance(toleranceDays);
         var (withReasons, unavailable) = await GetSepaPayoutRowsWithReasonsAsync(ct);
         if (withReasons.Count == 0 || unavailable is not null) return (withReasons, unavailable, [], null);
+        // A withdrawn transfer renders on its row and nowhere else: no line can be its payment.
+        var live = Live(withReasons);
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -141,9 +143,9 @@ internal sealed class SepaBankBooking(
                 // remittance text) matches on amount and date alone — and never while it could also
                 // be a whole file's debit.
                 return (Movement: m, Account: account, Matches:
-                    account is null && TextlessLineFitsAFile(withReasons, m, tolerance)
+                    account is null && TextlessLineFitsAFile(live, m, tolerance)
                         ? []
-                        : UnbookedMatches(withReasons, account, Math.Abs(m.Amount), m.Date, tolerance));
+                        : UnbookedMatches(live, account, Math.Abs(m.Amount), m.Date, tolerance));
             })
             .ToList();
 
@@ -161,7 +163,7 @@ internal sealed class SepaBankBooking(
         // booked rows, and has to stay processable to finish.
         var batchLines = movements
             .Where(NeedsAMatch)
-            .Select(m => (Movement: m, Files: BatchFiles(withReasons, m, movements, tolerance)))
+            .Select(m => (Movement: m, Files: BatchFiles(live, m, movements, tolerance)))
             .ToList();
         // Every line a file fits counts against it, ambiguous or not — as Process's rival check does.
         var batchClaimants = batchLines
@@ -196,7 +198,7 @@ internal sealed class SepaBankBooking(
                     ? $"{files.Count} payout files total {Euros(Math.Abs(m.Amount))} — settle it in Holded by hand"
                     : files.Count == 1
                         ? "another bank line matches that file's total too — settle it in Holded by hand"
-                        : account is null && TextlessLineFitsAFile(withReasons, m, tolerance)
+                        : account is null && TextlessLineFitsAFile(live, m, tolerance)
                             ? "its text names no creditor account, and it could be one transfer's line or "
                               + "a whole file's — settle it in Holded by hand"
                             : matches.Count == 0
@@ -234,7 +236,7 @@ internal sealed class SepaBankBooking(
             m.Id, m.Date, m.Amount, m.Description,
             QuotesFileReference: (m.Description ?? "").Contains(
                 fileId.ToString("N"), StringComparison.OrdinalIgnoreCase),
-            NotProcessableReason: withReasons
+            NotProcessableReason: live
                 .Where(r => r.FileId == fileId && !r.IsBooked && r.NotBookableReason is not null)
                 .Select(r => $"the transfer on {r.SupplierAccountNum}: {r.NotBookableReason}")
                 .FirstOrDefault());
@@ -267,6 +269,7 @@ internal sealed class SepaBankBooking(
         SepaPayoutTransferRow row, IReadOnlyDictionary<Guid, HoldedCreditorContact> bindingByUser)
     {
         if (row.IsBooked) return null;   // the row renders as booked; no reason to show
+        if (row.IsWithdrawn) return null;   // renders as withdrawn; nothing books it
         // Payments landed and the run stopped before booking. Holded keeps no tag on a purchase
         // payment, so a retry cannot see them and would post the amount again as a journal entry.
         if (row.PostedButNotBooked)
@@ -296,7 +299,7 @@ internal sealed class SepaBankBooking(
     {
         if (BookingUnavailableReason() is not null || !client.IsConfigured) return;
 
-        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
         if (pending.Count == 0 && unbooked.Count == 0) return;
@@ -493,9 +496,10 @@ internal sealed class SepaBankBooking(
         var file = rows.Where(r => r.FileId == fileId).ToList();
         if (file.Count == 0)
             return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
-        var unbooked = file.Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
+        // A withdrawn transfer is not the file's to book: the gate is over the rest.
+        var unbooked = Live(file).Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
         if (unbooked.Count == 0)
-            return new SepaBookingResult(false, "Every transfer in that file is already booked — nothing was posted.");
+            return new SepaBookingResult(false, "Every transfer in that file is already booked or withdrawn — nothing was posted.");
         var unmatched = unbooked.Where(r => !r.CanBook).ToList();
         if (unmatched.Count > 0)
             return new SepaBookingResult(false,
@@ -563,7 +567,9 @@ internal sealed class SepaBankBooking(
         // Same rule as a single booking: once one transfer is posted, the rest have to follow.
         var ct = CancellationToken.None;
 
-        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        // Withdrawn transfers left the file before the bank debited it: the total the line has to
+        // match is the rest.
+        var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var file = rows.Where(r => r.FileId == fileId).ToList();
         if (file.Count == 0)
             return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
@@ -665,6 +671,11 @@ internal sealed class SepaBankBooking(
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
 
+        // Cancelled at the bank: no line is this transfer's, whatever the amount says.
+        if (transfer.WithdrawnAt is not null)
+            return new SepaBookingResult(false,
+                $"Transfer to {transfer.IbanMasked} was withdrawn — nothing was posted to Holded.");
+
         // An earlier run posted payments and then stopped (PARTIAL). Holded discards the
         // description on a purchase payment, so the step-4 tag sum cannot see them, and a retry
         // would post the whole amount again as a journal entry. Refuse until a human has settled it.
@@ -727,7 +738,7 @@ internal sealed class SepaBankBooking(
                 + "reload /Finance/Sepa.");
 
         // ── Step 2: re-validate the pairing here. The posted movement id is never trusted.
-        var allRows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var allRows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         if (batch is null && PairingRefusal(movement, feed, allRows) is { } pairing)
             return new SepaBookingResult(false, pairing);
 
@@ -1250,6 +1261,11 @@ internal sealed class SepaBankBooking(
             : null;
     }
 
+    /// <summary>The rows any matcher may see: a withdrawn transfer was cancelled at the bank, so no
+    /// line is its payment and no file total includes it. Every pairing path reads through this.</summary>
+    private static List<SepaPayoutTransferRow> Live(IEnumerable<SepaPayoutTransferRow> rows) =>
+        rows.Where(r => !r.IsWithdrawn).ToList();
+
     /// <summary>The unbooked transfers a bank line dated <paramref name="lineDate"/> for
     /// <paramref name="account"/> and <paramref name="amount"/> could be paying — any account when
     /// the line's text names none, since Sabadell drops the remittance text and the amount and date
@@ -1261,7 +1277,7 @@ internal sealed class SepaBankBooking(
     private List<SepaPayoutTransferRow> UnbookedMatches(
         IReadOnlyList<SepaPayoutTransferRow> rows, int? account, decimal amount, LocalDate lineDate,
         int tolerance) =>
-        rows.Where(r => r.BookedAt is null && (account is null || r.SupplierAccountNum == account)
+        rows.Where(r => r.BookedAt is null && !r.IsWithdrawn && (account is null || r.SupplierAccountNum == account)
                         && r.Amount == amount && !IsStale(r)
                         && InWindow(r, lineDate, tolerance, bounded: account is null))
             .ToList();
@@ -1283,7 +1299,7 @@ internal sealed class SepaBankBooking(
     /// a whole file's, so neither path takes it.</summary>
     private bool TextlessLineFitsAFile(
         IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m, int tolerance) =>
-        rows.GroupBy(r => r.FileId).Any(f =>
+        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId).Any(f =>
             f.Count() >= 2 && f.Sum(r => r.Amount) == Math.Abs(m.Amount)
             && f.Any(r => !r.IsBooked) && !IsStale(f.First())
             // A row booked against some other line means the bank did not debit this file as
@@ -1296,7 +1312,7 @@ internal sealed class SepaBankBooking(
     private List<Guid> BatchFiles(
         IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m,
         IReadOnlyList<HoldedBankMovementDto> feed, int tolerance) =>
-        rows.GroupBy(r => r.FileId)
+        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId)
             .Where(g => BatchLineRefusal(g.ToList(), m, rows, feed, tolerance) is null)
             .Select(g => g.Key)
             .ToList();
@@ -1364,11 +1380,11 @@ internal sealed class SepaBankBooking(
 
     /// <summary>The day the file was generated, in the org's zone — what a bank line's date is
     /// measured against.</summary>
-    private LocalDate FileDate(SepaPayoutTransferRow row) => row.GeneratedAt.InZone(MadridZone).Date;
+    internal LocalDate FileDate(SepaPayoutTransferRow row) => row.GeneratedAt.InZone(MadridZone).Date;
 
     /// <summary>A transfer whose file was generated before the bank feed's window — no line the feed
     /// still returns can book it, so it is a human's job in Holded.</summary>
-    private bool IsStale(SepaPayoutTransferRow row) =>
+    internal bool IsStale(SepaPayoutTransferRow row) =>
         row.GeneratedAt.InZone(MadridZone).Date < Today().PlusDays(-FeedWindowDays);
 
     /// <summary>Why booking is unavailable for every row at once, or null. The organisation's SEPA

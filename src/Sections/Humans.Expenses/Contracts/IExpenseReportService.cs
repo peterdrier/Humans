@@ -34,4 +34,12 @@ public interface IExpenseReportService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every expense line that links to a Holded purchase document, with the values the push wrote
+    /// on that document. Finance's duplicate-document check (/Finance/HoldedDuplicates) matches
+    /// Holded's purchase list against these; the allocation that trims a line is applied here so
+    /// the caller never re-derives it.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default);
 }

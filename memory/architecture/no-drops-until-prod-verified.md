@@ -1,6 +1,6 @@
 ---
 name: A destructive migration needs a written description of what it removes and Peter's approval for that case
-description: HARD RULE. Dropping DB columns/tables/indexes or persisted files needs a written description, evidence of no in-use readers, and Peter's per-case approval — code deletions are exempt.
+description: HARD RULE. Dropping DB columns/tables/indexes or persisted files needs a written description, evidence of no in-use readers, and Peter's per-case approval — code deletions are exempt. A replaced object whose registered data migration reports `done` on production has standing approval.
 ---
 
 > **Filename is historical.** The slug still says `no-drops-until-prod-verified` because ~20 files link
@@ -39,6 +39,26 @@ Once those four are satisfied the drop ships; there is no mandatory soak. When t
 dropped is *replaced* rather than simply dead, step 2 normally means the replacement has already
 shipped and is carrying the traffic — that is what makes the old object provably unused, not a
 calendar.
+
+## Standing approval: a data migration reporting done
+
+Peter, 2026-10-19: *"the flag that a migration is done is also the permission necessary for the database
+remove of the infringing obsolete column/table."*
+
+When a legacy column or table was replaced through a registered data migration (the `ISectionDataMigrations`
+seam, run from `/Debug/DataMigrations`, reported by `GET /api/data-migrations`; design in
+`docs/superpowers/specs/2026-10-19-users-decomposition-plan.md` §3.3), the gate above collapses to:
+
+1. `done: true` for that migration's key on **production** (`https://<prod>/api/data-migrations`), quoted
+   with the date it was read.
+2. The retirement PR (deleting the migration, the read fallback and the `[Obsolete]` legacy fields) is merged
+   and deployed, so no reader is left.
+3. The drop is still its own auto-generated PR, and the baseline entry still names the object; its
+   `Approval:` line cites the production `done` reading and this section, its `Evidence:` line cites the
+   retirement PR. No per-case message from Peter is needed.
+
+This is the one standing approval. A column or table that was never behind a registered data migration
+still needs the per-case gate.
 
 ## What still applies
 

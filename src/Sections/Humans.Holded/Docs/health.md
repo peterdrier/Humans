@@ -38,11 +38,11 @@ who the money moved to or from.
 | 2 | *Make the copy current.* | `IHoldedService` / `IHoldedNightlySync` | `SyncLedgerAsync`, `RunAsync` |
 | 3 | *Show me the mirror's own state.* | `IHoldedAdminService` + `GET /Holded` | `GetOverviewAsync` |
 | 4 | *Show me one slice of the book.* | `IHoldedAdminService` + `GET /Holded/Accounts/{n}`, `GET /Holded/Entries/{n}` | `GetAccountStatementAsync`, `GetEntryAsync` |
-| 5 | *Book a cost we owe.* | `IHoldedClient` | `CreatePurchaseDocumentAsync`, `ApprovePurchaseDocumentAsync`, `UploadAttachmentAsync` |
+| 5 | *Book a cost we owe.* | `IHoldedClient` | `CreatePurchaseDocumentAsync`, `ApprovePurchaseDocumentAsync`, `DeletePurchaseDocumentAsync`, `UploadAttachmentAsync` |
 | 6 | *Book money we are owed.* | `IHoldedClient` | `CreateSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
 | 7 | *Read a document back.* | `IHoldedClient` | `GetPurchaseDocumentAsync`, `GetSalesDocumentAsync`, `ListPurchaseDocumentsAsync`, `FindSalesDocumentIdsByTagAsync` |
 | 8 | *Record that we paid.* | `IHoldedClient` | `PayPurchaseDocumentAsync` |
-| 9 | *Who is the counterparty?* | `IHoldedClient` | `UpsertContactAsync`, `GetContactAsync`, `ListContactsAsync` |
+| 9 | *Who is the counterparty?* | `IHoldedClient` | `UpsertContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
 | 10 | *What accounts exist to book to?* | `IHoldedClient` | `ListAccountingAccountsAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync` |
 | 11 | *What raw journal lines are in this window?* | `IHoldedClient` | `ListLedgerEntriesAsync` |
 | 12 | *Can we call Holded, and how much have we spent?* | `IHoldedClient` | `IsConfigured`, `GetUsageAsync` |

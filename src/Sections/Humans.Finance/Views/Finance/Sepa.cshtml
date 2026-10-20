@@ -23,7 +23,9 @@
     the remittance text, so each line is matched to a transfer on amount and date; once every
     transfer in a file has its line, <strong>Book file</strong> books them all in one go. Two
     unbooked transfers of one amount, or two lines for one transfer, are flagged below and settled by
-    hand.
+    hand. <strong>Withdraw</strong> takes a transfer the bank cancelled by hand out of its file: the
+    row stays for the record, no bank line is paired with it, the member is told, and their account
+    is payable again.
 </p>
 
 <form method="get" asp-action="Sepa" class="d-flex align-items-center gap-2 mb-3">
@@ -91,7 +93,8 @@
 {
     <div class="card mb-4">
         @{
-            var unbooked = file.Transfers.Where(t => !t.Row.IsBooked).ToList();
+            var withdrawn = file.Transfers.Count(t => t.Row.IsWithdrawn);
+            var unbooked = file.Transfers.Where(t => !t.Row.IsBooked && !t.Row.IsWithdrawn).ToList();
             var matched = unbooked.Count(t => t.Row.CanBook);
             var allMatched = unbooked.Count > 0 && matched == unbooked.Count
                              && Model.UnavailableReason is null;
@@ -102,6 +105,10 @@
                 @if (unbooked.Count == 0)
                 {
                     <span class="badge text-bg-success ms-2">Done</span>
+                }
+                @if (withdrawn > 0)
+                {
+                    <span class="badge text-bg-dark ms-2" title="Cancelled at the bank before execution and withdrawn from this file; not counted toward booking it.">@withdrawn withdrawn</span>
                 }
             </span>
             <span class="text-muted small">
@@ -182,6 +189,7 @@
                     <th class="text-end">Amount</th>
                     <th>Status</th>
                     <th style="width: 16rem">Book</th>
+                    <th style="width: 9rem">Withdraw</th>
                 </tr>
             </thead>
             <tbody>
@@ -195,7 +203,12 @@
                     <td class="font-monospace small">@t.Row.IbanMasked</td>
                     <td class="text-end">@t.Row.Amount.ToEuro()</td>
                     <td>
-                        @if (t.Row.BookedAt is { } bookedAt)
+                        @if (t.Row.WithdrawnAt is { } withdrawnAt)
+                        {
+                            <span class="badge text-bg-dark">Withdrawn</span>
+                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by @t.WithdrawnByName</div>
+                        }
+                        else if (t.Row.BookedAt is { } bookedAt)
                         {
                             <span class="badge text-bg-success">Booked</span>
                             @if (t.Row.ReconcilePending && t.Row.JournalEntryAmount is { } entryAmount)
@@ -215,7 +228,11 @@
                     </td>
                     @* Booking is idempotent in the service; this column is display, not the gate. *@
                     <td>
-                        @if (t.Row.IsBooked)
+                        @if (t.Row.IsWithdrawn)
+                        {
+                            <span class="text-muted small">cancelled at the bank — nothing to book</span>
+                        }
+                        else if (t.Row.IsBooked)
                         {
                             <div class="text-muted small font-monospace">@(t.Row.HoldedBankMovementId ?? "—")</div>
                         }
@@ -262,6 +279,28 @@
                         else
                         {
                             <span class="text-muted small">waiting for the Sabadell line</span>
+                        }
+                    </td>
+                    @* The service re-derives the same refusal; this column is display, not the gate. *@
+                    <td>
+                        @if (Humans.Finance.Services.Service.WithdrawRefusal(t.Row) is { } cannotWithdraw)
+                        {
+                            @if (!t.Row.IsWithdrawn)
+                            {
+                                <span class="text-muted small">@cannotWithdraw</span>
+                            }
+                        }
+                        else
+                        {
+                            <form asp-action="WithdrawSepaTransfer" method="post"
+                                  data-confirm="Withdraw the @t.Row.Amount.ToEuro() transfer to @t.MemberName from @file.FileName? Only do this once the bank has cancelled it: the row is kept as withdrawn, no bank line will be paired with it, and the member is emailed that it was cancelled.">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
+                                <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fa-solid fa-ban me-1"></i>Withdraw
+                                </button>
+                            </form>
                         }
                     </td>
                 </tr>

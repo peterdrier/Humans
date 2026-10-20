@@ -32,6 +32,10 @@ public interface IHoldedClient
     /// approved returns normally.</summary>
     Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
+    /// <summary>Deletes a purchase document (DELETE /purchases/{id}). Holded refuses a document that
+    /// carries a payment, so callers check <c>payments_pending</c> first and never retry a 4xx.</summary>
+    Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
+
     /// <summary>Records a payment against a purchase document and returns the new payment id.
     /// Partial payments are allowed — <paramref name="amount"/> may be less than what the document
     /// still owes. <paramref name="treasuryId"/> names the account the money left; omitting it lets
@@ -95,7 +99,9 @@ public interface IHoldedClient
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 
     /// <summary>Deletes one contact via DELETE v2/contacts/{id}. A contact already gone (404) is success.
-    /// Used to retract a contact minted by a push that lost a binding race.</summary>
+    /// Used to retract a contact minted by a push that lost a binding race, and to remove a duplicate
+    /// contact that owns no documents — Holded keeps a contact's documents, so deleting a non-empty one
+    /// is the caller's bug.</summary>
     Task DeleteContactAsync(string contactId, CancellationToken ct = default);
 
     /// <summary>Lists journal lines from GET v2/ledger-entries across a date window. Paginates internally

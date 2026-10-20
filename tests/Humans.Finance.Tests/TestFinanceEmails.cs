@@ -18,6 +18,7 @@ internal static class TestFinanceEmails
     private static readonly Dictionary<string, string> Formats = new(StringComparer.Ordinal)
     {
         ["Finance_Email_SepaPayoutGenerated_Body"] = "<p>Hi {0},</p><p>Amount: {1}</p><p>IBAN: {2}</p>",
+        ["Finance_Email_SepaPayoutWithdrawn_Body"] = "<p>Hi {0},</p><p>Amount: {1}</p><p>IBAN: {2}</p><p>Announced: {3}</p>",
     };
 
     public static FinanceEmails Create()

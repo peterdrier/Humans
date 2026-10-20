@@ -29,6 +29,10 @@
         <a asp-action="Creditors" class="btn btn-outline-secondary">
             <i class="fa-solid fa-users me-1"></i>Creditors
         </a>
+        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
+           title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
+            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+        </a>
         <a asp-controller="Holded" asp-action="Index" class="btn btn-outline-secondary"
            title="The ledger mirror's own screen: API budget, ledger sweeps, chart of accounts.">
             <i class="fa-solid fa-book me-1"></i>Ledger mirror

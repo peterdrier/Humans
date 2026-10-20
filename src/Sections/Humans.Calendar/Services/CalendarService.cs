@@ -169,7 +169,7 @@ internal sealed class CalendarService(
         }
         catch (Exception ex)
         {
-            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
+            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}", ex);
         }
     }
 

@@ -1,0 +1,80 @@
+@model Humans.Finance.Models.HoldedDuplicateApplyResult
+@{
+    ViewData["Title"] = "Duplicate Holded Documents — applied";
+    var names = ViewBag.MemberNames as Dictionary<Guid, string> ?? new Dictionary<Guid, string>();
+    string MemberName(Guid id) => names.TryGetValue(id, out var n) ? n : id.ToString();
+    // Holded's own sign: a negative creditor balance is money the organisation owes.
+    string Owed(decimal? balance) => balance is { } b ? (-b).ToEuro() : "—";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Duplicate Holded Documents — applied</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary">Run the check again</a>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+        </a>
+    </div>
+</div>
+
+@if (Model.Error is { } error)
+{
+    <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>@error</div>
+}
+else
+{
+    <div class="alert @(Model.Failures == 0 ? "alert-success" : "alert-warning")">
+        Deleted <strong>@Model.DeletedDocuments document@(Model.DeletedDocuments == 1 ? "" : "s")</strong> and
+        <strong>@Model.DeletedContacts contact@(Model.DeletedContacts == 1 ? "" : "s")</strong>.
+        @if (Model.Failures > 0)
+        {
+            <span>@Model.Failures deletion@(Model.Failures == 1 ? "" : "s") failed — see below.</span>
+        }
+        @if (Model.SyncError is { } syncError)
+        {
+            <div class="mt-1">The ledger sync afterwards failed (@syncError); the deletions stand and the next nightly sync will pick them up.</div>
+        }
+    </div>
+
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Account</th>
+                <th class="text-end">Owed before</th>
+                <th class="text-end">Owed after</th>
+                <th>Deleted documents</th>
+                <th>Deleted contacts</th>
+                <th>Failures</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var m in Model.Members)
+        {
+            <tr>
+                <td>@MemberName(m.UserId) <div class="text-muted small">@m.ContactName</div></td>
+                <td>
+                    @if (m.SupplierAccountNum is { } account)
+                    {
+                        <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </td>
+                <td class="text-end">@Owed(m.BalanceBefore)</td>
+                <td class="text-end">@Owed(m.BalanceAfter)</td>
+                <td class="font-monospace small">@(m.DeletedDocIds.Count == 0 ? "—" : string.Join(", ", m.DeletedDocIds))</td>
+                <td class="font-monospace small">@(m.DeletedContactIds.Count == 0 ? "—" : string.Join(", ", m.DeletedContactIds))</td>
+                <td class="small text-danger">
+                    @foreach (var f in m.Failures)
+                    {
+                        <div>@f</div>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

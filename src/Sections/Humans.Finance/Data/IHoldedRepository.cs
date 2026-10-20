@@ -80,6 +80,11 @@ internal interface IHoldedRepository : IRepository
         Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
     /// <summary>Stamps a reconcile that succeeded on a later pass, without touching the booking.</summary>
+    /// <summary>Marks a transfer withdrawn: the bank cancelled it by hand before execution. The row
+    /// stays; the service has already checked it is unbooked.</summary>
+    Task SaveSepaTransferWithdrawnAsync(
+        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
+
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
 

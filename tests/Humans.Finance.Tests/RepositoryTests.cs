@@ -408,6 +408,50 @@ public class RepositoryTests
         booked.ReconciledAt.Should().Be(reconciledAt);
     }
 
+    [HumansFact]
+    public async Task SaveSepaTransferWithdrawn_StampsWithdrawnAtAndBy_AndTheRowsCarryThem()
+    {
+        var (repo, _) = Make();
+        var fileId = Guid.NewGuid();
+        var transferId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await repo.AddSepaPayoutAsync(
+            new SepaPayoutFile
+            {
+                Id = fileId,
+                GeneratedAt = Created,
+                GeneratedByUserId = actor,
+                FileName = "payout.xml",
+                Checksum = "abc",
+                Xml = "<x/>",
+            },
+            [new SepaPayoutTransfer
+            {
+                Id = transferId, FileId = fileId, UserId = userId, SupplierAccountNum = 41000060,
+                HoldedContactId = "c1",
+                CreditorName = "Paul Vivien", Iban = "ES7921000813610123456789",
+                IbanMasked = "ES79****789", Amount = 4800m,
+            }], Ct);
+
+        var fresh = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        fresh.IsWithdrawn.Should().BeFalse();
+        fresh.WithdrawnAt.Should().BeNull();
+
+        await repo.SaveSepaTransferWithdrawnAsync(transferId, Now, actor, Ct);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        row.WithdrawnAt.Should().Be(Now);
+        row.WithdrawnByUserId.Should().Be(actor);
+        row.IsWithdrawn.Should().BeTrue();
+        row.IsBooked.Should().BeFalse();
+        row.BookedAt.Should().BeNull();
+
+        var export = (await repo.GetSepaPayoutsForUserAsync(userId, Ct)).Should().ContainSingle().Subject;
+        export.WithdrawnAt.Should().Be(Now);
+        export.BookedAt.Should().BeNull();
+    }
+
     // ─── Managed accounts ────────────────────────────────────────────────────────
 
     [HumansFact]

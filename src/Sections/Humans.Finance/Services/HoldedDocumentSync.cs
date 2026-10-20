@@ -17,7 +17,13 @@ internal sealed class HoldedDocumentSync(
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    public async Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
+    /// <summary>Pulls every purchase document, matches it to a category and replaces the mirror.</summary>
+    /// <param name="checkDocs">Runs over the fetched documents before the mirror is written; the
+    /// facade's duplicate-document log. It must not throw.</param>
+    /// <param name="ct">Cancels the sync.</param>
+    public async Task<HoldedSyncResult> SyncAsync(
+        Func<IReadOnlyList<HoldedPurchaseDocListItemDto>, CancellationToken, Task> checkDocs,
+        CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
 
@@ -41,6 +47,8 @@ internal sealed class HoldedDocumentSync(
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
 
             var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
+
+            await checkDocs(allDocs, ct);
 
             await repo.ReplaceDocsAsync(docs, now, ct);
 

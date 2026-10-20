@@ -245,6 +245,41 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task DeletePurchaseDocumentAsync_sends_DELETE_to_the_purchase_url()
+    {
+        HttpRequestMessage? seen = null;
+        var client = Make(new StubHandler(req => { seen = req; return new HttpResponseMessage(HttpStatusCode.NoContent); }));
+
+        await client.DeletePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        seen!.Method.Should().Be(HttpMethod.Delete);
+        seen.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123");
+    }
+
+    [HumansFact]
+    public async Task DeletePurchaseDocumentAsync_4xx_throws_permanent()
+    {
+        // A paid document cannot be deleted; the caller must list it for a human, never retry.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.BadRequest, """{"status":400,"detail":"Document has payments"}""")));
+
+        var act = async () => await client.DeletePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task DeleteContactAsync_sends_DELETE_to_the_contact_url()
+    {
+        HttpRequestMessage? seen = null;
+        var client = Make(new StubHandler(req => { seen = req; return new HttpResponseMessage(HttpStatusCode.NoContent); }));
+
+        await client.DeleteContactAsync("c-1", Xunit.TestContext.Current.CancellationToken);
+
+        seen!.Method.Should().Be(HttpMethod.Delete);
+        seen.RequestUri!.PathAndQuery.Should().Be("/api/v2/contacts/c-1");
+    }
+
+    [HumansFact]
     public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin

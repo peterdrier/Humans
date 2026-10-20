@@ -63,4 +63,9 @@
 &lt;p&gt;Abbiamo inviato un bonifico di &lt;strong&gt;{1}&lt;/strong&gt; sul tuo conto che termina con {2}.&lt;/p&gt;
 &lt;p&gt;Di solito arriva entro pochi giorni lavorativi. Se dopo una settimana non è arrivato, contatta il team amministrativo.&lt;/p&gt;</value></data>
   <data name="Finance_Email_SepaPayoutGenerated_Subject" xml:space="preserve"><value>Abbiamo inviato il tuo rimborso</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Bonifico annullato&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;il bonifico di &lt;strong&gt;{1}&lt;/strong&gt; sul tuo conto che termina con {2}, annunciato il {3}, è stato annullato prima dell'esecuzione.&lt;/p&gt;
+&lt;p&gt;Nessun importo è stato trasferito. Per qualsiasi domanda, contatta il team finanze.&lt;/p&gt;</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Subject" xml:space="preserve"><value>Il bonifico del tuo rimborso è stato annullato</value></data>
 </root>

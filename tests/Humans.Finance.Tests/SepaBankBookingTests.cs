@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance;
+using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
@@ -59,7 +60,7 @@ public class SepaBankBookingTests
     private Service MakeService() => MakeService(NullLogger<Service>.Instance);
 
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _clock, _cache, _audit,
+        _repo, _client, _budget, _holded, Substitute.For<IExpenseReportService>(), _clock, _cache, _audit,
         Substitute.For<IUserService>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
         TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
 
@@ -1583,6 +1584,92 @@ public class SepaBankBookingTests
         await AssertNothingPosted();
     }
 
+    // ─── Withdrawn transfers: cancelled at the bank, out of every matcher ──────────
+
+    [HumansFact]
+    public async Task BookFile_WithdrawnTransferInTheFile_GateIsOverTheRest_AndBooksThem()
+    {
+        // The 45 was cancelled at the bank by hand and withdrawn; Sabadell debits only the 30. The
+        // file is "every transfer paired" over what is left, so Book file still offers itself.
+        SeedMatchedFile(bothLines: false);
+        var otherUser = Guid.NewGuid();
+        SeedRows(
+            Row(TransferId, _userId, fileId: MatchedFileId),
+            Row(OtherTransferId, otherUser, OtherAccount, 45m, fileId: MatchedFileId, withdrawnAt: FixedNow));
+        var actor = Guid.NewGuid();
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await service.BookSepaFileMatchesAsync(MatchedFileId, actor);
+
+        rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
+        rows.Single(r => r.TransferId == OtherTransferId).CanBook.Should().BeFalse();
+        unmatched.Should().BeEmpty();
+        result.Succeeded.Should().BeTrue(result.Message);
+        result.Message.Should().Contain("Booked all 1 transfer of");
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, actor, MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SaveSepaTransferBookingAsync(
+            OtherTransferId, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Page_WithdrawnTransfer_IsNeverPaired_AndItsLineGoesToThePanel()
+    {
+        // The line names the account and the amount — exactly the transfer's — and still pairs with
+        // nothing: the money was cancelled, so whatever this line is, it is not that payout.
+        SeedRows(Row(TransferId, _userId, withdrawnAt: FixedNow));
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.IsWithdrawn.Should().BeTrue();
+        row.CanBook.Should().BeFalse();
+        row.CandidateBankMovementId.Should().BeNull();
+        row.NotBookableReason.Should().BeNull();
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer of 30.00 EUR on account 40000004");
+    }
+
+    [HumansFact]
+    public async Task Sweep_SkipsAWithdrawnTransfer_AndPostsNothing()
+    {
+        SeedRows(Row(TransferId, _userId, withdrawnAt: FixedNow));
+        SeedTransfer(30m, withdrawnAt: FixedNow);
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await AssertNothingPosted();
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
+            default, default, default, default!, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task Booking_WithdrawnTransfer_IsRefused_EvenWithAMatchingLine()
+    {
+        // Defence in depth: a stale page can still POST the transfer id with a line that fits.
+        SeedTransfer(30m, withdrawnAt: FixedNow);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("was withdrawn");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task BookFile_WithEveryLiveTransferBooked_SaysSoOverTheWithdrawnOne()
+    {
+        SeedRows(
+            Row(TransferId, _userId, fileId: MatchedFileId, bookedAt: FixedNow, movementId: MovementId),
+            Row(OtherTransferId, Guid.NewGuid(), OtherAccount, 45m, fileId: MatchedFileId, withdrawnAt: FixedNow));
+
+        var result = await MakeService().BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("already booked or withdrawn");
+        await AssertNothingPosted();
+    }
+
     [HumansFact]
     public async Task BookFile_EveryTransferMatched_BooksEachAgainstItsOwnLine()
     {
@@ -2149,7 +2236,7 @@ public class SepaBankBookingTests
 
     private void SeedTransfer(
         decimal amount, Guid? id = null, Guid? userId = null, int account = Account,
-        string contactId = "c1", string? paymentRefs = null) =>
+        string contactId = "c1", string? paymentRefs = null, Instant? withdrawnAt = null) =>
         _repo.GetSepaTransferAsync(id ?? TransferId, Arg.Any<CancellationToken>()).Returns(
             new SepaPayoutTransfer
             {
@@ -2163,6 +2250,7 @@ public class SepaBankBookingTests
                 IbanMasked = AnaIbanMasked,
                 Amount = amount,
                 HoldedPaymentRefs = paymentRefs,
+                WithdrawnAt = withdrawnAt,
             });
 
     private void SeedBinding(Guid userId, int account = Account, string contactId = "c1") =>
@@ -2182,10 +2270,10 @@ public class SepaBankBookingTests
         Guid id, Guid userId, int account = Account, decimal amount = 30m,
         Instant? bookedAt = null, string? movementId = null, Instant? reconciledAt = null,
         Instant? generatedAt = null, Guid? fileId = null, string? paymentRefs = null,
-        string contactId = "c1") =>
+        string contactId = "c1", Instant? withdrawnAt = null) =>
         new(id, fileId ?? Guid.NewGuid(), "payout.xml", generatedAt ?? FixedNow - Duration.FromDays(3), Guid.NewGuid(),
             userId, account, contactId, "Ana Ruiz", AnaIbanMasked, amount, bookedAt, null, movementId,
-            reconciledAt, paymentRefs, null, null);
+            reconciledAt, paymentRefs, null, null, WithdrawnAt: withdrawnAt);
 
     private static HoldedBankMovementDto Movement(
         string id = MovementId, decimal amount = -30m, string? description = Remittance,
