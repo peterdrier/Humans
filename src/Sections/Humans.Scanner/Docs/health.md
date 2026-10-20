@@ -125,4 +125,4 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | First doctoring: five stale doc claims, one false page string, three unpinned invariants | peterdrier/Humans#1608 |
-| 2 | 2026-10-20 | Re-doctor: stale page-render test, provide badge localized, target catches up with the Settings cutover, one camera pane | pending |
+| 2 | 2026-10-20 | Re-doctor: stale page-render test, provide badge localized, target catches up with the Settings cutover, one camera pane | peterdrier/Humans#2048 |
