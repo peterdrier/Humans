@@ -23,7 +23,8 @@
     },
     "fullServiceInterface": {
       "namePatterns": [
-        "I*Management"
+        "I*Management",
+        "I*Write"
       ]
     },
     "repositoryInterface": {
