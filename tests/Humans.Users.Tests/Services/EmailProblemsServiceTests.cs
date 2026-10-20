@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using NodaTime;
@@ -11,6 +12,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private readonly List<UserInfo> _allInfos = [];
 
@@ -22,7 +24,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     private EmailProblemsService Sut => new(
-        _userEmailService, _userService, Clock);
+        _userEmailService, _userService, _audit, Clock);
 
     private static UserEmail Email(Guid userId, string address,
         bool isVerified = true, bool isPrimary = false, bool isGoogle = false) =>
@@ -509,5 +511,37 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_AuditsEachCreatedRowAgainstTheActor()
+    {
+        var actorId = Guid.NewGuid();
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        AddInfo(MakeInfo(u1, identityEmailColumn: "a@x.com"));
+        AddInfo(MakeInfo(u2, identityEmailColumn: "b@x.com"));
+
+        await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
+            Arg.Is<string>(s => s.Contains("a@x.com")), actorId);
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u2,
+            Arg.Is<string>(s => s.Contains("b@x.com")), actorId);
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_NothingToBackfill_WritesNoAudit()
+    {
+        var userId = Guid.NewGuid();
+        AddInfo(MakeInfo(userId, identityEmailColumn: null));
+
+        await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
     }
 }

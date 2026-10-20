@@ -1,6 +1,4 @@
-using Humans.Base.Interfaces;
 using Humans.Onboarding.Contracts;
-using Humans.Users.Services;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -9,7 +7,7 @@ namespace Humans.Users.Contracts;
 /// Sole orchestrator for the user/profile account-deletion cascade. Owns the
 /// cross-section write order for every deletion path — user-requested
 /// (30-day-scheduled), admin-initiated (immediate purge), and expiry-triggered
-/// (scheduled anonymization job). Foundational services (<see cref="IUserManagement"/>,
+/// (scheduled anonymization job). Foundational services (<c>IUserManagement</c>,
 /// Profile-section services keep only own-data deletion; this
 /// service invokes them as part of the cascade so the call graph flows in one
 /// direction (higher-level → foundational).
@@ -21,8 +19,12 @@ namespace Humans.Users.Contracts;
 /// <c>ProcessAccountDeletionsJob</c> a single entry point instead of reaching
 /// into User/Profile cascade code. Synchronous orchestration (not event-bus):
 /// at our small scale, explicit call order is simpler than a pub/sub hop.
+///
+/// Lives on this leaf so a section other than Users (Gdpr's deletion screens) can inject it;
+/// no <c>IOrchestrator</c> marker for the reason <c>Humans.Users.Contracts.csproj</c> records —
+/// <c>AccountDeletionService</c> carries it instead.
 /// </remarks>
-public interface IAccountDeletionService : IOrchestrator
+public interface IAccountDeletionService
 {
     /// <summary>
     /// User-initiated account-deletion request. Sets the 30-day scheduled
@@ -42,7 +44,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// Cancels a pending user-initiated deletion request by clearing the
     /// deletion fields on the user. Returns <c>NotFound</c> if the user
     /// does not exist; <c>NoDeletionPending</c> if no request is open.
-    /// UserInfo cache is refreshed via <see cref="Humans.Users.Services.IUserManagement.ClearDeletionAsync"/>.
+    /// UserInfo cache is refreshed via <c>IUserManagement.ClearDeletionAsync</c>.
     /// </summary>
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
@@ -52,7 +54,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// removed) and invalidates the caches that key off the user's identity
     /// (UserInfo, ActiveTeams, role-assignment claims, shift-authorization)
     /// so downstream consumers see the purged view before TTL expiry. Writes
-    /// an <see cref="Humans.AuditLog.Contracts.AuditAction.AccountPurged"/> audit-log entry
+    /// an <c>AuditAction.AccountPurged</c> audit-log entry
     /// keyed by <paramref name="actorId"/> (the admin running the purge) so
     /// the trail survives a subsequent right-of-access request. Returns
     /// <c>NotFound</c> if the user does not exist. Used by

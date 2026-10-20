@@ -48,6 +48,7 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Debug/Logs", "Application Logs"),
         ("/Debug/HttpErrors", "HTTP Errors"),
         ("/Debug/Maintenance", "Maintenance"),
+        ("/Debug/DataMigrations", "Data migrations"),
         ("/Debug/Configuration", "Configuration Status"),
         ("/Debug/DbStats", "Database Query Statistics"),
         ("/Debug/CacheStats", "Cache Statistics"),

@@ -114,9 +114,10 @@ No repository, no cache, no direct DB access. Section-internal diagnostics over
 `IUserEmailService` and `IUserService`: `ScanAsync` builds the
 `EmailProblemsReport` for the admin email-health screen, including accounts
 whose only identity is an external login. `BackfillLegacyIdentityEmailsAsync`
-returns the
-`(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
-`IClock`.
+(the `users.legacy-identity-emails` data migration) creates the missing verified
+`UserEmail` rows, audits `LegacyIdentityEmailBackfilled` per row against the acting
+admin via `IAuditLogService`, and returns the `(UserId, Email)` pairs it wrote.
+Timestamps come from `IClock`.
 
 ### TeamMessageOptionsProvider (Scoped, internal — `IOrchestrator`)
 
@@ -358,7 +359,8 @@ Repository: `IUserRepository`.
 | Users | R |
 | Profiles | R/W (re-persists the Profile row to run the User↔Profile dual-write sync) |
 
-Operator-driven BurnerName/legal-name backfill: finds `User`/`Profile`
+Operator-driven BurnerName/legal-name backfill (the `users.names-onto-user` data
+migration on `/Debug/DataMigrations`): finds `User`/`Profile`
 pairs where the User row is missing a name the Profile carries, then
 re-saves the Profile through the normal dual-write path. Cross-section
 calls via `IUserService` (`GetAllUserInfosAsync`, for email display only) and `IAuditLogService` (actor-attributed `UserNamesBackfilled` per saved member).

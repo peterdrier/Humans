@@ -20,6 +20,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             new("Sections",      "Debug", "Sections",      null, null, "fa-solid fa-layer-group",          PolicyNames.AdminOnly, Weight: 60),
             new("Configuration", "Debug", "Configuration", null, null, "fa-solid fa-gear",                 PolicyNames.AdminOnly, Weight: 70),
             new("Maintenance",   "Debug", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",   PolicyNames.AdminOnly, Weight: 80),
+            new("Data migrations", "DataMigrations", "Index", null, null, "fa-solid fa-right-left",         PolicyNames.AdminOnly, Weight: 85),
             new("Hangfire",      null,    null,            null, "/hangfire",     "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly, Weight: 90),
             new("Health",        null,    null,            null, "/health/ready", "fa-solid fa-heart-pulse",       PolicyNames.AdminOnly, Weight: 100),
             new("Color palette", "ColorPalette",  "Index",         null, null, "fa-solid fa-palette",  PolicyNames.AdminOnly, Weight: 110),

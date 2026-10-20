@@ -232,6 +232,7 @@
   <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Gasto reenviado a la cola para Holded</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclined" xml:space="preserve"><value>Línea de gasto rechazada</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclineUndone" xml:space="preserve"><value>Rechazo de línea de gasto deshecho</value></data>
+  <data name="Enum_AuditAction_DataMigrationApplied" xml:space="preserve"><value>Migración de datos aplicada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Cuenta de gastos de Holded creada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Cuenta de gastos de Holded vinculada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Estado activo de la cuenta de gastos de Holded cambiado</value></data>

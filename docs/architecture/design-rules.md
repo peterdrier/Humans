@@ -386,6 +386,7 @@ Larger implementations may use partial files or separate `internal sealed Sectio
 | `ISectionJobs` | Hangfire recurring-job descriptors (id, type, cron) | `RecurringJobExtensions.UseHumansRecurringJobs` — merges into the roll-call, drives the stale-job sweep |
 | `ISectionHealthChecks` | Health checks | builder-time, against `IHealthChecksBuilder` |
 | `ISectionConfiguration` | The appsettings keys and environment variables the section's own code reads | builder-time, against the `ConfigurationRegistry` Shell's `AddConfigurationMetadata` iterates — the inventory behind the admin Configuration page. Not `ISectionSettings`, which contributes a `/Settings` tab |
+| `ISectionDataMigrations` | Operator-run legacy → new data copies (`DataMigration`: key, title, status with every pending row, apply) | Debug's `DataMigrationService` — `/Debug/DataMigrations` (review → apply, audited) and the anonymous counts-only `/api/data-migrations` |
 | `ISectionEndpoints` | Endpoint mapping (SignalR hubs, etc.) | endpoint-mapping time, against `IEndpointRouteBuilder` — necessarily later than `ISection.Register`, which has neither an `IHostEnvironment` nor a route builder to hand a section |
 | `ISectionPolicies` | Authorization policy registration | `Configure<AuthorizationOptions>` (additive — policy *names* stay shared vocabulary in `PolicyNames`; only registration moves) |
 | `ISectionAnnotations` | Per-section facts for the published catalog (guide page, agent doc key, issue queue) | `SectionCatalogBuilder` → `ISectionCatalog`, rendered at `/Debug/Sections` |
