@@ -671,18 +671,6 @@ internal sealed class UserService(
             ownerUserId);
     }
 
-    public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return false;
-
-        profile.Iban = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-        return true;
-    }
-
     public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default) =>

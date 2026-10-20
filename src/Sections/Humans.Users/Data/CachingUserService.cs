@@ -700,13 +700,6 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.SetProfileIbanAsync(userId, iban, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
-
     public async Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)

@@ -405,6 +405,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
+| Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). Carried on `ProfileInfo.Iban` as `[Obsolete]` (`HUM_PROFILE_IBAN`) for Finance's read fallback and the `finance.iban-to-payment-details` copy only; still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
 | IsApproved | bool | false | Set automatically when consent check is cleared. |
 | MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment. |
 | ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed). |
@@ -635,7 +636,6 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Users/Admin` | Admin list of all humans; `AdminAll` searches burner/legal names, public fields and admin-only emails/contact fields. Search ignores surrounding whitespace, including the fallback for accounts without profiles |
 | `/Users/Admin/Roles` | System-wide role-assignment roster, filterable by role (`HumanAdminBoardOrAdmin`) — `role_assignments` is owned by Auth; the roster lives beside the per-human role management surface |
 | `/Users/Admin/{id}` | Admin detail view |
-| `/Users/Admin/{id}/RevealIban` | POST (`AdminOnly`) — reveal the person's IBAN on the detail page |
 | `/Users/Admin/{id}/Outbox` | Admin view of person's outbox |
 | `/Users/Admin/{id}/Suspend`, `/Users/Admin/{id}/Unsuspend` | POST — suspend / unsuspend member |
 | `/Users/Admin/{id}/Reject` | POST — reject signup |
@@ -749,6 +749,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - **Consent:** `IConsentManagement` — consent-check status gating depends on all required document versions having active consent records.
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding:** none (one-directional — `OnboardingService` consumes `IUserService`, never the reverse). The consent-check threshold (`Profile.ConsentCheckStatus → Pending` + Consent Coordinator notification) is director-level work and lives on `IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync`; controllers call it as a peer call after `IProfileEditorService.SaveProfileAsync`.
+- **Finance:** none at compile time. The admin detail page's Payment Details card and its reveal (`/Finance/Admin/Members/{id}/RevealIban`) are Finance's, contributed to the `AdminDetailSidebar` user-part slot; Users only keeps the legacy `profiles.Iban` column (see Profile).
 - **Google Integration:** `IGoogleWorkspaceUserService` — a human's Google service email determines which email is used for Google Groups and Drive sync.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — display data for cross-domain nav stitching. `IUserManagement.AnonymizeForMergeAsync` — invoked by `AccountMergeService.AcceptAsync` to tombstone the source User during fold; AspNetUserLogins + EventParticipation re-FK is handled by the Users section's own `IUserMerge` implementation (`IUserRepository.ReassignLoginsToUserAsync` / `ReassignEventParticipationToUserAsync`).
 - **Account merge fold fan-out:** `IAccountMergeService.AcceptAsync` fans out across every registered `IUserMerge` implementation (`ReassignAsync`), each committing independently. Each owning section — Tickets, Teams, Shifts, Governance, Campaigns, Camps, Notifications, Email, Feedback, Role assignments, and the Profiles sub-aggregates (Profile / UserEmail / ContactField / CommunicationPreference) — registers its own `IUserMerge` impl and re-FKs its user-scoped rows source→target, rather than the orchestrator naming each service.

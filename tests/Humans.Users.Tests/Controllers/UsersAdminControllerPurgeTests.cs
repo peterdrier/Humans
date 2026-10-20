@@ -1,7 +1,6 @@
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base;
 using Humans.Campaigns.Contracts;
@@ -41,7 +40,6 @@ public class UsersAdminControllerPurgeTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
     private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
-    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
@@ -74,7 +72,6 @@ public class UsersAdminControllerPurgeTests
             Substitute.For<ICampaignService>(),
             _lifecycle,
             _onboarding,
-            _auditLog,
             _audience,
             _deletion,
             _environment,
@@ -269,27 +266,5 @@ public class UsersAdminControllerPurgeTests
         var act = () => BuildController().Audience(2026, aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
-    public async Task RevealIban_StoresTheIbanAndAuditsTheAdminAction()
-    {
-        var target = Guid.NewGuid();
-        var user = new User { Id = target, PreferredLanguage = "en" };
-        var profile = new Profile { Id = Guid.NewGuid(), UserId = target, Iban = "ES91 2100 0418 4502 0005 1332" };
-        var targetInfo = UserInfoFactory.Create(user, [], [], [], profile, [], [], [], []);
-        _userService.GetRawUserInfoAsync(target, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(targetInfo));
-
-        var controller = BuildController();
-        var result = await controller.RevealIban(target, CancellationToken.None);
-
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
-        controller.TempData["RevealedIban"].Should().Be(profile.Iban);
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.IbanReveal, nameof(User), target,
-            Arg.Is<string>(message => message.Contains(target.ToString(), StringComparison.Ordinal)),
-            _adminUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }

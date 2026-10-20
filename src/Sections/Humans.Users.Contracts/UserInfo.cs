@@ -99,6 +99,7 @@ public sealed record ProfileInfo(
     string? AdminNotes,
     string? ContributionInterests,
     string? BoardNotes,
+    [property: Obsolete("Moved to Finance's finance_payment_details (Users decomposition commit 1). Read IFinanceService.GetIbanAsync; the one reader left is Finance's legacy fallback and the finance.iban-to-payment-details copy.", DiagnosticId = "HUM_PROFILE_IBAN")]
     string? Iban,
     bool IsApproved,
     MembershipTier MembershipTier,

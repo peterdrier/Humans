@@ -11,6 +11,8 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `HoldedDbContext`. Owns `HoldedExpenseDocs`,
 `HoldedCategoryMap`, `HoldedDocSyncStates`, `HoldedCreditorContacts`,
 `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`.
+`PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
+`IPaymentDetailsRepository`) owns `PaymentDetails` (`finance_payment_details`) on the same context.
 
 The ledger mirror (`HoldedLedgerLines` and its sync state, chart-of-accounts
 cache, and API call-metering log) is owned by the
@@ -107,6 +109,26 @@ the bank-line sweep: books every unbooked transfer whose Sabadell line has
 appeared, and retries the reconcile for every booked-but-unreconciled one.
 Also `[ExternalWrite]`. `SepaBankBookingJob` (`Jobs/`) is its Hangfire shim,
 registered in `SectionJobs.cs`, cron `17 */2 * * *`.
+
+### PaymentDetailsService (Scoped)
+
+Repository: `IPaymentDetailsRepository`.
+
+| Table | R/W |
+|-------|-----|
+| PaymentDetails (`finance_payment_details`) | R/W — one row per member, keyed by `UserId` (bare id, no FK). A null `Iban` records a removal. |
+
+Implements the public `IFinanceService` (`GetIbanAsync`) and `IFinanceWrite` (`SetIbanAsync`), both
+called by Expenses; the internal `IPaymentDetailsManagement` (`RevealIbanAsync` for
+`PaymentDetailsAdminController`, and the `finance.iban-to-payment-details` copy for
+`SectionDataMigrations`); `IUserDataContributor` (slice `PaymentDetails`, masked IBAN; erasure
+deletes the row) and `IUserMerge` (the survivor's IBAN wins, else the source's row moves).
+Cross-section calls: `IUserService` (merge-chain resolution, the user-exists check, and the
+`[Obsolete]` `ProfileInfo.Iban` read fallback until the copy is done in production) and
+`IAuditLogService` (`IbanReveal`). Uncached: each read is one keyed row.
+
+`PaymentDetailsViewComponent` (the Payment Details card, contributed to `/Users/Admin/{id}` by
+`SectionUserParts`) reads through `IFinanceService`.
 
 ### SepaPaymentFileBuilder / SepaText / SepaSchema
 

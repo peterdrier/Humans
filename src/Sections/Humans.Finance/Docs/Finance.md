@@ -37,6 +37,8 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync.
 - The **Connector index** (`/Finance/Holded`) is the read-only answer to "what is Finance's half of Holded doing": doc-sync status with its age rendered as a **Stale** badge rather than left implied, the live `HoldedCategoryMap` rows, every pulled `HoldedExpenseDoc` with its match source and raw tags, and the counts that link out to the four working screens. It never calls Holded — cache reads only, so it cannot inherit the live-contacts timeout `/Finance/Creditors` carries (nobodies-collective/Humans#976). Its read model is `IHoldedFinanceAdminService`, section-**internal**, the same shape as the Holded section's `IHoldedAdminService`.
 
+- **Payment details** are the bank account a member is reimbursed to: one `finance_payment_details` row per member, read by Expenses through `IFinanceService.GetIbanAsync` and written through `IFinanceWrite.SetIbanAsync` (Users decomposition commit 1; the IBAN used to live on `profiles.Iban`). Admins see it masked on the Payment Details card of `/Users/Admin/{id}` and can reveal it once per page load, audited.
+
 ## Data Model
 
 ### HoldedExpenseDoc
@@ -163,6 +165,18 @@ Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `
 
 **Cross-section FKs:** `UserId`, `BookedByUserId` and `WithdrawnByUserId` → `User` (Users) — FK only, no navigation property.
 
+### PaymentDetails
+
+**Table:** `finance_payment_details`
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| UserId | Guid | PK. The member — bare id, no FK to `users`. |
+| Iban | string? (34) | Normalized, **unmasked**. Null records a removal, so the read does not fall back to the legacy profile value. |
+| UpdatedAt | Instant | Last write. |
+
+Replaces `profiles.Iban` (Users), which is no longer written. Until the `finance.iban-to-payment-details` data migration (on `/Debug/DataMigrations`) has copied a member's legacy value, a member without a row reads `ProfileInfo.Iban` — the `[Obsolete]` field kept for exactly this reader (`HUM_PROFILE_IBAN`). Once production reports the migration done, a retirement PR deletes the migration, the fallback and the obsolete field, and a drop PR removes `profiles.Iban`.
+
 ### HoldedMatchStatus
 
 | Value | Description |
@@ -184,7 +198,15 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
-Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared separately on each of the two controllers serving the prefix — this section's `FinanceController` and Budget's `BudgetAdminController`.
+Every `/Finance/*` route except the one below is gated on `PolicyNames.FinanceAdminOrAdmin`, declared separately on each of the two controllers serving the prefix — this section's `FinanceController` and Budget's `BudgetAdminController`.
+
+### Member payment details
+
+| Route | Purpose |
+|-------|---------|
+| `POST /Finance/Admin/Members/{id}/RevealIban` | `AdminOnly` (`PaymentDetailsAdminController`). Audits `IbanReveal`, hands the unmasked IBAN to the next render of the Payment Details card through TempData, redirects to `/Users/Admin/{id}` |
+
+The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to `UserPartSlots.AdminDetailSidebar` by `SectionUserParts`; it is reached from the admin human-detail page, so it needs no nav entry of its own.
 
 ### Not this section — the Budget surface on the same prefix
 
@@ -219,6 +241,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 | Actor | Capabilities |
 |-------|--------------|
 | FinanceAdmin, Admin | Every `/Finance/*` route: provision Holded accounts, run the sync, work the unmatched queue, bind and unbind creditors, generate and book SEPA payouts. |
+| Admin | Additionally: the Payment Details card on `/Users/Admin/{id}` and the audited IBAN reveal. |
 | Department coordinator | None — Finance routes are FinanceAdmin-only. |
 | Any other authenticated human | None |
 
@@ -306,6 +329,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 ## Negative Access Rules
 
 - Coordinators **cannot** view `/Finance/*` routes.
+- FinanceAdmin, Board and HumanAdmin **cannot** reveal a raw IBAN or see the Payment Details card; both are Admin only.
 - The sync job **cannot** delete `HoldedExpenseDoc` rows. Holded-side deletions are not handled in v1.
 - Finance **cannot** read or write Budget tables directly, and **cannot write Budget data at all**: its only Budget dependency is the read contract `IBudgetService`.
 - Finance **cannot** write to `holded_expense_docs` outside the sync job. No manual create/edit/delete UI for expense docs in v1.
@@ -316,6 +340,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
 - On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their supported preferred language, with English fallback for blank, malformed or unsupported preferences) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Recipient lookup and individual email failures are logged without blocking download of the saved file or suppressing later recipients; notifications finish independently of request cancellation after the save. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
+- On **IBAN reveal** (`/Finance/Admin/Members/{id}/RevealIban`): one `AuditAction.IbanReveal` entry, entity `User` = the member, actor = the admin. Nothing is written when no IBAN is on record.
 - On **SEPA transfer withdrawal**: one `sepa_payout_withdrawn` email to the member (`FinanceEmails.SepaPayoutWithdrawn`, same language rules) saying the transfer announced on the file's date was cancelled before execution and no money moved.
 - On every **document sync**: the duplicate check runs over the documents just pulled and logs one line — Warning with line, document, amount and member counts when any are found, Information "zero" otherwise. A failure of the check is logged at Error and never fails the sync.
 - Status reads (`GetDocSyncInfoAsync` and the connector overview) never insert sync state. Before the first sync they return an unsaved Idle default; `SaveDocSyncStateAsync` owns singleton creation and updates.
@@ -327,10 +352,10 @@ Derived from `Humans.Finance.csproj`'s project references and the contracts name
 
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
-- **Users** (`Humans.Users.Contracts`): `IUserService.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
+- **Users** (`Humans.Users.Contracts`): `IUserService.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `GetUserInfoAsync` / `GetAllUserInfosAsync` for payment details (merge-chain resolution and the legacy `ProfileInfo.Iban` fallback and copy); `IUserMerge`, implemented by `PaymentDetailsService`; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
 - **Expenses** (`Humans.Expenses.Contracts`): `IExpenseReportService.GetHoldedBookingsAsync`, the linked expense lines with the description, notes and booked amount the push wrote, for the duplicate-document check. Read-only; Expenses already depends on Finance's `.Contracts` leaf, so the project reference goes to the Expenses section project.
 - **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
-- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of every creditor binding and SEPA payout across the member's resolved `AllUserIds` (including archived merge sources; retained financial rows are not rekeyed). `HoldedCreditorAccount` preserves its original object-or-null shape for the requested account; `AdditionalHoldedCreditorAccounts` contains other merge-chain bindings with their user ids, omitted when none exist. Payout rows remain globally ordered by generation time. Generation, booking and reconciliation dates serialize as UTC ISO 8601 strings; absent booking/reconciliation dates stay null. For Article 17 erasure, `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps both creditor-binding slices to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership.
+- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of every creditor binding and SEPA payout across the member's resolved `AllUserIds` (including archived merge sources; retained financial rows are not rekeyed). `HoldedCreditorAccount` preserves its original object-or-null shape for the requested account; `AdditionalHoldedCreditorAccounts` contains other merge-chain bindings with their user ids, omitted when none exist. Payout rows remain globally ordered by generation time. Generation, booking and reconciliation dates serialize as UTC ISO 8601 strings; absent booking/reconciliation dates stay null. For Article 17 erasure, `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps both creditor-binding slices to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership. `PaymentDetailsService` is a second contributor: slice `PaymentDetails` (the masked IBAN), erased in full by deleting the row; the legacy `profiles.Iban` is erased by Users.
 
 No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
 
@@ -357,6 +382,9 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 | `IHoldedFinanceService` (read) | [`IHoldedFinanceService.cs`](../../Humans.Finance.Contracts/IHoldedFinanceService.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). |
 | `IHoldedFinanceWrite` | [`IHoldedFinanceWrite.cs`](../../Humans.Finance.Contracts/IHoldedFinanceWrite.cs) | `SyncAsync` (Holded), `EnsureCreditorContactAsync` / `SetCreditorAccountNumAsync` (Expenses), `CreateOrLinkExpenseAccountAsync` / `SetExpenseAccountActiveAsync` (Workgroups) — resolve, and retire/restore, an expense account for a caller with no budget category, the managed registry. |
 | `ISepaBankBooking` | [`ISepaBankBooking.cs`](../../Humans.Finance.Contracts/ISepaBankBooking.cs) | `RunAsync` — the two-hourly SEPA bank-line sweep as one call. `SepaBankBookingJob` is the Hangfire shim; nothing else calls it. |
+| `IFinanceService` (read) | [`IFinanceService.cs`](../../Humans.Finance.Contracts/IFinanceService.cs) | `GetIbanAsync` — Expenses (submit snapshot, the masked `/Expenses/{id}/Iban` page, the index's has-IBAN flag). |
+| `IFinanceWrite` | [`IFinanceWrite.cs`](../../Humans.Finance.Contracts/IFinanceWrite.cs) | `SetIbanAsync` — Expenses' `/Expenses/{id}/Iban`. The caller validates and audits (`IbanSet` / `IbanRemove`), because only it knows on whose behalf. |
+| `IPaymentDetailsManagement` | internal | `RevealIbanAsync` and the legacy copy, for `PaymentDetailsAdminController` and `SectionDataMigrations`. |
 | `IHoldedFinanceManagement` | internal | Finance's own full surface (`IHoldedFinanceService` + `IHoldedFinanceWrite`), injected by `FinanceController`. |
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
@@ -403,6 +431,7 @@ on the next sync.
   - A payout file and its transfers are written in one `AddSepaPayoutAsync` save — one without the other is not a state this section wants to be in
   - `SaveSepaTransferWithdrawnAsync` is the one update outside the booking columns: `WithdrawnAt`/`WithdrawnByUserId` only
   - Expense docs upsert (full overwrite on re-sync); ledger tables belong to the Holded section
+- **`IPaymentDetailsRepository`** — owns `finance_payment_details`; `UserId` is the key and a bare id
 
 ### Touch-and-clean guidance
 

@@ -1,0 +1,35 @@
+@model Humans.Finance.ViewComponents.PaymentDetailsViewModel
+@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
+
+<div class="card mb-4">
+    <div class="card-header">Payment Details</div>
+    <div class="card-body">
+        @if (Model.MaskedIban is not null)
+        {
+            <dl class="row mb-0">
+                <dt class="col-5">IBAN</dt>
+                <dd class="col-7">
+                    @if (Model.RevealedIban is not null)
+                    {
+                        <code>@Model.RevealedIban</code>
+                        <small class="d-block text-muted mt-1">Visible this page load only.</small>
+                    }
+                    else
+                    {
+                        <code>@Model.MaskedIban</code>
+                        <form asp-controller="PaymentDetailsAdmin" asp-action="RevealIban" asp-route-id="@Model.UserId" method="post" class="mt-1">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-eye me-1"></i> Reveal
+                            </button>
+                        </form>
+                    }
+                </dd>
+            </dl>
+        }
+        else
+        {
+            <span class="text-muted">No IBAN on record.</span>
+        }
+    </div>
+</div>

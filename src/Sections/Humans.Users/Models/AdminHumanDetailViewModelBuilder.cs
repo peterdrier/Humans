@@ -19,8 +19,7 @@ internal static class AdminHumanDetailViewModelBuilder
         IReadOnlyList<CampaignGrantSummary> campaignGrants,
         int outboxCount,
         Instant now,
-        string? rejectedByName,
-        string? revealedIban)
+        string? rejectedByName)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
@@ -99,10 +98,6 @@ internal static class AdminHumanDetailViewModelBuilder
                     IsPrimary = e.IsPrimary,
                     Visibility = e.Visibility,
                 }).ToList(),
-            MaskedIban = string.IsNullOrEmpty(profile?.Iban)
-                ? null
-                : IbanFormatter.Mask(profile.Iban),
-            RevealedIban = revealedIban,
         };
     }
 

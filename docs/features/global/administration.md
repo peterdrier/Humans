@@ -108,7 +108,6 @@ Human management is now on `UsersAdminController` under `/Users/Admin`, accessib
 | `/Users/Admin/{id}/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/Roles` | Roles | HumanAdmin, Board, Admin — role assignments across members |
-| `/Users/Admin/{id}/RevealIban` | RevealIban | POST: Admin only |
 | `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
 ### GoogleController (`/Google/`) — Admin (mostly)

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
@@ -35,7 +34,6 @@ internal sealed class UsersAdminController(
     ICampaignService campaignService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
-    IAuditLogService auditLogService,
     IUsersAudienceService audienceService,
     IAccountDeletionService accountDeletionService,
     IWebHostEnvironment environment,
@@ -146,9 +144,6 @@ internal sealed class UsersAdminController(
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
         var campaignGrants = await campaignService.GetAllGrantsForUserAsync(id, ct);
         var outboxCount = await emailOutboxService.GetMessageCountForUserAsync(id, ct);
-        var revealedIban = TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string value
-            ? value
-            : null;
 
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
             ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
@@ -164,33 +159,9 @@ internal sealed class UsersAdminController(
             campaignGrants,
             outboxCount,
             clock.GetCurrentInstant(),
-            rejectedByName,
-            revealedIban);
+            rejectedByName);
 
         return View(viewModel);
-    }
-
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [HttpPost("{id:guid}/RevealIban")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
-    {
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null) return Forbid();
-
-        var info = await _userService.GetRawUserInfoAsync(id, ct);
-        var iban = info?.Profile?.Iban;
-        if (iban is null)
-        {
-            SetError("No IBAN on record for this user.");
-            return RedirectToAction(nameof(AdminDetail), new { id });
-        }
-
-        await auditLogService.LogAsync(
-            AuditAction.IbanReveal, nameof(User), id,
-            $"Admin revealed IBAN for user {id}", actor.Id);
-        TempData["RevealedIban"] = iban;
-        return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
     [HttpGet("{id:guid}/Outbox")]
@@ -356,7 +327,7 @@ internal sealed class UsersAdminController(
 
     // Audience-segmentation diagnostic — relocated here from AdminController by the
     // "legacy admin routes -> section homes" move (#901). Admin-only (stricter than the
-    // class-level Board-or-Admin gate, mirroring RevealIban).
+    // class-level Board-or-Admin gate).
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [HttpGet("Audience")]
     public async Task<IActionResult> Audience(int? year, CancellationToken ct)

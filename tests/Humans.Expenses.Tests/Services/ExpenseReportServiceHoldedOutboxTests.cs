@@ -38,6 +38,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
+    private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IHoldedFinanceService _holdedFinance;
     private readonly IHoldedFinanceWrite _holdedFinanceWrite;
     private readonly IFileStorage _fileStorage;
@@ -110,13 +111,15 @@ public class ExpenseReportServiceHoldedOutboxTests
             _fileStorage,
             _budgetService,
             Substitute.For<ITeamService>(),
-            _userService, Substitute.For<IUserWrite>(),
+            _userService,
             Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLog,
             _holdedClient,
             _holdedFinance,
+            _finance,
+            Substitute.For<IFinanceWrite>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
             _clock,

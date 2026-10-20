@@ -94,12 +94,6 @@ public interface IUserWrite
         CancellationToken ct = default);
 
     /// <summary>
-    /// Sets or clears the profile IBAN. Returns false when no profile exists.
-    /// The caller owns validation and audit logging.
-    /// </summary>
-    Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
-
-    /// <summary>
     /// Downgrades expired membership tiers and returns each user id with the
     /// tier that was written.
     /// </summary>
