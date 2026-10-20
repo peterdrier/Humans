@@ -140,9 +140,6 @@ namespace Humans.Users.Data.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Instant?>("MagicLinkSentAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Instant?>("MergedAt")
                         .HasColumnType("timestamp with time zone");
 

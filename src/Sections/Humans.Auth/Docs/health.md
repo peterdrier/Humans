@@ -82,9 +82,9 @@ Written fresh from the shapes above, not from today's tree.
 - **Sign-in is nearly an orchestrator.** `MagicLinkService` owns no table. Token minting and URL
   shape sit behind one collaborator; replay and cooldown state behind another. It names no
   `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`, and since 2026-10-20 it writes
-  nothing: the `MagicLinkSentAt` stamp that used to persist the cooldown through
-  `UserManager.UpdateAsync` is gone (AUTH-2, Peter chose to drop restart survival), so
-  `UserManager<User>` is lookup-only here.
+  nothing: the `users.MagicLinkSentAt` stamp that used to persist the cooldown through
+  `UserManager.UpdateAsync` is gone, column included (AUTH-2, Peter chose to drop restart
+  survival), so `UserManager<User>` is lookup-only here.
 - **The section ships no controller and no view.** Its only resx is `AuthResource`, the copy of
   the two sign-in emails it sends. `AccountController` and
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives

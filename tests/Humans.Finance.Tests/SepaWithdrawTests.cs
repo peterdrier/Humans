@@ -55,7 +55,7 @@ public class SepaWithdrawTests
                     FallbackPictureUrl: null, CreatedAt: FixedNow, LastLoginAt: null,
                     LastConsentReminderSentAt: null, DeletionRequestedAt: null, DeletionScheduledFor: null,
                     DeletionEligibleAfter: null, UnsubscribedFromCampaigns: false,
-                    SuppressScheduleChangeEmails: false, MagicLinkSentAt: null, ContactSource: null,
+                    SuppressScheduleChangeEmails: false, ContactSource: null,
                     ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
                     UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),

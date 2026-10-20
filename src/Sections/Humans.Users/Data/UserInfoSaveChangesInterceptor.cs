@@ -175,7 +175,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionEligibleAfter = user.DeletionEligibleAfter,
             UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
-            MagicLinkSentAt = user.MagicLinkSentAt,
             // GoogleEmailStatus removed — now per-address on UserEmail; UserInfo derives it from
             // the canonical Google row, and a UserEmail change already invalidates the cache below.
             ContactSource = user.ContactSource,

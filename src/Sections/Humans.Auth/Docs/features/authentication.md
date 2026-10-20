@@ -68,7 +68,6 @@ User (extends IdentityUser<Guid>)
 ├── ProfilePictureUrl: string? (2048)
 ├── CreatedAt: Instant
 ├── LastLoginAt: Instant?
-├── MagicLinkSentAt: Instant?
 └── Navigation: UserEmails (required for Email override), EventParticipations
 ```
 

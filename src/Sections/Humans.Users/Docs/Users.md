@@ -60,7 +60,6 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
-| MagicLinkSentAt | Instant? | Unused since 2026-10-20: Auth keeps the magic-link cooldown in memory. Column retained until a drop migration |
 | LastConsentReminderSentAt | Instant? | Rate-limit anchor for the re-consent reminder email |
 | SuppressScheduleChangeEmails | bool | Per-user opt-out for schedule-change notifications |
 | UnsubscribedFromCampaigns | bool | Legacy campaign opt-out flag. **Not** flipped by the current unsubscribe flow — the per-category `CommunicationPreference` table is the live source of truth. |
