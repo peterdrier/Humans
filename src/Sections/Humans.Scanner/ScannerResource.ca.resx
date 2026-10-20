@@ -134,6 +134,12 @@
   <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
     <value>Sense torns ni activitats</value>
   </data>
+  <data name="Scanner_Tickets_Source_Events" xml:space="preserve">
+    <value>Activitats</value>
+  </data>
+  <data name="Scanner_Tickets_Source_Shifts" xml:space="preserve">
+    <value>Torns</value>
+  </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Estat</value>
   </data>

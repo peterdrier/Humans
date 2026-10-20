@@ -134,6 +134,12 @@
   <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
     <value>Sin turnos ni actividades</value>
   </data>
+  <data name="Scanner_Tickets_Source_Events" xml:space="preserve">
+    <value>Actividades</value>
+  </data>
+  <data name="Scanner_Tickets_Source_Shifts" xml:space="preserve">
+    <value>Turnos</value>
+  </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Estado</value>
   </data>

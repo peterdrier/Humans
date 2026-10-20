@@ -84,7 +84,7 @@ else
                 @foreach (var item in Model.ProvideItems)
                 {
                     <li class="py-1 border-bottom">
-                        <span class="badge bg-secondary me-1">@item.Source</span>
+                        <span class="badge bg-secondary me-1">@Localizer[$"Scanner_Tickets_Source_{item.Source}"]</span>
                         @item.Summary
                         <span class="text-muted text-nowrap">&middot; @item.Start.ToMonthDayTime(tz)&ndash;@item.End.ToTime(tz)</span>
                     </li>
