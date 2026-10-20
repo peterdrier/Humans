@@ -1,7 +1,6 @@
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
@@ -24,8 +23,6 @@ namespace Humans.Users.Controllers;
 internal sealed class UsersAdminController(
     IUserManagement userService,
     IUserEmailService userEmailService,
-    IRoleAssignmentService roleAssignmentService,
-    IRoleAssignmentWrite roleAssignmentWrite,
     IGovernanceService applicationDecisionService,
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
@@ -34,7 +31,6 @@ internal sealed class UsersAdminController(
     IAccountDeletionService accountDeletionService,
     IWebHostEnvironment environment,
     IClock clock,
-    IAuthorizationService authorizationService,
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
@@ -90,40 +86,6 @@ internal sealed class UsersAdminController(
         return View(viewModel);
     }
 
-    [HttpGet("Roles")]
-    public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
-    {
-        var pageSize = 50;
-        var now = clock.GetCurrentInstant();
-
-        var (assignments, totalCount) = await roleAssignmentService.GetFilteredAsync(
-            role, activeOnly: !showInactive, page, pageSize, now, HttpContext.RequestAborted);
-
-        var viewModel = new AdminRoleAssignmentListViewModel
-        {
-            RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
-            {
-                Id = ra.Id,
-                UserId = ra.UserId,
-                UserEmail = ra.UserEmail ?? string.Empty,
-                RoleName = ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
-                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
-                Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByDisplayName,
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
-            RoleFilter = role,
-            ShowInactive = showInactive,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
-
-        return View("~/Views/Shared/Roles.cshtml", viewModel);
-    }
-
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
@@ -134,10 +96,6 @@ internal sealed class UsersAdminController(
         var applications = await applicationDecisionService.GetUserApplicationsAsync(id, ct);
         var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
-        var roleAssignments = await roleAssignmentService.GetByUserIdAsync(id, ct);
-        var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
-                roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
 
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
             ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
@@ -148,8 +106,6 @@ internal sealed class UsersAdminController(
             applications,
             userEmails,
             consentCount,
-            roleAssignments,
-            roleCreatorNamesByUserId,
             clock.GetCurrentInstant(),
             rejectedByName);
 
@@ -208,104 +164,6 @@ internal sealed class UsersAdminController(
 
         SetSuccess("Signup rejected.");
         return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [HttpGet("{id:guid}/Roles/Add")]
-    public async Task<IActionResult> AddRole(Guid id)
-    {
-        if (await _userService.GetRawUserInfoAsync(id, HttpContext.RequestAborted) is null)
-            return NotFound();
-
-        var viewModel = new CreateRoleAssignmentViewModel
-        {
-            UserId = id,
-            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost("{id:guid}/Roles/Add")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
-    {
-        if (await _userService.GetRawUserInfoAsync(id) is null)
-            return NotFound();
-
-        if (string.IsNullOrWhiteSpace(model.RoleName))
-        {
-            ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            model.UserId = id;
-            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
-            return View(model);
-        }
-
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-        {
-            return Unauthorized();
-        }
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, model.RoleName, PolicyNames.RoleAssignmentManage);
-        if (!authResult.Succeeded)
-        {
-            logger.LogWarning(
-                "Authorization denied for role assignment: principal {Principal} attempted to assign role {Role} to user {UserId}",
-                User.Identity?.Name, model.RoleName, id);
-            return Forbid();
-        }
-
-        var result = await roleAssignmentWrite.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, model.Notes);
-
-        if (result.Success)
-            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));
-        else
-            SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
-
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [HttpPost("{id:guid}/Roles/{roleId:guid}/End")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
-    {
-        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId);
-
-        if (roleAssignment is null)
-        {
-            return NotFound();
-        }
-
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-        {
-            return Unauthorized();
-        }
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage);
-        if (!authResult.Succeeded)
-        {
-            logger.LogWarning(
-                "Authorization denied for ending role: principal {Principal} attempted to end role {Role} for user {UserId}",
-                User.Identity?.Name, roleAssignment.RoleName, roleAssignment.UserId);
-            return NotFound();
-        }
-
-        var result = await roleAssignmentWrite.EndRoleAsync(
-            roleId, currentUser.Id, notes);
-
-        if (result.Success)
-            SetSuccess(string.Format(
-                localizer["Admin_RoleEnded"].Value,
-                roleAssignment.RoleName,
-                roleAssignment.UserDisplayName));
-        else
-            SetError(localizer["Admin_RoleNotActive"].Value);
-
-        return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
     }
 
     // Audience-segmentation diagnostic — relocated here from AdminController by the

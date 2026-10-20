@@ -946,30 +946,6 @@
   <data name="AdminHuman_RecentApplications" xml:space="preserve">
     <value>Candidatures récentes</value>
   </data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
-    <value>Attributions de rôles</value>
-  </data>
-  <data name="AdminHuman_AddRole" xml:space="preserve">
-    <value>Ajouter un rôle</value>
-  </data>
-  <data name="AdminHuman_Ended" xml:space="preserve">
-    <value>Terminé</value>
-  </data>
-  <data name="AdminHuman_From" xml:space="preserve">
-    <value>Du</value>
-  </data>
-  <data name="AdminHuman_To" xml:space="preserve">
-    <value>au</value>
-  </data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
-    <value>Mettre fin à cette attribution de rôle ?</value>
-  </data>
-  <data name="AdminHuman_End" xml:space="preserve">
-    <value>Terminer</value>
-  </data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
-    <value>Aucune attribution de rôle.</value>
-  </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Historique d'audit</value>
   </data>
@@ -1000,68 +976,6 @@
   </data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve">
     <value>Gérer les e-mails</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve">
-    <value>Attributions de rôles</value>
-  </data>
-  <data name="AdminRoles_All" xml:space="preserve">
-    <value>Tous</value>
-  </data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve">
-    <value>Masquer les inactifs</value>
-  </data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve">
-    <value>Afficher les inactifs</value>
-  </data>
-  <data name="AdminRoles_User" xml:space="preserve">
-    <value>Utilisateur</value>
-  </data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve">
-    <value>Valide depuis</value>
-  </data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve">
-    <value>Valide jusqu'au</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve">
-    <value>Ajouter un rôle</value>
-  </data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve">
-    <value>Sélectionner un rôle...</value>
-  </data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
-    <value>Accès complet au système</value>
-  </data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
-    <value>Permissions de membre du conseil</value>
-  </data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Gérer toutes les équipes et adhésions</value>
-  </data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Vérifications de sécurité lors de l'intégration</value>
-  </data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
-    <value>Gérer la carte du camp et les phases de placement</value>
-  </data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Facilitation d'intégration, gestion des créneaux globale</value>
-  </data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Approuver les inscriptions aux créneaux, voir les données médicales</value>
-  </data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
-    <value>Notes (facultatif)</value>
-  </data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
-    <value>Motif de l'attribution</value>
   </data>
 
   <!-- ======================== -->

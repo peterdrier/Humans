@@ -145,63 +145,9 @@
             </div>
         }
 
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>@Localizer["AdminHuman_RoleAssignments"]</span>
-                <a asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["AdminHuman_AddRole"]</a>
-            </div>
-            @if (Model.RoleAssignments.Count > 0)
-            {
-                <div class="list-group list-group-flush">
-                    @foreach (var role in Model.RoleAssignments)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>@role.RoleName</strong>
-                                @if (role.IsActive)
-                                {
-                                    <span class="badge bg-success ms-2">@SharedLocalizer["AdminHuman_Active"]</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary ms-2">@Localizer["AdminHuman_Ended"]</span>
-                                }
-                                <br />
-                                <small class="text-muted">
-                                    @Localizer["AdminHuman_From"] @role.ValidFrom.ToDate()
-                                    @if (role.ValidTo.HasValue)
-                                    {
-                                        <text> @Localizer["AdminHuman_To"] @role.ValidTo.Value.ToDate()</text>
-                                    }
-                                    @if (!string.IsNullOrEmpty(role.Notes))
-                                    {
-                                        <text> &mdash; @role.Notes</text>
-                                    }
-                                </small>
-                            </div>
-                            @if (role.IsActive)
-                            {
-                                <form asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline"
-                                      data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
-                                </form>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="card-body text-muted">
-                    @Localizer["AdminHuman_NoRoleAssignments"]
-                </div>
-            }
-        </div>
-
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Email Outbox (Email), each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>

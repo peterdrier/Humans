@@ -1,8 +1,8 @@
 @using Humans.Base.Constants
-@model Humans.Users.Models.AdminRoleAssignmentListViewModel
+@model Humans.Auth.Models.AdminRoleAssignmentListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["AdminRoles_Title"]</h1>
+    <h1>@Localizer["Auth_Roles_Title"]</h1>
     <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
 </div>
 
@@ -11,7 +11,7 @@
         <div class="btn-group" role="group">
             <a asp-action="Roles" asp-route-showInactive="@Model.ShowInactive"
                class="btn @(string.IsNullOrEmpty(Model.RoleFilter) ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminRoles_All"]
+                @Localizer["Auth_Roles_All"]
             </a>
             @foreach (var role in RoleNames.All)
             {
@@ -28,13 +28,13 @@
             @if (Model.ShowInactive)
             {
                 <a asp-action="Roles" asp-route-role="@Model.RoleFilter" asp-route-showInactive="false" class="btn btn-outline-secondary btn-sm">
-                    @Localizer["AdminRoles_HideInactive"]
+                    @Localizer["Auth_Roles_HideInactive"]
                 </a>
             }
             else
             {
                 <a asp-action="Roles" asp-route-role="@Model.RoleFilter" asp-route-showInactive="true" class="btn btn-outline-secondary btn-sm">
-                    @Localizer["AdminRoles_ShowInactive"]
+                    @Localizer["Auth_Roles_ShowInactive"]
                 </a>
             }
         </div>
@@ -71,29 +71,29 @@
                     }
                     else
                     {
-                        <span class="badge bg-secondary">@Localizer["AdminHuman_Ended"]</span>
+                        <span class="badge bg-secondary">@Localizer["Auth_Roles_Ended"]</span>
                     }
                 </text>;
             Func<AdminRoleAssignmentViewModel, IHtmlContent> actionCell =
                 @<text>
                     @if (item.IsActive)
                     {
-                        <form asp-controller="UsersAdmin" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline"
-                              data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
+                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline"
+                              data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Auth_Roles_End"]</button>
                         </form>
                     }
                 </text>;
             var rolesTable = TableModel.For(Model.RoleAssignments)
-                .Template(Localizer["AdminRoles_User"].Value, userCell)
+                .Template(Localizer["Auth_Roles_User"].Value, userCell)
                 .Template(SharedLocalizer["MyTeams_Role"].Value, roleCell)
-                .Column(Localizer["AdminRoles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate())
-                .Template(Localizer["AdminRoles_ValidTo"].Value, validToCell)
+                .Column(Localizer["Auth_Roles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate())
+                .Template(Localizer["Auth_Roles_ValidTo"].Value, validToCell)
                 .Template(SharedLocalizer["Common_Status"].Value, statusCell, c => c.NoSort())
                 .Template("", actionCell, c => c.NoSort().End())
                 .RowCss(ra => ra.IsActive ? null : "table-secondary")
-                .Empty(Localizer["AdminHuman_NoRoleAssignments"].Value)
+                .Empty(Localizer["Auth_Roles_NoAssignments"].Value)
                 .ServerMode(null, false, new PagerViewModel(Model.TotalPages, Model.PageNumber, "Roles") { NavCssClass = "mt-4" })
                 .Build();
         }

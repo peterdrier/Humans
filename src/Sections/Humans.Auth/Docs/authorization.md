@@ -1,6 +1,14 @@
 # Auth — Authorization
 
-`Humans.Auth` is a horizontal (cross-cutting) section — see `docs/architecture/peters-hard-rules.md`. It owns the role-assignment resource handler consumed by `Humans.Users`' `UsersAdminController.AddRole`/`EndRole`.
+`Humans.Auth` is a horizontal (cross-cutting) section — see `docs/architecture/peters-hard-rules.md`. It owns the role-assignment resource handler consumed by its own `RoleAssignmentsController` (`AddRole`/`EndRole`), and serves the role-assignment admin pages at their stable `/Users/Admin/...` URLs.
+
+## Controllers
+
+| Controller / action | Level | Roles | Policy |
+|---|---|---|---|
+| `RoleAssignmentsController` | Class | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (`Roles`, `AddRole` GET/POST, `EndRole` all inherit) |
+| `RoleAssignmentsController.AddRole` (POST) / `EndRole` runtime guards | In-method | per target role name | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` — resource-based, evaluated by `RoleAssignmentAuthorizationHandler`. `AddRole` answers `Forbid`, `EndRole` answers `404` so a denied actor cannot probe assignment ids |
+| `RoleAssignmentsCardViewComponent` | User part (`AdminDetail`) | `HumanAdmin, Board, Admin` | Renders only in `ProfileCardViewMode.Admin` and when the viewer passes `HumanAdminBoardOrAdmin`; nothing otherwise |
 
 ## Resource-Based Authorization Handler
 

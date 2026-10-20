@@ -428,14 +428,6 @@
   <data name="AdminHuman_AdminNotes" xml:space="preserve"><value>Board Notes</value></data>
   <data name="AdminHuman_AdminNotesGdprHint" xml:space="preserve"><value>This member can request to see these notes under GDPR.</value></data>
   <data name="AdminHuman_RecentApplications" xml:space="preserve"><value>Recent Applications</value></data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve"><value>Role Assignments</value></data>
-  <data name="AdminHuman_AddRole" xml:space="preserve"><value>Add Role</value></data>
-  <data name="AdminHuman_Ended" xml:space="preserve"><value>Ended</value></data>
-  <data name="AdminHuman_From" xml:space="preserve"><value>From</value></data>
-  <data name="AdminHuman_To" xml:space="preserve"><value>to</value></data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve"><value>End this role assignment?</value></data>
-  <data name="AdminHuman_End" xml:space="preserve"><value>End</value></data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve"><value>No role assignments.</value></data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve"><value>Audit History</value></data>
   <data name="AdminHuman_Statistics" xml:space="preserve"><value>Statistics</value></data>
   <data name="AdminHuman_ApplicationCount" xml:space="preserve"><value>Applications</value></data>
@@ -446,32 +438,6 @@
   <data name="AdminHuman_SuspendMember" xml:space="preserve"><value>Suspend Human</value></data>
   <data name="AdminHumanDetail_Title" xml:space="preserve"><value>Member: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
-
-  <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve"><value>Role Assignments</value></data>
-  <data name="AdminRoles_All" xml:space="preserve"><value>All</value></data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve"><value>Hide Inactive</value></data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve"><value>Show Inactive</value></data>
-  <data name="AdminRoles_User" xml:space="preserve"><value>User</value></data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve"><value>Valid From</value></data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve"><value>Valid To</value></data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve"><value>Add Role</value></data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve"><value>Select a role...</value></data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve"><value>Full system access</value></data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve"><value>Board member permissions</value></data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Manage all teams and memberships</value></data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Safety checks during onboarding</value></data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Manage camp map and placement phases</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding facilitation, system-wide shift management</value></data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approve shift signups, view volunteer medical data</value></data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (optional)</value></data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Reason for assignment</value></data>
 
   <!-- ======================== -->
   <!-- Enum display names       -->

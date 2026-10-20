@@ -946,30 +946,6 @@
   <data name="AdminHuman_RecentApplications" xml:space="preserve">
     <value>Sol·licituds recents</value>
   </data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
-    <value>Assignacions de rols</value>
-  </data>
-  <data name="AdminHuman_AddRole" xml:space="preserve">
-    <value>Afegir rol</value>
-  </data>
-  <data name="AdminHuman_Ended" xml:space="preserve">
-    <value>Finalitzat</value>
-  </data>
-  <data name="AdminHuman_From" xml:space="preserve">
-    <value>Des de</value>
-  </data>
-  <data name="AdminHuman_To" xml:space="preserve">
-    <value>fins a</value>
-  </data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
-    <value>Finalitzar aquesta assignació de rol?</value>
-  </data>
-  <data name="AdminHuman_End" xml:space="preserve">
-    <value>Finalitzar</value>
-  </data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
-    <value>Sense assignacions de rols.</value>
-  </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Historial d'auditoria</value>
   </data>
@@ -1000,68 +976,6 @@
   </data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve">
     <value>Gestiona correus</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve">
-    <value>Assignacions de rols</value>
-  </data>
-  <data name="AdminRoles_All" xml:space="preserve">
-    <value>Tots</value>
-  </data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve">
-    <value>Amaga inactius</value>
-  </data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve">
-    <value>Mostra inactius</value>
-  </data>
-  <data name="AdminRoles_User" xml:space="preserve">
-    <value>Usuari</value>
-  </data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve">
-    <value>Vàlid des de</value>
-  </data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve">
-    <value>Vàlid fins a</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve">
-    <value>Afegir rol</value>
-  </data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve">
-    <value>Selecciona un rol...</value>
-  </data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
-    <value>Accés complet al sistema</value>
-  </data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
-    <value>Permisos de membre de la junta</value>
-  </data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Gestionar tots els equips i pertinences</value>
-  </data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Verificacions de seguretat durant la incorporació</value>
-  </data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
-    <value>Gestionar el mapa del camp i les fases de col·locació</value>
-  </data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Facilitació de la incorporació, gestió de torns global</value>
-  </data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Aprovar inscripcions en torns, veure dades mèdiques de voluntaris</value>
-  </data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
-    <value>Notes (opcional)</value>
-  </data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
-    <value>Motiu de la assignació</value>
   </data>
 
   <!-- ======================== -->

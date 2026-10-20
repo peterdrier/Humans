@@ -1,7 +1,6 @@
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Auth.Contracts;
 using Humans.Base;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
@@ -12,7 +11,6 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +35,6 @@ public class UsersAdminControllerPurgeTests
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
     private readonly IHumanLifecycleService _lifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
     private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
     private readonly IClock _clock = Substitute.For<IClock>();
@@ -63,8 +60,6 @@ public class UsersAdminControllerPurgeTests
         var c = new UsersAdminController(
             _userService,
             _userEmails,
-            _roleAssignments,
-            Substitute.For<IRoleAssignmentWrite>(),
             Substitute.For<IGovernanceService>(),
             Substitute.For<IConsentService>(),
             _lifecycle,
@@ -73,7 +68,6 @@ public class UsersAdminControllerPurgeTests
             _deletion,
             _environment,
             _clock,
-            Substitute.For<IAuthorizationService>(),
             NullLogger<UsersAdminController>.Instance,
             _localizer);
 
@@ -96,32 +90,6 @@ public class UsersAdminControllerPurgeTests
         c.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
         c.Url = Substitute.For<IUrlHelper>();
         return c;
-    }
-
-    [HumansFact]
-    public async Task Roles_PreservesRequestCancellation()
-    {
-        using var source = new CancellationTokenSource();
-        var controller = BuildController();
-        controller.HttpContext.RequestAborted = source.Token;
-        _roleAssignments.GetFilteredAsync(null, true, 1, 50, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns((Array.Empty<RoleAssignmentSummarySnapshot>(), 0));
-
-        (await controller.Roles(null)).Should().BeOfType<ViewResult>();
-
-        await _roleAssignments.Received(1).GetFilteredAsync(null, true, 1, 50, Arg.Any<Instant>(), source.Token);
-    }
-
-    [HumansFact]
-    public async Task AddRoleGet_PreservesRequestCancellation()
-    {
-        using var source = new CancellationTokenSource();
-        var controller = BuildController();
-        controller.HttpContext.RequestAborted = source.Token;
-
-        (await controller.AddRole(_adminUserId)).Should().BeOfType<ViewResult>();
-
-        await _userService.Received(1).GetRawUserInfoAsync(_adminUserId, source.Token);
     }
 
     [HumansTheory]
@@ -216,21 +184,6 @@ public class UsersAdminControllerPurgeTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
         await _onboarding.Received(1).RejectSignupAsync(target, _adminUserId, "Duplicate signup", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Roles_ForwardsFilterAndBuildsTheSharedRolesView()
-    {
-        var now = Instant.FromUtc(2026, 9, 21, 6, 0);
-        _clock.GetCurrentInstant().Returns(now);
-        _roleAssignments.GetFilteredAsync("Board", activeOnly: false, page: 2, pageSize: 50, now, Arg.Any<CancellationToken>())
-            .Returns((Array.Empty<RoleAssignmentSummarySnapshot>(), 0));
-
-        var result = await BuildController().Roles("Board", showInactive: true, page: 2);
-
-        result.Should().BeOfType<ViewResult>()
-            .Which.ViewName.Should().Be("~/Views/Shared/Roles.cshtml");
-        await _roleAssignments.Received(1).GetFilteredAsync("Board", activeOnly: false, page: 2, pageSize: 50, now, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
@@ -13,16 +12,12 @@ internal static class AdminHumanDetailViewModelBuilder
         IReadOnlyList<UserApplicationSnapshot> applications,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount,
-        IReadOnlyList<RoleAssignmentSummarySnapshot> roleAssignments,
-        IReadOnlyDictionary<Guid, string> roleCreatorNamesByUserId,
         Instant now,
         string? rejectedByName)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
         ArgumentNullException.ThrowIfNull(userEmails);
-        ArgumentNullException.ThrowIfNull(roleAssignments);
-        ArgumentNullException.ThrowIfNull(roleCreatorNamesByUserId);
 
         var profile = info.Profile;
 
@@ -57,18 +52,6 @@ internal static class AdminHumanDetailViewModelBuilder
                     Status = a.Status,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
                 }).ToList(),
-            RoleAssignments = roleAssignments.Select(ra => new AdminRoleAssignmentViewModel
-            {
-                Id = ra.Id,
-                UserId = ra.UserId,
-                RoleName = ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
-                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
-                Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = GetRoleCreatorName(roleCreatorNamesByUserId, ra),
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
             Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
@@ -94,7 +77,4 @@ internal static class AdminHumanDetailViewModelBuilder
                 }).ToList(),
         };
     }
-
-    private static string? GetRoleCreatorName(IReadOnlyDictionary<Guid, string> namesByUserId, RoleAssignmentSummarySnapshot roleAssignment) =>
-        namesByUserId.TryGetValue(roleAssignment.CreatedByUserId, out var name) ? name : null;
 }

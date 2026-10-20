@@ -54,6 +54,18 @@ All under `/Account`. Anti-forgery on every POST.
 
 Successful Google and magic-link sign-ins (including magic-link signup) bump Shell's in-memory `LoginMethodCounter`, shown as the "Sign-in method" dial on `/Admin`. Nothing is stored — a restart zeroes it. Linking a Google account while signed in, the gate terminal, and dev logins are not counted.
 
+### Role-assignment admin routes
+
+`RoleAssignmentsController`, all `HumanAdminBoardOrAdmin`:
+
+| Route | Purpose |
+|---|---|
+| `GET /Users/Admin/Roles` | System-wide role roster, filterable by role, active-only by default |
+| `GET/POST /Users/Admin/{id}/Roles/Add` | Assign a role to a member (per-role `RoleAssignmentManage` check on POST) |
+| `POST /Users/Admin/{id}/Roles/{roleId}/End` | End an assignment (per-role `RoleAssignmentManage` check) |
+
+Reached from the Roles item of the Users admin sidebar group and the Role Assignments card on `/Users/Admin/{id}`; both POSTs redirect back to the member's admin detail.
+
 ## Data Model
 
 ### RoleAssignment
@@ -137,6 +149,7 @@ Defined in `src/Humans.Base/Constants/RoleNames.cs`.
 - Magic links are sent silently when the email is unknown or rate-limited — no account enumeration. The caller always sees the same "check your email" UI.
 - `RoleAssignmentService.AssignRoleAsync` **cannot** create a new assignment when an overlapping active one already exists for the same (user, role).
 - `EndRoleAsync` **cannot** end an assignment that is already ended or not yet active.
+- The role-assignment admin pages are `HumanAdminBoardOrAdmin`-gated, and each assign/end additionally passes the per-role `RoleAssignmentManage` check: a Board or HumanAdmin actor **cannot** assign or end `Admin` (assign answers 403, end answers 404 and writes nothing). The roster and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
 
 ## Triggers
 
@@ -177,7 +190,7 @@ Auth is a **horizontal** section. `peters-hard-rules.md` forbids a horizontal fr
 
 - **In `Humans.Auth`:** the `RoleAssignment` entity, `AuthDbContext` + factory + configuration + `Data/Migrations/`, `RoleAssignmentRepository`, `RoleAssignmentService`, `CachingRoleAssignmentService`, `AdminAuthorizationService`, `RoleAssignmentAuthorizationHandler`, and the whole magic-link sign-in path: `MagicLinkService`, `IMagicLinkUrlBuilder` + `MagicLinkUrlBuilder`, `IMagicLinkRateLimiter` + `MagicLinkRateLimiter`. Everything except the `Contracts/` folder is `internal`.
 - **In `Humans.Auth/Contracts/`** (namespace `Humans.Auth.Contracts`, consumed throughout the Shell and other sections): `IRoleAssignmentService` (reads), `IRoleAssignmentWrite` (the writes other sections call), `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, `RoleAssignmentSnapshot`, `RoleAssignmentDetailSnapshot`, `RoleAssignmentSummarySnapshot`, `RoleAssignmentResult`, `IMagicLinkService` (`Humans.Users`' `ExternalLoginService` calls `FindUserByVerifiedEmailAsync` on the OAuth callback path; two of its members return `User`), and `RoleAssignmentOperationRequirement`, which Shell registers under `PolicyNames.RoleAssignmentManage`; `Humans.Users`' `UsersAdminController` passes that policy name to `IAuthorizationService.AuthorizeAsync`.
-- **Stayed in Shell:** `AccountController` and `Views/Account/*` with their `SharedResource` keys, `HttpCurrentUserContext`, and `RoleAssignmentClaimsTransformation`. (`RoleAssignmentClaimsCacheInvalidator` is not Shell's — the class is in `src/Humans.Base/Caching/MemoryCacheInvalidators.cs`; Shell only registers it.) `AccountController` stays in Shell: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The section still ships no controller, no view and no `Resources/` folder.
+- **Stayed in Shell:** `AccountController` and `Views/Account/*` with their `SharedResource` keys, `HttpCurrentUserContext`, and `RoleAssignmentClaimsTransformation`. (`RoleAssignmentClaimsCacheInvalidator` is not Shell's — the class is in `src/Humans.Base/Caching/MemoryCacheInvalidators.cs`; Shell only registers it.) `AccountController` stays in Shell: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The role-assignment admin pages are the section's other half: `RoleAssignmentsController` (`/Users/Admin/Roles`, `/Users/Admin/{id}/Roles/Add`, `/Users/Admin/{id}/Roles/{roleId}/End` — the URLs predate the move from Users and are kept), its `Views/RoleAssignments/*`, and the Role Assignments card on the admin human-detail page, contributed to the `AdminDetail` user-part slot by `RoleAssignmentsCardViewComponent` (`SectionUserParts`; Weight 50). `SectionAdminNav` adds the "Roles" item to the Users admin group. The project is a Razor SDK project for those views; the controller, models and view component are `internal`/section-local. The assign/end audit entries are written by `RoleAssignmentService`, unchanged.
 
 The section's outbound reference set is `Humans.AuditLog`, `Humans.Gdpr` (horizontal sections), `Humans.Notifications.Contracts` (horizontal leaf), `Humans.Teams.Contracts` (`ISystemTeamSync`), `Humans.Users.Contracts` (display stitching, `UserManager<User>`, `IUserEmailService`) and `Humans.Email.Contracts` (the magic-link send), each with a reason recorded beside it in `Humans.Auth.csproj`.
 

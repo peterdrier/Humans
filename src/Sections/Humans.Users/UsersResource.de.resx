@@ -946,30 +946,6 @@
   <data name="AdminHuman_RecentApplications" xml:space="preserve">
     <value>Letzte Anträge</value>
   </data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
-    <value>Rollenzuweisungen</value>
-  </data>
-  <data name="AdminHuman_AddRole" xml:space="preserve">
-    <value>Rolle hinzufügen</value>
-  </data>
-  <data name="AdminHuman_Ended" xml:space="preserve">
-    <value>Beendet</value>
-  </data>
-  <data name="AdminHuman_From" xml:space="preserve">
-    <value>Von</value>
-  </data>
-  <data name="AdminHuman_To" xml:space="preserve">
-    <value>bis</value>
-  </data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
-    <value>Diese Rollenzuweisung beenden?</value>
-  </data>
-  <data name="AdminHuman_End" xml:space="preserve">
-    <value>Beenden</value>
-  </data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
-    <value>Keine Rollenzuweisungen.</value>
-  </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Prüfverlauf</value>
   </data>
@@ -1000,68 +976,6 @@
   </data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve">
     <value>E-Mails verwalten</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve">
-    <value>Rollenzuweisungen</value>
-  </data>
-  <data name="AdminRoles_All" xml:space="preserve">
-    <value>Alle</value>
-  </data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve">
-    <value>Inaktive ausblenden</value>
-  </data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve">
-    <value>Inaktive anzeigen</value>
-  </data>
-  <data name="AdminRoles_User" xml:space="preserve">
-    <value>Benutzer</value>
-  </data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve">
-    <value>Gültig ab</value>
-  </data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve">
-    <value>Gültig bis</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve">
-    <value>Rolle hinzufügen</value>
-  </data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve">
-    <value>Rolle auswählen...</value>
-  </data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
-    <value>Vollständiger Systemzugriff</value>
-  </data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
-    <value>Vorstandsmitglied-Berechtigungen</value>
-  </data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Alle Teams und Mitgliedschaften verwalten</value>
-  </data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Sicherheitsprüfungen beim Onboarding</value>
-  </data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
-    <value>Lagerplan und Platzierungsphasen verwalten</value>
-  </data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Onboarding-Begleitung, systemweite Schichtverwaltung</value>
-  </data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value>
-  </data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
-    <value>Notizen (optional)</value>
-  </data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
-    <value>Grund der Zuweisung</value>
   </data>
 
   <!-- ======================== -->
