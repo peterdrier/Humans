@@ -63,4 +63,9 @@
 &lt;p&gt;Hem enviat una transferència bancària de &lt;strong&gt;{1}&lt;/strong&gt; al teu compte que acaba en {2}.&lt;/p&gt;
 &lt;p&gt;Normalment arriba en pocs dies laborables. Si al cap d'una setmana no ha arribat, posa't en contacte amb l'equip de finances.&lt;/p&gt;</value></data>
   <data name="Finance_Email_SepaPayoutGenerated_Subject" xml:space="preserve"><value>Hem enviat el teu reemborsament</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Transferència cancel·lada&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;La transferència bancària de &lt;strong&gt;{1}&lt;/strong&gt; al teu compte acabat en {2}, anunciada el {3}, s'ha cancel·lat abans d'executar-se.&lt;/p&gt;
+&lt;p&gt;No s'ha mogut cap diner. Si tens dubtes, posa't en contacte amb l'equip de finances.&lt;/p&gt;</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Subject" xml:space="preserve"><value>La teva transferència de reemborsament s'ha cancel·lat</value></data>
 </root>

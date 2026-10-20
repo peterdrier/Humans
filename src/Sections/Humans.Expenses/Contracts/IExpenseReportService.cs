@@ -29,9 +29,17 @@ public interface IExpenseReportService : IApplicationService
 
     /// <summary>
     /// The review queue as <paramref name="viewerUserId"/> may see it: every non-draft,
-    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports plus those
+    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports (including merged accounts) plus those
     /// booked to a budget category they coordinate.
     /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every expense line that links to a Holded purchase document, with the values the push wrote
+    /// on that document. Finance's duplicate-document check (/Finance/HoldedDuplicates) matches
+    /// Holded's purchase list against these; the allocation that trims a line is applied here so
+    /// the caller never re-derives it.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default);
 }

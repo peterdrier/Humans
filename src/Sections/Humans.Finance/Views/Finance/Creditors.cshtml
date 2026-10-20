@@ -19,6 +19,10 @@
            title="Generated payout files, their transfers, and the button that books each payment into Holded.">
             <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
         </a>
+        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
+           title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
+            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+        </a>
         <a href="/Holded" class="btn btn-outline-secondary"
            title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
             <i class="fa-solid fa-rotate me-1"></i>Holded sync
@@ -28,6 +32,24 @@
         </a>
     </div>
 </div>
+
+@if (Model.DuplicateFlaggedAccounts > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-clone me-1"></i>
+        <strong>@Model.DuplicateFlaggedAccounts creditor account@(Model.DuplicateFlaggedAccounts == 1 ? "" : "s")</strong>
+        carr@(Model.DuplicateFlaggedAccounts == 1 ? "ies" : "y") duplicate documents in Holded: an expense line matches more
+        than one purchase document, so the balance is inflated. Those rows cannot be paid until the extras are removed on
+        <a asp-action="HoldedDuplicates" class="alert-link">Duplicate docs</a>.
+    </div>
+}
+else if (Model.DuplicateCheckUnavailable)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        Holded's document list could not be read, so duplicate documents cannot be ruled out; no payout can be generated until it can.
+    </div>
+}
 
 <p class="text-muted">
     Holded creditor accounts (40000000–41999999). <strong>Balance</strong> is shown from the member's
@@ -182,6 +204,10 @@ else
                                 </div>
                             </div>
                             <div class="text-muted small">@r.IbanMasked</div>
+                        }
+                        else if (r.HasDuplicateDocuments == true)
+                        {
+                            <a asp-action="HoldedDuplicates" class="small text-danger">@r.NotPayableReason</a>
                         }
                         else
                         {

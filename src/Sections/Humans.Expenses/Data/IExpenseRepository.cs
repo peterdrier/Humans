@@ -140,8 +140,11 @@ internal interface IExpenseRepository : IRepository
     /// retry the create call and produce a duplicate Holded document. Marking the
     /// outbox event processed is a separate <see cref="MarkOutboxProcessedAsync"/>
     /// call that runs only after every line's create + upload + approve succeeds.
+    /// The write is conditional: it only lands while the line has no doc id. Returns false
+    /// (leaving the stored id and the report's <c>UpdatedAt</c> untouched) when another push
+    /// already recorded one — the caller then owns an orphan document that needs manual removal in Holded.
     /// </summary>
-    Task SetLineHoldedDocIdAsync(
+    Task<bool> SetLineHoldedDocIdAsync(
         Guid lineId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
     /// <summary>

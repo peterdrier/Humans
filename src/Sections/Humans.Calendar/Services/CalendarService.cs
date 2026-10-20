@@ -158,6 +158,8 @@ internal sealed class CalendarService(
     // Reject malformed RRULE at write time so reads can't crash during occurrence expansion.
     internal static void ValidateRecurrenceRule(string? rrule)
     {
+        if (rrule is { Length: > 500 })
+            throw new ValidationException("Recurrence rules cannot exceed 500 characters.");
         if (string.IsNullOrWhiteSpace(rrule)) return;
         try
         {
@@ -167,7 +169,7 @@ internal sealed class CalendarService(
         }
         catch (Exception ex)
         {
-            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
+            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}", ex);
         }
     }
 

@@ -63,4 +63,9 @@
 &lt;p&gt;We have sent a bank transfer of &lt;strong&gt;{1}&lt;/strong&gt; to your account ending {2}.&lt;/p&gt;
 &lt;p&gt;It usually arrives within a few business days. If it has not after a week, please get in touch with the finance team.&lt;/p&gt;</value></data>
   <data name="Finance_Email_SepaPayoutGenerated_Subject" xml:space="preserve"><value>We have sent your reimbursement</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Transfer cancelled&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;The bank transfer of &lt;strong&gt;{1}&lt;/strong&gt; to your account ending {2}, announced on {3}, was cancelled before it was executed.&lt;/p&gt;
+&lt;p&gt;No money has moved. If you have questions, please get in touch with the finance team.&lt;/p&gt;</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Subject" xml:space="preserve"><value>Your reimbursement transfer was cancelled</value></data>
 </root>

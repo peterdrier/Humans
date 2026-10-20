@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
@@ -157,7 +158,7 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("Documents/{id:guid}/Disposition")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Disposition(
-        Guid id, WorkgroupDisposition disposition, string? note, CancellationToken ct) =>
+        Guid id, [BindRequired] WorkgroupDisposition disposition, string? note, CancellationToken ct) =>
         ActAsync(actor => workgroups.RecordDispositionAsync(id, actor, disposition, note ?? string.Empty, ct),
             "Disposition recorded", ct);
 
@@ -205,7 +206,12 @@ internal sealed class WorkgroupsAdminController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed workgroup admin {Action} input for user {UserId}",
+                ControllerContext.ActionDescriptor.ActionName, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await action(user.Id);
         if (result.Refusal is { } refusal)

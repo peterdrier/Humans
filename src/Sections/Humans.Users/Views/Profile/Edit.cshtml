@@ -152,6 +152,20 @@
                             <div class="col-md-3">@Localizer["ProfileEdit_ContactVisibility"]</div>
                         </div>
                     }
+                    @foreach (var legacy in Model.ContactFields)
+                    {
+                        <div class="card mb-2">
+                            <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
+                                <span>@Localizer.EnumDisplay(legacy.FieldType): @legacy.Value</span>
+                                <span class="text-muted small">@Localizer.EnumDisplay(legacy.Visibility)</span>
+                                <label class="form-check ms-auto" title="@Localizer["ProfileEdit_RemoveContactField"].Value">
+                                    <input type="checkbox" class="form-check-input" name="RemovedLegacyContactFieldIds" value="@legacy.Id"
+                                           checked="@Model.RemovedLegacyContactFieldIds.Contains(legacy.Id)" />
+                                    <span class="form-check-label">@SharedLocalizer["Common_Remove"]</span>
+                                </label>
+                            </div>
+                        </div>
+                    }
                     <div id="contactFieldsContainer">
                         @for (var i = 0; i < Model.EditableContactFields.Count; i++)
                         {
@@ -173,6 +187,7 @@
                                                 <option value="Discord" selected="@(fieldType == ContactFieldType.Discord ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldType.Discord)</option>
                                                 <option value="Other" selected="@(fieldType == ContactFieldType.Other ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldType.Other)</option>
                                             </select>
+                                            <span asp-validation-for="EditableContactFields[i].FieldType" class="text-danger small"></span>
                                         </div>
 
                                         <div class="col-md-2 custom-label-col" style="display: @(Model.EditableContactFields[i].FieldType == ContactFieldType.Other ? "block" : "none");">
@@ -205,6 +220,7 @@
                                                 <option value="CoordinatorsAndBoard" selected="@(visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldVisibility.CoordinatorsAndBoard)</option>
                                                 <option value="BoardOnly" selected="@(visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer.EnumDisplay(ContactFieldVisibility.BoardOnly)</option>
                                             </select>
+                                            <span asp-validation-for="EditableContactFields[i].Visibility" class="text-danger small"></span>
                                         </div>
 
                                         <div class="col-md-2 text-end">
@@ -737,6 +753,7 @@
                                         <option value="Discord">${_cfLabels.discord}</option>
                                         <option value="Other">${_cfLabels.other}</option>
                                     </select>
+                                    <span class="text-danger small" data-valmsg-for="EditableContactFields[${index}].FieldType"></span>
                                 </div>
 
                                 <div class="col-md-2 custom-label-col" style="display: none;">
@@ -756,6 +773,7 @@
                                         <option value="CoordinatorsAndBoard">${_cfLabels.visCoordBoard}</option>
                                         <option value="BoardOnly">${_cfLabels.visBoardOnly}</option>
                                     </select>
+                                    <span class="text-danger small" data-valmsg-for="EditableContactFields[${index}].Visibility"></span>
                                 </div>
 
                                 <div class="col-md-2 text-end">

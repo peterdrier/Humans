@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Expenses.Authorization;
@@ -13,7 +14,7 @@ namespace Humans.Expenses.Authorization;
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>
-internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService)
+internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService, IUserService userService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(
@@ -26,7 +27,6 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
 
         var op = requirement.Operation;
         var isFinanceAdmin = RoleChecks.IsFinanceAdmin(context.User); // includes Admin
-        var isSubmitter = resource.SubmitterUserId == userId;
 
         if (isFinanceAdmin
             && (op is ExpenseReportOperation.View
@@ -54,6 +54,8 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
             return;
         }
 
+        var isSubmitter = resource.SubmitterUserId == userId
+            || (await userService.GetUserInfoAsync(userId))?.AllUserIds.Contains(resource.SubmitterUserId) == true;
         if (isSubmitter)
         {
             if (op == ExpenseReportOperation.View)

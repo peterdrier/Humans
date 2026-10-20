@@ -77,6 +77,7 @@
   <data name="Store_RemoveLineFailed" xml:space="preserve"><value>No se pudo eliminar la línea.</value></data>
   <data name="Store_LineRemoved" xml:space="preserve"><value>Línea eliminada.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No se pudo actualizar la contraparte.</value></data>
+  <data name="Store_CounterpartyTooLong" xml:space="preserve"><value>Los datos de facturación son demasiado largos. Acorta los valores e inténtalo de nuevo.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contraparte actualizada.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrado.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagado de más — se debe devolver al campamento.</value></data>

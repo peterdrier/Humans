@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
@@ -23,6 +24,8 @@ using Humans.Expenses.Tests.Infrastructure;
 
 namespace Humans.Expenses.Tests.Services;
 
+// The drain gate is static (one drain per process), so classes that drain run serially.
+[Collection("HoldedDrainGate")]
 public class ExpenseReportServiceHoldedOutboxTests
 {
     private readonly IStringLocalizer<ExpensesResource> _localizer =
@@ -72,6 +75,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.IsConfigured.Returns(true);
         _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
+
+        // The doc-id write is conditional; it succeeds unless a test says another push got there first.
+        _repo.SetLineHoldedDocIdAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(_category);
@@ -123,6 +131,51 @@ public class ExpenseReportServiceHoldedOutboxTests
 
     /// <summary>One bookable line ("Wood", €50) — the minimum a real approved report carries, so
     /// the per-line push has a doc to create. Tests that need other shapes override Lines.</summary>
+    [HumansFact]
+    public async Task GetHoldedBookingsAsync_lists_linked_lines_with_the_values_the_push_wrote()
+    {
+        // The same description, notes and booked total ExpenseHoldedPublisher writes; a trimmed
+        // line reports what it booked, an unlinked or declined line is absent, a legacy
+        // report-level doc is not a line booking.
+        var report = MakeReport() with { Total = 30m, MaxAmount = 25m, HoldedContactId = "c-1" };
+        report = report with
+        {
+            Lines =
+            [
+                report.Lines[0] with { Amount = 20m, SortOrder = 0, HoldedDocId = "doc-a" },
+                report.Lines[0] with { Id = Guid.NewGuid(), Description = "Nails", Amount = 10m, SortOrder = 1, HoldedDocId = "doc-b" },
+                report.Lines[0] with { Id = Guid.NewGuid(), Description = "Declined", Amount = 5m, SortOrder = 2, HoldedDocId = null, Declined = true },
+            ],
+        };
+        var legacy = MakeReport("doc-legacy");
+        _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report, legacy]);
+
+        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        bookings.Should().HaveCount(2);
+        bookings[0].Should().Be(new ExpenseHoldedBooking(
+            report.Id, report.Lines[0].Id, SubmitterId, "c-1", "doc-a", "ER: Wood", $"Expense report {report.Id}", 20m));
+        bookings[1].HoldedDocId.Should().Be("doc-b");
+        bookings[1].BookedAmount.Should().Be(5m);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedBookingsAsync_SubmitterMergedAway_NamesTheSurvivor()
+    {
+        // #1704: the creditor binding sits on the survivor, so the booking has to name them too.
+        var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Alice Smith" };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(survivor) with { MergedUserIds = [SubmitterId] } }));
+        var report = MakeReport();
+        report = report with { Lines = [report.Lines[0] with { HoldedDocId = "doc-a" }] };
+        _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report]);
+
+        var bookings = await _sut.GetHoldedBookingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        bookings.Should().ContainSingle().Which.CreditorUserId.Should().Be(survivor.Id);
+    }
+
     private static ExpenseReportDto MakeReport(string? holdedDocId = null)
     {
         var reportId = Guid.NewGuid();
@@ -238,6 +291,78 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
             .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
+    }
+
+    // ─── one drain at a time ───────────────────────────────────────────────────
+
+    private ExpenseReportBackgroundProcessor NewProcessor() => new(
+        _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, _auditLog, _clock,
+        NullLogger<ExpenseReportBackgroundProcessor>.Instance);
+
+    [HumansFact]
+    public async Task OverlappingDrain_IsSkipped_AndTheEventIsProcessedOnce()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                entered.TrySetResult();
+                await release.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                return "holded-doc-1";
+            });
+
+        var first = NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        // A different processor instance (the type is Scoped) still hits the same gate.
+        await NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        // Only the first drain ever read the queue; the second created nothing.
+        await _repo.Received(1).GetUnprocessedOutboxAsync(
+            Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+
+        release.SetResult();
+        await first;
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task NextDrain_RunsNormally_AfterADrainThatThrew()
+    {
+        // A non-Holded exception escapes the processor; the gate must still be released.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException<string>(new InvalidOperationException("boom")),
+                Task.FromResult("holded-doc-1"));
+
+        var act = () => NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        await NewProcessor().DrainHoldedOutboxAsync(BatchSize, ct);
+
+        await _holdedClient.Received(2).CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     // ─── CreateIncomingDoc happy path ──────────────────────────────────────────

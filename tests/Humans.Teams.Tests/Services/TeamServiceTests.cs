@@ -49,6 +49,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly TeamPageService _pages;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly RoleAssignmentService _roleAssignmentService;
@@ -123,6 +124,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
+        _pages = new TeamPageService(
+            _service, _teamResourceService, shiftManagementService,
+            NewSettingsServiceBackedByShiftsDb(), _userService, _roleAssignmentService);
     }
 
     // IsUserAdminAsync / IsUserBoardMemberAsync coverage lives in RoleAssignmentServiceTests.
@@ -1254,7 +1258,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.ErrorKey.Should().Be("Teams_NotFound");
         result.Outcome.Should().BeNull();
 
-        var detail = await _service.GetTeamDetailAsync(team.Slug, user.Id, Xunit.TestContext.Current.CancellationToken);
+        var detail = await _pages.GetTeamDetailAsync(team.Slug, user.Id, Xunit.TestContext.Current.CancellationToken);
         detail.Should().NotBeNull();
         detail.CanCurrentUserJoin.Should().BeFalse();
         (await TeamsDb.TeamMembers.AsNoTracking().CountAsync(m => m.TeamId == team.Id && m.LeftAt == null,
@@ -2346,7 +2350,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedJoinRequest(systemTeam.Id, SeedUser(displayName: "Requester B").Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Single(m => m.TeamId == managedTeam.Id).PendingRequestCount.Should().Be(1);
@@ -2368,7 +2372,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Role.Should().Be(TeamMemberRole.Member);
@@ -2399,7 +2403,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamDetailAsync(team.Slug, userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync(team.Slug, userId: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsAuthenticated.Should().BeFalse();
@@ -2427,7 +2431,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetTeamDetailAsync(team.Slug, coordinator.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsAuthenticated.Should().BeTrue();
@@ -3039,6 +3043,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             TeamId = alphaTeam.Id,
             Team = alphaTeam,
             Name = "Lead",
+            IsPublic = false,
             SlotCount = 2,
             Priorities = [SlotPriority.Important, SlotPriority.None],
             SortOrder = 0,
@@ -3071,10 +3076,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        await TeamsDb.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
+        var inactiveTeam = SeedTeam("Inactive");
+        inactiveTeam.IsActive = false;
+        var systemTeam = SeedTeam("System");
+        systemTeam.SystemTeamType = SystemTeamType.Volunteers;
+        await TeamsDb.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition,
+            new TeamRoleDefinition { Id = Guid.NewGuid(), TeamId = inactiveTeam.Id, Name = "Excluded inactive" },
+            new TeamRoleDefinition { Id = Guid.NewGuid(), TeamId = systemTeam.Id, Name = "Excluded system" });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetRosterAsync(priority: null, status: null, period: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var result = await _pages.GetRosterAsync(priority: null, status: null, period: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber))
             .Should().BeEquivalentTo(new[]
@@ -3085,6 +3096,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             });
 
         var critical = result.Single(slot => string.Equals(slot.TeamName, "Beta", StringComparison.Ordinal));
+        critical.IsPublic.Should().BeTrue();
+        result.Where(slot => slot.RoleDefinitionId == alphaDefinition.Id).Should().OnlyContain(slot => !slot.IsPublic);
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
         critical.PriorityBadgeClass.Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
@@ -3128,7 +3141,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         TeamsDb.TeamRoleDefinitions.Add(definition);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetRosterAsync(
+        var result = await _pages.GetRosterAsync(
             priority: nameof(SlotPriority.Important),
             status: "open",
             period: nameof(RolePeriod.Event), cancellationToken: Xunit.TestContext.Current.CancellationToken);

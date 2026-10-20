@@ -71,7 +71,8 @@ internal static class ProfileEditViewModelBuilder
             ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
                 && string.IsNullOrEmpty(profile?.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
-            EditableContactFields = (profile?.ContactFields ?? []).Select(cf => new ContactFieldEditViewModel
+            ContactFields = BuildLegacyContactFields(profile),
+            EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default).Select(cf => new ContactFieldEditViewModel
             {
                 Id = cf.Id,
                 FieldType = cf.FieldType,
@@ -99,4 +100,13 @@ internal static class ProfileEditViewModelBuilder
             EditableShiftTagIds = preferredShiftTags.Select(t => t.ShiftTagId).ToList()
         };
     }
+
+    public static IReadOnlyList<ContactFieldViewModel> BuildLegacyContactFields(ProfileInfo? profile)
+        => (profile?.ContactFields ?? []).Where(cf => cf.FieldType == default).Select(cf => new ContactFieldViewModel
+        {
+            Id = cf.Id,
+            FieldType = cf.FieldType,
+            Value = cf.Value,
+            Visibility = cf.Visibility
+        }).ToList();
 }

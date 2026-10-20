@@ -192,6 +192,25 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListPurchaseDocuments_reads_notes_and_leaves_a_missing_or_blank_one_null()
+    {
+        // Finance's duplicate matcher compares notes when the list carries them; a null must mean
+        // "not reported", never "blank", so it cannot be read as a mismatch.
+        var json = """
+            {"items":[
+              {"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"1.00","notes":"Expense report 7"},
+              {"id":"doc-2","document_number":"F002","date":"2026-05-14","total":"1.00","notes":""},
+              {"id":"doc-3","document_number":"F003","date":"2026-05-14","total":"1.00"}
+            ],"cursor":null,"has_more":false}
+            """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        docs.Select(d => d.Notes).Should().Equal("Expense report 7", null, null);
+    }
+
+    [HumansFact]
     public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an

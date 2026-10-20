@@ -53,13 +53,13 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
     // ── Docs ─────────────────────────────────────────────────────────────────
 
-    public async Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
+    public async Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
     {
-        if (docs.Count == 0) return;
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = docs.Select(d => d.HoldedDocId).ToList();
+        var ids = docs.Select(d => d.HoldedDocId).ToHashSet(StringComparer.Ordinal);
         var existing = await ctx.HoldedExpenseDocs
-            .Where(d => ids.Contains(d.HoldedDocId)).ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+            .ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
+        ctx.HoldedExpenseDocs.RemoveRange(existing.Values.Where(d => !ids.Contains(d.HoldedDocId)));
         foreach (var d in docs)
         {
             if (existing.TryGetValue(d.HoldedDocId, out var cur))
@@ -130,7 +130,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedCreditorContacts.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task UpsertCreditorContactAsync(
+    public async Task<bool> UpsertCreditorContactAsync(
         HoldedCreditorContact row, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -148,7 +148,41 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             row.UpdatedAt = now;
             ctx.HoldedCreditorContacts.Add(row);
         }
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // Another run bound this member after the existence check above.
+            return false;
+        }
+        return true;
+    }
+
+    public async Task<bool> TryInsertCreditorContactAsync(
+        HoldedCreditorContact row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.HoldedCreditorContacts.Add(row);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // The member is already bound; the existing binding is untouched.
+            return false;
+        }
+        return true;
     }
 
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
@@ -185,7 +219,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       select new SepaPayoutExportRow(
                           f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
                           t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt,
-                          t.HoldedBankMovementId, t.ReconciledAt))
+                          t.HoldedBankMovementId, t.ReconciledAt, t.WithdrawnAt))
             .ToListAsync(ct);
     }
 
@@ -200,7 +234,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                           t.UserId, t.SupplierAccountNum, t.HoldedContactId,
                           t.CreditorName, t.IbanMasked, t.Amount,
                           t.BookedAt, t.BookedByUserId, t.HoldedBankMovementId, t.ReconciledAt,
-                          t.HoldedPaymentRefs, null, null))
+                          t.HoldedPaymentRefs, null, null, null, null, null, null, false,
+                          t.WithdrawnAt, t.WithdrawnByUserId))
             .ToListAsync(ct);
     }
 
@@ -237,6 +272,18 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         if (existing is null) return;
 
         existing.HoldedPaymentRefs = holdedPaymentRefs;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task SaveSepaTransferWithdrawnAsync(
+        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
+        if (existing is null) return;
+
+        existing.WithdrawnAt = withdrawnAt;
+        existing.WithdrawnByUserId = withdrawnByUserId;
         await ctx.SaveChangesAsync(ct);
     }
 

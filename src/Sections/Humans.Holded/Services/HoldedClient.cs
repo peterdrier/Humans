@@ -216,6 +216,13 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
+    public async Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/purchases/{documentId}");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+    }
+
     public async Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)
@@ -597,6 +604,26 @@ internal sealed class HoldedClient : IHoldedClient
             // outbox batch and leave its own event neither processed nor failed.
             throw new HoldedPermanentException(
                 $"Holded contact {contactId} could not be read.", ex);
+        }
+    }
+
+    public async Task DeleteContactAsync(string contactId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
+        AttachAuth(req);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        // The goal state already holds: a retried cleanup finds the contact gone.
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
+        {
+            // The id was created seconds ago by this process, so a 404 most likely means the DELETE
+            // route is wrong and the contact still exists in Holded.
+            _logger.LogError(
+                "Holded contact {ContactId} answered 404 to DELETE — it was just created by this process, " +
+                "so the route is most likely wrong and the contact still exists in Holded; treated as deleted",
+                contactId);
         }
     }
 
@@ -1018,6 +1045,7 @@ internal sealed class HoldedClient : IHoldedClient
         ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
         Description = Prop(n, "description")?.GetValue<string>(),
+        Notes = Prop(n, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),

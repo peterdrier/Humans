@@ -228,7 +228,7 @@ internal sealed record RankedCandidateResult(
     bool IsAvailable,
     int RejectionCount,
     double RejectionPercent);
-internal sealed record RankedMethodResult(string Method, string? WinnerValue, string? WinnerLabel, bool TieBreakUsed);
+internal sealed record RankedMethodResult(string MethodKey, string? WinnerValue, string? WinnerLabel, bool TieBreakUsed);
 
 internal enum SurveyResultsScope
 {

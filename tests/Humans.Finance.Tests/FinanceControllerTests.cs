@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
@@ -8,9 +9,11 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -83,6 +86,64 @@ public class FinanceControllerTests
         else Assert.IsType<RedirectToActionResult>(result);
         if (!hasActor || invalidField is not null) Assert.Empty(_connector.ReceivedCalls());
         else await _connector.Received(1).ProvisionAsync(62900100, false, actorId);
+    }
+
+    [HumansTheory]
+    [InlineData("blockStart", false)]
+    [InlineData("addAll", false)]
+    [InlineData("", false)]
+    [InlineData("", true)]
+    public async Task ProvisionHoldedAccounts_requires_posted_block_and_batch_choice(string omitted, bool addAll)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = MakeControllerWithHttpContext(actorId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["blockStart"] = "62900100",
+            ["addAll"] = addAll.ToString(CultureInfo.InvariantCulture)
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var arguments = new object[] { 0, false };
+        var parameters = typeof(FinanceController).GetMethod(nameof(FinanceController.ProvisionHoldedAccounts))!.GetParameters();
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+            if (binding.IsModelSet) arguments[index] = binding.Model!;
+        }
+
+        var result = await controller.ProvisionHoldedAccounts((int)arguments[0], (bool)arguments[1]);
+
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            _connector.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            await _connector.Received(1).ProvisionAsync(62900100, addAll, actorId);
+        }
     }
 
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
@@ -286,6 +347,43 @@ public class FinanceControllerTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GenerateSepa_InvalidBinding_DoesNotGeneratePartialBatch(bool hasActor)
+    {
+        var controller = hasActor ? MakeControllerWithHttpContext(Ana) : MakeController();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(int[]));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = metadata
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)
+            {
+                ["selected"] = new StringValues(["40000004", "not-an-account"])
+            }), CultureInfo.InvariantCulture), metadata, bindingInfo: null, modelName: "selected");
+        await binder.BindModelAsync(binding);
+        var selected = Assert.IsType<int[]>(binding.Result.Model);
+        selected.Should().Equal(40000004);
+        controller.ModelState.IsValid.Should().BeFalse();
+        _connector.GenerateSepaPayoutAsync(Arg.Any<IReadOnlyList<SepaPayoutSelection>>(),
+            Arg.Any<decimal>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new SepaPayoutResult("f.xml", "<xml/>", null));
+
+        var result = await controller.GenerateSepa(selected,
+            new Dictionary<int, string> { [40000004] = "10.00" }, "100.00",
+            Xunit.TestContext.Current.CancellationToken);
+
+        if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<ChallengeResult>();
+        await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default, default);
+    }
+
     [HumansFact]
     public async Task GenerateSepa_ValidCap_ParsesInvariantlyAndPassesItToTheService()
     {
@@ -486,6 +584,98 @@ public class FinanceControllerTests
         await controller.BookSepaTransfer(transferId, "mov-1");
 
         await _connector.Received(1).BookSepaTransferAsync(transferId, "mov-1", Ana);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task WithdrawSepaTransfer_PassesTheActorThrough_AndReportsTheOutcome(bool succeeded)
+    {
+        var transferId = Guid.NewGuid();
+        _connector.WithdrawSepaTransferAsync(transferId, Ana, Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(succeeded, succeeded ? "Withdrew it." : "It is booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.WithdrawSepaTransfer(transferId, days: 7);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
+        redirect.RouteValues!["days"].Should().Be(7);
+        var key = succeeded ? Humans.Base.Constants.TempDataKeys.SuccessMessage : Humans.Base.Constants.TempDataKeys.ErrorMessage;
+        controller.TempData[key].Should().Be(succeeded ? "Withdrew it." : "It is booked.");
+    }
+
+    [HumansFact]
+    public async Task WithdrawSepaTransfer_WithoutAnActor_ChallengesAndTouchesNothing()
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await controller.WithdrawSepaTransfer(Guid.NewGuid());
+
+        result.Should().BeOfType<ChallengeResult>();
+        Assert.Empty(_connector.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task Sepa_ResolvesTheWithdrawingAdminsName()
+    {
+        var admin = Guid.NewGuid();
+        var row = Transfer(Guid.NewGuid(), "f.xml", Stamp(1), admin, Ana, 40000002) with
+        {
+            WithdrawnAt = Stamp(2),
+            WithdrawnByUserId = Bo,
+        };
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));
+        NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        var transfer = page.Files.Single().Transfers.Single();
+        transfer.Row.IsWithdrawn.Should().BeTrue();
+        transfer.WithdrawnByName.Should().Be("Zoe");
+    }
+
+    [HumansFact]
+    public async Task HoldedDuplicates_RendersThePlanWithMemberNames()
+    {
+        var vm = new HoldedDuplicatesVm(
+            [new HoldedDuplicateMember(Ana, "Ana Ruiz", "c1", 41000067, [], [])], [], null);
+        _connector.GetHoldedDuplicatesAsync(Arg.Any<CancellationToken>()).Returns(vm);
+        NameThem((Ana, "Ada"));
+        var controller = MakeController();
+
+        var result = await controller.HoldedDuplicates(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
+        ((Dictionary<Guid, string>)controller.ViewBag.MemberNames)[Ana].Should().Be("Ada");
+    }
+
+    [HumansFact]
+    public async Task ApplyHoldedDuplicates_RunsAsTheActor_AndRendersTheResultView()
+    {
+        var applied = new HoldedDuplicateApplyResult([], null, null);
+        _connector.RemoveHoldedDuplicatesAsync(Ana).Returns(applied);
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.ApplyHoldedDuplicates();
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be("HoldedDuplicatesApplied");
+        view.Model.Should().BeSameAs(applied);
+    }
+
+    [HumansFact]
+    public async Task ApplyHoldedDuplicates_WithoutAnActor_ChallengesAndDeletesNothing()
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await controller.ApplyHoldedDuplicates();
+
+        result.Should().BeOfType<ChallengeResult>();
+        Assert.Empty(_connector.ReceivedCalls());
     }
 
     [HumansFact]

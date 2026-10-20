@@ -255,8 +255,8 @@ internal sealed partial class WorkgroupService
         string note,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(note))
-            return new(Refusal: new(WorkgroupErrorKeys.ReasonsRequired));
+        if (RequireReasons(note) is { } noteRefusal)
+            return new(Refusal: noteRefusal);
 
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);

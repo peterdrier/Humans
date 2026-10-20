@@ -44,10 +44,8 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var year = await GetCurrentEventYearAsync();
-        var catalog = (await GetActiveCatalogAsync(year, ct))
-            .OrderBy(p => p.Name, StringComparer.Ordinal)
-            .ToList();
+        var year = await GetCurrentEventYearAsync(ct);
+        var catalog = await GetActiveCatalogAsync(year, ct);
 
         var counterparties = new List<CounterpartyOrders>();
 
@@ -146,9 +144,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            catalog = (await GetActiveCatalogAsync(order.Year, ct))
-                .OrderBy(p => p.Name, StringComparer.Ordinal)
-                .ToList();
+            catalog = await GetActiveCatalogAsync(order.Year, ct);
         }
 
         // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from
@@ -511,7 +507,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
-        var year = await GetCurrentEventYearAsync();
+        var year = await GetCurrentEventYearAsync(ct);
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -628,6 +624,11 @@ internal sealed class Service(
         if (order.TeamId is not null)
             return RefuseMutation("Store_NonBillableText", orderId, actorUserId);
 
+        if (input.Name is { Length: > 200 } || input.VatId is { Length: > 50 }
+            || input.Address is { Length: > 500 } || input.CountryCode is { Length: > 2 }
+            || input.Email is { Length: > 320 })
+            return RefuseMutation("Store_CounterpartyTooLong", orderId, actorUserId);
+
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
         order.CounterpartyAddress = input.Address;
@@ -660,7 +661,7 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    public Task<int> GetCurrentEventYearAsync() => orderReader.GetCurrentEventYearAsync();
+    public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
 
     [ExternalWrite]
     public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
@@ -785,6 +786,13 @@ internal sealed class Service(
         if (order.TeamId is not null)
             return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
 
+        externalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim();
+        notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        if (externalRef is { Length: > 200 })
+            return RefuseAdminMutation(orderId, actorUserId, "Payment reference must be 200 characters or fewer.");
+        if (notes is { Length: > 1000 })
+            return RefuseAdminMutation(orderId, actorUserId, "Payment notes must be 1000 characters or fewer.");
+
         if (method == PaymentMethod.DepositReturn)
         {
             var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
@@ -807,8 +815,8 @@ internal sealed class Service(
             Method = method,
             MethodName = method,
             Status = PaymentStatus.Paid,
-            ExternalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim(),
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            ExternalRef = externalRef,
+            Notes = notes,
             ReceivedAt = clock.GetCurrentInstant(),
             RecordedByUserId = actorUserId,
         };

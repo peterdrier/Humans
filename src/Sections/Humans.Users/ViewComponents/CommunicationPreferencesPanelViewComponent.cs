@@ -50,7 +50,7 @@ public sealed class CommunicationPreferencesPanelViewComponent(
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
+                IsTicketingLocked = isTicketingLocked,
                 UpdateSource = pref?.UpdateSource,
                 UpdatedAt = pref?.UpdatedAt,
             });

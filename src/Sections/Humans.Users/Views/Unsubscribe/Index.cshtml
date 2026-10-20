@@ -1,20 +1,20 @@
 @{
-    ViewData["Title"] = Localizer["Unsub_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Unsubscribe_Title"].Value;
     var displayName = ViewData["DisplayName"] as string;
     var categoryName = Localizer["CommPrefs_Name_Marketing"].Value;
 }
 
-<h1>@Html.Raw(string.Format(Localizer["Unsub_Heading"].Value, Html.Encode(categoryName)))</h1>
+<h1>@Html.Raw(string.Format(Localizer["Users_Unsubscribe_Heading"].Value, Html.Encode(categoryName)))</h1>
 
 @if (!string.IsNullOrEmpty(displayName))
 {
-    <p>@Html.Raw(string.Format(Localizer["Unsub_Greeting"].Value, "<strong>" + Html.Encode(displayName) + "</strong>"))</p>
+    <p>@Html.Raw(string.Format(Localizer["Users_Unsubscribe_Greeting"].Value, "<strong>" + Html.Encode(displayName) + "</strong>"))</p>
 }
 
-<p>@Html.Raw(string.Format(Localizer["Unsub_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>
+<p>@Html.Raw(string.Format(Localizer["Users_Unsubscribe_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>
 
 <form method="post">
     @Html.AntiForgeryToken()
-    <button type="submit" class="btn btn-danger">@Localizer["Unsub_ConfirmButton"]</button>
+    <button type="submit" class="btn btn-danger">@Localizer["Users_Unsubscribe_ConfirmButton"]</button>
     <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">@SharedLocalizer["Common_Cancel"]</a>
 </form>

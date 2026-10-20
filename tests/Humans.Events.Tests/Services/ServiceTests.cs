@@ -193,6 +193,46 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("categories")]
+    [Xunit.InlineData("create-category")]
+    [Xunit.InlineData("edit-category")]
+    [Xunit.InlineData("venues")]
+    [Xunit.InlineData("create-venue")]
+    [Xunit.InlineData("edit-venue")]
+    public async Task AdminReads_AbortWhenTheRequestIsCancelled(string page)
+    {
+        var guide = Substitute.For<IEventManagement>();
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        guide.GetAllCategoriesAsync(Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return Array.Empty<EventCategoryManageInfo>(); });
+        guide.GetNextCategoryOrderAsync(Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return 0; });
+        guide.GetCategoryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return (EventCategoryView?)null; });
+        guide.GetAllVenuesAsync(Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return Array.Empty<EventVenueManageInfo>(); });
+        guide.GetNextVenueOrderAsync(Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return 0; });
+        guide.GetVenueAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return (EventVenueView?)null; });
+        var controller = new EventsAdminController(guide, NullLogger<EventsAdminController>.Instance,
+            Substitute.For<IUserService>());
+        Func<Task<IActionResult>> read = page switch
+        {
+            "categories" => () => controller.Categories(request.Token),
+            "create-category" => () => controller.CreateCategory(request.Token),
+            "edit-category" => () => controller.EditCategory(Guid.NewGuid(), request.Token),
+            "venues" => () => controller.Venues(request.Token),
+            "create-venue" => () => controller.CreateVenue(request.Token),
+            "edit-venue" => () => controller.EditVenue(Guid.NewGuid(), request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(page))
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task GuideSettingsForm_DistinguishesMissingEditionFromDependencyFailure(bool dependencyFailure)

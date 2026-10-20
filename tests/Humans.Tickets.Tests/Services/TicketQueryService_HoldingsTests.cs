@@ -252,9 +252,9 @@ public sealed class TicketQueryService_HoldingsTests
         // No matched attendee rows, so the count falls back to attendee emails against the
         // verified-email index. It must be the sync matcher's (googlemail ↔ gmail, case), not
         // a plain case-fold, or the count disagrees with what sync would match.
-        _ticketRepo.CountValidAttendeesMatchedToUserAsync(UserA).Returns(0);
-        _users.GetAllUserInfosAsync().Returns([UserWithVerifiedEmail(UserA, "Ada@GoogleMail.com")]);
-        _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com", "other@example.com"]);
+        _ticketRepo.CountValidAttendeesMatchedToUserAsync(UserA, Arg.Any<CancellationToken>()).Returns(0);
+        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([UserWithVerifiedEmail(UserA, "Ada@GoogleMail.com")]);
+        _ticketRepo.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["ada@gmail.com", "other@example.com"]);
 
         var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
@@ -266,12 +266,12 @@ public sealed class TicketQueryService_HoldingsTests
     {
         // The sync leaves such an attendee unmatched; the fallback must not hand the ticket
         // to both users instead.
-        _ticketRepo.CountValidAttendeesMatchedToUserAsync(Arg.Any<Guid>()).Returns(0);
-        _users.GetAllUserInfosAsync().Returns([
+        _ticketRepo.CountValidAttendeesMatchedToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
+        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([
             UserWithVerifiedEmail(UserA, "ada@gmail.com"),
             UserWithVerifiedEmail(UserB, "ada@googlemail.com"),
         ]);
-        _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com"]);
+        _ticketRepo.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["ada@gmail.com"]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await Service.GetUserTicketHoldingsAsync(UserA, ct)).TicketCount.Should().Be(0);

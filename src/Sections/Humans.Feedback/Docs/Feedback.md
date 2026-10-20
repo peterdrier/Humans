@@ -120,6 +120,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Status updates reject undefined enum values before persistence or audit.
+- Browser triage requires an explicitly posted status. Omission shows the existing invalid-status error without reopening the report or clearing resolution metadata; explicit Open remains valid.
 - Every feedback report is linked to the human who submitted it.
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.

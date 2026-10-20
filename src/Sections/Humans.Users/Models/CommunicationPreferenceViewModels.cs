@@ -58,9 +58,9 @@ internal sealed class CategoryPreferenceItem
     public bool AlertEditable { get; set; }
 
     /// <summary>
-    /// Optional note shown below the category (e.g., "Locked — you have a ticket order for 2026").
+    /// Whether matched ticket ownership locks this category's preferences.
     /// </summary>
-    public string? Note { get; set; }
+    public bool IsTicketingLocked { get; set; }
 
     /// <summary>
     /// Who/what last changed this preference (e.g. "Profile", "MailerLiteSync", "MagicLink").

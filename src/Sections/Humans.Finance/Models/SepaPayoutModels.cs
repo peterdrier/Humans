@@ -59,7 +59,8 @@ internal sealed record SepaBankMovementVm(
     string Reason);
 
 /// <summary>One transfer on <c>/Finance/Sepa</c>, with the two user ids on it resolved to names.</summary>
-internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName, string? BookedByName);
+internal sealed record SepaTransferVm(
+    SepaPayoutTransferRow Row, string MemberName, string? BookedByName, string? WithdrawnByName = null);
 
 /// <summary>One generated file and its transfers, as the screen groups them.</summary>
 /// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
@@ -113,4 +114,5 @@ internal sealed record SepaPayoutExportRow(
     decimal Amount,
     Instant? BookedAt,
     string? HoldedBankMovementId,
-    Instant? ReconciledAt);
+    Instant? ReconciledAt,
+    Instant? WithdrawnAt = null);

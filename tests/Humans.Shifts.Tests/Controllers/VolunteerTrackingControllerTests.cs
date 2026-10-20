@@ -89,7 +89,7 @@ public class VolunteerTrackingControllerTests
 
         var ctrl = new VolunteerTrackingController(
             _service, _shiftMgmt, _burnSettings, _exportService, _xlsxBuilder,
-            _userService, _auditLog, _localizer);
+            _userService, _auditLog, _localizer, NullLogger<VolunteerTrackingController>.Instance);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -616,6 +616,82 @@ public class VolunteerTrackingControllerTests
         attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
 
+    [HumansTheory]
+    [InlineData(true, "user")]
+    [InlineData(true, "empty-user")]
+    [InlineData(false, "day")]
+    public async Task AvailabilityDay_RequiresMemberAndDay(bool adding, string missing)
+    {
+        Guid? target = string.Equals(missing, "user", StringComparison.Ordinal) ? null
+            : string.Equals(missing, "empty-user", StringComparison.Ordinal) ? Guid.Empty : Guid.NewGuid();
+        int? dayOffset = string.Equals(missing, "day", StringComparison.Ordinal) ? null : -2;
+        var esId = Guid.NewGuid();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(esId));
+        _service.SetDayAvailabilityAsync(target.GetValueOrDefault(), esId, dayOffset.GetValueOrDefault(), adding,
+                Arg.Any<CancellationToken>()).Returns(true);
+        var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
+
+        var result = adding
+            ? await ctrl.SetAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken)
+            : await ctrl.ClearAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+        await _service.DidNotReceive().SetDayAvailabilityAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TrackingForms_EmptyMember_DoesNotCreateTrackingRows(bool campSetup)
+    {
+        var actor = new User { Id = Guid.NewGuid() };
+        var ctrl = BuildSut(actor);
+        _service.SetCampSetupAsync(Guid.Empty, new LocalDate(2026, 7, 7), null, actor.Id, Arg.Any<CancellationToken>())
+            .Returns(new SetCampSetupResult(true, null, []));
+        _service.SetDayOffAsync(Guid.Empty, -2, null, actor.Id, Arg.Any<CancellationToken>())
+            .Returns(new SetDayOffResult(true, null));
+
+        var result = campSetup
+            ? await ctrl.SetCampSetup(new SetCampSetupForm { Date = "2026-07-07" }, null, TestContext.Current.CancellationToken)
+            : await ctrl.SetDayOff(new SetDayOffForm { DayOffset = -2 }, null, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+        await _service.DidNotReceive().SetCampSetupAsync(
+            Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _service.DidNotReceive().SetDayOffAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task AvailabilityDay_MalformedBinding_DoesNotMutate(bool adding, bool hasActor)
+    {
+        var target = adding ? Guid.Empty : Guid.NewGuid();
+        var dayOffset = adding ? -2 : 0;
+        var esId = Guid.NewGuid();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(esId));
+        _service.SetDayAvailabilityAsync(target, esId, dayOffset, adding, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var ctrl = BuildSut(hasActor ? new User { Id = Guid.NewGuid() } : null);
+        ctrl.ModelState.AddModelError(adding ? "userId" : "dayOffset", "Malformed value");
+
+        var result = adding
+            ? await ctrl.SetAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken)
+            : await ctrl.ClearAvailabilityDay(target, dayOffset, null, TestContext.Current.CancellationToken);
+
+        if (hasActor) result.Should().BeOfType<BadRequestResult>();
+        else result.Should().BeOfType<ForbidResult>();
+        await _service.DidNotReceive().SetDayAvailabilityAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task SetAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects()
     {
@@ -663,8 +739,10 @@ public class VolunteerTrackingControllerTests
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects()
+    [HumansTheory]
+    [InlineData(-3)]
+    [InlineData(0)]
+    public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects(int dayOffset)
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -672,14 +750,14 @@ public class VolunteerTrackingControllerTests
         var es = MakeBurn(esId);
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         _service
-            .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
+            .SetDayAvailabilityAsync(target, esId, dayOffset, false, Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, TestContext.Current.CancellationToken);
+        var result = await ctrl.ClearAvailabilityDay(target, dayOffset, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.Received(1)
-            .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>());
+            .SetDayAvailabilityAsync(target, esId, dayOffset, false, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerAvailabilityCleared,
             Arg.Any<string>(), target,

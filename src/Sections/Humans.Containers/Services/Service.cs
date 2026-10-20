@@ -75,7 +75,16 @@ internal sealed class Service(
         };
 
         var images = await SaveImagesAsync(id, uploads, firstSortOrder: 0, now, ct);
-        var created = await repo.AddAsync(container, images, ct);
+        Container created;
+        try
+        {
+            created = await repo.AddAsync(container, images, ct);
+        }
+        catch
+        {
+            await DeleteUnlinkedGalleryImagesAsync(id, images);
+            throw;
+        }
 
         await auditLog.LogAsync(
             AuditAction.ContainerCreated, AuditEntityTypes.Container, created.Id,
@@ -124,7 +133,16 @@ internal sealed class Service(
         var nextSortOrder = existing.Except(removed).Select(i => i.SortOrder + 1).DefaultIfEmpty(0).Max();
         var images = await SaveImagesAsync(id, uploads, nextSortOrder, now, ct);
 
-        var updated = await repo.UpdateAsync(container, images, removed.Select(i => i.Id).ToList(), ct);
+        Container updated;
+        try
+        {
+            updated = await repo.UpdateAsync(container, images, removed.Select(i => i.Id).ToList(), ct);
+        }
+        catch
+        {
+            await DeleteUnlinkedGalleryImagesAsync(id, images);
+            throw;
+        }
         await auditLog.LogAsync(
             AuditAction.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
             $"Updated container '{updated.Name}'",
@@ -171,6 +189,23 @@ internal sealed class Service(
                 logger.LogError(ex, "Failed to delete image file {StoragePath} of container {ContainerId} after {Reason}, year {Year}",
                     path, containerId, reason, year);
             }
+        }
+    }
+
+    private async Task DeleteUnlinkedGalleryImagesAsync(Guid containerId, IReadOnlyCollection<ContainerImage> images)
+    {
+        if (images.Count == 0) return;
+        try
+        {
+            // A failed acknowledgement may follow a committed save. Confirm references first.
+            var linked = (await repo.GetImagesAsync([containerId], CancellationToken.None))
+                .Select(image => image.StoragePath).ToHashSet(StringComparer.Ordinal);
+            await DeleteFilesAsync(images.Where(image => !linked.Contains(image.StoragePath))
+                .Select(image => image.StoragePath), containerId, "a failed metadata write");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not verify image references for container {ContainerId}; retaining staged files", containerId);
         }
     }
 
@@ -279,6 +314,7 @@ internal sealed class Service(
         placement.PlacementNotes = string.IsNullOrWhiteSpace(notes) ? null : notes;
 
         var previousImagePath = placement.PlacementImageStoragePath;
+        string? newImagePath = null;
         if (removeImage && previousImagePath is not null)
         {
             placement.PlacementImageStoragePath = null;
@@ -287,13 +323,36 @@ internal sealed class Service(
         }
         else if (image is not null)
         {
-            placement.PlacementImageStoragePath = await SaveImageAsync(containerId, image, ct);
+            newImagePath = await SaveImageAsync(containerId, image, ct);
+            placement.PlacementImageStoragePath = newImagePath;
             placement.PlacementImageContentType = image.ContentType;
             placement.PlacementImageFileName = DisplayFileName(image.FileName);
         }
 
         placement.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpsertPlacementAsync(placement, ct);
+        try
+        {
+            await repo.UpsertPlacementAsync(placement, ct);
+        }
+        catch
+        {
+            if (newImagePath is not null)
+            {
+                try
+                {
+                    var linked = await repo.GetPlacementAsync(containerId, year, CancellationToken.None);
+                    if (!string.Equals(linked?.PlacementImageStoragePath, newImagePath, StringComparison.Ordinal))
+                        await DeleteFilesAsync([newImagePath], containerId, "a failed metadata write", year);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Could not verify placement image reference for container {ContainerId}, year {Year}; retaining staged file",
+                        containerId, year);
+                }
+            }
+            throw;
+        }
 
         await auditLog.LogAsync(
             AuditAction.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,

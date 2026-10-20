@@ -74,6 +74,12 @@ internal sealed class ApplicationDecisionService(
         if (voterIds.Count == 0)
             return new ApplicationDecisionResult(false, "NoVotes");
 
+        if (notes?.Length > 4000)
+        {
+            logger.LogWarning("Rejected overlong decision note for application {ApplicationId}", applicationId);
+            return new ApplicationDecisionResult(false, "DecisionNoteTooLong");
+        }
+
         application.Approve(reviewerUserId, notes, clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = notes;
@@ -134,6 +140,12 @@ internal sealed class ApplicationDecisionService(
         // No votes ⇒ no finalize (same guard as ApproveAsync).
         if (voterIds.Count == 0)
             return new ApplicationDecisionResult(false, "NoVotes");
+
+        if (reason.Length > 4000)
+        {
+            logger.LogWarning("Rejected overlong decision note for application {ApplicationId}", applicationId);
+            return new ApplicationDecisionResult(false, "DecisionNoteTooLong");
+        }
 
         application.Reject(reviewerUserId, reason, clock);
         application.BoardMeetingDate = boardMeetingDate;
@@ -558,6 +570,12 @@ internal sealed class ApplicationDecisionService(
 
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
+
+        if (note?.Length > 4000)
+        {
+            logger.LogWarning("Rejected overlong board vote note for application {ApplicationId}", applicationId);
+            return new ApplicationDecisionResult(false, "NoteTooLong");
+        }
 
         var now = clock.GetCurrentInstant();
         await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);

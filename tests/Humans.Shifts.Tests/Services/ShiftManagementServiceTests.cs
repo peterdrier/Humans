@@ -507,6 +507,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData("coordinators")]
     [Xunit.InlineData("browse")]
     [Xunit.InlineData("departments")]
+    [Xunit.InlineData("admin-rotas")]
+    [Xunit.InlineData("admin-staffing")]
+    [Xunit.InlineData("tags")]
+    [Xunit.InlineData("profile")]
+    [Xunit.InlineData("rota")]
+    [Xunit.InlineData("shift")]
     public async Task BrowseReads_CanceledToken_ReachesColdSource(string boundary)
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
@@ -521,6 +527,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         {
             "coordinators" => () => _service.GetCoordinatorTeamIdsAsync(Guid.NewGuid(), aborted.Token),
             "browse" => () => _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id), aborted.Token),
+            "admin-rotas" => () => _service.GetRotasByDepartmentAsync(rota.TeamId, es.Id, aborted.Token),
+            "admin-staffing" => () => _service.GetStaffingSnapshotAsync(es.Id, ct: aborted.Token),
+            "tags" => () => _service.GetTagsAsync(ct: aborted.Token),
+            "profile" => () => _service.GetShiftProfileAsync(Guid.NewGuid(), aborted.Token),
+            "rota" => () => _service.GetRotaByIdAsync(rota.Id, aborted.Token),
+            "shift" => () => _service.GetShiftByIdAsync(Guid.NewGuid(), aborted.Token),
             _ => () => _service.GetDepartmentsWithRotasAsync(es.Id, aborted.Token)
         };
 
@@ -876,6 +888,19 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task SearchAsync_GuidQuery_ObservesCallerCancellation()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+
+        Func<Task> action = () => _service.SearchAsync(rota.Id.ToString(), int.MaxValue, request.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task SearchAsync_TextQuery_ReturnsNothing_WhenNoEventIsActive()
     {
         var results = await _service.SearchAsync(
@@ -957,6 +982,35 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     // ============================================================
     // IsDeptCoordinatorAsync — sub-team manager support
     // ============================================================
+
+    [HumansTheory]
+    [Xunit.InlineData("coordinated-teams")]
+    [Xunit.InlineData("team")]
+    public async Task IsDeptCoordinatorAsync_Reads_HonourCallerCancellation(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        var userId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (string.Equals(boundary, "coordinated-teams", StringComparison.Ordinal))
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<Guid>>([]);
+            });
+        _teamService.GetTeamAsync(departmentId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (string.Equals(boundary, "team", StringComparison.Ordinal))
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<TeamInfo?>(null);
+            });
+
+        var read = () => _service.IsDeptCoordinatorAsync(userId, departmentId, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()

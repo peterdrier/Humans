@@ -165,7 +165,7 @@ public class AgentControllerTests
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
 
-        var controller = new AgentController(agent, auth, settings, users, users)
+        var controller = new AgentController(agent, auth, settings, users)
         {
             ControllerContext = new ControllerContext
             {

@@ -88,13 +88,20 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CanApproveSignups_IsRefused_ForANonCoordinatorWithoutASystemWideRole()
+    public async Task CanApproveSignups_WithoutRoleOrCoordinator_PreservesReadCancellation()
     {
+        using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
         _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        (await _service.CanApproveSignupsAsync(userId, Guid.NewGuid())).Should().BeFalse();
+        (await _service.CanApproveSignupsAsync(userId, departmentId, cancellation.Token)).Should().BeFalse();
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.Admin, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator, cancellation.Token);
+        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, cancellation.Token);
+        await _teamService.Received(1).GetTeamAsync(departmentId, cancellation.Token);
     }
 
     [HumansFact]
@@ -555,6 +562,38 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         result.Succeeded.Should().BeTrue();
         (await ShiftsDb.Shifts.AsNoTracking().SingleAsync(Ct)).DayOffset.Should().Be(dayOffset);
+    }
+
+    [HumansTheory]
+    [InlineData(-15, false)]
+    [InlineData(10, false)]
+    [InlineData(-14, true)]
+    [InlineData(0, true)]
+    [InlineData(9, true)]
+    public async Task All_period_staffing_respects_the_complete_event_window(int dayOffset, bool valid)
+    {
+        var (_, rota, _) = SeedRotaScenario(RotaPeriod.All);
+        await SaveAllAsync(Ct);
+        var days = valid
+            ? new List<DayStaffingInput> { new(dayOffset, 1, 2) }
+            : new List<DayStaffingInput> { new(0, 1, 2), new(dayOffset, 1, 2) };
+        var input = new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, days);
+
+        if (valid)
+        {
+            var result = await _service.CreateBuildStrikeShiftsAsync(input);
+            result.Succeeded.Should().BeTrue();
+            var saved = await ShiftsDb.Shifts.AsNoTracking().SingleAsync(Ct);
+            saved.DayOffset.Should().Be(dayOffset);
+            saved.IsAllDay.Should().BeTrue();
+        }
+        else
+        {
+            var error = await Record.ExceptionAsync(() => _service.CreateBuildStrikeShiftsAsync(input));
+            ShiftsDb.Shifts.Should().BeEmpty();
+            error.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("outside the all period");
+            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansFact]

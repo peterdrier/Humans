@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Feedback.Domain;
 using Humans.Base.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Feedback.Models;
 
@@ -80,6 +81,7 @@ internal sealed class FeedbackMessageViewModel
 internal sealed class UpdateFeedbackStatusModel
 {
     [Required]
+    [BindRequired]
     public FeedbackStatus Status { get; set; }
 }
 

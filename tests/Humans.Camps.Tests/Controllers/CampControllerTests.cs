@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Reflection;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
@@ -11,12 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
@@ -37,6 +40,102 @@ public class CampControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+
+    [HumansTheory]
+    [InlineData(false, "AcceptingMembers")]
+    [InlineData(false, "KidsWelcome")]
+    [InlineData(false, "KidsVisiting")]
+    [InlineData(false, "HasPerformanceSpace")]
+    [InlineData(false, "AdultPlayspace")]
+    [InlineData(false, "SpaceRequirement")]
+    [InlineData(false, "SoundZone")]
+    [InlineData(false, "ElectricalGrid")]
+    [InlineData(false, "")]
+    [InlineData(true, "AcceptingMembers")]
+    [InlineData(true, "KidsWelcome")]
+    [InlineData(true, "KidsVisiting")]
+    [InlineData(true, "HasPerformanceSpace")]
+    [InlineData(true, "AdultPlayspace")]
+    [InlineData(true, "SpaceRequirement")]
+    [InlineData(true, "SoundZone")]
+    [InlineData(true, "ElectricalGrid")]
+    [InlineData(true, "")]
+    public async Task Camp_forms_require_posted_choices_and_preserve_explicit_zero_or_blank(bool edit, string omitted)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), userId).Returns(CampUpdateResult.Success());
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, 0, default)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(new Camp { Id = camp.Id, Slug = camp.Slug }));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Alpha Camp",
+            ["ContactEmail"] = "alpha@example.com",
+            ["ContactPhone"] = "+34600000000",
+            ["BlurbLong"] = "Long description",
+            ["BlurbShort"] = "Short description",
+            ["Languages"] = "en",
+            ["SeasonId"] = camp.Seasons[0].Id.ToString(),
+            ["MemberCount"] = "1",
+            ["AcceptingMembers"] = "0",
+            ["KidsWelcome"] = "0",
+            ["KidsVisiting"] = "0",
+            ["HasPerformanceSpace"] = "0",
+            ["AdultPlayspace"] = "0",
+            ["SpaceRequirement"] = "",
+            ["SoundZone"] = "",
+            ["ElectricalGrid"] = ""
+        };
+        if (omitted.Length > 0) fields.Remove(omitted);
+        var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = type
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CampRegisterViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
+        var writes = _camps.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "CreateCampAsync" or "UpdateCampAsync").ToList();
+        if (omitted.Length > 0)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            writes.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.ModelState.IsValid.Should().BeTrue();
+            var arguments = writes.Should().ContainSingle().Which.GetArguments();
+            var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
+            data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
+            data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
+            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
+            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
+            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.SpaceRequirement.Should().BeNull();
+            data.SoundZone.Should().BeNull();
+            data.ElectricalGrid.Should().BeNull();
+        }
+    }
 
     [HumansTheory]
     [InlineData("Edit")]
@@ -133,7 +232,8 @@ public class CampControllerTests
     [InlineData(nameof(CampController.Members), "Camp")]
     [InlineData(nameof(CampController.Members), "Viewer")]
     [InlineData(nameof(CampController.Members), "EditData")]
-    public async Task ManagementReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
+    [InlineData(nameof(CampController.Contact), "Camp")]
+    public async Task CampReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
         var abandon = false;
@@ -165,9 +265,13 @@ public class CampControllerTests
             .Returns(new CampRolesPanelData(season.Id, []));
         var controller = BuildController(userId);
         controller.HttpContext.RequestAborted = request.Token;
-        Func<Task<IActionResult>> load = string.Equals(route, nameof(CampController.Edit), StringComparison.Ordinal)
-            ? () => controller.Edit(camp.Slug, null, request.Token)
-            : () => controller.Members(camp.Slug, null, request.Token);
+        Func<Task<IActionResult>> load = route switch
+        {
+            nameof(CampController.Edit) => () => controller.Edit(camp.Slug, null, request.Token),
+            nameof(CampController.Members) => () => controller.Members(camp.Slug, null, request.Token),
+            nameof(CampController.Contact) => () => controller.Contact(camp.Slug),
+            _ => throw new ArgumentOutOfRangeException(nameof(route)),
+        };
 
         (await load()).Should().BeOfType<ViewResult>();
         abandon = true;
@@ -342,7 +446,7 @@ public class CampControllerTests
         var result = await controller.Register(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-        var label = campsLocalizer["Camp_ContactPhoneLabel"];
+        var label = campsLocalizer["Camps_ContactPhoneLabel"];
         label.ResourceNotFound.Should().BeFalse();
         var expected = sharedLocalizer["Validation_PhoneE164", label.Value];
         expected.ResourceNotFound.Should().BeFalse();
@@ -676,9 +780,94 @@ public class CampControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
+    [InlineData(null, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(null, false, false)]
+    [InlineData(false, true, false)]
+    public async Task EarlyEntry_MissingOrMalformedDecision_DoesNotWrite(bool? granted, bool malformed, bool canManage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(canManage ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.SetEarlyEntryAsync(camp.Id, Arg.Any<Guid>(), Arg.Any<bool>(), actorId, ct)
+            .Returns(SetEarlyEntryOutcome.Success);
+        var controller = BuildController(actorId);
+        if (malformed)
+            controller.ModelState.AddModelError("granted", "Not a Boolean");
+
+        var result = await controller.SetMemberEarlyEntry(camp.Slug, Guid.NewGuid(), granted, ct);
+
+        if (canManage)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        await _camps.DidNotReceiveWithAnyArgs().SetEarlyEntryAsync(default, default, default, default, default);
+    }
+
+    [HumansTheory]
     [InlineData(true)]
-    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole)
+    [InlineData(false)]
+    public async Task EarlyEntry_ExplicitDecision_IsPreserved(bool granted)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.SetEarlyEntryAsync(camp.Id, memberId, granted, actorId, ct).Returns(SetEarlyEntryOutcome.Success);
+
+        var result = await BuildController(actorId).SetMemberEarlyEntry(camp.Slug, memberId, granted, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _camps.Received(1).SetEarlyEntryAsync(camp.Id, memberId, granted, actorId, ct);
+    }
+
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task MemberShortcuts_MalformedYear_DoesNotWrite(bool assignRole, bool canManage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Full, year: 2029);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(canManage ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(actorId);
+        controller.ModelState.AddModelError("year", "Not a year");
+        var userId = Guid.NewGuid();
+
+        var result = assignRole
+            ? await controller.AssignRoleByUser(camp.Slug, Guid.NewGuid(), userId, ct, year: null)
+            : await controller.AddMember(camp.Slug, userId, ct, year: null);
+
+        if (canManage)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<ForbidResult>();
+        await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData(false, 2029)]
+    [InlineData(true, 2029)]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole, int? year)
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -693,14 +882,14 @@ public class CampControllerTests
         var controller = BuildController(actorId);
 
         var result = assignRole
-            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, 2029)
-            : await controller.AddMember(camp.Slug, userId, ct, 2029);
+            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, year)
+            : await controller.AddMember(camp.Slug, userId, ct, year);
 
-        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(2029);
+        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(year);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, 2029);
+            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, year);
         else
-            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, 2029);
+            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, year);
     }
 
     [HumansTheory]

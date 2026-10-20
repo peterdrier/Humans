@@ -82,7 +82,7 @@ Individual Board member's vote on a tier application. **Transient working data**
 | VotedAt | Instant | When the vote was first cast |
 | UpdatedAt | Instant? | When the vote was last updated |
 
-**Constraint:** Unique `(ApplicationId, BoardMemberUserId)` — one vote per Board member per application.
+**Constraint:** Unique `(ApplicationId, BoardMemberUserId)` — one vote per Board member per application. Notes over 4,000 characters are refused before saving, preserving any existing vote; the form shows a localized refusal and enforces the same limit.
 
 ### ApplicationStatus
 
@@ -252,6 +252,9 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
+  memberships or consent requirements. Snapshot memoization uses that same resolved identity.
+
 Approval and rejection share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
@@ -270,14 +273,14 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - Board-voting rows carry voter IDs; the pages render voter identities through the Human component. Detail reads do not perform an unused bulk voter-name lookup.
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
-- On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive.
+- On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive. Decision notes over 4,000 characters are refused before changing the application, deleting votes, or triggering decision side effects. The form enforces the same limit and shows a localized refusal.
 - Decision emails are best-effort after finalization: recipient lookup, address resolution, message preparation and enqueue failures are logged without turning the committed decision into failure or skipping the in-app notice. Caller cancellation still propagates; audit, tier update and system-team sync remain outside this email boundary.
 - Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - **Assembly votes — the roster** is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
 - **A Draft is invisible to members.** `GetVotesForMemberAsync` omits it and `GetVoteForMemberAsync` answers null for it, so knowing a draft's id is not a way to read its official text before the Board opens it.
-- Assembly-vote draft Create/Edit reject binding errors before mapping or saving, and display field errors. A malformed kind cannot become the valid YesNo default or delete a ranked draft's options; rejected forms write no audit entry.
+- Assembly-vote draft Create/Edit require explicit kind, majority, indicative audience, ballot disclosure and binding-culture choices. Missing fields or binding errors display field errors before mapping or saving; they cannot lower a majority, switch the binding text or delete ranked options through defaults. Explicit zero-valued choices remain valid; rejected forms write no audit entry.
 - **A ranked draft is publishable only when every option carries a label in the vote's official culture** — a keyed-but-unlabelled option would open as a blank line on a binding ballot.
 - **Only roster rows with `IsOfficial = true`** contribute to the official result. Indicative ballots are tallied separately and never merged.
 - **A ballot** can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision`, preserve `CastAt`, and append a history row. Nothing is ever deleted.
@@ -329,7 +332,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - Assembly opening, reminder and cancellation emails use the recipient's supported saved language, falling back to English for blank, invalid or unsupported preferences. Titles still fall back to the vote's official culture when that language has no translation.
 - **Assembly vote opened:** the roster is snapshotted; each roster member is emailed in their preferred language (`GovernanceEmails.AssemblyVoteOpened`, `MessageCategory.System`, per-recipient try/catch) and stamped `NotifiedAt`; one in-app notification goes out via `INotificationEmitter.SendAsync` with `sourceKey` = the vote id; audit `AssemblyVoteOpened` carries the official and indicative roster counts. The complete official title is passed to Notifications, which owns storage previews and retains overlong legacy titles in the notice body; email subjects keep their separate bound.
 - **Ballot cast or changed:** a history row is appended and audit `AssemblyBallotCast` / `AssemblyBallotChanged` is written naming the voter and the vote but **not** the choice. The audit entity is the **vote**, never the ballot row: an audit entry keeps its actor for good, so naming the ballot id would leave a permanent join from an erased person to their recorded choice. After recording, only the voter’s `AssemblyVoteOpened` notification for this vote is resolved; other voters and open votes are untouched, and a resolve failure is logged without failing the saved ballot.
-- **Stop / Extend / Cancel:** audited with before/after values or the required reason. Cancel emails the roster (`GovernanceEmails.AssemblyVoteCancelled`) and computes no result.
+- **Stop / Extend / Cancel:** audited with before/after values or the required reason. Cancellation audit entries preserve the complete accepted reason, including a 4000-character reason plus the vote-id prefix. Cancel emails the roster (`GovernanceEmails.AssemblyVoteCancelled`) and computes no result.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result once, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, and audits `AssemblyVoteClosed` / `AssemblyVoteStopped` — under the job actor (the `jobName` overload of `IAuditLogService.LogAsync`) when the hourly `governance-assembly-vote-lapse` job did it. Any earlier request that observes the deadline passed closes inline before serving.
 - **Peek:** an `assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
 - **Ballots list after close:** audit `AssemblyBallotsViewed` on every call.
@@ -368,7 +371,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 `ApplicationDecisionService` implements the internal `IGovernanceManagement` (`IGovernanceService` + `IGovernanceWrite` + the renewal-reminder members `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync` and the admin reads `GetAdminStatsAsync`, `GetPendingApplicationCountAsync`); DI registers each face to the same instance. Approve, reject, withdraw and board voting stay on the concrete service, injected by the section's own controllers.
 
 - **Architecture tests:** this section has no architecture test project of its own; the solution-wide rules in `tests/Humans.Web.Tests/Architecture/` cover it, including `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.
-- `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` and `MembershipQuery` hold no cache.
+- `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` memoizes snapshots within one request; `MembershipQuery` holds no cache.
 - `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IMembershipQuery` (a thin pass-through over `ITeamService` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserService`, `ILegalDocumentSyncService`, and `IConsentService` (resolved lazily via `IServiceProvider` to break a second cycle).
 - `IApplicationRepository` (impl `src/Sections/Humans.Governance/Data/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.

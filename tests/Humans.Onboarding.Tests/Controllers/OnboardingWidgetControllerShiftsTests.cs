@@ -1,3 +1,8 @@
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using System.Globalization;
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
@@ -53,7 +58,7 @@ public class OnboardingWidgetControllerShiftsTests
         _http.Session = new TestSession();
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -165,6 +170,58 @@ public class OnboardingWidgetControllerShiftsTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
         Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
+    }
+
+    [HumansTheory]
+    [InlineData("startDayOffset", false)]
+    [InlineData("endDayOffset", false)]
+    [InlineData("startDayOffset", true)]
+    [InlineData("endDayOffset", true)]
+    [InlineData(null, false)]
+    public async Task SignUpRange_InvalidOrMissingOffset_DoesNotEnroll(string? field, bool missingOffset)
+    {
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        _signups.SignUpRangeAsync(userId, rotaId, 0, 0)
+            .Returns(SignupResult.Ok(Guid.NewGuid()));
+        var ctrl = BuildSut(userId);
+        if (field is not null && !missingOffset) ctrl.ModelState.AddModelError(field, "Not a number");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingOffset)
+        {
+            ctrl.HttpContext.RequestServices = services;
+            var parameter = typeof(OnboardingWidgetController).GetMethod(nameof(OnboardingWidgetController.SignUpRange))!
+                .GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(ctrl.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
+
+        var result = await ctrl.SignUpRange(rotaId, 0, 0);
+        if (field is not null)
+        {
+            Assert.IsType<BadRequestObjectResult>(result);
+            await _signups.DidNotReceiveWithAnyArgs().SignUpRangeAsync(default, default, default, default);
+        }
+        else
+        {
+            Assert.IsType<RedirectToActionResult>(result);
+            await _signups.Received(1).SignUpRangeAsync(userId, rotaId, 0, 0);
+        }
     }
 
     [HumansFact]

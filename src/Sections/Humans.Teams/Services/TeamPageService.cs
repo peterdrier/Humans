@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
@@ -12,15 +13,97 @@ internal sealed class TeamPageService(
     ITeamResourceService teamResourceService,
     IShiftManagementService shiftManagementService,
     ISettingsService settingsService,
-    IUserService userService) : ITeamPageService
+    IUserService userService,
+    IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
+    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+        return await TeamDirectoryBuilder.BuildAsync(teamsById, roleAssignmentService, userId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
+        string? priority,
+        string? status,
+        string? period,
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await teamService.GetTeamsAsync(cancellationToken);
+        var definitions = teams.Values
+            .Where(team => team.IsActive && team.SystemTeamType == SystemTeamType.None)
+            .SelectMany(team => team.RoleDefinitions ?? [])
+            .ToList();
+        var assignedUserIds = definitions
+            .SelectMany(d => d.Assignments)
+            .Select(a => a.AssignedUserId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var usersById = assignedUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await userService.GetUserInfosAsync(assignedUserIds, cancellationToken);
+
+        var slots = new List<TeamRosterSlotSummary>();
+        foreach (var definition in definitions)
+        {
+            for (var slotIndex = 0; slotIndex < definition.SlotCount; slotIndex++)
+            {
+                var assignment = definition.Assignments.FirstOrDefault(a => a.SlotIndex == slotIndex);
+                var slotPriority = slotIndex < definition.Priorities.Count
+                    ? definition.Priorities[slotIndex]
+                    : SlotPriority.None;
+
+                slots.Add(new TeamRosterSlotSummary(
+                    definition.TeamName,
+                    definition.TeamSlug,
+                    definition.Name,
+                    definition.Description,
+                    definition.Id,
+                    slotIndex + 1,
+                    slotPriority.ToString(),
+                    slotPriority switch
+                    {
+                        SlotPriority.Critical => "bg-danger",
+                        SlotPriority.Important => "bg-warning text-dark",
+                        SlotPriority.NiceToHave => "bg-secondary",
+                        _ => "bg-light text-dark"
+                    },
+                    definition.Period.ToString(),
+                    assignment is not null,
+                    assignment?.AssignedUserId,
+                    assignment?.AssignedUserId is Guid assignedUserId
+                        ? usersById.GetValueOrDefault(assignedUserId)?.BurnerName
+                        : null,
+                    definition.IsPublic));
+            }
+        }
+
+        IEnumerable<TeamRosterSlotSummary> filtered = slots;
+
+        if (!string.IsNullOrEmpty(priority))
+            filtered = filtered.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase));
+
+        if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
+            filtered = filtered.Where(s => !s.IsFilled);
+        else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
+            filtered = filtered.Where(s => s.IsFilled);
+
+        if (!string.IsNullOrEmpty(period))
+            filtered = filtered.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase));
+
+        return filtered.ToList();
+    }
+
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
         bool canManageShiftsByRole,
         CancellationToken cancellationToken = default)
     {
-        var detail = await teamService.GetTeamDetailAsync(slug, userId, cancellationToken);
+        var detail = await GetTeamDetailAsync(slug, userId, cancellationToken);
         if (detail is null)
         {
             return null;
@@ -61,10 +144,11 @@ internal sealed class TeamPageService(
             detail.ChildTeams,
             userId,
             detail.IsAuthenticated,
-            canManageShiftsByRole);
+            canManageShiftsByRole,
+            cancellationToken);
 
         var (subteamLeads, subteamMembers) = detail.IsAuthenticated && detail.ChildTeams.Count > 0
-            ? await BuildSubteamRollupAsync(detail.ChildTeams, members)
+            ? await BuildSubteamRollupAsync(detail.ChildTeams, members, cancellationToken)
             : ([], []);
 
         return new TeamPageDetailResult(
@@ -88,6 +172,211 @@ internal sealed class TeamPageService(
             subteamMembers);
     }
 
+    public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+        var teamIds = (await teamService.GetUserTeamMembershipsAsync(userId, cancellationToken))
+            .Select(membership => membership.TeamId)
+            .ToList();
+        if (teamIds.Count == 0) return [];
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
+        var canSeeHiddenTeams = isBoardMember
+            || await roleAssignmentService.IsUserAdminAsync(userId, cancellationToken)
+            || await roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+
+        var result = new List<MyTeamMembershipSummary>(teamIds.Count);
+        foreach (var teamId in teamIds)
+        {
+            if (!teamsById.TryGetValue(teamId, out var team) || (team.IsHidden && !canSeeHiddenTeams))
+                continue;
+
+            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership is null)
+                continue;
+
+            // Inherited coordinator: a user can manage a team if they're a
+            // direct Coordinator, a board member, or coordinate any ancestor
+            // team (matches CanUserApproveRequestsForTeamAsync's recursive
+            // parent walk via IsUserCoordinatorOfActiveTeam).
+            var canManage =
+                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
+                && !team.IsSystemTeam;
+
+            var pendingCount = 0;
+            if (canManage)
+            {
+                pendingCount += team.PendingRequestCount;
+                if (team.ChildTeamIds is not null)
+                {
+                    foreach (var childId in team.ChildTeamIds)
+                    {
+                        if (!teamsById.TryGetValue(childId, out var child) || !child.IsActive
+                            || (child.IsHidden && !canSeeHiddenTeams))
+                            continue;
+                        pendingCount += child.PendingRequestCount;
+                    }
+                }
+            }
+
+            var displayName = team.ParentTeamId.HasValue
+                && teamsById.TryGetValue(team.ParentTeamId.Value, out var parent)
+                && (!parent.IsHidden || canSeeHiddenTeams)
+                ? $"{parent.Name} - {team.Name}"
+                : team.Name;
+
+            result.Add(new MyTeamMembershipSummary(
+                team.Id,
+                displayName,
+                team.Slug,
+                team.IsSystemTeam,
+                membership.Role,
+                membership.JoinedAt,
+                CanLeave: !team.IsSystemTeam,
+                PendingRequestCount: pendingCount));
+        }
+
+        return result;
+    }
+
+    internal async Task<TeamDetailResult?> GetTeamDetailAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
+        // TeamInfo is the canonical cached read shape; pending requests stay live reads.
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+        var team = TeamSlugResolver.Find(teamsById, slug);
+        if (team is null)
+            return null;
+
+        TeamInfo? parent = team.ParentTeamId.HasValue
+            ? teamsById.GetValueOrDefault(team.ParentTeamId.Value)
+            : null;
+
+        if (!userId.HasValue)
+        {
+            var isAnonymouslyVisible = !team.IsHidden && !team.IsSystemTeam
+                && ((team.ParentTeamId is null && team.IsPublicPage)
+                    || (team.ParentTeamId is not null && team.IsPromotedToDirectory));
+            if (!isAnonymouslyVisible)
+                return null;
+
+            var coordinators = team.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList();
+
+            return new TeamDetailResult(
+                Team: MapTeamSummary(team, parent?.IsHidden == true ? null : parent),
+                Members: coordinators,
+                ChildTeams: EnumerateChildren(team, teamsById)
+                    .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
+                    .OrderBy(c => c.Name, StringComparer.Ordinal)
+                    .Select(MapTeamLink)
+                    .ToList(),
+                RoleDefinitions: [],
+                IsAuthenticated: false,
+                IsCurrentUserMember: false,
+                IsCurrentUserCoordinator: false,
+                CanCurrentUserJoin: false,
+                CanCurrentUserLeave: false,
+                CanCurrentUserManage: false,
+                CanCurrentUserEditTeam: false,
+                CurrentUserPendingRequestId: null,
+                PendingRequestCount: 0);
+        }
+
+        var currentUserId = userId.Value;
+        var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
+        var isCurrentUserCoordinator = TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
+        var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
+        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
+        var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
+        var canManage = isCurrentUserCoordinator || canSeeHiddenTeams;
+
+        if (team.IsHidden && !canSeeHiddenTeams)
+            return null;
+
+        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
+        var pendingRequestCount = canManage
+            ? (await teamService.GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
+            : 0;
+
+        return new TeamDetailResult(
+            Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
+            Members: team.Members
+                .OrderBy(m => m.Role)
+                .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList(),
+            ChildTeams: EnumerateChildren(team, teamsById)
+                .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
+                .OrderBy(c => c.Name, StringComparer.Ordinal)
+                .Select(MapTeamLink)
+                .ToList(),
+            RoleDefinitions: team.RoleDefinitions ?? [],
+            IsAuthenticated: true,
+            IsCurrentUserMember: isCurrentUserMember,
+            IsCurrentUserCoordinator: isCurrentUserCoordinator,
+            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
+            CanCurrentUserManage: canManage,
+            CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
+            CurrentUserPendingRequestId: pendingRequest?.Id,
+            PendingRequestCount: pendingRequestCount);
+    }
+
+    private static IEnumerable<TeamInfo> EnumerateChildren(
+        TeamInfo team,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById)
+    {
+        if (team.ChildTeamIds is null || team.ChildTeamIds.Count == 0)
+            yield break;
+        foreach (var childId in team.ChildTeamIds)
+        {
+            if (teamsById.TryGetValue(childId, out var child))
+                yield return child;
+        }
+    }
+
+    private static TeamPageTeamSummary MapTeamSummary(TeamInfo team, TeamInfo? parent) =>
+        TeamPageSummaryMapper.Map(
+            id: team.Id,
+            name: team.Name,
+            parentName: parent?.Name,
+            description: team.Description,
+            slug: team.Slug,
+            isActive: team.IsActive,
+            requiresApproval: team.RequiresApproval,
+            isSystemTeam: team.IsSystemTeam,
+            systemTeamType: team.SystemTeamType,
+            createdAt: team.CreatedAt,
+            isPublicPage: team.IsPublicPage,
+            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+            pageContent: team.PageContent,
+            callsToAction: team.CallsToAction is null ? [] : [.. team.CallsToAction],
+            pageContentUpdatedAt: team.PageContentUpdatedAt,
+            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+            parentLink: parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug));
+
+    private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
+        new(team.Id, team.Name, team.Slug);
+
+    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMemberInfo member) =>
+        new(
+            UserId: member.UserId,
+            DisplayName: member.DisplayName,
+            Email: member.Email,
+            ProfilePictureUrl: member.ProfilePictureUrl,
+            Role: member.Role,
+            JoinedAt: member.JoinedAt);
+
     /// <summary>
     /// Department page's subteam-member rollup: every child-team coordinator
     /// (as a "lead"), plus every other child-team member not already a direct
@@ -96,14 +385,15 @@ internal sealed class TeamPageService(
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
         BuildSubteamRollupAsync(
             IReadOnlyList<TeamPageTeamLink> childTeams,
-            IReadOnlyList<TeamPageMemberSummary> directMembers)
+            IReadOnlyList<TeamPageMemberSummary> directMembers,
+            CancellationToken cancellationToken)
     {
         var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
         var addedUserIds = new HashSet<Guid>();
 
         var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
-        var teamsById = await teamService.GetTeamsAsync();
+        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds, cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
         var childMembersByTeam = childTeamIds
             .Where(teamsById.ContainsKey)
@@ -141,7 +431,8 @@ internal sealed class TeamPageService(
         IReadOnlyList<TeamPageTeamLink> childTeams,
         Guid? userId,
         bool isAuthenticated,
-        bool canManageShiftsByRole)
+        bool canManageShiftsByRole,
+        CancellationToken cancellationToken)
     {
         if (!isAuthenticated ||
             !userId.HasValue ||
@@ -151,9 +442,9 @@ internal sealed class TeamPageService(
         }
 
         var canManageShifts = canManageShiftsByRole ||
-            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
+            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
@@ -163,7 +454,7 @@ internal sealed class TeamPageService(
         var teamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
         teamIds.AddRange(activeChildTeamIds);
 
-        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds);
+        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds, cancellationToken);
         if (summaryData is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

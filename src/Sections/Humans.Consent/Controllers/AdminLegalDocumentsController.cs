@@ -23,12 +23,12 @@ internal sealed class AdminLegalDocumentsController(
     [HttpGet("Documents")]
     public async Task<IActionResult> LegalDocuments(Guid? teamId)
     {
-        var documents = await adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
+        var documents = await adminLegalDocumentService.GetLegalDocumentsAsync(teamId, HttpContext.RequestAborted);
 
         var viewModel = new LegalDocumentListViewModel
         {
             FilterTeamId = teamId,
-            Teams = await GetTeamSelectItems(),
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
             Documents = documents.Select(d => new LegalDocumentListItemViewModel
             {
                 Id = d.Id,
@@ -53,7 +53,7 @@ internal sealed class AdminLegalDocumentsController(
         var viewModel = new LegalDocumentEditViewModel
         {
             TeamId = teamId ?? Guid.Empty,
-            Teams = await GetTeamSelectItems()
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted)
         };
 
         return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", viewModel);
@@ -76,6 +76,7 @@ internal sealed class AdminLegalDocumentsController(
 
         var result = await adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
             ToUpsertRequest(model, folderPath), actorUserId.Value);
+        if (result is null) return NotFound();
         var document = result.Document;
 
         logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
@@ -107,7 +108,7 @@ internal sealed class AdminLegalDocumentsController(
     [HttpGet("Documents/{id}/Edit")]
     public async Task<IActionResult> EditLegalDocument(Guid id)
     {
-        var document = await adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
+        var document = await adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id, HttpContext.RequestAborted);
 
         if (document is null)
         {
@@ -128,7 +129,7 @@ internal sealed class AdminLegalDocumentsController(
             IsActive = document.IsActive,
             GracePeriodDays = document.GracePeriodDays,
             GitHubFolderPath = document.GitHubFolderPath,
-            Teams = await GetTeamSelectItems(),
+            Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
             CurrentVersion = currentVersion?.VersionNumber,
             LastSyncedAt = document.LastSyncedAt != default ? document.LastSyncedAt.ToDateTimeUtc() : null,
             VersionCount = document.Versions.Count,
@@ -231,24 +232,27 @@ internal sealed class AdminLegalDocumentsController(
 
     [HttpPost("Documents/{id}/Versions/{versionId}/Summary")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string changesSummary)
+    public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string? changesSummary)
     {
         var actorUserId = GetCurrentUserId();
         if (actorUserId is null) return Unauthorized();
 
         var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary, actorUserId.Value);
-        if (!updated)
+        if (updated == VersionSummaryUpdateResult.NotFound)
         {
             return NotFound();
         }
 
-        SetSuccess("Version summary updated.");
+        if (updated == VersionSummaryUpdateResult.TooLong)
+            SetError("Summary must be at most 2000 characters.");
+        else
+            SetSuccess("Version summary updated.");
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 
-    private async Task<List<TeamSelectItem>> GetTeamSelectItems()
+    private async Task<List<TeamSelectItem>> GetTeamSelectItems(CancellationToken cancellationToken = default)
     {
-        var teams = (await teamService.GetTeamsAsync()).Values
+        var teams = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name, StringComparer.Ordinal);
         return teams.Select(t => new TeamSelectItem { Id = t.Id, Name = t.Name }).ToList();

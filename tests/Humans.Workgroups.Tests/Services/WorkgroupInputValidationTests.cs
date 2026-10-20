@@ -7,6 +7,7 @@ using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Workgroups.Tests.Services;
@@ -142,6 +143,81 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
 
         await using var ctx = OpenContext();
         (await ctx.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Reasons.Should().Be(reason);
+    }
+
+    [HumansTheory]
+    [InlineData("Disposition", false)]
+    [InlineData("Disposition", true)]
+    [InlineData("Comment", false)]
+    [InlineData("Comment", true)]
+    [InlineData("Response", false)]
+    [InlineData("Response", true)]
+    [InlineData("CategoryResponse", false)]
+    [InlineData("CategoryResponse", true)]
+    [InlineData("Hide", false)]
+    [InlineData("Hide", true)]
+    public async Task DocumentText_EnforcesTheStorageLimitAfterTrimming(string action, bool overflow)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(group.Id,
+            status: action is "Disposition" ? WorkgroupDocumentStatus.Delivered : WorkgroupDocumentStatus.Published,
+            categories: ["Scope"], opensAt: now - Duration.FromHours(1), closesAt: now + Duration.FromHours(1));
+        var comment = await AddCommentAsync(document.Id, authorUserId: actor);
+        var second = await AddCommentAsync(document.Id, authorUserId: actor);
+        var limit = action is "Hide" ? 500 : 4000;
+        var content = new string('x', limit + (overflow ? 1 : 0));
+        var text = "  " + content + "  ";
+        var service = NewService();
+
+        WorkgroupMutationResult result = action switch
+        {
+            "Disposition" => await service.RecordDispositionAsync(document.Id, actor, WorkgroupDisposition.Accepted, text, Ct),
+            "Comment" => await service.AddCommentAsync(document.Id, actor, "Scope", text, Ct),
+            "Response" => await service.RespondToCommentAsync(comment.Id, actor, WorkgroupCommentDisposition.Accepted, text, Ct),
+            "CategoryResponse" => await service.RespondToCategoryAsync(document.Id, actor, "Scope", WorkgroupCommentDisposition.Accepted, text, Ct),
+            _ => await service.HideCommentAsync(comment.Id, actor, text, Ct)
+        };
+
+        if (overflow)
+        {
+            result.Refusal.Should().NotBeNull();
+            result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+            result.Refusal.Args.Should().Equal(limit);
+        }
+        else
+            result.Refusal.Should().BeNull();
+
+        await using var ctx = OpenContext();
+        var storedDocument = await ctx.Documents.SingleAsync(d => d.Id == document.Id, Ct);
+        var storedComment = await ctx.Comments.SingleAsync(c => c.Id == comment.Id, Ct);
+        var storedSecond = await ctx.Comments.SingleAsync(c => c.Id == second.Id, Ct);
+        if (action is "Disposition")
+        {
+            storedDocument.DispositionNote.Should().Be(overflow ? null : content);
+            storedDocument.Disposition.Should().Be(overflow ? null : WorkgroupDisposition.Accepted);
+        }
+        else if (action is "Comment")
+            (await ctx.Comments.CountAsync(c => c.DocumentId == document.Id, Ct)).Should().Be(overflow ? 2 : 3);
+        else if (action is "Hide")
+        {
+            storedComment.HiddenReason.Should().Be(overflow ? null : content);
+            storedComment.HiddenAt.HasValue.Should().Be(!overflow);
+        }
+        else
+        {
+            storedComment.Response.Should().Be(overflow ? null : content);
+            storedComment.Disposition.Should().Be(overflow ? WorkgroupCommentDisposition.Pending : WorkgroupCommentDisposition.Accepted);
+            storedSecond.Response.Should().Be(!overflow && action is "CategoryResponse" ? content : null);
+        }
+        if (overflow)
+        {
+            (await ctx.LogEntries.AnyAsync(e => e.WorkgroupId == group.Id, Ct)).Should().BeFalse();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            Email.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansTheory]

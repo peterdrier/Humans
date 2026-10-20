@@ -106,7 +106,7 @@ internal sealed class GoogleDriveActivityClient(
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
             {
-                throw new DriveActivityResourceNotFoundException(googleItemId);
+                throw new DriveActivityResourceNotFoundException($"Drive item '{googleItemId}' not found (404)", ex);
             }
 
             if (response.Activities is not null)

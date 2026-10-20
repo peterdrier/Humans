@@ -1,9 +1,9 @@
 @model Humans.Notifications.Models.NotificationInboxViewModel
 @{
-    ViewData["Title"] = Localizer["Notification_PageTitle"];
+    ViewData["Title"] = Localizer["Notifications_PageTitle"];
 }
 
-<h1>@Localizer["Notification_PageTitle"]</h1>
+<h1>@Localizer["Notifications_PageTitle"]</h1>
 
 <div class="notification-toolbar mb-3">
     <form method="get" asp-action="Index" class="notification-search-form">
@@ -11,7 +11,7 @@
         <input type="hidden" name="tab" value="@Model.ActiveTab" />
         <div class="input-group input-group-sm">
             <input type="text" name="search" class="form-control" value="@Model.SearchTerm"
-                   placeholder="@Localizer["Notification_SearchPlaceholder"]" />
+                   placeholder="@Localizer["Notifications_SearchPlaceholder"]" />
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-search"></i>
             </button>
@@ -20,11 +20,11 @@
     <div class="notification-filter-pills">
         @{
             var filters = new[] {
-                ("all", Localizer["Notification_Filter_All"].Value),
-                ("action", Localizer["Notification_Filter_NeedsAction"].Value),
-                ("shifts", Localizer["Notification_Filter_Shifts"].Value),
-                ("approvals", Localizer["Notification_Filter_Approvals"].Value),
-                ("resolved", Localizer["Notification_Filter_Resolved"].Value)
+                ("all", Localizer["Notifications_Filter_All"].Value),
+                ("action", Localizer["Notifications_Filter_NeedsAction"].Value),
+                ("shifts", Localizer["Notifications_Filter_Shifts"].Value),
+                ("approvals", Localizer["Notifications_Filter_Approvals"].Value),
+                ("resolved", Localizer["Notifications_Filter_Resolved"].Value)
             };
         }
         @foreach (var (value, label) in filters)
@@ -41,16 +41,16 @@
 <!-- Bulk action toolbar (hidden until items selected) -->
 <div class="notification-bulk-toolbar mb-2" id="bulkToolbar" style="display: none;">
     <span class="notification-bulk-count" id="bulkCount"
-          data-template="@Localizer["Notification_Bulk_Selected"]">@string.Format(Localizer["Notification_Bulk_Selected"].Value, 0)</span>
-    <button type="button" class="btn btn-sm btn-outline-primary" id="bulkResolveBtn">@Localizer["Notification_Bulk_Resolve"]</button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDismissBtn">@Localizer["Notification_Bulk_Dismiss"]</button>
+          data-template="@Localizer["Notifications_Bulk_Selected"]">@string.Format(Localizer["Notifications_Bulk_Selected"].Value, 0)</span>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="bulkResolveBtn">@Localizer["Notifications_Bulk_Resolve"]</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDismissBtn">@Localizer["Notifications_Bulk_Dismiss"]</button>
 </div>
 
 <div class="card notification-inbox-card">
     <div class="notification-inbox-header">
         <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-bell"></i>
-            <span>@Localizer["Notification_Inbox_Title"]</span>
+            <span>@Localizer["Notifications_Inbox_Title"]</span>
             @if (Model.UnreadCount > 0)
             {
                 <span class="badge rounded-pill bg-danger">@Model.UnreadCount</span>
@@ -61,9 +61,9 @@
                 var unreadActive = string.Equals(Model.ActiveTab, "unread", StringComparison.OrdinalIgnoreCase);
             }
             <a href="@Url.Action("Index", new { filter = Model.ActiveFilter, tab = "unread", search = Model.SearchTerm })"
-               class="notification-tab @(unreadActive ? "active" : "")">@Localizer["Notification_Tab_Unread"]</a>
+               class="notification-tab @(unreadActive ? "active" : "")">@Localizer["Notifications_Tab_Unread"]</a>
             <a href="@Url.Action("Index", new { filter = Model.ActiveFilter, tab = "all", search = Model.SearchTerm })"
-               class="notification-tab @(!unreadActive ? "active" : "")">@Localizer["Notification_Tab_All"]</a>
+               class="notification-tab @(!unreadActive ? "active" : "")">@Localizer["Notifications_Tab_All"]</a>
         </div>
     </div>
 
@@ -72,14 +72,14 @@
         {
             <div class="notification-empty-state">
                 <i class="fa-solid fa-bell notification-empty-icon"></i>
-                <p>@Localizer["Notification_Popup_CaughtUp"]</p>
+                <p>@Localizer["Notifications_Popup_CaughtUp"]</p>
             </div>
         }
         else
         {
             @if (Model.NeedsAttention.Count > 0)
             {
-                <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
+                <div class="notification-section-label">@Localizer["Notifications_Section_NeedsAttention"]</div>
                 @foreach (var item in Model.NeedsAttention)
                 {
                     <div class="notification-row-wrapper d-flex align-items-start">
@@ -96,7 +96,7 @@
             }
             @if (Model.Meters.Count > 0)
             {
-                <div class="notification-section-label">@Localizer["Notification_Section_WorkQueues"]</div>
+                <div class="notification-section-label">@Localizer["Notifications_Section_WorkQueues"]</div>
                 @foreach (var meter in Model.Meters)
                 {
                     <div class="notification-meter-row">
@@ -105,14 +105,14 @@
                             <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
                         </div>
                         <a href="@meter.ActionUrl" class="btn btn-sm btn-outline-primary notification-meter-action">
-                            @Localizer["Notification_DefaultActionLabel"]
+                            @Localizer["Notifications_DefaultActionLabel"]
                         </a>
                     </div>
                 }
             }
             @if (Model.Informational.Count > 0)
             {
-                <div class="notification-section-label">@Localizer["Notification_Section_Informational"]</div>
+                <div class="notification-section-label">@Localizer["Notifications_Section_Informational"]</div>
                 @foreach (var item in Model.Informational)
                 {
                     <div class="notification-row-wrapper d-flex align-items-start">
@@ -129,7 +129,7 @@
             }
             @if (Model.Resolved.Count > 0)
             {
-                <div class="notification-section-label">@Localizer["Notification_Section_Resolved"]</div>
+                <div class="notification-section-label">@Localizer["Notifications_Section_Resolved"]</div>
                 @foreach (var item in Model.Resolved)
                 {
                     <partial name="_NotificationRow" model="item" />
@@ -142,7 +142,7 @@
         <form method="post" asp-controller="Notifications" asp-action="MarkAllRead">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-sm btn-outline-secondary">
-                @Localizer["Notification_MarkAllRead"]
+                @Localizer["Notifications_MarkAllRead"]
             </button>
         </form>
     </div>

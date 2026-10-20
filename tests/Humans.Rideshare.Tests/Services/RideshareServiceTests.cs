@@ -691,6 +691,35 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         (await again()).Refusal!.Key.Should().Be("Rideshare_Error_AlreadyInterested");
     }
 
+    [HumansTheory]
+    [InlineData(1000, false)]
+    [InlineData(1000, true)]
+    [InlineData(1001, false)]
+    public async Task ExpressInterest_EnforcesTheStoredMessageLimit(int length, bool padded)
+    {
+        var trip = await SeedTripAsync(SeedUser("Ada"));
+        var rider = SeedUser("Bo");
+        var message = new string('x', length);
+
+        var result = await NewService().ExpressInterestAsync(
+            rider, trip.Id, null, 1, padded ? $"  {message}  " : message, Ct);
+
+        await using var context = OpenContext();
+        var interests = await context.Interests.Where(i => i.TripId == trip.Id).ToListAsync(Ct);
+        if (length > 1000)
+        {
+            result.Refusal.Should().NotBeNull();
+            result.Refusal!.Key.Should().Be("Rideshare_Error_MessageTooLong");
+            result.Refusal.Args.Should().Equal(1000);
+            interests.Should().BeEmpty();
+        }
+        else
+        {
+            result.Refusal.Should().BeNull();
+            interests.Should().ContainSingle().Which.Message.Should().Be(message);
+        }
+    }
+
     [HumansFact]
     public async Task ExpressInterest_AnsweringAPin_RequiresATripGoingThatWayOnThatDay()
     {

@@ -7,6 +7,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Contracts;
 
 namespace Humans.Finance.Controllers;
@@ -41,7 +42,7 @@ internal sealed class FinanceController(
 
     [HttpPost("HoldedAccounts/Provision")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
+    public async Task<IActionResult> ProvisionHoldedAccounts([BindRequired] int blockStart, [BindRequired] bool addAll)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         if (!ModelState.IsValid)
@@ -89,7 +90,9 @@ internal sealed class FinanceController(
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList(),
                 r.IbanMasked,
-                r.OpenDocumentCount))
+                r.OpenDocumentCount,
+                r.PendingPayoutFileName,
+                r.HasDuplicateDocuments))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";
@@ -115,6 +118,11 @@ internal sealed class FinanceController(
         int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed SEPA payout selection for actor {ActorUserId}", actorUserId);
+            return BadRequest(ModelState);
+        }
 
         // Posted per batch, same invariant-parse reasoning as the amounts below: the posted value is
         // authoritative, the config key (Sepa:MaxPayoutPerTransfer) is only the prefill default.
@@ -159,6 +167,7 @@ internal sealed class FinanceController(
         var names = new Dictionary<Guid, string>();
         var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
             .Concat(rows.Where(r => r.BookedByUserId is not null).Select(r => r.BookedByUserId!.Value))
+            .Concat(rows.Where(r => r.WithdrawnByUserId is not null).Select(r => r.WithdrawnByUserId!.Value))
             .Distinct().ToList();
         if (ids.Count > 0)
             foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
@@ -176,7 +185,8 @@ internal sealed class FinanceController(
                 g.First().GeneratedAt,
                 Name(g.First().GeneratedByUserId),
                 g.OrderBy(r => r.SupplierAccountNum)
-                 .Select(r => new SepaTransferVm(r, Name(r.UserId), r.BookedByUserId is null ? null : Name(r.BookedByUserId)))
+                 .Select(r => new SepaTransferVm(r, Name(r.UserId), r.BookedByUserId is null ? null : Name(r.BookedByUserId),
+                     r.WithdrawnByUserId is null ? null : Name(r.WithdrawnByUserId)))
                  .ToList(),
                 g.First().BatchLine))
             .OrderByDescending(f => f.GeneratedAt)
@@ -200,6 +210,54 @@ internal sealed class FinanceController(
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    /// <summary>Withdraws a transfer the bank cancelled by hand before execution — the Withdraw
+    /// button on an unbooked row.</summary>
+    [HttpPost("Sepa/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WithdrawSepaTransfer(
+        Guid transferId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.WithdrawSepaTransferAsync(transferId, actorUserId, HttpContext.RequestAborted);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    /// <summary>The duplicate-document dry run: what Apply would delete, and why some of it is a
+    /// human's. Live Holded reads; nothing is written.</summary>
+    [HttpGet("HoldedDuplicates")]
+    public async Task<IActionResult> HoldedDuplicates(CancellationToken ct)
+    {
+        var plan = await holdedConnector.GetHoldedDuplicatesAsync(ct);
+        ViewBag.MemberNames = await MemberNamesAsync(plan.Members.Select(m => m.UserId), ct);
+        return View(plan);
+    }
+
+    /// <summary>Deletes the duplicates and renders what happened. No <c>CancellationToken</c>: a run
+    /// that has deleted one document finishes the rest.</summary>
+    [HttpPost("HoldedDuplicates/Apply")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyHoldedDuplicates()
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.RemoveHoldedDuplicatesAsync(actorUserId);
+        ViewBag.MemberNames = await MemberNamesAsync(result.Members.Select(m => m.UserId), HttpContext.RequestAborted);
+        return View("HoldedDuplicatesApplied", result);
+    }
+
+    private async Task<Dictionary<Guid, string>> MemberNamesAsync(IEnumerable<Guid> userIds, CancellationToken ct)
+    {
+        var ids = userIds.Distinct().ToList();
+        var names = new Dictionary<Guid, string>();
+        if (ids.Count > 0)
+            foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
+                names[kv.Key] = kv.Value.BurnerName;
+        return names;
     }
 
     /// <summary>Books a whole file against the one Sabadell line the bank debited it as — the

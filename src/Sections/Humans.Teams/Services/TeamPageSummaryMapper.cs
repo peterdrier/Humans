@@ -4,7 +4,7 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
-// Shared TeamPageTeamSummary projection used by TeamService (Team entity) and CachingTeamService (TeamInfo).
+// Team detail projection; the caller filters parent metadata for the viewer.
 internal static class TeamPageSummaryMapper
 {
     // DisplayName formula must match Team.DisplayName.

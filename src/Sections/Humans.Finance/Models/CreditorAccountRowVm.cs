@@ -13,14 +13,23 @@ namespace Humans.Finance.Models;
 /// <param name="IbanMasked">The linked Holded contact's masked IBAN, if available.</param>
 /// <param name="OpenDocs">Approved, still-owing purchase documents on the bound contact; null (shown
 /// as "—") on unbound and colliding rows, or when Holded's document list could not be read.</param>
+/// <param name="PendingPayoutFileName">A generated file still carrying an unbooked, unwithdrawn
+/// transfer to this account; the row is not payable again until it is booked or withdrawn.</param>
+/// <param name="HasDuplicateDocuments">True when the bound member's expense lines match more than
+/// one Holded document (the balance is inflated); null when the check could not run.</param>
 internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
     decimal? Balance,
     IReadOnlyList<CreditorBindingVm> Bindings,
     string? IbanMasked = null,
-    int? OpenDocs = null)
+    int? OpenDocs = null,
+    string? PendingPayoutFileName = null,
+    bool? HasDuplicateDocuments = false)
 {
+    /// <summary>The reason the page links to <c>/Finance/HoldedDuplicates</c> from.</summary>
+    public const string DuplicateDocumentsReason = "duplicate documents in Holded";
+
     /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
 
@@ -30,6 +39,9 @@ internal sealed record CreditorAccountRowVm(
     {
         0 => "unbound",
         > 1 => "collision",
+        _ when HasDuplicateDocuments is null => "duplicate check unavailable — Holded's document list could not be read",
+        _ when HasDuplicateDocuments == true => DuplicateDocumentsReason,
+        _ when PendingPayoutFileName is { } file => $"in payout file {file}, not booked yet",
         _ when Balance is not > 0m => "nothing owed",
         _ when IbanMasked is null => "no IBAN in Holded",
         _ => null,
@@ -61,7 +73,15 @@ internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorBindingVm> Unresolved,
     string SortBy,
     string SortDir,
-    SepaPayoutSettings Sepa);
+    SepaPayoutSettings Sepa)
+{
+    /// <summary>Accounts whose member has duplicate documents in Holded — the page's banner count.
+    /// Zero means zero: the check ran and found nothing.</summary>
+    public int DuplicateFlaggedAccounts => Accounts.Count(a => a.HasDuplicateDocuments == true);
+
+    /// <summary>The check could not run for at least one bound row (Holded's document list unreadable).</summary>
+    public bool DuplicateCheckUnavailable => Accounts.Any(a => a.HasDuplicateDocuments is null);
+}
 
 /// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
 internal sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)

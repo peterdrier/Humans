@@ -280,6 +280,45 @@ public sealed class ServicePlacementTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task PlacementMetadataFailure_DeletesOnlyAnUnlinkedReplacement(bool afterCommit)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var container = await SeedPlacedContainerAsync();
+        var before = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "old notes", Sketch(), false,
+            ActorUserId, ct)).Value!;
+        _fileStorage.ClearReceivedCalls();
+        string? uploaded = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { uploaded = call.Arg<string>(); return Task.CompletedTask; });
+        var failure = new IOException("Metadata save failed");
+        var options = new DbContextOptionsBuilder<ContainersDbContext>(_containersOptions)
+            .AddInterceptors(new ServiceImageTests.FailImageMetadataSave(afterCommit, failure)).Options;
+        var service = new Service(new Repository(new TestDbContextFactory<ContainersDbContext>(options)),
+            _fileStorage, Substitute.For<ICampService>(), _auditLog, Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+
+        var save = () => service.UpdatePlacementNotesAsync(container.Id, Year, "new notes", Sketch("new.jpg"), false,
+            ActorUserId, ct);
+
+        (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        uploaded.Should().NotBeNull();
+        await _fileStorage.DidNotReceive().DeleteAsync(before.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>());
+        var saved = await GetPlacementAsync(container.Id);
+        if (afterCommit)
+        {
+            saved.PlacementImageUrl.Should().Be('/' + uploaded);
+            await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+        }
+        else
+        {
+            saved.Should().BeEquivalentTo(before);
+            await _fileStorage.Received(1).DeleteAsync(uploaded!, CancellationToken.None);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task UpdatePlacementNotesAsync_MetadataFailurePreservesTheOldFile(bool removeImage)
     {
         var id = Guid.NewGuid();

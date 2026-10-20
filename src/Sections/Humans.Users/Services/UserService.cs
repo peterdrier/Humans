@@ -10,6 +10,7 @@ using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 using Humans.Base.Helpers;
+using Humans.Users.Helpers;
 using Humans.Gdpr.Contracts;
 using NodaTime;
 
@@ -206,7 +207,7 @@ internal sealed class UserService(
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
-        var alternate = GetAlternateEmail(normalized);
+        var alternate = EmailLookupAliases.GetAlternate(normalized);
 
         // The alternate is passed to the query because its ILIKE matches the literal stored
         // string; the in-memory re-check needs only one pass, since EmailsMatch folds
@@ -581,17 +582,23 @@ internal sealed class UserService(
         }
     }
 
-    // The metadata save failed, so the freshly written file is unreferenced; the previous picture is untouched.
+    // A failed save may have committed. Verify its persisted reference before deleting new bytes.
     private async Task DeleteUnreferencedPictureAsync(Guid profileId, string key)
     {
         try
         {
+            var picture = await repo.GetProfilePictureLocationAsync(profileId, CancellationToken.None);
+            if (picture is { } current && string.Equals(
+                ProfilePictureKeys.Resolve(profileId, current.ContentType, current.StorageKey), key,
+                StringComparison.Ordinal))
+                return;
+
             await fileStorage.DeleteAsync(key, CancellationToken.None);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Failed to delete unreferenced profile picture for {ProfileId} after a failed save", profileId);
+                "Failed to verify or clean up profile picture for {ProfileId} after a failed save", profileId);
         }
     }
 
@@ -698,7 +705,7 @@ internal sealed class UserService(
     {
         var email = command.Email.Trim();
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-        var alternateEmail = GetAlternateEmail(normalizedEmail);
+        var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
@@ -1374,17 +1381,6 @@ internal sealed class UserService(
     // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
     // profile transitions that can change the stored state (e.g. Bare after a name submit).
     private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
-
-    private static string? GetAlternateEmail(string normalizedEmail)
-    {
-        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
-            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
-
-        if (normalizedEmail.EndsWith("@googlemail.com", StringComparison.Ordinal))
-            return $"{normalizedEmail[..^"@googlemail.com".Length]}@gmail.com";
-
-        return null;
-    }
 
     // --- Account merge: fold-into-target primitives ---
 

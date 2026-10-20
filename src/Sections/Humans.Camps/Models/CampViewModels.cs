@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Humans.Base.Enums;
@@ -159,19 +160,27 @@ internal class CampRegisterViewModel
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string Languages { get; set; } = string.Empty;
+    [BindRequired]
     public YesNoMaybe AcceptingMembers { get; set; }
+    [BindRequired]
     public YesNoMaybe KidsWelcome { get; set; }
+    [BindRequired]
     public KidsVisitingPolicy KidsVisiting { get; set; }
     [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? KidsAreaDescription { get; set; }
+    [BindRequired]
     public PerformanceSpaceStatus HasPerformanceSpace { get; set; }
     [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? PerformanceTypes { get; set; }
     public List<CampVibe> Vibes { get; set; } = [];
+    [BindRequired]
     public AdultPlayspacePolicy AdultPlayspace { get; set; }
     public int MemberCount { get; set; }
+    [BindRequired]
     public SpaceSize? SpaceRequirement { get; set; }
+    [BindRequired]
     public SoundZone? SoundZone { get; set; }
+    [BindRequired]
     public ElectricalGrid? ElectricalGrid { get; set; }
 }
 

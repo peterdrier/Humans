@@ -63,4 +63,9 @@
 &lt;p&gt;Wir haben eine Überweisung über &lt;strong&gt;{1}&lt;/strong&gt; auf dein Konto mit der Endung {2} abgeschickt.&lt;/p&gt;
 &lt;p&gt;Sie kommt normalerweise innerhalb weniger Werktage an. Falls sie nach einer Woche noch nicht da ist, melde dich bitte beim Finanzteam.&lt;/p&gt;</value></data>
   <data name="Finance_Email_SepaPayoutGenerated_Subject" xml:space="preserve"><value>Wir haben deine Erstattung überwiesen</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Überweisung storniert&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;die Überweisung von &lt;strong&gt;{1}&lt;/strong&gt; auf dein Konto mit der Endung {2}, angekündigt am {3}, wurde vor der Ausführung storniert.&lt;/p&gt;
+&lt;p&gt;Es wurde kein Geld bewegt. Bei Fragen melde dich bitte beim Finanzteam.&lt;/p&gt;</value></data>
+  <data name="Finance_Email_SepaPayoutWithdrawn_Subject" xml:space="preserve"><value>Deine Erstattungsüberweisung wurde storniert</value></data>
 </root>

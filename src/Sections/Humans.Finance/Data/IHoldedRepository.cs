@@ -21,7 +21,9 @@ internal interface IHoldedRepository : IRepository
     Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
 
     // Docs
-    Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
+    /// <summary>Replaces the complete document snapshot, removing missing rows while preserving
+    /// the identity and creation time of retained documents.</summary>
+    Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
@@ -33,7 +35,15 @@ internal interface IHoldedRepository : IRepository
     // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
-    Task UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
+    /// <summary>Inserts the member's binding, or updates it in place. False only when a concurrent insert
+    /// won the member's unique <c>UserId</c> slot between this call's read and write — nothing was
+    /// written, and the caller re-reads to adopt the winner's binding. True otherwise.</summary>
+    Task<bool> UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
+
+    /// <summary>Inserts the member's binding and never touches an existing one. False when the member
+    /// already has a binding (the unique <c>UserId</c> index) — nothing was written, and the caller
+    /// re-reads to adopt the winner's binding. True when the row was inserted.</summary>
+    Task<bool> TryInsertCreditorContactAsync(HoldedCreditorContact row, CancellationToken ct = default);
 
     /// <summary>Removes the member's binding row and returns it as deleted; null when there was none.</summary>
     Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
@@ -70,6 +80,11 @@ internal interface IHoldedRepository : IRepository
         Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
     /// <summary>Stamps a reconcile that succeeded on a later pass, without touching the booking.</summary>
+    /// <summary>Marks a transfer withdrawn: the bank cancelled it by hand before execution. The row
+    /// stays; the service has already checked it is unbooked.</summary>
+    Task SaveSepaTransferWithdrawnAsync(
+        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
+
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
 

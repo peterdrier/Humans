@@ -10,6 +10,7 @@ using Humans.Store.Contracts;
 using Humans.Store.Controllers;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using Humans.Store.Models;
 using Humans.Store.Services;
 using Humans.Stripe.Contracts;
 using Humans.Teams.Contracts;
@@ -54,7 +55,7 @@ public sealed class StoreControllerRecordPaymentTests
     private StoreController BuildController(string role)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamService>();
@@ -115,6 +116,28 @@ public sealed class StoreControllerRecordPaymentTests
         (await ReadPage()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StorePages_SortTheCatalogForDisplay(bool detail)
+    {
+        var controller = BuildController(RoleNames.Admin);
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Tent" },
+            new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Blanket" }
+        ]);
+
+        var result = detail
+            ? await controller.Order(_order.Id, TestContext.Current.CancellationToken)
+            : await controller.Index(TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model;
+        var catalog = detail
+            ? model.Should().BeOfType<OrderViewModel>().Which.Catalog
+            : model.Should().BeOfType<IndexViewModel>().Which.Catalog;
+        catalog.Select(product => product.Name).Should().Equal("Blanket", "Tent");
     }
 
     [HumansFact]

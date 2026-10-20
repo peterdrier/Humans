@@ -12,7 +12,7 @@
             <div class="d-flex flex-column align-items-center justify-content-center text-muted bg-light"
                  style="height: 200px;">
                 <i class="fa-solid fa-camera fa-2x mb-2"></i>
-                <small>@Localizer["CampCard_NeedsPhoto"]</small>
+                <small>@Localizer["Camps_Card_NeedsPhoto"]</small>
             </div>
         }
         <div class="card-body d-flex flex-column">
@@ -42,22 +42,22 @@
             <div class="d-flex flex-wrap gap-1 mt-auto">
                 @if (Model.AcceptingMembers == YesNoMaybe.Yes)
                 {
-                    <span class="badge bg-success">@Localizer["CampCard_AcceptingMembers"]</span>
+                    <span class="badge bg-success">@Localizer["Camps_Card_AcceptingMembers"]</span>
                 }
                 @if (Model.KidsWelcome == YesNoMaybe.Yes)
                 {
                     <span class="badge bg-primary">
-                        <i class="fa-solid fa-children me-1"></i>@Localizer["CampCard_KidsWelcome"]
+                        <i class="fa-solid fa-children me-1"></i>@Localizer["Camps_Card_KidsWelcome"]
                     </span>
                 }
                 @if (Model.Status == CampSeasonStatus.Full)
                 {
-                    <span class="badge bg-warning text-dark">@Localizer["CampCard_Full"]</span>
+                    <span class="badge bg-warning text-dark">@Localizer["Camps_Card_Full"]</span>
                 }
                 @if (Model.TimesAtNowhere > 0)
                 {
                     <span class="badge bg-light text-dark border">
-                        <i class="fa-solid fa-fire text-warning me-1"></i>@Localizer["CampCard_TimesAtNowhere", Model.TimesAtNowhere]
+                        <i class="fa-solid fa-fire text-warning me-1"></i>@Localizer["Camps_Card_TimesAtNowhere", Model.TimesAtNowhere]
                     </span>
                 }
             </div>

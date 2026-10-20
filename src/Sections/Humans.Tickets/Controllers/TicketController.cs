@@ -41,7 +41,7 @@ internal sealed class TicketController(
 
         var result = await ticketQueryService.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterPaymentStatus, filterTicketType, filterMatched);
+            filterPaymentStatus, filterTicketType, filterMatched, HttpContext.RequestAborted);
 
         var model = new TicketOrdersViewModel
         {
@@ -55,7 +55,7 @@ internal sealed class TicketController(
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync(HttpContext.RequestAborted))
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -75,7 +75,7 @@ internal sealed class TicketController(
 
         var result = await ticketQueryService.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets);
+            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets, HttpContext.RequestAborted);
 
         var model = new TicketAttendeesViewModel
         {
@@ -91,7 +91,7 @@ internal sealed class TicketController(
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
             FilterMultipleTickets = filterMultipleTickets,
-            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync())
+            AvailableTicketTypes = (await ticketQueryService.GetAvailableTicketTypesAsync(HttpContext.RequestAborted))
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList(),
         };
@@ -102,7 +102,7 @@ internal sealed class TicketController(
     [HttpGet("Codes")]
     public async Task<IActionResult> Codes(string? search)
     {
-        var data = await ticketQueryService.GetCodeTrackingDataAsync(search);
+        var data = await ticketQueryService.GetCodeTrackingDataAsync(search, HttpContext.RequestAborted);
 
         var model = new TicketCodeTrackingViewModel
         {
@@ -127,7 +127,7 @@ internal sealed class TicketController(
         pageSize = pageSize.ClampPageSize();
 
         var result = await ticketQueryService.GetWhoHasntBoughtAsync(
-            search, filterTeam, filterTier, filterTicketStatus, page, pageSize);
+            search, filterTeam, filterTier, filterTicketStatus, page, pageSize, HttpContext.RequestAborted);
 
         var model = new WhoHasntBoughtViewModel
         {
@@ -148,7 +148,7 @@ internal sealed class TicketController(
     [HttpGet("SalesAggregates")]
     public async Task<IActionResult> SalesAggregates()
     {
-        var aggregates = await ticketQueryService.GetSalesAggregatesAsync();
+        var aggregates = await ticketQueryService.GetSalesAggregatesAsync(HttpContext.RequestAborted);
 
         var model = new TicketSalesAggregatesViewModel
         {
@@ -248,7 +248,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -269,7 +269,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -306,7 +306,7 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAccountantReport()
     {
-        var months = (await ticketQueryService.GetSalesAggregatesAsync()).MonthlySales;
+        var months = (await ticketQueryService.GetSalesAggregatesAsync(HttpContext.RequestAborted)).MonthlySales;
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -341,7 +341,7 @@ internal sealed class TicketController(
         if (actorId is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value);
+        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

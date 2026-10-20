@@ -114,4 +114,21 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     [ExternalWrite]
     Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId, int toleranceDays = DefaultSepaMatchToleranceDays);
+
+    /// <summary>Withdraws one transfer the bank cancelled by hand before execution: the row is
+    /// flagged, never deleted, and drops out of every matcher, booking and payability gate. Refused
+    /// once the row is booked, tied to a bank line or has posted a payment. Writes one audit entry
+    /// and tells the member.</summary>
+    Task<SepaBookingResult> WithdrawSepaTransferAsync(Guid transferId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>The <c>/Finance/HoldedDuplicates</c> dry run: every expense line whose Holded
+    /// document the outbox race created twice, what Apply would delete and what it refuses.</summary>
+    Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default);
+
+    /// <summary>Deletes the duplicates the dry run names, recomputed at the moment it runs: purchase
+    /// documents first, then the contacts left empty, one audit entry per id; then a ledger sync, with
+    /// each creditor balance read live before and after. Takes no <c>CancellationToken</c>: a run
+    /// that has deleted one document finishes the rest.</summary>
+    [ExternalWrite]
+    Task<HoldedDuplicateApplyResult> RemoveHoldedDuplicatesAsync(Guid actorUserId);
 }

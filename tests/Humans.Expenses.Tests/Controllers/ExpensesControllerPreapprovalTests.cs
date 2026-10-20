@@ -43,7 +43,7 @@ public sealed class ExpensesControllerPreapprovalTests
             UserInfo.Create(new User { Id = _actorId }, [], [], [], null, []));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
-        _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId).Returns(new HashSet<Guid>());
+        _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new HoldedExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
@@ -71,6 +71,26 @@ public sealed class ExpensesControllerPreapprovalTests
 
     private static GrantOption Grant(string program, LocalDate claimBy, GrantStatus status = GrantStatus.Open) =>
         new(Guid.NewGuid(), program, null, 100m, 62900500, "acc-grant", claimBy, status);
+
+    [HumansFact]
+    public async Task EditGet_AccountOptionsObserveRequestCancellation()
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, request.Token)
+            .Returns(Task.FromCanceled<IReadOnlyList<HoldedExpenseAccountOption>>(request.Token));
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        Func<Task> action = () => controller.Edit(report.Id);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     [HumansFact]
     public async Task Index_ListsOpenGrants_SoonestDeadlineFirst()

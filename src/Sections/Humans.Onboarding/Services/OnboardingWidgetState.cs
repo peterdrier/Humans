@@ -17,14 +17,15 @@ internal sealed class OnboardingWidgetState(
 {
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)
     {
-        if (await membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
-            return OnboardingWidgetStep.Complete;
-
+        // Resolve merges and required names before testing consent completion.
         // HasRequiredNameFields (not IsStub) catches Active profiles with blank names from data drift.
         var info = await users.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return OnboardingWidgetStep.Names;
         userId = info.Id;
+
+        if (await membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
+            return OnboardingWidgetStep.Complete;
 
         // Returning member with any prior signature → skip Shifts, go to Consents (renew/new docs).
         var requiredRows = await consents.GetRequiredConsentRowsForUserAsync(

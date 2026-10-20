@@ -303,7 +303,7 @@ public sealed class TicketTransferServiceTests
         StubAttendee(TicketAttendeeStatus.Void, _senderId);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        (await act()).RefusalKey.Should().Be("TicketTransfer_NotTransferable");
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_NotTransferable");
         await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
@@ -316,7 +316,7 @@ public sealed class TicketTransferServiceTests
         StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        (await act()).RefusalKey.Should().Be("TicketTransfer_CheckedIn");
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_CheckedIn");
         await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
@@ -330,7 +330,7 @@ public sealed class TicketTransferServiceTests
 
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        (await act()).RefusalKey.Should().Be("TicketTransfer_AlreadyPending");
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_AlreadyPending");
         await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
@@ -366,7 +366,7 @@ public sealed class TicketTransferServiceTests
         stored.Status.Should().Be(TicketTransferStatus.Pending);
         results.Should().ContainSingle(result => result.Transfer != null);
         results.Should().ContainSingle(result => string.Equals(
-            result.RefusalKey, "TicketTransfer_AlreadyPending", StringComparison.Ordinal));
+            result.RefusalKey, "Tickets_TicketTransfer_AlreadyPending", StringComparison.Ordinal));
         _auditLog.ReceivedCalls().Should().ContainSingle(call =>
             call.GetArguments().OfType<AuditAction>().Contains(AuditAction.TicketTransferRequested));
     }

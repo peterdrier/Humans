@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Consent.Models;
 
@@ -34,10 +35,13 @@ internal sealed class LegalDocumentEditViewModel
     [Required]
     public Guid TeamId { get; set; }
 
+    [BindRequired]
     public bool IsRequired { get; set; } = true;
+    [BindRequired]
     public bool IsActive { get; set; } = true;
 
     [Range(1, 365)]
+    [BindRequired]
     public int GracePeriodDays { get; set; } = 7;
 
     [MaxLength(512)]

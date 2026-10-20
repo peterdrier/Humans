@@ -188,6 +188,11 @@ internal sealed class PreapprovalsAdminController(
         var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Manage, ct);
         if (forbidden is not null) return forbidden;
         if (grantId is { } id && program!.Grants.All(g => g.Id != id)) return NotFound();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed grant action on {ProgramId} by {UserId}", programId, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await act(user.Id);
         if (result.Refusal is { } refusal)

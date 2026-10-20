@@ -489,6 +489,9 @@ graph LR
     Finance --> User
     Finance --> UEmail
     Finance --> Email
+    Finance --> ExpenseReport
+    %% Finance -> Expenses is the section project (IExpenseReportService.GetHoldedBookingsAsync, read-only);
+    %% Expenses -> Finance is the Finance.Contracts leaf, so the project graph stays acyclic.
 
     %% Calendar
     Cal --> Audit

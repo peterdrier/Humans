@@ -330,6 +330,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (await _teams.GetTeamAsync(form.OwningTeamId, ct) is null) return NotFound();
 
         TryResolveStartEnd(form, out var start, out var end, out var startDate, out var endDate);
         if (!ModelState.IsValid)
@@ -366,6 +367,7 @@ internal sealed class CalendarController : HumansControllerBase
 
         if (form.IsAllDay)
         {
+            ModelState.Remove(nameof(form.RecurrenceTimezone));
             if (form.StartDateLocal is not { } startDt)
             {
                 ModelState.AddModelError(nameof(form.StartDateLocal), _localizer["Calendar_StartDateRequired"]);
@@ -467,6 +469,7 @@ internal sealed class CalendarController : HumansControllerBase
         form.EventId = id;
         form.OriginalOccurrenceStartUtc = originalStartUtc;
         form.IsAllDay = ev.IsAllDay;
+        if (ev.IsAllDay) ModelState.Remove(nameof(form.RecurrenceTimezone));
         var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (!ModelState.IsValid) return View("OccurrenceEdit", form);
         if (zone is null || !form.TryBuildOverride(zone, out var dto))

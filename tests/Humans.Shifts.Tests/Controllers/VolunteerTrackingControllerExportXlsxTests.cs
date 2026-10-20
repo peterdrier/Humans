@@ -168,7 +168,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
 
         var ctrl = new VolunteerTrackingController(
             service, shiftMgmt, burnSettings, exportService, xlsxBuilder,
-            userService, auditLog, localizer)
+            userService, auditLog, localizer, NullLogger<VolunteerTrackingController>.Instance)
         {
             ControllerContext = BuildControllerContext(currentUserId),
         };

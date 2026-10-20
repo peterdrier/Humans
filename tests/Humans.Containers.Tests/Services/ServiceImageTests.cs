@@ -8,6 +8,7 @@ using Humans.Containers.Domain;
 using Humans.Containers.Services;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -302,6 +303,94 @@ public sealed class ServiceImageTests
         (await _sut.GetAllAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
         await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerCreated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task MetadataFailure_DeletesOnlyNewFilesConfirmedUnlinked(bool updating, bool afterCommit)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var existing = updating ? await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2) : null;
+        var before = existing is not null ? await _sut.GetByIdAsync(existing.Id, ct) : null;
+        var uploaded = new List<string>();
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { uploaded.Add(call.Arg<string>()); return Task.CompletedTask; });
+        var failure = new IOException("Metadata save failed");
+        var options = new DbContextOptionsBuilder<ContainersDbContext>(_containersOptions)
+            .AddInterceptors(new FailImageMetadataSave(afterCommit, failure)).Options;
+        var service = new Service(new Repository(new TestDbContextFactory<ContainersDbContext>(options)),
+            _fileStorage, _camps, _auditLog, new FakeClock(StartTime), _logger);
+        var data = new ContainerData(CampId, "Changed", "New description", NewImages: FakeImages(2),
+            RemoveImageIds: before?.Images.Select(image => image.Id).ToList());
+
+        Func<Task> save = updating
+            ? () => service.UpdateAsync(existing!.Id, data, Guid.NewGuid(), ct)
+            : () => service.CreateAsync(data, Guid.NewGuid(), ct);
+
+        (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        uploaded.Should().HaveCount(2);
+        var saved = await _sut.GetAllAsync(ct);
+        var linked = saved.SelectMany(container => container.Images).Select(image => image.Url.TrimStart('/')).ToList();
+        await _fileStorage.Received(afterCommit ? 0 : 2).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
+        foreach (var key in uploaded)
+        {
+            if (afterCommit) linked.Should().Contain(key);
+            else
+            {
+                linked.Should().NotContain(key);
+                await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
+            }
+        }
+        foreach (var image in before?.Images ?? [])
+            await _fileStorage.DidNotReceive().DeleteAsync(image.Url.TrimStart('/'), Arg.Any<CancellationToken>());
+        if (!afterCommit && updating) saved.Should().ContainSingle().Which.Should().BeEquivalentTo(before);
+        else if (!afterCommit) saved.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnverifiableMetadataFailure_RetainsNewFilesAndOriginalFailure(bool placement)
+    {
+        var id = Guid.NewGuid();
+        var failure = new IOException("Metadata write failed");
+        var repo = Substitute.For<IContainerRepository>();
+        repo.AddAsync(Arg.Any<Container>(), Arg.Any<IReadOnlyCollection<ContainerImage>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(failure);
+        repo.GetImagesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Verification unavailable"));
+        repo.GetPlacementAsync(id, 2026, Arg.Any<CancellationToken>()).Returns(
+            _ => Task.FromResult<ContainerPlacement?>(new ContainerPlacement { ContainerId = id, Year = 2026 }),
+            _ => Task.FromException<ContainerPlacement?>(new IOException("Verification unavailable")));
+        repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var service = new Service(repo, _fileStorage, _camps, _auditLog, new FakeClock(StartTime), _logger);
+
+        Func<Task> save = placement
+            ? () => service.UpdatePlacementNotesAsync(id, 2026, null, FakeImage(), false, Guid.NewGuid(),
+                TestContext.Current.CancellationToken)
+            : () => service.CreateAsync(new ContainerData(CampId, "New", null, NewImages: FakeImages(2)),
+                Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        await _fileStorage.Received(placement ? 1 : 2).SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+        await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+    }
+
+    internal sealed class FailImageMetadataSave(bool afterCommit, Exception failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!afterCommit) throw failure;
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+            => throw failure;
     }
 
     [HumansFact]

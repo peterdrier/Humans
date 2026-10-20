@@ -154,9 +154,15 @@ internal sealed class ExpenseReportService(
             : ExpenseHoldedSyncState.Queued;
     }
 
-    public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
-        => repo.GetForSubmitterAsync(submitterUserId, ct);
+    {
+        var submitter = await userService.GetUserInfoAsync(submitterUserId, ct);
+        var reports = new List<ExpenseReportDto>();
+        foreach (var id in submitter?.AllUserIds ?? [submitterUserId])
+            reports.AddRange(await repo.GetForSubmitterAsync(id, ct));
+        return reports;
+    }
 
     public async Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default)
@@ -168,9 +174,33 @@ internal sealed class ExpenseReportService(
         // memory beats a per-audience query at our small scale, and keeps the ordering the repo
         // already chose. Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
+        var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
+        var ownIds = viewer?.AllUserIds ?? [viewerUserId];
         return queue
-            .Where(r => r.SubmitterUserId == viewerUserId
+            .Where(r => ownIds.Contains(r.SubmitterUserId)
                         || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default)
+    {
+        var reports = await repo.GetAllAsync(ct);
+        // The creditor is the member as they are now, as ExpenseHoldedPublisher binds it: a report
+        // submitted under a since-merged id belongs to the survivor's binding and contacts.
+        var members = await userService.GetUserInfosAsync(
+            reports.Select(r => r.SubmitterUserId).ToHashSet(), ct);
+        return reports
+            .SelectMany(report => PayableAllocation.Allocate(report)
+                .Where(a => a.Line.HoldedDocId is not null)
+                .Select(a => new ExpenseHoldedBooking(
+                    report.Id,
+                    a.Line.Id,
+                    members.GetValueOrDefault(report.SubmitterUserId)?.Id ?? report.SubmitterUserId,
+                    report.HoldedContactId,
+                    a.Line.HoldedDocId!,
+                    $"ER: {a.Line.Description}",
+                    $"Expense report {report.Id}",
+                    a.Booked)))
             .ToList();
     }
 
@@ -212,7 +242,7 @@ internal sealed class ExpenseReportService(
     private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
         Guid coordinatorUserId, CancellationToken ct)
     {
-        var year = await budgetService.GetActiveYearAsync();
+        var year = await budgetService.GetActiveYearAsync(ct);
         if (year is null) return [];
 
         // The same rule that grants endorse: whoever can sign a claim off sees it.
@@ -873,7 +903,7 @@ internal sealed class ExpenseReportService(
         {
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-            if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
+            if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
             if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
@@ -987,7 +1017,7 @@ internal sealed class ExpenseReportService(
         {
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-            if (report.SubmitterUserId != submitterUserId)
+            if (!await IsSubmitterAsync(report, submitterUserId, ct))
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
 
             var now = clock.GetCurrentInstant();
@@ -1056,6 +1086,7 @@ internal sealed class ExpenseReportService(
 
         try
         {
+            submitterUserId = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Id ?? submitterUserId;
             var saved = await userWrite.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
                 return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
@@ -1523,7 +1554,7 @@ internal sealed class ExpenseReportService(
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Iban_ReportNotFound"));
-        if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
+        if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanEdit"));
 
         var editable = actorIsFinanceAdmin
@@ -1533,6 +1564,10 @@ internal sealed class ExpenseReportService(
             ? (report, null)
             : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
     }
+
+    private async Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        report.SubmitterUserId == actorUserId
+        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(report.SubmitterUserId) == true;
 
     /// <summary>
     /// Resolves what a report books to from the account the submitter picked. A budget-category

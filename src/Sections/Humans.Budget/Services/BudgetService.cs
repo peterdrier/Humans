@@ -23,9 +23,9 @@ internal sealed class BudgetService(
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
-    public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false)
+    public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default)
     {
-        var years = await repository.GetAllYearsAsync(includeArchived);
+        var years = await repository.GetAllYearsAsync(includeArchived, ct);
         return years.Select(ToYearSummarySnapshot).ToList();
     }
 
@@ -46,15 +46,15 @@ internal sealed class BudgetService(
                 .ToList(),
             year.VendorEventId);
 
-    public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id)
+    public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var year = await repository.GetYearByIdAsync(id);
+        var year = await repository.GetYearByIdAsync(id, ct);
         return year is null ? null : ToYearDetail(year);
     }
 
-    public async Task<BudgetYearDetail?> GetActiveYearAsync()
+    public async Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default)
     {
-        var year = await repository.GetActiveYearAsync();
+        var year = await repository.GetActiveYearAsync(ct);
         return year is null ? null : ToYearDetail(year);
     }
 
@@ -123,13 +123,13 @@ internal sealed class BudgetService(
                     item.SortOrder))
                 .ToList());
 
-    public async Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin)
+    public async Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
     {
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
             return new CoordinatorBudgetViewData(null, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: true);
 
-        var activeYear = await GetActiveYearAsync();
+        var activeYear = await GetActiveYearAsync(ct);
         return new CoordinatorBudgetViewData(activeYear, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: false);
     }
 
@@ -273,9 +273,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted budget group {GroupId}", groupId);
     }
 
-    public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id)
+    public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var category = await repository.GetCategoryByIdAsync(id);
+        var category = await repository.GetCategoryByIdAsync(id, ct);
         if (category is null)
             return null;
 
@@ -289,7 +289,7 @@ internal sealed class BudgetService(
         var teamNamesById = new Dictionary<Guid, string>();
         if (teamIds.Count > 0)
         {
-            var teams = await teamService.GetTeamsAsync();
+            var teams = await teamService.GetTeamsAsync(ct);
             foreach (var teamId in teamIds)
             {
                 if (teams.TryGetValue(teamId, out var team))
@@ -301,9 +301,9 @@ internal sealed class BudgetService(
     }
 
     public async Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
-        Guid categoryId, Guid userId, bool isFinanceAdmin)
+        Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
     {
-        var category = await GetCategoryByIdAsync(categoryId);
+        var category = await GetCategoryByIdAsync(categoryId, ct);
         if (category is null)
             return new CoordinatorCategoryDetailViewData(null, ShouldForbid: false, Teams: []);
 
@@ -311,11 +311,11 @@ internal sealed class BudgetService(
         if (isRestricted && !isFinanceAdmin)
             return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
 
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
             return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
 
-        var teams = (await teamService.GetTeamsAsync()).Values
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive)
             .ToList();
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
@@ -514,9 +514,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId)
+    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)
     {
-        var entries = await repository.GetAuditLogAsync(budgetYearId);
+        var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
         return entries.Select(e => new BudgetAuditLogSnapshot(
             e.Id,
             e.BudgetYearId,
@@ -530,8 +530,8 @@ internal sealed class BudgetService(
             e.OccurredAt)).ToList();
     }
 
-    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId) =>
-        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId)).ToHashSet();
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
+        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct)).ToHashSet();
 
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups)
     {

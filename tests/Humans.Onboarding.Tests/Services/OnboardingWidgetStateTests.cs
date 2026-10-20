@@ -78,10 +78,30 @@ public class OnboardingWidgetStateTests
         await _burnSettings.Received(1).GetActiveEventSettingsAsync(request.Token);
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Completion_RequiresNamesAndChecksTheSurvivingUser(bool mergedAlias, bool missingNames)
+    {
+        var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        var info = missingNames ? StubUserInfo(userId) : NonStubUserInfo(userId);
+        _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(info);
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var step = await BuildSut().GetCurrentStepAsync(inputId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(missingNames ? OnboardingWidgetStep.Names : OnboardingWidgetStep.Complete, step);
+    }
+
     [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
     {
         var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
 

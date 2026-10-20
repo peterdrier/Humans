@@ -1,3 +1,7 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -26,23 +30,48 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     private readonly ILogger<WorkgroupsAdminController> _logger = Substitute.For<ILogger<WorkgroupsAdminController>>();
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Disposition_MalformedBinding_DoesNotRecordAcceptance(bool malformed)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Disposition_InvalidOrMissingChoice_DoesNotRecordAcceptance(bool malformed, bool missingChoice)
     {
         var group = await SeedWorkgroupAsync();
         var document = await AddDocumentAsync(group.Id, WorkgroupDocumentStatus.Delivered);
         var controller = MakeAdminController(nameof(WorkgroupsAdminController.Disposition));
         if (malformed) controller.ModelState.AddModelError("disposition", "Invalid value.");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        if (missingChoice)
+        {
+            controller.HttpContext.RequestServices = services;
+            var parameter = typeof(WorkgroupsAdminController).GetMethod(nameof(WorkgroupsAdminController.Disposition))!
+                .GetParameters().Single(p => p.ParameterType.IsEnum);
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+        }
 
         var result = await controller.Disposition(document.Id, WorkgroupDisposition.Accepted, "Agreed", Ct);
 
-        if (malformed) result.Should().BeOfType<BadRequestObjectResult>();
+        if (malformed || missingChoice) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<RedirectToActionResult>();
         await using var db = OpenContext();
         var stored = await db.Documents.SingleAsync(d => d.Id == document.Id, Ct);
-        stored.Disposition.Should().Be(malformed ? null : WorkgroupDisposition.Accepted);
-        if (malformed)
+        stored.Disposition.Should().Be(malformed || missingChoice ? null : WorkgroupDisposition.Accepted);
+        if (malformed || missingChoice)
         {
             AuditLog.ReceivedCalls().Should().BeEmpty();
             Notifications.ReceivedCalls().Should().BeEmpty();

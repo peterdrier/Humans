@@ -507,18 +507,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleDefinition>()
-            .Include(d => d.Team)
-            .Include(d => d.Assignments)
-                .ThenInclude(a => a.TeamMember)
-            .Where(d => d.Team.IsActive && d.Team.SystemTeamType == SystemTeamType.None)
-            .AsNoTracking()
-            .ToListAsync(ct);
-    }
-
     public async Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default)
     {

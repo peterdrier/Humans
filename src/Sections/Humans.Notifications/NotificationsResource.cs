@@ -11,7 +11,7 @@ namespace Humans.Notifications;
 /// Public because the boot localization diagnostic discovers section resource markers
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence. The set
 /// includes the keys the notification bell renders — the bell view component and its
-/// <c>Default.cshtml</c> live in this section so the whole <c>Notification_*</c> set
+/// <c>Default.cshtml</c> live in this section so the whole <c>Notifications_*</c> set
 /// stays in one resource set. The section contributes the bell by <c>Type</c> to
 /// <c>ChromeSlots.HeaderRight</c> (<c>SectionChrome</c>), which the layout renders.
 /// </remarks>

@@ -4,6 +4,9 @@ using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Humans.Base.Constants;
 using Humans.Issues.Controllers;
 using Humans.Issues.Contracts;
@@ -184,6 +187,152 @@ public sealed class IssuesControllerTests
         else result.Should().BeOfType<ForbidResult>();
         issues.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "UpdateStatusAsync" or "UpdateAssigneeAsync" or "UpdateSectionAsync" or "SetGitHubIssueNumberAsync")
             .Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("0")]
+    public async Task Triage_requires_posted_status_before_mutation(string? postedStatus)
+    {
+        var actor = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueDetail(issueId, IssueStatus.Resolved, default, "Camps", "Existing", "Details",
+                null, null, null, null, actor, Guid.NewGuid(), actor, 42, null, default, default, null, 0));
+        issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), actor)
+            .Returns(IssueMutationResult.Success());
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (postedStatus is not null) fields["Status"] = postedStatus;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(UpdateIssueStatusModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(UpdateIssueStatusModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (UpdateIssueStatusModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.UpdateStatus(issueId, model);
+
+        if (postedStatus is null)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState["Status"]!.Errors.Should().ContainSingle();
+            issues.ReceivedCalls().Should().NotContain(call => call.GetMethodInfo().Name == nameof(IIssuesService.UpdateStatusAsync));
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await issues.Received(1).UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), IssueStatus.Triage, actor);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    [InlineData(false, "0", true)]
+    [InlineData(true, "0", true)]
+    [InlineData(false, "Feature", true)]
+    [InlineData(true, "Feature", true)]
+    [InlineData(false, null, false)]
+    [InlineData(true, null, false)]
+    public async Task Submission_requires_explicit_category_before_creating_issue(bool ajax, string? category, bool viewerExists)
+    {
+        var actor = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.SubmitIssueAsync(default, default, default!, default!, default, default, default, default, default, default, default, default)
+            .ReturnsForAnyArgs(new IssueSubmissionResult(new Issue { Id = issueId }));
+        var users = Substitute.For<IUserService>();
+        if (viewerExists)
+            users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Title"] = "Title",
+            ["Description"] = "Description"
+        };
+        if (category is not null) fields["Category"] = category;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SubmitIssueViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(SubmitIssueViewModel)
+        });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (SubmitIssueViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = await controller.Submit(model);
+
+        if (!viewerExists)
+        {
+            if (ajax) result.Should().BeOfType<UnauthorizedResult>();
+            else result.Should().BeOfType<NotFoundResult>();
+        }
+        else if (category is null)
+        {
+            if (ajax) result.Should().BeOfType<BadRequestObjectResult>();
+            else result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("New");
+            controller.ModelState["Category"]!.Errors.Should().ContainSingle();
+        }
+        else
+        {
+            if (ajax) result.Should().BeOfType<JsonResult>();
+            else result.Should().BeOfType<RedirectToActionResult>();
+            await issues.Received(1).SubmitIssueAsync(actor, Enum.Parse<IssueCategory>(category), "Title", "Description",
+                null, null, null, null, null, null, Arg.Any<IReadOnlyList<string>?>(), CancellationToken.None);
+        }
+        if (!viewerExists || category is null) issues.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

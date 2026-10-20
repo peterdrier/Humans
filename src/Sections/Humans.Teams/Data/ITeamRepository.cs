@@ -360,12 +360,6 @@ internal interface ITeamRepository : IRepository
         Guid teamId, CancellationToken ct = default);
 
     /// <summary>
-    /// Every role definition across active non-system teams, with Team,
-    /// Assignments, and TeamMember data eagerly loaded. Detached.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Load a role definition (tracked) with Team + Assignments +
     /// Assignments.TeamMember loaded, for mutations like
     /// <c>UpdateRoleDefinitionAsync</c>. The nested <c>TeamMember</c> is

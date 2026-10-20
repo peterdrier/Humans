@@ -1274,4 +1274,5 @@
   <data name="Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Grazie per quest'anno. I turni riapriranno quando il Consiglio pubblicherà il prossimo evento.</value>
   </data>
+  <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Il motivo non può superare i 1000 caratteri.</value></data>
 </root>

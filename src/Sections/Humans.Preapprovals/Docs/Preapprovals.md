@@ -137,12 +137,16 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
   arrives anyway is 400.
+- Program create/edit forms require explicit kind, status and application-intake choices. Missing fields redisplay validation errors before any program change, audit or notification; they cannot reopen a Closed program or disable applications. Explicit Open, fixed-per-person and false choices remain valid, including the hidden kind value on locked programs.
 - One pending application per person per program across every id they have held; a second
   submit edits it.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
   for it (a rejected report resubmitting). Release and consume need the holding report.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
+- Grant admin actions reject invalid form binding with 400 after identity, program permission
+  and grant ownership checks. Malformed amounts never fall back to a program/request amount,
+  and malformed bulk selections never issue grants to only the valid subset.
 - The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
   ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.
@@ -168,6 +172,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`AuditAction.Preapproval*`), related to the program, the expense report, or the
   affected user.
+- The member program page localizes its breadcrumb navigation label in all six supported cultures.
 - Member notices and emails format amounts and claim deadlines in the recipient’s culture.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key

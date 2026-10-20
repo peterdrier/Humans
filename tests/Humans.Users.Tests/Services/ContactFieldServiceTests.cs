@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -419,6 +420,139 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remainingFields.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SaveContactFields_Omitted_legacy_email_is_preserved()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var profile = await CreateProfile(Guid.NewGuid());
+        var legacy = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = default,
+            Value = "legacy@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        Db.ContactFields.Add(legacy);
+        await Db.SaveChangesAsync(ct);
+
+        await _service.SaveContactFieldsAsync(profile.Id, [], ct);
+
+        var saved = await Db.ContactFields.AsNoTracking().SingleAsync(ct);
+        saved.Id.Should().Be(legacy.Id);
+        saved.FieldType.Should().Be(default);
+        saved.Value.Should().Be("legacy@example.org");
+        saved.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
+    }
+
+    [HumansFact]
+    public async Task Profile_editor_keeps_legacy_email_out_of_editable_type_selector()
+    {
+        var userId = Guid.NewGuid();
+        var profile = await CreateProfile(userId);
+        var legacyId = Guid.NewGuid();
+        var signalId = Guid.NewGuid();
+        await Db.ContactFields.AddRangeAsync(
+            new ContactField
+            {
+                Id = legacyId,
+                ProfileId = profile.Id,
+                FieldType = default,
+                Value = "legacy@example.org",
+                Visibility = ContactFieldVisibility.BoardOnly,
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
+            },
+            new ContactField
+            {
+                Id = signalId,
+                ProfileId = profile.Id,
+                FieldType = ContactFieldType.Signal,
+                Value = "signal-handle",
+                Visibility = ContactFieldVisibility.MyTeams,
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant()
+            });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        StubUserInfo(userId, profile);
+        var info = await _userService.GetUserInfoAsync(userId);
+
+        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, [], [], [], false, _ => null);
+
+        model.EditableContactFields.Should().ContainSingle().Which.Id.Should().Be(signalId);
+        model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacyId);
+        model.ContactFields[0].Value.Should().Be("legacy@example.org");
+        model.ContactFields[0].Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Legacy_contact_removal_is_explicit_and_profile_scoped(bool removeOwn, bool staleEditor)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var profile = await CreateProfile(Guid.NewGuid());
+        var otherProfile = await CreateProfile(Guid.NewGuid());
+        var now = Clock.GetCurrentInstant();
+        var legacy = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = default,
+            Value = "legacy@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var phone = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "old-number",
+            Visibility = ContactFieldVisibility.MyTeams,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var foreign = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = otherProfile.Id,
+            FieldType = default,
+            Value = "other@example.org",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await Db.ContactFields.AddRangeAsync(legacy, phone, foreign);
+        await Db.SaveChangesAsync(ct);
+        var fields = new List<ContactFieldEditDto>
+        {
+            new(phone.Id, ContactFieldType.Phone, null, "updated-number", ContactFieldVisibility.MyTeams, 0)
+        };
+        if (staleEditor)
+            fields.Add(new(legacy.Id, ContactFieldType.Phone, null, "changed", ContactFieldVisibility.AllActiveProfiles, 1));
+
+        await _service.SaveContactFieldsAsync(profile.Id, fields, ct,
+            [removeOwn ? legacy.Id : foreign.Id, phone.Id]);
+
+        var rows = await Db.ContactFields.AsNoTracking().ToListAsync(ct);
+        rows.Single(cf => cf.Id == foreign.Id).Value.Should().Be("other@example.org");
+        rows.Single(cf => cf.Id == phone.Id).Value.Should().Be("updated-number");
+        if (removeOwn) rows.Should().NotContain(cf => cf.Id == legacy.Id);
+        else
+        {
+            var saved = rows.Single(cf => cf.Id == legacy.Id);
+            saved.FieldType.Should().Be(default);
+            saved.Value.Should().Be("legacy@example.org");
+            saved.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
+        }
     }
 
     [HumansFact]

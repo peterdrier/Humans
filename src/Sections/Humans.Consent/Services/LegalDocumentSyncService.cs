@@ -181,11 +181,18 @@ internal sealed partial class LegalDocumentSyncService(
         return created;
     }
 
-    public async Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
+    public async Task<AdminLegalDocumentCreateResult?> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        if (await teamService.GetTeamAsync(request.TeamId, cancellationToken) is null)
+        {
+            logger.LogWarning("Rejected legal-document creation for missing team {TeamId} by user {ActorUserId}",
+                request.TeamId, actorUserId);
+            return null;
+        }
+
         var document = await CreateLegalDocumentAsync(request, cancellationToken);
         await audit.LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", document.Id,
             $"Created '{document.Name}': team {document.TeamId}, required {document.IsRequired}, " +
@@ -224,6 +231,13 @@ internal sealed partial class LegalDocumentSyncService(
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        if (await teamService.GetTeamAsync(request.TeamId, cancellationToken) is null)
+        {
+            logger.LogWarning("Rejected legal-document edit {DocumentId} for missing team {TeamId} by user {ActorUserId}",
+                documentId, request.TeamId, actorUserId);
+            return null;
+        }
+
         var updated = await repository.UpdateAsync(
             documentId,
             request.Name,
@@ -264,25 +278,33 @@ internal sealed partial class LegalDocumentSyncService(
         Guid documentId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         SyncDocumentCoreAsync(documentId, actorUserId, cancellationToken);
 
-    public async Task<bool> UpdateVersionSummaryAsync(
+    public async Task<VersionSummaryUpdateResult> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,
         string? changesSummary,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        var summary = string.IsNullOrWhiteSpace(changesSummary) ? null : changesSummary.Trim();
+        if (summary?.Length > 2000)
+        {
+            logger.LogWarning("Rejected oversized summary for legal document {DocumentId}, version {VersionId}",
+                documentId, versionId);
+            return VersionSummaryUpdateResult.TooLong;
+        }
+
         var updated = await repository.UpdateVersionSummaryAsync(
-            documentId, versionId, changesSummary, cancellationToken);
+            documentId, versionId, summary, cancellationToken);
 
         if (updated)
         {
             invalidator.InvalidateAll();
             await audit.LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
-                $"Updated summary of version {versionId} to '{changesSummary?.Trim()}'.", actorUserId,
+                $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
                 relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
         }
 
-        return updated;
+        return updated ? VersionSummaryUpdateResult.Updated : VersionSummaryUpdateResult.NotFound;
     }
 
     [GeneratedRegex(
@@ -510,6 +532,13 @@ internal sealed partial class LegalDocumentSyncService(
         {
             logger.LogWarning("Canonical file not found at {Path}", canonicalPath);
             return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(canonicalResult.Content))
+        {
+            logger.LogWarning("Canonical Spanish content is blank at {Path} for document {DocumentId}",
+                canonicalPath, document.Id);
+            throw new InvalidOperationException($"No canonical Spanish content found at '{canonicalPath}'.");
         }
 
         var commitSha = canonicalResult.Sha;

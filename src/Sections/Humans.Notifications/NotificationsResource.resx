@@ -35,18 +35,18 @@
   <!-- ======================== -->
   <!-- Common / Shared          -->
   <!-- ======================== -->
-  <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Notification popup</value></data>
-  <data name="Notification_Popup_Title" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Popup_NeedAction" xml:space="preserve"><value>need action</value></data>
-  <data name="Notification_Popup_Close" xml:space="preserve"><value>Close notifications</value></data>
-  <data name="Notification_Popup_CaughtUp" xml:space="preserve"><value>You're all caught up.</value></data>
-  <data name="Notification_Popup_NoUnread" xml:space="preserve"><value>No unread notifications.</value></data>
-  <data name="Notification_Section_NeedsAttention" xml:space="preserve"><value>Needs your attention</value></data>
-  <data name="Notification_Section_Recent" xml:space="preserve"><value>Recent</value></data>
-  <data name="Notification_Section_Informational" xml:space="preserve"><value>Informational</value></data>
-  <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
-  <data name="Notification_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
+  <data name="Notifications_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notifications_Popup_AriaLabel" xml:space="preserve"><value>Notification popup</value></data>
+  <data name="Notifications_Popup_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notifications_Popup_NeedAction" xml:space="preserve"><value>need action</value></data>
+  <data name="Notifications_Popup_Close" xml:space="preserve"><value>Close notifications</value></data>
+  <data name="Notifications_Popup_CaughtUp" xml:space="preserve"><value>You're all caught up.</value></data>
+  <data name="Notifications_Popup_NoUnread" xml:space="preserve"><value>No unread notifications.</value></data>
+  <data name="Notifications_Section_NeedsAttention" xml:space="preserve"><value>Needs your attention</value></data>
+  <data name="Notifications_Section_Recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="Notifications_Section_Informational" xml:space="preserve"><value>Informational</value></data>
+  <data name="Notifications_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notifications_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Consent reviews pending</value></data>
   <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Applications pending your vote</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Pending account deletions</value></data>
@@ -56,28 +56,28 @@
   <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Ticket sync error</value></data>
   <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 human wants to join your camp</value></data>
   <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} humans want to join your camp</value></data>
-  <data name="Notification_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
-  <data name="Notification_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
-  <data name="Notification_PageTitle" xml:space="preserve"><value>All notifications</value></data>
-  <data name="Notification_SearchPlaceholder" xml:space="preserve"><value>Search notifications...</value></data>
-  <data name="Notification_Filter_All" xml:space="preserve"><value>All</value></data>
-  <data name="Notification_Filter_NeedsAction" xml:space="preserve"><value>Needs action</value></data>
-  <data name="Notification_Filter_Shifts" xml:space="preserve"><value>Shifts</value></data>
-  <data name="Notification_Filter_Approvals" xml:space="preserve"><value>Approvals</value></data>
-  <data name="Notification_Filter_Resolved" xml:space="preserve"><value>Resolved</value></data>
-  <data name="Notification_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
-  <data name="Notification_Tab_All" xml:space="preserve"><value>All</value></data>
-  <data name="Notification_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
-  <data name="Notification_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
-  <data name="Notification_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
-  <data name="Notification_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
-  <data name="Notification_TimeAgo_Minutes" xml:space="preserve"><value>{0}m ago</value></data>
-  <data name="Notification_TimeAgo_Hours" xml:space="preserve"><value>{0}h ago</value></data>
-  <data name="Notification_TimeAgo_Days" xml:space="preserve"><value>{0}d ago</value></data>
-  <data name="Notification_Bulk_Selected" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="Notifications_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
+  <data name="Notifications_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
+  <data name="Notifications_PageTitle" xml:space="preserve"><value>All notifications</value></data>
+  <data name="Notifications_SearchPlaceholder" xml:space="preserve"><value>Search notifications...</value></data>
+  <data name="Notifications_Filter_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notifications_Filter_NeedsAction" xml:space="preserve"><value>Needs action</value></data>
+  <data name="Notifications_Filter_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Notifications_Filter_Approvals" xml:space="preserve"><value>Approvals</value></data>
+  <data name="Notifications_Filter_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notifications_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
+  <data name="Notifications_Tab_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notifications_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notifications_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
+  <data name="Notifications_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
+  <data name="Notifications_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
+  <data name="Notifications_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
+  <data name="Notifications_TimeAgo_Minutes" xml:space="preserve"><value>{0}m ago</value></data>
+  <data name="Notifications_TimeAgo_Hours" xml:space="preserve"><value>{0}h ago</value></data>
+  <data name="Notifications_TimeAgo_Days" xml:space="preserve"><value>{0}d ago</value></data>
+  <data name="Notifications_Bulk_Selected" xml:space="preserve"><value>{0} selected</value></data>
   <data name="Notifications_SelectNotification" xml:space="preserve"><value>Select notification</value></data>
-  <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
-  <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
-  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Could not load notifications. Please try again.</value></data>
+  <data name="Notifications_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
+  <data name="Notifications_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
+  <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Could not load notifications. Please try again.</value></data>
 </root>

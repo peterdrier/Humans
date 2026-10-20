@@ -15,6 +15,7 @@ using NSubstitute.ExceptionExtensions;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Services;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.AuditLog.Tests;
 
@@ -113,6 +114,29 @@ public class AuditLogServiceTests : IDisposable
         // immediately through the repository. The caller no longer needs to
         // call SaveChanges on a shared DbContext.
         _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogAsync_PreservesFullDescriptionWithinItsStorageColumn(bool systemAction)
+    {
+        // A valid 4000-character Workgroup disposition note gains an action/title prefix.
+        var description = $"Recorded Accepted on 'Proposal': {new string('x', 4000)}";
+        if (systemAction)
+            await _service.LogAsync(AuditAction.WorkgroupDispositionRecorded, "WorkgroupDocument",
+                Guid.NewGuid(), description, "TestJob");
+        else
+            await _service.LogAsync(AuditAction.WorkgroupDispositionRecorded, "WorkgroupDocument",
+                Guid.NewGuid(), description, Guid.NewGuid());
+
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        entry.Description.Should().Be(systemAction ? $"TestJob: {description}" : description);
+        // InMemory does not enforce varchar bounds; verify the complete entry fits the real mapping.
+        var mapping = _dbContext.Model.FindEntityType(typeof(AuditLogEntry))!;
+        entry.Description.Length.Should().BeLessThanOrEqualTo(
+            mapping.FindProperty(nameof(AuditLogEntry.Description))!.GetMaxLength() ?? int.MaxValue);
     }
 
     // ===== GetFilteredAsync =====

@@ -129,9 +129,9 @@ Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/del
 | EntityType | string | Entity class name |
 | EntityId | Guid | PK of the changed entity |
 | FieldName | string? | Changed field (null for create/delete) |
-| OldValue | string? | Serialized old value |
-| NewValue | string? | Serialized new value |
-| Description | string | Human-readable summary |
+| OldValue | string? | Full serialized old value (`text`) |
+| NewValue | string? | Full serialized new value (`text`) |
+| Description | string | Full human-readable summary (`text`) |
 | ActorUserId | Guid? | Cross-section FK → Users/Identity; null = automation (the nightly ticketing sync job), rendered as "System" |
 | OccurredAt | Instant | |
 
@@ -194,9 +194,16 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. Year-by-id retains archived years for historical report labels.
+
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
-- Year-status POSTs reject binding errors after resolving the actor and before mutation. A malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
+- Member index, summary and category GETs preserve request cancellation through actor resolution,
+  coordinator scope and page reads. Cancellation does not display a load-failure flash.
+- Admin GET pages preserve browser cancellation through year/category/audit reads, team names,
+  ticket projections, Holded actuals and ticket revenue. Cancellation propagates without a
+  load-failure flash; mutation paths keep their existing cancellation boundaries.
+- Year-status POSTs require an explicit status and reject binding errors after resolving the actor and before mutation. A missing or malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
 - Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
@@ -204,17 +211,24 @@ Stored as string via `HasConversion<string>()`.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
 - Ticketing actuals sync updates existing weekly Stripe/TicketTailor fee rows when their source amount becomes zero, retaining their identity and recording the sync audit. A new zero fee produces no line item.
 - Ticketing actuals sync (`TicketingBudgetService.SyncActualsAsync`) runs only for the Active budget year; any other year (Draft, Closed, archived) is refused with `InvalidOperationException` and nothing is written. It sums only the paid orders of the active year's event: `BudgetYear.VendorEventId` when configured (set from the year editor on `/Finance/Admin`), otherwise the current ticket event. `BudgetAdminController.CashFlow` seeds its runway from the same orders by the same rule (`TicketingBudgetService.GetGrossTicketRevenueAsync`). After summing, every stored auto-generated weekly actuals row (revenue and fee, not `Projected:` rows) whose week is absent from the new input — e.g. a week whose orders were all refunded — is set to 0, never deleted. When the year's event has no orders of any status (e.g. a moved `VendorEventId`), the sync writes nothing and logs a warning; an event whose orders are all refunded still zeroes its weeks. The sync still writes its audit entry.
+- Ticketing projection updates require all seven financial assumptions (initial sales, daily rate, ticket price, VAT and three fees). Missing values cannot reset forecasts to zero. They reject malformed dates, counts, rates and fees with 400 after
+  resolving the actor, before saving parameters or regenerating forecasts. Valid zero values
+  and empty optional dates remain supported.
+- Projection updates verify that the submitted group belongs to the submitted year before saving parameters or refreshing forecasts. A missing year or mismatched group returns 404 without a write, audit entry or success flash; one year’s parameters cannot be committed before refreshing another year.
 - The ticketing projection parameter editor counts remaining UTC calendar days, matching the controller’s day-count basis. Browser time zones and daylight-saving transitions do not change the rate/target calculation.
 - Ticketing projection previews and persisted projected line items use `TicketingProjection.CalculateWeeks`: the same ISO-week bounds, initial burst, ticket minimum, revenue and fee calculations. Materialization runs after actuals update the projection parameters. Persisted generated week descriptions remain canonical English regardless of the operator’s UI language; preview date labels follow the UI language.
 - Projection refresh upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An unchanged refresh writes no audit entry.
 - The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
+- Audit values and descriptions preserve complete field changes without separate length caps;
+  editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
 - `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
 - Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
+- Group create/update forms require an explicit restriction choice. Omission returns 400 before persistence or audit and cannot expose restricted category details to coordinators. Explicit false still removes the restriction intentionally.
 - The coordinator-facing category detail at `/Budget/Category/{id}` uses `BudgetResource` for every label, action, guidance message, tooltip, confirmation, and accessibility label in all supported cultures.
-- Category, line-item and group create/update forms reject binding errors with HTTP 400 (and log a warning) before writing anything; current-user resolution (not found when missing) and, for `/Budget` line items, coordinator category authorization run first; explicit zero amounts, false flags and empty optional fields are valid input.
+- Category and line-item create/update forms require explicit amounts, expenditure types and VAT rates wherever those controls appear; omission cannot save a zero allocation, line amount or VAT rate, or reset CapEx to OpEx. These forms and group forms reject binding errors with HTTP 400 (and log a warning) before writing anything; current-user resolution (not found when missing) and, for `/Budget` line items, coordinator category authorization run first; explicit zero amounts, false flags and empty optional fields are valid input.
 - On member and finance pages, displayed percentages, currency and number cells and chart money tooltips follow the selected UI culture, while sort values, chart JSON data and progress-bar widths stay invariant (machine) formatting.
 
 ## Negative Access Rules

@@ -111,13 +111,17 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _localizer);
     }
 
-    [HumansFact]
-    public async Task GetByUserAsync_CanceledToken_StopsRepositoryRead()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupHistoryRead_CanceledToken_StopsRepositoryRead(bool noShowHistory)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
 
-        var read = () => _service.GetByUserAsync(Guid.NewGuid(), ct: aborted.Token);
+        Func<Task> read = noShowHistory
+            ? () => _service.GetNoShowHistoryAsync(Guid.NewGuid(), aborted.Token)
+            : () => _service.GetByUserAsync(Guid.NewGuid(), ct: aborted.Token);
 
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -679,6 +683,87 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Bailed);
         Saved(result).StatusReason.Should().Be("Can't make it");
+    }
+
+    [HumansTheory]
+    [InlineData("refuse", 1000)]
+    [InlineData("refuse", 1001)]
+    [InlineData("bail", 1000)]
+    [InlineData("bail", 1001)]
+    [InlineData("remove", 1000)]
+    [InlineData("remove", 1001)]
+    [InlineData("refuseRange", 1000)]
+    [InlineData("refuseRange", 1001)]
+    [InlineData("bailRange", 1000)]
+    [InlineData("bailRange", 1001)]
+    public async Task Status_reason_limit_is_checked_before_any_signup_changes(string operation, int length)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var isRefusal = operation.StartsWith("refuse", StringComparison.Ordinal);
+        var initialStatus = isRefusal ? SignupStatus.Pending : SignupStatus.Confirmed;
+        var signup = SeedSignup(userId, shift.Id, initialStatus);
+        var signups = new List<ShiftSignup> { signup };
+        var blockId = Guid.NewGuid();
+        signup.SignupBlockId = blockId;
+        if (operation.EndsWith("Range", StringComparison.Ordinal))
+        {
+            var second = SeedSignup(userId, SeedAllDayShift(rota, 1).Id, initialStatus);
+            second.SignupBlockId = blockId;
+            signups.Add(second);
+        }
+        await SaveAllAsync(ct);
+        var reason = new string('x', length);
+        bool success;
+        string? error;
+        if (string.Equals(operation, "bailRange", StringComparison.Ordinal))
+        {
+            var result = await _service.BailRangeAsync(blockId, userId, reason);
+            success = result.ErrorKey is null;
+            error = result.ErrorKey;
+        }
+        else
+        {
+            var result = operation switch
+            {
+                "refuse" => await _service.RefuseAsync(signup.Id, userId, reason),
+                "bail" => await _service.BailAsync(signup.Id, userId, reason),
+                "remove" => await _service.RemoveSignupAsync(signup.Id, userId, reason),
+                _ => await _service.RefuseRangeAsync(blockId, userId, reason)
+            };
+            success = result.Success;
+            error = result.Error;
+        }
+
+        success.Should().Be(length <= 1000);
+        var ids = signups.Select(s => s.Id).ToList();
+        var stored = await ShiftsDb.ShiftSignups.AsNoTracking().Where(s => ids.Contains(s.Id)).ToListAsync(ct);
+        if (length > 1000)
+        {
+            error.Should().Be("Shifts_StatusReasonTooLong");
+            stored.Should().AllSatisfy(s =>
+            {
+                s.Status.Should().Be(initialStatus);
+                s.StatusReason.Should().BeNull();
+            });
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+            Notifier.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            var expected = isRefusal ? SignupStatus.Refused
+                : string.Equals(operation, "remove", StringComparison.Ordinal) ? SignupStatus.Cancelled : SignupStatus.Bailed;
+            stored.Should().AllSatisfy(s =>
+            {
+                s.Status.Should().Be(expected);
+                s.StatusReason.Should().Be(reason);
+            });
+            AuditLog.ReceivedCalls().Should().HaveCount(signups.Count);
+            AuditLog.ReceivedCalls().Should().OnlyContain(call =>
+                ((string)call.GetArguments()[3]!).Contains(reason, StringComparison.Ordinal));
+        }
     }
 
     [HumansFact]

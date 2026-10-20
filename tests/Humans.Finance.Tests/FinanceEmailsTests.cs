@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Finance.Services;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Finance.Tests;
 
@@ -75,6 +76,7 @@ public sealed class FinanceEmailsTests
         var type = parameter.ParameterType;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(decimal)) return 1m;
+        if (type == typeof(LocalDate)) return new LocalDate(2026, 10, 18);
         throw new NotSupportedException(
             $"FinanceEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
     }

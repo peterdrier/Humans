@@ -1,3 +1,14 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
+using System.Security.Claims;
+using Humans.Consent.Controllers;
+using Humans.Consent.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.Text;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -42,6 +53,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _repository = new LegalDocumentRepository(LegalDbFactory);
 
         _team = SeedTeam(Guid.NewGuid(), "Volunteers");
+
+        _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team);
 
         // Team-name stitch: return the seed team when queried.
         _teamService
@@ -136,6 +149,132 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("IsRequired", false)]
+    [Xunit.InlineData("IsActive", false)]
+    [Xunit.InlineData("GracePeriodDays", false)]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData(null, true)]
+    public async Task AdminDocumentForms_require_explicit_consent_policy_before_editing(string? omitted, bool enabled)
+    {
+        var document = await SeedDocumentAsync("Existing document");
+        document.IsRequired = false;
+        document.IsActive = false;
+        document.GracePeriodDays = 30;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [_team.Id] = _team });
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
+        };
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = document.Id.ToString(),
+            ["Name"] = "Changed document",
+            ["TeamId"] = _team.Id.ToString(),
+            ["IsRequired"] = enabled ? "true" : "false",
+            ["IsActive"] = enabled ? "true" : "false",
+            ["GracePeriodDays"] = enabled ? "1" : "365"
+        };
+        if (omitted is not null) fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(LegalDocumentEditViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(LegalDocumentEditViewModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (LegalDocumentEditViewModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.EditLegalDocument(document.Id, model);
+
+        await using var verify = LegalDbFactory.CreateDbContext();
+        var stored = await verify.LegalDocuments.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        if (omitted is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            stored.Name.Should().Be("Existing document");
+            stored.IsRequired.Should().BeFalse();
+            stored.IsActive.Should().BeFalse();
+            stored.GracePeriodDays.Should().Be(30);
+            _invalidator.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            stored.Name.Should().Be("Changed document");
+            stored.IsRequired.Should().Be(enabled);
+            stored.IsActive.Should().Be(enabled);
+            stored.GracePeriodDays.Should().Be(enabled ? 1 : 365);
+            _invalidator.Received(1).InvalidateAll();
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task AdminDocumentWrites_reject_missing_teams_before_persistence_or_sync(bool edit, bool empty)
+    {
+        var document = await SeedDocumentAsync("Existing document");
+        StubGitHubFolder("privacy/", "Spanish agreement", "new-sha", "Initial version");
+        var targetTeamId = empty ? Guid.Empty : Guid.NewGuid();
+        var model = new LegalDocumentEditViewModel
+        {
+            Id = edit ? document.Id : null,
+            Name = "Changed document",
+            TeamId = targetTeamId,
+            GitHubFolderPath = "privacy/"
+        };
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
+        };
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+
+        var result = edit
+            ? await controller.EditLegalDocument(document.Id, model)
+            : await controller.CreateLegalDocument(model);
+
+        result.Should().BeOfType<NotFoundResult>();
+        await using var verify = LegalDbFactory.CreateDbContext();
+        var stored = await verify.LegalDocuments.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.Should().ContainSingle().Which.Name.Should().Be("Existing document");
+        stored[0].TeamId.Should().Be(_team.Id);
+        _invalidator.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _gitHub.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
+    }
+
     // ── CreateLegalDocumentWithInitialSyncAsync ──────────────────────────────
 
     [HumansFact(Timeout = 10000)]
@@ -149,7 +288,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
         var documents = await _service.GetLegalDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Document.Name.Should().Be("Privacy Policy");
+        result!.Document.Name.Should().Be("Privacy Policy");
         documents.Should().ContainSingle();
         documents[0].TeamName.Should().Be("Volunteers");
         documents[0].GitHubFolderPath.Should().Be("privacy/");
@@ -166,13 +305,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
             Arg.Is<string>(text => text.Contains("grace period 7 days", StringComparison.Ordinal)), _actorUserId);
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", result!.Document.Id,
             Arg.Is<string>(text => text.Contains("sha-1", StringComparison.Ordinal)), _actorUserId,
             Arg.Is<Guid?>(id => id.HasValue && id.Value != Guid.Empty), "DocumentVersion");
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
-        result.SyncMessage.Should().Contain("v1.0");
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
+        result!.SyncMessage.Should().Contain("v1.0");
 
         // One invalidation for the create, one for the version add from sync.
         _invalidator.Received(2).InvalidateAll();
@@ -187,7 +326,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
         _invalidator.Received(1).InvalidateAll(); // create only, no sync attempted
     }
 
@@ -201,10 +340,10 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Failed);
-        (await _repository.GetByIdAsync(result.Document.Id, Xunit.TestContext.Current.CancellationToken))
+        result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Failed);
+        (await _repository.GetByIdAsync(result!.Document.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().NotBeNull();
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
             Arg.Any<string>(), _actorUserId);
         _audit.ReceivedCalls().Should().ContainSingle();
     }
@@ -272,8 +411,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
     // ── UpdateVersionSummaryAsync ─────────────────────────────────────────────
 
-    [HumansFact]
-    public async Task UpdateVersionSummaryAsync_TrimsPersistsSummary_AndInvokesInvalidator()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(2000)]
+    [Xunit.InlineData(2001)]
+    [Xunit.InlineData(-1)]
+    [Xunit.InlineData(-2)]
+    public async Task UpdateVersionSummaryAsync_ValidatesTrimmedLengthBeforePersistenceAndInvalidation(int length)
     {
         var document = await SeedDocumentAsync("Code of Conduct");
         var versionId = Guid.NewGuid();
@@ -284,13 +428,21 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             LegalDocumentId = document.Id,
             VersionNumber = "v1",
             CommitSha = "abc123",
+            ChangesSummary = "Existing summary",
             EffectiveFrom = Clock.GetCurrentInstant(),
             CreatedAt = Clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        var summary = length switch
+        {
+            0 => "  Clarified scope  ",
+            -1 => "   ",
+            -2 => null,
+            _ => $"  {new string('x', length)}  "
+        };
         var updated = await _service.UpdateVersionSummaryAsync(
-            document.Id, versionId, "  Clarified scope  ", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+            document.Id, versionId, summary, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
@@ -300,24 +452,35 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == versionId, Xunit.TestContext.Current.CancellationToken);
 
-        updated.Should().BeTrue();
-        version.Should().NotBeNull();
-        version!.ChangesSummary.Should().Be("Clarified scope");
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
-            Arg.Is<string>(text => text.Contains("Clarified scope", StringComparison.Ordinal)), _actorUserId,
-            versionId, "DocumentVersion");
-        _invalidator.Received(1).InvalidateAll();
+        if (length > 2000)
+        {
+            updated.Should().Be(VersionSummaryUpdateResult.TooLong);
+            version!.ChangesSummary.Should().Be("Existing summary");
+            _invalidator.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            updated.Should().Be(VersionSummaryUpdateResult.Updated);
+            version.Should().NotBeNull();
+            version!.ChangesSummary.Should().Be(string.IsNullOrWhiteSpace(summary) ? null : summary.Trim());
+            var expectedAudit = $"Updated summary of version {versionId} to '{summary?.Trim()}'.";
+            await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
+                Arg.Is<string>(text => string.Equals(text, expectedAudit, StringComparison.Ordinal)),
+                _actorUserId, versionId, "DocumentVersion");
+            _invalidator.Received(1).InvalidateAll();
+        }
     }
 
     [HumansFact]
-    public async Task UpdateVersionSummaryAsync_ReturnsFalse_WhenVersionNotFound_DoesNotInvalidate()
+    public async Task UpdateVersionSummaryAsync_ReturnsNotFound_WhenVersionNotFound_DoesNotInvalidate()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
 
         var updated = await _service.UpdateVersionSummaryAsync(
             document.Id, Guid.NewGuid(), "Anything", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        updated.Should().BeFalse();
+        updated.Should().Be(VersionSummaryUpdateResult.NotFound);
         _invalidator.DidNotReceive().InvalidateAll();
         _audit.ReceivedCalls().Should().BeEmpty();
     }
@@ -539,6 +702,25 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 .AnyAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().BeFalse(because: "a sync refused for a missing Spanish canonical must not persist a version");
         _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \r\n ")]
+    public async Task SyncDocumentAsync_BlankCanonicalContent_LeavesDocumentUnchanged(string content)
+    {
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
+        StubGitHubFolder("privacy/", content, "new-sha", "Empty canonical file");
+        Func<Task> sync = () => _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await sync.Should().ThrowAsync<InvalidOperationException>().WithMessage("*canonical Spanish content*");
+        await using var verify = LegalDbFactory.CreateDbContext();
+        (await verify.DocumentVersions.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await verify.LegalDocuments.SingleAsync(d => d.Id == document.Id, Xunit.TestContext.Current.CancellationToken))
+            .CurrentCommitSha.Should().Be("old-sha");
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _invalidator.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
     }
 
     private Task AssertFanout(NotificationSource source, bool received)

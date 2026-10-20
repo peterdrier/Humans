@@ -173,6 +173,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     [HumansTheory]
     [Xunit.InlineData(-2)]
     [Xunit.InlineData(-15)]
+    [Xunit.InlineData(0)]
     public async Task SetDayAvailability_RemovesOffset(int dayOffset)
     {
         var userId = Guid.NewGuid();

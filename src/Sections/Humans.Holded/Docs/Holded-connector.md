@@ -16,7 +16,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 - A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses
   creates one per approved expense report, **booked to its 629 expense account at creation**
-  (`items[].account`); tags are never written (dead v1 workaround).
+  (`items[].account`); tags are never written (dead v1 workaround). The list read carries
+  `notes` (null when absent or blank) so Finance can tell a document the push wrote twice from
+  a legitimately repeated line; `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
+  two deletes, used only by Finance's duplicate removal.
 - A **Sales Document** is the org's outgoing revenue record, in two kinds behind one
   `HoldedSalesDocumentKind`: a full `invoice` (identified contact required) and a
   `sales-receipt` (*factura simplificada*, no contact). They share one payload shape and one
@@ -63,6 +66,9 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   issued document — the same reason there is no doc-update endpoint below.
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
+- The one delete is `DELETE /api/v2/contacts/{id}`, which retracts a creditor contact minted by a
+  run that lost the member's binding race; a 404 (already gone) is success. The route is not
+  documented in this repo; unverified against Holded's published reference.
 
 ## Cross-Section Dependencies
 

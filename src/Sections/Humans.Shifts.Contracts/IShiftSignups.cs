@@ -45,7 +45,7 @@ public interface IShiftSignups
     /// <summary>
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
     /// </summary>
-    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
+    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Cancels every Confirmed or Pending signup owned by

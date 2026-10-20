@@ -276,6 +276,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Joining, leaving and changing coordinators keep preparation and the membership save cancellable. Once membership commits, system logs, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and comment replies follow the same boundary: their save remains cancellable, then system logs and notices finish independently. Referral, refusal, withdrawal, reactivation, member/Secretary endings and Board disposition use this boundary too, including their audits and account activation changes. Register edits finish their scope-change log after saving; recorded status requests finish their coordinator notice.
 
 - Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
+- Redirecting member actions reject malformed bound input after authorization and resource ownership checks, before any write. Invalid coordinator selections cannot save a valid subset, and invalid completion reasons cannot default to delivered; refusals return 400 and log a warning. Completion reasons, individual/category comment-response dispositions and Board dispositions must be posted explicitly; omitted choices cannot become delivered, pending or accepted. Explicit zero-valued choices remain valid. Admin binding refusals also log a Warning after actor resolution.
 
 - Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
 
@@ -335,6 +336,9 @@ Settings and Register an existing group on first setup or after clearing the que
 - A comment window must end before delivery: `DeliverDocumentAsync` refuses while
   `CommentsCloseAt` is still in the future. Closing the window early is one click and keeps
   the comments, so the promised period is never cut short by a delivery.
+- Document disposition notes, comment bodies and optional responses are limited to 4000
+  characters after trimming; hiding reasons to 500. Services return the localized
+  length refusal before changing the document or comments, saving or sending notices.
 - Comments: the window is the only gate on `AddCommentAsync` — any signed-in human, group
   membership irrelevant, while `IsOpenForComment(now)` is true. A bulk category response
   (`RespondToCategoryAsync`) touches only still-Pending, non-hidden comments in that

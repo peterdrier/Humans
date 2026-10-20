@@ -7,6 +7,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Controllers;
@@ -220,10 +221,16 @@ internal sealed class CampaignController(
     [HttpPost("{id:guid}/GenerateCodes")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
-    public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
+    public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, [BindRequired] decimal discountValue)
     {
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed discount-code generation for campaign {CampaignId} by user {UserId}", id, currentUser.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await campaignService.GenerateAndImportDiscountCodesAsync(
             currentUser.Id,

@@ -142,6 +142,30 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task BuildSummaryAsync_RotaScope_PreservesCancellationInScopeReads()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetRotaAsync(_rPower, RotaReadShape.Shifts, Arg.Any<CancellationToken>())
+            .Returns(new Rota { Id = _rPower, TeamId = _powerId, EventSettingsId = _event.Id, Name = "Power" });
+        repo.GetConfirmedUserShiftTotalsAsync(
+                _event.Id, Arg.Any<IReadOnlyCollection<Guid>?>(), _rPower, Arg.Any<CancellationToken>())
+            .Returns([]);
+        var services = new ServiceLocatorBuilder()
+            .With(_teamService).With<IUserService>(_userService).With(_campService).Build();
+        var service = new ShiftManagementService(
+            repo, AuditLog, AdminAuthorization, services, Cache,
+            Substitute.For<IShiftViewInvalidator>(), NewCalendarResolver(), Clock,
+            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+
+        var summary = await service.BuildSummaryAsync(_burn, "power", _rPower, cancellation.Token);
+
+        summary.Should().NotBeNull();
+        await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
+        await repo.Received(1).GetRotaAsync(_rPower, RotaReadShape.Shifts, cancellation.Token);
+    }
+
+    [HumansFact]
     public async Task BuildSummaryAsync_Global_FlatTableHasEveryConfirmedHumanWithCamp()
     {
         var summary = await _service.BuildSummaryAsync(_burn, ct: Xunit.TestContext.Current.CancellationToken);

@@ -20,6 +20,10 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
+using Humans.Store.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.Primitives;
 using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
@@ -48,7 +52,7 @@ public class ServiceTests
 
     public ServiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -59,6 +63,20 @@ public class ServiceTests
     // ==========================================================================
     // Read paths (Task 2.3)
     // ==========================================================================
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_cancels_settings_read_before_loading_catalog()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromCanceled<EventSettingsInfo?>(call.Arg<CancellationToken>()));
+
+        var act = () => _service.GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
@@ -72,7 +90,7 @@ public class ServiceTests
         var result = await _service.GetIndexDataAsync(Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2026);
-        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.Counterparties.Should().BeEmpty();
     }
 
@@ -162,7 +180,7 @@ public class ServiceTests
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
 
         result.CounterpartyDisplayName.Should().Be("Camp Test");
-        result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
+        result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
         result.IsStripeConfigured.Should().BeTrue();
@@ -962,6 +980,67 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData("Name", 200, false)]
+    [InlineData("Name", 200, true)]
+    [InlineData("VatId", 50, false)]
+    [InlineData("VatId", 50, true)]
+    [InlineData("Address", 500, false)]
+    [InlineData("Address", 500, true)]
+    [InlineData("CountryCode", 2, false)]
+    [InlineData("CountryCode", 2, true)]
+    [InlineData("Email", 320, false)]
+    [InlineData("Email", 320, true)]
+    public async Task UpdateCounterpartyAsync_rejects_overlong_fields_without_changing_billing_details(
+        string field, int maximum, bool oversized)
+    {
+        var before = new OrderCounterpartyInput("Before", "Old VAT", "Old address", "ES", "old@example.org");
+        var originalTime = _clock.GetCurrentInstant() - Duration.FromDays(1);
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            State = OrderState.Open,
+            UpdatedAt = originalTime,
+            CounterpartyName = before.Name,
+            CounterpartyVatId = before.VatId,
+            CounterpartyAddress = before.Address,
+            CounterpartyCountryCode = before.CountryCode,
+            CounterpartyEmail = before.Email
+        };
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        var value = new string('x', maximum + (oversized ? 1 : 0));
+        var input = new OrderCounterpartyInput("After", "New VAT", "New address", "DE", "new@example.org");
+        input = field switch
+        {
+            "Name" => input with { Name = value },
+            "VatId" => input with { VatId = value },
+            "Address" => input with { Address = value },
+            "CountryCode" => input with { CountryCode = value },
+            _ => input with { Email = value }
+        };
+
+        var result = await _service.UpdateCounterpartyAsync(order.Id, input, Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        var actual = new OrderCounterpartyInput(order.CounterpartyName, order.CounterpartyVatId,
+            order.CounterpartyAddress, order.CounterpartyCountryCode, order.CounterpartyEmail);
+        if (oversized)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.ErrorKey.Should().Be("Store_CounterpartyTooLong");
+            actual.Should().Be(before);
+            order.UpdatedAt.Should().Be(originalTime);
+            await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            actual.Should().Be(input);
+            await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task UpdateCounterpartyAsync_returns_failure_for_expected_rejection()
     {
@@ -1324,6 +1403,84 @@ public class ServiceTests
         controller.TempData.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("UnitPriceEur")]
+    [InlineData("VatRatePercent")]
+    [InlineData("IsActive")]
+    [InlineData("zero")]
+    [InlineData("valid")]
+    public async Task CatalogSave_requires_explicit_prices_and_active_choice(string scenario)
+    {
+        var product = MakeProduct(price: 10m, vat: 21m);
+        product.IsActive = false;
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new StoreAdminController(_service, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var zero = string.Equals(scenario, "zero", StringComparison.Ordinal);
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = product.Id.ToString(),
+            ["Year"] = "2026",
+            ["Name"] = "Updated",
+            ["Description"] = "Details",
+            ["UnitPriceEur"] = zero ? "0" : "20",
+            ["VatRatePercent"] = zero ? "0" : "10",
+            ["IsActive"] = zero ? "false" : "true",
+            ["OrderableUntil"] = "2026-10-01"
+        };
+        var missing = !zero && !string.Equals(scenario, "valid", StringComparison.Ordinal);
+        if (missing) fields.Remove(scenario);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(ProductInputModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(ProductInputModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (ProductInputModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Save(model, TestContext.Current.CancellationToken);
+
+        if (missing)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            product.UnitPriceEur.Should().Be(10m);
+            product.VatRatePercent.Should().Be(21m);
+            product.IsActive.Should().BeFalse();
+            _repo.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            product.UnitPriceEur.Should().Be(zero ? 0m : 20m);
+            product.VatRatePercent.Should().Be(zero ? 0m : 10m);
+            product.IsActive.Should().Be(!zero);
+            await _repo.Received(1).UpdateProductAsync(product, Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task GetActiveCatalogAsync_does_not_return_deactivated_products()
     {
@@ -1559,6 +1716,46 @@ public class ServiceTests
         };
         (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), false, false)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), false, true)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), true, false)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), true, true)]
+    [InlineData(nameof(PaymentMethod.Refund), false, false)]
+    [InlineData(nameof(PaymentMethod.Refund), false, true)]
+    [InlineData(nameof(PaymentMethod.Refund), true, false)]
+    [InlineData(nameof(PaymentMethod.Refund), true, true)]
+    public async Task RecordAdminPaymentAsync_rejects_overlong_metadata_before_recording(
+        string methodName, bool notesField, bool oversized)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 50m));
+        var maximum = notesField ? 1000 : 200;
+        var value = new string('x', maximum + (oversized ? 1 : 0));
+        var reference = notesField ? "re_123" : $" {value} ";
+        var notes = notesField ? $" {value} " : null;
+
+        var result = await _service.RecordAdminPaymentAsync(orderId, method, 1m, reference, notes,
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        if (oversized)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue(result.Refusal);
+            await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
+                p.ExternalRef == (notesField ? "re_123" : value) && p.Notes == (notesField ? value : null)),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     [HumansTheory]

@@ -6,6 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
+using Humans.Users.Helpers;
 
 namespace Humans.Users.Services;
 
@@ -78,7 +79,7 @@ internal sealed class UserEmailService(
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
 
-        var allowed = GetAllowedVisibilities(accessLevel);
+        var allowed = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
 
         return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
@@ -100,7 +101,7 @@ internal sealed class UserEmailService(
     {
         email = email.Trim();
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
             return new AddEmailResult(Guid.Empty, string.Empty, false, "Validation_EmailAddress");
@@ -466,43 +467,6 @@ internal sealed class UserEmailService(
                 r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
             .ToList();
     }
-
-
-    private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
-        accessLevel switch
-        {
-            ContactFieldVisibility.BoardOnly =>
-            [
-                ContactFieldVisibility.BoardOnly,
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.CoordinatorsAndBoard =>
-            [
-                ContactFieldVisibility.CoordinatorsAndBoard,
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            ContactFieldVisibility.MyTeams =>
-            [
-                ContactFieldVisibility.MyTeams,
-                ContactFieldVisibility.AllActiveProfiles
-            ],
-            _ => [ContactFieldVisibility.AllActiveProfiles]
-        };
-
-    private static string? GetAlternateComparableEmail(string normalizedEmail)
-    {
-        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
-            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
-
-        if (normalizedEmail.EndsWith("@googlemail.com", StringComparison.Ordinal))
-            return $"{normalizedEmail[..^"@googlemail.com".Length]}@gmail.com";
-
-        return null;
-    }
-
     // see nobodies-collective/Humans#758 — true when the address matches one of the user's
     // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
     // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
@@ -546,7 +510,7 @@ internal sealed class UserEmailService(
     {
         var normalized = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var rows = await repository.GetUserEmailsByAddressAsync(
-            normalized, GetAlternateComparableEmail(normalized), cancellationToken);
+            normalized, EmailLookupAliases.GetAlternate(normalized), cancellationToken);
         var conflictingEmail = rows.FirstOrDefault(e => e.IsVerified && e.Id != pendingEmail.Id);
         if (conflictingEmail is null)
             return false;
@@ -838,7 +802,7 @@ internal sealed class UserEmailService(
 
         // Cross-user check before any mutation. Normalize via gmail/googlemail alternate so dot-aliases can't bypass the displacement gate.
         var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
-        var alternateClaim = GetAlternateComparableEmail(normalizedClaim);
+        var alternateClaim = EmailLookupAliases.GetAlternate(normalizedClaim);
         var blocker = (await repository.GetUserEmailsByAddressAsync(
                 normalizedClaim, alternateClaim, cancellationToken))
             .FirstOrDefault(e => e.IsVerified && e.UserId != userId);
