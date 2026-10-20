@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Tickets/Controllers/TicketsOnsiteAdminController.cs
+  src/Sections/Humans.Tickets/Controllers/TicketsGateAdminController.cs
   src/Humans.Web/Views/Account/GateLogin.cshtml
   src/Sections/Humans.Tickets/Views/Tickets/Admin/Gate.cshtml
   src/Sections/Humans.Tickets/Services/GateTerminalAccountSeeder.cs
