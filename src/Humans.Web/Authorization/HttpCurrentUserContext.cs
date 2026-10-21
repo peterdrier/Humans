@@ -9,9 +9,7 @@ internal sealed class HttpCurrentUserContext(IHttpContextAccessor httpContextAcc
     {
         get
         {
-#pragma warning disable CS0618 // False positive for obsolete domain nav scan; this is HttpContext.User.
             var user = httpContextAccessor.HttpContext?.User;
-#pragma warning restore CS0618
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
 

@@ -153,45 +153,22 @@ themes:
       Peter 2026-06-13: LEAVE parked in the ledger; the [Obsolete] warning
       independently guards against new misuse.
   - id: cs0618-pragma-nav-reads
-    title: Pragma-wrapped CS0618 cross-section nav reads
+    title: CS0618 pragma sites
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
-    review: panel
-    last_swept: 2026-06-14
-    remaining: 9
-    parked: "Peter — PARKED, as the note has said since 2026-06-14; the machine-readable key was missing until 2026-09-20, so rotation was still serving it. Re-check only when a NEW un-stitched cross-section nav read appears."
+    review: light
+    last_swept: 2026-10-21
+    remaining: 3
     notes: >-
-      The drop in `remaining` is real, not a burndown — the
-      src/Humans.Infrastructure/Data/Configurations/*.cs mappings in item (1)
-      below went away with that project.
-      ACTIONABLE = 0 cross-section nav reads (audited all 27 files, sweep
-      2026-06-14). The detect counts FILES-with-pragma and conflates five
-      unrelated things, none sweep-mechanical:
-      (1) ~15 src/Humans.Infrastructure/Data/Configurations/*.cs HasOne nav
-      MAPPINGS = the SCHEMA side, owned by grandfathered-hum0024-nav-strip
-      (dropping any fires has-pending-model-changes; out of sweep scope);
-      (2) 3 FALSE POSITIVES where the arch scan's textual `.User` heuristic
-      matches a non-domain member — HttpCurrentUserContext + CurrentUserEnricher
-      (HttpContext.User principal) and AccountController (record field
-      result.User);
-      (3) 2 obsolete ContactFieldType.Email ENUM reads (legit legacy-data
-      display, a different obsolete concern, not nav reads) — ProfileApiController,
-      ProfileViewModel;
-      (4) the APPROVED §6b in-memory cross-domain stitch (entity nav populated
-      from service data, design-rules §6b/§15i) — already migrated: FeedbackService
-      (r.User after userService.GetByIdsAsync), TeamService (member.User), and the
-      consumers AboutController, ProfileController, TeamController, TeamAdminController,
-      TeamViewModels (file-wide);
-      (5) 3 IN-SECTION obsolete Team-nav reads in TeamService
-      (TeamRoleDefinition.Team, TeamJoinRequest.Team, TeamMember.Team) — off-theme
-      (in-section, not cross-section); the only "fix" relocates the pragma into a
-      repo projection expression (still CS0618), non-mechanical, panel.
-      Like obsolete-user-displayname this detect FLOORS (~27) and can never reach 0
-      without forbidden pragmas/schema work. The cross-section reads are ALL already
-      service-stitched. PARKED — re-check only when a NEW un-stitched cross-section
-      nav read appears (the CS0618 ratchet flags it). Future re-scope: count only
-      un-stitched cross-section nav reads (currently 0). TeamViewModels file-wide
-      pragma clears only when its VMs are built from service DTOs (large refactor,
-      separate). Still closely coupled to grandfathered-hum0024-nav-strip.
+      Swept 2026-10-21: the cross-section nav reads are gone, and 6 pragmas
+      (CurrentUserEnricher, HttpCurrentUserContext, AccountController,
+      TeamService x3) suppressed nothing, since none of those members is
+      [Obsolete] any more; removed. Order.Label and User.GoogleEmailStatus became
+      EF shadow properties (same pattern as users.GoogleEmail), so no code can
+      reference them and the model snapshot is unchanged; their columns drop
+      under no-drops-until-prod-verified. Left: ContactFieldType.Email
+      (ProfileApiController, ProfileViewModel; legacy contact rows still
+      render) and UserService's GDPR export of the two dead users flags
+      (retire with the USERS-12/13 column drop).
   - id: baseline-entity-read-returns
     title: Application services returning entities from reads
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
