@@ -18,7 +18,7 @@ namespace Humans.Cantina.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -35,6 +35,9 @@ namespace Humans.Cantina.Data.Migrations
                     b.Property<string>("AllergyOtherText")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("DeclinedToAnswer")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("DietaryPreference")
                         .HasMaxLength(200)

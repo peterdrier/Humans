@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// Renders a red banner on /Shifts and /Shifts/Mine when the user has a
-/// qualifying cantina signup but no dietary info on file. The visibility
-/// gate lives inside the component so callers can invoke it unconditionally.
-/// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md (US-35.6)
+/// Renders a gentle dietary-info prompt on /Shifts and /Shifts/Mine when the user has a
+/// qualifying cantina signup and Cantina says to prompt (no preference, not opted out via
+/// "I don't want to answer"). It never blocks a signup. The visibility gate lives inside the
+/// component so callers can invoke it unconditionally.
+/// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md
 /// </summary>
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
@@ -31,10 +32,9 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
         var ct = HttpContext.RequestAborted;
         try
         {
-            var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct);
-            if (!hasQualifyingSignup) return Content(string.Empty);
-
-            if ((await _cantina.GetDietaryProfileAsync(userId, ct))?.HasPreference == true) return Content(string.Empty);
+            // The banner's copy speaks to a long shift, so it only shows with one booked.
+            if (!await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct)) return Content(string.Empty);
+            if (!await _cantina.ShouldPromptForDietaryAsync(userId, ct)) return Content(string.Empty);
 
             return View();
         }

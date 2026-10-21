@@ -85,7 +85,7 @@ public class ThingsToDoMedicalPromptTests
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
         entries.Should().NotContain(e => e.Key == "medical");
-        await _cantina.DidNotReceiveWithAnyArgs().GetDietaryProfileAsync(default);
+        await _cantina.DidNotReceiveWithAnyArgs().ShouldPromptForDietaryAsync(default);
     }
 
     [HumansFact]
@@ -102,8 +102,8 @@ public class ThingsToDoMedicalPromptTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, medical));
-        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
+        // Cantina owns the prompt rule (no preference and not opted out); a recorded answer closes it.
+        _cantina.ShouldPromptForDietaryAsync(userId, Arg.Any<CancellationToken>()).Returns(dietary is null);
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary(userId, [], [])));
         return userId;

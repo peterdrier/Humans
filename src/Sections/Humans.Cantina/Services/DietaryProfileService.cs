@@ -48,6 +48,9 @@ internal sealed class DietaryProfileService(
         return result;
     }
 
+    public async Task<bool> ShouldPromptForDietaryAsync(Guid userId, CancellationToken ct = default) =>
+        await GetDietaryProfileAsync(userId, ct) is not { } p || (!p.HasPreference && !p.DeclinedToAnswer);
+
     public async Task<string?> SaveAsync(Guid userId, DietaryProfileInfo answers, CancellationToken ct = default)
     {
         // "Other" requires accompanying free text. The controller checks first, field-targeted;
@@ -71,10 +74,19 @@ internal sealed class DietaryProfileService(
             AllergyOtherText = allergies.Contains(DietaryOptions.OtherOption) ? answers.AllergyOtherText?.Trim() : null,
             Intolerances = intolerances,
             IntoleranceOtherText = intolerances.Contains(DietaryOptions.OtherOption) ? answers.IntoleranceOtherText?.Trim() : null,
+            DeclinedToAnswer = false,
             UpdatedAt = clock.GetCurrentInstant(),
         }, ct);
         return null;
     }
+
+    public Task DeclineAsync(Guid userId, CancellationToken ct = default) =>
+        repo.UpsertAsync(new DietaryProfile
+        {
+            UserId = userId,
+            DeclinedToAnswer = true,
+            UpdatedAt = clock.GetCurrentInstant(),
+        }, ct);
 
     // ─── cantina.profile-dietary ─────────────────────────────────────────────────
 
@@ -121,7 +133,8 @@ internal sealed class DietaryProfileService(
     }
 
     private static DietaryProfileInfo ToInfo(DietaryProfile row) => new(
-        row.UserId, row.DietaryPreference, row.Allergies, row.AllergyOtherText, row.Intolerances, row.IntoleranceOtherText);
+        row.UserId, row.DietaryPreference, row.Allergies, row.AllergyOtherText, row.Intolerances, row.IntoleranceOtherText,
+        row.DeclinedToAnswer);
 
     private static DietaryProfile ToEntity(DietaryProfileInfo info, Instant now) => new()
     {
@@ -131,6 +144,7 @@ internal sealed class DietaryProfileService(
         AllergyOtherText = info.AllergyOtherText,
         Intolerances = [.. info.Intolerances],
         IntoleranceOtherText = info.IntoleranceOtherText,
+        DeclinedToAnswer = info.DeclinedToAnswer,
         UpdatedAt = now,
     };
 
@@ -162,6 +176,7 @@ internal sealed class DietaryProfileService(
             profile.AllergyOtherText,
             profile.Intolerances,
             profile.IntoleranceOtherText,
+            profile.DeclinedToAnswer,
         })];
     }
 

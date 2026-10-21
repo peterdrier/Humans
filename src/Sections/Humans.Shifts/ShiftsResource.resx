@@ -357,11 +357,9 @@
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve"><value>Your message</value></data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Each recipient will see this body, plus their own shift list across the selected rotas when that box is ticked.</value></data>
   <data name="EmailTeamRotas_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Set-up closed</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Set-up sign-ups are closed — we're already on site.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Set-up shifts are locked in — contact your coordinator if you can't make it.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Shifts that need humans now</value></data>
   <data name="GetInvolved_Title" xml:space="preserve"><value>Get Involved</value></data>
   <data name="GetInvolved_Intro" xml:space="preserve"><value>The event runs on human power. Pick shifts that fit your schedule — every hour helps.</value></data>
@@ -383,6 +381,7 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>I don't want to answer</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>View All My Shifts</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sort order</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Successfully bailed from shift range.</value></data>

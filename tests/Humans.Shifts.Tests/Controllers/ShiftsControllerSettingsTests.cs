@@ -1,4 +1,3 @@
-using Humans.Cantina.Contracts;
 using System.Security.Claims;
 using System.Globalization;
 using Humans.Base.Constants;
@@ -78,7 +77,7 @@ public sealed class ShiftsControllerSettingsTests
     {
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, Substitute.For<ICantinaService>(), _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

@@ -157,12 +157,6 @@ internal sealed class ShiftBrowseViewModel
     public bool ShowSignups { get; set; }
 
     /// <summary>
-    /// True when the viewer has no dietary preferences recorded; partials lock out
-    /// Sign-Up buttons and the banner view component renders the inline prompt.
-    /// </summary>
-    public bool SignupsBlockedByMissingDietary { get; set; }
-
-    /// <summary>
     /// True when early-entry (build) signups have closed
     /// (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer is not
     /// privileged. Row partials combine this with <see cref="ShiftInfo.IsEarlyEntry"/>
@@ -263,12 +257,6 @@ internal sealed class MyShiftsViewModel
     public List<MySignupItem> Pending { get; set; } = [];
     public List<MySignupItem> Past { get; set; } = [];
     public List<int> AvailableDayOffsets { get; set; } = [];
-
-    /// <summary>
-    /// True when the viewer has no dietary preferences recorded; the banner view
-    /// component renders the inline prompt and downstream signup CTAs are locked.
-    /// </summary>
-    public bool SignupsBlockedByMissingDietary { get; set; }
 }
 
 internal sealed class MySignupItem
@@ -610,12 +598,6 @@ internal sealed class BuildStrikeRotaTableViewModel
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
 
-    /// <summary>
-    /// True when the viewer has no dietary preferences recorded; the date-range
-    /// Sign-Up form is rendered disabled with the locked-out copy.
-    /// </summary>
-    public bool SignupsBlockedByMissingDietary { get; set; }
-
     /// <summary>True when early-entry signups have closed for a non-privileged
     /// viewer; propagated to each build/strike row (see ShiftBrowseViewModel).</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
@@ -649,12 +631,6 @@ internal sealed class EventRotaTableViewModel
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
 
-    /// <summary>
-    /// True when the viewer has no dietary preferences recorded; per-shift Sign-Up
-    /// buttons are rendered disabled with the locked-out copy.
-    /// </summary>
-    public bool SignupsBlockedByMissingDietary { get; set; }
-
     /// <summary>True when early-entry signups have closed for a non-privileged
     /// viewer; propagated to each event row (see ShiftBrowseViewModel).</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
@@ -685,7 +661,6 @@ internal sealed class BuildStrikeRotaRowViewModel
     public BurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
-    public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>Page-level early-entry-closed flag; the row combines it with
     /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
@@ -704,7 +679,6 @@ internal sealed class ShiftToggleButtonModel
     public bool IsSignedUp { get; set; }
     public SignupStatus? Status { get; set; }
     public bool IsFull { get; set; }
-    public bool DietaryBlocked { get; set; }
 
     /// <summary>
     /// True when this is an early-entry (build) shift, early-entry signups have
@@ -724,7 +698,6 @@ internal sealed class EventRotaRowViewModel
     public BurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
-    public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>Page-level early-entry-closed flag; the row combines it with
     /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>

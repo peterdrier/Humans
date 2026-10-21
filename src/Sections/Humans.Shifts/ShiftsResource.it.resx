@@ -1097,11 +1097,9 @@
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Invia a {0} destinatario/i</value>
   </data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montaggio chiuso</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Le iscrizioni al montaggio sono chiuse — siamo già sul posto.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>I turni di montaggio sono bloccati — contatta il tuo coordinamento se non puoi esserci.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Turni che hanno bisogno di humans adesso</value>
   </data>
@@ -1159,6 +1157,7 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Preferisco non rispondere</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Vedi tutti i miei turni</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordinamento</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Ti sei ritirato dalla serie di turni.</value></data>

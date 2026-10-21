@@ -64,7 +64,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Consecutive all-day shifts within the same rota are compressed into date ranges (e.g., "Jun 16–21, 6 days") with aggregated fill status; click to expand individual days
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
-- Sign up for a shift with an Active account (auto-confirmed for Public policy, pending for RequireApproval). Single and range signup enforce account state even through onboarding/dietary replay and with privileged flags.
+- Sign up for a shift with an Active account (auto-confirmed for Public policy, pending for RequireApproval). Single and range signup enforce account state even through onboarding and with privileged flags. Missing dietary info never blocks a signup.
 - Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. Date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) lives only in the onboarding-widget shift step
 - Overlap detection prevents signing up for conflicting time slots — a toggle that would overlap an existing confirmed signup is refused with a warning toast and the day stays unsigned
 - Range signup and coordinator range assignment also detect selected all-day shifts that overlap each other on the same date. Conflict-skipping paths omit that entire date with a warning; signup without conflict skipping refuses the range.

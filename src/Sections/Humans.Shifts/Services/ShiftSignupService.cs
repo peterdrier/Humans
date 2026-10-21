@@ -1538,15 +1538,11 @@ internal sealed class ShiftSignupService(
         Guid shiftId,
         Guid eventSettingsId,
         bool privileged,
-        bool hasDietaryPreference,
         CancellationToken ct = default)
     {
         var signups = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
         var existing = signups.FirstOrDefault(s =>
             s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
-
-        if (existing is null && !hasDietaryPreference && await ShiftNeedsCantinaMealAsync(shiftId, ct))
-            return ToggleDaySignupOutcome.DietaryRequired();
 
         SignupResult result;
         bool signedUp;
@@ -1567,13 +1563,7 @@ internal sealed class ShiftSignupService(
         var canViewRestricted = privileged || (await shiftMgmt.GetCoordinatorTeamIdsAsync(userId)).Count > 0;
         var after = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
 
-        return new ToggleDaySignupOutcome(false, result, signedUp, canViewRestricted, after);
-    }
-
-    private async Task<bool> ShiftNeedsCantinaMealAsync(Guid shiftId, CancellationToken ct)
-    {
-        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context, ct);
-        return shift is not null && shift.QualifiesForCantinaMeal();
+        return new ToggleDaySignupOutcome(result, signedUp, canViewRestricted, after);
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

@@ -597,7 +597,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/{id}/Admin/Emails/AddVerified` | POST (`PolicyNames.AdminOnly`) — add an address already verified |
 | `/Profile/{id}/Admin/Emails/Verify` | POST (`PolicyNames.AdminOnly`) — mark a pending plain UserEmail row verified without consuming a token; creates a merge request when the address is already verified on another account |
 | `/Shifts/ShiftInfo` | Shift preferences (skills, work style, languages, preferred shift tags) — served by Shifts' `ShiftProfileController`, not this section; the Edit form carries only a link to it |
-| `/Profile/Me/Medical` | GET/POST — the member's own medical conditions (Art. 9; trimmed, blank saves null). The `medical` things-to-do links here while it is empty and dietary is still open ([spec](../../Humans.Cantina/Docs/features/dietary-nudge.md)). Dietary answers are Cantina's `/Cantina/Dietary`. |
+| `/Profile/Me/Medical` | GET/POST — the member's own medical conditions (Art. 9; trimmed, blank saves null). The `medical` things-to-do links here while it is empty and Cantina's `ShouldPromptForDietaryAsync` holds ([spec](../../Humans.Cantina/Docs/features/dietary-nudge.md)). Dietary answers are Cantina's `/Cantina/Dietary`. |
 | `/Email/CommunicationPreferences` (+ `/Update`) | Served by Email's `CommunicationPreferencesController` (Users decomposition commit 14); the profile hub links to it |
 | `/Consent/MyData` | My Data page — served by Consent's `MyDataController`; Users supplies the deletion timestamps through `UserInfo` and links to it from the profile hub |
 | `/Gdpr/RequestDeletion` | POST — start the 30-day deletion countdown — served by Gdpr's `MemberDataController`; the My Data page's form posts to it |
@@ -702,7 +702,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ## Negative Access Rules
 
-- No one **can** read or edit another member's medical conditions through `/Profile/Me/Medical` — it takes the user from the principal and has no target-user parameter. (The dietary redirect-and-replay flow moved to Cantina's `CantinaProfileController`, which keeps the same own-user-only rule.)
+- No one **can** read or edit another member's medical conditions through `/Profile/Me/Medical` — it takes the user from the principal and has no target-user parameter. (The dietary form moved to Cantina's `CantinaProfileController`, which keeps the same own-user-only rule.)
 - Regular humans **cannot** view suspended profiles.
 - Regular humans **cannot** edit another human's profile.
 - Regular humans **cannot** see contact fields above their access level on other humans' profiles.

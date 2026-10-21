@@ -817,58 +817,37 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // ============================================================
 
     [HumansFact]
-    public async Task ToggleDay_NoExistingSignup_HasDietaryPreference_SignsUp()
+    public async Task ToggleDay_QualifyingShift_SignsUp_WithNoDietaryInfo()
     {
+        // nobodies-collective/Humans#2104: dietary info is opt-in; a cantina-qualifying shift
+        // signs up with nothing on file (the service never consults Cantina).
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: true);
+        var outcome = await _service.ToggleDayAsync(userId, shift.Id, es.Id, privileged: false);
 
-        outcome.NeedsDietaryFirst.Should().BeFalse();
         outcome.SignedUp.Should().BeTrue();
-        outcome.Result!.Success.Should().BeTrue();
+        outcome.Result.Success.Should().BeTrue();
         outcome.SignupsAfter.Should().ContainSingle(s => s.ShiftId == shift.Id && s.Status == SignupStatus.Confirmed);
     }
 
     [HumansFact]
-    public async Task ToggleDay_NoExistingSignup_QualifyingShift_NoDietaryPreference_ReturnsNeedsDietaryFirst()
+    public async Task ToggleDay_NonQualifyingShift_SignsUp()
     {
-        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
-        var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
-        var userId = Guid.NewGuid();
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
-
-        outcome.NeedsDietaryFirst.Should().BeTrue();
-        outcome.Result.Should().BeNull();
-        var signupCount = await ShiftsDb.ShiftSignups.CountAsync(s => s.UserId == userId, TestContext.Current.CancellationToken);
-        signupCount.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task ToggleDay_NoExistingSignup_NonQualifyingShift_NoDietaryPreference_SignsUp()
-    {
-        // 4h shift — below the 6h cantina-meal threshold and not all-day, so the
-        // dietary gate never applies regardless of hasDietaryPreference.
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
+        var outcome = await _service.ToggleDayAsync(userId, shift.Id, es.Id, privileged: false);
 
-        outcome.NeedsDietaryFirst.Should().BeFalse();
         outcome.SignedUp.Should().BeTrue();
-        outcome.Result!.Success.Should().BeTrue();
+        outcome.Result.Success.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task ToggleDay_ExistingActiveSignup_Bails_RegardlessOfDietaryGate()
+    public async Task ToggleDay_ExistingActiveSignup_Bails()
     {
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
@@ -877,11 +856,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
+            userId, shift.Id, es.Id, privileged: false);
 
-        outcome.NeedsDietaryFirst.Should().BeFalse();
         outcome.SignedUp.Should().BeFalse();
-        outcome.Result!.Success.Should().BeTrue();
+        outcome.Result.Success.Should().BeTrue();
         Saved(outcome.Result).Status.Should().Be(SignupStatus.Bailed);
     }
 
@@ -893,7 +871,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: true, hasDietaryPreference: true);
+            userId, shift.Id, es.Id, privileged: true);
 
         outcome.CanViewRestricted.Should().BeTrue();
     }
@@ -906,7 +884,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
-            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: true);
+            userId, shift.Id, es.Id, privileged: false);
 
         outcome.CanViewRestricted.Should().BeFalse();
     }

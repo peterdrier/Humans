@@ -1097,11 +1097,9 @@
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatari(s)</value>
   </data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Muntatge tancat</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscripcions de muntatge estan tancades — ja som al lloc.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Els torns de muntatge ja estan tancats — contacta amb la teva coordinació si no pots venir.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Torns que necessiten humans ara</value>
   </data>
@@ -1159,6 +1157,7 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefereixo no respondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Veure tots els meus torns</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancel·lat el rang de torns.</value></data>
