@@ -2,7 +2,6 @@ using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Data;
 using AwesomeAssertions;
-using Humans.Consent.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
@@ -25,7 +24,6 @@ public class AccountMergeServiceMergeTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly ITeamWrite _teams = Substitute.For<ITeamWrite>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
-    private readonly IConsentCacheInvalidator _consentCache = Substitute.For<IConsentCacheInvalidator>();
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
@@ -41,7 +39,7 @@ public class AccountMergeServiceMergeTests
         new(
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _teams, _notify, _consentCache);
+            _userMerges, _userService, _teams, _notify);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {

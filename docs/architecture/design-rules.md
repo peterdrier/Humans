@@ -581,7 +581,7 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 
 The `TrackedCache` decorator stack below is the target caching architecture for any section that warrants one. `CachingUserService` (`src/Sections/Humans.Users/Data/CachingUserService.cs`, owning the `UserInfo` read model) is the reference implementation; the pattern was first proven on the Profile migration (PR #235, 2026-04-20) and every section that caches a canonical domain projection follows it. (Short-TTL request-acceleration caches — the `ApplicationServicesTakeNoMemoryCacheRule` allowlist — are a different, sanctioned shape; see §15i.)
 
-> Not every section needs §15 — reach for it only when traffic or bulk-read patterns justify an in-memory projection. **Governance** dropped its caching layer entirely (issue #533): the section is low-traffic enough that DB reads per request are fine, so `ApplicationDecisionService` talks directly to `IApplicationRepository` and invalidates the cross-cutting `INotificationMeterCacheInvalidator` and its own voting-badge counts inline after successful writes. (One short-TTL exception, added in #1010: the per-board-member unvoted-application count — read on every page load via the nav badge — is cached inline via `IMemoryCache` with a 2-min TTL, the same request-acceleration pattern as the other nav-badge counts; it is not a §15 projection.)
+> Not every section needs §15 — reach for it only when traffic or bulk-read patterns justify an in-memory projection. **Governance** has no caching layer: the section is low-traffic enough that DB reads per request are fine, so `ApplicationDecisionService` talks directly to `IApplicationRepository` and evicts its own voting-badge counts inline after successful writes. (One short-TTL exception: the per-board-member unvoted-application count, read on every page load via the nav badge, is cached inline via `IMemoryCache` with a 2-min TTL, the same request-acceleration pattern as the other nav-badge counts; it is not a §15 projection.)
 
 ### 15a. Four-Layer Stack
 
@@ -625,7 +625,7 @@ This is the Microsoft-endorsed pattern for Singleton services that need DB acces
 The application service (`UserService`, `ProfileService`, `ContactFieldService`, etc.) lives in its section's `Humans.<Section>.Services` namespace and is `internal sealed` per HUM0034. (A handful of Users files still carry the legacy `Humans.Application.Services.*` namespace; namespace normalization retires those.) It:
 
 - Injects repository interfaces, never `DbContext`.
-- Never imports `IMemoryCache` or any caching abstraction — it is completely cache-unaware.
+- Never imports `IMemoryCache` or any caching abstraction; it is cache-unaware. One exception (§15e): it may call its own section's concrete decorator to evict where ordering matters.
 - When the section has a caching decorator: registered as **Scoped** and **keyed** under that decorator's `InnerServiceKey` (e.g., `CachingUserService.InnerServiceKey` = `"user-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
 - Implements **every** read method against the DB, with one carve-out: **cache-only reads** — projections served from the decorator's warmed snapshot with no repository equivalent (relevance-ranked search: `UserService.SearchUsersAsync`, `TeamService.SearchAsync`, `CampService.SearchAsync`; §12) — have no DB implementation. For those, the inner method throws `NotSupportedException` so a DI mis-registration fails loudly instead of silently bypassing the cache. The base service must **never** return empty results for a method "so the decorator can override" — implement it against the DB, or throw.
 - Sub-aggregates belong to the parent section (CV entries are written through `IProfileService.SaveCVEntriesAsync`; the parent repository owns the reconcile logic).
@@ -644,20 +644,15 @@ Key rules the example demonstrates:
 - Writes: delegate to the inner service, then replace the affected entry via `Replace(key, value)` (caller-computed value) or `ReplaceAsync(key, ct)` (reloads via `LoadRowAsync`). If reloading fails or is cancelled, `ReplaceAsync` discards the old entry and marks a warmed cache cold, including when the committed write created a new key; the next read retries from source. Bare `Invalidate(key)` is for lazy-per-key caches or for tombstoning a row whose source has been confirmed deleted — on a warmed cache, removing without replacing breaks the all-rows invariant.
 - Warming: `TrackedCache` itself implements `IHostedService`. Register the decorator as a hosted service (`services.AddHostedService(sp => sp.GetRequiredService<CachingFoo>())`) — startup triggers `WarmAllAsync` via `EnsureWarmedAsync`, which flips the warmed flag on success. No separate `*WarmupHostedService` class. Startup-warmup failures are recovered transparently: the next load-all read drives warmup on demand.
 - Composing decorators that hold multiple inner `TrackedCache` instances (e.g. `CachingShiftViewService`) implement `IHostedService` directly with the same shape.
-<!-- wheat: src/Sections/Humans.EarlyEntry/Docs/EarlyEntry.md §Invariants -->
 - **Caching a legitimate negative result needs manual `TryGet`/`Set`, not `GetAsync`.** `TrackedCache<TKey,TValue>.GetAsync` only calls `Set` when `LoadRowAsync` returns non-null, so it never caches a `null`/not-found outcome — every miss re-triggers the loader. A decorator whose value type is itself nullable, and where "no result" is a real cacheable answer, must call `TryGet` on read and `Set` explicitly, storing the null.
 
-### 15e. Invalidator — One-Way Cross-Section Signal
+### 15e. The Cache Owner Evicts
 
-Each cached section exposes a one-method invalidator interface (e.g., `IUserInfoInvalidator`):
+Only the section that owns a cache evicts it. There is no cross-section invalidator interface: HUM0028 flags any interface extending `IInvalidator`, and the family is at zero.
 
-```csharp
-Task InvalidateAsync(Guid userId, CancellationToken ct = default);
-```
-
-Implemented by the section's caching decorator. External sections inject the invalidator when their writes make the cached view stale. The decorator reloads-or-removes the entry. External code never mutates the dict directly.
-
-**CRITICAL:** the invalidator must resolve to the **same Singleton instance** as the section's public `I<Section>Service`. Both registrations point to the single decorator. If two instances were created, the dict would diverge and invalidations would be silently lost.
+- **Own writes:** the decorator evicts or replaces after delegating the write, or the inner service calls its own section's concrete decorator (the one §15c exception) when eviction has to happen at a specific point (e.g. before a sync that reads the fresh value). Neither crosses a section boundary.
+- **Another section's change makes the view stale:** use a signal the owner already receives (`IUserMerge`, `IUserDataContributor` erasure, its own writes), or read that data live from the other section's cached service instead of copying it into this cache. A cached copy of another section's data that nothing tells you about is a design smell; a short TTL is the fallback, not an invalidator.
+- If none of those fits, stop and ask Peter. Don't add an `I*Invalidator` or a cache-clearing method on an `I*Write` interface; `ITeamWrite.InvalidateActiveTeamsCache` is the one recorded exception (debt ledger CENTRAL-98).
 
 ### 15f. Canonical Read-Model Naming
 
@@ -665,7 +660,6 @@ Implemented by the section's caching decorator. External sections inject the inv
 |------|------|
 | Canonical section read model | `<Section>Info` (e.g., `UserInfo`, `TeamInfo`). |
 | Read method | Match the read model name when returning one item (e.g., `GetUserInfoAsync`, `GetTeamAsync`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). Load-all methods used by decorators must still be normal service/read-interface methods (e.g., `GetAllEventInfosAsync`, `GetTicketOrderInfosAsync`), never cache-shaped `ForCache` helpers. |
-| Invalidator interface | `I<SectionInfo>Invalidator` (e.g., `IUserInfoInvalidator`). |
 | Sub-aggregate collections | Natural plural on the DTO (e.g., `VolunteerHistory`, `ContactFields`). |
 
 Do not expose EF entity types from section service read APIs — the canonical
@@ -677,7 +671,7 @@ Architecture tests verify *structure* (namespace, no-DbContext, no-IMemoryCache,
 
 Three guards mitigate this:
 
-1. **Singleton identity.** The decorator and its invalidator interface must resolve to the *same* instance (§15e CRITICAL). If two instances exist, in-process invalidation routes to the wrong dict.
+1. **Singleton identity.** Every interface the decorator serves, and any concrete injection of it for same-section eviction, must resolve to the *same* Singleton instance. If two instances exist, an eviction lands in the wrong dict and is silently lost.
 2. **Repository-bypass analyzer.** HUM0020 fails the build when a `Caching*Service` structurally references an `I*Repository` type. Decorators are transparent wrappers around the scoped service surface; they do not side-step that service for warmup or refresh.
 3. **Integration test through the decorator.** For every cached section, a test writes through the public service interface and reads back through the same interface, asserting the post-write read reflects the change. This is the only automated guard that catches a missing `RefreshEntryAsync` call.
 
@@ -685,7 +679,7 @@ GoogleIntegration's cached projection, if it ever gains a decorator, is reconcil
 
 ### 15h. Adoption Rules
 
-1. **New sections must comply.** New features use the §15 pattern from day one — where a cache is warranted, create the decorator (and, for a table-owning section, the repository) the same day you create the service; where it isn't, Option A (no decorator) is the compliant shape. A tableless section can still carry a decorator over a derived projection — it never acquires a repository just to comply.
+1. **New sections must comply.** New features use the §15 pattern from day one — where a cache is warranted, create the decorator (and, for a table-owning section, the repository) the same day you create the service; where it isn't, Option A (no decorator) is the compliant shape. A tableless section can still carry a decorator over a derived projection; it never acquires a repository just to comply.
 2. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like.
 
 ### 15i. Current State
@@ -694,6 +688,6 @@ Every section lives in its own project, with services in `Humans.<Section>.Servi
 
 - **Caching decorators** (§15 pattern): `CachingUserService`, `CachingTeamService`, `CachingCampService`, `CachingEventService`, `CachingCalendarService`, `CachingConsentService`, `CachingRoleAssignmentService`, `CachingShiftViewService`, `CachingTicketQueryService`, `CachingLegalDocumentSyncService`, `CachingRideshareService`, `CachingWorkgroupService` — each in its section project. Every other section is Option A (no decorator). `CachingTicketVendorService` (Tickets) is not this pattern: a 15-minute TTL cache over the vendor's event summary, recorded as debt to move onto `TrackedCache`.
 - **Cross-section reads stitch through service interfaces** (`IUserService.GetUserInfosAsync` for display names is the canonical example, §6b). Cross-section linkage is a bare `Guid` column; each section's `internal` DbContext and internal entities enforce that structurally.
-- **Inline short-TTL `IMemoryCache`** remains appropriate for request-acceleration counters (nav badges, notification meters, claims, shift auth) — never for canonical domain data. `ApplicationServicesTakeNoMemoryCacheRule` allowlists the sanctioned users.
+- **Inline short-TTL `IMemoryCache`** remains appropriate for request-acceleration counters (nav badges, notification meters) — never for canonical domain data. `ApplicationServicesTakeNoMemoryCacheRule` allowlists the sanctioned users.
 - **`HumansMetricsService`** (`Humans.Web`, operational host service) reads its gauges through section public contracts resolved per-scrape — now just `IUserService.GetAllUserInfosAsync`, off the cached `UserInfo` snapshot. Its former direct `IGoogleSyncOutboxRepository` resolve and its full-service resolves are gone.
 - **External connectors** are their own sections (Stripe, TicketTailor, Holded) or section-internal SDK bridges (GoogleIntegration's `Services/Workspace/` clients, Email's MailKit processor). Only the owning section's csproj references the vendor SDK; contracts stay SDK-free. The one approved exception outside a section: `Humans.Base` references Octokit for the GitHub content sources (`GitHubGuideContentSource`, `GitHubCommunityKbContentSource`).

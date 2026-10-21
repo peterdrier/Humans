@@ -32,6 +32,7 @@ internal sealed class OnboardingService(
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
+    IAccountDeletionService accountDeletionService,
     ILogger<OnboardingService> logger) : IOnboardingService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(OnboardingResource));
@@ -123,10 +124,9 @@ internal sealed class OnboardingService(
 
     // --- Consent-check mutations ---
 
-    // Annotation-only after the name-only access switch: Clear records the consent-check status
-    // (and sets the review's IsApproved, Consent's consent_reviews) for the CC audit track. It no longer
-    // provisions any team — Volunteers/tier membership is reconciled by SystemTeamSyncJob on
-    // name + consents, decoupled from CC review.
+    // Annotation-only: Clear records the consent-check status (and sets the review's IsApproved,
+    // Consent's consent_reviews) for the CC audit track and provisions no team — Volunteers/tier
+    // membership is reconciled by SystemTeamSyncJob on name + consents, decoupled from CC review.
     public Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
@@ -258,8 +258,34 @@ internal sealed class OnboardingService(
         return result;
     }
 
-    // --- Consent-check pending threshold (peer-called by controllers after Profile/Consent writes) ---
+    // --- Follow-ups to the member's own Profile/Consent writes (reported by the writing controller) ---
 
+    public async Task ProfileSavedAsync(Guid userId, CancellationToken ct = default)
+    {
+        await SetConsentCheckPendingIfEligibleAsync(userId, ct);
+
+        // Finishing setup is a change of mind: a not-yet-approved member who saves their
+        // profile withdraws a pending deletion request. An approved member's edit does not.
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        if (info is not { IsDeletionPending: true })
+            return;
+        if ((await consentService.GetConsentReviewAsync(info.Id, ct)).IsApproved)
+            return;
+
+        await accountDeletionService.CancelDeletionAsync(info.Id, ct);
+        logger.LogInformation(
+            "Cancelled pending deletion request for user {UserId} on profile setup", info.Id);
+    }
+
+    public Task ConsentSignedAsync(Guid userId, CancellationToken ct = default) =>
+        SetConsentCheckPendingIfEligibleAsync(userId, ct);
+
+    /// <summary>
+    /// If the user has a profile, is not approved or rejected, has no existing consent-check
+    /// status, and has all required consents for the Volunteers team, sets the Consent
+    /// review's status to <c>Pending</c>. Returns true if the status was set. Raises no
+    /// notification — the coordinator finds the queue through the admin sidebar's Review pill.
+    /// </summary>
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
         Guid userId, CancellationToken ct = default)
     {

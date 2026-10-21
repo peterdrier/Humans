@@ -37,14 +37,6 @@ internal partial interface ICampRepository
     /// </summary>
     Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct user ids holding the given special role on the
-    /// specified season (non-deactivated definition). Used to source the camp
-    /// detail "Contact the leads" recipient list and admin/CSV lead columns.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
-        Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default);
-
     Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default);
 
     Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default);

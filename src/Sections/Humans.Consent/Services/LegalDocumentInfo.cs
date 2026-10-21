@@ -21,7 +21,7 @@ namespace Humans.Consent.Services;
 /// every read. Writes (admin create/update/archive/sync, version add) go
 /// through <c>LegalDocumentSyncService</c>, the sole writer for
 /// <c>legal_documents</c>/<c>document_versions</c>, which calls
-/// <c>ILegalDocumentCacheInvalidator.InvalidateAll</c> directly after each
+/// <c>CachingLegalDocumentSyncService.InvalidateAll</c> directly after each
 /// successful write.
 /// </para>
 /// </remarks>

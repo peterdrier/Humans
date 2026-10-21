@@ -39,7 +39,6 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
-        services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 

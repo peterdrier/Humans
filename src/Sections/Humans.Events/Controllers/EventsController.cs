@@ -179,8 +179,8 @@ internal sealed class EventsController(
             IsRecurring = model.IsRecurring,
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
         };
-        guideEvent.Submit(clock);
 
+        // SubmitEventAsync owns the submission window, recurrence-day rule and the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
         await guide.SubmitEventAsync(guideEvent, viewUrl);
 
@@ -234,7 +234,7 @@ internal sealed class EventsController(
         model.Host = guideEvent.Host;
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
-        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("IndividualEventForm", model);
     }
@@ -588,8 +588,8 @@ internal sealed class EventsController(
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
             PriorityRank = model.PriorityRank
         };
-        guideEvent.Submit(clock);
 
+        // SubmitEventAsync owns the submission window, recurrence-day rule and the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
         await guide.SubmitEventAsync(guideEvent, viewUrl);
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
@@ -634,7 +634,7 @@ internal sealed class EventsController(
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.PriorityRank = guideEvent.PriorityRank;
-        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("BarrioEventForm", model);
     }

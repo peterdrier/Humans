@@ -3,7 +3,6 @@
   src/Sections/Humans.Backdoor/Controllers/BackdoorIssuesController.cs
   src/Sections/*/Section.cs
   src/Humans.Base/Caching/CacheKeys.cs
-  src/Humans.Base/Caching/MemoryCacheInvalidators.cs
 -->
 <!-- freshness:flag-on-change
   Issue lifecycle, auto-reopen, role-based section routing, screenshot validation, and reporter-vs-handler authorization — review when Issues service/entities/controllers change.

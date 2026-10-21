@@ -627,8 +627,6 @@ internal sealed class TeamAdminController(
         if (teamError is not null)
             return teamError;
 
-        var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
-
         var ctas = (team.CallsToAction ?? [])
             .Select(c => new CallToActionViewModel { Text = c.Text, Url = c.Url, Style = c.Style })
             .ToList();
@@ -642,7 +640,7 @@ internal sealed class TeamAdminController(
             TeamName = await GetTeamDisplayNameAsync(team),
             IsPublicPage = team.IsPublicPage,
             ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
-            CanBePublic = canBePublic,
+            CanBePublic = team.CanBePublic,
             PageContent = team.PageContent,
             CallsToAction = ctas
         };
@@ -933,7 +931,7 @@ internal sealed class TeamAdminController(
     {
         model.Slug = team.Slug;
         model.TeamName = await GetTeamDisplayNameAsync(team);
-        model.CanBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
+        model.CanBePublic = team.CanBePublic;
     }
 
     private async Task<string> GetTeamDisplayNameAsync(TeamInfo team)

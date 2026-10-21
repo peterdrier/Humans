@@ -87,7 +87,11 @@ internal sealed record ToggleDaySignupOutcome(
     SignupResult Result,
     bool SignedUp,
     bool CanViewRestricted,
-    IReadOnlyList<ShiftSignup> SignupsAfter);
+    IReadOnlyList<ShiftSignup> SignupsAfter)
+{
+    /// <summary>The user's active (Pending or Confirmed) signups after the toggle.</summary>
+    public int ActiveSignupCount => SignupsAfter.Count(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
+}
 
 internal sealed record ShiftSignupTeamProbe(
     Guid Id,

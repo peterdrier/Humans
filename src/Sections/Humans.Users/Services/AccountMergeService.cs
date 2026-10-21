@@ -5,7 +5,6 @@ using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
@@ -23,8 +22,7 @@ internal sealed class AccountMergeService(
     IEnumerable<IUserMerge> userMerges,
     IUserManagement userService,
     ITeamWrite teamService,
-    INotificationService notificationService,
-    IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
+    INotificationService notificationService) : IAccountMergeService, IUserDataContributor
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string AccountMergeRequests = "AccountMergeRequests";
@@ -160,8 +158,6 @@ internal sealed class AccountMergeService(
         finally
         {
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
-            consentCacheInvalidator.InvalidateUser(archivedUserId);
-            consentCacheInvalidator.InvalidateUser(survivorUserId);
             // After the tombstone, not inside Teams' own ReassignAsync: the team graph stitches
             // each member's UserInfo, and system-team rows still name the archived id, which
             // now resolves forward to the survivor.
